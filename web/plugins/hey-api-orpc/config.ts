@@ -6,9 +6,6 @@ import { handler } from './plugin'
 
 export const defaultConfig: OrpcPlugin['Config'] = {
   config: {
-    baseName: 'base',
-    exportFromIndex: false,
-    generateRouter: true,
     output: 'orpc',
   },
   dependencies: ['@hey-api/typescript', 'zod'],

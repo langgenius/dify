@@ -61,7 +61,6 @@ function collectOperation(operation: IR.OperationObject): OperationInfo {
 }
 
 export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
-  const config = plugin.config
   const operations: OperationInfo[] = []
   const zodImports = new Set<string>()
 
@@ -95,7 +94,7 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
   }
 
   // Create base contract: export const base = oc.$route({ inputStructure: 'detailed' })
-  const baseSymbol = plugin.symbol(config.baseName, {
+  const baseSymbol = plugin.symbol('base', {
     exported: true,
     meta: {
       category: 'schema',
@@ -167,55 +166,53 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     plugin.node(contractNode)
   }
 
-  // Create contracts object export if enabled
-  if (config.generateRouter) {
-    // Group operations by tag
-    const operationsByTag = new Map<string, OperationInfo[]>()
-    for (const op of operations) {
-      const tag = op.tags[0]
-      if (!operationsByTag.has(tag)) {
-        operationsByTag.set(tag, [])
-      }
-      operationsByTag.get(tag)!.push(op)
+  // Create contracts object export
+  // Group operations by tag
+  const operationsByTag = new Map<string, OperationInfo[]>()
+  for (const op of operations) {
+    const tag = op.tags[0]
+    if (!operationsByTag.has(tag)) {
+      operationsByTag.set(tag, [])
     }
-
-    // Build contracts object
-    const contractsObject = $.object()
-    for (const [tag, tagOps] of operationsByTag) {
-      const tagKey = tag.charAt(0).toLowerCase() + tag.slice(1)
-      const tagObject = $.object()
-      for (const op of tagOps) {
-        const contractSymbol = contractSymbols[op.id]
-        if (contractSymbol) {
-          tagObject.prop(`${op.id}Contract`, $(contractSymbol))
-        }
-      }
-      contractsObject.prop(tagKey, tagObject)
-    }
-
-    const contractsSymbol = plugin.symbol('contracts', {
-      exported: true,
-      meta: {
-        category: 'schema',
-      },
-    })
-
-    const contractsNode = $.const(contractsSymbol)
-      .export()
-      .assign(contractsObject)
-    plugin.node(contractsNode)
-
-    // Create type export: export type Contracts = typeof contracts
-    const contractsTypeSymbol = plugin.symbol('Contracts', {
-      exported: true,
-      meta: {
-        category: 'type',
-      },
-    })
-
-    const contractsTypeNode = $.type.alias(contractsTypeSymbol)
-      .export()
-      .type($.type.query($(contractsSymbol)))
-    plugin.node(contractsTypeNode)
+    operationsByTag.get(tag)!.push(op)
   }
+
+  // Build contracts object
+  const contractsObject = $.object()
+  for (const [tag, tagOps] of operationsByTag) {
+    const tagKey = tag.charAt(0).toLowerCase() + tag.slice(1)
+    const tagObject = $.object()
+    for (const op of tagOps) {
+      const contractSymbol = contractSymbols[op.id]
+      if (contractSymbol) {
+        tagObject.prop(`${op.id}Contract`, $(contractSymbol))
+      }
+    }
+    contractsObject.prop(tagKey, tagObject)
+  }
+
+  const contractsSymbol = plugin.symbol('contracts', {
+    exported: true,
+    meta: {
+      category: 'schema',
+    },
+  })
+
+  const contractsNode = $.const(contractsSymbol)
+    .export()
+    .assign(contractsObject)
+  plugin.node(contractsNode)
+
+  // Create type export: export type Contracts = typeof contracts
+  const contractsTypeSymbol = plugin.symbol('Contracts', {
+    exported: true,
+    meta: {
+      category: 'type',
+    },
+  })
+
+  const contractsTypeNode = $.type.alias(contractsTypeSymbol)
+    .export()
+    .type($.type.query($(contractsSymbol)))
+  plugin.node(contractsTypeNode)
 }

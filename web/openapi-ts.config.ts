@@ -19,7 +19,6 @@ export default defineConfig({
     },
     defineOrpcConfig({
       output: 'orpc',
-      generateRouter: true,
     }),
   ],
 })
