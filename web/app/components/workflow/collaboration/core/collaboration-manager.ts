@@ -58,7 +58,6 @@ type LoroContainer = {
 
 const toLoroValue = (value: unknown): Value => cloneDeep(value) as Value
 const toLoroRecord = (value: unknown): Record<string, Value> => cloneDeep(value) as Record<string, Value>
-
 export class CollaborationManager {
   private doc: LoroDoc | null = null
   private undoManager: UndoManager | null = null
@@ -817,14 +816,22 @@ export class CollaborationManager {
     if (!this.nodesMap || !this.doc)
       return
 
-    const newIdSet = new Set(newNodes.map(node => node.id))
+    const oldNodesMap = new Map(oldNodes.map(node => [node.id, node]))
+    const newNodesMap = new Map(newNodes.map(node => [node.id, node]))
 
     oldNodes.forEach((oldNode) => {
-      if (!newIdSet.has(oldNode.id))
+      if (!newNodesMap.has(oldNode.id)) {
         this.nodesMap?.delete(oldNode.id)
+      }
     })
 
     newNodes.forEach((newNode) => {
+      const oldNode = oldNodesMap.get(newNode.id)
+      if (oldNode && oldNode === newNode)
+        return
+      if (oldNode && isEqual(oldNode, newNode))
+        return
+
       const nodeContainer = this.getNodeContainer(newNode.id)
       this.populateNodeContainer(nodeContainer, newNode)
     })
@@ -838,8 +845,9 @@ export class CollaborationManager {
     const newEdgesMap = new Map(newEdges.map(edge => [edge.id, edge]))
 
     oldEdges.forEach((oldEdge) => {
-      if (!newEdgesMap.has(oldEdge.id))
+      if (!newEdgesMap.has(oldEdge.id)) {
         this.edgesMap?.delete(oldEdge.id)
+      }
     })
 
     newEdges.forEach((newEdge) => {
