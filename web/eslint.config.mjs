@@ -32,7 +32,7 @@ export default antfu(
           'error',
           {
             selector: 'TSEnumDeclaration',
-            message: 'We should not use Enum',
+            message: 'Enums are discouraged. Prefer union types of string literals instead for better tree-shaking and type safety.',
           },
         ],
       },
