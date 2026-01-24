@@ -5,6 +5,15 @@ export default defineConfig({
   output: './gen',
   plugins: [
     '@hey-api/typescript',
-    'zod',
+    {
+      name: 'zod',
+      requests: true,
+      responses: true,
+      metadata: true,
+      definitions: true,
+      types: {
+        infer: true,
+      },
+    },
   ],
 })
