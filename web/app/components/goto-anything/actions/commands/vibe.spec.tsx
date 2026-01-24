@@ -46,8 +46,18 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-// Command availability, search, and registration behavior for workflow vibe.
+// Command availability, search, and registration behavior for vibe command.
 describe('vibeCommand', () => {
+  // Command metadata mirrors the static definition.
+  describe('metadata', () => {
+    it('should expose name, mode, and description', () => {
+      // Assert
+      expect(vibeCommand.name).toBe('vibe')
+      expect(vibeCommand.mode).toBe('submenu')
+      expect(vibeCommand.description).toContain('gotoAnything.actions.vibeDesc')
+    })
+  })
+
   // Availability mirrors workflow page detection.
   describe('availability', () => {
     it('should return true when on workflow page', () => {
@@ -59,6 +69,7 @@ describe('vibeCommand', () => {
 
       // Assert
       expect(available).toBe(true)
+      expect(mockedIsInWorkflowPage).toHaveBeenCalledTimes(1)
     })
 
     it('should return false when not on workflow page', () => {
@@ -70,6 +81,7 @@ describe('vibeCommand', () => {
 
       // Assert
       expect(available).toBe(false)
+      expect(mockedIsInWorkflowPage).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -80,15 +92,20 @@ describe('vibeCommand', () => {
       mockedIsInWorkflowPage.mockReturnValue(true)
 
       // Act
-      const result = await vibeCommand.search('   ', 'en')
+      const result = await vibeCommand.search('   ')
 
       // Assert
       expect(result).toHaveLength(1)
       const [item] = result
-      expect(item.description).toContain('app.gotoAnything.actions.vibeHint')
+      expect(item.description).toContain('gotoAnything.actions.vibeHint')
       expect(item.data?.args?.dsl).toBe('')
+      expect(item.data?.command).toBe('workflow.vibe')
       expect(mockedT).toHaveBeenCalledWith(
-        'app.gotoAnything.actions.vibeHint',
+        'gotoAnything.actions.vibeTitle',
+        expect.objectContaining({ lng: 'en' }),
+      )
+      expect(mockedT).toHaveBeenCalledWith(
+        'gotoAnything.actions.vibeHint',
         expect.objectContaining({ prompt: expect.any(String), lng: 'en' }),
       )
     })
@@ -98,13 +115,35 @@ describe('vibeCommand', () => {
       mockedIsInWorkflowPage.mockReturnValue(true)
 
       // Act
-      const result = await vibeCommand.search(' make a flow ', 'en')
+      const result = await vibeCommand.search(' make a flow ', 'fr')
 
       // Assert
       expect(result).toHaveLength(1)
       const [item] = result
-      expect(item.description).toContain('app.gotoAnything.actions.vibeDesc')
+      expect(item.description).toContain('gotoAnything.actions.vibeDesc')
       expect(item.data?.args?.dsl).toBe('make a flow')
+      expect(item.data?.command).toBe('workflow.vibe')
+      expect(mockedT).toHaveBeenCalledWith(
+        'gotoAnything.actions.vibeTitle',
+        expect.objectContaining({ lng: 'fr' }),
+      )
+      expect(mockedT).toHaveBeenCalledWith(
+        'gotoAnything.actions.vibeDesc',
+        expect.objectContaining({ lng: 'fr' }),
+      )
+    })
+
+    it('should fall back to Vibe when title translation is empty', async () => {
+      // Arrange
+      mockedIsInWorkflowPage.mockReturnValue(true)
+      mockedT.mockImplementationOnce(() => '')
+
+      // Act
+      const result = await vibeCommand.search('make a plan')
+
+      // Assert
+      expect(result).toHaveLength(1)
+      expect(result[0]?.title).toBe('Vibe')
     })
   })
 

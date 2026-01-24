@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import type { ScopeDescriptor } from '../types'
 import type { SlashCommandDependencies } from './types'
 import { useTheme } from 'next-themes'
@@ -6,13 +7,13 @@ import { getI18n } from 'react-i18next'
 import { setLocaleOnClient } from '@/i18n-config'
 import { ACTION_KEYS } from '../../constants'
 import { accountCommand } from './account'
-import { bananaCommand } from './banana'
 import { communityCommand } from './community'
 import { docsCommand } from './docs'
 import { forumCommand } from './forum'
 import { languageCommand } from './language'
 import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
+import { vibeCommand } from './vibe'
 import { zenCommand } from './zen'
 
 const i18n = getI18n()
@@ -38,7 +39,7 @@ export const registerSlashCommands = (deps: SlashCommandDependencies) => {
   slashCommandRegistry.register(communityCommand, {})
   slashCommandRegistry.register(accountCommand, {})
   slashCommandRegistry.register(zenCommand, {})
-  slashCommandRegistry.register(bananaCommand, {})
+  slashCommandRegistry.register(vibeCommand, {})
 }
 
 export const unregisterSlashCommands = () => {
@@ -50,7 +51,7 @@ export const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('community')
   slashCommandRegistry.unregister('account')
   slashCommandRegistry.unregister('zen')
-  slashCommandRegistry.unregister('banana')
+  slashCommandRegistry.unregister('vibe')
 }
 
 export const SlashCommandProvider = () => {

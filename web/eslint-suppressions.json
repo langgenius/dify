@@ -27,11 +27,6 @@
       "count": 3
     }
   },
-  "__tests__/goto-anything/command-selector.test.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "__tests__/goto-anything/slash-command-modes.test.tsx": {
     "ts/no-explicit-any": {
       "count": 3
@@ -1971,11 +1966,6 @@
   "app/components/goto-anything/actions/commands/registry.ts": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/goto-anything/actions/commands/slash.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/goto-anything/actions/commands/types.ts": {
