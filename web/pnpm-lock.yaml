@@ -15222,7 +15222,6 @@ snapshots:
     dependencies:
       '@acemir/cssom': 0.9.31
       '@asamuzakjp/dom-selector': 6.7.6
-      '@exodus/bytes': 1.9.0
       cssstyle: 5.3.5
       data-urls: 6.0.0
       decimal.js: 10.6.0
