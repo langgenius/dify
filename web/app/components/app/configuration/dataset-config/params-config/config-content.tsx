@@ -54,9 +54,7 @@ const ConfigContent: FC<Props> = ({
   const type = datasetConfigs.retrieval_model
 
   // Check if only one dataset is selected - reranking is only applied with multiple datasets
-  const isSingleDataset = useMemo(() => {
-    return selectedDatasets.length === 1
-  }, [selectedDatasets])
+  const isSingleDataset = selectedDatasets.length === 1
 
   useEffect(() => {
     if (type === RETRIEVE_TYPE.oneWay) {
@@ -327,42 +325,27 @@ const ConfigContent: FC<Props> = ({
             )
           }
           {
-            showWeightedScorePanel
-            && !isSingleDataset
-            && (
+            showWeightedScorePanel && (
               <div className="mt-2 space-y-4">
-                <WeightedScore
-                  value={{
-                    value: [
-                      datasetConfigs.weights!.vector_setting.vector_weight,
-                      datasetConfigs.weights!.keyword_setting.keyword_weight,
-                    ],
-                  }}
-                  onChange={handleWeightedScoreChange}
-                />
-                <TopKItem
-                  value={datasetConfigs.top_k}
-                  onChange={handleParamChange}
-                  enable={true}
-                />
-                <ScoreThresholdItem
-                  value={datasetConfigs.score_threshold as number}
-                  onChange={handleParamChange}
-                  enable={datasetConfigs.score_threshold_enabled}
-                  hasSwitch={true}
-                  onSwitchChange={handleSwitch}
-                />
-              </div>
-            )
-          }
-          {
-            showWeightedScorePanel
-            && isSingleDataset
-            && (
-              <div className="mt-2 space-y-4">
-                <div className="system-xs-medium rounded-lg bg-background-section-burn p-3 text-text-tertiary">
-                  {t('singleDatasetRerankDisabled', { ns: 'dataset' })}
-                </div>
+                {
+                  !isSingleDataset
+                    ? (
+                        <WeightedScore
+                          value={{
+                            value: [
+                              datasetConfigs.weights!.vector_setting.vector_weight,
+                              datasetConfigs.weights!.keyword_setting.keyword_weight,
+                            ],
+                          }}
+                          onChange={handleWeightedScoreChange}
+                        />
+                      )
+                    : (
+                        <div className="system-xs-medium rounded-lg bg-background-section-burn p-3 text-text-tertiary">
+                          {t('singleDatasetRerankDisabled', { ns: 'dataset' })}
+                        </div>
+                      )
+                }
                 <TopKItem
                   value={datasetConfigs.top_k}
                   onChange={handleParamChange}
