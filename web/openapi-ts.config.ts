@@ -4,7 +4,10 @@ import { defineConfig as defineOrpcConfig } from './plugins/hey-api-orpc/config'
 
 export default defineConfig({
   input: './open-api/petStore.yaml',
-  output: './gen',
+  output: {
+    indexFile: false,
+    path: './gen',
+  },
   plugins: [
     '@hey-api/typescript',
     {

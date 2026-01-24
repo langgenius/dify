@@ -52,7 +52,7 @@
     "preinstall": "npx only-allow pnpm",
     "analyze": "ANALYZE=true pnpm build",
     "knip": "knip",
-    "openapi-ts": "openapi-ts"
+    "openapi-ts": "openapi-ts && pnpm lint:fix gen"
   },
   "dependencies": {
     "@amplitude/analytics-browser": "2.33.1",
