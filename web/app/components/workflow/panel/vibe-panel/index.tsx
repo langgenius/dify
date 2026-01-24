@@ -7,6 +7,7 @@ import { RiClipboardLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { z } from 'zod'
 import ResPlaceholder from '@/app/components/app/configuration/config/automatic/res-placeholder'
 import VersionSelector from '@/app/components/app/configuration/config/automatic/version-selector'
 import Button from '@/app/components/base/button'
@@ -22,6 +23,23 @@ import { ModelModeType } from '@/types/app'
 import { VIBE_APPLY_EVENT, VIBE_COMMAND_EVENT } from '../../constants'
 import { useStore, useWorkflowStore } from '../../store'
 import WorkflowPreview from '../../workflow-preview'
+
+const CompletionParamsSchema = z.object({
+  max_tokens: z.number(),
+  temperature: z.number(),
+  top_p: z.number(),
+  echo: z.boolean(),
+  stop: z.array(z.string()),
+  presence_penalty: z.number(),
+  frequency_penalty: z.number(),
+})
+
+const ModelSchema = z.object({
+  provider: z.string(),
+  name: z.string(),
+  mode: z.nativeEnum(ModelModeType),
+  completion_params: CompletionParamsSchema,
+})
 
 const VibePanel: FC = () => {
   const { t } = useTranslation()
@@ -54,8 +72,15 @@ const VibePanel: FC = () => {
   const [userModel, setUserModel] = useState<Model | null>(() => {
     try {
       const stored = localStorage.getItem('auto-gen-model')
-      if (stored)
-        return JSON.parse(stored) as Model
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        const result = ModelSchema.safeParse(parsed)
+        if (result.success)
+          return result.data
+
+        // If validation fails, clear the invalid data
+        localStorage.removeItem('auto-gen-model')
+      }
     }
     catch {
       // ignore parse errors
