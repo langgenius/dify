@@ -142,9 +142,13 @@ vi.mock('@/app/components/base/tag-management/filter', () => ({
 }))
 
 // Mock config
-vi.mock('@/config', () => ({
-  NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
+  }
+})
 
 // Mock pay hook
 vi.mock('@/hooks/use-pay', () => ({
