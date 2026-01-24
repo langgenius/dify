@@ -63,6 +63,7 @@ from .app import (
     statistic,
     workflow,
     workflow_app_log,
+    workflow_comment,
     workflow_draft_variable,
     workflow_run,
     workflow_statistic,
@@ -114,6 +115,7 @@ from .explore import (
     saved_message,
     trial,
 )
+from .socketio import workflow as socketio_workflow  # pyright: ignore[reportUnusedImport]
 
 # Import tag controllers
 from .tag import tags
@@ -207,6 +209,7 @@ __all__ = [
     "website",
     "workflow",
     "workflow_app_log",
+    "workflow_comment",
     "workflow_draft_variable",
     "workflow_run",
     "workflow_statistic",

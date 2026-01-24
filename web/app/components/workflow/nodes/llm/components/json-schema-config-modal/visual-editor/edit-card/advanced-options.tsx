@@ -68,7 +68,7 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
         >
           <RiArrowDownDoubleLine className='h-3 w-3 text-text-tertiary' />
           <span className='system-xs-regular text-text-tertiary'>
-            {t('workflow.nodes.llm.jsonSchema.showAdvancedOptions')}
+            {t('nodes.llm.jsonSchema.showAdvancedOptions', { ns: 'workflow' })}
           </span>
         </button>
       )} */}

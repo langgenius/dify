@@ -22,6 +22,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import Tooltip from '@/app/components/base/tooltip'
+import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
@@ -34,6 +35,8 @@ import {
 import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import {
   useAvailableBlocks,
   useNodeDataUpdate,
@@ -59,6 +62,7 @@ import {
   hasRetryNode,
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
+import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
@@ -109,10 +113,50 @@ const BasePanel: FC<BasePanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
+  const appId = useStore(s => s.appId)
+  const { userProfile } = useAppContext()
+  const { isConnected, nodePanelPresence } = useCollaboration(appId as string)
   const { showMessageLogModal } = useAppStore(useShallow(state => ({
     showMessageLogModal: state.showMessageLogModal,
   })))
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
+
+  const currentUserPresence = useMemo(() => {
+    const userId = userProfile?.id || ''
+    const username = userProfile?.name || userProfile?.email || 'User'
+    const avatar = userProfile?.avatar_url || userProfile?.avatar || null
+
+    return {
+      userId,
+      username,
+      avatar,
+    }
+  }, [userProfile?.avatar, userProfile?.avatar_url, userProfile?.email, userProfile?.id, userProfile?.name])
+
+  useEffect(() => {
+    if (!isConnected || !currentUserPresence.userId)
+      return
+
+    collaborationManager.emitNodePanelPresence(id, true, currentUserPresence)
+
+    return () => {
+      collaborationManager.emitNodePanelPresence(id, false, currentUserPresence)
+    }
+  }, [id, isConnected, currentUserPresence])
+
+  const viewingUsers = useMemo(() => {
+    const presence = nodePanelPresence?.[id]
+    if (!presence)
+      return []
+
+    return Object.values(presence)
+      .filter(viewer => viewer.userId && viewer.userId !== currentUserPresence.userId)
+      .map(viewer => ({
+        id: viewer.userId,
+        name: viewer.username,
+        avatar_url: viewer.avatar || null,
+      }))
+  }, [currentUserPresence.userId, id, nodePanelPresence])
 
   const showSingleRunPanel = useStore(s => s.showSingleRunPanel)
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
@@ -488,6 +532,15 @@ const BasePanel: FC<BasePanelProps> = ({
               value={data.title || ''}
               onBlur={handleTitleBlur}
             />
+            {viewingUsers.length > 0 && (
+              <div className="ml-3 shrink-0">
+                <UserAvatarList
+                  users={viewingUsers}
+                  maxVisible={3}
+                  size={24}
+                />
+              </div>
+            )}
             <div className="flex shrink-0 items-center text-text-tertiary">
               {
                 isSupportSingleRun && !nodesReadOnly && (

@@ -16,7 +16,8 @@ import {
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
+import { useStore as useReactFlowStore } from 'reactflow'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
@@ -41,8 +42,8 @@ const SelectionContextmenu = () => {
   const selectionMenu = useStore(s => s.selectionMenu)
 
   // Access React Flow methods
-  const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
   // Get selected nodes for alignment logic
   const selectedNodes = useReactFlowStore(state =>
@@ -257,7 +258,7 @@ const SelectionContextmenu = () => {
     workflowStore.setState({ nodeAnimation: false })
 
     // Get all current nodes
-    const nodes = store.getState().getNodes()
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
 
     // Get all selected nodes
     const selectedNodeIds = selectedNodes.map(node => node.id)
@@ -313,7 +314,7 @@ const SelectionContextmenu = () => {
       const distributeNodes = handleDistributeNodes(nodesToAlign, nodes, alignType)
       if (distributeNodes) {
         // Apply node distribution updates
-        store.getState().setNodes(distributeNodes)
+        setNodes(distributeNodes)
         handleSelectionContextmenuCancel()
 
         // Clear guide lines
@@ -348,7 +349,7 @@ const SelectionContextmenu = () => {
     // Apply node position updates - consistent with handleNodeDrag and handleNodeDragStop
     try {
       // Directly use setNodes to update nodes - consistent with handleNodeDrag
-      store.getState().setNodes(newNodes)
+      setNodes(newNodes)
 
       // Close popup
       handleSelectionContextmenuCancel()
@@ -367,7 +368,7 @@ const SelectionContextmenu = () => {
     catch (err) {
       console.error('Failed to update nodes:', err)
     }
-  }, [store, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel, handleAlignNode, handleDistributeNodes])
+  }, [collaborativeWorkflow, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel, handleAlignNode, handleDistributeNodes])
 
   if (!selectionMenu)
     return null

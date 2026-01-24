@@ -1,6 +1,7 @@
 import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
 import type { FileUpload } from '@/app/components/base/features/types'
+import type { PublishWorkflowParams } from '@/types/workflow'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -13,7 +14,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
 
 type Props = Omit<AppPublisherProps, 'onPublish'> & {
-  onPublish?: (modelAndParameter?: ModelAndParameter, features?: any) => Promise<any> | any
+  onPublish?: (params?: ModelAndParameter | PublishWorkflowParams, features?: any) => Promise<any> | any
   publishedConfig?: any
   resetAppConfig?: () => void
 }
@@ -62,8 +63,8 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
     setRestoreConfirmOpen(false)
   }, [featuresStore, props])
 
-  const handlePublish = useCallback((modelAndParameter?: ModelAndParameter) => {
-    return props.onPublish?.(modelAndParameter, features)
+  const handlePublish = useCallback((params?: ModelAndParameter | PublishWorkflowParams) => {
+    return props.onPublish?.(params, features)
   }, [features, props])
 
   return (

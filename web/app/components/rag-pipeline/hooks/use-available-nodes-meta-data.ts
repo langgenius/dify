@@ -23,7 +23,7 @@ export const useAvailableNodesMetaData = () => {
     },
     knowledgeBaseDefault,
     dataSourceEmptyDefault,
-  ], [])
+  ] as AvailableNodesMetaData['nodes'], [])
 
   const helpLinkUri = useMemo(() => docLink(
     '/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration',
@@ -47,7 +47,7 @@ export const useAvailableNodesMetaData = () => {
         title,
       },
     }
-  }), [mergedNodesMetaData, t])
+  }) as AvailableNodesMetaData['nodes'], [mergedNodesMetaData, t])
 
   const availableNodesMetaDataMap = useMemo(() => availableNodesMetaData.reduce((acc, node) => {
     acc![node.metaData.type] = node

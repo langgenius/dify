@@ -1,3 +1,4 @@
+import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type {
@@ -140,24 +141,38 @@ const FeaturesTrigger = () => {
   const needWarningNodes = useChecklist(nodes, edges)
 
   const updatePublishedWorkflow = useInvalidateAppWorkflow()
-  const onPublish = useCallback(async (params?: PublishWorkflowParams) => {
+  const onPublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {
+    const publishParams = params && 'title' in params ? params : undefined
     // First check if there are any items in the checklist
     // if (!validateBeforeRun())
     //   throw new Error('Checklist has unresolved items')
 
     if (needWarningNodes.length > 0) {
+      console.warn('[workflow-header] publish blocked by checklist', {
+        appId: appID,
+        warningCount: needWarningNodes.length,
+      })
       notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
       throw new Error('Checklist has unresolved items')
     }
 
     // Then perform the detailed validation
     if (await handleCheckBeforePublish()) {
+      console.warn('[workflow-header] publish start', {
+        appId: appID,
+        title: publishParams?.title ?? '',
+      })
       const res = await publishWorkflow({
         url: `/apps/${appID}/workflows/publish`,
-        title: params?.title || '',
-        releaseNotes: params?.releaseNotes || '',
+        title: publishParams?.title || '',
+        releaseNotes: publishParams?.releaseNotes || '',
       })
 
+      console.warn('[workflow-header] publish response', {
+        appId: appID,
+        hasResponse: Boolean(res),
+        createdAt: res?.created_at,
+      })
       if (res) {
         notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
         updatePublishedWorkflow(appID!)

@@ -19,19 +19,24 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
+import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import { useNodesReadOnly, useToolIcon } from '@/app/components/workflow/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
 import { useNodeLoopInteractions } from '@/app/components/workflow/nodes/loop/use-interactions'
 import CopyID from '@/app/components/workflow/nodes/tool/components/copy-id'
+import { useStore } from '@/app/components/workflow/store'
 import {
   BlockEnum,
+  ControlMode,
   isTriggerNode,
   NodeRunningStatus,
 } from '@/app/components/workflow/types'
 import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
+import { useAppContext } from '@/context/app-context'
 import { cn } from '@/utils/classnames'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
@@ -67,6 +72,36 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)
+  const { userProfile } = useAppContext()
+  const appId = useStore(s => s.appId)
+  const { nodePanelPresence } = useCollaboration(appId as string)
+  const controlMode = useStore(s => s.controlMode)
+
+  const currentUserPresence = useMemo(() => {
+    const userId = userProfile?.id || ''
+    const username = userProfile?.name || userProfile?.email || 'User'
+    const avatar = userProfile?.avatar_url || userProfile?.avatar || null
+
+    return {
+      userId,
+      username,
+      avatar,
+    }
+  }, [userProfile?.avatar, userProfile?.avatar_url, userProfile?.email, userProfile?.id, userProfile?.name])
+
+  const viewingUsers = useMemo(() => {
+    const presence = nodePanelPresence?.[id]
+    if (!presence)
+      return []
+
+    return Object.values(presence)
+      .filter(viewer => viewer.userId && viewer.userId !== currentUserPresence.userId)
+      .map(viewer => ({
+        id: viewer.userId,
+        name: viewer.username,
+        avatar_url: viewer.avatar || null,
+      }))
+  }, [currentUserPresence.userId, id, nodePanelPresence])
 
   useEffect(() => {
     if (nodeRef.current && data.selected && data.isInIteration) {
@@ -176,6 +211,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         className={cn(
           'group relative pb-1 shadow-xs',
           'rounded-[15px] border border-transparent',
+          (controlMode === ControlMode.Comment) && 'hover:cursor-none',
           (data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop) && 'w-[240px] bg-workflow-block-bg',
           (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && 'flex h-full w-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
           !data._runningStatus && 'hover:shadow-lg',
@@ -273,6 +309,15 @@ const BaseNode: FC<BaseNodeProps> = ({
                 </Tooltip>
               )
             }
+            {viewingUsers.length > 0 && (
+              <div className="ml-3 shrink-0">
+                <UserAvatarList
+                  users={viewingUsers}
+                  maxVisible={3}
+                  size={24}
+                />
+              </div>
+            )}
           </div>
           {
             !!(data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running) && (

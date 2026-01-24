@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,10 +29,29 @@ export const TitleInput = memo(({
     onBlur(localValue)
   }
 
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalValue(e.target.value)
+  }, [])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      ;(e.target as HTMLInputElement).blur()
+    }
+  }, [])
+
+  // Sync local state with incoming collaborative updates so remote title edits appear immediately.
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      setLocalValue(value)
+    })
+  }, [value])
+
   return (
     <input
       value={localValue}
-      onChange={e => setLocalValue(e.target.value)}
+      onChange={handleChange}
+      onKeyDown={handleKeyDown}
       className={`
         system-xl-semibold mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent bg-transparent px-1 text-text-primary
         outline-none focus:shadow-xs

@@ -7,10 +7,11 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import Divider from '@/app/components/base/divider'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import Toast from '@/app/components/base/toast'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
-import { useDSL, useNodesSyncDraft, useWorkflowRun } from '../../hooks'
+import { useDSL, useLeaderRestore, useWorkflowRun } from '../../hooks'
 import { useHooksStore } from '../../hooks-store'
 import { useStore, useWorkflowStore } from '../../store'
 import { VersionHistoryContextMenuOptions, WorkflowVersion, WorkflowVersionFilterOptions } from '../../types'
@@ -43,8 +44,9 @@ export const VersionHistoryPanel = ({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const workflowStore = useWorkflowStore()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
+  const { requestRestore } = useLeaderRestore()
+  const featuresStore = useFeaturesStore()
   const { handleExportDSL } = useDSL()
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
   const currentVersion = useStore(s => s.currentVersion)
@@ -150,7 +152,26 @@ export const VersionHistoryPanel = ({
     handleRestoreFromPublishedWorkflow(item)
     workflowStore.setState({ isRestoring: false })
     workflowStore.setState({ backupDraft: undefined })
-    handleSyncWorkflowDraft(true, false, {
+
+    const { graph } = item
+    const features = featuresStore?.getState().features
+    const environmentVariables = item.environment_variables || []
+    const conversationVariables = item.conversation_variables || []
+
+    requestRestore({
+      versionId: item.id,
+      versionName: item.marked_name,
+      initiatorUserId: userProfile.id,
+      initiatorName: userProfile.name,
+      graphData: {
+        nodes: graph.nodes,
+        edges: graph.edges,
+        viewport: graph.viewport,
+      },
+      features,
+      environmentVariables,
+      conversationVariables,
+    }, {
       onSuccess: () => {
         Toast.notify({
           type: 'success',
@@ -169,7 +190,7 @@ export const VersionHistoryPanel = ({
         resetWorkflowVersionHistory()
       },
     })
-  }, [setShowWorkflowVersionHistoryPanel, handleRestoreFromPublishedWorkflow, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
+  }, [setShowWorkflowVersionHistoryPanel, handleRestoreFromPublishedWorkflow, workflowStore, featuresStore, requestRestore, userProfile, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
 
   const { mutateAsync: deleteWorkflow } = useDeleteWorkflow()
 

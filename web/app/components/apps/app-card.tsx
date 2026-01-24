@@ -5,6 +5,7 @@ import type { HtmlContentProps } from '@/app/components/base/popover'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { WorkflowOnlineUser } from '@/models/app'
 import type { App } from '@/types/app'
 import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import dynamic from 'next/dynamic'
@@ -20,6 +21,7 @@ import CustomPopover from '@/app/components/base/popover'
 import TagSelector from '@/app/components/base/tag-management/selector'
 import Toast, { ToastContext } from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -58,9 +60,10 @@ const AccessControl = dynamic(() => import('@/app/components/app/app-access-cont
 export type AppCardProps = {
   app: App
   onRefresh?: () => void
+  onlineUsers?: WorkflowOnlineUser[]
 }
 
-const AppCard = ({ app, onRefresh }: AppCardProps) => {
+const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -348,6 +351,19 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
   }, [app.updated_at, app.created_at])
 
+  const onlineUserAvatars = useMemo(() => {
+    if (!onlineUsers.length)
+      return []
+
+    return onlineUsers
+      .map(user => ({
+        id: user.user_id || user.sid || '',
+        name: user.username || 'User',
+        avatar_url: user.avatar || undefined,
+      }))
+      .filter(user => !!user.id)
+  }, [onlineUsers])
+
   return (
     <>
       <div
@@ -398,6 +414,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               <Tooltip asChild={false} popupContent={t('accessItemsDescription.external', { ns: 'app' })}>
                 <RiVerifiedBadgeLine className="h-4 w-4 text-text-quaternary" />
               </Tooltip>
+            )}
+          </div>
+          <div>
+            {onlineUserAvatars.length > 0 && (
+              <UserAvatarList users={onlineUserAvatars} maxVisible={3} size={20} />
             )}
           </div>
         </div>
