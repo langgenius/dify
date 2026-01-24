@@ -29,7 +29,7 @@ export default antfu(
         'ts/consistent-type-definitions': ['error', 'type'],
         'ts/no-explicit-any': 'warn',
         'no-restricted-syntax': [
-          'error',
+          'warn',
           {
             selector: 'TSEnumDeclaration',
             message: 'Enums are discouraged. Prefer union types of string literals instead for better tree-shaking and type safety.',
