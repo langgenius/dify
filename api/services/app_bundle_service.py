@@ -17,10 +17,9 @@ from core.app.entities.app_bundle_entities import (
 )
 from core.app_assets.converters import tree_to_asset_items
 from core.app_assets.packager import AssetZipPackager
-from core.app_assets.paths import AssetPaths
+from core.app_assets.storage import app_asset_storage
 from core.app_bundle import SourceZipExtractor
 from extensions.ext_database import db
-from extensions.ext_storage import storage
 from models import Account, App
 
 from .app_asset_service import AppAssetService
@@ -157,8 +156,9 @@ class AppBundleService:
         if not tree.nodes:
             return None
 
-        items = tree_to_asset_items(tree, app_model.tenant_id, app_model.id)
-        packager = AssetZipPackager(AppAssetService.assets_storage())
+        asset_storage = app_asset_storage
+        items = tree_to_asset_items(tree, app_model.tenant_id, app_model.id, asset_storage)
+        packager = AssetZipPackager(asset_storage.storage)
         return packager.package(items)
 
     @staticmethod
@@ -221,7 +221,8 @@ class AppBundleService:
             logger.warning("App not found for asset import: %s", app_id)
             return
 
-        extractor = SourceZipExtractor(storage)
+        asset_storage = app_asset_storage
+        extractor = SourceZipExtractor(asset_storage)
         try:
             folders, files = extractor.extract_entries(
                 zip_bytes,
@@ -239,7 +240,6 @@ class AppBundleService:
             files=files,
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            storage_key_fn=AssetPaths.draft_file,
         )
 
         AppAssetService.set_draft_assets(

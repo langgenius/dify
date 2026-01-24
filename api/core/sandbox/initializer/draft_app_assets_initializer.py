@@ -1,7 +1,7 @@
 import logging
 
 from core.app_assets.constants import AppAssetsAttrs
-from core.app_assets.paths import AssetPaths
+from core.app_assets.storage import AssetPath, app_asset_storage
 from core.sandbox.entities import AppAssets
 from core.sandbox.sandbox import Sandbox
 from core.sandbox.services import AssetDownloadService
@@ -32,18 +32,18 @@ class DraftAppAssetsInitializer(AsyncSandboxInitializer):
         vm = sandbox.vm
         build_id = self._assets_id
         tree = app_assets.asset_tree
-        storage = AppAssetService.assets_storage()
+        storage = app_asset_storage
         nodes = list(tree.walk_files())
         if not nodes:
             return
         # FIXME(Mairuis): should be more graceful
-        storage_keys = [
-            AssetPaths.build_resolved_file(self._tenant_id, self._app_id, build_id, node.id)
+        refs = [
+            AssetPath.resolved(self._tenant_id, self._app_id, build_id, node.id)
             if node.extension == "md"
-            else AssetPaths.draft_file(self._tenant_id, self._app_id, node.id)
+            else AssetPath.draft(self._tenant_id, self._app_id, node.id)
             for node in nodes
         ]
-        urls = storage.get_download_urls(storage_keys, DRAFT_ASSETS_EXPIRES_IN)
+        urls = storage.get_download_urls(refs, DRAFT_ASSETS_EXPIRES_IN, for_external=False)
         items = [AssetDownloadItem(path=tree.get_path(node.id).lstrip("/"), url=url) for node, url in zip(nodes, urls)]
         script = AssetDownloadService.build_download_script(items, AppAssets.PATH)
         pipeline(vm).add(

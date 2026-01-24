@@ -2,19 +2,19 @@ from __future__ import annotations
 
 import io
 import zipfile
-from collections.abc import Callable
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from core.app.entities.app_asset_entities import AppAssetFileTree, AppAssetNode
 from core.app.entities.app_bundle_entities import ExtractedFile, ExtractedFolder, ZipSecurityError
+from core.app_assets.storage import AssetPath
 
 if TYPE_CHECKING:
-    from extensions.ext_storage import Storage
+    from core.app_assets.storage import AppAssetStorage
 
 
 class SourceZipExtractor:
-    def __init__(self, storage: Storage) -> None:
+    def __init__(self, storage: AppAssetStorage) -> None:
         self._storage = storage
 
     def extract_entries(
@@ -49,7 +49,6 @@ class SourceZipExtractor:
         files: list[ExtractedFile],
         tenant_id: str,
         app_id: str,
-        storage_key_fn: Callable[[str, str, str], str],
     ) -> AppAssetFileTree:
         tree = AppAssetFileTree()
         path_to_node_id: dict[str, str] = {}
@@ -79,8 +78,8 @@ class SourceZipExtractor:
             node = AppAssetNode.create_file(node_id, name, parent_id, len(file.content))
             tree.add(node)
 
-            storage_key = storage_key_fn(tenant_id, app_id, node_id)
-            self._storage.save(storage_key, file.content)
+            asset_path = AssetPath.draft(tenant_id, app_id, node_id)
+            self._storage.save(asset_path, file.content)
 
         return tree
 

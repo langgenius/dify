@@ -1,6 +1,6 @@
 from core.app.entities.app_asset_entities import AppAssetFileTree
 from core.app_assets.entities import AssetItem
-from core.app_assets.paths import AssetPaths
+from core.app_assets.storage import AssetPath, app_asset_storage
 
 from .base import AssetItemParser, FileAssetParser
 
@@ -15,7 +15,7 @@ class AssetParser:
         self._tree = tree
         self._tenant_id = tenant_id
         self._app_id = app_id
-        self._parsers = {}
+        self._parsers: dict[str, AssetItemParser] = {}
         self._default_parser = FileAssetParser()
 
     def register(self, extension: str, parser: AssetItemParser) -> None:
@@ -26,10 +26,10 @@ class AssetParser:
 
         for node in self._tree.walk_files():
             path = self._tree.get_path(node.id).lstrip("/")
-            storage_key = AssetPaths.draft_file(self._tenant_id, self._app_id, node.id)
+            storage_key = app_asset_storage.get_storage_key(AssetPath.draft(self._tenant_id, self._app_id, node.id))
             extension = node.extension or ""
 
-            parser = self._parsers.get(extension, self._default_parser)
+            parser: AssetItemParser = self._parsers.get(extension, self._default_parser)
             asset = parser.parse(node.id, path, node.name, extension, storage_key)
             assets.append(asset)
 

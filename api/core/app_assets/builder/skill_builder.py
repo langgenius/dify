@@ -1,15 +1,15 @@
 import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from typing import Any, cast
 
 from core.app.entities.app_asset_entities import AppAssetFileTree, AppAssetNode
 from core.app_assets.entities import AssetItem, FileAsset
-from core.app_assets.paths import AssetPaths
+from core.app_assets.storage import AppAssetStorage, AssetPath, AssetPathBase
 from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
 from core.skill.skill_compiler import SkillCompiler
 from core.skill.skill_manager import SkillManager
-from extensions.storage.base_storage import BaseStorage
 
 from .base import BuildContext
 
@@ -19,23 +19,24 @@ class _LoadedSkill:
     node: AppAssetNode
     path: str
     content: str
-    metadata: dict
+    metadata: dict[str, Any]
 
 
 @dataclass
 class _CompiledSkill:
     node: AppAssetNode
     path: str
-    resolved_key: str
+    ref: AssetPathBase
+    storage_key: str
     content_bytes: bytes
 
 
 class SkillBuilder:
     _nodes: list[tuple[AppAssetNode, str]]
     _max_workers: int
-    _storage: BaseStorage
+    _storage: AppAssetStorage
 
-    def __init__(self, storage: BaseStorage, max_workers: int = 8) -> None:
+    def __init__(self, storage: AppAssetStorage, max_workers: int = 8) -> None:
         self._nodes = []
         self._max_workers = max_workers
         self._storage = storage
@@ -67,12 +68,13 @@ class SkillBuilder:
             artifact = artifact_set.get(skill.node.id)
             if artifact is None:
                 continue
-            resolved_key = AssetPaths.build_resolved_file(ctx.tenant_id, ctx.app_id, ctx.build_id, skill.node.id)
+            resolved_ref = AssetPath.resolved(ctx.tenant_id, ctx.app_id, ctx.build_id, skill.node.id)
             to_upload.append(
                 _CompiledSkill(
                     node=skill.node,
                     path=skill.path,
-                    resolved_key=resolved_key,
+                    ref=resolved_ref,
+                    storage_key=self._storage.get_storage_key(resolved_ref),
                     content_bytes=artifact.content.encode("utf-8"),
                 )
             )
@@ -87,19 +89,26 @@ class SkillBuilder:
                 path=s.path,
                 file_name=s.node.name,
                 extension=s.node.extension or "",
-                storage_key=s.resolved_key,
+                storage_key=s.storage_key,
             )
             for s in to_upload
         ]
 
     def _load_all(self, ctx: BuildContext) -> list[_LoadedSkill]:
         def load_one(node: AppAssetNode, path: str) -> _LoadedSkill:
-            draft_key = AssetPaths.draft_file(ctx.tenant_id, ctx.app_id, node.id)
             try:
-                data = json.loads(self._storage.load_once(draft_key))
-                content = data.get("content", "") if isinstance(data, dict) else ""
-                metadata = data.get("metadata", {}) if isinstance(data, dict) else {}
-            except Exception:
+                draft_ref = AssetPath.draft(ctx.tenant_id, ctx.app_id, node.id)
+                data = json.loads(self._storage.load(draft_ref))
+                content = ""
+                metadata: dict[str, Any] = {}
+                if isinstance(data, dict):
+                    data_dict = cast(dict[str, Any], data)
+                    content_value = data_dict.get("content", "")
+                    content = content_value if isinstance(content_value, str) else str(content_value)
+                    metadata_value = data_dict.get("metadata", {})
+                    if isinstance(metadata_value, dict):
+                        metadata = cast(dict[str, Any], metadata_value)
+            except (FileNotFoundError, json.JSONDecodeError, TypeError, ValueError):
                 content = ""
                 metadata = {}
             return _LoadedSkill(node=node, path=path, content=content, metadata=metadata)
@@ -110,7 +119,7 @@ class SkillBuilder:
 
     def _upload_all(self, skills: list[_CompiledSkill]) -> None:
         def upload_one(skill: _CompiledSkill) -> None:
-            self._storage.save(skill.resolved_key, skill.content_bytes)
+            self._storage.save(skill.ref, skill.content_bytes)
 
         with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
             futures = [executor.submit(upload_one, skill) for skill in skills]

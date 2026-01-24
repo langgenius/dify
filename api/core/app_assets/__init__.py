@@ -6,7 +6,6 @@ from .entities import (
 )
 from .packager import AssetPackager, AssetZipPackager
 from .parser import AssetItemParser, AssetParser, FileAssetParser, SkillAssetParser
-from .paths import AssetPaths
 
 __all__ = [
     "AppAssetsAttrs",
@@ -14,7 +13,6 @@ __all__ = [
     "AssetItemParser",
     "AssetPackager",
     "AssetParser",
-    "AssetPaths",
     "AssetZipPackager",
     "FileAsset",
     "FileAssetParser",

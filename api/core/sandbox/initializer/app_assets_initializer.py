@@ -1,11 +1,9 @@
 import logging
 
 from core.app_assets.constants import AppAssetsAttrs
-from core.app_assets.paths import AssetPaths
+from core.app_assets.storage import AssetPath, app_asset_storage
 from core.sandbox.sandbox import Sandbox
 from core.virtual_environment.__base.helpers import pipeline
-from extensions.ext_storage import storage
-from extensions.storage.file_presign_storage import FilePresignStorage
 from services.app_asset_service import AppAssetService
 
 from ..entities import AppAssets
@@ -28,8 +26,9 @@ class AppAssetsInitializer(AsyncSandboxInitializer):
         sandbox.attrs.set(AppAssetsAttrs.FILE_TREE, app_assets.asset_tree)
         sandbox.attrs.set(AppAssetsAttrs.APP_ASSETS_ID, self._assets_id)
         vm = sandbox.vm
-        zip_key = AssetPaths.build_zip(self._tenant_id, self._app_id, self._assets_id)
-        download_url = FilePresignStorage(storage.storage_runner).get_download_url(zip_key)
+        asset_storage = app_asset_storage
+        zip_ref = AssetPath.build_zip(self._tenant_id, self._app_id, self._assets_id)
+        download_url = asset_storage.get_download_url(zip_ref, for_external=False)
 
         (
             pipeline(vm)

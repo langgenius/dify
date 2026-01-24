@@ -19,14 +19,9 @@ from core.app_assets.builder.skill_builder import SkillBuilder
 from core.app_assets.converters import tree_to_asset_items
 from core.app_assets.entities.assets import AssetItem
 from core.app_assets.packager import AssetZipPackager
-from core.app_assets.paths import AssetPaths
+from core.app_assets.storage import AssetPath, app_asset_storage
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from extensions.ext_storage import storage
-from extensions.storage.base_storage import BaseStorage
-from extensions.storage.cached_presign_storage import CachedPresignStorage
-from extensions.storage.file_presign_storage import FilePresignStorage
-from extensions.storage.silent_storage import SilentStorage
 from models.app_asset import AppAssets
 from models.model import App
 
@@ -48,16 +43,6 @@ class AppAssetService:
     @staticmethod
     def _lock(app_id: str):
         return redis_client.lock(f"app_asset:lock:{app_id}", timeout=AppAssetService._LOCK_TIMEOUT_SECONDS)
-
-    @staticmethod
-    def assets_storage() -> BaseStorage:
-        return SilentStorage(
-            CachedPresignStorage(
-                storage=FilePresignStorage(storage.storage_runner),
-                redis_client=redis_client,
-                cache_key_prefix=AppAssetService._DRAFT_CACHE_KEY_PREFIX,
-            )
-        )
 
     @staticmethod
     def get_or_create_assets(session: Session, app_model: App, account_id: str) -> AppAssets:
@@ -176,8 +161,9 @@ class AppAssetService:
                 max_size_mb = AppAssetService.MAX_PREVIEW_CONTENT_SIZE / 1024 / 1024
                 raise AppAssetNodeTooLargeError(f"File node {node_id} size exceeded the limit: {max_size_mb} MB")
 
-            storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
-            return AppAssetService.assets_storage().load_once(storage_key)
+            asset_storage = app_asset_storage
+            asset_path = AssetPath.draft(app_model.tenant_id, app_model.id, node_id)
+            return asset_storage.load(asset_path)
 
     @staticmethod
     def update_file_content(
@@ -196,8 +182,9 @@ class AppAssetService:
                 except TreeNodeNotFoundError as e:
                     raise AppAssetNodeNotFoundError(str(e)) from e
 
-                storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
-                AppAssetService.assets_storage().save(storage_key, content)
+                asset_storage = app_asset_storage
+                asset_path = AssetPath.draft(app_model.tenant_id, app_model.id, node_id)
+                asset_storage.save(asset_path, content)
 
                 assets.asset_tree = tree
                 assets.updated_by = account_id
@@ -293,14 +280,19 @@ class AppAssetService:
                 assets.updated_by = account_id
                 session.commit()
 
-        # FIXME(Mairuis): sync deletion queue
+        # FIXME(Mairuis): sync deletion queue, failed is fine
         def _delete_file_from_storage(tenant_id: str, app_id: str, node_ids: list[str]) -> None:
-            for nid in removed_ids:
-                storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, nid)
+            asset_storage = app_asset_storage
+            for nid in node_ids:
+                asset_path = AssetPath.draft(tenant_id, app_id, nid)
                 try:
-                    AppAssetService.assets_storage().delete(storage_key)
+                    asset_storage.delete(asset_path)
                 except Exception:
-                    logger.warning("Failed to delete storage file %s", storage_key, exc_info=True)
+                    logger.warning(
+                        "Failed to delete storage file %s",
+                        asset_storage.get_storage_key(asset_path),
+                        exc_info=True,
+                    )
 
         threading.Thread(
             target=lambda: _delete_file_from_storage(app_model.tenant_id, app_model.id, removed_ids)
@@ -327,21 +319,22 @@ class AppAssetService:
         session.add(published)
         session.flush()
 
+        asset_storage = app_asset_storage
         ctx = BuildContext(tenant_id=tenant_id, app_id=app_id, build_id=publish_id)
         built_assets = AssetBuildPipeline(
-            [SkillBuilder(storage=AppAssetService.assets_storage()), FileBuilder()]
+            [SkillBuilder(storage=asset_storage), FileBuilder(storage=asset_storage)]
         ).build_all(tree, ctx)
 
-        packager = AssetZipPackager(AppAssetService.assets_storage())
+        packager = AssetZipPackager(asset_storage.storage)
 
         runtime_zip_bytes = packager.package(built_assets)
-        runtime_zip_key = AssetPaths.build_zip(tenant_id, app_id, publish_id)
-        AppAssetService.assets_storage().save(runtime_zip_key, runtime_zip_bytes)
+        runtime_zip_path = AssetPath.build_zip(tenant_id, app_id, publish_id)
+        asset_storage.save(runtime_zip_path, runtime_zip_bytes)
 
-        source_items = tree_to_asset_items(tree, tenant_id, app_id)
+        source_items = tree_to_asset_items(tree, tenant_id, app_id, asset_storage)
         source_zip_bytes = packager.package(source_items)
-        source_zip_key = AssetPaths.build_source_zip(tenant_id, app_id, workflow_id)
-        AppAssetService.assets_storage().save(source_zip_key, source_zip_bytes)
+        source_zip_path = AssetPath.source_zip(tenant_id, app_id, workflow_id)
+        asset_storage.save(source_zip_path, source_zip_bytes)
 
         return published
 
@@ -350,15 +343,16 @@ class AppAssetService:
         # Build resolved draft assets without packaging into a zip.
         tree = assets.asset_tree
 
+        asset_storage = app_asset_storage
         ctx = BuildContext(tenant_id=tenant_id, app_id=app_id, build_id=assets.id)
         built_assets: list[AssetItem] = AssetBuildPipeline(
-            [SkillBuilder(storage=AppAssetService.assets_storage()), FileBuilder()]
+            [SkillBuilder(storage=asset_storage), FileBuilder(storage=asset_storage)]
         ).build_all(tree, ctx)
 
-        packager = AssetZipPackager(storage=AppAssetService.assets_storage())
+        packager = AssetZipPackager(storage=asset_storage.storage)
         zip_bytes = packager.package(built_assets)
-        zip_key = AssetPaths.build_zip(tenant_id, app_id, assets.id)
-        AppAssetService.assets_storage().save(zip_key, zip_bytes)
+        zip_path = AssetPath.build_zip(tenant_id, app_id, assets.id)
+        asset_storage.save(zip_path, zip_bytes)
 
     @staticmethod
     def get_file_download_url(
@@ -375,17 +369,18 @@ class AppAssetService:
             if not node or node.node_type != AssetNodeType.FILE:
                 raise AppAssetNodeNotFoundError(f"File node {node_id} not found")
 
-            storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
-            return AppAssetService.assets_storage().get_download_url(storage_key, expires_in)
+            asset_storage = app_asset_storage
+            asset_path = AssetPath.draft(app_model.tenant_id, app_model.id, node_id)
+            return asset_storage.get_download_url(asset_path, expires_in)
 
     @staticmethod
     def get_source_zip_bytes(tenant_id: str, app_id: str, workflow_id: str) -> bytes | None:
-        source_zip_key = AssetPaths.build_source_zip(tenant_id, app_id, workflow_id)
-        try:
-            return AppAssetService.assets_storage().load_once(source_zip_key)
-        except Exception:
-            logger.warning("Source zip not found: %s", source_zip_key)
-            return None
+        asset_storage = app_asset_storage
+        asset_path = AssetPath.source_zip(tenant_id, app_id, workflow_id)
+        source_zip = asset_storage.load_or_none(asset_path)
+        if source_zip is None:
+            logger.warning("Source zip not found: %s", asset_storage.get_storage_key(asset_path))
+        return source_zip
 
     @staticmethod
     def set_draft_assets(
@@ -439,15 +434,15 @@ class AppAssetService:
                 assets.updated_by = account_id
                 session.commit()
 
-            storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
-            presign_storage = AppAssetService.assets_storage()
+            asset_path = AssetPath.draft(app_model.tenant_id, app_model.id, node_id)
+            asset_storage = app_asset_storage
 
             # put empty content to create the file record
             # which avoids file not found error when uploading via presigned URL is never touched
             # resulting in inconsistent state
-            AppAssetService.assets_storage().save(storage_key, b"")
+            asset_storage.save(asset_path, b"")
 
-            upload_url = presign_storage.get_upload_url(storage_key, expires_in)
+            upload_url = asset_storage.get_upload_url(asset_path, expires_in)
 
             return node, upload_url
 
@@ -482,12 +477,12 @@ class AppAssetService:
                 assets.updated_by = account_id
                 session.commit()
 
-        storage = AppAssetService.assets_storage()
+        asset_storage = app_asset_storage
 
         def fill_urls(node: BatchUploadNode) -> None:
             if node.node_type == AssetNodeType.FILE and node.id:
-                storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node.id)
-                node.upload_url = storage.get_upload_url(storage_key, expires_in)
+                asset_path = AssetPath.draft(app_model.tenant_id, app_model.id, node.id)
+                node.upload_url = asset_storage.get_upload_url(asset_path, expires_in)
             for child in node.children:
                 fill_urls(child)
 
