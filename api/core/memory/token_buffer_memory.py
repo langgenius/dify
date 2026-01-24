@@ -1,7 +1,6 @@
 from collections.abc import Sequence
 
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.file import file_manager
@@ -37,8 +36,7 @@ class TokenBufferMemory:
     @property
     def workflow_run_repo(self) -> APIWorkflowRunRepository:
         if self._workflow_run_repo is None:
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository()
         return self._workflow_run_repo
 
     def _build_prompt_message_with_files(

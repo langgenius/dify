@@ -72,7 +72,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         self._generate_entity = generate_entity
 
     def _get_repo(self) -> APIWorkflowRunRepository:
-        return DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_maker)
+        return DifyAPIRepositoryFactory.create_api_workflow_run_repository()
 
     def on_graph_start(self) -> None:
         """

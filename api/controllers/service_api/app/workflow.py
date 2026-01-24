@@ -5,7 +5,7 @@ from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.schema import register_schema_models
@@ -107,8 +107,7 @@ class WorkflowRunDetailApi(Resource):
             raise NotWorkflowAppError()
 
         # Use repository to get workflow run
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository()
 
         workflow_run = workflow_run_repo.get_workflow_run_by_id(
             tenant_id=app_model.tenant_id,

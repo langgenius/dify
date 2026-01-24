@@ -25,9 +25,9 @@ from datetime import timedelta
 
 import pytest
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session, selectinload, sessionmaker
+from sqlalchemy.orm import Session, selectinload
 
-from core.workflow.entities import WorkflowExecution
+from core.db.session_factory import configure_session_factory
 from core.workflow.enums import WorkflowExecutionStatus
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
@@ -302,22 +302,12 @@ class TestWorkflowPauseIntegration:
 
     def _get_workflow_run_repository(self):
         """Get workflow run repository instance for testing."""
-        # Create session factory from the test session
+        # Configure the global session factory to use the test engine
         engine = self.session.get_bind()
-        session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+        configure_session_factory(engine, expire_on_commit=False)
 
-        # Create a test-specific repository that implements the missing save method
-        class TestWorkflowRunRepository(DifyAPISQLAlchemyWorkflowRunRepository):
-            """Test-specific repository that implements the missing save method."""
-
-            def save(self, execution: WorkflowExecution):
-                """Implement the missing save method for testing."""
-                # For testing purposes, we don't need to implement this method
-                # as it's not used in the pause functionality tests
-                pass
-
-        # Create and return repository instance
-        repository = TestWorkflowRunRepository(session_maker=session_factory)
+        # Create and return repository instance (no constructor args)
+        repository = DifyAPISQLAlchemyWorkflowRunRepository()
         return repository
 
     # ==================== Complete Pause Workflow Tests ====================

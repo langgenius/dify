@@ -29,8 +29,9 @@ from typing import Any, cast
 import sqlalchemy as sa
 from sqlalchemy import and_, delete, func, null, or_, select
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session, selectinload, sessionmaker
+from sqlalchemy.orm import Session, selectinload
 
+from core.db.session_factory import session_factory
 from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, SchedulingPause
 from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
 from extensions.ext_storage import storage
@@ -64,19 +65,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
     Provides service-layer WorkflowRun database operations using SQLAlchemy 2.0
     style queries. Supports dependency injection through sessionmaker and
     maintains proper multi-tenant data isolation.
-
-    Args:
-        session_maker: SQLAlchemy sessionmaker instance for database connections
     """
-
-    def __init__(self, session_maker: sessionmaker[Session]):
-        """
-        Initialize the repository with a sessionmaker.
-
-        Args:
-            session_maker: SQLAlchemy sessionmaker for database connections
-        """
-        self._session_maker = session_maker
 
     def get_paginated_workflow_runs(
         self,
@@ -94,7 +83,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         efficient handling of large datasets. Filters by tenant, app, and
         trigger source for proper data isolation.
         """
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             # Build base query with filters
             base_stmt = select(WorkflowRun).where(
                 WorkflowRun.tenant_id == tenant_id,
@@ -144,7 +133,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """
         Get a specific workflow run by ID with tenant and app isolation.
         """
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             stmt = select(WorkflowRun).where(
                 WorkflowRun.tenant_id == tenant_id,
                 WorkflowRun.app_id == app_id,
@@ -159,7 +148,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """
         Get a specific workflow run by ID without tenant/app context.
         """
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             stmt = select(WorkflowRun).where(WorkflowRun.id == run_id)
             return session.scalar(stmt)
 
@@ -182,7 +171,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             "partial-succeeded": 0,
         }
 
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             # Build base where conditions
             base_conditions = [
                 WorkflowRun.tenant_id == tenant_id,
@@ -239,7 +228,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """
         Get a batch of expired workflow runs for cleanup operations.
         """
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             stmt = (
                 select(WorkflowRun)
                 .where(
@@ -260,7 +249,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         if not run_ids:
             return 0
 
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             stmt = delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids))
             result = cast(CursorResult, session.execute(stmt))
             session.commit()
@@ -281,7 +270,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         total_deleted = 0
 
         while True:
-            with self._session_maker() as session:
+            with session_factory.create_session() as session:
                 # Get a batch of run IDs to delete
                 stmt = (
                     select(WorkflowRun.id)
@@ -331,7 +320,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         - status is an ended state
         - optional tenant_id filter and cursor (last_seen) for pagination
         """
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             stmt = (
                 select(WorkflowRun)
                 .where(
@@ -377,7 +366,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         self,
         run_id: str,
     ) -> WorkflowArchiveLog | None:
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             stmt = select(WorkflowArchiveLog).where(WorkflowArchiveLog.workflow_run_id == run_id).limit(1)
             return session.scalar(stmt)
 
@@ -426,7 +415,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 "pause_reasons": 0,
             }
 
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             run_ids = [run.id for run in runs]
             if delete_node_executions:
                 node_executions_deleted, offloads_deleted = delete_node_executions(session, runs)
@@ -601,7 +590,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 "pause_reasons": 0,
             }
 
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             run_ids = [run.id for run in runs]
             if count_node_executions:
                 node_executions_count, offloads_count = count_node_executions(session, runs)
@@ -669,7 +658,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             RuntimeError: If workflow is already paused or in invalid state
         """
         previous_pause_model_query = select(WorkflowPause).where(WorkflowPause.workflow_run_id == workflow_run_id)
-        with self._session_maker() as session, session.begin():
+        with session_factory.create_session() as session, session.begin():
             # Get the workflow run
             workflow_run = session.get(WorkflowRun, workflow_run_id)
             if workflow_run is None:
@@ -755,7 +744,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         Raises:
             ValueError: If workflow_run_id is invalid
         """
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             # Query workflow run with pause and state file
             stmt = select(WorkflowRun).options(selectinload(WorkflowRun.pause)).where(WorkflowRun.id == workflow_run_id)
             workflow_run = session.scalar(stmt)
@@ -800,7 +789,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             ValueError: If workflow_run_id is invalid
             RuntimeError: If workflow is not paused or already resumed
         """
-        with self._session_maker() as session, session.begin():
+        with session_factory.create_session() as session, session.begin():
             # Get the workflow run with pause
             stmt = select(WorkflowRun).options(selectinload(WorkflowRun.pause)).where(WorkflowRun.id == workflow_run_id)
             workflow_run = session.scalar(stmt)
@@ -863,7 +852,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             This operation is irreversible. The stored workflow state will be
             permanently deleted along with the pause record.
         """
-        with self._session_maker() as session, session.begin():
+        with session_factory.create_session() as session, session.begin():
             # Get the pause model by ID
             pause_model = session.get(WorkflowPause, pause_entity.id)
             if pause_model is None:
@@ -916,7 +905,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         # Expired pauses (created before expiration time)
         stmt = select(WorkflowPause).where(cond).limit(_limit)
 
-        with self._session_maker(expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             # Old resumed pauses (resumed more than resumption_duration ago)
 
             # Get all records to delete
@@ -924,7 +913,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
         # Delete state files from storage
         for pause in pauses_to_delete:
-            with self._session_maker(expire_on_commit=False) as session, session.begin():
+            with session_factory.create_session() as session, session.begin():
                 # todo: this issues a separate query for each WorkflowPause record.
                 # consider batching this lookup.
                 try:
@@ -992,7 +981,7 @@ WHERE
         sql_query += " GROUP BY date ORDER BY date"
 
         response_data = []
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             rs = session.execute(sa.text(sql_query), arg_dict)
             for row in rs:
                 response_data.append({"date": str(row.date), "runs": row.runs})
@@ -1040,7 +1029,7 @@ WHERE
         sql_query += " GROUP BY date ORDER BY date"
 
         response_data = []
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             rs = session.execute(sa.text(sql_query), arg_dict)
             for row in rs:
                 response_data.append({"date": str(row.date), "terminal_count": row.terminal_count})
@@ -1088,7 +1077,7 @@ WHERE
         sql_query += " GROUP BY date ORDER BY date"
 
         response_data = []
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             rs = session.execute(sa.text(sql_query), arg_dict)
             for row in rs:
                 response_data.append(
@@ -1156,7 +1145,7 @@ GROUP BY
             sql_query = sql_query.replace("{{end}}", "")
 
         response_data = []
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             rs = session.execute(sa.text(sql_query), arg_dict)
             for row in rs:
                 response_data.append(

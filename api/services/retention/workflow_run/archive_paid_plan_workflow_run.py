@@ -526,6 +526,5 @@ class WorkflowRunArchiver:
 
         from repositories.factory import DifyAPIRepositoryFactory
 
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository()
         return self.workflow_run_repo

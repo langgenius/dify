@@ -94,7 +94,7 @@ class RagPipelineService:
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository()
 
     @classmethod
     def get_pipeline_templates(cls, type: str = "built-in", language: str = "en-US") -> dict:

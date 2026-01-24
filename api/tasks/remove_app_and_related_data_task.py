@@ -220,8 +220,7 @@ def _delete_app_workflows(tenant_id: str, app_id: str):
 
 def _delete_app_workflow_runs(tenant_id: str, app_id: str):
     """Delete all workflow runs for an app using the service repository."""
-    session_maker = sessionmaker(bind=db.engine)
-    workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+    workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository()
 
     deleted_count = workflow_run_repo.delete_runs_by_app(
         tenant_id=tenant_id,

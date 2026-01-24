@@ -1,10 +1,9 @@
 """Unit tests for workflow run repository with status filter."""
 
 import uuid
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy.orm import sessionmaker
 
 from models import WorkflowRun, WorkflowRunTriggeredFrom
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
@@ -14,22 +13,28 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
     """Test workflow run repository with status filtering."""
 
     @pytest.fixture
-    def mock_session_maker(self):
-        """Create a mock session maker."""
-        return MagicMock(spec=sessionmaker)
+    def mock_session(self):
+        """Create a mock session and patch session factory to return it."""
+        mock_session = MagicMock()
+        mock_session.__enter__.return_value = mock_session
+        mock_session.__exit__.return_value = None
+        with patch(
+            "repositories.sqlalchemy_api_workflow_run_repository.session_factory.create_session",
+            return_value=mock_session,
+        ):
+            yield mock_session
 
     @pytest.fixture
-    def repository(self, mock_session_maker):
-        """Create repository instance with mock session."""
-        return DifyAPISQLAlchemyWorkflowRunRepository(mock_session_maker)
+    def repository(self, mock_session):
+        """Create repository instance with patched session factory."""
+        return DifyAPISQLAlchemyWorkflowRunRepository()
 
-    def test_get_paginated_workflow_runs_without_status(self, repository, mock_session_maker):
+    def test_get_paginated_workflow_runs_without_status(self, repository, mock_session):
         """Test getting paginated workflow runs without status filter."""
         # Arrange
         tenant_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
-        mock_session = MagicMock()
-        mock_session_maker.return_value.__enter__.return_value = mock_session
+        # mock_session is provided by fixture and already patched into repository
 
         mock_runs = [MagicMock(spec=WorkflowRun) for _ in range(3)]
         mock_session.scalars.return_value.all.return_value = mock_runs
@@ -49,13 +54,12 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         assert result.limit == 20
         assert result.has_more is False
 
-    def test_get_paginated_workflow_runs_with_status_filter(self, repository, mock_session_maker):
+    def test_get_paginated_workflow_runs_with_status_filter(self, repository, mock_session):
         """Test getting paginated workflow runs with status filter."""
         # Arrange
         tenant_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
-        mock_session = MagicMock()
-        mock_session_maker.return_value.__enter__.return_value = mock_session
+        # mock_session is provided by fixture and already patched into repository
 
         mock_runs = [MagicMock(spec=WorkflowRun, status="succeeded") for _ in range(2)]
         mock_session.scalars.return_value.all.return_value = mock_runs
@@ -74,13 +78,12 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         assert len(result.data) == 2
         assert all(run.status == "succeeded" for run in result.data)
 
-    def test_get_workflow_runs_count_without_status(self, repository, mock_session_maker):
+    def test_get_workflow_runs_count_without_status(self, repository, mock_session):
         """Test getting workflow runs count without status filter."""
         # Arrange
         tenant_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
-        mock_session = MagicMock()
-        mock_session_maker.return_value.__enter__.return_value = mock_session
+        # mock_session is provided by fixture and already patched into repository
 
         # Mock the GROUP BY query results
         mock_results = [
@@ -106,13 +109,12 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         assert result["stopped"] == 0
         assert result["partial-succeeded"] == 0
 
-    def test_get_workflow_runs_count_with_status_filter(self, repository, mock_session_maker):
+    def test_get_workflow_runs_count_with_status_filter(self, repository, mock_session):
         """Test getting workflow runs count with status filter."""
         # Arrange
         tenant_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
-        mock_session = MagicMock()
-        mock_session_maker.return_value.__enter__.return_value = mock_session
+        # mock_session is provided by fixture and already patched into repository
 
         # Mock the count query for succeeded status
         mock_session.scalar.return_value = 5
@@ -133,13 +135,12 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         assert result["stopped"] == 0
         assert result["partial-succeeded"] == 0
 
-    def test_get_workflow_runs_count_with_invalid_status(self, repository, mock_session_maker):
+    def test_get_workflow_runs_count_with_invalid_status(self, repository, mock_session):
         """Test that invalid status is still counted in total but not in any specific status."""
         # Arrange
         tenant_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
-        mock_session = MagicMock()
-        mock_session_maker.return_value.__enter__.return_value = mock_session
+        # mock_session is provided by fixture and already patched into repository
 
         # Mock count query returning 0 for invalid status
         mock_session.scalar.return_value = 0
@@ -156,13 +157,12 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         assert result["total"] == 0
         assert all(result[status] == 0 for status in ["running", "succeeded", "failed", "stopped", "partial-succeeded"])
 
-    def test_get_workflow_runs_count_with_time_range(self, repository, mock_session_maker):
+    def test_get_workflow_runs_count_with_time_range(self, repository, mock_session):
         """Test getting workflow runs count with time range filter verifies SQL query construction."""
         # Arrange
         tenant_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
-        mock_session = MagicMock()
-        mock_session_maker.return_value.__enter__.return_value = mock_session
+        # mock_session is provided by fixture and already patched into repository
 
         # Mock the GROUP BY query results
         mock_results = [
@@ -204,13 +204,12 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
             "Query should include created_at filter for time range"
         )
 
-    def test_get_workflow_runs_count_with_status_and_time_range(self, repository, mock_session_maker):
+    def test_get_workflow_runs_count_with_status_and_time_range(self, repository, mock_session):
         """Test getting workflow runs count with both status and time range filters verifies SQL query."""
         # Arrange
         tenant_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
-        mock_session = MagicMock()
-        mock_session_maker.return_value.__enter__.return_value = mock_session
+        # mock_session is provided by fixture and already patched into repository
 
         # Mock the count query for running status within time range
         mock_session.scalar.return_value = 2

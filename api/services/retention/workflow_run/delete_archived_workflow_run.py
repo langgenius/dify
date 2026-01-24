@@ -128,7 +128,5 @@ class ArchivedWorkflowRunDeletion:
 
         from repositories.factory import DifyAPIRepositoryFactory
 
-        self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
-            sessionmaker(bind=db.engine, expire_on_commit=False)
-        )
+        self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository()
         return self.workflow_run_repo

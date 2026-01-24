@@ -1,12 +1,10 @@
 from flask import abort, jsonify, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import sessionmaker
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
-from extensions.ext_database import db
 from libs.datetime_utils import parse_time_range
 from libs.login import current_account_with_tenant, login_required
 from models.enums import WorkflowRunTriggeredFrom
@@ -34,12 +32,16 @@ console_ns.schema_model(
 )
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflow/statistics/daily-conversations")
-class WorkflowDailyRunsStatistic(Resource):
+class BaseResource(Resource):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository()
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow/statistics/daily-conversations")
+class WorkflowDailyRunsStatistic(BaseResource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     @console_ns.doc("get_workflow_daily_runs_statistic")
     @console_ns.doc(description="Get workflow daily runs statistics")
@@ -75,11 +77,9 @@ class WorkflowDailyRunsStatistic(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/daily-terminals")
-class WorkflowDailyTerminalsStatistic(Resource):
+class WorkflowDailyTerminalsStatistic(BaseResource):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @console_ns.doc("get_workflow_daily_terminals_statistic")
     @console_ns.doc(description="Get workflow daily terminals statistics")
@@ -115,11 +115,9 @@ class WorkflowDailyTerminalsStatistic(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/token-costs")
-class WorkflowDailyTokenCostStatistic(Resource):
+class WorkflowDailyTokenCostStatistic(BaseResource):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @console_ns.doc("get_workflow_daily_token_cost_statistic")
     @console_ns.doc(description="Get workflow daily token cost statistics")
@@ -155,11 +153,9 @@ class WorkflowDailyTokenCostStatistic(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/average-app-interactions")
-class WorkflowAverageAppInteractionStatistic(Resource):
+class WorkflowAverageAppInteractionStatistic(BaseResource):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @console_ns.doc("get_workflow_average_app_interaction_statistic")
     @console_ns.doc(description="Get workflow average app interaction statistics")

@@ -34,7 +34,7 @@ class WorkflowRunService:
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             self._session_factory
         )
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
+        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository()
 
     def get_paginate_advanced_chat_workflow_runs(
         self, app_model: App, args: dict, triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING

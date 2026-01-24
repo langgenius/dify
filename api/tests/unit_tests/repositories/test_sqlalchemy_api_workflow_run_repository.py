@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.workflow.enums import WorkflowExecutionStatus
 from models.workflow import WorkflowPause as WorkflowPauseModel
@@ -28,58 +28,35 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
 
     @pytest.fixture
     def mock_session_maker(self, mock_session):
-        """Create a mock sessionmaker."""
-        session_maker = Mock(spec=sessionmaker)
-
-        # Create a context manager mock
-        context_manager = Mock()
-        context_manager.__enter__ = Mock(return_value=mock_session)
-        context_manager.__exit__ = Mock(return_value=None)
-        session_maker.return_value = context_manager
-
-        # Mock session.begin() context manager
-        begin_context_manager = Mock()
-        begin_context_manager.__enter__ = Mock(return_value=None)
-        begin_context_manager.__exit__ = Mock(return_value=None)
-        mock_session.begin = Mock(return_value=begin_context_manager)
-
-        # Add missing session methods
-        mock_session.commit = Mock()
-        mock_session.rollback = Mock()
-        mock_session.add = Mock()
-        mock_session.delete = Mock()
-        mock_session.get = Mock()
-        mock_session.scalar = Mock()
-        mock_session.scalars = Mock()
-
-        # Also support expire_on_commit parameter
-        def make_session(expire_on_commit=None):
-            cm = Mock()
-            cm.__enter__ = Mock(return_value=mock_session)
-            cm.__exit__ = Mock(return_value=None)
-            return cm
-
-        session_maker.side_effect = make_session
-        return session_maker
+        """Deprecated: session_maker no longer injected; kept for backward compatibility in fixtures."""
+        return Mock()
 
     @pytest.fixture
-    def repository(self, mock_session_maker):
-        """Create repository instance with mocked dependencies."""
+    def repository(self, mock_session: Mock):
+        """Create repository instance and patch session factory to use mock session."""
+        # Ensure mock session works as context manager
+        mock_session.__enter__ = Mock(return_value=mock_session)
+        mock_session.__exit__ = Mock(return_value=None)
+        # Mock session.begin() context manager
+        begin_cm = Mock()
+        begin_cm.__enter__ = Mock(return_value=None)
+        begin_cm.__exit__ = Mock(return_value=None)
+        mock_session.begin = Mock(return_value=begin_cm)
+        # Add common methods if missing
+        for name in ("commit", "rollback", "add", "delete", "get", "scalar", "scalars", "execute"):
+            if not hasattr(mock_session, name):
+                setattr(mock_session, name, Mock())
 
-        # Create a testable subclass that implements the save method
-        class TestableDifyAPISQLAlchemyWorkflowRunRepository(DifyAPISQLAlchemyWorkflowRunRepository):
-            def __init__(self, session_maker):
-                # Initialize without calling parent __init__ to avoid any instantiation issues
-                self._session_maker = session_maker
-
-            def save(self, execution):
-                """Mock implementation of save method."""
-                return None
-
-        # Create repository instance
-        repo = TestableDifyAPISQLAlchemyWorkflowRunRepository(mock_session_maker)
-
-        return repo
+        patcher = patch(
+            "repositories.sqlalchemy_api_workflow_run_repository.session_factory.create_session",
+            return_value=mock_session,
+        )
+        patcher.start()
+        try:
+            repo = DifyAPISQLAlchemyWorkflowRunRepository()
+            yield repo
+        finally:
+            patcher.stop()
 
     @pytest.fixture
     def sample_workflow_run(self):

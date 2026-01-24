@@ -247,8 +247,7 @@ class ClearFreePlanTenantExpiredLogs:
                     break
 
             # Process expired workflow runs with backup
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository()
             before_date = datetime.datetime.now() - datetime.timedelta(days=days)
             total_deleted = 0
 

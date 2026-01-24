@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -51,8 +50,7 @@ class WorkflowRunCleanup:
             # Lazy import to avoid circular dependencies during module import
             from repositories.factory import DifyAPIRepositoryFactory
 
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository()
 
     def run(self) -> None:
         click.echo(

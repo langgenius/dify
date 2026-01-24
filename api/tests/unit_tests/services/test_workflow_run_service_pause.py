@@ -153,7 +153,7 @@ class TestWorkflowRunService:
             service = WorkflowRunService(session_factory)
 
             assert service._session_factory == session_factory
-            mock_factory.create_api_workflow_run_repository.assert_called_once_with(session_factory)
+            mock_factory.create_api_workflow_run_repository.assert_called_once()
 
     def test_init_with_engine(self, mock_session_factory, mock_workflow_run_repository):
         """Test WorkflowRunService initialization with Engine (should convert to sessionmaker)."""
@@ -167,7 +167,7 @@ class TestWorkflowRunService:
 
                 mock_sessionmaker.assert_called_once_with(bind=mock_engine, expire_on_commit=False)
                 assert service._session_factory == session_factory
-                mock_factory.create_api_workflow_run_repository.assert_called_once_with(session_factory)
+                mock_factory.create_api_workflow_run_repository.assert_called_once()
 
     def test_init_with_default_dependencies(self, mock_session_factory):
         """Test WorkflowRunService initialization with default dependencies."""

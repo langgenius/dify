@@ -12,7 +12,7 @@ from uuid import UUID, uuid4
 from cachetools import LRUCache
 from flask import current_app
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
@@ -475,8 +475,7 @@ class TraceTask:
                     # Lazy import to avoid circular import during module initialization
                     from repositories.factory import DifyAPIRepositoryFactory
 
-                    session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-                    cls._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+                    cls._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository()
         return cls._workflow_run_repo
 
     def __init__(

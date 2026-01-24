@@ -259,7 +259,7 @@ class TestPauseStatePersistenceLayer:
 
         layer.on_event(event)
 
-        mock_factory.assert_called_once_with(session_factory)
+        mock_factory.assert_called_once()
         assert mock_repo.create_workflow_pause.call_count == 1
         call_kwargs = mock_repo.create_workflow_pause.call_args.kwargs
         assert call_kwargs["workflow_run_id"] == "run-123"

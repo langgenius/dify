@@ -233,9 +233,7 @@ class WorkflowRunRestore:
         if self.workflow_run_repo is not None:
             return self.workflow_run_repo
 
-        self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
-            sessionmaker(bind=db.engine, expire_on_commit=False)
-        )
+        self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository()
         return self.workflow_run_repo
 
     @staticmethod
