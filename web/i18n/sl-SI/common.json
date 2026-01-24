@@ -110,6 +110,7 @@
   "chat.conversationName": "Ime pogovora",
   "chat.conversationNameCanNotEmpty": "Zahtevano ime pogovora",
   "chat.conversationNamePlaceholder": "Prosimo, vnesite ime pogovora",
+  "chat.inputDisabledPlaceholder": "Samo Predogled",
   "chat.inputPlaceholder": "Pogovorite se z {{botName}}",
   "chat.renameConversation": "Preimenovanje pogovora",
   "chat.resend": "Ponovno pošlji",
