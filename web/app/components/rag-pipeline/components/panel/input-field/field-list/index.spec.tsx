@@ -1,6 +1,6 @@
 import type { SortableItem } from './types'
 import type { InputVar } from '@/models/pipeline'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { PipelineInputVarType } from '@/models/pipeline'
 import FieldItem from './field-item'
@@ -2028,7 +2028,9 @@ describe('handleSubmitField', () => {
 
     // Simulate form submission with new field data
     const newFieldData = createInputVar({ variable: 'new_var', label: 'New Label' })
-    editorProps.onSubmit(newFieldData)
+    act(() => {
+      editorProps.onSubmit(newFieldData)
+    })
 
     // Assert
     expect(handleInputFieldsChange).toHaveBeenCalledWith(
@@ -2068,7 +2070,9 @@ describe('handleSubmitField', () => {
 
     // Simulate form submission with updated data
     const updatedFieldData = createInputVar({ variable: 'var_0', label: 'Updated Label' })
-    editorProps.onSubmit(updatedFieldData)
+    act(() => {
+      editorProps.onSubmit(updatedFieldData)
+    })
 
     // Assert - field should be updated, not added
     expect(handleInputFieldsChange).toHaveBeenCalledWith(
@@ -2109,9 +2113,11 @@ describe('handleSubmitField', () => {
 
     // Simulate form submission with changed variable name (including moreInfo)
     const updatedFieldData = createInputVar({ variable: 'new_var_name', label: 'Label 0' })
-    editorProps.onSubmit(updatedFieldData, {
-      type: 'changeVarName',
-      payload: { beforeKey: 'var_0', afterKey: 'new_var_name' },
+    act(() => {
+      editorProps.onSubmit(updatedFieldData, {
+        type: 'changeVarName',
+        payload: { beforeKey: 'var_0', afterKey: 'new_var_name' },
+      })
     })
 
     // Assert
@@ -2150,7 +2156,9 @@ describe('handleSubmitField', () => {
 
     // Simulate form submission WITHOUT moreInfo (no variable name change)
     const updatedFieldData = createInputVar({ variable: 'var_0', label: 'Updated Label' })
-    editorProps.onSubmit(updatedFieldData)
+    act(() => {
+      editorProps.onSubmit(updatedFieldData)
+    })
 
     // Assert - handleInputVarRename should NOT be called
     expect(mockHandleInputVarRename).not.toHaveBeenCalled()
@@ -2185,7 +2193,9 @@ describe('handleSubmitField', () => {
 
     // Simulate form submission with moreInfo but different type
     const updatedFieldData = createInputVar({ variable: 'var_0', label: 'Updated Label' })
-    editorProps.onSubmit(updatedFieldData, { type: 'otherType' as any })
+    act(() => {
+      editorProps.onSubmit(updatedFieldData, { type: 'otherType' as any })
+    })
 
     // Assert - handleInputVarRename should NOT be called
     expect(mockHandleInputVarRename).not.toHaveBeenCalled()
@@ -2220,9 +2230,11 @@ describe('handleSubmitField', () => {
 
     // Simulate form submission with changeVarName but empty keys
     const updatedFieldData = createInputVar({ variable: 'new_var' })
-    editorProps.onSubmit(updatedFieldData, {
-      type: 'changeVarName',
-      payload: { beforeKey: '', afterKey: '' },
+    act(() => {
+      editorProps.onSubmit(updatedFieldData, {
+        type: 'changeVarName',
+        payload: { beforeKey: '', afterKey: '' },
+      })
     })
 
     // Assert - handleInputVarRename should be called with empty strings
@@ -2261,9 +2273,11 @@ describe('handleSubmitField', () => {
 
     // Simulate form submission with changeVarName but undefined payload
     const updatedFieldData = createInputVar({ variable: 'new_var' })
-    editorProps.onSubmit(updatedFieldData, {
-      type: 'changeVarName',
-      payload: undefined,
+    act(() => {
+      editorProps.onSubmit(updatedFieldData, {
+        type: 'changeVarName',
+        payload: undefined,
+      })
     })
 
     // Assert - handleInputVarRename should be called with empty strings (fallback)
@@ -2298,7 +2312,9 @@ describe('handleSubmitField', () => {
 
     // Simulate form submission
     const newFieldData = createInputVar({ variable: 'new_var' })
-    editorProps.onSubmit(newFieldData)
+    act(() => {
+      editorProps.onSubmit(newFieldData)
+    })
 
     // Assert - toggleInputFieldEditPanel should be called with null to close
     expect(mockToggleInputFieldEditPanel).toHaveBeenCalledTimes(2)
@@ -2371,7 +2387,9 @@ describe('Duplicate Variable Name Handling', () => {
 
     // Try to submit with a duplicate variable name
     const duplicateFieldData = createInputVar({ variable: 'existing_var' })
-    editorProps.onSubmit(duplicateFieldData)
+    act(() => {
+      editorProps.onSubmit(duplicateFieldData)
+    })
 
     // Assert - handleInputFieldsChange should NOT be called
     expect(handleInputFieldsChange).not.toHaveBeenCalled()
@@ -2409,7 +2427,9 @@ describe('Duplicate Variable Name Handling', () => {
 
     // Submit with same variable name (just updating label)
     const updatedFieldData = createInputVar({ variable: 'var_0', label: 'New Label' })
-    editorProps.onSubmit(updatedFieldData)
+    act(() => {
+      editorProps.onSubmit(updatedFieldData)
+    })
 
     // Assert - should allow update with same variable name
     expect(handleInputFieldsChange).toHaveBeenCalled()
