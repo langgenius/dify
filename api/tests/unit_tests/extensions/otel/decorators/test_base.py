@@ -24,7 +24,7 @@ class TestTraceSpanDecorator:
         """Test that decorated function executes and returns correct value."""
 
         @trace_span()
-        def test_func(x, y):  # noqa: FURB118
+        def test_func(x, y):
             return x + y
 
         result = test_func(2, 3)
