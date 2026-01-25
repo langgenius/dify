@@ -428,9 +428,7 @@ class TestWorkflowDraftVariableService:
         assert updated_variable.get_value().value == new_value.value
         assert updated_variable.last_edited_at is not None
         db_session_with_containers.expire_all()
-        updated_from_db = (
-            db_session_with_containers.query(WorkflowDraftVariable).filter_by(id=variable.id).first()
-        )
+        updated_from_db = db_session_with_containers.query(WorkflowDraftVariable).filter_by(id=variable.id).first()
         assert updated_from_db is not None
         assert updated_from_db.name == "new_name"
         assert updated_from_db.get_value().value == new_value.value
@@ -526,9 +524,7 @@ class TestWorkflowDraftVariableService:
         variable = self._create_test_variable(
             db_session_with_containers, app.id, CONVERSATION_VARIABLE_NODE_ID, "test_var", test_value, fake=fake
         )
-        assert (
-            db_session_with_containers.query(WorkflowDraftVariable).filter_by(id=variable.id).first() is not None
-        )
+        assert db_session_with_containers.query(WorkflowDraftVariable).filter_by(id=variable.id).first() is not None
         service = WorkflowDraftVariableService(db_session_with_containers)
         variable_in_service_session = service.get_variable(variable.id)
         assert variable_in_service_session is not None
@@ -568,9 +564,7 @@ class TestWorkflowDraftVariableService:
             fake=fake,
         )
         db_session_with_containers.commit()
-        app_variables = (
-            db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id).all()
-        )
+        app_variables = db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id).all()
         other_app_variables = (
             db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=other_app.id).all()
         )
@@ -579,9 +573,7 @@ class TestWorkflowDraftVariableService:
         service = WorkflowDraftVariableService(db_session_with_containers)
         service.delete_workflow_variables(app.id)
         db_session_with_containers.expire_all()
-        app_variables_after = (
-            db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id).all()
-        )
+        app_variables_after = db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id).all()
         other_app_variables_after = (
             db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=other_app.id).all()
         )

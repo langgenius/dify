@@ -24,9 +24,7 @@ class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
     """
 
     @classmethod
-    def create_api_workflow_node_execution_repository(
-        cls
-    ) -> DifyAPIWorkflowNodeExecutionRepository:
+    def create_api_workflow_node_execution_repository(cls) -> DifyAPIWorkflowNodeExecutionRepository:
         """
         Create a DifyAPIWorkflowNodeExecutionRepository instance based on configuration.
 
