@@ -83,7 +83,9 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
   const baseSymbol = plugin.symbol('base', {
     exported: true,
     meta: {
-      pluginName: 'orpc',
+      category: 'contract',
+      resource: 'base',
+      tool: 'orpc',
     },
   })
 
@@ -110,11 +112,13 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     const contractSymbol = plugin.symbol(contractName, {
       exported: true,
       meta: {
+        category: 'contract',
         path: ['paths', op.path, op.method.toLowerCase()],
-        pluginName: 'orpc',
         resource: 'operation',
         resourceId: op.id,
+        role: 'contract',
         tags: op.tags,
+        tool: 'orpc',
       },
     })
     contractSymbols[op.id] = contractSymbol
@@ -218,8 +222,9 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
   const contractsSymbol = plugin.symbol('router', {
     exported: true,
     meta: {
-      pluginName: 'orpc',
+      category: 'contract',
       resource: 'router',
+      tool: 'orpc',
     },
   })
 
@@ -258,8 +263,9 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
   const routerTypeSymbol = plugin.symbol('Router', {
     exported: true,
     meta: {
-      pluginName: 'orpc',
+      category: 'type',
       resource: 'router',
+      tool: 'orpc',
     },
   })
 
