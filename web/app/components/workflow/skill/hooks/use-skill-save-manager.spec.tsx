@@ -7,14 +7,21 @@ import { consoleQuery } from '@/service/client'
 import { START_TAB_ID } from '../constants'
 import { SkillSaveProvider, useSkillSaveManager } from './use-skill-save-manager'
 
-const { mockMutateAsync } = vi.hoisted(() => ({
+const { mockMutateAsync, mockToastNotify } = vi.hoisted(() => ({
   mockMutateAsync: vi.fn(),
+  mockToastNotify: vi.fn(),
 }))
 
 vi.mock('@/service/use-app-asset', () => ({
   useUpdateAppAssetFileContent: () => ({
     mutateAsync: mockMutateAsync,
   }),
+}))
+
+vi.mock('@/app/components/base/toast', () => ({
+  default: {
+    notify: mockToastNotify,
+  },
 }))
 
 const createQueryClient = () => new QueryClient({
@@ -355,6 +362,192 @@ describe('useSkillSaveManager', () => {
 
       // Act
       result.current.saveAllDirty()
+
+      // Assert
+      await waitFor(() => {
+        expect(mockMutateAsync).not.toHaveBeenCalled()
+      })
+    })
+  })
+
+  // Scenario: Ctrl/Cmd+S triggers save for the active tab.
+  describe('Keyboard Shortcut', () => {
+    const dispatchKeydown = (key: string, modifiers: { ctrlKey?: boolean, metaKey?: boolean } = {}) => {
+      const event = new KeyboardEvent('keydown', {
+        key,
+        ctrlKey: modifiers.ctrlKey ?? false,
+        metaKey: modifiers.metaKey ?? false,
+        bubbles: true,
+        cancelable: true,
+      })
+      window.dispatchEvent(event)
+    }
+
+    it('should trigger save on Ctrl+S for active tab', async () => {
+      // Arrange
+      const appId = 'app-1'
+      const fileId = 'file-1'
+      const store = createWorkflowStore({})
+      const queryClient = createQueryClient()
+      const wrapper = createWrapper({ appId, store, queryClient })
+      store.setState({ activeTabId: fileId })
+      store.getState().setDraftContent(fileId, 'draft-content')
+      renderHook(() => useSkillSaveManager(), { wrapper })
+
+      // Act
+      dispatchKeydown('s', { ctrlKey: true })
+
+      // Assert
+      await waitFor(() => {
+        expect(mockMutateAsync).toHaveBeenCalledWith({
+          appId,
+          nodeId: fileId,
+          payload: { content: 'draft-content' },
+        })
+      })
+    })
+
+    it('should trigger save on Cmd+S for active tab', async () => {
+      // Arrange
+      const appId = 'app-1'
+      const fileId = 'file-1'
+      const store = createWorkflowStore({})
+      const queryClient = createQueryClient()
+      const wrapper = createWrapper({ appId, store, queryClient })
+      store.setState({ activeTabId: fileId })
+      store.getState().setDraftContent(fileId, 'draft-content')
+      renderHook(() => useSkillSaveManager(), { wrapper })
+
+      // Act
+      dispatchKeydown('s', { metaKey: true })
+
+      // Assert
+      await waitFor(() => {
+        expect(mockMutateAsync).toHaveBeenCalled()
+      })
+    })
+
+    it('should not trigger save when activeTabId is START_TAB_ID', async () => {
+      // Arrange
+      const appId = 'app-1'
+      const store = createWorkflowStore({})
+      const queryClient = createQueryClient()
+      const wrapper = createWrapper({ appId, store, queryClient })
+      store.setState({ activeTabId: START_TAB_ID })
+      renderHook(() => useSkillSaveManager(), { wrapper })
+
+      // Act
+      dispatchKeydown('s', { ctrlKey: true })
+
+      // Assert
+      await waitFor(() => {
+        expect(mockMutateAsync).not.toHaveBeenCalled()
+      })
+    })
+
+    it('should not trigger save when activeTabId is null', async () => {
+      // Arrange
+      const appId = 'app-1'
+      const store = createWorkflowStore({})
+      const queryClient = createQueryClient()
+      const wrapper = createWrapper({ appId, store, queryClient })
+      store.setState({ activeTabId: null })
+      renderHook(() => useSkillSaveManager(), { wrapper })
+
+      // Act
+      dispatchKeydown('s', { ctrlKey: true })
+
+      // Assert
+      await waitFor(() => {
+        expect(mockMutateAsync).not.toHaveBeenCalled()
+      })
+    })
+
+    it('should show success toast when save succeeds', async () => {
+      // Arrange
+      const appId = 'app-1'
+      const fileId = 'file-1'
+      const store = createWorkflowStore({})
+      const queryClient = createQueryClient()
+      const wrapper = createWrapper({ appId, store, queryClient })
+      store.setState({ activeTabId: fileId })
+      store.getState().setDraftContent(fileId, 'draft-content')
+      renderHook(() => useSkillSaveManager(), { wrapper })
+
+      // Act
+      dispatchKeydown('s', { ctrlKey: true })
+
+      // Assert
+      await waitFor(() => {
+        expect(mockToastNotify).toHaveBeenCalledWith({
+          type: 'success',
+          message: 'common.api.saved',
+        })
+      })
+    })
+
+    it('should show error toast when save fails', async () => {
+      // Arrange
+      const appId = 'app-1'
+      const fileId = 'file-1'
+      const store = createWorkflowStore({})
+      const queryClient = createQueryClient()
+      const wrapper = createWrapper({ appId, store, queryClient })
+      store.setState({ activeTabId: fileId })
+      store.getState().setDraftContent(fileId, 'draft-content')
+      mockMutateAsync.mockRejectedValueOnce(new Error('Network error'))
+      renderHook(() => useSkillSaveManager(), { wrapper })
+
+      // Act
+      dispatchKeydown('s', { ctrlKey: true })
+
+      // Assert
+      await waitFor(() => {
+        expect(mockToastNotify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'Network error',
+        })
+      })
+    })
+
+    it('should use registered fallback content for keyboard save', async () => {
+      // Arrange
+      const appId = 'app-1'
+      const fileId = 'file-1'
+      const store = createWorkflowStore({})
+      const queryClient = createQueryClient()
+      const wrapper = createWrapper({ appId, store, queryClient })
+      store.setState({ activeTabId: fileId })
+      store.setState({ dirtyMetadataIds: new Set([fileId]) })
+      const { result } = renderHook(() => useSkillSaveManager(), { wrapper })
+      result.current.registerFallback(fileId, { content: 'fallback-content', metadata: { tag: 'v1' } })
+
+      // Act
+      dispatchKeydown('s', { ctrlKey: true })
+
+      // Assert
+      await waitFor(() => {
+        expect(mockMutateAsync).toHaveBeenCalledWith({
+          appId,
+          nodeId: fileId,
+          payload: { content: 'fallback-content', metadata: { tag: 'v1' } },
+        })
+      })
+    })
+
+    it('should not trigger save for unrelated keys', async () => {
+      // Arrange
+      const appId = 'app-1'
+      const fileId = 'file-1'
+      const store = createWorkflowStore({})
+      const queryClient = createQueryClient()
+      const wrapper = createWrapper({ appId, store, queryClient })
+      store.setState({ activeTabId: fileId })
+      store.getState().setDraftContent(fileId, 'draft-content')
+      renderHook(() => useSkillSaveManager(), { wrapper })
+
+      // Act
+      dispatchKeydown('x', { ctrlKey: true })
 
       // Assert
       await waitFor(() => {
