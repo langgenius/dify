@@ -353,6 +353,7 @@ describe('ReadmeEntrance', () => {
       expect(currentPluginDetail).toEqual({
         detail: mockDetail,
         showType: ReadmeShowType.drawer,
+        position: 'left',
       })
     })
 
@@ -367,6 +368,7 @@ describe('ReadmeEntrance', () => {
       expect(currentPluginDetail).toEqual({
         detail: mockDetail,
         showType: ReadmeShowType.modal,
+        position: 'left',
       })
     })
   })
