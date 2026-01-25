@@ -14,8 +14,10 @@ function toZodSchemaName(operationId: string, type: 'data' | 'response'): string
 
 type OperationInfo = {
   id: string
+  operationId?: string
   method: string
   path: string
+  summary?: string
   description?: string
   deprecated?: boolean
   tags: string[]
@@ -52,14 +54,16 @@ function collectOperation(operation: IR.OperationObject): OperationInfo {
 
   return {
     deprecated: operation.deprecated,
-    description: operation.description || operation.summary,
+    description: operation.description,
     hasInput,
     hasOutput,
     id,
     method: operation.method.toUpperCase(),
+    operationId: operation.operationId || operation.id,
     path: operation.path,
     successStatusCode,
-    tags: operation.tags ? [...operation.tags] : ['default'],
+    summary: operation.summary,
+    tags: operation.tags ? [...operation.tags] : [],
     zodDataSchema: toZodSchemaName(id, 'data'),
     zodResponseSchema: toZodSchemaName(id, 'response'),
   }
@@ -137,14 +141,35 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     })
     contractSymbols[op.id] = contractSymbol
 
+    // Build the route config object with all available properties
+    const routeConfig = $.object()
+      .prop('path', $.literal(op.path))
+      .prop('method', $.literal(op.method))
+
+    // Add optional route properties
+    if (op.operationId) {
+      routeConfig.prop('operationId', $.literal(op.operationId))
+    }
+    if (op.summary) {
+      routeConfig.prop('summary', $.literal(op.summary))
+    }
+    if (op.description) {
+      routeConfig.prop('description', $.literal(op.description))
+    }
+    if (op.deprecated) {
+      routeConfig.prop('deprecated', $.literal(true))
+    }
+    if (op.tags.length > 0) {
+      routeConfig.prop('tags', $.fromValue(op.tags))
+    }
+    if (op.successStatusCode && op.successStatusCode !== 200) {
+      routeConfig.prop('successStatus', $.literal(op.successStatusCode))
+    }
+
     // Build the call chain: base.route({...}).input(...).output(...)
     let expression = $(baseSymbol)
       .attr('route')
-      .call(
-        $.object()
-          .prop('path', $.literal(op.path))
-          .prop('method', $.literal(op.method)),
-      )
+      .call(routeConfig)
 
     // .input(zodDataSchema) if has input
     if (op.hasInput) {
@@ -173,12 +198,19 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
 
     const contractNode = $.const(contractSymbol)
       .export()
-      .$if(op.description || op.deprecated, (node) => {
+      .$if(op.summary || op.description || op.deprecated, (node) => {
         const docLines: string[] = []
-        if (op.description) {
+        if (op.summary) {
+          docLines.push(op.summary)
+        }
+        if (op.description && op.description !== op.summary) {
+          if (op.summary)
+            docLines.push('')
           docLines.push(op.description)
         }
         if (op.deprecated) {
+          if (docLines.length > 0)
+            docLines.push('')
           docLines.push('@deprecated')
         }
         return node.doc(docLines)
