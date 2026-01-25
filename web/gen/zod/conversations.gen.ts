@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-import { zConversationHistoryResponse, zConversationListItem, zConversationRenameRequest, zConversationsListResponse, zConversationVariablesResponse } from '../zod.gen'
+import { zConversationHistoryResponse, zConversationListItem, zConversationRenameRequest, zConversationsListResponse, zConversationVariablesResponse } from './schemas.gen'
 
 export const zGetConversationHistoryData = z.object({
   body: z.never().optional(),

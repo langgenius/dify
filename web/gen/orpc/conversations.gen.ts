@@ -2,8 +2,8 @@
 
 import { z } from 'zod'
 
-import { base } from '../orpc.gen'
 import { zDeleteConversationData, zGetConversationHistoryData, zGetConversationHistoryResponse, zGetConversationsListData, zGetConversationsListResponse, zGetConversationVariablesData, zGetConversationVariablesResponse, zRenameConversationData, zRenameConversationResponse } from '../zod/conversations.gen'
+import { base } from './common.gen'
 
 /**
  * Get Conversation History Messages

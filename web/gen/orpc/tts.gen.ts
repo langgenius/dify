@@ -2,8 +2,8 @@
 
 import { z } from 'zod'
 
-import { base } from '../orpc.gen'
 import { zAudioToTextData, zAudioToTextResponse, zTextToAudioChatData, zTextToAudioChatResponse } from '../zod/tts.gen'
+import { base } from './common.gen'
 
 /**
  * Speech to Text

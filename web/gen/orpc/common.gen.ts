@@ -2,13 +2,13 @@
 
 import { oc } from '@orpc/contract'
 
-import { createAnnotationContract, deleteAnnotationContract, getAnnotationListContract, getInitialAnnotationReplySettingsStatusContract, initialAnnotationReplySettingsContract, updateAnnotationContract } from './orpc/annotations.gen'
-import { getChatAppInfoContract, getChatAppMetaContract, getChatAppParametersContract, getChatWebAppSettingsContract } from './orpc/application.gen'
-import { getSuggestedQuestionsContract, sendChatMessageContract, stopChatMessageGenerationContract } from './orpc/chat.gen'
-import { deleteConversationContract, getConversationHistoryContract, getConversationsListContract, getConversationVariablesContract, renameConversationContract } from './orpc/conversations.gen'
-import { getChatAppFeedbacksContract, postChatMessageFeedbackContract } from './orpc/feedback.gen'
-import { previewChatFileContract, uploadChatFileContract } from './orpc/files.gen'
-import { audioToTextContract, textToAudioChatContract } from './orpc/tts.gen'
+import { createAnnotationContract, deleteAnnotationContract, getAnnotationListContract, getInitialAnnotationReplySettingsStatusContract, initialAnnotationReplySettingsContract, updateAnnotationContract } from './annotations.gen'
+import { getChatAppInfoContract, getChatAppMetaContract, getChatAppParametersContract, getChatWebAppSettingsContract } from './application.gen'
+import { getSuggestedQuestionsContract, sendChatMessageContract, stopChatMessageGenerationContract } from './chat.gen'
+import { deleteConversationContract, getConversationHistoryContract, getConversationsListContract, getConversationVariablesContract, renameConversationContract } from './conversations.gen'
+import { getChatAppFeedbacksContract, postChatMessageFeedbackContract } from './feedback.gen'
+import { previewChatFileContract, uploadChatFileContract } from './files.gen'
+import { audioToTextContract, textToAudioChatContract } from './tts.gen'
 
 export const base = oc.$route({ inputStructure: 'detailed', outputStructure: 'detailed' })
 

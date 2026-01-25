@@ -2,8 +2,8 @@
 
 import { z } from 'zod'
 
-import { base } from '../orpc.gen'
 import { zGetChatAppFeedbacksData, zGetChatAppFeedbacksResponse, zPostChatMessageFeedbackData, zPostChatMessageFeedbackResponse } from '../zod/feedback.gen'
+import { base } from './common.gen'
 
 /**
  * Message Feedback

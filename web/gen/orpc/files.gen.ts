@@ -2,8 +2,8 @@
 
 import { z } from 'zod'
 
-import { base } from '../orpc.gen'
 import { zPreviewChatFileData, zPreviewChatFileResponse, zUploadChatFileData, zUploadChatFileResponse } from '../zod/files.gen'
+import { base } from './common.gen'
 
 /**
  * File Upload

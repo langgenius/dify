@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-import { zAppFeedbacksResponse, zMessageFeedbackRequest } from '../zod.gen'
+import { zAppFeedbacksResponse, zMessageFeedbackRequest } from './schemas.gen'
 
 export const zPostChatMessageFeedbackData = z.object({
   body: zMessageFeedbackRequest,

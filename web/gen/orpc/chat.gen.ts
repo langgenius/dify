@@ -2,8 +2,8 @@
 
 import { z } from 'zod'
 
-import { base } from '../orpc.gen'
 import { zGetSuggestedQuestionsData, zGetSuggestedQuestionsResponse, zSendChatMessageData, zSendChatMessageResponse, zStopChatMessageGenerationData, zStopChatMessageGenerationResponse } from '../zod/chat.gen'
+import { base } from './common.gen'
 
 /**
  * Send Chat Message

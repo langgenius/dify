@@ -19,35 +19,22 @@ function getFilePathByTag(symbol: { meta?: SymbolMeta }): string | undefined {
   if (!meta)
     return undefined
 
-  // Get the first tag from symbol metadata
+  // Get the first tag from symbol metadata, fallback to 'schemas' for definitions
   const tag = meta.tags?.[0]?.toLowerCase()
-
-  if (!tag)
-    return undefined
 
   // Handle typescript plugin symbols
   if (meta.tool === 'typescript') {
-    // Only split operation-related types (data/responses), not definitions
-    if (meta.resource === 'operation') {
-      return `types/${tag}`
-    }
-    // Keep definitions in the main types file
-    return undefined
+    return `types/${tag ?? 'schemas'}`
   }
 
   // Handle zod plugin symbols
   if (meta.tool === 'zod') {
-    // Only split operation-related schemas (requests/responses), not definitions
-    if (meta.resource === 'operation') {
-      return `zod/${tag}`
-    }
-    // Keep definitions in the main zod file
-    return undefined
+    return `zod/${tag ?? 'schemas'}`
   }
 
   // Handle orpc plugin symbols
   if (meta.pluginName === 'orpc') {
-    return `orpc/${tag}`
+    return `orpc/${tag ?? 'common'}`
   }
 
   return undefined

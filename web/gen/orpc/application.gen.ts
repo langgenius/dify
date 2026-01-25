@@ -2,8 +2,8 @@
 
 import { z } from 'zod'
 
-import { base } from '../orpc.gen'
 import { zGetChatAppInfoResponse, zGetChatAppMetaResponse, zGetChatAppParametersData, zGetChatAppParametersResponse, zGetChatWebAppSettingsResponse } from '../zod/application.gen'
+import { base } from './common.gen'
 
 /**
  * Get Application Basic Information
