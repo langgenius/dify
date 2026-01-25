@@ -81,8 +81,9 @@ const FileContentPanel: FC = () => {
         nextMetadata = fileContent.metadata
       }
     }
-    storeApi.getState().setFileMetadata(fileTabId, nextMetadata)
-    storeApi.getState().clearDraftMetadata(fileTabId)
+    const { setFileMetadata, clearDraftMetadata } = storeApi.getState()
+    setFileMetadata(fileTabId, nextMetadata)
+    clearDraftMetadata(fileTabId)
   }, [fileTabId, isMetadataDirty, fileContent, storeApi])
 
   const handleEditorChange = useCallback((value: string | undefined) => {
@@ -102,11 +103,8 @@ const FileContentPanel: FC = () => {
     appId,
     activeTabId: fileTabId,
     isEditable,
-    draftContent,
-    isMetadataDirty,
     originalContent,
     currentMetadata,
-    storeApi,
     t,
   })
 

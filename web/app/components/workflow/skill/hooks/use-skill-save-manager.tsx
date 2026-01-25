@@ -1,0 +1,229 @@
+import { useQueryClient } from '@tanstack/react-query'
+import isDeepEqual from 'fast-deep-equal'
+import * as React from 'react'
+import { useCallback, useMemo, useRef } from 'react'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { consoleQuery } from '@/service/client'
+import { useUpdateAppAssetFileContent } from '@/service/use-app-asset'
+import { START_TAB_ID } from '../constants'
+
+type SaveSnapshot = {
+  content: string
+  metadata?: Record<string, unknown>
+  hasDraftContent: boolean
+  hasMetadataDirty: boolean
+}
+
+type CachedFileContent = {
+  content?: string
+  metadata?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+export type SaveFileOptions = {
+  fallbackContent?: string
+  fallbackMetadata?: Record<string, unknown>
+}
+
+export type SaveResult = {
+  saved: boolean
+  error?: unknown
+}
+
+type SkillSaveContextValue = {
+  saveFile: (fileId: string, options?: SaveFileOptions) => Promise<SaveResult>
+  saveAllDirty: () => void
+}
+
+type SkillSaveProviderProps = {
+  appId: string
+  children: React.ReactNode
+}
+
+const SkillSaveContext = React.createContext<SkillSaveContextValue | null>(null)
+
+export const SkillSaveProvider = ({
+  appId,
+  children,
+}: SkillSaveProviderProps) => {
+  const storeApi = useWorkflowStore()
+  const queryClient = useQueryClient()
+  const updateContent = useUpdateAppAssetFileContent()
+  const queueRef = useRef<Map<string, Promise<SaveResult>>>(new Map())
+
+  const getCachedContent = useCallback((fileId: string): string | undefined => {
+    if (!appId)
+      return undefined
+
+    const cached = queryClient.getQueryData<CachedFileContent>(
+      consoleQuery.appAsset.getFileContent.queryKey({
+        input: { params: { appId, nodeId: fileId } },
+      }),
+    )
+
+    const rawContent = cached?.content
+    if (!rawContent)
+      return undefined
+
+    try {
+      const parsed = JSON.parse(rawContent) as { content?: unknown }
+      if (parsed && typeof parsed === 'object' && typeof parsed.content === 'string')
+        return parsed.content
+    }
+    catch {
+      // Fall back to raw content when it's not a JSON wrapper.
+    }
+
+    return rawContent
+  }, [appId, queryClient])
+
+  const buildSnapshot = useCallback((
+    fileId: string,
+    fallbackContent?: string,
+    fallbackMetadata?: Record<string, unknown>,
+  ): SaveSnapshot | null => {
+    const state = storeApi.getState()
+    const draftContent = state.dirtyContents.get(fileId)
+    const isMetadataDirty = state.dirtyMetadataIds.has(fileId)
+
+    if (draftContent === undefined && !isMetadataDirty)
+      return null
+
+    const metadata = state.fileMetadata.get(fileId) ?? fallbackMetadata
+    const content = draftContent ?? getCachedContent(fileId) ?? fallbackContent
+
+    if (content === undefined)
+      return null
+
+    return {
+      content,
+      metadata,
+      hasDraftContent: draftContent !== undefined,
+      hasMetadataDirty: isMetadataDirty,
+    }
+  }, [getCachedContent, storeApi])
+
+  const updateCachedContent = useCallback((fileId: string, snapshot: SaveSnapshot) => {
+    if (!appId)
+      return
+
+    const queryKey = consoleQuery.appAsset.getFileContent.queryKey({
+      input: { params: { appId, nodeId: fileId } },
+    })
+    const existing = queryClient.getQueryData<CachedFileContent>(queryKey)
+    const serialized = JSON.stringify({
+      content: snapshot.content,
+      ...(snapshot.metadata ? { metadata: snapshot.metadata } : {}),
+    })
+    const nextData: CachedFileContent = {
+      ...(existing && typeof existing === 'object' ? existing : {}),
+      content: serialized,
+    }
+
+    queryClient.setQueryData(queryKey, nextData)
+  }, [appId, queryClient])
+
+  const performSave = useCallback(async (
+    fileId: string,
+    options?: SaveFileOptions,
+  ): Promise<SaveResult> => {
+    if (!appId || !fileId || fileId === START_TAB_ID)
+      return { saved: false }
+
+    const snapshot = buildSnapshot(fileId, options?.fallbackContent, options?.fallbackMetadata)
+    if (!snapshot)
+      return { saved: false }
+
+    try {
+      await updateContent.mutateAsync({
+        appId,
+        nodeId: fileId,
+        payload: {
+          content: snapshot.content,
+          ...(snapshot.metadata ? { metadata: snapshot.metadata } : {}),
+        },
+      })
+
+      updateCachedContent(fileId, snapshot)
+
+      const latestState = storeApi.getState()
+      if (snapshot.hasDraftContent) {
+        const latestDraft = latestState.dirtyContents.get(fileId)
+        if (latestDraft === snapshot.content)
+          latestState.clearDraftContent(fileId)
+      }
+
+      if (snapshot.hasMetadataDirty) {
+        const latestMetadata = latestState.fileMetadata.get(fileId)
+        if (isDeepEqual(latestMetadata, snapshot.metadata))
+          latestState.clearDraftMetadata(fileId)
+      }
+
+      return { saved: true }
+    }
+    catch (error) {
+      return { saved: false, error }
+    }
+  }, [appId, buildSnapshot, storeApi, updateCachedContent, updateContent])
+
+  const saveFile = useCallback(async (
+    fileId: string,
+    options?: SaveFileOptions,
+  ): Promise<SaveResult> => {
+    if (!fileId || fileId === START_TAB_ID)
+      return { saved: false }
+
+    const previous = queueRef.current.get(fileId) || Promise.resolve({ saved: false })
+    const next = previous.then(() => performSave(fileId, options))
+    queueRef.current.set(fileId, next)
+    return next.finally(() => {
+      if (queueRef.current.get(fileId) === next)
+        queueRef.current.delete(fileId)
+    })
+  }, [performSave])
+
+  const saveAllDirty = useCallback(() => {
+    if (!appId)
+      return
+
+    const { dirtyContents, dirtyMetadataIds } = storeApi.getState()
+    if (dirtyContents.size === 0 && dirtyMetadataIds.size === 0)
+      return
+
+    const dirtyIds = new Set<string>()
+    dirtyContents.forEach((_value, fileId) => {
+      dirtyIds.add(fileId)
+    })
+    dirtyMetadataIds.forEach((fileId) => {
+      dirtyIds.add(fileId)
+    })
+
+    const tasks = Array.from(dirtyIds)
+      .filter(fileId => fileId !== START_TAB_ID)
+      .map(fileId => saveFile(fileId))
+
+    if (tasks.length === 0)
+      return
+
+    void Promise.allSettled(tasks)
+  }, [appId, saveFile, storeApi])
+
+  const value = useMemo<SkillSaveContextValue>(() => ({
+    saveFile,
+    saveAllDirty,
+  }), [saveAllDirty, saveFile])
+
+  return (
+    <SkillSaveContext.Provider value={value}>
+      {children}
+    </SkillSaveContext.Provider>
+  )
+}
+
+export const useSkillSaveManager = () => {
+  const context = React.useContext(SkillSaveContext)
+  if (!context)
+    throw new Error('Missing SkillSaveProvider in the tree')
+
+  return context
+}
