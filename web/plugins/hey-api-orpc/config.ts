@@ -6,18 +6,21 @@ import { handler } from './plugin'
 
 export const defaultConfig: OrpcPlugin['Config'] = {
   config: {
+    contractNameBuilder: (id: string) => `${id}Contract`,
+    defaultTag: 'default',
+    exportFromIndex: false,
     output: 'orpc',
   },
   dependencies: ['@hey-api/typescript', 'zod'],
   handler,
   name: 'orpc',
-  resolveConfig: (plugin) => {
-    plugin.config.output = plugin.config.output ?? 'orpc'
-    plugin.config.exportFromIndex = plugin.config.exportFromIndex ?? false
-    plugin.config.contractNameBuilder = plugin.config.contractNameBuilder
-      ?? ((id: string) => `${id}Contract`)
-    plugin.config.defaultTag = plugin.config.defaultTag ?? 'default'
+  resolveConfig: (plugin, _context) => {
+    plugin.config.output ??= 'orpc'
+    plugin.config.exportFromIndex ??= false
+    plugin.config.contractNameBuilder ??= (id: string) => `${id}Contract`
+    plugin.config.defaultTag ??= 'default'
   },
+  tags: ['client'],
 }
 
 /**
