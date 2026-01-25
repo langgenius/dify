@@ -25,6 +25,16 @@ function getFilePathByTag(symbol: { meta?: SymbolMeta }): string | undefined {
   if (!tag)
     return undefined
 
+  // Handle typescript plugin symbols
+  if (meta.tool === 'typescript') {
+    // Only split operation-related types (data/responses), not definitions
+    if (meta.resource === 'operation') {
+      return `types/${tag}`
+    }
+    // Keep definitions in the main types file
+    return undefined
+  }
+
   // Handle zod plugin symbols
   if (meta.tool === 'zod') {
     // Only split operation-related schemas (requests/responses), not definitions
