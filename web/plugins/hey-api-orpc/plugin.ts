@@ -7,6 +7,76 @@ function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
+// Convert kebab-case to camelCase: "chat-messages" → "chatMessages"
+function toCamelCase(str: string): string {
+  return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())
+}
+
+// Extract first path segment: "/chat-messages" → "chat-messages"
+function getPathSegment(path: string): string {
+  return path.split('/').filter(Boolean)[0] || 'common'
+}
+
+// Simplify operation key by removing redundant parts based on the group
+// e.g., "sendChatMessage" with segment "chat-messages" → "send"
+// e.g., "getConversationsList" with segment "conversations" → "list"
+// e.g., "uploadChatFile" with segment "files" → "upload"
+function simplifyOperationKey(operationId: string, segment: string): string {
+  // Patterns to remove (order matters - more specific first)
+  const patternsToRemove = [
+    // App-specific patterns
+    'ChatWebApp',
+    'ChatApp',
+    'ChatFile',
+    'ChatMessage',
+    'Chat',
+    // Segment-based patterns
+    ...buildSegmentPatterns(segment),
+  ]
+
+  let simplified = operationId
+
+  // Remove patterns iteratively
+  for (const pattern of patternsToRemove) {
+    const regex = new RegExp(pattern, 'g')
+    const result = simplified.replace(regex, '')
+    if (result !== simplified && result.length > 0) {
+      simplified = result
+    }
+  }
+
+  // Ensure first char is lowercase
+  simplified = simplified.charAt(0).toLowerCase() + simplified.slice(1)
+
+  // Handle edge cases where we end up with just HTTP method
+  // e.g., "get" → keep as "get", but "getChatApp" → "get" is fine for single operations
+  if (!simplified || simplified.length < 2) {
+    return operationId.charAt(0).toLowerCase() + operationId.slice(1)
+  }
+
+  return simplified
+}
+
+// Build patterns from segment name
+// "chat-messages" → ["ChatMessages", "ChatMessage"]
+// "conversations" → ["Conversations", "Conversation"]
+// "audio-to-text" → ["AudioToText"]
+function buildSegmentPatterns(segment: string): string[] {
+  const parts = segment.split('-')
+  const patterns: string[] = []
+
+  // Full camelCase: "chat-messages" → "ChatMessages"
+  const fullCamel = parts.map(capitalizeFirst).join('')
+  patterns.push(fullCamel)
+
+  // Singular form: "ChatMessages" → "ChatMessage"
+  if (fullCamel.endsWith('s') && !fullCamel.endsWith('ss')) {
+    patterns.push(fullCamel.slice(0, -1))
+  }
+
+  return patterns
+}
+
 function toZodSchemaName(operationId: string, type: 'data' | 'response'): string {
   const pascalName = capitalizeFirst(operationId)
   return type === 'data' ? `z${pascalName}Data` : `z${pascalName}Response`
@@ -225,7 +295,7 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     plugin.node(contractNode)
   }
 
-  // Create contracts object export
+  // Create contracts object export grouped by API path segment
   const contractsSymbol = plugin.symbol('contracts', {
     exported: true,
     meta: {
@@ -233,13 +303,31 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     },
   })
 
-  const contractsObject = $.object()
+  // Group operations by path segment
+  const operationsBySegment = new Map<string, OperationInfo[]>()
   for (const op of operations) {
-    const contractSymbol = contractSymbols[op.id]
-    if (contractSymbol) {
-      const contractName = contractNameBuilder(op.id)
-      contractsObject.prop(contractName, $(contractSymbol))
+    const segment = getPathSegment(op.path)
+    if (!operationsBySegment.has(segment)) {
+      operationsBySegment.set(segment, [])
     }
+    operationsBySegment.get(segment)!.push(op)
+  }
+
+  // Build nested contracts object
+  const contractsObject = $.object()
+  for (const [segment, segmentOps] of operationsBySegment) {
+    const groupKey = toCamelCase(segment)
+    const groupObject = $.object()
+
+    for (const op of segmentOps) {
+      const contractSymbol = contractSymbols[op.id]
+      if (contractSymbol) {
+        const key = simplifyOperationKey(op.id, segment)
+        groupObject.prop(key, $(contractSymbol))
+      }
+    }
+
+    contractsObject.prop(groupKey, groupObject)
   }
 
   const contractsNode = $.const(contractsSymbol)
