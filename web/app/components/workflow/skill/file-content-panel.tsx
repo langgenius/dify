@@ -19,7 +19,6 @@ import MarkdownFileEditor from './editor/markdown-file-editor'
 import { useFileTypeInfo } from './hooks/use-file-type-info'
 import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
 import { useSkillFileData } from './hooks/use-skill-file-data'
-import { useSkillFileSave } from './hooks/use-skill-file-save'
 import { useSkillSaveManager } from './hooks/use-skill-save-manager'
 import StartTabContent from './start-tab'
 import { getFileLanguage } from './utils/file-utils'
@@ -100,25 +99,17 @@ const FileContentPanel: FC = () => {
     storeApi.getState().pinTab(fileTabId)
   }, [fileTabId, isEditable, originalContent, storeApi])
 
-  useSkillFileSave({
-    appId,
-    activeTabId: fileTabId,
-    isEditable,
-    originalContent,
-    currentMetadata,
-    t,
-  })
-
   const { saveFile, registerFallback, unregisterFallback } = useSkillSaveManager()
 
   const fallbackRef = useRef({ content: originalContent, metadata: currentMetadata })
-  fallbackRef.current = { content: originalContent, metadata: currentMetadata }
 
   useEffect(() => {
     if (!fileTabId || fileContent?.content === undefined)
       return
 
-    registerFallback(fileTabId, { content: originalContent, metadata: currentMetadata })
+    const fallback = { content: originalContent, metadata: currentMetadata }
+    fallbackRef.current = fallback
+    registerFallback(fileTabId, fallback)
 
     return () => {
       unregisterFallback(fileTabId)
@@ -129,8 +120,8 @@ const FileContentPanel: FC = () => {
     if (!fileTabId || !isEditable)
       return
 
-    const { content: fallbackContent, metadata: fallbackMetadata } = fallbackRef.current
     return () => {
+      const { content: fallbackContent, metadata: fallbackMetadata } = fallbackRef.current
       void saveFile(fileTabId, {
         fallbackContent,
         fallbackMetadata,

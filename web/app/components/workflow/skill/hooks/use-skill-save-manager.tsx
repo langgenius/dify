@@ -1,7 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { useEventListener } from 'ahooks'
 import isDeepEqual from 'fast-deep-equal'
 import * as React from 'react'
 import { useCallback, useMemo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import Toast from '@/app/components/base/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/client'
 import { useUpdateAppAssetFileContent } from '@/service/use-app-asset'
@@ -53,6 +56,7 @@ export const SkillSaveProvider = ({
   appId,
   children,
 }: SkillSaveProviderProps) => {
+  const { t } = useTranslation()
   const storeApi = useWorkflowStore()
   const queryClient = useQueryClient()
   const updateContent = useUpdateAppAssetFileContent()
@@ -224,6 +228,31 @@ export const SkillSaveProvider = ({
   const unregisterFallback = useCallback((fileId: string) => {
     fallbackRegistryRef.current.delete(fileId)
   }, [])
+
+  useEventListener('keydown', (e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault()
+      const { activeTabId } = storeApi.getState()
+      if (!activeTabId || activeTabId === START_TAB_ID)
+        return
+
+      const fallback = fallbackRegistryRef.current.get(activeTabId)
+      void saveFile(activeTabId, {
+        fallbackContent: fallback?.content,
+        fallbackMetadata: fallback?.metadata,
+      }).then((result) => {
+        if (result.error) {
+          const errorMessage = result.error instanceof Error
+            ? result.error.message
+            : String(result.error)
+          Toast.notify({ type: 'error', message: errorMessage })
+        }
+        else if (result.saved) {
+          Toast.notify({ type: 'success', message: t('api.saved', { ns: 'common' }) })
+        }
+      })
+    }
+  }, { target: typeof window !== 'undefined' ? window : undefined })
 
   const value = useMemo<SkillSaveContextValue>(() => ({
     saveFile,
