@@ -164,6 +164,7 @@ class LargeLanguageModel(AIModel):
                 usage = LLMUsage.empty_usage()
                 system_fingerprint = None
                 tools_calls: list[AssistantPromptMessage.ToolCall] = []
+                assistant_opaque_body = None
 
                 for chunk in result:
                     if isinstance(chunk.delta.message.content, str):
@@ -172,6 +173,8 @@ class LargeLanguageModel(AIModel):
                         content_list.extend(chunk.delta.message.content)
                     if chunk.delta.message.tool_calls:
                         _increase_tool_call(chunk.delta.message.tool_calls, tools_calls)
+                    if assistant_opaque_body is None and chunk.delta.message.opaque_body is not None:
+                        assistant_opaque_body = chunk.delta.message.opaque_body
 
                     usage = chunk.delta.usage or LLMUsage.empty_usage()
                     system_fingerprint = chunk.system_fingerprint
@@ -183,6 +186,7 @@ class LargeLanguageModel(AIModel):
                     message=AssistantPromptMessage(
                         content=content or content_list,
                         tool_calls=tools_calls,
+                        opaque_body=assistant_opaque_body,
                     ),
                     usage=usage,
                     system_fingerprint=system_fingerprint,
@@ -261,6 +265,8 @@ class LargeLanguageModel(AIModel):
         usage = None
         system_fingerprint = None
         real_model = model
+        assistant_opaque_body = None
+        tools_calls: list[AssistantPromptMessage.ToolCall] = []
 
         def _update_message_content(content: str | list[PromptMessageContentUnionTypes] | None):
             if not content:
@@ -294,6 +300,10 @@ class LargeLanguageModel(AIModel):
                 )
 
                 _update_message_content(chunk.delta.message.content)
+                if chunk.delta.message.tool_calls:
+                    _increase_tool_call(chunk.delta.message.tool_calls, tools_calls)
+                if assistant_opaque_body is None and chunk.delta.message.opaque_body is not None:
+                    assistant_opaque_body = chunk.delta.message.opaque_body
 
                 real_model = chunk.model
                 if chunk.delta.usage:
@@ -304,7 +314,11 @@ class LargeLanguageModel(AIModel):
         except Exception as e:
             raise self._transform_invoke_error(e)
 
-        assistant_message = AssistantPromptMessage(content=message_content)
+        assistant_message = AssistantPromptMessage(
+            content=message_content,
+            tool_calls=tools_calls,
+            opaque_body=assistant_opaque_body,
+        )
         self._trigger_after_invoke_callbacks(
             model=model,
             result=LLMResult(
