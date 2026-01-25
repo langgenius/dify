@@ -30,9 +30,16 @@ export type SaveResult = {
   error?: unknown
 }
 
+export type FallbackEntry = {
+  content: string
+  metadata?: Record<string, unknown>
+}
+
 type SkillSaveContextValue = {
   saveFile: (fileId: string, options?: SaveFileOptions) => Promise<SaveResult>
   saveAllDirty: () => void
+  registerFallback: (fileId: string, entry: FallbackEntry) => void
+  unregisterFallback: (fileId: string) => void
 }
 
 type SkillSaveProviderProps = {
@@ -50,6 +57,7 @@ export const SkillSaveProvider = ({
   const queryClient = useQueryClient()
   const updateContent = useUpdateAppAssetFileContent()
   const queueRef = useRef<Map<string, Promise<SaveResult>>>(new Map())
+  const fallbackRegistryRef = useRef<Map<string, FallbackEntry>>(new Map())
 
   const getCachedContent = useCallback((fileId: string): string | undefined => {
     if (!appId)
@@ -89,8 +97,9 @@ export const SkillSaveProvider = ({
     if (draftContent === undefined && !isMetadataDirty)
       return null
 
-    const metadata = state.fileMetadata.get(fileId) ?? fallbackMetadata
-    const content = draftContent ?? getCachedContent(fileId) ?? fallbackContent
+    const registryEntry = fallbackRegistryRef.current.get(fileId)
+    const metadata = state.fileMetadata.get(fileId) ?? fallbackMetadata ?? registryEntry?.metadata
+    const content = draftContent ?? getCachedContent(fileId) ?? fallbackContent ?? registryEntry?.content
 
     if (content === undefined)
       return null
@@ -208,10 +217,20 @@ export const SkillSaveProvider = ({
     void Promise.allSettled(tasks)
   }, [appId, saveFile, storeApi])
 
+  const registerFallback = useCallback((fileId: string, entry: FallbackEntry) => {
+    fallbackRegistryRef.current.set(fileId, entry)
+  }, [])
+
+  const unregisterFallback = useCallback((fileId: string) => {
+    fallbackRegistryRef.current.delete(fileId)
+  }, [])
+
   const value = useMemo<SkillSaveContextValue>(() => ({
     saveFile,
     saveAllDirty,
-  }), [saveAllDirty, saveFile])
+    registerFallback,
+    unregisterFallback,
+  }), [saveAllDirty, saveFile, registerFallback, unregisterFallback])
 
   return (
     <SkillSaveContext.Provider value={value}>

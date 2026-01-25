@@ -3,7 +3,6 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useStore } from '@/app/components/workflow/store'
 import ContentArea from './content-area'
 import ContentBody from './content-body'
 import FileContentPanel from './file-content-panel'
@@ -16,10 +15,7 @@ import SidebarSearchAdd from './sidebar-search-add'
 import SkillPageLayout from './skill-page-layout'
 
 const SkillAutoSaveManager: FC = () => {
-  const activeTabId = useStore(s => s.activeTabId)
-
-  useSkillAutoSave({ activeTabId })
-
+  useSkillAutoSave()
   return null
 }
 

@@ -20,6 +20,7 @@ import { useFileTypeInfo } from './hooks/use-file-type-info'
 import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
 import { useSkillFileData } from './hooks/use-skill-file-data'
 import { useSkillFileSave } from './hooks/use-skill-file-save'
+import { useSkillSaveManager } from './hooks/use-skill-save-manager'
 import StartTabContent from './start-tab'
 import { getFileLanguage } from './utils/file-utils'
 import MediaFilePreview from './viewer/media-file-preview'
@@ -107,6 +108,35 @@ const FileContentPanel: FC = () => {
     currentMetadata,
     t,
   })
+
+  const { saveFile, registerFallback, unregisterFallback } = useSkillSaveManager()
+
+  const fallbackRef = useRef({ content: originalContent, metadata: currentMetadata })
+  fallbackRef.current = { content: originalContent, metadata: currentMetadata }
+
+  useEffect(() => {
+    if (!fileTabId || fileContent?.content === undefined)
+      return
+
+    registerFallback(fileTabId, { content: originalContent, metadata: currentMetadata })
+
+    return () => {
+      unregisterFallback(fileTabId)
+    }
+  }, [fileTabId, fileContent?.content, originalContent, currentMetadata, registerFallback, unregisterFallback])
+
+  useEffect(() => {
+    if (!fileTabId || !isEditable)
+      return
+
+    const { content: fallbackContent, metadata: fallbackMetadata } = fallbackRef.current
+    return () => {
+      void saveFile(fileTabId, {
+        fallbackContent,
+        fallbackMetadata,
+      })
+    }
+  }, [fileTabId, isEditable, saveFile])
 
   const handleEditorDidMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor
