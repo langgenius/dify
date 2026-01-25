@@ -9,47 +9,47 @@ export const base = oc.$route({ inputStructure: 'detailed', outputStructure: 'de
 /**
  * Send a request to the chat application.
  */
-export const sendChatMessageContract = base.route({ path: '/chat-messages', method: 'POST' }).input(zSendChatMessageData).output(z.object({ body: zSendChatMessageResponse }))
+export const sendChatMessageContract = base.route({ path: '/chat-messages', method: 'POST' }).input(zSendChatMessageData).output(z.object({ body: zSendChatMessageResponse, status: z.literal(200) }))
 
 /**
  * Upload a file (currently only images are supported) for use when sending messages, enabling multimodal understanding of images and text. Supports png, jpg, jpeg, webp, gif formats. Uploaded files are for use by the current end-user only.
  */
-export const uploadChatFileContract = base.route({ path: '/files/upload', method: 'POST' }).input(zUploadChatFileData).output(z.object({ body: zUploadChatFileResponse }))
+export const uploadChatFileContract = base.route({ path: '/files/upload', method: 'POST' }).input(zUploadChatFileData).output(z.object({ body: zUploadChatFileResponse, status: z.literal(200) }))
 
 /**
  * Preview or download uploaded files. This endpoint allows you to access files that have been previously uploaded via the File Upload API. Files can only be accessed if they belong to messages within the requesting application.
  */
-export const previewChatFileContract = base.route({ path: '/files/{file_id}/preview', method: 'GET' }).input(zPreviewChatFileData).output(z.object({ body: zPreviewChatFileResponse }))
+export const previewChatFileContract = base.route({ path: '/files/{file_id}/preview', method: 'GET' }).input(zPreviewChatFileData).output(z.object({ body: zPreviewChatFileResponse, status: z.literal(200) }))
 
 /**
  * Stops a chat message generation task. Only supported in streaming mode.
  */
-export const stopChatMessageGenerationContract = base.route({ path: '/chat-messages/{task_id}/stop', method: 'POST' }).input(zStopChatMessageGenerationData).output(z.object({ body: zStopChatMessageGenerationResponse }))
+export const stopChatMessageGenerationContract = base.route({ path: '/chat-messages/{task_id}/stop', method: 'POST' }).input(zStopChatMessageGenerationData).output(z.object({ body: zStopChatMessageGenerationResponse, status: z.literal(200) }))
 
 /**
  * End-users can provide feedback messages, facilitating application developers to optimize expected outputs.
  */
-export const postChatMessageFeedbackContract = base.route({ path: '/messages/{message_id}/feedbacks', method: 'POST' }).input(zPostChatMessageFeedbackData).output(z.object({ body: zPostChatMessageFeedbackResponse }))
+export const postChatMessageFeedbackContract = base.route({ path: '/messages/{message_id}/feedbacks', method: 'POST' }).input(zPostChatMessageFeedbackData).output(z.object({ body: zPostChatMessageFeedbackResponse, status: z.literal(200) }))
 
 /**
  * Get application's feedbacks.
  */
-export const getChatAppFeedbacksContract = base.route({ path: '/app/feedbacks', method: 'GET' }).input(zGetChatAppFeedbacksData).output(z.object({ body: zGetChatAppFeedbacksResponse }))
+export const getChatAppFeedbacksContract = base.route({ path: '/app/feedbacks', method: 'GET' }).input(zGetChatAppFeedbacksData).output(z.object({ body: zGetChatAppFeedbacksResponse, status: z.literal(200) }))
 
 /**
  * Get next questions suggestions for the current message.
  */
-export const getSuggestedQuestionsContract = base.route({ path: '/messages/{message_id}/suggested', method: 'GET' }).input(zGetSuggestedQuestionsData).output(z.object({ body: zGetSuggestedQuestionsResponse }))
+export const getSuggestedQuestionsContract = base.route({ path: '/messages/{message_id}/suggested', method: 'GET' }).input(zGetSuggestedQuestionsData).output(z.object({ body: zGetSuggestedQuestionsResponse, status: z.literal(200) }))
 
 /**
  * Returns historical chat records in a scrolling load format, with the first page returning the latest `{limit}` messages, i.e., in reverse order.
  */
-export const getConversationHistoryContract = base.route({ path: '/messages', method: 'GET' }).input(zGetConversationHistoryData).output(z.object({ body: zGetConversationHistoryResponse }))
+export const getConversationHistoryContract = base.route({ path: '/messages', method: 'GET' }).input(zGetConversationHistoryData).output(z.object({ body: zGetConversationHistoryResponse, status: z.literal(200) }))
 
 /**
  * Retrieve the conversation list for the current user, defaulting to the most recent 20 entries.
  */
-export const getConversationsListContract = base.route({ path: '/conversations', method: 'GET' }).input(zGetConversationsListData).output(z.object({ body: zGetConversationsListResponse }))
+export const getConversationsListContract = base.route({ path: '/conversations', method: 'GET' }).input(zGetConversationsListData).output(z.object({ body: zGetConversationsListResponse, status: z.literal(200) }))
 
 /**
  * Delete a conversation.
@@ -59,52 +59,52 @@ export const deleteConversationContract = base.route({ path: '/conversations/{co
 /**
  * Rename the session. The session name is used for display on clients that support multiple sessions.
  */
-export const renameConversationContract = base.route({ path: '/conversations/{conversation_id}/name', method: 'POST' }).input(zRenameConversationData).output(z.object({ body: zRenameConversationResponse }))
+export const renameConversationContract = base.route({ path: '/conversations/{conversation_id}/name', method: 'POST' }).input(zRenameConversationData).output(z.object({ body: zRenameConversationResponse, status: z.literal(200) }))
 
 /**
  * Retrieve variables from a specific conversation.
  */
-export const getConversationVariablesContract = base.route({ path: '/conversations/{conversation_id}/variables', method: 'GET' }).input(zGetConversationVariablesData).output(z.object({ body: zGetConversationVariablesResponse }))
+export const getConversationVariablesContract = base.route({ path: '/conversations/{conversation_id}/variables', method: 'GET' }).input(zGetConversationVariablesData).output(z.object({ body: zGetConversationVariablesResponse, status: z.literal(200) }))
 
 /**
  * Convert audio file to text. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm. File size limit: 15MB.
  */
-export const audioToTextContract = base.route({ path: '/audio-to-text', method: 'POST' }).input(zAudioToTextData).output(z.object({ body: zAudioToTextResponse }))
+export const audioToTextContract = base.route({ path: '/audio-to-text', method: 'POST' }).input(zAudioToTextData).output(z.object({ body: zAudioToTextResponse, status: z.literal(200) }))
 
 /**
  * Convert text to speech.
  */
-export const textToAudioChatContract = base.route({ path: '/text-to-audio', method: 'POST' }).input(zTextToAudioChatData).output(z.object({ body: zTextToAudioChatResponse }))
+export const textToAudioChatContract = base.route({ path: '/text-to-audio', method: 'POST' }).input(zTextToAudioChatData).output(z.object({ body: zTextToAudioChatResponse, status: z.literal(200) }))
 
 /**
  * Used to get basic information about this application.
  */
-export const getChatAppInfoContract = base.route({ path: '/info', method: 'GET' }).output(z.object({ body: zGetChatAppInfoResponse }))
+export const getChatAppInfoContract = base.route({ path: '/info', method: 'GET' }).output(z.object({ body: zGetChatAppInfoResponse, status: z.literal(200) }))
 
 /**
  * Used at the start of entering the page to obtain information such as features, input parameter names, types, and default values.
  */
-export const getChatAppParametersContract = base.route({ path: '/parameters', method: 'GET' }).input(zGetChatAppParametersData).output(z.object({ body: zGetChatAppParametersResponse }))
+export const getChatAppParametersContract = base.route({ path: '/parameters', method: 'GET' }).input(zGetChatAppParametersData).output(z.object({ body: zGetChatAppParametersResponse, status: z.literal(200) }))
 
 /**
  * Used to get icons of tools in this application.
  */
-export const getChatAppMetaContract = base.route({ path: '/meta', method: 'GET' }).output(z.object({ body: zGetChatAppMetaResponse }))
+export const getChatAppMetaContract = base.route({ path: '/meta', method: 'GET' }).output(z.object({ body: zGetChatAppMetaResponse, status: z.literal(200) }))
 
 /**
  * Used to get the WebApp settings of the application.
  */
-export const getChatWebAppSettingsContract = base.route({ path: '/site', method: 'GET' }).output(z.object({ body: zGetChatWebAppSettingsResponse }))
+export const getChatWebAppSettingsContract = base.route({ path: '/site', method: 'GET' }).output(z.object({ body: zGetChatWebAppSettingsResponse, status: z.literal(200) }))
 
 /**
  * Retrieves a list of annotations for the application.
  */
-export const getAnnotationListContract = base.route({ path: '/apps/annotations', method: 'GET' }).input(zGetAnnotationListData).output(z.object({ body: zGetAnnotationListResponse }))
+export const getAnnotationListContract = base.route({ path: '/apps/annotations', method: 'GET' }).input(zGetAnnotationListData).output(z.object({ body: zGetAnnotationListResponse, status: z.literal(200) }))
 
 /**
  * Creates a new annotation.
  */
-export const createAnnotationContract = base.route({ path: '/apps/annotations', method: 'POST' }).input(zCreateAnnotationData).output(z.object({ body: zCreateAnnotationResponse }))
+export const createAnnotationContract = base.route({ path: '/apps/annotations', method: 'POST' }).input(zCreateAnnotationData).output(z.object({ body: zCreateAnnotationResponse, status: z.literal(200) }))
 
 /**
  * Deletes an annotation.
@@ -114,17 +114,17 @@ export const deleteAnnotationContract = base.route({ path: '/apps/annotations/{a
 /**
  * Updates an existing annotation.
  */
-export const updateAnnotationContract = base.route({ path: '/apps/annotations/{annotation_id}', method: 'PUT' }).input(zUpdateAnnotationData).output(z.object({ body: zUpdateAnnotationResponse }))
+export const updateAnnotationContract = base.route({ path: '/apps/annotations/{annotation_id}', method: 'PUT' }).input(zUpdateAnnotationData).output(z.object({ body: zUpdateAnnotationResponse, status: z.literal(200) }))
 
 /**
  * Enable or disable annotation reply settings and configure embedding models. This interface is executed asynchronously.
  */
-export const initialAnnotationReplySettingsContract = base.route({ path: '/apps/annotation-reply/{action}', method: 'POST' }).input(zInitialAnnotationReplySettingsData).output(z.object({ body: zInitialAnnotationReplySettingsResponse }))
+export const initialAnnotationReplySettingsContract = base.route({ path: '/apps/annotation-reply/{action}', method: 'POST' }).input(zInitialAnnotationReplySettingsData).output(z.object({ body: zInitialAnnotationReplySettingsResponse, status: z.literal(200) }))
 
 /**
  * Queries the status of an asynchronously executed annotation reply settings task.
  */
-export const getInitialAnnotationReplySettingsStatusContract = base.route({ path: '/apps/annotation-reply/{action}/status/{job_id}', method: 'GET' }).input(zGetInitialAnnotationReplySettingsStatusData).output(z.object({ body: zGetInitialAnnotationReplySettingsStatusResponse }))
+export const getInitialAnnotationReplySettingsStatusContract = base.route({ path: '/apps/annotation-reply/{action}/status/{job_id}', method: 'GET' }).input(zGetInitialAnnotationReplySettingsStatusData).output(z.object({ body: zGetInitialAnnotationReplySettingsStatusResponse, status: z.literal(200) }))
 
 export const contracts = {
   chat: {

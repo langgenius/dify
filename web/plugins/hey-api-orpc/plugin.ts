@@ -21,6 +21,7 @@ type OperationInfo = {
   tags: string[]
   hasInput: boolean
   hasOutput: boolean
+  successStatusCode?: number
   zodDataSchema: string
   zodResponseSchema: string
 }
@@ -37,11 +38,13 @@ function collectOperation(operation: IR.OperationObject): OperationInfo {
   // Check if operation has a successful response with actual content
   // Look for 2xx responses that have a schema with mediaType (indicating response body)
   let hasOutput = false
+  let successStatusCode: number | undefined
   if (operation.responses) {
     for (const [statusCode, response] of Object.entries(operation.responses)) {
       // Check for 2xx success responses with actual content
       if (statusCode.startsWith('2') && response?.mediaType && response?.schema) {
         hasOutput = true
+        successStatusCode = Number.parseInt(statusCode, 10)
         break
       }
     }
@@ -55,6 +58,7 @@ function collectOperation(operation: IR.OperationObject): OperationInfo {
     id,
     method: operation.method.toUpperCase(),
     path: operation.path,
+    successStatusCode,
     tags: operation.tags ? [...operation.tags] : ['default'],
     zodDataSchema: toZodSchemaName(id, 'data'),
     zodResponseSchema: toZodSchemaName(id, 'response'),
@@ -149,18 +153,22 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
         .call($(zodSchemaSymbols[op.zodDataSchema]))
     }
 
-    // .output(z.object({ body: zodResponseSchema })) if has output (detailed outputStructure)
+    // .output(z.object({ status: z.literal(200), body: zodResponseSchema })) if has output (detailed outputStructure)
     if (op.hasOutput) {
+      const outputObject = $.object()
+        .prop('body', $(zodSchemaSymbols[op.zodResponseSchema]))
+
+      // Add status code if available
+      if (op.successStatusCode) {
+        outputObject.prop(
+          'status',
+          $(symbolZ).attr('literal').call($.literal(op.successStatusCode)),
+        )
+      }
+
       expression = expression
         .attr('output')
-        .call(
-          $(symbolZ)
-            .attr('object')
-            .call(
-              $.object()
-                .prop('body', $(zodSchemaSymbols[op.zodResponseSchema])),
-            ),
-        )
+        .call($(symbolZ).attr('object').call(outputObject))
     }
 
     const contractNode = $.const(contractSymbol)
