@@ -22,6 +22,7 @@ export default defineConfig({
     },
     defineOrpcConfig({
       output: 'orpc',
+      // fileStrategy: 'byTags', // Uncomment to split files by tag
     }),
   ],
 })

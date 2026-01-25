@@ -2,7 +2,8 @@
 
 import { oc } from '@orpc/contract'
 import { z } from 'zod'
-import { zAudioToTextData, zAudioToTextResponse, zCreateAnnotationData, zCreateAnnotationResponse, zDeleteAnnotationData, zDeleteConversationData, zGetAnnotationListData, zGetAnnotationListResponse, zGetChatAppFeedbacksData, zGetChatAppFeedbacksResponse, zGetChatAppInfoResponse, zGetChatAppMetaResponse, zGetChatAppParametersData, zGetChatAppParametersResponse, zGetChatWebAppSettingsResponse, zGetConversationHistoryData, zGetConversationHistoryResponse, zGetConversationsListData, zGetConversationsListResponse, zGetConversationVariablesData, zGetConversationVariablesResponse, zGetInitialAnnotationReplySettingsStatusData, zGetInitialAnnotationReplySettingsStatusResponse, zGetSuggestedQuestionsData, zGetSuggestedQuestionsResponse, zInitialAnnotationReplySettingsData, zInitialAnnotationReplySettingsResponse, zPostChatMessageFeedbackData, zPostChatMessageFeedbackResponse, zPreviewChatFileData, zPreviewChatFileResponse, zRenameConversationData, zRenameConversationResponse, zSendChatMessageData, zSendChatMessageResponse, zStopChatMessageGenerationData, zStopChatMessageGenerationResponse, zTextToAudioChatData, zTextToAudioChatResponse, zUpdateAnnotationData, zUpdateAnnotationResponse, zUploadChatFileData, zUploadChatFileResponse } from './zod.gen'
+
+import { zAudioToTextData, zAudioToTextResponse2, zCreateAnnotationData, zCreateAnnotationResponse, zDeleteAnnotationData, zDeleteConversationData, zGetAnnotationListData, zGetAnnotationListResponse, zGetChatAppFeedbacksData, zGetChatAppFeedbacksResponse, zGetChatAppInfoResponse, zGetChatAppMetaResponse, zGetChatAppParametersData, zGetChatAppParametersResponse, zGetChatWebAppSettingsResponse, zGetConversationHistoryData, zGetConversationHistoryResponse, zGetConversationsListData, zGetConversationsListResponse, zGetConversationVariablesData, zGetConversationVariablesResponse, zGetInitialAnnotationReplySettingsStatusData, zGetInitialAnnotationReplySettingsStatusResponse, zGetSuggestedQuestionsData, zGetSuggestedQuestionsResponse, zInitialAnnotationReplySettingsData, zInitialAnnotationReplySettingsResponse2, zPostChatMessageFeedbackData, zPostChatMessageFeedbackResponse, zPreviewChatFileData, zPreviewChatFileResponse, zRenameConversationData, zRenameConversationResponse, zSendChatMessageData, zSendChatMessageResponse, zStopChatMessageGenerationData, zStopChatMessageGenerationResponse, zTextToAudioChatData, zTextToAudioChatResponse, zUpdateAnnotationData, zUpdateAnnotationResponse, zUploadChatFileData, zUploadChatFileResponse } from './zod.gen'
 
 export const base = oc.$route({ inputStructure: 'detailed', outputStructure: 'detailed' })
 
@@ -186,7 +187,7 @@ export const audioToTextContract = base.route({
   summary: 'Speech to Text',
   description: 'Convert audio file to text. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm. File size limit: 15MB.',
   tags: ['TTS'],
-}).input(zAudioToTextData).output(z.object({ body: zAudioToTextResponse, status: z.literal(200) }))
+}).input(zAudioToTextData).output(z.object({ body: zAudioToTextResponse2, status: z.literal(200) }))
 
 /**
  * Text to Audio
@@ -326,7 +327,7 @@ export const initialAnnotationReplySettingsContract = base.route({
   summary: 'Initial Annotation Reply Settings',
   description: 'Enable or disable annotation reply settings and configure embedding models. This interface is executed asynchronously.',
   tags: ['Annotations'],
-}).input(zInitialAnnotationReplySettingsData).output(z.object({ body: zInitialAnnotationReplySettingsResponse, status: z.literal(200) }))
+}).input(zInitialAnnotationReplySettingsData).output(z.object({ body: zInitialAnnotationReplySettingsResponse2, status: z.literal(200) }))
 
 /**
  * Query Initial Annotation Reply Settings Task Status

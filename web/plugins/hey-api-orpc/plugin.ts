@@ -28,7 +28,7 @@ type OperationInfo = {
   zodResponseSchema: string
 }
 
-function collectOperation(operation: IR.OperationObject): OperationInfo {
+function collectOperation(operation: IR.OperationObject, defaultTag: string): OperationInfo {
   const id = operation.id || `${operation.method}_${operation.path.replace(/[{}/]/g, '_')}`
 
   const hasPathParams = Boolean(operation.parameters?.path && Object.keys(operation.parameters.path).length > 0)
@@ -63,30 +63,45 @@ function collectOperation(operation: IR.OperationObject): OperationInfo {
     path: operation.path,
     successStatusCode,
     summary: operation.summary,
-    tags: operation.tags ? [...operation.tags] : [],
+    tags: operation.tags && operation.tags.length > 0 ? [...operation.tags] : [defaultTag],
     zodDataSchema: toZodSchemaName(id, 'data'),
     zodResponseSchema: toZodSchemaName(id, 'response'),
   }
 }
 
 export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
-  const { contractNameBuilder, groupBy } = plugin.config
+  const {
+    contractNameBuilder,
+    defaultTag,
+    filePathBuilder,
+    fileStrategy,
+    groupBy,
+    output,
+  } = plugin.config
+
   const operations: OperationInfo[] = []
-  const zodImports = new Set<string>()
 
   // Collect all operations using hey-api's forEach
   plugin.forEach('operation', (event) => {
-    const info = collectOperation(event.operation)
+    const info = collectOperation(event.operation, defaultTag)
     operations.push(info)
-
-    // Collect zod imports
-    if (info.hasInput) {
-      zodImports.add(info.zodDataSchema)
-    }
-    if (info.hasOutput) {
-      zodImports.add(info.zodResponseSchema)
-    }
   })
+
+  // Helper to get file path for a tag
+  const getFilePathForTag = (tag: string) => {
+    if (fileStrategy === 'single') {
+      return output
+    }
+    return filePathBuilder(tag)
+  }
+
+  // Get all unique tags
+  const allTags = new Set<string>()
+  for (const op of operations) {
+    for (const tag of op.tags) {
+      allTags.add(tag)
+    }
+  }
 
   // Register external symbols for imports
   const symbolOc = plugin.symbol('oc', {
@@ -95,35 +110,59 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
   })
   const symbolZ = plugin.external('zod.z')
 
-  // Register zod schema symbols (they come from zod plugin)
-  const zodSchemaSymbols: Record<string, ReturnType<typeof plugin.symbol>> = {}
-  for (const schemaName of zodImports) {
-    zodSchemaSymbols[schemaName] = plugin.symbol(schemaName, {
-      exported: false,
-      external: './zod.gen',
-    })
+  // Create base contract symbol - one per file when using byTags
+  const baseSymbols: Record<string, ReturnType<typeof plugin.symbol>> = {}
+
+  if (fileStrategy === 'byTags') {
+    // Create base symbol for each tag file
+    for (const tag of allTags) {
+      const filePath = getFilePathForTag(tag)
+      baseSymbols[tag] = plugin.symbol('base', {
+        exported: true,
+        getFilePath: () => filePath,
+        meta: {
+          category: 'schema',
+          tag,
+        },
+      })
+
+      const baseNode = $.const(baseSymbols[tag])
+        .export()
+        .assign(
+          $(symbolOc)
+            .attr('$route')
+            .call(
+              $.object()
+                .prop('inputStructure', $.literal('detailed'))
+                .prop('outputStructure', $.literal('detailed')),
+            ),
+        )
+      plugin.node(baseNode)
+    }
   }
+  else {
+    // Single base symbol for all operations
+    const baseSymbol = plugin.symbol('base', {
+      exported: true,
+      meta: {
+        category: 'schema',
+      },
+    })
+    baseSymbols.__default__ = baseSymbol
 
-  // Create base contract: export const base = oc.$route({ inputStructure: 'detailed', outputStructure: 'detailed' })
-  const baseSymbol = plugin.symbol('base', {
-    exported: true,
-    meta: {
-      category: 'schema',
-    },
-  })
-
-  const baseNode = $.const(baseSymbol)
-    .export()
-    .assign(
-      $(symbolOc)
-        .attr('$route')
-        .call(
-          $.object()
-            .prop('inputStructure', $.literal('detailed'))
-            .prop('outputStructure', $.literal('detailed')),
-        ),
-    )
-  plugin.node(baseNode)
+    const baseNode = $.const(baseSymbol)
+      .export()
+      .assign(
+        $(symbolOc)
+          .attr('$route')
+          .call(
+            $.object()
+              .prop('inputStructure', $.literal('detailed'))
+              .prop('outputStructure', $.literal('detailed')),
+          ),
+      )
+    plugin.node(baseNode)
+  }
 
   // Create contract for each operation
   // Store symbols for later use in contracts object
@@ -131,15 +170,25 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
 
   for (const op of operations) {
     const contractName = contractNameBuilder(op.id)
+    const primaryTag = op.tags[0]
+    const filePath = getFilePathForTag(primaryTag)
+
     const contractSymbol = plugin.symbol(contractName, {
       exported: true,
+      getFilePath: fileStrategy === 'byTags' ? () => filePath : undefined,
       meta: {
         category: 'schema',
         resource: 'operation',
         resourceId: op.id,
+        tag: primaryTag,
       },
     })
     contractSymbols[op.id] = contractSymbol
+
+    // Get the appropriate base symbol
+    const baseSymbol = fileStrategy === 'byTags'
+      ? baseSymbols[primaryTag]
+      : baseSymbols.__default__
 
     // Build the route config object with all available properties
     const routeConfig = $.object()
@@ -173,15 +222,31 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
 
     // .input(zodDataSchema) if has input
     if (op.hasInput) {
+      // Reference zod schema symbol dynamically from zod plugin
+      const zodDataSymbol = plugin.referenceSymbol({
+        category: 'schema',
+        resource: 'operation',
+        resourceId: op.id,
+        role: 'data',
+        tool: 'zod',
+      })
       expression = expression
         .attr('input')
-        .call($(zodSchemaSymbols[op.zodDataSchema]))
+        .call($(zodDataSymbol))
     }
 
     // .output(z.object({ status: z.literal(200), body: zodResponseSchema })) if has output (detailed outputStructure)
     if (op.hasOutput) {
+      // Reference zod response schema symbol dynamically from zod plugin
+      const zodResponseSymbol = plugin.referenceSymbol({
+        category: 'schema',
+        resource: 'operation',
+        resourceId: op.id,
+        role: 'responses',
+        tool: 'zod',
+      })
       const outputObject = $.object()
-        .prop('body', $(zodSchemaSymbols[op.zodResponseSchema]))
+        .prop('body', $(zodResponseSymbol))
 
       // Add status code if available
       if (op.successStatusCode) {
@@ -220,72 +285,120 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     plugin.node(contractNode)
   }
 
-  // Create contracts object export
-  const contractsSymbol = plugin.symbol('contracts', {
-    exported: true,
-    meta: {
-      category: 'schema',
-    },
-  })
+  // Create contracts object export (only for single file strategy)
+  // For byTags, each file has its own exports
+  if (fileStrategy === 'single') {
+    const contractsSymbol = plugin.symbol('contracts', {
+      exported: true,
+      meta: {
+        category: 'schema',
+      },
+    })
 
-  if (groupBy === 'tag') {
-    // Group operations by tag
-    const operationsByTag = new Map<string, OperationInfo[]>()
-    for (const op of operations) {
-      const tag = op.tags[0]
-      if (!operationsByTag.has(tag)) {
-        operationsByTag.set(tag, [])
+    if (groupBy === 'tag') {
+      // Group operations by tag
+      const operationsByTag = new Map<string, OperationInfo[]>()
+      for (const op of operations) {
+        const tag = op.tags[0]
+        if (!operationsByTag.has(tag)) {
+          operationsByTag.set(tag, [])
+        }
+        operationsByTag.get(tag)!.push(op)
       }
-      operationsByTag.get(tag)!.push(op)
+
+      // Build contracts object grouped by tag
+      const contractsObject = $.object()
+      for (const [tag, tagOps] of operationsByTag) {
+        const tagKey = tag.charAt(0).toLowerCase() + tag.slice(1)
+        const tagObject = $.object()
+        for (const op of tagOps) {
+          const contractSymbol = contractSymbols[op.id]
+          if (contractSymbol) {
+            const contractName = contractNameBuilder(op.id)
+            tagObject.prop(contractName, $(contractSymbol))
+          }
+        }
+        contractsObject.prop(tagKey, tagObject)
+      }
+
+      const contractsNode = $.const(contractsSymbol)
+        .export()
+        .assign(contractsObject)
+      plugin.node(contractsNode)
+    }
+    else {
+      // Flat structure without grouping
+      const contractsObject = $.object()
+      for (const op of operations) {
+        const contractSymbol = contractSymbols[op.id]
+        if (contractSymbol) {
+          const contractName = contractNameBuilder(op.id)
+          contractsObject.prop(contractName, $(contractSymbol))
+        }
+      }
+
+      const contractsNode = $.const(contractsSymbol)
+        .export()
+        .assign(contractsObject)
+      plugin.node(contractsNode)
     }
 
-    // Build contracts object grouped by tag
-    const contractsObject = $.object()
-    for (const [tag, tagOps] of operationsByTag) {
-      const tagKey = tag.charAt(0).toLowerCase() + tag.slice(1)
-      const tagObject = $.object()
+    // Create type export: export type Contracts = typeof contracts
+    const contractsTypeSymbol = plugin.symbol('Contracts', {
+      exported: true,
+      meta: {
+        category: 'type',
+      },
+    })
+
+    const contractsTypeNode = $.type.alias(contractsTypeSymbol)
+      .export()
+      .type($.type.query($(contractsSymbol)))
+    plugin.node(contractsTypeNode)
+  }
+  else {
+    // For byTags strategy, create contracts object per file
+    for (const tag of allTags) {
+      const filePath = getFilePathForTag(tag)
+      const tagOps = operations.filter(op => op.tags[0] === tag)
+
+      const contractsSymbol = plugin.symbol('contracts', {
+        exported: true,
+        getFilePath: () => filePath,
+        meta: {
+          category: 'schema',
+          tag,
+        },
+      })
+
+      const contractsObject = $.object()
       for (const op of tagOps) {
         const contractSymbol = contractSymbols[op.id]
         if (contractSymbol) {
           const contractName = contractNameBuilder(op.id)
-          tagObject.prop(contractName, $(contractSymbol))
+          contractsObject.prop(contractName, $(contractSymbol))
         }
       }
-      contractsObject.prop(tagKey, tagObject)
+
+      const contractsNode = $.const(contractsSymbol)
+        .export()
+        .assign(contractsObject)
+      plugin.node(contractsNode)
+
+      // Create type export per file
+      const contractsTypeSymbol = plugin.symbol('Contracts', {
+        exported: true,
+        getFilePath: () => filePath,
+        meta: {
+          category: 'type',
+          tag,
+        },
+      })
+
+      const contractsTypeNode = $.type.alias(contractsTypeSymbol)
+        .export()
+        .type($.type.query($(contractsSymbol)))
+      plugin.node(contractsTypeNode)
     }
-
-    const contractsNode = $.const(contractsSymbol)
-      .export()
-      .assign(contractsObject)
-    plugin.node(contractsNode)
   }
-  else {
-    // Flat structure without grouping
-    const contractsObject = $.object()
-    for (const op of operations) {
-      const contractSymbol = contractSymbols[op.id]
-      if (contractSymbol) {
-        const contractName = contractNameBuilder(op.id)
-        contractsObject.prop(contractName, $(contractSymbol))
-      }
-    }
-
-    const contractsNode = $.const(contractsSymbol)
-      .export()
-      .assign(contractsObject)
-    plugin.node(contractsNode)
-  }
-
-  // Create type export: export type Contracts = typeof contracts
-  const contractsTypeSymbol = plugin.symbol('Contracts', {
-    exported: true,
-    meta: {
-      category: 'type',
-    },
-  })
-
-  const contractsTypeNode = $.type.alias(contractsTypeSymbol)
-    .export()
-    .type($.type.query($(contractsSymbol)))
-  plugin.node(contractsTypeNode)
 }
