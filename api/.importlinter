@@ -296,7 +296,6 @@ ignore_imports =
     core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
     core.workflow.nodes.tool.tool_node -> extensions.ext_database
-    core.workflow.workflow_entry -> extensions.otel.runtime
     core.workflow.nodes.agent.agent_node -> models
     core.workflow.nodes.base.node -> models.enums
     core.workflow.nodes.llm.llm_utils -> models.provider_ids

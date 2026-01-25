@@ -5,6 +5,9 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
 
+from opentelemetry import context as context_api
+from opentelemetry.trace import get_current_span, get_tracer, set_span_in_context
+
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.variables import Segment, SegmentType
 from core.workflow.enums import (
@@ -121,10 +124,26 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             for i in range(loop_count):
                 # Clear stale variables from previous loop iterations to avoid streaming old values
                 self._clear_loop_subgraph_variables(loop_node_ids)
-                graph_engine = self._create_graph_engine(start_at=start_at, root_node_id=root_node_id)
+
+                # Child span for each loop round so sub-graph spans group under it
+                tracer = get_tracer("core.workflow.nodes.loop")
 
                 loop_start_time = naive_utc_now()
-                reach_break_node = yield from self._run_single_loop(graph_engine=graph_engine, current_index=i)
+                _parent_ctx = set_span_in_context(get_current_span(), context_api.get_current())
+                with tracer.start_as_current_span(f"loop[{i}]", context=_parent_ctx) as _loop_span:
+                    _loop_span.set_attribute("loop.index", i)
+
+                    graph_engine = self._create_graph_engine(start_at=start_at, root_node_id=root_node_id)
+
+                    reach_break_node = yield from self._run_single_loop(graph_engine=graph_engine, current_index=i)
+
+                    # Duration metric for this loop (ms)
+                    _loop_span.set_attribute(
+                        "loop.duration.ms",
+                        (naive_utc_now() - loop_start_time).total_seconds() * 1000.0,
+                    )
+                    _loop_span.set_attribute("loop.reach_break_node", bool(reach_break_node))
+
                 # Track loop duration
                 loop_duration_map[str(i)] = (naive_utc_now() - loop_start_time).total_seconds()
 

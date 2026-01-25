@@ -4,6 +4,8 @@ from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, NewType, cast
 
+from opentelemetry import context as context_api
+from opentelemetry.trace import get_current_span, get_tracer, set_span_in_context
 from typing_extensions import TypeIs
 
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -195,26 +197,39 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                 iter_start_at = datetime.now(UTC).replace(tzinfo=None)
                 yield IterationNextEvent(index=index)
 
-                graph_engine = self._create_graph_engine(index, item)
+                tracer = get_tracer("core.workflow.nodes.iteration")
+                # Use explicit parent context to guarantee nesting even if context was altered
+                _parent_ctx = set_span_in_context(get_current_span(), context_api.get_current())
+                with tracer.start_as_current_span(f"iteration[{index}]", context=_parent_ctx) as _iter_span:
+                    _iter_span.set_attribute("iteration.index", index)
 
-                # Run the iteration
-                yield from self._run_single_iter(
-                    variable_pool=graph_engine.graph_runtime_state.variable_pool,
-                    outputs=outputs,
-                    graph_engine=graph_engine,
-                )
+                    graph_engine = self._create_graph_engine(index, item)
 
-                # Sync conversation variables after each iteration completes
-                self._sync_conversation_variables_from_snapshot(
-                    self._extract_conversation_variable_snapshot(
-                        variable_pool=graph_engine.graph_runtime_state.variable_pool
+                    # Run the iteration
+                    yield from self._run_single_iter(
+                        variable_pool=graph_engine.graph_runtime_state.variable_pool,
+                        outputs=outputs,
+                        graph_engine=graph_engine,
                     )
-                )
 
-                # Accumulate usage from this iteration
-                usage_accumulator[0] = self._merge_usage(
-                    usage_accumulator[0], graph_engine.graph_runtime_state.llm_usage
-                )
+                    # Sync conversation variables after each iteration completes
+                    self._sync_conversation_variables_from_snapshot(
+                        self._extract_conversation_variable_snapshot(
+                            variable_pool=graph_engine.graph_runtime_state.variable_pool
+                        )
+                    )
+
+                    # Accumulate usage from this iteration
+                    usage_accumulator[0] = self._merge_usage(
+                        usage_accumulator[0], graph_engine.graph_runtime_state.llm_usage
+                    )
+
+                    # Duration metric for this iteration (ms)
+                    _iter_span.set_attribute(
+                        "iteration.duration.ms",
+                        (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds() * 1000.0,
+                    )
+
                 iter_run_map[str(index)] = (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds()
 
     def _execute_parallel_iterations(
@@ -308,18 +323,31 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         """Execute a single iteration in parallel mode and return results."""
         with execution_context:
             iter_start_at = datetime.now(UTC).replace(tzinfo=None)
+
+            tracer = get_tracer("core.workflow.nodes.iteration")
             events: list[GraphNodeEventBase] = []
             outputs_temp: list[object] = []
 
-            graph_engine = self._create_graph_engine(index, item)
+            # Child span for this parallel iteration to group sub-graph spans
+            _parent_ctx = set_span_in_context(get_current_span(), context_api.get_current())
+            with tracer.start_as_current_span(f"iteration[{index}]", context=_parent_ctx) as _iter_span:
+                _iter_span.set_attribute("iteration.index", index)
 
-            # Collect events instead of yielding them directly
-            for event in self._run_single_iter(
-                variable_pool=graph_engine.graph_runtime_state.variable_pool,
-                outputs=outputs_temp,
-                graph_engine=graph_engine,
-            ):
-                events.append(event)
+                graph_engine = self._create_graph_engine(index, item)
+
+                # Collect events instead of yielding them directly
+                for event in self._run_single_iter(
+                    variable_pool=graph_engine.graph_runtime_state.variable_pool,
+                    outputs=outputs_temp,
+                    graph_engine=graph_engine,
+                ):
+                    events.append(event)
+
+                # Duration metric for this iteration (ms)
+                _iter_span.set_attribute(
+                    "iteration.duration.ms",
+                    (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds() * 1000.0,
+                )
 
             # Get the output value from the temporary outputs list
             output_value = outputs_temp[0] if outputs_temp else None

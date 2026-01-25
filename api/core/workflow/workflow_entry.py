@@ -24,7 +24,6 @@ from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
-from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
 from models.enums import UserFrom
 from models.workflow import Workflow
@@ -99,10 +98,6 @@ class WorkflowEntry:
             max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
         self.graph_engine.layer(limits_layer)
-
-        # Add observability layer when OTel is enabled
-        if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():
-            self.graph_engine.layer(ObservabilityLayer())
 
     def run(self) -> Generator[GraphEngineEvent, None, None]:
         graph_engine = self.graph_engine
