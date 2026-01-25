@@ -149,7 +149,7 @@ def _invoke_llm_via_plugin(
         model=model,
         credentials=credentials,
         model_parameters=model_parameters,
-        prompt_messages=prompt_messages,
+        prompt_messages=list(prompt_messages),
         tools=tools,
         stop=list(stop) if stop else None,
         stream=stream,
