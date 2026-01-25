@@ -92,6 +92,10 @@ export default defineConfig({
   output: {
     indexFile: false,
     path: './gen',
+    fileName: {
+      name: '{{name}}',
+      suffix: false as unknown as string,
+    },
   },
   plugins: [
     '@hey-api/typescript',
