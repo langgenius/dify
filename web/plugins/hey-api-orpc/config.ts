@@ -1,3 +1,4 @@
+import type { IR } from '@hey-api/openapi-ts'
 import type { OrpcPlugin } from './types'
 
 import { definePluginConfig } from '@hey-api/openapi-ts'
@@ -15,8 +16,8 @@ function toCamelCase(str: string): string {
 
 // Default: extract first path segment and convert to camelCase
 // "/chat-messages/{id}" → "chatMessages"
-function defaultGroupKeyBuilder(path: string): string {
-  const segment = path.split('/').filter(Boolean)[0] || 'common'
+function defaultGroupKeyBuilder(operation: IR.OperationObject): string {
+  const segment = operation.path.split('/').filter(Boolean)[0] || 'common'
   return toCamelCase(segment)
 }
 

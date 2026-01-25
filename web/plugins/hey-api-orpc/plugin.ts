@@ -203,7 +203,7 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
   // Group operations by group key
   const operationsByGroup = new Map<string, IR.OperationObject[]>()
   for (const op of operations) {
-    const groupKey = groupKeyBuilder(op.path as string)
+    const groupKey = groupKeyBuilder(op)
     if (!operationsByGroup.has(groupKey)) {
       operationsByGroup.set(groupKey, [])
     }

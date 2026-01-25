@@ -1,4 +1,4 @@
-import type { DefinePlugin, Plugin } from '@hey-api/openapi-ts'
+import type { DefinePlugin, IR, Plugin } from '@hey-api/openapi-ts'
 
 export type UserConfig = Plugin.Name<'orpc'>
   & Plugin.Hooks & {
@@ -23,10 +23,11 @@ export type UserConfig = Plugin.Name<'orpc'>
      */
     defaultTag?: string
     /**
-     * Custom function to extract group key from path for router grouping.
-     * @default (path) => path.split('/').filter(Boolean)[0] || 'common'
+     * Custom function to extract group key for router grouping.
+     * Receives the full IR.OperationObject.
+     * @default extracts first path segment as camelCase
      */
-    groupKeyBuilder?: (path: string) => string
+    groupKeyBuilder?: (operation: IR.OperationObject) => string
     /**
      * Custom function to generate operation key within a group.
      * @default (operationId, groupKey) => simplified operationId
@@ -40,7 +41,7 @@ export type Config = Plugin.Name<'orpc'>
     exportFromIndex: boolean
     contractNameBuilder: (operationId: string) => string
     defaultTag: string
-    groupKeyBuilder: (path: string) => string
+    groupKeyBuilder: (operation: IR.OperationObject) => string
     operationKeyBuilder: (operationId: string, groupKey: string) => string
   }
 
