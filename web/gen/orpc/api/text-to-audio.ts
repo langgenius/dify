@@ -11,8 +11,8 @@ import { base } from '../common'
  * Convert text to speech.
  */
 export const textToAudioChatContract = base.route({
-  path: '/text-to-audio',
   method: 'POST',
+  path: '/text-to-audio',
   operationId: 'textToAudioChat',
   summary: 'Text to Audio',
   description: 'Convert text to speech.',

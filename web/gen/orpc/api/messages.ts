@@ -11,8 +11,8 @@ import { base } from '../common'
  * End-users can provide feedback messages, facilitating application developers to optimize expected outputs.
  */
 export const postChatMessageFeedbackContract = base.route({
-  path: '/messages/{message_id}/feedbacks',
   method: 'POST',
+  path: '/messages/{message_id}/feedbacks',
   operationId: 'postChatMessageFeedback',
   summary: 'Message Feedback',
   description: 'End-users can provide feedback messages, facilitating application developers to optimize expected outputs.',
@@ -25,8 +25,8 @@ export const postChatMessageFeedbackContract = base.route({
  * Get next questions suggestions for the current message.
  */
 export const getSuggestedQuestionsContract = base.route({
-  path: '/messages/{message_id}/suggested',
   method: 'GET',
+  path: '/messages/{message_id}/suggested',
   operationId: 'getSuggestedQuestions',
   summary: 'Next Suggested Questions',
   description: 'Get next questions suggestions for the current message.',
@@ -39,8 +39,8 @@ export const getSuggestedQuestionsContract = base.route({
  * Returns historical chat records in a scrolling load format, with the first page returning the latest `{limit}` messages, i.e., in reverse order.
  */
 export const getConversationHistoryContract = base.route({
-  path: '/messages',
   method: 'GET',
+  path: '/messages',
   operationId: 'getConversationHistory',
   summary: 'Get Conversation History Messages',
   description: 'Returns historical chat records in a scrolling load format, with the first page returning the latest `{limit}` messages, i.e., in reverse order.',

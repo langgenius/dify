@@ -11,8 +11,8 @@ import { base } from '../common'
  * Used to get the WebApp settings of the application.
  */
 export const getChatWebAppSettingsContract = base.route({
-  path: '/site',
   method: 'GET',
+  path: '/site',
   operationId: 'getChatWebAppSettings',
   summary: 'Get Application WebApp Settings',
   description: 'Used to get the WebApp settings of the application.',

@@ -11,11 +11,16 @@ function hasInput(operation: IR.OperationObject): boolean {
   return hasPathParams || hasQueryParams || hasHeaderParams || hasBody
 }
 
-function getSuccessResponse(operation: IR.OperationObject): { hasOutput: boolean, statusCode?: number } {
+function getSuccessResponse(operation: IR.OperationObject): { hasOutput: true, statusCode: number } | { hasOutput: false } {
   if (operation.responses) {
     for (const [statusCode, response] of Object.entries(operation.responses)) {
-      if (statusCode.startsWith('2') && response?.mediaType && response?.schema) {
-        return { hasOutput: true, statusCode: Number.parseInt(statusCode, 10) }
+      const statusCodeNumber = Number.parseInt(statusCode, 10)
+      if (
+        statusCodeNumber >= 200
+        && statusCodeNumber <= 399
+        && response?.mediaType && response?.schema
+      ) {
+        return { hasOutput: true, statusCode: statusCodeNumber }
       }
     }
   }
@@ -94,13 +99,13 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     })
     contractSymbols[op.id] = contractSymbol
 
-    // Build the route config object with all available properties
+    // Build the route config object following Route interface order:
+    // method, path, operationId, summary, description, deprecated, tags, successStatus, successDescription
     const method = op.method.toUpperCase()
     const routeConfig = $.object()
-      .prop('path', $.literal(op.path as string))
       .prop('method', $.literal(method))
+      .prop('path', $.literal(op.path as string))
 
-    // Add optional route properties
     if (op.operationId) {
       routeConfig.prop('operationId', $.literal(op.operationId))
     }
@@ -116,8 +121,12 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     if (tags.length > 0) {
       routeConfig.prop('tags', $.fromValue(tags))
     }
-    if (successResponse.statusCode && successResponse.statusCode !== 200) {
-      routeConfig.prop('successStatus', $.literal(successResponse.statusCode))
+    if (successResponse.hasOutput) {
+      if (successResponse.statusCode !== 200) {
+        routeConfig.prop('successStatus', $.literal(successResponse.statusCode))
+      }
+      // TODO: Add successDescription from OpenAPI description if available
+      // routeConfig.prop('successDescription', $.literal('OK'))
     }
 
     // Build the call chain: base.route({...}).input(...).output(...)

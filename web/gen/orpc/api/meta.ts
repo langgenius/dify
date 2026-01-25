@@ -11,8 +11,8 @@ import { base } from '../common'
  * Used to get icons of tools in this application.
  */
 export const getChatAppMetaContract = base.route({
-  path: '/meta',
   method: 'GET',
+  path: '/meta',
   operationId: 'getChatAppMeta',
   summary: 'Get Application Meta Information',
   description: 'Used to get icons of tools in this application.',

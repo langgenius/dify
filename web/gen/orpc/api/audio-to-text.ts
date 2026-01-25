@@ -11,8 +11,8 @@ import { base } from '../common'
  * Convert audio file to text. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm. File size limit: 15MB.
  */
 export const audioToTextContract = base.route({
-  path: '/audio-to-text',
   method: 'POST',
+  path: '/audio-to-text',
   operationId: 'audioToText',
   summary: 'Speech to Text',
   description: 'Convert audio file to text. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm. File size limit: 15MB.',

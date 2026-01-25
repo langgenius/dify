@@ -11,8 +11,8 @@ import { base } from '../common'
  * Send a request to the chat application.
  */
 export const sendChatMessageContract = base.route({
-  path: '/chat-messages',
   method: 'POST',
+  path: '/chat-messages',
   operationId: 'sendChatMessage',
   summary: 'Send Chat Message',
   description: 'Send a request to the chat application.',
@@ -25,8 +25,8 @@ export const sendChatMessageContract = base.route({
  * Stops a chat message generation task. Only supported in streaming mode.
  */
 export const stopChatMessageGenerationContract = base.route({
-  path: '/chat-messages/{task_id}/stop',
   method: 'POST',
+  path: '/chat-messages/{task_id}/stop',
   operationId: 'stopChatMessageGeneration',
   summary: 'Stop Chat Message Generation',
   description: 'Stops a chat message generation task. Only supported in streaming mode.',

@@ -11,8 +11,8 @@ import { base } from '../common'
  * Upload a file (currently only images are supported) for use when sending messages, enabling multimodal understanding of images and text. Supports png, jpg, jpeg, webp, gif formats. Uploaded files are for use by the current end-user only.
  */
 export const uploadChatFileContract = base.route({
-  path: '/files/upload',
   method: 'POST',
+  path: '/files/upload',
   operationId: 'uploadChatFile',
   summary: 'File Upload',
   description: 'Upload a file (currently only images are supported) for use when sending messages, enabling multimodal understanding of images and text. Supports png, jpg, jpeg, webp, gif formats. Uploaded files are for use by the current end-user only.',
@@ -25,8 +25,8 @@ export const uploadChatFileContract = base.route({
  * Preview or download uploaded files. This endpoint allows you to access files that have been previously uploaded via the File Upload API. Files can only be accessed if they belong to messages within the requesting application.
  */
 export const previewChatFileContract = base.route({
-  path: '/files/{file_id}/preview',
   method: 'GET',
+  path: '/files/{file_id}/preview',
   operationId: 'previewChatFile',
   summary: 'File Preview',
   description: 'Preview or download uploaded files. This endpoint allows you to access files that have been previously uploaded via the File Upload API. Files can only be accessed if they belong to messages within the requesting application.',

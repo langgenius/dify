@@ -11,8 +11,8 @@ import { base } from '../common'
  * Retrieve the conversation list for the current user, defaulting to the most recent 20 entries.
  */
 export const getConversationsListContract = base.route({
-  path: '/conversations',
   method: 'GET',
+  path: '/conversations',
   operationId: 'getConversationsList',
   summary: 'Get Conversations',
   description: 'Retrieve the conversation list for the current user, defaulting to the most recent 20 entries.',
@@ -25,8 +25,8 @@ export const getConversationsListContract = base.route({
  * Delete a conversation.
  */
 export const deleteConversationContract = base.route({
-  path: '/conversations/{conversation_id}',
   method: 'DELETE',
+  path: '/conversations/{conversation_id}',
   operationId: 'deleteConversation',
   summary: 'Delete Conversation',
   description: 'Delete a conversation.',
@@ -39,8 +39,8 @@ export const deleteConversationContract = base.route({
  * Rename the session. The session name is used for display on clients that support multiple sessions.
  */
 export const renameConversationContract = base.route({
-  path: '/conversations/{conversation_id}/name',
   method: 'POST',
+  path: '/conversations/{conversation_id}/name',
   operationId: 'renameConversation',
   summary: 'Conversation Rename',
   description: 'Rename the session. The session name is used for display on clients that support multiple sessions.',
@@ -53,8 +53,8 @@ export const renameConversationContract = base.route({
  * Retrieve variables from a specific conversation.
  */
 export const getConversationVariablesContract = base.route({
-  path: '/conversations/{conversation_id}/variables',
   method: 'GET',
+  path: '/conversations/{conversation_id}/variables',
   operationId: 'getConversationVariables',
   summary: 'Get Conversation Variables',
   description: 'Retrieve variables from a specific conversation.',

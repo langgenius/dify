@@ -11,8 +11,8 @@ import { base } from '../common'
  * Used to get basic information about this application.
  */
 export const getChatAppInfoContract = base.route({
-  path: '/info',
   method: 'GET',
+  path: '/info',
   operationId: 'getChatAppInfo',
   summary: 'Get Application Basic Information',
   description: 'Used to get basic information about this application.',

@@ -11,8 +11,8 @@ import { base } from '../common'
  * Get application's feedbacks.
  */
 export const getChatAppFeedbacksContract = base.route({
-  path: '/app/feedbacks',
   method: 'GET',
+  path: '/app/feedbacks',
   operationId: 'getChatAppFeedbacks',
   summary: 'Get feedbacks of application',
   description: 'Get application\'s feedbacks.',

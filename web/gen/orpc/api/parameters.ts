@@ -11,8 +11,8 @@ import { base } from '../common'
  * Used at the start of entering the page to obtain information such as features, input parameter names, types, and default values.
  */
 export const getChatAppParametersContract = base.route({
-  path: '/parameters',
   method: 'GET',
+  path: '/parameters',
   operationId: 'getChatAppParameters',
   summary: 'Get Application Parameters Information',
   description: 'Used at the start of entering the page to obtain information such as features, input parameter names, types, and default values.',

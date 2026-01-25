@@ -11,8 +11,8 @@ import { base } from '../common'
  * Retrieves a list of annotations for the application.
  */
 export const getAnnotationListContract = base.route({
-  path: '/apps/annotations',
   method: 'GET',
+  path: '/apps/annotations',
   operationId: 'getAnnotationList',
   summary: 'Get Annotation List',
   description: 'Retrieves a list of annotations for the application.',
@@ -25,8 +25,8 @@ export const getAnnotationListContract = base.route({
  * Creates a new annotation.
  */
 export const createAnnotationContract = base.route({
-  path: '/apps/annotations',
   method: 'POST',
+  path: '/apps/annotations',
   operationId: 'createAnnotation',
   summary: 'Create Annotation',
   description: 'Creates a new annotation.',
@@ -39,8 +39,8 @@ export const createAnnotationContract = base.route({
  * Deletes an annotation.
  */
 export const deleteAnnotationContract = base.route({
-  path: '/apps/annotations/{annotation_id}',
   method: 'DELETE',
+  path: '/apps/annotations/{annotation_id}',
   operationId: 'deleteAnnotation',
   summary: 'Delete Annotation',
   description: 'Deletes an annotation.',
@@ -53,8 +53,8 @@ export const deleteAnnotationContract = base.route({
  * Updates an existing annotation.
  */
 export const updateAnnotationContract = base.route({
-  path: '/apps/annotations/{annotation_id}',
   method: 'PUT',
+  path: '/apps/annotations/{annotation_id}',
   operationId: 'updateAnnotation',
   summary: 'Update Annotation',
   description: 'Updates an existing annotation.',
@@ -67,8 +67,8 @@ export const updateAnnotationContract = base.route({
  * Enable or disable annotation reply settings and configure embedding models. This interface is executed asynchronously.
  */
 export const initialAnnotationReplySettingsContract = base.route({
-  path: '/apps/annotation-reply/{action}',
   method: 'POST',
+  path: '/apps/annotation-reply/{action}',
   operationId: 'initialAnnotationReplySettings',
   summary: 'Initial Annotation Reply Settings',
   description: 'Enable or disable annotation reply settings and configure embedding models. This interface is executed asynchronously.',
@@ -81,8 +81,8 @@ export const initialAnnotationReplySettingsContract = base.route({
  * Queries the status of an asynchronously executed annotation reply settings task.
  */
 export const getInitialAnnotationReplySettingsStatusContract = base.route({
-  path: '/apps/annotation-reply/{action}/status/{job_id}',
   method: 'GET',
+  path: '/apps/annotation-reply/{action}/status/{job_id}',
   operationId: 'getInitialAnnotationReplySettingsStatus',
   summary: 'Query Initial Annotation Reply Settings Task Status',
   description: 'Queries the status of an asynchronously executed annotation reply settings task.',
