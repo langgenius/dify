@@ -30,8 +30,9 @@ function collectOperation(operation: IR.OperationObject): OperationInfo {
 
   const hasPathParams = Boolean(operation.parameters?.path && Object.keys(operation.parameters.path).length > 0)
   const hasQueryParams = Boolean(operation.parameters?.query && Object.keys(operation.parameters.query).length > 0)
+  const hasHeaderParams = Boolean(operation.parameters?.header && Object.keys(operation.parameters.header).length > 0)
   const hasBody = Boolean(operation.body)
-  const hasInput = hasPathParams || hasQueryParams || hasBody
+  const hasInput = hasPathParams || hasQueryParams || hasHeaderParams || hasBody
 
   // Check if operation has a successful response with actual content
   // Look for 2xx responses that have a schema with mediaType (indicating response body)
@@ -61,6 +62,7 @@ function collectOperation(operation: IR.OperationObject): OperationInfo {
 }
 
 export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
+  const { contractNameBuilder, groupBy } = plugin.config
   const operations: OperationInfo[] = []
   const zodImports = new Set<string>()
 
@@ -118,10 +120,13 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
   const contractSymbols: Record<string, ReturnType<typeof plugin.symbol>> = {}
 
   for (const op of operations) {
-    const contractSymbol = plugin.symbol(`${op.id}Contract`, {
+    const contractName = contractNameBuilder(op.id)
+    const contractSymbol = plugin.symbol(contractName, {
       exported: true,
       meta: {
         category: 'schema',
+        resource: 'operation',
+        resourceId: op.id,
       },
     })
     contractSymbols[op.id] = contractSymbol
@@ -167,30 +172,6 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
   }
 
   // Create contracts object export
-  // Group operations by tag
-  const operationsByTag = new Map<string, OperationInfo[]>()
-  for (const op of operations) {
-    const tag = op.tags[0]
-    if (!operationsByTag.has(tag)) {
-      operationsByTag.set(tag, [])
-    }
-    operationsByTag.get(tag)!.push(op)
-  }
-
-  // Build contracts object
-  const contractsObject = $.object()
-  for (const [tag, tagOps] of operationsByTag) {
-    const tagKey = tag.charAt(0).toLowerCase() + tag.slice(1)
-    const tagObject = $.object()
-    for (const op of tagOps) {
-      const contractSymbol = contractSymbols[op.id]
-      if (contractSymbol) {
-        tagObject.prop(`${op.id}Contract`, $(contractSymbol))
-      }
-    }
-    contractsObject.prop(tagKey, tagObject)
-  }
-
   const contractsSymbol = plugin.symbol('contracts', {
     exported: true,
     meta: {
@@ -198,10 +179,53 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     },
   })
 
-  const contractsNode = $.const(contractsSymbol)
-    .export()
-    .assign(contractsObject)
-  plugin.node(contractsNode)
+  if (groupBy === 'tag') {
+    // Group operations by tag
+    const operationsByTag = new Map<string, OperationInfo[]>()
+    for (const op of operations) {
+      const tag = op.tags[0]
+      if (!operationsByTag.has(tag)) {
+        operationsByTag.set(tag, [])
+      }
+      operationsByTag.get(tag)!.push(op)
+    }
+
+    // Build contracts object grouped by tag
+    const contractsObject = $.object()
+    for (const [tag, tagOps] of operationsByTag) {
+      const tagKey = tag.charAt(0).toLowerCase() + tag.slice(1)
+      const tagObject = $.object()
+      for (const op of tagOps) {
+        const contractSymbol = contractSymbols[op.id]
+        if (contractSymbol) {
+          const contractName = contractNameBuilder(op.id)
+          tagObject.prop(contractName, $(contractSymbol))
+        }
+      }
+      contractsObject.prop(tagKey, tagObject)
+    }
+
+    const contractsNode = $.const(contractsSymbol)
+      .export()
+      .assign(contractsObject)
+    plugin.node(contractsNode)
+  }
+  else {
+    // Flat structure without grouping
+    const contractsObject = $.object()
+    for (const op of operations) {
+      const contractSymbol = contractSymbols[op.id]
+      if (contractSymbol) {
+        const contractName = contractNameBuilder(op.id)
+        contractsObject.prop(contractName, $(contractSymbol))
+      }
+    }
+
+    const contractsNode = $.const(contractsSymbol)
+      .export()
+      .assign(contractsObject)
+    plugin.node(contractsNode)
+  }
 
   // Create type export: export type Contracts = typeof contracts
   const contractsTypeSymbol = plugin.symbol('Contracts', {
