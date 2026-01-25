@@ -13,6 +13,7 @@ Invariants:
 Edge Cases:
 - Storage backends without presign support must fall back to signed proxy URLs.
 - Signed proxy verification enforces expiration and tenant-scoped signing keys.
+- Upload URLs also fall back to signed proxy endpoints when presign is unsupported.
 - load_or_none treats SilentStorage "File Not Found" bytes as missing.
 
 Tests:

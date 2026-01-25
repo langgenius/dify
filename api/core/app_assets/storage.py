@@ -162,6 +162,7 @@ class AppAssetSigner:
     SIGNATURE_PREFIX = "app-asset"
     SIGNATURE_VERSION = "v1"
     OPERATION_DOWNLOAD = "download"
+    OPERATION_UPLOAD = "upload"
 
     @classmethod
     def create_download_signature(cls, asset_path: AssetPathBase, expires_at: int, nonce: str) -> str:
@@ -173,12 +174,50 @@ class AppAssetSigner:
         )
 
     @classmethod
+    def create_upload_signature(cls, asset_path: AssetPathBase, expires_at: int, nonce: str) -> str:
+        return cls._create_signature(
+            asset_path=asset_path,
+            operation=cls.OPERATION_UPLOAD,
+            expires_at=expires_at,
+            nonce=nonce,
+        )
+
+    @classmethod
     def verify_download_signature(cls, asset_path: AssetPathBase, expires_at: int, nonce: str, sign: str) -> bool:
+        return cls._verify_signature(
+            asset_path=asset_path,
+            operation=cls.OPERATION_DOWNLOAD,
+            expires_at=expires_at,
+            nonce=nonce,
+            sign=sign,
+        )
+
+    @classmethod
+    def verify_upload_signature(cls, asset_path: AssetPathBase, expires_at: int, nonce: str, sign: str) -> bool:
+        return cls._verify_signature(
+            asset_path=asset_path,
+            operation=cls.OPERATION_UPLOAD,
+            expires_at=expires_at,
+            nonce=nonce,
+            sign=sign,
+        )
+
+    @classmethod
+    def _verify_signature(
+        cls,
+        *,
+        asset_path: AssetPathBase,
+        operation: str,
+        expires_at: int,
+        nonce: str,
+        sign: str,
+    ) -> bool:
         if expires_at <= 0:
             return False
 
-        expected_sign = cls.create_download_signature(
+        expected_sign = cls._create_signature(
             asset_path=asset_path,
+            operation=operation,
             expires_at=expires_at,
             nonce=nonce,
         )
@@ -269,7 +308,7 @@ class AppAssetStorage:
         except NotImplementedError:
             pass
 
-        return self._generate_signed_proxy_url(asset_path, expires_in, for_external=for_external)
+        return self._generate_signed_proxy_download_url(asset_path, expires_in, for_external=for_external)
 
     def get_download_urls(
         self,
@@ -287,30 +326,56 @@ class AppAssetStorage:
             pass
 
         return [
-            self._generate_signed_proxy_url(asset_path, expires_in, for_external=for_external)
+            self._generate_signed_proxy_download_url(asset_path, expires_in, for_external=for_external)
             for asset_path in asset_paths_list
         ]
 
-    # FIXME(Mairuis): support fallback to signed proxy url
-    def get_upload_url(self, asset_path: AssetPathBase, expires_in: int = 3600) -> str:
-        return self._storage.get_upload_url(self.get_storage_key(asset_path), expires_in)
+    def get_upload_url(
+        self,
+        asset_path: AssetPathBase,
+        expires_in: int = 3600,
+        *,
+        for_external: bool = True,
+    ) -> str:
+        storage_key = self.get_storage_key(asset_path)
+        try:
+            return self._storage.get_upload_url(storage_key, expires_in)
+        except NotImplementedError:
+            pass
 
-    def _generate_signed_proxy_url(self, asset_path: AssetPathBase, expires_in: int, *, for_external: bool) -> str:
+        return self._generate_signed_proxy_upload_url(asset_path, expires_in, for_external=for_external)
+
+    def _generate_signed_proxy_download_url(
+        self, asset_path: AssetPathBase, expires_in: int, *, for_external: bool
+    ) -> str:
         expires_in = min(expires_in, dify_config.FILES_ACCESS_TIMEOUT)
         expires_at = int(time.time()) + max(expires_in, 1)
         nonce = os.urandom(16).hex()
         sign = AppAssetSigner.create_download_signature(asset_path=asset_path, expires_at=expires_at, nonce=nonce)
 
         base_url = dify_config.FILES_URL if for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
-        url = self._build_proxy_url(base_url=base_url, asset_path=asset_path)
+        url = self._build_proxy_url(base_url=base_url, asset_path=asset_path, action="download")
+        query = urllib.parse.urlencode({"expires_at": expires_at, "nonce": nonce, "sign": sign})
+        return f"{url}?{query}"
+
+    def _generate_signed_proxy_upload_url(
+        self, asset_path: AssetPathBase, expires_in: int, *, for_external: bool
+    ) -> str:
+        expires_in = min(expires_in, dify_config.FILES_ACCESS_TIMEOUT)
+        expires_at = int(time.time()) + max(expires_in, 1)
+        nonce = os.urandom(16).hex()
+        sign = AppAssetSigner.create_upload_signature(asset_path=asset_path, expires_at=expires_at, nonce=nonce)
+
+        base_url = dify_config.FILES_URL if for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
+        url = self._build_proxy_url(base_url=base_url, asset_path=asset_path, action="upload")
         query = urllib.parse.urlencode({"expires_at": expires_at, "nonce": nonce, "sign": sign})
         return f"{url}?{query}"
 
     @staticmethod
-    def _build_proxy_url(*, base_url: str, asset_path: AssetPathBase) -> str:
+    def _build_proxy_url(*, base_url: str, asset_path: AssetPathBase, action: str) -> str:
         encoded_parts = [urllib.parse.quote(part, safe="") for part in asset_path.proxy_path_parts()]
         path = "/".join(encoded_parts)
-        return f"{base_url}/files/app-assets/{path}/download"
+        return f"{base_url}/files/app-assets/{path}/{action}"
 
 
 class _LazyAppAssetStorage:

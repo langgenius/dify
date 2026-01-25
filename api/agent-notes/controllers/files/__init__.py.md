@@ -1,6 +1,6 @@
 Summary:
 - Registers file-related API namespaces and routes for files service.
-- Includes app-assets download proxy controller.
+- Includes app-assets download/upload proxy controllers.
 
 Invariants:
 - files_ns must include all file controller modules to register routes.
