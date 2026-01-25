@@ -84,9 +84,10 @@ def test__normalize_non_stream_plugin_result__passthrough_llm_result():
         usage=LLMUsage.empty_usage(),
     )
 
-    assert _normalize_non_stream_plugin_result(
-        model="test-model", prompt_messages=prompt_messages, result=llm_result
-    ) == llm_result
+    assert (
+        _normalize_non_stream_plugin_result(model="test-model", prompt_messages=prompt_messages, result=llm_result)
+        == llm_result
+    )
 
 
 def test__normalize_non_stream_plugin_result__empty_iterator_defaults():
