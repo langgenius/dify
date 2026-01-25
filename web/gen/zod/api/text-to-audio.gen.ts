@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-import { zTextToAudioFormRequest } from '../models.gen'
+import { zTextToAudioFormRequest } from '../models/text.gen'
 
 export const zTextToAudioChatData = z.object({
   body: zTextToAudioFormRequest,

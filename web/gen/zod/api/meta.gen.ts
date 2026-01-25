@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-import { zAppMetaResponse } from '../models.gen'
+import { zAppMetaResponse } from '../models/app.gen'
 
 export const zGetChatAppMetaData = z.object({
   body: z.never().optional(),

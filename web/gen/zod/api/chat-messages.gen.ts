@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-import { zChatCompletionResponse, zChatRequest } from '../models.gen'
+import { zChatCompletionResponse, zChatRequest } from '../models/chat.gen'
 
 export const zSendChatMessageData = z.object({
   body: zChatRequest,

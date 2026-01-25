@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-import { zWebAppSettingsResponse } from '../models.gen'
+import { zWebAppSettingsResponse } from '../models/web.gen'
 
 export const zGetChatWebAppSettingsData = z.object({
   body: z.never().optional(),

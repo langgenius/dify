@@ -24,6 +24,22 @@ function getApiSegment(path: readonly (string | number)[] | undefined): string |
   return apiPath.split('/').filter(Boolean)[0]
 }
 
+// Extract schema name prefix from path array
+// e.g., ["components", "schemas", "ChatRequest"] → "chat"
+// e.g., ["components", "schemas", "StreamEventBase"] → "stream"
+// e.g., ["components", "schemas", "ErrorResponse"] → "error"
+function getSchemaPrefix(path: readonly (string | number)[] | undefined): string | undefined {
+  if (!path || path[0] !== 'components' || path[1] !== 'schemas')
+    return undefined
+  const schemaName = path[2]
+  if (typeof schemaName !== 'string')
+    return undefined
+  // Split PascalCase into words and take the first word
+  // e.g., "ChatRequest" → ["Chat", "Request"] → "chat"
+  const match = schemaName.match(/^[A-Z][a-z]*/)
+  return match?.[0]?.toLowerCase()
+}
+
 // Get file path based on symbol metadata (mixed strategy)
 function getFilePath(symbol: { meta?: SymbolMeta }): string | undefined {
   const meta = symbol.meta
@@ -33,7 +49,8 @@ function getFilePath(symbol: { meta?: SymbolMeta }): string | undefined {
   // Handle typescript plugin symbols
   if (meta.tool === 'typescript') {
     if (meta.resource === 'definition') {
-      return 'types/models'
+      const prefix = getSchemaPrefix(meta.path)
+      return `types/models/${prefix ?? 'common'}`
     }
     if (meta.resource === 'operation') {
       const segment = getApiSegment(meta.path)
@@ -45,7 +62,8 @@ function getFilePath(symbol: { meta?: SymbolMeta }): string | undefined {
   // Handle zod plugin symbols
   if (meta.tool === 'zod') {
     if (meta.resource === 'definition') {
-      return 'zod/models'
+      const prefix = getSchemaPrefix(meta.path)
+      return `zod/models/${prefix ?? 'common'}`
     }
     if (meta.resource === 'operation') {
       const segment = getApiSegment(meta.path)

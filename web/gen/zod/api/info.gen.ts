@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-import { zAppInfoResponse } from '../models.gen'
+import { zAppInfoResponse } from '../models/app.gen'
 
 export const zGetChatAppInfoData = z.object({
   body: z.never().optional(),

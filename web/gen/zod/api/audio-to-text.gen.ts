@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-import { zAudioToTextRequest, zAudioToTextResponse as zAudioToTextResponse2 } from '../models.gen'
+import { zAudioToTextRequest, zAudioToTextResponse as zAudioToTextResponse2 } from '../models/audio.gen'
 
 export const zAudioToTextData = z.object({
   body: zAudioToTextRequest,

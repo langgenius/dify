@@ -2,7 +2,9 @@
 
 import { z } from 'zod'
 
-import { zConversationHistoryResponse, zMessageFeedbackRequest, zSuggestedQuestionsResponse } from '../models.gen'
+import { zConversationHistoryResponse } from '../models/conversation.gen'
+import { zMessageFeedbackRequest } from '../models/message.gen'
+import { zSuggestedQuestionsResponse } from '../models/suggested.gen'
 
 export const zPostChatMessageFeedbackData = z.object({
   body: zMessageFeedbackRequest,

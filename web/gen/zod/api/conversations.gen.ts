@@ -2,7 +2,8 @@
 
 import { z } from 'zod'
 
-import { zConversationListItem, zConversationRenameRequest, zConversationsListResponse, zConversationVariablesResponse } from '../models.gen'
+import { zConversationListItem, zConversationRenameRequest, zConversationVariablesResponse } from '../models/conversation.gen'
+import { zConversationsListResponse } from '../models/conversations.gen'
 
 export const zGetConversationsListData = z.object({
   body: z.never().optional(),
