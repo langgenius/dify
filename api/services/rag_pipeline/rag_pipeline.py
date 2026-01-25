@@ -89,11 +89,9 @@ logger = logging.getLogger(__name__)
 class RagPipelineService:
     def __init__(self, session_maker: sessionmaker | None = None):
         """Initialize RagPipelineService with repository dependencies."""
+        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository()
         if session_maker is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
-            session_maker
-        )
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @classmethod
@@ -1154,9 +1152,7 @@ class RagPipelineService:
     def get_node_last_run(
         self, pipeline: Pipeline, workflow: Workflow, node_id: str
     ) -> WorkflowNodeExecutionModel | None:
-        node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
-            sessionmaker(db.engine)
-        )
+        node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository()
 
         node_exec = node_execution_service_repo.get_node_last_execution(
             tenant_id=pipeline.tenant_id,

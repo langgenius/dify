@@ -9,11 +9,12 @@ from typing import Any, ClassVar
 from sqlalchemy import Engine, orm, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import and_, or_
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import session_factory
 from core.file.models import File
 from core.variables import Segment, StringSegment, VariableBase
 from core.variables.consts import SELECTORS_LENGTH
@@ -200,18 +201,16 @@ class WorkflowDraftVariableService:
         engine = session.get_bind()
         # Ensure the session is bound to a engine.
         assert isinstance(engine, Engine)
-        session_maker = sessionmaker(bind=engine, expire_on_commit=False)
-        self._api_node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
-            session_maker
-        )
+        self._api_node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository()
 
     def get_variable(self, variable_id: str) -> WorkflowDraftVariable | None:
-        return (
-            self._session.query(WorkflowDraftVariable)
-            .options(orm.selectinload(WorkflowDraftVariable.variable_file))
-            .where(WorkflowDraftVariable.id == variable_id)
-            .first()
-        )
+        with session_factory.create_session() as session:
+            return (
+                session.query(WorkflowDraftVariable)
+                .options(orm.selectinload(WorkflowDraftVariable.variable_file))
+                .where(WorkflowDraftVariable.id == variable_id)
+                .first()
+            )
 
     def get_draft_variables_by_selectors(
         self,
@@ -237,34 +236,36 @@ class WorkflowDraftVariableService:
         # Alternatively, a `SELECT` statement could be constructed for each selector and
         # combined using `UNION` to fetch all rows.
         # Benchmarking indicates that both approaches yield comparable performance.
-        variables = (
-            self._session.query(WorkflowDraftVariable)
-            .options(
-                orm.selectinload(WorkflowDraftVariable.variable_file).selectinload(
-                    WorkflowDraftVariableFile.upload_file
+        with session_factory.create_session() as session:
+            variables = (
+                session.query(WorkflowDraftVariable)
+                .options(
+                    orm.selectinload(WorkflowDraftVariable.variable_file).selectinload(
+                        WorkflowDraftVariableFile.upload_file
+                    )
                 )
+                .where(WorkflowDraftVariable.app_id == app_id, or_(*ors))
+                .all()
             )
-            .where(WorkflowDraftVariable.app_id == app_id, or_(*ors))
-            .all()
-        )
         return variables
 
     def list_variables_without_values(self, app_id: str, page: int, limit: int) -> WorkflowDraftVariableList:
         criteria = WorkflowDraftVariable.app_id == app_id
         total = None
-        query = self._session.query(WorkflowDraftVariable).where(criteria)
-        if page == 1:
-            total = query.count()
-        variables = (
-            # Do not load the `value` field
-            query.options(
-                orm.defer(WorkflowDraftVariable.value, raiseload=True),
+        with session_factory.create_session() as session:
+            query = session.query(WorkflowDraftVariable).where(criteria)
+            if page == 1:
+                total = query.count()
+            variables = (
+                # Do not load the `value` field
+                query.options(
+                    orm.defer(WorkflowDraftVariable.value, raiseload=True),
+                )
+                .order_by(WorkflowDraftVariable.created_at.desc())
+                .limit(limit)
+                .offset((page - 1) * limit)
+                .all()
             )
-            .order_by(WorkflowDraftVariable.created_at.desc())
-            .limit(limit)
-            .offset((page - 1) * limit)
-            .all()
-        )
 
         return WorkflowDraftVariableList(variables=variables, total=total)
 
@@ -273,12 +274,13 @@ class WorkflowDraftVariableService:
             WorkflowDraftVariable.app_id == app_id,
             WorkflowDraftVariable.node_id == node_id,
         )
-        query = self._session.query(WorkflowDraftVariable).where(*criteria)
-        variables = (
-            query.options(orm.selectinload(WorkflowDraftVariable.variable_file))
-            .order_by(WorkflowDraftVariable.created_at.desc())
-            .all()
-        )
+        with session_factory.create_session() as session:
+            query = session.query(WorkflowDraftVariable).where(*criteria)
+            variables = (
+                query.options(orm.selectinload(WorkflowDraftVariable.variable_file))
+                .order_by(WorkflowDraftVariable.created_at.desc())
+                .all()
+            )
         return WorkflowDraftVariableList(variables=variables)
 
     def list_node_variables(self, app_id: str, node_id: str) -> WorkflowDraftVariableList:
@@ -300,16 +302,17 @@ class WorkflowDraftVariableService:
         return self._get_variable(app_id, node_id, name)
 
     def _get_variable(self, app_id: str, node_id: str, name: str) -> WorkflowDraftVariable | None:
-        variable = (
-            self._session.query(WorkflowDraftVariable)
-            .options(orm.selectinload(WorkflowDraftVariable.variable_file))
-            .where(
-                WorkflowDraftVariable.app_id == app_id,
-                WorkflowDraftVariable.node_id == node_id,
-                WorkflowDraftVariable.name == name,
+        with session_factory.create_session() as session:
+            variable = (
+                session.query(WorkflowDraftVariable)
+                .options(orm.selectinload(WorkflowDraftVariable.variable_file))
+                .where(
+                    WorkflowDraftVariable.app_id == app_id,
+                    WorkflowDraftVariable.node_id == node_id,
+                    WorkflowDraftVariable.name == name,
+                )
+                .first()
             )
-            .first()
-        )
         return variable
 
     def update_variable(
@@ -318,32 +321,34 @@ class WorkflowDraftVariableService:
         name: str | None = None,
         value: Segment | None = None,
     ) -> WorkflowDraftVariable:
-        if not variable.editable:
-            raise UpdateNotSupportedError(f"variable not support updating, id={variable.id}")
-        if name is not None:
-            variable.set_name(name)
-        if value is not None:
-            variable.set_value(value)
-        variable.last_edited_at = naive_utc_now()
-        self._session.flush()
+        with session_factory.create_session() as session:
+            if not variable.editable:
+                raise UpdateNotSupportedError(f"variable not support updating, id={variable.id}")
+            if name is not None:
+                variable.set_name(name)
+            if value is not None:
+                variable.set_value(value)
+            variable.last_edited_at = naive_utc_now()
+            session.flush()
         return variable
 
     def _reset_conv_var(self, workflow: Workflow, variable: WorkflowDraftVariable) -> WorkflowDraftVariable | None:
         conv_var_by_name = {i.name: i for i in workflow.conversation_variables}
         conv_var = conv_var_by_name.get(variable.name)
 
-        if conv_var is None:
-            self._session.delete(instance=variable)
-            self._session.flush()
-            logger.warning(
-                "Conversation variable not found for draft variable, id=%s, name=%s", variable.id, variable.name
-            )
-            return None
+        with session_factory.create_session() as session:
+            if conv_var is None:
+                session.delete(instance=variable)
+                session.flush()
+                logger.warning(
+                    "Conversation variable not found for draft variable, id=%s, name=%s", variable.id, variable.name
+                )
+                return None
 
-        variable.set_value(conv_var)
-        variable.last_edited_at = None
-        self._session.add(variable)
-        self._session.flush()
+            variable.set_value(conv_var)
+            variable.last_edited_at = None
+            session.add(variable)
+            session.flush()
         return variable
 
     def _reset_node_var_or_sys_var(
@@ -353,58 +358,59 @@ class WorkflowDraftVariableService:
         if not variable.editable:
             return variable
         # No execution record for this variable, delete the variable instead.
-        if variable.node_execution_id is None:
-            self._session.delete(instance=variable)
-            self._session.flush()
-            logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
-            return None
+        with session_factory.create_session() as session:
+            if variable.node_execution_id is None:
+                session.delete(instance=variable)
+                session.flush()
+                logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
+                return None
 
-        node_exec = self._api_node_execution_repo.get_execution_by_id(variable.node_execution_id)
-        if node_exec is None:
-            logger.warning(
-                "Node exectution not found for draft variable, id=%s, name=%s, node_execution_id=%s",
-                variable.id,
-                variable.name,
-                variable.node_execution_id,
-            )
-            self._session.delete(instance=variable)
-            self._session.flush()
-            return None
+            node_exec = self._api_node_execution_repo.get_execution_by_id(variable.node_execution_id)
+            if node_exec is None:
+                logger.warning(
+                    "Node exectution not found for draft variable, id=%s, name=%s, node_execution_id=%s",
+                    variable.id,
+                    variable.name,
+                    variable.node_execution_id,
+                )
+                session.delete(instance=variable)
+                session.flush()
+                return None
 
-        outputs_dict = node_exec.load_full_outputs(self._session, storage) or {}
-        # a sentinel value used to check the absent of the output variable key.
-        absent = object()
+            outputs_dict = node_exec.load_full_outputs(session, storage) or {}
+            # a sentinel value used to check the absent of the output variable key.
+            absent = object()
 
-        if variable.get_variable_type() == DraftVariableType.NODE:
-            # Get node type for proper value extraction
-            node_config = workflow.get_node_config_by_id(variable.node_id)
-            node_type = workflow.get_node_type_from_node_config(node_config)
+            if variable.get_variable_type() == DraftVariableType.NODE:
+                # Get node type for proper value extraction
+                node_config = workflow.get_node_config_by_id(variable.node_id)
+                node_type = workflow.get_node_type_from_node_config(node_config)
 
-            # Note: Based on the implementation in `_build_from_variable_assigner_mapping`,
-            # VariableAssignerNode (both v1 and v2) can only create conversation draft variables.
-            # For consistency, we should simply return when processing VARIABLE_ASSIGNER nodes.
-            #
-            # This implementation must remain synchronized with the `_build_from_variable_assigner_mapping`
-            # and `save` methods.
-            if node_type == NodeType.VARIABLE_ASSIGNER:
-                return variable
-            output_value = outputs_dict.get(variable.name, absent)
-        else:
-            output_value = outputs_dict.get(f"sys.{variable.name}", absent)
+                # Note: Based on the implementation in `_build_from_variable_assigner_mapping`,
+                # VariableAssignerNode (both v1 and v2) can only create conversation draft variables.
+                # For consistency, we should simply return when processing VARIABLE_ASSIGNER nodes.
+                #
+                # This implementation must remain synchronized with the `_build_from_variable_assigner_mapping`
+                # and `save` methods.
+                if node_type == NodeType.VARIABLE_ASSIGNER:
+                    return variable
+                output_value = outputs_dict.get(variable.name, absent)
+            else:
+                output_value = outputs_dict.get(f"sys.{variable.name}", absent)
 
-        # We cannot use `is None` to check the existence of an output variable here as
-        # the value of the output may be `None`.
-        if output_value is absent:
-            # If variable not found in execution data, delete the variable
-            self._session.delete(instance=variable)
-            self._session.flush()
-            return None
-        value_seg = WorkflowDraftVariable.build_segment_with_type(variable.value_type, output_value)
-        # Extract variable value using unified logic
-        variable.set_value(value_seg)
-        variable.last_edited_at = None  # Reset to indicate this is a reset operation
-        self._session.flush()
-        return variable
+            # We cannot use `is None` to check the existence of an output variable here as
+            # the value of the output may be `None`.
+            if output_value is absent:
+                # If variable not found in execution data, delete the variable
+                session.delete(instance=variable)
+                session.flush()
+                return None
+            value_seg = WorkflowDraftVariable.build_segment_with_type(variable.value_type, output_value)
+            # Extract variable value using unified logic
+            variable.set_value(value_seg)
+            variable.last_edited_at = None  # Reset to indicate this is a reset operation
+            session.flush()
+            return variable
 
     def reset_variable(self, workflow: Workflow, variable: WorkflowDraftVariable) -> WorkflowDraftVariable | None:
         variable_type = variable.get_variable_type()
@@ -416,98 +422,102 @@ class WorkflowDraftVariableService:
             return self._reset_node_var_or_sys_var(workflow, variable)
 
     def delete_variable(self, variable: WorkflowDraftVariable):
-        if not variable.is_truncated():
-            self._session.delete(variable)
-            return
+        with session_factory.create_session() as session:
+            if not variable.is_truncated():
+                session.delete(variable)
+                return
 
-        variable_query = (
-            select(WorkflowDraftVariable)
-            .options(
-                orm.selectinload(WorkflowDraftVariable.variable_file).selectinload(
-                    WorkflowDraftVariableFile.upload_file
-                ),
+            variable_query = (
+                select(WorkflowDraftVariable)
+                .options(
+                    orm.selectinload(WorkflowDraftVariable.variable_file).selectinload(
+                        WorkflowDraftVariableFile.upload_file
+                    ),
+                )
+                .where(WorkflowDraftVariable.id == variable.id)
             )
-            .where(WorkflowDraftVariable.id == variable.id)
-        )
-        variable_reloaded = self._session.execute(variable_query).scalars().first()
-        if variable_reloaded is None:
-            logger.warning("Associated WorkflowDraftVariable not found, draft_var_id=%s", variable.id)
-            self._session.delete(variable)
-            return
-        variable_file = variable_reloaded.variable_file
-        if variable_file is None:
-            logger.warning(
-                "Associated WorkflowDraftVariableFile not found, draft_var_id=%s, file_id=%s",
-                variable_reloaded.id,
-                variable_reloaded.file_id,
-            )
-            self._session.delete(variable)
-            return
-
-        upload_file = variable_file.upload_file
-        if upload_file is None:
-            logger.warning(
-                "Associated UploadFile not found, draft_var_id=%s, file_id=%s, upload_file_id=%s",
-                variable_reloaded.id,
-                variable_reloaded.file_id,
-                variable_file.upload_file_id,
-            )
-            self._session.delete(variable)
-            self._session.delete(variable_file)
-            return
-
-        storage.delete(upload_file.key)
-        self._session.delete(upload_file)
-        self._session.delete(upload_file)
-        self._session.delete(variable)
-
-    def delete_workflow_variables(self, app_id: str):
-        (
-            self._session.query(WorkflowDraftVariable)
-            .where(WorkflowDraftVariable.app_id == app_id)
-            .delete(synchronize_session=False)
-        )
-
-    def delete_workflow_draft_variable_file(self, deletions: list[DraftVarFileDeletion]):
-        variable_files_query = (
-            select(WorkflowDraftVariableFile)
-            .options(orm.selectinload(WorkflowDraftVariableFile.upload_file))
-            .where(WorkflowDraftVariableFile.id.in_([i.draft_var_file_id for i in deletions]))
-        )
-        variable_files = self._session.execute(variable_files_query).scalars().all()
-        variable_files_by_id = {i.id: i for i in variable_files}
-        for i in deletions:
-            variable_file = variable_files_by_id.get(i.draft_var_file_id)
+            variable_reloaded = session.execute(variable_query).scalars().first()
+            if variable_reloaded is None:
+                logger.warning("Associated WorkflowDraftVariable not found, draft_var_id=%s", variable.id)
+                session.delete(variable)
+                return
+            variable_file = variable_reloaded.variable_file
             if variable_file is None:
                 logger.warning(
                     "Associated WorkflowDraftVariableFile not found, draft_var_id=%s, file_id=%s",
-                    i.draft_var_id,
-                    i.draft_var_file_id,
+                    variable_reloaded.id,
+                    variable_reloaded.file_id,
                 )
-                continue
+                session.delete(variable)
+                return
 
             upload_file = variable_file.upload_file
             if upload_file is None:
                 logger.warning(
                     "Associated UploadFile not found, draft_var_id=%s, file_id=%s, upload_file_id=%s",
-                    i.draft_var_id,
-                    i.draft_var_file_id,
+                    variable_reloaded.id,
+                    variable_reloaded.file_id,
                     variable_file.upload_file_id,
                 )
-                self._session.delete(variable_file)
-            else:
-                storage.delete(upload_file.key)
-                self._session.delete(upload_file)
-                self._session.delete(variable_file)
+                session.delete(variable)
+                session.delete(variable_file)
+                return
+
+            storage.delete(upload_file.key)
+            session.delete(upload_file)
+            session.delete(upload_file)
+            session.delete(variable)
+
+    def delete_workflow_variables(self, app_id: str):
+        with session_factory.create_session() as session:
+            (
+                session.query(WorkflowDraftVariable)
+                .where(WorkflowDraftVariable.app_id == app_id)
+                .delete(synchronize_session=False)
+            )
+
+    def delete_workflow_draft_variable_file(self, deletions: list[DraftVarFileDeletion]):
+        with session_factory.create_session() as session:
+            variable_files_query = (
+                select(WorkflowDraftVariableFile)
+                .options(orm.selectinload(WorkflowDraftVariableFile.upload_file))
+                .where(WorkflowDraftVariableFile.id.in_([i.draft_var_file_id for i in deletions]))
+            )
+            variable_files = session.execute(variable_files_query).scalars().all()
+            variable_files_by_id = {i.id: i for i in variable_files}
+            for i in deletions:
+                variable_file = variable_files_by_id.get(i.draft_var_file_id)
+                if variable_file is None:
+                    logger.warning(
+                        "Associated WorkflowDraftVariableFile not found, draft_var_id=%s, file_id=%s",
+                        i.draft_var_id,
+                        i.draft_var_file_id,
+                    )
+                    continue
+
+                upload_file = variable_file.upload_file
+                if upload_file is None:
+                    logger.warning(
+                        "Associated UploadFile not found, draft_var_id=%s, file_id=%s, upload_file_id=%s",
+                        i.draft_var_id,
+                        i.draft_var_file_id,
+                        variable_file.upload_file_id,
+                    )
+                    session.delete(variable_file)
+                else:
+                    storage.delete(upload_file.key)
+                    session.delete(upload_file)
+                    session.delete(variable_file)
 
     def delete_node_variables(self, app_id: str, node_id: str):
         return self._delete_node_variables(app_id, node_id)
 
     def _delete_node_variables(self, app_id: str, node_id: str):
-        self._session.query(WorkflowDraftVariable).where(
-            WorkflowDraftVariable.app_id == app_id,
-            WorkflowDraftVariable.node_id == node_id,
-        ).delete()
+        with session_factory.create_session() as session:
+            session.query(WorkflowDraftVariable).where(
+                WorkflowDraftVariable.app_id == app_id,
+                WorkflowDraftVariable.node_id == node_id,
+            ).delete()
 
     def _get_conversation_id_from_draft_variable(self, app_id: str) -> str | None:
         draft_var = self._get_variable(
@@ -544,39 +554,41 @@ class WorkflowDraftVariableService:
         """
         conv_id = self._get_conversation_id_from_draft_variable(workflow.app_id)
 
-        if conv_id is not None:
-            conversation = (
-                self._session.query(Conversation)
-                .where(
-                    Conversation.id == conv_id,
-                    Conversation.app_id == workflow.app_id,
+        with session_factory.create_session() as session:
+            if conv_id is not None:
+                conversation = (
+                    session.query(Conversation)
+                    .where(
+                        Conversation.id == conv_id,
+                        Conversation.app_id == workflow.app_id,
+                    )
+                    .first()
                 )
-                .first()
+                # Return the conversation ID only if it exists and is valid
+                # (i.e., a corresponding conversation record exists in the DB).
+                if conversation is not None:
+                    return conv_id
+            conversation = Conversation(
+                app_id=workflow.app_id,
+                app_model_config_id=app.app_model_config_id,
+                model_provider=None,
+                model_id="",
+                override_model_configs=None,
+                mode=app.mode,
+                name="Draft Debugging Conversation",
+                inputs={},
+                introduction="",
+                system_instruction="",
+                system_instruction_tokens=0,
+                status="normal",
+                invoke_from=InvokeFrom.DEBUGGER,
+                from_source="console",
+                from_end_user_id=None,
+                from_account_id=account_id,
             )
-            # Only return the conversation ID if it exists and is valid (has a correspond conversation record in DB).
-            if conversation is not None:
-                return conv_id
-        conversation = Conversation(
-            app_id=workflow.app_id,
-            app_model_config_id=app.app_model_config_id,
-            model_provider=None,
-            model_id="",
-            override_model_configs=None,
-            mode=app.mode,
-            name="Draft Debugging Conversation",
-            inputs={},
-            introduction="",
-            system_instruction="",
-            system_instruction_tokens=0,
-            status="normal",
-            invoke_from=InvokeFrom.DEBUGGER,
-            from_source="console",
-            from_end_user_id=None,
-            from_account_id=account_id,
-        )
 
-        self._session.add(conversation)
-        self._session.flush()
+            session.add(conversation)
+            session.flush()
         return conversation.id
 
     def prefill_conversation_variable_default_values(self, workflow: Workflow):

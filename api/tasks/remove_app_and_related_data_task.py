@@ -234,8 +234,7 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
 
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
     """Delete all workflow node executions for an app using the service repository."""
-    session_maker = sessionmaker(bind=db.engine)
-    node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
+    node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository()
 
     deleted_count = node_execution_repo.delete_executions_by_app(
         tenant_id=tenant_id,

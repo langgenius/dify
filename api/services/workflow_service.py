@@ -54,11 +54,7 @@ class WorkflowService:
 
     def __init__(self, session_maker: sessionmaker | None = None):
         """Initialize WorkflowService with repository dependencies."""
-        if session_maker is None:
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
-            session_maker
-        )
+        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository()
 
     def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
         """

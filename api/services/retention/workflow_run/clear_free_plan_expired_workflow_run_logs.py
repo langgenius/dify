@@ -280,14 +280,10 @@ class WorkflowRunCleanup:
 
     def _count_node_executions(self, session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
         run_ids = [run.id for run in runs]
-        repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
-            session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
-        )
+        repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository()
         return repo.count_by_runs(session, run_ids)
 
     def _delete_node_executions(self, session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
         run_ids = [run.id for run in runs]
-        repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
-            session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
-        )
+        repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository()
         return repo.delete_by_runs(session, run_ids)

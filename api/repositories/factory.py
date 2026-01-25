@@ -25,7 +25,7 @@ class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
 
     @classmethod
     def create_api_workflow_node_execution_repository(
-        cls, session_maker: sessionmaker[Session]
+        cls
     ) -> DifyAPIWorkflowNodeExecutionRepository:
         """
         Create a DifyAPIWorkflowNodeExecutionRepository instance based on configuration.
@@ -48,7 +48,7 @@ class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
 
         try:
             repository_class = import_string(class_path)
-            return repository_class(session_maker=session_maker)
+            return repository_class()
         except (ImportError, Exception) as e:
             raise RepositoryImportError(
                 f"Failed to create DifyAPIWorkflowNodeExecutionRepository from '{class_path}': {e}"

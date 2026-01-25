@@ -40,6 +40,19 @@ def mock_session(mock_engine) -> Session:
     return mock_session
 
 
+@pytest.fixture
+def patch_session_factory(monkeypatch, mock_session):
+    """Patch core.db.session_factory.create_session to return a context manager yielding mock_session."""
+    cm = MagicMock()
+    cm.__enter__.return_value = mock_session
+    cm.__exit__.return_value = None
+    monkeypatch.setattr(
+        "services.workflow_draft_variable_service.session_factory.create_session",
+        lambda: cm,
+    )
+    return mock_session
+
+
 class TestDraftVariableSaver:
     def _get_test_app_id(self):
         suffix = secrets.token_hex(6)
@@ -228,7 +241,7 @@ class TestWorkflowDraftVariableService:
             mock_reset_conv.assert_called_once_with(workflow, variable)
             assert result == expected_result
 
-    def test_reset_node_variable_with_no_execution_id(self, mock_session):
+    def test_reset_node_variable_with_no_execution_id(self, mock_session, patch_session_factory):
         """Test resetting a node variable with no execution ID - should delete variable"""
         service = WorkflowDraftVariableService(mock_session)
 
@@ -259,15 +272,9 @@ class TestWorkflowDraftVariableService:
         mock_engine,
         mock_session,
         monkeypatch,
+        patch_session_factory,
     ):
         """Test resetting a node variable when execution record doesn't exist"""
-        mock_repo_session = Mock(spec=Session)
-
-        mock_session_maker = MagicMock()
-        # Mock the context manager protocol for sessionmaker
-        mock_session_maker.return_value.__enter__.return_value = mock_repo_session
-        mock_session_maker.return_value.__exit__.return_value = None
-        monkeypatch.setattr("services.workflow_draft_variable_service.sessionmaker", mock_session_maker)
         service = WorkflowDraftVariableService(mock_session)
 
         # Mock the repository to return None (no execution record found)
@@ -286,7 +293,6 @@ class TestWorkflowDraftVariableService:
 
         result = service._reset_node_var_or_sys_var(workflow, variable)
 
-        mock_session_maker.assert_called_once_with(bind=mock_engine, expire_on_commit=False)
         # Should delete the variable and return None
         mock_session.delete.assert_called_once_with(instance=variable)
         mock_session.flush.assert_called_once()
@@ -296,17 +302,9 @@ class TestWorkflowDraftVariableService:
         self,
         mock_session,
         monkeypatch,
+        patch_session_factory,
     ):
         """Test resetting a node variable with valid execution record - should restore from execution"""
-        mock_repo_session = Mock(spec=Session)
-
-        mock_session_maker = MagicMock()
-        # Mock the context manager protocol for sessionmaker
-        mock_session_maker.return_value.__enter__.return_value = mock_repo_session
-        mock_session_maker.return_value.__exit__.return_value = None
-        mock_session_maker = monkeypatch.setattr(
-            "services.workflow_draft_variable_service.sessionmaker", mock_session_maker
-        )
         service = WorkflowDraftVariableService(mock_session)
 
         # Create mock execution record
@@ -365,7 +363,7 @@ class TestWorkflowDraftVariableService:
         assert "cannot reset system variable" in str(exc_info.value)
         assert f"variable_id={variable.id}" in str(exc_info.value)
 
-    def test_reset_editable_system_variable_succeeds(self, mock_session):
+    def test_reset_editable_system_variable_succeeds(self, mock_session, patch_session_factory):
         """Test that resetting an editable system variable succeeds"""
         service = WorkflowDraftVariableService(mock_session)
 
@@ -397,7 +395,7 @@ class TestWorkflowDraftVariableService:
         assert variable.last_edited_at is None
         mock_session.flush.assert_called()
 
-    def test_reset_query_system_variable_succeeds(self, mock_session):
+    def test_reset_query_system_variable_succeeds(self, mock_session, patch_session_factory):
         """Test that resetting query system variable (another editable one) succeeds"""
         service = WorkflowDraftVariableService(mock_session)
 

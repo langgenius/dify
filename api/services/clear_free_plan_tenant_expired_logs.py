@@ -200,8 +200,7 @@ class ClearFreePlanTenantExpiredLogs:
                     )
 
             # Process expired workflow node executions with backup
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
+            node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository()
             before_date = datetime.datetime.now() - datetime.timedelta(days=days)
             total_deleted = 0
 

@@ -3,19 +3,31 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 from models.workflow import WorkflowNodeExecutionModel
+from repositories import sqlalchemy_api_workflow_node_execution_repository as repo_module
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 
 
+class _SessionCtx:
+    def __init__(self, session: Session):
+        self._session = session
+
+    def __enter__(self) -> Session:
+        return self._session
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+
 class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
     @pytest.fixture
     def repository(self):
-        mock_session_maker = MagicMock()
-        return DifyAPISQLAlchemyWorkflowNodeExecutionRepository(session_maker=mock_session_maker)
+        return DifyAPISQLAlchemyWorkflowNodeExecutionRepository()
 
     @pytest.fixture
     def mock_execution(self):
@@ -30,11 +42,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         execution.created_at = "2023-01-01T00:00:00Z"
         return execution
 
-    def test_get_node_last_execution_found(self, repository, mock_execution):
+    def test_get_node_last_execution_found(self, repository, mock_execution, mocker: MockerFixture):
         """Test getting the last execution for a node when it exists."""
         # Arrange
         mock_session = MagicMock(spec=Session)
-        repository._session_maker.return_value.__enter__.return_value = mock_session
+        mocker.patch.object(repo_module.session_factory, "create_session", return_value=_SessionCtx(mock_session))
         mock_session.scalar.return_value = mock_execution
 
         # Act
@@ -52,11 +64,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         call_args = mock_session.scalar.call_args[0][0]
         assert hasattr(call_args, "compile")  # It's a SQLAlchemy statement
 
-    def test_get_node_last_execution_not_found(self, repository):
+    def test_get_node_last_execution_not_found(self, repository, mocker: MockerFixture):
         """Test getting the last execution for a node when it doesn't exist."""
         # Arrange
         mock_session = MagicMock(spec=Session)
-        repository._session_maker.return_value.__enter__.return_value = mock_session
+        mocker.patch.object(repo_module.session_factory, "create_session", return_value=_SessionCtx(mock_session))
         mock_session.scalar.return_value = None
 
         # Act
@@ -71,11 +83,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert result is None
         mock_session.scalar.assert_called_once()
 
-    def test_get_executions_by_workflow_run(self, repository, mock_execution):
+    def test_get_executions_by_workflow_run(self, repository, mock_execution, mocker: MockerFixture):
         """Test getting all executions for a workflow run."""
         # Arrange
         mock_session = MagicMock(spec=Session)
-        repository._session_maker.return_value.__enter__.return_value = mock_session
+        mocker.patch.object(repo_module.session_factory, "create_session", return_value=_SessionCtx(mock_session))
         executions = [mock_execution]
         mock_session.execute.return_value.scalars.return_value.all.return_value = executions
 
@@ -93,11 +105,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         call_args = mock_session.execute.call_args[0][0]
         assert hasattr(call_args, "compile")  # It's a SQLAlchemy statement
 
-    def test_get_executions_by_workflow_run_empty(self, repository):
+    def test_get_executions_by_workflow_run_empty(self, repository, mocker: MockerFixture):
         """Test getting executions for a workflow run when none exist."""
         # Arrange
         mock_session = MagicMock(spec=Session)
-        repository._session_maker.return_value.__enter__.return_value = mock_session
+        mocker.patch.object(repo_module.session_factory, "create_session", return_value=_SessionCtx(mock_session))
         mock_session.execute.return_value.scalars.return_value.all.return_value = []
 
         # Act
@@ -111,11 +123,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert result == []
         mock_session.execute.assert_called_once()
 
-    def test_get_execution_by_id_found(self, repository, mock_execution):
+    def test_get_execution_by_id_found(self, repository, mock_execution, mocker: MockerFixture):
         """Test getting execution by ID when it exists."""
         # Arrange
         mock_session = MagicMock(spec=Session)
-        repository._session_maker.return_value.__enter__.return_value = mock_session
+        mocker.patch.object(repo_module.session_factory, "create_session", return_value=_SessionCtx(mock_session))
         mock_session.scalar.return_value = mock_execution
 
         # Act
@@ -125,11 +137,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert result == mock_execution
         mock_session.scalar.assert_called_once()
 
-    def test_get_execution_by_id_not_found(self, repository):
+    def test_get_execution_by_id_not_found(self, repository, mocker: MockerFixture):
         """Test getting execution by ID when it doesn't exist."""
         # Arrange
         mock_session = MagicMock(spec=Session)
-        repository._session_maker.return_value.__enter__.return_value = mock_session
+        mocker.patch.object(repo_module.session_factory, "create_session", return_value=_SessionCtx(mock_session))
         mock_session.scalar.return_value = None
 
         # Act
@@ -155,11 +167,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert callable(repository.get_expired_executions_batch)
         assert callable(repository.delete_executions_by_ids)
 
-    def test_delete_expired_executions(self, repository):
+    def test_delete_expired_executions(self, repository, mocker: MockerFixture):
         """Test deleting expired executions."""
         # Arrange
         mock_session = MagicMock(spec=Session)
-        repository._session_maker.return_value.__enter__.return_value = mock_session
+        mocker.patch.object(repo_module.session_factory, "create_session", return_value=_SessionCtx(mock_session))
 
         # Mock the select query to return some IDs first time, then empty to stop loop
         execution_ids = ["id1", "id2"]  # Less than batch_size to trigger break
@@ -190,11 +202,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert mock_session.execute.call_count == 2  # One select call, one delete call
         mock_session.commit.assert_called_once()
 
-    def test_delete_executions_by_app(self, repository):
+    def test_delete_executions_by_app(self, repository, mocker: MockerFixture):
         """Test deleting executions by app."""
         # Arrange
         mock_session = MagicMock(spec=Session)
-        repository._session_maker.return_value.__enter__.return_value = mock_session
+        mocker.patch.object(repo_module.session_factory, "create_session", return_value=_SessionCtx(mock_session))
 
         # Mock the select query to return some IDs first time, then empty to stop loop
         execution_ids = ["id1", "id2"]
@@ -223,11 +235,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert mock_session.execute.call_count == 2  # One select call, one delete call
         mock_session.commit.assert_called_once()
 
-    def test_get_expired_executions_batch(self, repository):
+    def test_get_expired_executions_batch(self, repository, mocker: MockerFixture):
         """Test getting expired executions batch for backup."""
         # Arrange
         mock_session = MagicMock(spec=Session)
-        repository._session_maker.return_value.__enter__.return_value = mock_session
+        mocker.patch.object(repo_module.session_factory, "create_session", return_value=_SessionCtx(mock_session))
 
         # Create mock execution objects
         mock_execution1 = MagicMock()
@@ -252,11 +264,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert result[1].id == "exec-2"
         mock_session.execute.assert_called_once()
 
-    def test_delete_executions_by_ids(self, repository):
+    def test_delete_executions_by_ids(self, repository, mocker: MockerFixture):
         """Test deleting executions by IDs."""
         # Arrange
         mock_session = MagicMock(spec=Session)
-        repository._session_maker.return_value.__enter__.return_value = mock_session
+        mocker.patch.object(repo_module.session_factory, "create_session", return_value=_SessionCtx(mock_session))
 
         # Mock the delete query result
         mock_result = MagicMock()
@@ -273,11 +285,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         mock_session.execute.assert_called_once()
         mock_session.commit.assert_called_once()
 
-    def test_delete_executions_by_ids_empty_list(self, repository):
+    def test_delete_executions_by_ids_empty_list(self, repository, mocker: MockerFixture):
         """Test deleting executions with empty ID list."""
         # Arrange
         mock_session = MagicMock(spec=Session)
-        repository._session_maker.return_value.__enter__.return_value = mock_session
+        mocker.patch.object(repo_module.session_factory, "create_session", return_value=_SessionCtx(mock_session))
 
         # Act
         result = repository.delete_executions_by_ids([])

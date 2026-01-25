@@ -429,7 +429,7 @@ class WorkflowRunArchiver:
         repo = self._get_workflow_run_repo()
         app_logs = repo.get_app_logs_by_run_id(session, run.id)
         table_data["workflow_app_logs"] = [self._row_to_dict(row) for row in app_logs]
-        node_exec_repo = self._get_workflow_node_execution_repo(session)
+        node_exec_repo = self._get_workflow_node_execution_repo()
         node_exec_records = node_exec_repo.get_executions_by_workflow_run(
             tenant_id=run.tenant_id,
             app_id=run.app_id,
@@ -509,16 +509,12 @@ class WorkflowRunArchiver:
 
     def _delete_node_executions(self, session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
         run_ids = [run.id for run in runs]
-        return self._get_workflow_node_execution_repo(session).delete_by_runs(session, run_ids)
+        return self._get_workflow_node_execution_repo().delete_by_runs(session, run_ids)
 
-    def _get_workflow_node_execution_repo(
-        self,
-        session: Session,
-    ) -> DifyAPIWorkflowNodeExecutionRepository:
+    def _get_workflow_node_execution_repo(self) -> DifyAPIWorkflowNodeExecutionRepository:
         from repositories.factory import DifyAPIRepositoryFactory
 
-        session_maker = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
-        return DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
+        return DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository()
 
     def _get_workflow_run_repo(self) -> APIWorkflowRunRepository:
         if self.workflow_run_repo is not None:

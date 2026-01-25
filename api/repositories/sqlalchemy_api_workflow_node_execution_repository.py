@@ -11,8 +11,9 @@ from typing import cast
 
 from sqlalchemy import asc, delete, desc, func, select
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
+from core.db.session_factory import session_factory
 from models.workflow import (
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
@@ -37,15 +38,6 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
     - Maintenance operations for data lifecycle management
     - Thread-safe database operations using session-per-request pattern
     """
-
-    def __init__(self, session_maker: sessionmaker[Session]):
-        """
-        Initialize the repository with a sessionmaker.
-
-        Args:
-            session_maker: SQLAlchemy sessionmaker for creating database sessions
-        """
-        self._session_maker = session_maker
 
     def get_node_last_execution(
         self,
@@ -84,7 +76,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             .limit(1)
         )
 
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             return session.scalar(stmt)
 
     def get_executions_by_workflow_run(
@@ -114,7 +106,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
         ).order_by(asc(WorkflowNodeExecutionModel.created_at))
 
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             return session.execute(stmt).scalars().all()
 
     def get_execution_by_id(
@@ -146,7 +138,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         if tenant_id is not None:
             stmt = stmt.where(WorkflowNodeExecutionModel.tenant_id == tenant_id)
 
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             return session.scalar(stmt)
 
     def delete_expired_executions(
@@ -169,7 +161,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         total_deleted = 0
 
         while True:
-            with self._session_maker() as session:
+            with session_factory.create_session() as session:
                 # Find executions to delete in batches
                 stmt = (
                     select(WorkflowNodeExecutionModel.id)
@@ -216,7 +208,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         total_deleted = 0
 
         while True:
-            with self._session_maker() as session:
+            with session_factory.create_session() as session:
                 # Find executions to delete in batches
                 stmt = (
                     select(WorkflowNodeExecutionModel.id)
@@ -269,7 +261,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             .limit(batch_size)
         )
 
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             return session.execute(stmt).scalars().all()
 
     def delete_executions_by_ids(
@@ -288,7 +280,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         if not execution_ids:
             return 0
 
-        with self._session_maker() as session:
+        with session_factory.create_session() as session:
             stmt = delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(execution_ids))
             result = cast(CursorResult, session.execute(stmt))
             session.commit()
