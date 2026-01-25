@@ -121,6 +121,7 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     const contractSymbol = plugin.symbol(contractName, {
       exported: true,
       meta: {
+        path: ['paths', op.path, op.method.toLowerCase()],
         pluginName: 'orpc',
         resource: 'operation',
         resourceId: op.id,

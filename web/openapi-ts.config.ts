@@ -2,39 +2,65 @@ import { defineConfig } from '@hey-api/openapi-ts'
 
 import { defineConfig as defineOrpcConfig } from './plugins/hey-api-orpc/config'
 
-// Whether to split generated files by tag
-const splitByTags = true
-
 // Symbol type for the getFilePath hook (not publicly exported by hey-api)
-type SymbolMeta = {
+type SymbolMeta = Record<string, unknown> & {
   tags?: readonly string[]
   tool?: string
   resource?: string
   pluginName?: string
+  path?: readonly (string | number)[]
 }
 
-// Get file path based on symbol metadata
-function getFilePathByTag(symbol: { meta?: SymbolMeta }): string | undefined {
+// Extract API path segment from OpenAPI path array
+// e.g., ["paths", "/chat-messages", "post"] → "chat-messages"
+// e.g., ["paths", "/files/upload", "post"] → "files"
+function getApiSegment(path: readonly (string | number)[] | undefined): string | undefined {
+  if (!path || path[0] !== 'paths')
+    return undefined
+  const apiPath = path[1] // e.g., "/chat-messages" or "/files/upload"
+  if (typeof apiPath !== 'string')
+    return undefined
+  // Get first segment after leading slash
+  return apiPath.split('/').filter(Boolean)[0]
+}
+
+// Get file path based on symbol metadata (mixed strategy)
+function getFilePath(symbol: { meta?: SymbolMeta }): string | undefined {
   const meta = symbol.meta
   if (!meta)
     return undefined
 
-  // Get the first tag from symbol metadata, fallback to 'schemas' for definitions
-  const tag = meta.tags?.[0]?.toLowerCase()
-
   // Handle typescript plugin symbols
   if (meta.tool === 'typescript') {
-    return `types/${tag ?? 'schemas'}`
+    if (meta.resource === 'definition') {
+      return 'types/models'
+    }
+    if (meta.resource === 'operation') {
+      const segment = getApiSegment(meta.path)
+      return `types/api/${segment ?? 'common'}`
+    }
+    return 'types/common'
   }
 
   // Handle zod plugin symbols
   if (meta.tool === 'zod') {
-    return `zod/${tag ?? 'schemas'}`
+    if (meta.resource === 'definition') {
+      return 'zod/models'
+    }
+    if (meta.resource === 'operation') {
+      const segment = getApiSegment(meta.path)
+      return `zod/api/${segment ?? 'common'}`
+    }
+    return 'zod/common'
   }
 
   // Handle orpc plugin symbols
   if (meta.pluginName === 'orpc') {
-    return `orpc/${tag ?? 'common'}`
+    if (meta.resource === 'operation') {
+      const segment = getApiSegment(meta.path)
+      return `orpc/api/${segment ?? 'common'}`
+    }
+    return 'orpc/common'
   }
 
   return undefined
@@ -62,13 +88,11 @@ export default defineConfig({
       output: 'orpc',
     }),
   ],
-  parser: splitByTags
-    ? {
-        hooks: {
-          symbols: {
-            getFilePath: getFilePathByTag,
-          },
-        },
-      }
-    : undefined,
+  parser: {
+    hooks: {
+      symbols: {
+        getFilePath,
+      },
+    },
+  },
 })

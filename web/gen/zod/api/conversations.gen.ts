@@ -2,27 +2,7 @@
 
 import { z } from 'zod'
 
-import { zConversationHistoryResponse, zConversationListItem, zConversationRenameRequest, zConversationsListResponse, zConversationVariablesResponse } from './schemas.gen'
-
-export const zGetConversationHistoryData = z.object({
-  body: z.never().optional(),
-  path: z.never().optional(),
-  query: z.object({
-    conversation_id: z.string().describe('Conversation ID.'),
-    user: z.string().describe('User identifier. **Note**: The Service API does not share conversations created by the WebApp. Conversations created through the API are isolated from those created in the WebApp interface.'),
-    first_id: z.string().describe('The ID of the first chat record on the current page, default is null (for fetching the latest). For subsequent pages, use the ID of the first message from the current list to get older messages.').optional(),
-    limit: z.number().int().describe('How many chat history messages to return in one request, default is 20.').optional().default(20),
-  }),
-})
-
-export type GetConversationHistoryDataZodType = z.infer<typeof zGetConversationHistoryData>
-
-/**
- * Successfully retrieved conversation history.
- */
-export const zGetConversationHistoryResponse = zConversationHistoryResponse
-
-export type GetConversationHistoryResponseZodType = z.infer<typeof zGetConversationHistoryResponse>
+import { zConversationListItem, zConversationRenameRequest, zConversationsListResponse, zConversationVariablesResponse } from '../models.gen'
 
 export const zGetConversationsListData = z.object({
   body: z.never().optional(),

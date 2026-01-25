@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-import { zAnnotationItem, zAnnotationListResponse, zCreateAnnotationRequest, zInitialAnnotationReplySettingsRequest, zInitialAnnotationReplySettingsResponse as zInitialAnnotationReplySettingsResponse2, zInitialAnnotationReplySettingsStatusResponse, zUpdateAnnotationRequest } from './schemas.gen'
+import { zAnnotationItem, zAnnotationListResponse, zCreateAnnotationRequest, zInitialAnnotationReplySettingsRequest, zInitialAnnotationReplySettingsResponse as zInitialAnnotationReplySettingsResponse2, zInitialAnnotationReplySettingsStatusResponse, zUpdateAnnotationRequest } from '../models.gen'
 
 export const zGetAnnotationListData = z.object({
   body: z.never().optional(),

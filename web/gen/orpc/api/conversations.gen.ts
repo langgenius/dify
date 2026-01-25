@@ -2,22 +2,8 @@
 
 import { z } from 'zod'
 
-import { zDeleteConversationData, zGetConversationHistoryData, zGetConversationHistoryResponse, zGetConversationsListData, zGetConversationsListResponse, zGetConversationVariablesData, zGetConversationVariablesResponse, zRenameConversationData, zRenameConversationResponse } from '../zod/conversations.gen'
-import { base } from './common.gen'
-
-/**
- * Get Conversation History Messages
- *
- * Returns historical chat records in a scrolling load format, with the first page returning the latest `{limit}` messages, i.e., in reverse order.
- */
-export const getConversationHistoryContract = base.route({
-  path: '/messages',
-  method: 'GET',
-  operationId: 'getConversationHistory',
-  summary: 'Get Conversation History Messages',
-  description: 'Returns historical chat records in a scrolling load format, with the first page returning the latest `{limit}` messages, i.e., in reverse order.',
-  tags: ['Conversations'],
-}).input(zGetConversationHistoryData).output(z.object({ body: zGetConversationHistoryResponse, status: z.literal(200) }))
+import { zDeleteConversationData, zGetConversationsListData, zGetConversationsListResponse, zGetConversationVariablesData, zGetConversationVariablesResponse, zRenameConversationData, zRenameConversationResponse } from '../../zod/api/conversations.gen'
+import { base } from '../common.gen'
 
 /**
  * Get Conversations

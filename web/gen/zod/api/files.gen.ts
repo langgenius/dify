@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-import { zFileUploadResponse } from './schemas.gen'
+import { zFileUploadResponse } from '../models.gen'
 
 export const zUploadChatFileData = z.object({
   body: z.object({

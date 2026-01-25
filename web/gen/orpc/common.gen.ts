@@ -2,13 +2,18 @@
 
 import { oc } from '@orpc/contract'
 
-import { createAnnotationContract, deleteAnnotationContract, getAnnotationListContract, getInitialAnnotationReplySettingsStatusContract, initialAnnotationReplySettingsContract, updateAnnotationContract } from './annotations.gen'
-import { getChatAppInfoContract, getChatAppMetaContract, getChatAppParametersContract, getChatWebAppSettingsContract } from './application.gen'
-import { getSuggestedQuestionsContract, sendChatMessageContract, stopChatMessageGenerationContract } from './chat.gen'
-import { deleteConversationContract, getConversationHistoryContract, getConversationsListContract, getConversationVariablesContract, renameConversationContract } from './conversations.gen'
-import { getChatAppFeedbacksContract, postChatMessageFeedbackContract } from './feedback.gen'
-import { previewChatFileContract, uploadChatFileContract } from './files.gen'
-import { audioToTextContract, textToAudioChatContract } from './tts.gen'
+import { getChatAppFeedbacksContract } from './api/app.gen'
+import { createAnnotationContract, deleteAnnotationContract, getAnnotationListContract, getInitialAnnotationReplySettingsStatusContract, initialAnnotationReplySettingsContract, updateAnnotationContract } from './api/apps.gen'
+import { audioToTextContract } from './api/audio-to-text.gen'
+import { sendChatMessageContract, stopChatMessageGenerationContract } from './api/chat-messages.gen'
+import { deleteConversationContract, getConversationsListContract, getConversationVariablesContract, renameConversationContract } from './api/conversations.gen'
+import { previewChatFileContract, uploadChatFileContract } from './api/files.gen'
+import { getChatAppInfoContract } from './api/info.gen'
+import { getConversationHistoryContract, getSuggestedQuestionsContract, postChatMessageFeedbackContract } from './api/messages.gen'
+import { getChatAppMetaContract } from './api/meta.gen'
+import { getChatAppParametersContract } from './api/parameters.gen'
+import { getChatWebAppSettingsContract } from './api/site.gen'
+import { textToAudioChatContract } from './api/text-to-audio.gen'
 
 export const base = oc.$route({ inputStructure: 'detailed', outputStructure: 'detailed' })
 

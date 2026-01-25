@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-import { zChatCompletionResponse, zChatRequest, zSuggestedQuestionsResponse } from './schemas.gen'
+import { zChatCompletionResponse, zChatRequest } from '../models.gen'
 
 export const zSendChatMessageData = z.object({
   body: zChatRequest,
@@ -41,22 +41,3 @@ export const zStopChatMessageGenerationResponse = z.object({
 }).describe('Operation successful.')
 
 export type StopChatMessageGenerationResponseZodType = z.infer<typeof zStopChatMessageGenerationResponse>
-
-export const zGetSuggestedQuestionsData = z.object({
-  body: z.never().optional(),
-  path: z.object({
-    message_id: z.string().describe('Message ID.'),
-  }),
-  query: z.object({
-    user: z.string().describe('User identifier. **Note**: The Service API does not share conversations created by the WebApp. Conversations created through the API are isolated from those created in the WebApp interface.'),
-  }),
-})
-
-export type GetSuggestedQuestionsDataZodType = z.infer<typeof zGetSuggestedQuestionsData>
-
-/**
- * Successfully retrieved suggested questions.
- */
-export const zGetSuggestedQuestionsResponse = zSuggestedQuestionsResponse
-
-export type GetSuggestedQuestionsResponseZodType = z.infer<typeof zGetSuggestedQuestionsResponse>

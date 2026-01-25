@@ -2,8 +2,8 @@
 
 import { z } from 'zod'
 
-import { zGetSuggestedQuestionsData, zGetSuggestedQuestionsResponse, zSendChatMessageData, zSendChatMessageResponse, zStopChatMessageGenerationData, zStopChatMessageGenerationResponse } from '../zod/chat.gen'
-import { base } from './common.gen'
+import { zSendChatMessageData, zSendChatMessageResponse, zStopChatMessageGenerationData, zStopChatMessageGenerationResponse } from '../../zod/api/chat-messages.gen'
+import { base } from '../common.gen'
 
 /**
  * Send Chat Message
@@ -32,17 +32,3 @@ export const stopChatMessageGenerationContract = base.route({
   description: 'Stops a chat message generation task. Only supported in streaming mode.',
   tags: ['Chat'],
 }).input(zStopChatMessageGenerationData).output(z.object({ body: zStopChatMessageGenerationResponse, status: z.literal(200) }))
-
-/**
- * Next Suggested Questions
- *
- * Get next questions suggestions for the current message.
- */
-export const getSuggestedQuestionsContract = base.route({
-  path: '/messages/{message_id}/suggested',
-  method: 'GET',
-  operationId: 'getSuggestedQuestions',
-  summary: 'Next Suggested Questions',
-  description: 'Get next questions suggestions for the current message.',
-  tags: ['Chat'],
-}).input(zGetSuggestedQuestionsData).output(z.object({ body: zGetSuggestedQuestionsResponse, status: z.literal(200) }))

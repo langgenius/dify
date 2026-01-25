@@ -2,8 +2,8 @@
 
 import { z } from 'zod'
 
-import { zCreateAnnotationData, zCreateAnnotationResponse, zDeleteAnnotationData, zGetAnnotationListData, zGetAnnotationListResponse, zGetInitialAnnotationReplySettingsStatusData, zGetInitialAnnotationReplySettingsStatusResponse, zInitialAnnotationReplySettingsData, zInitialAnnotationReplySettingsResponse, zUpdateAnnotationData, zUpdateAnnotationResponse } from '../zod/annotations.gen'
-import { base } from './common.gen'
+import { zCreateAnnotationData, zCreateAnnotationResponse, zDeleteAnnotationData, zGetAnnotationListData, zGetAnnotationListResponse, zGetInitialAnnotationReplySettingsStatusData, zGetInitialAnnotationReplySettingsStatusResponse, zInitialAnnotationReplySettingsData, zInitialAnnotationReplySettingsResponse, zUpdateAnnotationData, zUpdateAnnotationResponse } from '../../zod/api/apps.gen'
+import { base } from '../common.gen'
 
 /**
  * Get Annotation List

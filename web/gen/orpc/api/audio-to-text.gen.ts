@@ -2,8 +2,8 @@
 
 import { z } from 'zod'
 
-import { zAudioToTextData, zAudioToTextResponse, zTextToAudioChatData, zTextToAudioChatResponse } from '../zod/tts.gen'
-import { base } from './common.gen'
+import { zAudioToTextData, zAudioToTextResponse } from '../../zod/api/audio-to-text.gen'
+import { base } from '../common.gen'
 
 /**
  * Speech to Text
@@ -18,17 +18,3 @@ export const audioToTextContract = base.route({
   description: 'Convert audio file to text. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm. File size limit: 15MB.',
   tags: ['TTS'],
 }).input(zAudioToTextData).output(z.object({ body: zAudioToTextResponse, status: z.literal(200) }))
-
-/**
- * Text to Audio
- *
- * Convert text to speech.
- */
-export const textToAudioChatContract = base.route({
-  path: '/text-to-audio',
-  method: 'POST',
-  operationId: 'textToAudioChat',
-  summary: 'Text to Audio',
-  description: 'Convert text to speech.',
-  tags: ['TTS'],
-}).input(zTextToAudioChatData).output(z.object({ body: zTextToAudioChatResponse, status: z.literal(200) }))

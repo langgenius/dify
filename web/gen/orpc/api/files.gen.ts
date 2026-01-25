@@ -2,8 +2,8 @@
 
 import { z } from 'zod'
 
-import { zPreviewChatFileData, zPreviewChatFileResponse, zUploadChatFileData, zUploadChatFileResponse } from '../zod/files.gen'
-import { base } from './common.gen'
+import { zPreviewChatFileData, zPreviewChatFileResponse, zUploadChatFileData, zUploadChatFileResponse } from '../../zod/api/files.gen'
+import { base } from '../common.gen'
 
 /**
  * File Upload

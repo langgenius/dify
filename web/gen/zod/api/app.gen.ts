@@ -2,26 +2,7 @@
 
 import { z } from 'zod'
 
-import { zAppFeedbacksResponse, zMessageFeedbackRequest } from './schemas.gen'
-
-export const zPostChatMessageFeedbackData = z.object({
-  body: zMessageFeedbackRequest,
-  path: z.object({
-    message_id: z.string().describe('Message ID for which feedback is being provided.'),
-  }),
-  query: z.never().optional(),
-})
-
-export type PostChatMessageFeedbackDataZodType = z.infer<typeof zPostChatMessageFeedbackData>
-
-/**
- * Operation successful.
- */
-export const zPostChatMessageFeedbackResponse = z.object({
-  result: z.string().optional(),
-}).describe('Operation successful.')
-
-export type PostChatMessageFeedbackResponseZodType = z.infer<typeof zPostChatMessageFeedbackResponse>
+import { zAppFeedbacksResponse } from '../models.gen'
 
 export const zGetChatAppFeedbacksData = z.object({
   body: z.never().optional(),
