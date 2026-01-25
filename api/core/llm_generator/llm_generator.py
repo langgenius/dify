@@ -555,7 +555,6 @@ class LLMGenerator:
             return {"questions": [], "error": f"Model schema not found for {model_name}"}
 
         completion_params = model_config.get("completion_params", {}) if model_config else {}
-        model_parameters = {**completion_params, "max_tokens": 256}
         try:
             response = invoke_llm_with_pydantic_model(
                 provider=model_instance.provider,
@@ -563,7 +562,7 @@ class LLMGenerator:
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 output_model=SuggestedQuestionsOutput,
-                model_parameters=model_parameters,
+                model_parameters=completion_params,
                 stream=False,
                 tenant_id=tenant_id,
             )
