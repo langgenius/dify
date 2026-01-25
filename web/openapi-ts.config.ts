@@ -3,6 +3,8 @@ import { defineConfig } from '@hey-api/openapi-ts'
 
 import { defineConfig as defineOrpcConfig } from './plugins/hey-api-orpc/config'
 
+const split = false
+
 // Symbol type for the getFilePath hook (not publicly exported by hey-api)
 type SymbolMeta = Record<string, unknown> & {
   tags?: readonly string[]
@@ -96,6 +98,7 @@ export default defineConfig({
     fileName: {
       suffix: null,
     },
+    clean: false,
   },
   plugins: [
     '@hey-api/typescript',
@@ -113,11 +116,13 @@ export default defineConfig({
       output: 'orpc',
     }),
   ],
-  parser: {
-    hooks: {
-      symbols: {
-        getFilePath,
-      },
-    },
-  },
+  parser: split
+    ? {
+        hooks: {
+          symbols: {
+            getFilePath,
+          },
+        },
+      }
+    : undefined,
 } satisfies UserConfig)
