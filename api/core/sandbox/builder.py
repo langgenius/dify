@@ -155,7 +155,7 @@ class SandboxBuilder:
 
     @classmethod
     def draft_id(cls, user_id: str) -> str:
-        return f"sandbox_draft_{user_id}"
+        return user_id
 
 
 class VMConfig:

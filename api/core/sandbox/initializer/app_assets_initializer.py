@@ -28,7 +28,7 @@ class AppAssetsInitializer(AsyncSandboxInitializer):
         vm = sandbox.vm
         asset_storage = app_asset_storage
         zip_ref = AssetPath.build_zip(self._tenant_id, self._app_id, self._assets_id)
-        download_url = asset_storage.get_download_url(zip_ref, for_external=False)
+        download_url = asset_storage.get_download_url(zip_ref)
 
         (
             pipeline(vm)

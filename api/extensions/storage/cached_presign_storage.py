@@ -57,7 +57,7 @@ class CachedPresignStorage(StorageWrapper):
         if cached:
             return cached
 
-        url = super().get_download_url(filename, expires_in)
+        url = self._storage.get_download_url(filename, expires_in)
         self._set_cached(cache_key, url, expires_in)
 
         return url
@@ -94,7 +94,7 @@ class CachedPresignStorage(StorageWrapper):
 
         # Batch fetch uncached URLs from storage
         if uncached_filenames:
-            uncached_urls = [super().get_download_url(f, expires_in) for f in uncached_filenames]
+            uncached_urls = [self._storage.get_download_url(f, expires_in) for f in uncached_filenames]
 
             # Fill results at correct positions
             for idx, url in zip(uncached_indices, uncached_urls):

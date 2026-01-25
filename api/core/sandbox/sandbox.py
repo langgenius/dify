@@ -87,7 +87,10 @@ class Sandbox:
         if self._cancel_event.is_set():
             raise RuntimeError("Sandbox initialization was cancelled")
         if self._init_error is not None:
-            raise RuntimeError("Sandbox initialization failed") from self._init_error
+            if isinstance(self._init_error, ValueError):
+                raise RuntimeError(f"Sandbox initialization failed: {self._init_error}") from self._init_error
+            else:
+                raise RuntimeError("Sandbox initialization failed") from self._init_error
 
     def mount(self) -> bool:
         return self._storage.mount(self._vm)

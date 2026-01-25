@@ -301,21 +301,19 @@ class AppAssetStorage:
     def get_storage_key(self, asset_path: AssetPathBase) -> str:
         return asset_path.get_storage_key()
 
-    def get_download_url(self, asset_path: AssetPathBase, expires_in: int = 3600, *, for_external: bool = True) -> str:
+    def get_download_url(self, asset_path: AssetPathBase, expires_in: int = 3600) -> str:
         storage_key = self.get_storage_key(asset_path)
         try:
             return self._storage.get_download_url(storage_key, expires_in)
         except NotImplementedError:
             pass
 
-        return self._generate_signed_proxy_download_url(asset_path, expires_in, for_external=for_external)
+        return self._generate_signed_proxy_download_url(asset_path, expires_in)
 
     def get_download_urls(
         self,
         asset_paths: Iterable[AssetPathBase],
         expires_in: int = 3600,
-        *,
-        for_external: bool = True,
     ) -> list[str]:
         asset_paths_list = list(asset_paths)
         storage_keys = [self.get_storage_key(asset_path) for asset_path in asset_paths_list]
@@ -325,17 +323,12 @@ class AppAssetStorage:
         except NotImplementedError:
             pass
 
-        return [
-            self._generate_signed_proxy_download_url(asset_path, expires_in, for_external=for_external)
-            for asset_path in asset_paths_list
-        ]
+        return [self._generate_signed_proxy_download_url(asset_path, expires_in) for asset_path in asset_paths_list]
 
     def get_upload_url(
         self,
         asset_path: AssetPathBase,
         expires_in: int = 3600,
-        *,
-        for_external: bool = True,
     ) -> str:
         storage_key = self.get_storage_key(asset_path)
         try:
@@ -343,30 +336,26 @@ class AppAssetStorage:
         except NotImplementedError:
             pass
 
-        return self._generate_signed_proxy_upload_url(asset_path, expires_in, for_external=for_external)
+        return self._generate_signed_proxy_upload_url(asset_path, expires_in)
 
-    def _generate_signed_proxy_download_url(
-        self, asset_path: AssetPathBase, expires_in: int, *, for_external: bool
-    ) -> str:
+    def _generate_signed_proxy_download_url(self, asset_path: AssetPathBase, expires_in: int) -> str:
         expires_in = min(expires_in, dify_config.FILES_ACCESS_TIMEOUT)
         expires_at = int(time.time()) + max(expires_in, 1)
         nonce = os.urandom(16).hex()
         sign = AppAssetSigner.create_download_signature(asset_path=asset_path, expires_at=expires_at, nonce=nonce)
 
-        base_url = dify_config.FILES_URL if for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
+        base_url = dify_config.FILES_URL
         url = self._build_proxy_url(base_url=base_url, asset_path=asset_path, action="download")
         query = urllib.parse.urlencode({"expires_at": expires_at, "nonce": nonce, "sign": sign})
         return f"{url}?{query}"
 
-    def _generate_signed_proxy_upload_url(
-        self, asset_path: AssetPathBase, expires_in: int, *, for_external: bool
-    ) -> str:
+    def _generate_signed_proxy_upload_url(self, asset_path: AssetPathBase, expires_in: int) -> str:
         expires_in = min(expires_in, dify_config.FILES_ACCESS_TIMEOUT)
         expires_at = int(time.time()) + max(expires_in, 1)
         nonce = os.urandom(16).hex()
         sign = AppAssetSigner.create_upload_signature(asset_path=asset_path, expires_at=expires_at, nonce=nonce)
 
-        base_url = dify_config.FILES_URL if for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
+        base_url = dify_config.FILES_URL
         url = self._build_proxy_url(base_url=base_url, asset_path=asset_path, action="upload")
         query = urllib.parse.urlencode({"expires_at": expires_at, "nonce": nonce, "sign": sign})
         return f"{url}?{query}"

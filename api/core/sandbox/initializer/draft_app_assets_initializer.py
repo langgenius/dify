@@ -43,7 +43,7 @@ class DraftAppAssetsInitializer(AsyncSandboxInitializer):
             else AssetPath.draft(self._tenant_id, self._app_id, node.id)
             for node in nodes
         ]
-        urls = storage.get_download_urls(refs, DRAFT_ASSETS_EXPIRES_IN, for_external=False)
+        urls = storage.get_download_urls(refs, DRAFT_ASSETS_EXPIRES_IN)
         items = [AssetDownloadItem(path=tree.get_path(node.id).lstrip("/"), url=url) for node, url in zip(nodes, urls)]
         script = AssetDownloadService.build_download_script(items, AppAssets.PATH)
         pipeline(vm).add(

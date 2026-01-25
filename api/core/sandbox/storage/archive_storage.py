@@ -1,10 +1,11 @@
 import logging
+from uuid import UUID
 
+from core.sandbox.security.archive_signer import SandboxArchivePath, SandboxArchiveSigner
 from core.virtual_environment.__base.exec import PipelineExecutionError
 from core.virtual_environment.__base.helpers import pipeline
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from extensions.ext_storage import storage
-from extensions.storage.file_presign_storage import FilePresignStorage
 
 from .sandbox_storage import SandboxStorage
 
@@ -34,14 +35,19 @@ class ArchiveSandboxStorage(SandboxStorage):
 
     @property
     def _storage_key(self) -> str:
-        return f"sandbox/{self._tenant_id}/{self._sandbox_id}.tar.gz"
+        return SandboxArchivePath(UUID(self._tenant_id), UUID(self._sandbox_id)).get_storage_key()
 
     def mount(self, sandbox: VirtualEnvironment) -> bool:
         if not self.exists():
             logger.debug("No archive found for sandbox %s, skipping mount", self._sandbox_id)
             return False
 
-        download_url = FilePresignStorage(storage.storage_runner).get_download_url(self._storage_key)
+        archive_path = SandboxArchivePath(UUID(self._tenant_id), UUID(self._sandbox_id))
+        download_url = SandboxArchiveSigner.build_signed_url(
+            archive_path=archive_path,
+            expires_in=ARCHIVE_DOWNLOAD_TIMEOUT,
+            action=SandboxArchiveSigner.OPERATION_DOWNLOAD,
+        )
         try:
             (
                 pipeline(sandbox)
@@ -58,7 +64,12 @@ class ArchiveSandboxStorage(SandboxStorage):
         return True
 
     def unmount(self, sandbox: VirtualEnvironment) -> bool:
-        upload_url = FilePresignStorage(storage.storage_runner).get_upload_url(self._storage_key)
+        archive_path = SandboxArchivePath(UUID(self._tenant_id), UUID(self._sandbox_id))
+        upload_url = SandboxArchiveSigner.build_signed_url(
+            archive_path=archive_path,
+            expires_in=ARCHIVE_UPLOAD_TIMEOUT,
+            action=SandboxArchiveSigner.OPERATION_UPLOAD,
+        )
         (
             pipeline(sandbox)
             .add(
