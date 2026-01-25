@@ -295,11 +295,12 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     plugin.node(contractNode)
   }
 
-  // Create contracts object export grouped by API path segment
-  const contractsSymbol = plugin.symbol('contracts', {
+  // Create contracts object export grouped by API path segment (in separate router file)
+  const contractsSymbol = plugin.symbol('router', {
     exported: true,
     meta: {
       pluginName: 'orpc',
+      resource: 'router',
     },
   })
 
@@ -335,16 +336,17 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     .assign(contractsObject)
   plugin.node(contractsNode)
 
-  // Create type export: export type Contracts = typeof contracts
-  const contractsTypeSymbol = plugin.symbol('Contracts', {
+  // Create type export: export type Router = typeof router (in separate router file)
+  const routerTypeSymbol = plugin.symbol('Router', {
     exported: true,
     meta: {
       pluginName: 'orpc',
+      resource: 'router',
     },
   })
 
-  const contractsTypeNode = $.type.alias(contractsTypeSymbol)
+  const routerTypeNode = $.type.alias(routerTypeSymbol)
     .export()
     .type($.type.query($(contractsSymbol)))
-  plugin.node(contractsTypeNode)
+  plugin.node(routerTypeNode)
 }

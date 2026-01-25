@@ -74,6 +74,9 @@ function getFilePath(symbol: { meta?: SymbolMeta }): string | undefined {
 
   // Handle orpc plugin symbols
   if (meta.pluginName === 'orpc') {
+    if (meta.resource === 'router') {
+      return 'orpc/router'
+    }
     if (meta.resource === 'operation') {
       const segment = getApiSegment(meta.path)
       return `orpc/api/${segment ?? 'common'}`
