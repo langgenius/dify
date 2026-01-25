@@ -14,12 +14,8 @@ export const defaultConfig: OrpcPlugin['Config'] = {
   resolveConfig: (plugin) => {
     plugin.config.output = plugin.config.output ?? 'orpc'
     plugin.config.exportFromIndex = plugin.config.exportFromIndex ?? false
-    plugin.config.groupBy = plugin.config.groupBy ?? 'tag'
     plugin.config.contractNameBuilder = plugin.config.contractNameBuilder
       ?? ((id: string) => `${id}Contract`)
-    plugin.config.fileStrategy = plugin.config.fileStrategy ?? 'single'
-    plugin.config.filePathBuilder = plugin.config.filePathBuilder
-      ?? ((tag: string) => `orpc/${tag.toLowerCase()}`)
     plugin.config.defaultTag = plugin.config.defaultTag ?? 'default'
   },
 }
