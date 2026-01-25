@@ -53,10 +53,23 @@ def _get_or_create_tool_call(
     If `tool_call_id` is empty, returns the most recently created tool call.
     """
     if not tool_call_id:
-        return existing_tools_calls[-1]
+        if existing_tools_calls:
+            return existing_tools_calls[-1]
+
+        tool_call = AssistantPromptMessage.ToolCall(
+            id="",
+            type="function",
+            function=AssistantPromptMessage.ToolCall.ToolCallFunction(name="", arguments=""),
+        )
+        existing_tools_calls.append(tool_call)
+        return tool_call
 
     tool_call = next((tool_call for tool_call in existing_tools_calls if tool_call.id == tool_call_id), None)
     if tool_call is None:
+        if existing_tools_calls and not existing_tools_calls[-1].id:
+            existing_tools_calls[-1].id = tool_call_id
+            return existing_tools_calls[-1]
+
         tool_call = AssistantPromptMessage.ToolCall(
             id=tool_call_id,
             type="function",

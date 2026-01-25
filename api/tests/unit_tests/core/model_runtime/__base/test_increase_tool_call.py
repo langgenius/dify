@@ -97,3 +97,23 @@ def test__increase_tool_call():
     mock_id_generator.side_effect = [_exp_case.id for _exp_case in EXPECTED_CASE_4]
     with patch("core.model_runtime.model_providers.__base.large_language_model._gen_tool_call_id", mock_id_generator):
         _run_case(INPUTS_CASE_4, EXPECTED_CASE_4)
+
+
+def test__increase_tool_call__no_id_no_name_first_delta():
+    inputs = [
+        ToolCall(id="", type="function", function=ToolCall.ToolCallFunction(name="", arguments='{"arg1": ')),
+        ToolCall(id="", type="function", function=ToolCall.ToolCallFunction(name="func_foo", arguments='"value"}')),
+    ]
+
+    expected = [
+        ToolCall(
+            id="RANDOM_ID_1",
+            type="function",
+            function=ToolCall.ToolCallFunction(name="func_foo", arguments='{"arg1": "value"}'),
+        ),
+    ]
+
+    mock_id_generator = MagicMock()
+    mock_id_generator.side_effect = ["RANDOM_ID_1"]
+    with patch("core.model_runtime.model_providers.__base.large_language_model._gen_tool_call_id", mock_id_generator):
+        _run_case(inputs, expected)
