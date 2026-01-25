@@ -85,6 +85,7 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     exported: false,
     external: '@orpc/contract',
   })
+  const symbolZ = plugin.external('zod.z')
 
   // Register zod schema symbols (they come from zod plugin)
   const zodSchemaSymbols: Record<string, ReturnType<typeof plugin.symbol>> = {}
@@ -95,7 +96,7 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     })
   }
 
-  // Create base contract: export const base = oc.$route({ inputStructure: 'detailed' })
+  // Create base contract: export const base = oc.$route({ inputStructure: 'detailed', outputStructure: 'detailed' })
   const baseSymbol = plugin.symbol('base', {
     exported: true,
     meta: {
@@ -110,7 +111,8 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
         .attr('$route')
         .call(
           $.object()
-            .prop('inputStructure', $.literal('detailed')),
+            .prop('inputStructure', $.literal('detailed'))
+            .prop('outputStructure', $.literal('detailed')),
         ),
     )
   plugin.node(baseNode)
@@ -147,11 +149,18 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
         .call($(zodSchemaSymbols[op.zodDataSchema]))
     }
 
-    // .output(zodResponseSchema) if has output
+    // .output(z.object({ body: zodResponseSchema })) if has output (detailed outputStructure)
     if (op.hasOutput) {
       expression = expression
         .attr('output')
-        .call($(zodSchemaSymbols[op.zodResponseSchema]))
+        .call(
+          $(symbolZ)
+            .attr('object')
+            .call(
+              $.object()
+                .prop('body', $(zodSchemaSymbols[op.zodResponseSchema])),
+            ),
+        )
     }
 
     const contractNode = $.const(contractSymbol)
