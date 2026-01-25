@@ -15,13 +15,13 @@ import { textToAudioChatContract } from './api/text-to-audio'
 
 export const router = {
   chatMessages: { send: sendChatMessageContract, stopGeneration: stopChatMessageGenerationContract },
-  files: { upload: uploadChatFileContract, preview: previewChatFileContract },
+  files: { uploadChat: uploadChatFileContract, previewChat: previewChatFileContract },
   messages: {
-    postFeedback: postChatMessageFeedbackContract,
+    postChatFeedback: postChatMessageFeedbackContract,
     getSuggestedQuestions: getSuggestedQuestionsContract,
     getConversationHistory: getConversationHistoryContract,
   },
-  app: { getFeedbacks: getChatAppFeedbacksContract },
+  app: { getChatFeedbacks: getChatAppFeedbacksContract },
   conversations: {
     getList: getConversationsListContract,
     delete: deleteConversationContract,
@@ -29,11 +29,11 @@ export const router = {
     getVariables: getConversationVariablesContract,
   },
   audioToText: { audioToText: audioToTextContract },
-  textToAudio: { textToAudio: textToAudioChatContract },
-  info: { get: getChatAppInfoContract },
-  parameters: { get: getChatAppParametersContract },
-  meta: { get: getChatAppMetaContract },
-  site: { getSettings: getChatWebAppSettingsContract },
+  textToAudio: { textToAudioChat: textToAudioChatContract },
+  info: { getChatApp: getChatAppInfoContract },
+  parameters: { getChatApp: getChatAppParametersContract },
+  meta: { getChatApp: getChatAppMetaContract },
+  site: { getChatWebAppSettings: getChatWebAppSettingsContract },
   apps: {
     getAnnotationList: getAnnotationListContract,
     createAnnotation: createAnnotationContract,

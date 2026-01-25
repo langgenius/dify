@@ -22,6 +22,16 @@ export type UserConfig = Plugin.Name<'orpc'>
      * @default 'default'
      */
     defaultTag?: string
+    /**
+     * Custom function to extract group key from path for router grouping.
+     * @default (path) => path.split('/').filter(Boolean)[0] || 'common'
+     */
+    groupKeyBuilder?: (path: string) => string
+    /**
+     * Custom function to generate operation key within a group.
+     * @default (operationId, groupKey) => simplified operationId
+     */
+    operationKeyBuilder?: (operationId: string, groupKey: string) => string
   }
 
 export type Config = Plugin.Name<'orpc'>
@@ -30,6 +40,8 @@ export type Config = Plugin.Name<'orpc'>
     exportFromIndex: boolean
     contractNameBuilder: (operationId: string) => string
     defaultTag: string
+    groupKeyBuilder: (path: string) => string
+    operationKeyBuilder: (operationId: string, groupKey: string) => string
   }
 
 export type OrpcPlugin = DefinePlugin<UserConfig, Config>

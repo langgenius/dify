@@ -3,85 +3,6 @@ import type { OrpcPlugin } from './types'
 
 import { $ } from '@hey-api/openapi-ts'
 
-function capitalizeFirst(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1)
-}
-
-// Convert kebab-case to camelCase: "chat-messages" → "chatMessages"
-function toCamelCase(str: string): string {
-  return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())
-}
-
-// Extract first path segment: "/chat-messages" → "chat-messages"
-function getPathSegment(path: string): string {
-  return path.split('/').filter(Boolean)[0] || 'common'
-}
-
-// Simplify operation key by removing redundant parts based on the group
-// e.g., "sendChatMessage" with segment "chat-messages" → "send"
-// e.g., "getConversationsList" with segment "conversations" → "list"
-// e.g., "uploadChatFile" with segment "files" → "upload"
-function simplifyOperationKey(operationId: string, segment: string): string {
-  // Patterns to remove (order matters - more specific first)
-  const patternsToRemove = [
-    // App-specific patterns
-    'ChatWebApp',
-    'ChatApp',
-    'ChatFile',
-    'ChatMessage',
-    'Chat',
-    // Segment-based patterns
-    ...buildSegmentPatterns(segment),
-  ]
-
-  let simplified = operationId
-
-  // Remove patterns iteratively
-  for (const pattern of patternsToRemove) {
-    const regex = new RegExp(pattern, 'g')
-    const result = simplified.replace(regex, '')
-    if (result !== simplified && result.length > 0) {
-      simplified = result
-    }
-  }
-
-  // Ensure first char is lowercase
-  simplified = simplified.charAt(0).toLowerCase() + simplified.slice(1)
-
-  // Handle edge cases where we end up with just HTTP method
-  // e.g., "get" → keep as "get", but "getChatApp" → "get" is fine for single operations
-  if (!simplified || simplified.length < 2) {
-    return operationId.charAt(0).toLowerCase() + operationId.slice(1)
-  }
-
-  return simplified
-}
-
-// Build patterns from segment name
-// "chat-messages" → ["ChatMessages", "ChatMessage"]
-// "conversations" → ["Conversations", "Conversation"]
-// "audio-to-text" → ["AudioToText"]
-function buildSegmentPatterns(segment: string): string[] {
-  const parts = segment.split('-')
-  const patterns: string[] = []
-
-  // Full camelCase: "chat-messages" → "ChatMessages"
-  const fullCamel = parts.map(capitalizeFirst).join('')
-  patterns.push(fullCamel)
-
-  // Singular form: "ChatMessages" → "ChatMessage"
-  if (fullCamel.endsWith('s') && !fullCamel.endsWith('ss')) {
-    patterns.push(fullCamel.slice(0, -1))
-  }
-
-  return patterns
-}
-
-function toZodSchemaName(operationId: string, type: 'data' | 'response'): string {
-  const pascalName = capitalizeFirst(operationId)
-  return type === 'data' ? `z${pascalName}Data` : `z${pascalName}Response`
-}
-
 type OperationInfo = {
   id: string
   operationId?: string
@@ -94,8 +15,6 @@ type OperationInfo = {
   hasInput: boolean
   hasOutput: boolean
   successStatusCode?: number
-  zodDataSchema: string
-  zodResponseSchema: string
 }
 
 function collectOperation(operation: IR.OperationObject, defaultTag: string): OperationInfo {
@@ -134,8 +53,6 @@ function collectOperation(operation: IR.OperationObject, defaultTag: string): Op
     successStatusCode,
     summary: operation.summary,
     tags: operation.tags && operation.tags.length > 0 ? [...operation.tags] : [defaultTag],
-    zodDataSchema: toZodSchemaName(id, 'data'),
-    zodResponseSchema: toZodSchemaName(id, 'response'),
   }
 }
 
@@ -143,6 +60,8 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
   const {
     contractNameBuilder,
     defaultTag,
+    groupKeyBuilder,
+    operationKeyBuilder,
   } = plugin.config
 
   const operations: OperationInfo[] = []
@@ -304,26 +223,25 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     },
   })
 
-  // Group operations by path segment
-  const operationsBySegment = new Map<string, OperationInfo[]>()
+  // Group operations by group key
+  const operationsByGroup = new Map<string, OperationInfo[]>()
   for (const op of operations) {
-    const segment = getPathSegment(op.path)
-    if (!operationsBySegment.has(segment)) {
-      operationsBySegment.set(segment, [])
+    const groupKey = groupKeyBuilder(op.path)
+    if (!operationsByGroup.has(groupKey)) {
+      operationsByGroup.set(groupKey, [])
     }
-    operationsBySegment.get(segment)!.push(op)
+    operationsByGroup.get(groupKey)!.push(op)
   }
 
   // Build nested contracts object
   const contractsObject = $.object()
-  for (const [segment, segmentOps] of operationsBySegment) {
-    const groupKey = toCamelCase(segment)
+  for (const [groupKey, groupOps] of operationsByGroup) {
     const groupObject = $.object()
 
-    for (const op of segmentOps) {
+    for (const op of groupOps) {
       const contractSymbol = contractSymbols[op.id]
       if (contractSymbol) {
-        const key = simplifyOperationKey(op.id, segment)
+        const key = operationKeyBuilder(op.id, groupKey)
         groupObject.prop(key, $(contractSymbol))
       }
     }
