@@ -60,6 +60,7 @@ const Features = () => {
         retriever_resource: currentFeatures.citation,
         sensitive_word_avoidance: currentFeatures.moderation,
         file_upload: currentFeatures.file,
+        sandbox: currentFeatures.sandbox,
       }
 
       await updateFeatures({

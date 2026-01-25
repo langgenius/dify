@@ -67,6 +67,7 @@ export const useNodesSyncDraft = () => {
       retriever_resource: features.citation,
       sensitive_word_avoidance: features.moderation,
       file_upload: features.file,
+      sandbox: features.sandbox,
     }
 
     return {

@@ -122,6 +122,7 @@ const WorkflowMain = ({
         citation: features.retriever_resource || { enabled: false },
         moderation: features.sensitive_word_avoidance || { enabled: false },
         annotationReply: features.annotation_reply || { enabled: false },
+        sandbox: features.sandbox || { enabled: false },
       }
 
       setFeatures(transformedFeatures)

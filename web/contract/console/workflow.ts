@@ -1,6 +1,7 @@
 import type {
   FileUpload,
   RetrieverResource,
+  Runtime,
   SensitiveWordAvoidance,
   SpeechToText,
   SuggestedQuestionsAfterAnswer,
@@ -20,6 +21,7 @@ export type WorkflowDraftFeaturesPayload = {
   retriever_resource?: RetrieverResource
   sensitive_word_avoidance?: SensitiveWordAvoidance
   file_upload?: FileUpload
+  sandbox?: Runtime
 }
 
 export const workflowDraftEnvironmentVariablesContract = base
