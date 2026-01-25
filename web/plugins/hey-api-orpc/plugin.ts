@@ -3,57 +3,27 @@ import type { OrpcPlugin } from './types'
 
 import { $ } from '@hey-api/openapi-ts'
 
-type OperationInfo = {
-  id: string
-  operationId?: string
-  method: string
-  path: string
-  summary?: string
-  description?: string
-  deprecated?: boolean
-  tags: string[]
-  hasInput: boolean
-  hasOutput: boolean
-  successStatusCode?: number
-}
-
-function collectOperation(operation: IR.OperationObject, defaultTag: string): OperationInfo {
-  const id = operation.id || `${operation.method}_${operation.path.replace(/[{}/]/g, '_')}`
-
+function hasInput(operation: IR.OperationObject): boolean {
   const hasPathParams = Boolean(operation.parameters?.path && Object.keys(operation.parameters.path).length > 0)
   const hasQueryParams = Boolean(operation.parameters?.query && Object.keys(operation.parameters.query).length > 0)
   const hasHeaderParams = Boolean(operation.parameters?.header && Object.keys(operation.parameters.header).length > 0)
   const hasBody = Boolean(operation.body)
-  const hasInput = hasPathParams || hasQueryParams || hasHeaderParams || hasBody
+  return hasPathParams || hasQueryParams || hasHeaderParams || hasBody
+}
 
-  // Check if operation has a successful response with actual content
-  // Look for 2xx responses that have a schema with mediaType (indicating response body)
-  let hasOutput = false
-  let successStatusCode: number | undefined
+function getSuccessResponse(operation: IR.OperationObject): { hasOutput: boolean, statusCode?: number } {
   if (operation.responses) {
     for (const [statusCode, response] of Object.entries(operation.responses)) {
-      // Check for 2xx success responses with actual content
       if (statusCode.startsWith('2') && response?.mediaType && response?.schema) {
-        hasOutput = true
-        successStatusCode = Number.parseInt(statusCode, 10)
-        break
+        return { hasOutput: true, statusCode: Number.parseInt(statusCode, 10) }
       }
     }
   }
+  return { hasOutput: false }
+}
 
-  return {
-    deprecated: operation.deprecated,
-    description: operation.description,
-    hasInput,
-    hasOutput,
-    id,
-    method: operation.method.toUpperCase(),
-    operationId: operation.operationId || operation.id,
-    path: operation.path,
-    successStatusCode,
-    summary: operation.summary,
-    tags: operation.tags && operation.tags.length > 0 ? [...operation.tags] : [defaultTag],
-  }
+function getTags(operation: IR.OperationObject, defaultTag: string): string[] {
+  return operation.tags && operation.tags.length > 0 ? [...operation.tags] : [defaultTag]
 }
 
 export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
@@ -64,12 +34,11 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     operationKeyBuilder,
   } = plugin.config
 
-  const operations: OperationInfo[] = []
+  const operations: IR.OperationObject[] = []
 
   // Collect all operations using hey-api's forEach
   plugin.forEach('operation', (event) => {
-    const info = collectOperation(event.operation, defaultTag)
-    operations.push(info)
+    operations.push(event.operation)
   })
 
   // Register external symbols for imports
@@ -108,25 +77,28 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
 
   for (const op of operations) {
     const contractName = contractNameBuilder(op.id)
+    const tags = getTags(op, defaultTag)
+    const successResponse = getSuccessResponse(op)
 
     const contractSymbol = plugin.symbol(contractName, {
       exported: true,
       meta: {
         category: 'contract',
-        path: ['paths', op.path, op.method.toLowerCase()],
+        path: ['paths', op.path, op.method],
         resource: 'operation',
         resourceId: op.id,
         role: 'contract',
-        tags: op.tags,
+        tags,
         tool: 'orpc',
       },
     })
     contractSymbols[op.id] = contractSymbol
 
     // Build the route config object with all available properties
+    const method = op.method.toUpperCase()
     const routeConfig = $.object()
-      .prop('path', $.literal(op.path))
-      .prop('method', $.literal(op.method))
+      .prop('path', $.literal(op.path as string))
+      .prop('method', $.literal(method))
 
     // Add optional route properties
     if (op.operationId) {
@@ -141,11 +113,11 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     if (op.deprecated) {
       routeConfig.prop('deprecated', $.literal(true))
     }
-    if (op.tags.length > 0) {
-      routeConfig.prop('tags', $.fromValue(op.tags))
+    if (tags.length > 0) {
+      routeConfig.prop('tags', $.fromValue(tags))
     }
-    if (op.successStatusCode && op.successStatusCode !== 200) {
-      routeConfig.prop('successStatus', $.literal(op.successStatusCode))
+    if (successResponse.statusCode && successResponse.statusCode !== 200) {
+      routeConfig.prop('successStatus', $.literal(successResponse.statusCode))
     }
 
     // Build the call chain: base.route({...}).input(...).output(...)
@@ -154,7 +126,7 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
       .call(routeConfig)
 
     // .input(zodDataSchema) if has input
-    if (op.hasInput) {
+    if (hasInput(op)) {
       // Reference zod schema symbol dynamically from zod plugin
       const zodDataSymbol = plugin.referenceSymbol({
         category: 'schema',
@@ -169,7 +141,7 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
     }
 
     // .output(z.object({ body: zodResponseSchema, status: z.literal(200) })) if has output (detailed outputStructure)
-    if (op.hasOutput) {
+    if (successResponse.hasOutput) {
       // Reference zod response schema symbol dynamically from zod plugin
       const zodResponseSymbol = plugin.referenceSymbol({
         category: 'schema',
@@ -182,10 +154,10 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
         .prop('body', $(zodResponseSymbol))
 
       // Add status code if available
-      if (op.successStatusCode) {
+      if (successResponse.statusCode) {
         outputObject.prop(
           'status',
-          $(symbolZ).attr('literal').call($.literal(op.successStatusCode)),
+          $(symbolZ).attr('literal').call($.literal(successResponse.statusCode)),
         )
       }
 
@@ -229,9 +201,9 @@ export const handler: OrpcPlugin['Handler'] = ({ plugin }) => {
   })
 
   // Group operations by group key
-  const operationsByGroup = new Map<string, OperationInfo[]>()
+  const operationsByGroup = new Map<string, IR.OperationObject[]>()
   for (const op of operations) {
-    const groupKey = groupKeyBuilder(op.path)
+    const groupKey = groupKeyBuilder(op.path as string)
     if (!operationsByGroup.has(groupKey)) {
       operationsByGroup.set(groupKey, [])
     }
