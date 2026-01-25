@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum, auto
 from typing import Annotated, Any, Literal, Union
 
-from pydantic import BaseModel, Field, field_serializer, field_validator
+from pydantic import BaseModel, Field, JsonValue, field_serializer, field_validator
 
 
 class PromptMessageRole(StrEnum):
@@ -69,6 +69,7 @@ class PromptMessageContent(ABC, BaseModel):
     """
 
     type: PromptMessageContentType
+    opaque_body: JsonValue | None = None
 
 
 class TextPromptMessageContent(PromptMessageContent):
@@ -244,6 +245,7 @@ class AssistantPromptMessage(PromptMessage):
 
     role: PromptMessageRole = PromptMessageRole.ASSISTANT
     tool_calls: list[ToolCall] = []
+    opaque_body: JsonValue | None = None
 
     def is_empty(self) -> bool:
         """
