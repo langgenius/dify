@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextvars
 import logging
 import threading
