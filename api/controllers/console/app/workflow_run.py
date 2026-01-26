@@ -156,7 +156,15 @@ console_ns.schema_model(
 
 
 class WorkflowNodeExecutionQuery(BaseModel):
-    """Query parameters for filtering workflow node executions."""
+    """
+    Query parameters for filtering workflow node executions.
+    
+    Why this is important:
+    - When debugging workflows, you often need to find specific nodes (like a payment API call that failed)
+    - Instead of loading ALL nodes and searching through them, you can filter directly
+    - This saves time and makes debugging much faster
+    - Example: Find all failed HTTP requests in a workflow run to see what went wrong
+    """
 
     node_id: str | None = Field(default=None, description="Filter by node ID")
     node_type: str | None = Field(default=None, description="Filter by node type (e.g., http-request, llm)")
@@ -468,6 +476,14 @@ class WorkflowRunNodeExecutionListApi(Resource):
     def get(self, app_model: App, run_id):
         """
         Get workflow run node execution list with optional filtering.
+        
+        Why filtering is important:
+        - Workflows can have many nodes (10, 20, or even 100+)
+        - Loading all nodes takes time and uses bandwidth
+        - With filters, you can quickly find what you need:
+          * All failed nodes to debug errors
+          * All HTTP request nodes to check API calls
+          * A specific node by ID to see its details
         """
         run_id = str(run_id)
 
@@ -504,6 +520,12 @@ class WorkflowRunNodeExecutionDetailApi(Resource):
     def get(self, app_model: App, run_id, node_id):
         """
         Get a specific node execution by node ID for a workflow run.
+        
+        Why this endpoint is important:
+        - Sometimes you only need details for ONE specific node (like a payment API call)
+        - Instead of loading all nodes and finding the one you want, you can get it directly
+        - This is much faster and uses less data
+        - Perfect for debugging a specific step in a workflow
         """
         run_id = str(run_id)
         node_id = str(node_id)

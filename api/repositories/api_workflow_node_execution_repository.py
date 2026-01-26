@@ -77,7 +77,7 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         Get all node executions for a specific workflow run.
 
         This method retrieves all node executions that belong to a specific workflow run,
-        ordered by index in descending order for proper trace visualization.
+        ordered by created_at in ascending order for proper trace visualization.
 
         Args:
             tenant_id: The tenant identifier
@@ -88,7 +88,7 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
             status: Optional filter by execution status
 
         Returns:
-            A sequence of WorkflowNodeExecutionModel instances ordered by index (desc)
+            A sequence of WorkflowNodeExecutionModel instances ordered by created_at (asc)
         """
         ...
 
