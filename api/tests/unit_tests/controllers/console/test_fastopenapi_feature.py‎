@@ -1,92 +1,64 @@
-import builtins
 import sys
-from unittest.mock import Mock, patch
 import pytest
+from unittest.mock import MagicMock, patch
 from flask import Flask
-from flask.views import MethodView
-
 from extensions import ext_fastopenapi
-from models.engine import db
 
-if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView
+class MockPydanticModel:
+    def __init__(self, data):
+        self.data = data
+
+    def model_dump(self, **kwargs):
+        return self.data
+
+    def dict(self, **kwargs):  
+        return self.data
 
 @pytest.fixture
-def app(monkeypatch) -> Flask:
-    monkeypatch.setattr("controllers.console.wraps.dify_config.EDITION", "CLOUD")
-    
-    def empty_decorator(f):
-        return f
-
-    monkeypatch.setattr("controllers.console.feature.setup_required", empty_decorator)
-    monkeypatch.setattr("controllers.console.feature.login_required", empty_decorator)
-    monkeypatch.setattr("controllers.console.feature.account_initialization_required", empty_decorator)
-    monkeypatch.setattr("controllers.console.feature.cloud_utm_record", empty_decorator)
-    
+def app():
     app = Flask(__name__)
     app.config["TESTING"] = True
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SECRET_KEY"] = "test-secret"  
+    return app
+
+@pytest.fixture(autouse=True)
+def fix_method_view_issue(monkeypatch):
+    import builtins
+    from flask.views import MethodView
     
-    db.init_app(app)
-    ext_fastopenapi.init_app(app)
+    if not hasattr(builtins, "MethodView"):
+        monkeypatch.setattr(builtins, "MethodView", MethodView, raising=False)
 
-    with app.app_context():
-        try:
-            from controllers.fastopenapi import console_router
-            # 也可以在这里 import models 触发 SQLAlchemy 映射
-        except ImportError:
-            pytest.fail("无法导入 Controller，请检查路径")
+def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.MonkeyPatch):
 
-        bp = getattr(console_router, "blueprint", getattr(console_router, "_blueprint", None))
-        if bp:
-            app.register_blueprint(bp, url_prefix="/console/api")
-        else:
-            if hasattr(console_router, "_routes"):
-                for route in console_router._routes:
-                    path = route.path.replace("{", "<").replace("}", ">")
-                    endpoint_name = f"{route.endpoint.__module__}.{route.endpoint.__name__}"
-                    app.add_url_rule(
-                        f"/console/api{path}",
-                        endpoint=endpoint_name,
-                        view_func=route.endpoint,
-                        methods=list(route.methods),
-                    )
-        
-        db.create_all()
-        
-        yield app
-        
-        db.drop_all()
+    noop_decorator = lambda f: f
 
-
-def test_console_features_fastopenapi_get(app: Flask):
+    if "controllers.console.feature" in sys.modules:
+        del sys.modules["controllers.console.feature"]
     
-    mock_resp = Mock()
-    mock_resp.model_dump.return_value = {"enabled": True}
-
-    with (
-        patch("controllers.console.feature.current_account_with_tenant", return_value=(object(), "tenant-id")),
-        patch("controllers.console.feature.FeatureService.get_features", return_value=mock_resp),
-    ):
+    with patch("controllers.console.feature.setup_required", side_effect=noop_decorator), \
+         patch("controllers.console.feature.login_required", side_effect=noop_decorator), \
+         patch("controllers.console.feature.account_initialization_required", side_effect=noop_decorator), \
+         patch("controllers.console.feature.cloud_utm_record", side_effect=noop_decorator), \
+         patch("controllers.console.feature.current_account_with_tenant", return_value=(MagicMock(), "tenant-id")), \
+         patch("controllers.console.feature.FeatureService.get_features", return_value=MockPydanticModel({"enabled": True})):
+        
+        ext_fastopenapi.init_app(app)
+        
         client = app.test_client()
         response = client.get("/console/api/features")
-
-    if response.status_code != 200:
-        print(f"Error: {response.status_code}, Body: {response.get_data(as_text=True)}")
 
     assert response.status_code == 200
     assert response.get_json() == {"features": {"enabled": True}}
 
 
 def test_console_system_features_fastopenapi_get(app: Flask):
-    mock_resp = Mock()
-    mock_resp.model_dump.return_value = {"system": True}
+    if "controllers.console.feature" in sys.modules:
+        del sys.modules["controllers.console.feature"]
 
-    with patch(
-        "controllers.console.feature.FeatureService.get_system_features",
-        return_value=mock_resp,
-    ):
+    with patch("controllers.console.feature.FeatureService.get_system_features", return_value=MockPydanticModel({"system": True})):
+        ext_fastopenapi.init_app(app)
+
         client = app.test_client()
         response = client.get("/console/api/system-features")
 
