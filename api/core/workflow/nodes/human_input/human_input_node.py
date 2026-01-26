@@ -52,6 +52,9 @@ class HumanInputNode(Node[HumanInputNodeData]):
 
     _node_data: HumanInputNodeData
     _form_repository: HumanInputFormRepository
+    _OUTPUT_FIELD_ACTION_ID = "__action_id"
+    _OUTPUT_FIELD_RENDERED_CONTENT = "__rendered_content"
+    _TIMEOUT_HANDLE = _TIMEOUT_ACTION_ID = "__timeout"
 
     def __init__(
         self,
@@ -245,8 +248,8 @@ class HumanInputNode(Node[HumanInputNodeData]):
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    outputs={},
-                    edge_source_handle="__timeout",
+                    outputs={self._OUTPUT_FIELD_ACTION_ID: ""},
+                    edge_source_handle=self._TIMEOUT_HANDLE,
                 )
             )
             return
@@ -260,13 +263,13 @@ class HumanInputNode(Node[HumanInputNodeData]):
             raise AssertionError(f"selected_action_id should not be None when form submitted, form_id={form.id}")
         submitted_data = form.submitted_data or {}
         outputs: dict[str, Any] = dict(submitted_data)
-        outputs["__action_id"] = selected_action_id
+        outputs[self._OUTPUT_FIELD_ACTION_ID] = selected_action_id
         rendered_content = self._render_form_content_with_outputs(
             form.rendered_content,
             outputs,
             self._node_data.outputs_field_names(),
         )
-        outputs["__rendered_content"] = rendered_content
+        outputs[self._OUTPUT_FIELD_RENDERED_CONTENT] = rendered_content
 
         action_text = self._node_data.find_action_text(selected_action_id)
 
