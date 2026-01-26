@@ -143,6 +143,7 @@ class BillingService:
                 raise ValueError("Invalid arguments.")
         if method == "POST" and response.status_code != httpx.codes.OK:
             raise ValueError(f"Unable to send request to {url}. Please try again later or contact support.")
+        logger.info("billing_service: _send_request: response: %s", response.json())
         return response.json()
 
     @staticmethod
@@ -165,6 +166,7 @@ class BillingService:
     def delete_account(cls, account_id: str):
         """Delete account."""
         params = {"account_id": account_id}
+        logger.info("billing_service: delete_account: params: %s", params)
         return cls._send_request("DELETE", "/account/", params=params)
 
     @classmethod
