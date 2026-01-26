@@ -206,10 +206,10 @@ export class ComponentAnalyzer {
 
       const escapedName = ComponentAnalyzer.escapeRegExp(searchName)
       const patterns = [
-        new RegExp(`from\\s+['\"][^'\"]*(?:/|^)${escapedName}(?:['\"/]|$)`),
-        new RegExp(`import\\s*\\(\\s*['\"][^'\"]*(?:/|^)${escapedName}(?:['\"/]|$)`),
-        new RegExp(`export\\s+(?:\\*|{[^}]*})\\s*from\\s+['\"][^'\"]*(?:/|^)${escapedName}(?:['\"/]|$)`),
-        new RegExp(`require\\(\\s*['\"][^'\"]*(?:/|^)${escapedName}(?:['\"/]|$)`),
+        new RegExp(`from\\s+['"][^'"]*(?:/|^)${escapedName}(?:['/"]|$)`),
+        new RegExp(`import\\s*\\(\\s*['"][^'"]*(?:/|^)${escapedName}(?:['/"]|$)`),
+        new RegExp(`export\\s+(?:\\*|{[^}]*})\\s*from\\s+['"][^'"]*(?:/|^)${escapedName}(?:['/"]|$)`),
+        new RegExp(`require\\(\\s*['"][^'"]*(?:/|^)${escapedName}(?:['/"]|$)`),
       ]
 
       const visited = new Set()

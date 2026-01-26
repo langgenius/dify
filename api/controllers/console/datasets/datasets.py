@@ -176,7 +176,16 @@ class IndexingEstimatePayload(BaseModel):
         return result
 
 
-register_schema_models(console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload)
+class ConsoleDatasetListQuery(BaseModel):
+    page: int = Field(default=1, description="Page number")
+    limit: int = Field(default=20, description="Number of items per page")
+    keyword: str | None = Field(default=None, description="Search keyword")
+    include_all: str = Field(default="false", description="Include all datasets")
+
+
+register_schema_models(
+    console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload, ConsoleDatasetListQuery
+)
 
 
 def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool = False) -> dict[str, list[str]]:
@@ -275,18 +284,16 @@ class DatasetListApi(Resource):
     @enterprise_license_required
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
+        query = ConsoleDatasetListQuery.model_validate(request.args.to_dict())
         ids = request.args.getlist("ids")
         # provider = request.args.get("provider", default="vendor")
-        search = request.args.get("keyword", default=None, type=str)
         tag_ids = request.args.getlist("tag_ids")
-        include_all = request.args.get("include_all", default="false").lower() == "true"
+        include_all = query.include_all.lower() == "true"
         if ids:
             datasets, total = DatasetService.get_datasets_by_ids(ids, current_tenant_id)
         else:
             datasets, total = DatasetService.get_datasets(
-                page, limit, current_tenant_id, current_user, search, tag_ids, include_all
+                query.page, query.limit, current_tenant_id, current_user, query.keyword, tag_ids, include_all
             )
 
         # check embedding setting
@@ -318,7 +325,13 @@ class DatasetListApi(Resource):
             else:
                 item.update({"partial_member_list": []})
 
-        response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
+        response = {
+            "data": data,
+            "has_more": len(datasets) == query.limit,
+            "limit": query.limit,
+            "total": total,
+            "page": query.page,
+        }
         return response, 200
 
     @console_ns.doc("create_dataset")
