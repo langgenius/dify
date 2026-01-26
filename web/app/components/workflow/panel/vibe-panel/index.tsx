@@ -3,10 +3,11 @@
 import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
-import { RiClipboardLine, RiInformation2Line } from '@remixicon/react'
+import { RiClipboardLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { z } from 'zod'
 import ResPlaceholder from '@/app/components/app/configuration/config/automatic/res-placeholder'
 import VersionSelector from '@/app/components/app/configuration/config/automatic/version-selector'
 import Button from '@/app/components/base/button'
@@ -22,6 +23,23 @@ import { ModelModeType } from '@/types/app'
 import { VIBE_APPLY_EVENT, VIBE_COMMAND_EVENT } from '../../constants'
 import { useStore, useWorkflowStore } from '../../store'
 import WorkflowPreview from '../../workflow-preview'
+
+const CompletionParamsSchema = z.object({
+  max_tokens: z.number(),
+  temperature: z.number(),
+  top_p: z.number(),
+  echo: z.boolean(),
+  stop: z.array(z.string()),
+  presence_penalty: z.number(),
+  frequency_penalty: z.number(),
+})
+
+const ModelSchema = z.object({
+  provider: z.string(),
+  name: z.string(),
+  mode: z.nativeEnum(ModelModeType),
+  completion_params: CompletionParamsSchema,
+})
 
 const VibePanel: FC = () => {
   const { t } = useTranslation()
@@ -48,54 +66,68 @@ const VibePanel: FC = () => {
   const vibePanelSuggestions = useStore(s => s.vibePanelSuggestions)
   const setVibePanelSuggestions = useStore(s => s.setVibePanelSuggestions)
 
-  const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
-    : null
-  const [model, setModel] = useState<Model>(localModel || {
-    name: '',
-    provider: '',
-    mode: ModelModeType.chat,
-    completion_params: {} as CompletionParams,
-  })
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
-  useEffect(() => {
-    if (defaultModel) {
-      const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
-        : null
-      if (localModel) {
-        setModel(localModel)
-      }
-      else {
-        setModel(prev => ({
-          ...prev,
-          name: defaultModel.model,
-          provider: defaultModel.provider.provider,
-        }))
+  // Track user's explicit model selection (from localStorage)
+  const [userModel, setUserModel] = useState<Model | null>(() => {
+    try {
+      const stored = localStorage.getItem('auto-gen-model')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        const result = ModelSchema.safeParse(parsed)
+        if (result.success)
+          return result.data
+
+        // If validation fails, clear the invalid data
+        localStorage.removeItem('auto-gen-model')
       }
     }
-  }, [defaultModel])
+    catch {
+      // ignore parse errors
+    }
+    return null
+  })
+
+  // Derive the actual model from user selection or default
+  const model: Model = useMemo(() => {
+    if (userModel)
+      return userModel
+    if (defaultModel) {
+      return {
+        name: defaultModel.model,
+        provider: defaultModel.provider.provider,
+        mode: ModelModeType.chat,
+        completion_params: {} as CompletionParams,
+      }
+    }
+    return {
+      name: '',
+      provider: '',
+      mode: ModelModeType.chat,
+      completion_params: {} as CompletionParams,
+    }
+  }, [userModel, defaultModel])
+
+  const setModel = useCallback((newModel: Model) => {
+    setUserModel(newModel)
+    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+  }, [])
 
   const handleModelChange = useCallback((newValue: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
-    const newModel = {
+    setModel({
       ...model,
       provider: newValue.provider,
       name: newValue.modelId,
       mode: newValue.mode as ModelModeType,
-    }
-    setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model])
+    })
+  }, [model, setModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
-    const newModel = {
+    setModel({
       ...model,
       completion_params: newParams as CompletionParams,
-    }
-    setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model])
+    })
+  }, [model, setModel])
 
   const handleInstructionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     workflowStore.setState(state => ({
@@ -161,28 +193,25 @@ const VibePanel: FC = () => {
   )
 
   const renderOffTopic = (
-    <div className="flex h-full w-0 grow flex-col items-center justify-center bg-background-default-subtle p-6">
+    <div className="flex h-full w-0 grow flex-col items-center justify-center p-6">
       <div className="flex max-w-[400px] flex-col items-center text-center">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-state-warning-hover">
-          <RiInformation2Line className="h-6 w-6 text-text-warning" />
-        </div>
-        <div className="mb-2 text-base font-semibold text-text-primary">
+        <div className="text-sm font-medium text-text-secondary">
           {t('vibe.offTopicTitle', { ns: 'workflow' })}
         </div>
-        <div className="mb-6 text-sm text-text-secondary">
+        <div className="mt-1 text-xs text-text-tertiary">
           {vibePanelMessage || t('vibe.offTopicDefault', { ns: 'workflow' })}
         </div>
         {vibePanelSuggestions.length > 0 && (
-          <div className="w-full">
-            <div className="mb-3 text-xs font-medium text-text-tertiary">
+          <div className="mt-6 w-full">
+            <div className="mb-2 text-xs text-text-quaternary">
               {t('vibe.trySuggestion', { ns: 'workflow' })}
             </div>
             <div className="flex flex-col gap-2">
-              {vibePanelSuggestions.map((suggestion, index) => (
+              {vibePanelSuggestions.map(suggestion => (
                 <button
-                  key={index}
+                  key={suggestion}
                   onClick={() => handleSuggestionClick(suggestion)}
-                  className="w-full rounded-lg border border-divider-regular bg-components-panel-bg px-4 py-2.5 text-left text-sm text-text-secondary transition-colors hover:border-components-button-primary-border hover:bg-state-accent-hover"
+                  className="w-full cursor-pointer rounded-lg border border-divider-subtle bg-components-panel-bg px-3 py-2.5 text-left text-sm text-text-secondary transition-colors hover:border-divider-regular hover:bg-state-base-hover"
                 >
                   {suggestion}
                 </button>

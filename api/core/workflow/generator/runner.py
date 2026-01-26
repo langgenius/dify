@@ -10,7 +10,9 @@ from core.model_runtime.entities.message_entities import SystemPromptMessage, Us
 from core.model_runtime.entities.model_entities import ModelType
 from core.workflow.generator.prompts.builder_prompts import (
     BUILDER_SYSTEM_PROMPT,
+    BUILDER_SYSTEM_PROMPT_V2,
     BUILDER_USER_PROMPT,
+    BUILDER_USER_PROMPT_V2,
     format_existing_edges,
     format_existing_nodes,
     format_selected_nodes,
@@ -26,6 +28,7 @@ from core.workflow.generator.prompts.vibe_prompts import (
     format_available_tools,
     parse_vibe_response,
 )
+from core.workflow.generator.utils.graph_builder import CyclicDependencyError, GraphBuilder
 from core.workflow.generator.utils.mermaid_generator import generate_mermaid
 from core.workflow.generator.utils.workflow_validator import ValidationHint, WorkflowValidator
 
@@ -53,6 +56,7 @@ class WorkflowGenerator:
         regenerate_mode: bool = False,
         preferred_language: str | None = None,
         available_models: Sequence[dict[str, object]] | None = None,
+        use_graph_builder: bool = False,
     ):
         """
         Generates a Dify Workflow Flowchart from natural language instruction.
@@ -173,17 +177,30 @@ class WorkflowGenerator:
                     retry_context += "\nPlease fix these specific issues while keeping everything else UNCHANGED.\n"
                     retry_context += "</validation_feedback>\n"
 
-            builder_system = BUILDER_SYSTEM_PROMPT.format(
-                plan_context=json.dumps(plan_data.get("steps", []), indent=2),
-                tool_schemas=tool_schemas,
-                builtin_node_specs=node_specs,
-                available_models=format_available_models(list(available_models or [])),
-                preferred_language=preferred_language or "English",
-                existing_nodes_context=existing_nodes_context,
-                existing_edges_context=existing_edges_context,
-                selected_nodes_context=selected_nodes_context,
-            )
-            builder_user = BUILDER_USER_PROMPT.format(instruction=instruction) + retry_context
+            # Select prompt version based on use_graph_builder flag
+            if use_graph_builder:
+                builder_system = BUILDER_SYSTEM_PROMPT_V2.format(
+                    plan_context=json.dumps(plan_data.get("steps", []), indent=2),
+                    tool_schemas=tool_schemas,
+                    builtin_node_specs=node_specs,
+                    available_models=format_available_models(list(available_models or [])),
+                    preferred_language=preferred_language or "English",
+                    existing_nodes_context=existing_nodes_context,
+                    selected_nodes_context=selected_nodes_context,
+                )
+                builder_user = BUILDER_USER_PROMPT_V2.format(instruction=instruction) + retry_context
+            else:
+                builder_system = BUILDER_SYSTEM_PROMPT.format(
+                    plan_context=json.dumps(plan_data.get("steps", []), indent=2),
+                    tool_schemas=tool_schemas,
+                    builtin_node_specs=node_specs,
+                    available_models=format_available_models(list(available_models or [])),
+                    preferred_language=preferred_language or "English",
+                    existing_nodes_context=existing_nodes_context,
+                    existing_edges_context=existing_edges_context,
+                    selected_nodes_context=selected_nodes_context,
+                )
+                builder_user = BUILDER_USER_PROMPT.format(instruction=instruction) + retry_context
 
             try:
                 build_res = model_instance.invoke_llm(
@@ -204,8 +221,53 @@ class WorkflowGenerator:
 
                 if "nodes" not in workflow_data:
                     workflow_data["nodes"] = []
-                if "edges" not in workflow_data:
-                    workflow_data["edges"] = []
+
+                # --- GraphBuilder Mode: Build graph from depends_on ---
+                if use_graph_builder:
+                    try:
+                        # Extract nodes from LLM output (without start/end)
+                        llm_nodes = workflow_data.get("nodes", [])
+
+                        # Build complete graph with start/end and edges
+                        complete_nodes, edges = GraphBuilder.build_graph(llm_nodes)
+
+                        workflow_data["nodes"] = complete_nodes
+                        workflow_data["edges"] = edges
+
+                        logger.info(
+                            "GraphBuilder: built %d nodes, %d edges from %d LLM nodes",
+                            len(complete_nodes),
+                            len(edges),
+                            len(llm_nodes),
+                        )
+
+                    except CyclicDependencyError as e:
+                        logger.warning("GraphBuilder: cyclic dependency detected: %s", e)
+                        # Add to validation hints for retry
+                        validation_hints.append(
+                            ValidationHint(
+                                node_id="",
+                                field="depends_on",
+                                message=f"Cyclic dependency detected: {e}. Please fix the dependency chain.",
+                                severity="error",
+                            )
+                        )
+                        if attempt == MAX_GLOBAL_RETRIES - 1:
+                            return {
+                                "intent": "error",
+                                "error": "Failed to build workflow: cyclic dependency detected.",
+                            }
+                        continue  # Retry with error feedback
+
+                    except Exception as e:
+                        logger.exception("GraphBuilder failed on attempt %d", attempt + 1)
+                        if attempt == MAX_GLOBAL_RETRIES - 1:
+                            return {"intent": "error", "error": f"Graph building failed: {str(e)}"}
+                        continue
+                else:
+                    # Legacy mode: edges from LLM output
+                    if "edges" not in workflow_data:
+                        workflow_data["edges"] = []
 
             except Exception as e:
                 logger.exception("Builder failed on attempt %d", attempt + 1)
