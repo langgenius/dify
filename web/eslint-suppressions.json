@@ -1787,14 +1787,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/detail/completed/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 6
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/detail/completed/new-child-segment.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2729,11 +2721,6 @@
   "app/components/tools/utils/to-form-schema.ts": {
     "ts/no-explicit-any": {
       "count": 15
-    }
-  },
-  "app/components/tools/workflow-tool/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/workflow-app/components/workflow-children.tsx": {
