@@ -330,7 +330,12 @@ class AccountService:
         # Queue account deletion sync tasks for all workspaces BEFORE account deletion (enterprise only)
         from services.enterprise.account_deletion_sync import sync_account_deletion
 
-        sync_account_deletion(account_id=account.id, source="account_deleted")
+        sync_success = sync_account_deletion(account_id=account.id, source="account_deleted")
+        if not sync_success:
+            logger.warning(
+                "Enterprise account deletion sync failed for account %s; proceeding with local deletion.",
+                account.id,
+            )
 
         # Now proceed with async account deletion
         delete_account_task.delay(account.id)
@@ -1239,7 +1244,15 @@ class TenantService:
         # Queue account deletion sync task for enterprise backend to reassign resources (enterprise only)
         from services.enterprise.account_deletion_sync import sync_workspace_member_removal
 
-        sync_workspace_member_removal(workspace_id=tenant.id, member_id=account.id, source="workspace_member_removed")
+        sync_success = sync_workspace_member_removal(
+            workspace_id=tenant.id, member_id=account.id, source="workspace_member_removed"
+        )
+        if not sync_success:
+            logger.warning(
+                "Enterprise workspace member removal sync failed: workspace_id=%s, member_id=%s",
+                tenant.id,
+                account.id,
+            )
 
     @staticmethod
     def update_member_role(tenant: Tenant, member: Account, new_role: str, operator: Account):
