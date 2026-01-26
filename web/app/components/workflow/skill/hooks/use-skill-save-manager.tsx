@@ -52,6 +52,22 @@ type SkillSaveProviderProps = {
 
 const SkillSaveContext = React.createContext<SkillSaveContextValue | null>(null)
 
+const TOOL_TOKEN_REGEX = /§\[tool\]\.\[[\w-]+(?:\/[\w-]+)*\]\.\[[\w-]+\]\.\[([a-fA-F0-9-]{36})\]§/g
+
+const extractToolConfigIds = (content: string) => {
+  const ids = new Set<string>()
+  if (!content)
+    return ids
+  TOOL_TOKEN_REGEX.lastIndex = 0
+  let match = TOOL_TOKEN_REGEX.exec(content)
+  while (match) {
+    if (match[1])
+      ids.add(match[1])
+    match = TOOL_TOKEN_REGEX.exec(content)
+  }
+  return ids
+}
+
 export const SkillSaveProvider = ({
   appId,
   children,
@@ -102,11 +118,31 @@ export const SkillSaveProvider = ({
       return null
 
     const registryEntry = fallbackRegistryRef.current.get(fileId)
-    const metadata = state.fileMetadata.get(fileId) ?? fallbackMetadata ?? registryEntry?.metadata
+    const rawMetadata = state.fileMetadata.get(fileId) ?? fallbackMetadata ?? registryEntry?.metadata
     const content = draftContent ?? getCachedContent(fileId) ?? fallbackContent ?? registryEntry?.content
 
     if (content === undefined)
       return null
+
+    let metadata = rawMetadata
+    if (rawMetadata && typeof rawMetadata === 'object' && 'tools' in rawMetadata) {
+      const toolIds = extractToolConfigIds(content)
+      const rawTools = (rawMetadata as Record<string, unknown>).tools
+      if (rawTools && typeof rawTools === 'object') {
+        const entries = Object.entries(rawTools as Record<string, unknown>)
+        const nextTools = entries.reduce<Record<string, unknown>>((acc, [id, value]) => {
+          if (toolIds.has(id))
+            acc[id] = value
+          return acc
+        }, {})
+        const nextMetadata = { ...(rawMetadata as Record<string, unknown>) }
+        if (Object.keys(nextTools).length > 0)
+          nextMetadata.tools = nextTools
+        else
+          delete nextMetadata.tools
+        metadata = nextMetadata
+      }
+    }
 
     return {
       content,
