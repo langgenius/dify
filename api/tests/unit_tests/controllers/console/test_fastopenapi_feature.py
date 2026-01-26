@@ -27,7 +27,7 @@ def app() -> Flask:
     
     with app.app_context():       
         try:
-            import models
+            import models  # noqa: F401
         except ImportError:
             pass
             
