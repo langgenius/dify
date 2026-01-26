@@ -1,17 +1,16 @@
 import builtins
+
 import pytest
-from flask import Flask, Blueprint
+from flask import Blueprint, Flask
 from flask.views import MethodView
+
+# 3. 必须导入业务 Controller (触发路由加载)
+# 2. 导入路由容器
+from controllers.fastopenapi import console_router
 
 # 1. 基础依赖
 from extensions import ext_fastopenapi
 from models.engine import db
-
-# 2. 导入路由容器
-from controllers.fastopenapi import console_router 
-
-# 3. 必须导入业务 Controller (触发路由加载)
-import controllers.console.files 
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -31,11 +30,11 @@ def app() -> Flask:
     # 🔍 自动探测 Blueprint (关键修复)
     # =================================================================
     # console_router 是一个 FlaskRouter 对象，我们需要找到它内部的 Flask Blueprint
-    
+
     # 1. 尝试常见属性名
     real_bp = None
     possible_attrs = ["blueprint", "_blueprint", "flask_blueprint", "bp", "router"]
-    
+
     for attr in possible_attrs:
         if hasattr(console_router, attr):
             candidate = getattr(console_router, attr)
@@ -43,13 +42,13 @@ def app() -> Flask:
                 real_bp = candidate
                 print(f"✅ Found blueprint in attribute: '{attr}'")
                 break
-    
+
     # 2. 如果都没找到，打印所有属性供调试 (这会显示在 CI 日志中)
     if not real_bp:
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print("❌ ERROR: Could not find Blueprint in console_router!")
         print("Available attributes:", dir(console_router))
-        print("="*50 + "\n")
+        print("=" * 50 + "\n")
         # 暂时创建一个空的 Blueprint 防止 AttributeError 直接崩溃，以便你能看到上面的打印信息
         real_bp = Blueprint("dummy", __name__)
 
