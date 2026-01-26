@@ -3,7 +3,6 @@ import pytest
 from unittest.mock import MagicMock, patch
 from flask import Flask
 from extensions import ext_fastopenapi
-
 from services.feature_service import FeatureModel, SystemFeatureModel
 
 @pytest.fixture
@@ -17,50 +16,59 @@ def app():
 def fix_method_view_issue(monkeypatch):
     import builtins
     from flask.views import MethodView
-    
     if not hasattr(builtins, "MethodView"):
         monkeypatch.setattr(builtins, "MethodView", MethodView, raising=False)
 
-def test_console_features_fastopenapi_get(app: Flask):
-    mock_feature_data = FeatureModel(enabled=True) 
-
-    noop_decorator = lambda f: f
-
+@pytest.fixture
+def mock_auth_environment():
+    noop = lambda f: f
+    
     if "controllers.console.feature" in sys.modules:
         del sys.modules["controllers.console.feature"]
 
-    with patch("controllers.console.feature.setup_required", side_effect=noop_decorator), \
-         patch("controllers.console.feature.login_required", side_effect=noop_decorator), \
-         patch("controllers.console.feature.account_initialization_required", side_effect=noop_decorator), \
-         patch("controllers.console.feature.cloud_utm_record", side_effect=noop_decorator), \
-         patch("controllers.console.feature.current_account_with_tenant", return_value=(MagicMock(), "tenant-id")), \
-         patch("controllers.console.feature.FeatureService.get_features", return_value=mock_feature_data):
-        
+    with patch("controllers.console.feature.setup_required", side_effect=noop), \
+         patch("controllers.console.feature.login_required", side_effect=noop), \
+         patch("controllers.console.feature.account_initialization_required", side_effect=noop), \
+         patch("controllers.console.feature.cloud_utm_record", side_effect=noop), \
+         patch("controllers.console.feature.current_account_with_tenant", return_value=(MagicMock(), "tenant-id")):
+        yield
+
+@pytest.mark.parametrize("url_path, service_mock_path, mock_data", [
+    (
+        "/console/api/features", 
+        "controllers.console.feature.FeatureService.get_features", 
+        FeatureModel(enabled=True)
+    ),
+    (
+        "/console/api/system-features", 
+        "controllers.console.feature.FeatureService.get_system_features", 
+        SystemFeatureModel(system=True)
+    ),
+])
+def test_console_features_success(
+    app, 
+    mock_auth_environment,  
+    url_path, 
+    service_mock_path, 
+    mock_data
+):
+
+    with patch(service_mock_path, return_value=mock_data):
         ext_fastopenapi.init_app(app)
-        
         client = app.test_client()
-        response = client.get("/console/api/features")
+        response = client.get(url_path)
 
     assert response.status_code == 200
     
-    expected_json = {"features": mock_feature_data.model_dump(mode='json')}
+    expected_json = {"features": mock_data.model_dump(mode='json')}
     assert response.get_json() == expected_json
 
-
-def test_console_system_features_fastopenapi_get(app: Flask):
-    mock_system_data = SystemFeatureModel(system=True)
-
-    if "controllers.console.feature" in sys.modules:
-        del sys.modules["controllers.console.feature"]
-
-    with patch("controllers.console.feature.FeatureService.get_system_features", return_value=mock_system_data):
-        
+def test_console_features_service_error(app, mock_auth_environment):
+    with patch("controllers.console.feature.FeatureService.get_features", side_effect=Exception("Database down")):
         ext_fastopenapi.init_app(app)
-
         client = app.test_client()
-        response = client.get("/console/api/system-features")
-
-    assert response.status_code == 200
-    
-    expected_json = {"features": mock_system_data.model_dump(mode='json')}
-    assert response.get_json() == expected_json
+        
+        with pytest.raises(Exception) as excinfo:
+            client.get("/console/api/features")
+        
+        assert str(excinfo.value) == "Database down"
