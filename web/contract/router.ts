@@ -17,6 +17,10 @@ import {
 import { workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
+  downloadFileContract,
+  listFilesContract,
+} from './console/sandbox-file'
+import {
   activateSandboxProviderContract,
   deleteSandboxProviderConfigContract,
   getSandboxProviderListContract,
@@ -61,6 +65,10 @@ export const consoleRouterContract = {
     saveSandboxProviderConfig: saveSandboxProviderConfigContract,
     deleteSandboxProviderConfig: deleteSandboxProviderConfigContract,
     activateSandboxProvider: activateSandboxProviderContract,
+  },
+  sandboxFile: {
+    listFiles: listFilesContract,
+    downloadFile: downloadFileContract,
   },
   appAsset: {
     tree: treeContract,
