@@ -7,6 +7,8 @@ from flask.views import MethodView
 
 from extensions import ext_fastopenapi
 
+from services.feature_service import FeatureModel, SystemFeatureModel
+
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
@@ -30,7 +32,7 @@ def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.Monkey
         patch("controllers.console.feature.current_account_with_tenant", return_value=(object(), "tenant-id")),
         patch(
             "controllers.console.feature.FeatureService.get_features",
-            return_value=Mock(model_dump=lambda: {"enabled": True}),
+            return_value=FeatureModel.model_construct(),
         ),
     ):
         client = app.test_client()
@@ -45,7 +47,7 @@ def test_console_system_features_fastopenapi_get(app: Flask):
 
     with patch(
         "controllers.console.feature.FeatureService.get_system_features",
-        return_value=Mock(model_dump=lambda: {"system": True}),
+        return_value=SystemFeatureModel.model_construct(),
     ):
         client = app.test_client()
         response = client.get("/console/api/system-features")
