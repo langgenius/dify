@@ -2,8 +2,10 @@
 
 import type { FC } from 'react'
 import type { Node } from 'reactflow'
+import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -56,7 +58,7 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
   const userSettingsOnly = currentToolSettings.length > 0 && (!allowReasoning || !currentToolParams.length)
   const reasoningConfigOnly = allowReasoning && currentToolParams.length > 0 && currentToolSettings.length === 0
 
-  const handleSettingsFormChange = (v: Record<string, any>) => {
+  const handleSettingsFormChange = (v: Record<string, unknown>) => {
     if (!value || !onChange)
       return
     const newValue = getStructureValue(v)
@@ -66,7 +68,7 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
     })
   }
 
-  const handleParamsFormChange = (v: Record<string, any>) => {
+  const handleParamsFormChange = (v: Record<string, unknown>) => {
     if (!value || !onChange)
       return
     onChange({
@@ -130,8 +132,8 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
             inPanel
             readOnly={false}
             nodeId={safeNodeId}
-            schema={settingsFormSchemas as any}
-            value={getPlainValue(value?.settings || {})}
+            schema={settingsFormSchemas as CredentialFormSchema[]}
+            value={getPlainValue((value?.settings || {}) as Record<string, { value: unknown }>) as ResourceVarInputs}
             onChange={handleSettingsFormChange}
           />
         </div>
@@ -141,7 +143,7 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
         <ReasoningConfigForm
           value={value?.parameters || {}}
           onChange={handleParamsFormChange}
-          schemas={paramsFormSchemas as any}
+          schemas={paramsFormSchemas as CredentialFormSchema[]}
           nodeOutputVars={nodeOutputVars}
           availableNodes={availableNodes}
           nodeId={safeNodeId}
