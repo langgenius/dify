@@ -1,3 +1,4 @@
+from flask import abort
 from flask_restx import Resource
 
 from controllers.cli_api import cli_api_ns
@@ -15,6 +16,8 @@ from core.plugin.entities.request import (
     RequestInvokeTool,
     RequestRequestUploadFile,
 )
+from core.session.cli_api import CliContext
+from core.skill.entities import ToolInvocationRequest
 from core.tools.entities.tool_entities import ToolProviderType
 from libs.helper import length_prefixed_response
 from models import Account, Tenant
@@ -23,9 +26,9 @@ from models.model import EndUser
 
 @cli_api_ns.route("/invoke/llm")
 class CliInvokeLLMApi(Resource):
+    @cli_api_only
     @get_cli_user_tenant
     @setup_required
-    @cli_api_only
     @plugin_data(payload_type=RequestInvokeLLM)
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeLLM):
         def generator():
@@ -37,17 +40,34 @@ class CliInvokeLLMApi(Resource):
 
 @cli_api_ns.route("/invoke/tool")
 class CliInvokeToolApi(Resource):
+    @cli_api_only
     @get_cli_user_tenant
     @setup_required
-    @cli_api_only
     @plugin_data(payload_type=RequestInvokeTool)
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
+    def post(
+        self,
+        user_model: Account | EndUser,
+        tenant_model: Tenant,
+        payload: RequestInvokeTool,
+        cli_context: CliContext,
+    ):
+        tool_type = ToolProviderType.value_of(payload.tool_type)
+
+        request = ToolInvocationRequest(
+            tool_type=tool_type,
+            provider=payload.provider,
+            tool_name=payload.tool,
+            credential_id=payload.credential_id,
+        )
+        if cli_context.tool_access and not cli_context.tool_access.is_allowed(request):
+            abort(403)
+
         def generator():
             return PluginToolBackwardsInvocation.convert_to_event_stream(
                 PluginToolBackwardsInvocation.invoke_tool(
                     tenant_id=tenant_model.id,
                     user_id=user_model.id,
-                    tool_type=ToolProviderType.value_of(payload.tool_type),
+                    tool_type=tool_type,
                     provider=payload.provider,
                     tool_name=payload.tool,
                     tool_parameters=payload.tool_parameters,
@@ -60,9 +80,9 @@ class CliInvokeToolApi(Resource):
 
 @cli_api_ns.route("/invoke/app")
 class CliInvokeAppApi(Resource):
+    @cli_api_only
     @get_cli_user_tenant
     @setup_required
-    @cli_api_only
     @plugin_data(payload_type=RequestInvokeApp)
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
         response = PluginAppBackwardsInvocation.invoke_app(
@@ -81,9 +101,9 @@ class CliInvokeAppApi(Resource):
 
 @cli_api_ns.route("/upload/file/request")
 class CliUploadFileRequestApi(Resource):
+    @cli_api_only
     @get_cli_user_tenant
     @setup_required
-    @cli_api_only
     @plugin_data(payload_type=RequestRequestUploadFile)
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestRequestUploadFile):
         # generate signed url
@@ -98,9 +118,9 @@ class CliUploadFileRequestApi(Resource):
 
 @cli_api_ns.route("/fetch/tools/list")
 class CliFetchToolsListApi(Resource):
+    @cli_api_only
     @get_cli_user_tenant
     @setup_required
-    @cli_api_only
     def post(self, user_model: Account | EndUser, tenant_model: Tenant):
         from sqlalchemy.orm import Session
 

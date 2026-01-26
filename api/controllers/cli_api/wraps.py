@@ -5,7 +5,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
-from flask import abort, request
+from flask import abort, g, request
 
 from core.session.cli_api import CliApiSessionManager
 
@@ -48,6 +48,8 @@ def cli_api_only(view: Callable[P, R]):
         body = request.get_data()
         if not _verify_signature(session.secret, timestamp, body, signature):
             abort(401)
+
+        g.cli_api_session = session
 
         return view(*args, **kwargs)
 

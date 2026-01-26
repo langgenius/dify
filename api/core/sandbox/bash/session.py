@@ -6,7 +6,8 @@ from io import BytesIO
 from types import TracebackType
 
 from core.sandbox.sandbox import Sandbox
-from core.session.cli_api import CliApiSession, CliApiSessionManager
+from core.session.cli_api import CliApiSession, CliApiSessionManager, CliContext
+from core.skill.entities import ToolAccessPolicy
 from core.skill.entities.tool_dependencies import ToolDependencies
 from core.virtual_environment.__base.helpers import pipeline
 
@@ -37,6 +38,7 @@ class SandboxBashSession:
         self._cli_api_session = CliApiSessionManager().create(
             tenant_id=self._tenant_id,
             user_id=self._user_id,
+            context=CliContext(tool_access=ToolAccessPolicy.from_dependencies(self._tools)),
         )
         if self._tools is not None and not self._tools.is_empty():
             tools_path = self._setup_node_tools_directory(self._node_id, self._tools, self._cli_api_session)
@@ -55,7 +57,7 @@ class SandboxBashSession:
         node_id: str,
         tools: ToolDependencies,
         cli_api_session: CliApiSession,
-    ) -> str | None:
+    ) -> str:
         node_tools_path = f"{DifyCli.TOOLS_ROOT}/{node_id}"
 
         vm = self._sandbox.vm

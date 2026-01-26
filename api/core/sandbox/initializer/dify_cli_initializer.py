@@ -6,7 +6,8 @@ from io import BytesIO
 from pathlib import Path
 
 from core.sandbox.sandbox import Sandbox
-from core.session.cli_api import CliApiSessionManager
+from core.session.cli_api import CliApiSessionManager, CliContext
+from core.skill.entities import ToolAccessPolicy
 from core.skill.skill_manager import SkillManager
 from core.virtual_environment.__base.helpers import pipeline
 
@@ -63,7 +64,11 @@ class DifyCliInitializer(AsyncSandboxInitializer):
             logger.info("No tools found in bundle for assets_id=%s", self._assets_id)
             return
 
-        self._cli_api_session = CliApiSessionManager().create(tenant_id=self._tenant_id, user_id=self._user_id)
+        self._cli_api_session = CliApiSessionManager().create(
+            tenant_id=self._tenant_id,
+            user_id=self._user_id,
+            context=CliContext(tool_access=ToolAccessPolicy.from_dependencies(bundle.get_tool_dependencies())),
+        )
 
         pipeline(vm).add(
             ["mkdir", "-p", DifyCli.GLOBAL_TOOLS_PATH], error_message="Failed to create global tools dir"
