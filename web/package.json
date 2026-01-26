@@ -67,7 +67,7 @@
     "@lexical/react": "0.38.2",
     "@lexical/selection": "0.38.2",
     "@lexical/text": "0.38.2",
-    "@lexical/utils": "0.38.2",
+    "@lexical/utils": "0.39.0",
     "@monaco-editor/react": "4.7.0",
     "@octokit/core": "6.1.6",
     "@octokit/request-error": "6.1.8",
