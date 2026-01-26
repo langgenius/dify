@@ -283,6 +283,8 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
         return
       if (target instanceof Element && target.closest('[data-readme-panel-root="true"], [data-readme-panel="true"]'))
         return
+      if (target instanceof Element && target.closest('[data-plugin-auth-portal="true"], [data-plugin-auth-panel="true"]'))
+        return
       if (target instanceof Element && target.closest('[data-modal-root="true"]'))
         return
       if (panelEl.contains(target))
@@ -487,7 +489,7 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
       )}
       {!useModal && portalContainer && isSettingOpen && createPortal(
         <div
-          className="absolute bottom-4 right-4 top-4 z-[999]"
+          className="absolute bottom-4 right-4 top-4 z-[99]"
           data-tool-setting-panel="true"
         >
           <div className={cn('relative h-full min-h-20 w-[361px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>

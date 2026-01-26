@@ -216,11 +216,13 @@ const Authorized = ({
                 )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[100]">
-          <div className={cn(
-            'max-h-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
-            popupClassName,
-          )}
+        <PortalToFollowElemContent className="z-[100]" data-plugin-auth-portal="true">
+          <div
+            className={cn(
+              'max-h-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
+              popupClassName,
+            )}
+            data-plugin-auth-panel="true"
           >
             <div className="py-1">
               {
