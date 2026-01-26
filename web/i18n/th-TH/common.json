@@ -351,7 +351,7 @@
   "modelProvider.card.quota": "โควตา",
   "modelProvider.card.quotaExhausted": "โควต้าหมด",
   "modelProvider.card.removeKey": "ลบคีย์ API",
-  "modelProvider.card.tip": "เครดิตข้อความรองรับโมเดลจาก OpenAI จะให้ลำดับความสำคัญกับโควต้าที่ชำระแล้ว โควต้าฟรีจะถูกใช้หลังจากโควต้าที่ชำระแล้วหมด",
+  "modelProvider.card.tip": "เครดิตข้อความรองรับโมเดลจาก {{modelNames}} จะให้ลำดับความสำคัญกับโควต้าที่ชำระแล้ว โควต้าฟรีจะถูกใช้หลังจากโควต้าที่ชำระแล้วหมด",
   "modelProvider.card.tokens": "โท เค็น",
   "modelProvider.collapse": "ทรุด",
   "modelProvider.config": "กําหนดค่า",

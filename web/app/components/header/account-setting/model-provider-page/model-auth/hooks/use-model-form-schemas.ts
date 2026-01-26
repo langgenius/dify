@@ -25,9 +25,10 @@ export const useModelFormSchemas = (
     model_credential_schema,
   } = provider
   const formSchemas = useMemo(() => {
-    return providerFormSchemaPredefined
-      ? provider_credential_schema.credential_form_schemas
-      : model_credential_schema.credential_form_schemas
+    const schemas = providerFormSchemaPredefined
+      ? provider_credential_schema?.credential_form_schemas
+      : model_credential_schema?.credential_form_schemas
+    return Array.isArray(schemas) ? schemas : []
   }, [
     providerFormSchemaPredefined,
     provider_credential_schema?.credential_form_schemas,
