@@ -409,7 +409,7 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   const readmeEntrance = useMemo(() => {
     if (!currentProvider)
       return null
-    return <ReadmeEntrance pluginDetail={currentProvider as unknown as PluginDetail} showType={ReadmeShowType.drawer} position="right" className="mt-auto" />
+    return <ReadmeEntrance pluginDetail={currentProvider as unknown as PluginDetail} showType={ReadmeShowType.drawer} className="mt-auto" />
   }, [currentProvider])
 
   const toolSettingsContent = currentProvider && currentTool && toolValue && (

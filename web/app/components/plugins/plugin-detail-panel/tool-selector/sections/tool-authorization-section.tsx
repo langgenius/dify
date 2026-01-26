@@ -14,19 +14,22 @@ type ToolAuthorizationSectionProps = {
   currentProvider?: ToolWithProvider
   credentialId?: string
   onAuthorizationItemClick?: (id: string) => void
+  noDivider?: boolean
 }
 
 const ToolAuthorizationSection: FC<ToolAuthorizationSectionProps> = ({
   currentProvider,
   credentialId,
   onAuthorizationItemClick,
+  noDivider,
 }) => {
   if (!currentProvider || currentProvider.type !== CollectionType.builtIn || !currentProvider.allow_delete)
     return null
 
   return (
     <>
-      <Divider className="my-1 w-full" />
+      {!noDivider
+        && <Divider className="my-1 w-full" />}
       <div className="px-4 py-2">
         <PluginAuthInAgent
           pluginPayload={{

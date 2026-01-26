@@ -292,7 +292,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
   const readmeEntrance = useMemo(() => {
     if (!currentProvider)
       return null
-    return <ReadmeEntrance pluginDetail={currentProvider as unknown as PluginDetail} showType={ReadmeShowType.drawer} position="right" className="mt-auto" />
+    return <ReadmeEntrance pluginDetail={currentProvider as unknown as PluginDetail} showType={ReadmeShowType.drawer} className="mt-auto" />
   }, [currentProvider])
 
   useEffect(() => {
@@ -589,6 +589,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
           onAuthorizationItemClick={(id) => {
             setToolValue(prev => (prev ? { ...prev, credential_id: id } : prev))
           }}
+          noDivider
         />
         {needAuthorization && (
           <div className="flex min-h-[120px] flex-1 flex-col items-center justify-center px-4 py-6 text-text-tertiary">
@@ -598,57 +599,59 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-2 px-4 pb-4 pt-1">
-        <div className="system-sm-semibold-uppercase text-text-secondary">
-          {t('toolGroup.actionsEnabled', { ns: 'workflow', num: displayEnabledCount })}
-        </div>
-        <div className="flex flex-col gap-2">
-          {toolItems.map(item => (
-            <div
-              key={item.configId}
-              className={cn(
-                'rounded-xl border-[0.5px] border-components-panel-border-subtle px-3 py-2 shadow-xs',
-                expandedToolId === item.configId ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-components-panel-item-bg',
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <div className="system-md-semibold flex-1 text-text-secondary">
-                  {item.toolLabel}
+      {!needAuthorization && (
+        <div className="flex flex-col gap-2 px-4 pb-4 pt-1">
+          <div className="system-sm-semibold-uppercase text-text-secondary">
+            {t('toolGroup.actionsEnabled', { ns: 'workflow', num: displayEnabledCount })}
+          </div>
+          <div className="flex flex-col gap-2">
+            {toolItems.map(item => (
+              <div
+                key={item.configId}
+                className={cn(
+                  'rounded-xl border-[0.5px] border-components-panel-border-subtle px-3 py-2 shadow-xs',
+                  expandedToolId === item.configId ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-components-panel-item-bg',
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="system-md-semibold flex-1 text-text-secondary">
+                    {item.toolLabel}
+                  </div>
+                  {item.toolParams?.length
+                    ? (
+                        <button
+                          type="button"
+                          className="flex items-center gap-1 rounded-md px-2 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                          onClick={() => {
+                            setExpandedToolId(prev => (prev === item.configId ? null : item.configId))
+                          }}
+                        >
+                          <Settings01 className="h-3 w-3" />
+                          <span className="system-xs-medium">{t('operation.settings', { ns: 'common' })}</span>
+                        </button>
+                      )
+                    : null}
+                  <div className="pl-1">
+                    <Switch
+                      size="md"
+                      defaultValue={resolvedEnabledByConfigId[item.configId] !== false}
+                      onChange={(value) => {
+                        handleToggleTool(item.configId, value)
+                      }}
+                    />
+                  </div>
                 </div>
-                {item.toolParams?.length
-                  ? (
-                      <button
-                        type="button"
-                        className="flex items-center gap-1 rounded-md px-2 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                        onClick={() => {
-                          setExpandedToolId(prev => (prev === item.configId ? null : item.configId))
-                        }}
-                      >
-                        <Settings01 className="h-3 w-3" />
-                        <span className="system-xs-medium">{t('operation.settings', { ns: 'common' })}</span>
-                      </button>
-                    )
-                  : null}
-                <div className="pl-1">
-                  <Switch
-                    size="md"
-                    defaultValue={resolvedEnabledByConfigId[item.configId] !== false}
-                    onChange={(value) => {
-                      handleToggleTool(item.configId, value)
-                    }}
-                  />
-                </div>
+                {item.toolDescription && (
+                  <div className="system-xs-regular mt-1 text-text-tertiary">
+                    {item.toolDescription}
+                  </div>
+                )}
+                {expandedToolId === item.configId && toolSettingsContent}
               </div>
-              {item.toolDescription && (
-                <div className="system-xs-regular mt-1 text-text-tertiary">
-                  {item.toolDescription}
-                </div>
-              )}
-              {expandedToolId === item.configId && toolSettingsContent}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       {readmeEntrance}
     </div>
   )
@@ -658,7 +661,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
       <span
         ref={ref}
         className={cn(
-          'inline-flex items-center gap-[2px] rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover px-[4px] py-[1px] shadow-xs',
+          'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover px-[4px] py-[1px] shadow-xs',
           isSelected && 'border-text-accent',
         )}
         title={providerLabel}
