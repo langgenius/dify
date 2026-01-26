@@ -417,9 +417,17 @@ class BuiltinToolManageService:
                 raise ValueError("provider not found")
 
             # clear default provider
-            session.query(BuiltinToolProvider).filter_by(
-                tenant_id=tenant_id, user_id=user_id, provider=provider, is_default=True
-            ).update({"is_default": False})
+            if dify_config.ENTERPRISE_ENABLED:
+                # Enterprise: clear ALL defaults for this provider in the tenant
+                # (regardless of user_id, since enterprise credentials may have different user_id)
+                session.query(BuiltinToolProvider).filter_by(
+                    tenant_id=tenant_id, provider=provider, is_default=True
+                ).update({"is_default": False})
+            else:
+                # Non-enterprise: only clear defaults for the current user
+                session.query(BuiltinToolProvider).filter_by(
+                    tenant_id=tenant_id, user_id=user_id, provider=provider, is_default=True
+                ).update({"is_default": False})
 
             # set new default provider
             target_provider.is_default = True
