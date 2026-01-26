@@ -1,6 +1,9 @@
 import { useCallback } from 'react'
 import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../../constants'
+import { useEdgesInteractionsWithoutSync } from '../../../hooks/use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from '../../../hooks/use-nodes-interactions-without-sync'
 import { useStore, useWorkflowStore } from '../../../store'
+import { WorkflowRunningStatus } from '../../../types'
 
 type UseChatFlowControlParams = {
   stopChat?: (taskId: string) => void
@@ -16,6 +19,8 @@ export function useChatFlowControl({
   const setHasStopResponded = useStore(s => s.setHasStopResponded)
   const setSuggestedQuestionsAbortController = useStore(s => s.setSuggestedQuestionsAbortController)
   const invalidateRun = useStore(s => s.invalidateRun)
+  const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync()
+  const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
 
   const { setIterTimes, setLoopTimes } = workflowStore.getState()
 
@@ -24,7 +29,14 @@ export function useChatFlowControl({
   }, [setIsResponding])
 
   const handleStop = useCallback(() => {
-    const { activeTaskId, suggestedQuestionsAbortController } = workflowStore.getState()
+    const {
+      activeTaskId,
+      suggestedQuestionsAbortController,
+      workflowRunningData,
+      setWorkflowRunningData,
+    } = workflowStore.getState()
+    const runningStatus = workflowRunningData?.result?.status
+    const isActiveRun = runningStatus === WorkflowRunningStatus.Running || runningStatus === WorkflowRunningStatus.Waiting
     setHasStopResponded(true)
     handleResponding(false)
     if (stopChat && activeTaskId)
@@ -36,6 +48,19 @@ export function useChatFlowControl({
     setSuggestedQuestionsAbortController(null)
     setActiveTaskId('')
     invalidateRun()
+    if (isActiveRun && workflowRunningData) {
+      setWorkflowRunningData({
+        ...workflowRunningData,
+        result: {
+          ...workflowRunningData.result,
+          status: WorkflowRunningStatus.Stopped,
+        },
+      })
+    }
+    if (isActiveRun) {
+      handleNodeCancelRunningStatus()
+      handleEdgeCancelRunningStatus()
+    }
   }, [
     handleResponding,
     setIterTimes,
@@ -46,6 +71,8 @@ export function useChatFlowControl({
     setSuggestedQuestionsAbortController,
     setActiveTaskId,
     invalidateRun,
+    handleNodeCancelRunningStatus,
+    handleEdgeCancelRunningStatus,
   ])
 
   const handleRestart = useCallback(() => {
