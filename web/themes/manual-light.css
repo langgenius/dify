@@ -74,4 +74,5 @@ html[data-theme="light"] {
     --color-billing-plan-card-premium-bg: linear-gradient(180deg, #F90 0%, rgba(255, 153, 0, 0.00) 100%);
     --color-billing-plan-card-enterprise-bg: linear-gradient(180deg, #03F 0%, rgba(0, 51, 255, 0.00) 100%);
     --color-knowledge-pipeline-creation-footer-bg: linear-gradient(90deg, #FCFCFD 4.89%, rgba(255, 255, 255, 0.00) 100%);
+    --color-progress-bar-indeterminate-stripe: repeating-linear-gradient(-55deg, #D0D5DD, #D0D5DD 2px, transparent 2px, transparent 5px);
 }
