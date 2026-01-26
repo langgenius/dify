@@ -1,12 +1,16 @@
+import type { RefObject } from 'react'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { NodeRunningStatus } from '../types'
 
-export const useNodesInteractionsWithoutSync = () => {
+export const useNodesInteractionsWithoutSync = (isMountedRef?: RefObject<boolean>) => {
   const store = useStoreApi()
 
   const handleNodeCancelRunningStatus = useCallback(() => {
+    if (isMountedRef && isMountedRef.current === false)
+      return
+
     const {
       getNodes,
       setNodes,
@@ -20,9 +24,12 @@ export const useNodesInteractionsWithoutSync = () => {
       })
     })
     setNodes(newNodes)
-  }, [store])
+  }, [store, isMountedRef])
 
   const handleCancelAllNodeSuccessStatus = useCallback(() => {
+    if (isMountedRef && isMountedRef.current === false)
+      return
+
     const {
       getNodes,
       setNodes,
@@ -36,9 +43,12 @@ export const useNodesInteractionsWithoutSync = () => {
       })
     })
     setNodes(newNodes)
-  }, [store])
+  }, [store, isMountedRef])
 
   const handleCancelNodeSuccessStatus = useCallback((nodeId: string) => {
+    if (isMountedRef && isMountedRef.current === false)
+      return
+
     const {
       getNodes,
       setNodes,
@@ -52,7 +62,7 @@ export const useNodesInteractionsWithoutSync = () => {
       }
     })
     setNodes(newNodes)
-  }, [store])
+  }, [store, isMountedRef])
 
   return {
     handleNodeCancelRunningStatus,

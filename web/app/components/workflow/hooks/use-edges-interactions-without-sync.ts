@@ -1,11 +1,15 @@
+import type { RefObject } from 'react'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 
-export const useEdgesInteractionsWithoutSync = () => {
+export const useEdgesInteractionsWithoutSync = (isMountedRef?: RefObject<boolean>) => {
   const store = useStoreApi()
 
   const handleEdgeCancelRunningStatus = useCallback(() => {
+    if (isMountedRef && isMountedRef.current === false)
+      return
+
     const {
       edges,
       setEdges,
@@ -19,7 +23,7 @@ export const useEdgesInteractionsWithoutSync = () => {
       })
     })
     setEdges(newEdges)
-  }, [store])
+  }, [store, isMountedRef])
 
   return {
     handleEdgeCancelRunningStatus,
