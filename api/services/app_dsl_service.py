@@ -783,15 +783,16 @@ class AppDslService:
         return dependencies
 
     @classmethod
-    def get_leaked_dependencies(cls, tenant_id: str, dsl_dependencies: list[dict]) -> list[PluginDependency]:
+    def get_leaked_dependencies(
+        cls, tenant_id: str, dsl_dependencies: list[PluginDependency]
+    ) -> list[PluginDependency]:
         """
         Returns the leaked dependencies in current workspace
         """
-        dependencies = [PluginDependency.model_validate(dep) for dep in dsl_dependencies]
-        if not dependencies:
+        if not dsl_dependencies:
             return []
 
-        return DependenciesAnalysisService.get_leaked_dependencies(tenant_id=tenant_id, dependencies=dependencies)
+        return DependenciesAnalysisService.get_leaked_dependencies(tenant_id=tenant_id, dependencies=dsl_dependencies)
 
     @staticmethod
     def _generate_aes_key(tenant_id: str) -> bytes:
