@@ -8,6 +8,8 @@ from flask.views import MethodView
 from extensions import ext_fastopenapi
 from services.feature_service import FeatureModel, SystemFeatureModel
 
+from models.engine import db
+
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
@@ -16,7 +18,13 @@ if not hasattr(builtins, "MethodView"):
 def app() -> Flask:
     app = Flask(__name__)
     app.config["TESTING"] = True
-    return app
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    
+    db.init_app(app)
+    
+    with app.app_context():
+        yield app
 
 
 def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -27,13 +35,13 @@ def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.Monkey
     monkeypatch.setattr("controllers.console.feature.account_initialization_required", lambda f: f)
     monkeypatch.setattr("controllers.console.feature.cloud_utm_record", lambda f: f)
 
-    real_feature_model = FeatureModel()
+    mock_data = FeatureModel().model_dump()
 
     with (
         patch("controllers.console.feature.current_account_with_tenant", return_value=(object(), "tenant-id")),
         patch(
             "controllers.console.feature.FeatureService.get_features",
-            return_value=real_feature_model,  # Mock return
+            return_value=FeatureModel(),
         ),
     ):
         client = app.test_client()
@@ -43,11 +51,10 @@ def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.Monkey
         print("Server Error Details:", response.get_data(as_text=True))
 
     assert response.status_code == 200
-
-    response_json = response.get_json()
-
-    assert "features" in response_json
-    assert "billing" in response_json["features"]
+    
+    json_resp = response.get_json()
+    assert "features" in json_resp
+    assert "billing" in json_resp["features"]
 
 
 def test_console_system_features_fastopenapi_get(app: Flask):
