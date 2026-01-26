@@ -69,6 +69,9 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         tenant_id: str,
         app_id: str,
         workflow_run_id: str,
+        node_id: str | None = None,
+        node_type: str | None = None,
+        status: str | None = None,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Get all node executions for a specific workflow run.
@@ -80,9 +83,36 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
             tenant_id: The tenant identifier
             app_id: The application identifier
             workflow_run_id: The workflow run identifier
+            node_id: Optional filter by node ID
+            node_type: Optional filter by node type
+            status: Optional filter by execution status
 
         Returns:
             A sequence of WorkflowNodeExecutionModel instances ordered by index (desc)
+        """
+        ...
+
+    def get_execution_by_node_id(
+        self,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_id: str,
+        node_id: str,
+    ) -> WorkflowNodeExecutionModel | None:
+        """
+        Get a specific node execution by node ID for a workflow run.
+
+        This method retrieves a specific node execution within a workflow run
+        by its node ID. Returns the most recent execution if multiple exist.
+
+        Args:
+            tenant_id: The tenant identifier
+            app_id: The application identifier
+            workflow_run_id: The workflow run identifier
+            node_id: The node identifier
+
+        Returns:
+            The WorkflowNodeExecutionModel if found, or None if not found
         """
         ...
 

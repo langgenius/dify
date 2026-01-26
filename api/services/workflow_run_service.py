@@ -137,9 +137,19 @@ class WorkflowRunService:
         app_model: App,
         run_id: str,
         user: Account | EndUser,
+        node_id: str | None = None,
+        node_type: str | None = None,
+        status: str | None = None,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
-        Get workflow run node execution list
+        Get workflow run node execution list with optional filtering.
+
+        :param app_model: app model
+        :param run_id: workflow run id
+        :param user: current user (Account or EndUser)
+        :param node_id: optional filter by node ID
+        :param node_type: optional filter by node type
+        :param status: optional filter by execution status
         """
         workflow_run = self.get_workflow_run(app_model, run_id)
 
@@ -158,4 +168,43 @@ class WorkflowRunService:
             tenant_id=tenant_id,
             app_id=app_model.id,
             workflow_run_id=run_id,
+            node_id=node_id,
+            node_type=node_type,
+            status=status,
+        )
+
+    def get_workflow_run_node_execution_by_node_id(
+        self,
+        app_model: App,
+        run_id: str,
+        node_id: str,
+        user: Account | EndUser,
+    ) -> WorkflowNodeExecutionModel | None:
+        """
+        Get a specific node execution by node ID for a workflow run.
+
+        :param app_model: app model
+        :param run_id: workflow run id
+        :param node_id: node ID to retrieve
+        :param user: current user (Account or EndUser)
+        :return: WorkflowNodeExecutionModel or None if not found
+        """
+        workflow_run = self.get_workflow_run(app_model, run_id)
+
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
+
+        if not workflow_run:
+            return None
+
+        # Get tenant_id from user
+        tenant_id = user.tenant_id if isinstance(user, EndUser) else user.current_tenant_id
+        if tenant_id is None:
+            raise ValueError("User tenant_id cannot be None")
+
+        return self._node_execution_service_repo.get_execution_by_node_id(
+            tenant_id=tenant_id,
+            app_id=app_model.id,
+            workflow_run_id=run_id,
+            node_id=node_id,
         )

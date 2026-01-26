@@ -92,30 +92,80 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         tenant_id: str,
         app_id: str,
         workflow_run_id: str,
+        node_id: str | None = None,
+        node_type: str | None = None,
+        status: str | None = None,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
-        Get all node executions for a specific workflow run.
+        Get all node executions for a specific workflow run with optional filtering.
 
         This method replicates the query pattern from WorkflowRunService.get_workflow_run_node_executions()
-        using SQLAlchemy 2.0 style syntax.
+        using SQLAlchemy 2.0 style syntax, with support for filtering.
 
         Args:
             tenant_id: The tenant identifier
             app_id: The application identifier
             workflow_run_id: The workflow run identifier
+            node_id: Optional filter by node ID
+            node_type: Optional filter by node type
+            status: Optional filter by execution status
 
         Returns:
-            A sequence of WorkflowNodeExecutionModel instances ordered by index (desc)
+            A sequence of WorkflowNodeExecutionModel instances ordered by created_at (asc)
         """
         stmt = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel))
         stmt = stmt.where(
             WorkflowNodeExecutionModel.tenant_id == tenant_id,
             WorkflowNodeExecutionModel.app_id == app_id,
             WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-        ).order_by(asc(WorkflowNodeExecutionModel.created_at))
+        )
+
+        # Apply filters if provided
+        if node_id is not None:
+            stmt = stmt.where(WorkflowNodeExecutionModel.node_id == node_id)
+        if node_type is not None:
+            stmt = stmt.where(WorkflowNodeExecutionModel.node_type == node_type)
+        if status is not None:
+            stmt = stmt.where(WorkflowNodeExecutionModel.status == status)
+
+        stmt = stmt.order_by(asc(WorkflowNodeExecutionModel.created_at))
 
         with self._session_maker() as session:
             return session.execute(stmt).scalars().all()
+
+    def get_execution_by_node_id(
+        self,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_id: str,
+        node_id: str,
+    ) -> WorkflowNodeExecutionModel | None:
+        """
+        Get a specific node execution by node ID for a workflow run.
+
+        This method retrieves the most recent execution of a specific node
+        within a workflow run by its node ID.
+
+        Args:
+            tenant_id: The tenant identifier
+            app_id: The application identifier
+            workflow_run_id: The workflow run identifier
+            node_id: The node identifier
+
+        Returns:
+            The most recent WorkflowNodeExecutionModel for the node, or None if not found.
+            The returned WorkflowNodeExecutionModel will have `offload_data` preloaded.
+        """
+        stmt = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel))
+        stmt = stmt.where(
+            WorkflowNodeExecutionModel.tenant_id == tenant_id,
+            WorkflowNodeExecutionModel.app_id == app_id,
+            WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+            WorkflowNodeExecutionModel.node_id == node_id,
+        ).order_by(desc(WorkflowNodeExecutionModel.created_at)).limit(1)
+
+        with self._session_maker() as session:
+            return session.scalar(stmt)
 
     def get_execution_by_id(
         self,
