@@ -26,7 +26,7 @@ def app() -> Flask:
 
 
 def test_console_files_fastopenapi_get_upload_config(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(dify_config.dify_config, "EDITION", "CLOUD")
+    monkeypatch.setattr("controllers.console.wraps.dify_config.EDITION", "CLOUD")
 
     ext_fastopenapi.init_app(app)
 
@@ -44,7 +44,7 @@ def test_console_files_fastopenapi_get_upload_config(app: Flask, monkeypatch: py
 
 
 def test_console_files_fastopenapi_get_support_types(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(dify_config.dify_config, "EDITION", "CLOUD")
+    monkeypatch.setattr("controllers.console.wraps.dify_config.EDITION", "CLOUD")
 
     ext_fastopenapi.init_app(app)
 
