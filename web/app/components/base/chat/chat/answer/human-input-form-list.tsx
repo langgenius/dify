@@ -41,9 +41,7 @@ const HumanInputFormList = ({
     }, {} as Record<string, { showEmailTip: boolean, isEmailDebugMode: boolean, showDebugModeTip: boolean }>)
   }, [getHumanInputNodeData, humanInputFormDataList])
 
-  const filteredHumanInputFormDataList = useMemo(() => {
-    return humanInputFormDataList.filter(formData => formData.display_in_ui)
-  }, [humanInputFormDataList])
+  const filteredHumanInputFormDataList = humanInputFormDataList.filter(formData => formData.display_in_ui)
 
   return (
     <div className="mt-2 flex flex-col gap-y-2">
