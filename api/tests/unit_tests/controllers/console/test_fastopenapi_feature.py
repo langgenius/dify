@@ -1,6 +1,5 @@
 import builtins
 
-import dify_config
 import pytest
 from flask import Flask
 from flask.views import MethodView
