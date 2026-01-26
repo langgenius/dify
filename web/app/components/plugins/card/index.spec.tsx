@@ -22,8 +22,9 @@ import Card from './index'
 // ================================
 
 // Mock useTheme hook
+let mockTheme = 'light'
 vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: 'light' }),
+  default: () => ({ theme: mockTheme }),
 }))
 
 // Mock i18n-config
@@ -237,6 +238,43 @@ describe('Card', () => {
       // Check for background image style on icon element
       const iconElement = container.querySelector('[style*="background-image"]')
       expect(iconElement).toBeInTheDocument()
+    })
+
+    it('should use icon_dark when theme is dark and icon_dark is provided', () => {
+      // Set theme to dark
+      mockTheme = 'dark'
+
+      const plugin = createMockPlugin({
+        icon: '/light-icon.png',
+        icon_dark: '/dark-icon.png',
+      })
+
+      const { container } = render(<Card payload={plugin} />)
+
+      // Check that icon uses dark icon
+      const iconElement = container.querySelector('[style*="background-image"]')
+      expect(iconElement).toBeInTheDocument()
+      expect(iconElement).toHaveStyle({ backgroundImage: 'url(/dark-icon.png)' })
+
+      // Reset theme
+      mockTheme = 'light'
+    })
+
+    it('should use icon when theme is dark but icon_dark is not provided', () => {
+      mockTheme = 'dark'
+
+      const plugin = createMockPlugin({
+        icon: '/light-icon.png',
+      })
+
+      const { container } = render(<Card payload={plugin} />)
+
+      // Should fallback to light icon
+      const iconElement = container.querySelector('[style*="background-image"]')
+      expect(iconElement).toBeInTheDocument()
+      expect(iconElement).toHaveStyle({ backgroundImage: 'url(/light-icon.png)' })
+
+      mockTheme = 'light'
     })
 
     it('should render corner mark with category label', () => {
@@ -882,6 +920,58 @@ describe('Icon', () => {
   })
 
   // ================================
+  // Object src Tests
+  // ================================
+  describe('Object src', () => {
+    it('should render AppIcon with correct icon prop', () => {
+      render(<Icon src={{ content: '🎉', background: '#ffffff' }} />)
+
+      const appIcon = screen.getByTestId('app-icon')
+      expect(appIcon).toHaveAttribute('data-icon', '🎉')
+    })
+
+    it('should render AppIcon with correct background prop', () => {
+      render(<Icon src={{ content: '🔥', background: '#ff0000' }} />)
+
+      const appIcon = screen.getByTestId('app-icon')
+      expect(appIcon).toHaveAttribute('data-background', '#ff0000')
+    })
+
+    it('should render AppIcon with emoji iconType', () => {
+      render(<Icon src={{ content: '⭐', background: '#ffff00' }} />)
+
+      const appIcon = screen.getByTestId('app-icon')
+      expect(appIcon).toHaveAttribute('data-icon-type', 'emoji')
+    })
+
+    it('should render AppIcon with correct size', () => {
+      render(<Icon src={{ content: '📦', background: '#0000ff' }} size="small" />)
+
+      const appIcon = screen.getByTestId('app-icon')
+      expect(appIcon).toHaveAttribute('data-size', 'small')
+    })
+
+    it('should apply className to wrapper div for object src', () => {
+      const { container } = render(
+        <Icon src={{ content: '🎨', background: '#00ff00' }} className="custom-class" />,
+      )
+
+      expect(container.querySelector('.relative.custom-class')).toBeInTheDocument()
+    })
+
+    it('should render with all size options for object src', () => {
+      const sizes = ['xs', 'tiny', 'small', 'medium', 'large'] as const
+      sizes.forEach((size) => {
+        const { unmount } = render(
+          <Icon src={{ content: '📱', background: '#ffffff' }} size={size} />,
+        )
+        expect(screen.getByTestId('app-icon')).toHaveAttribute('data-size', size)
+        unmount()
+      })
+    })
+  })
+
+  // ================================
   // Edge Cases Tests
   // ================================
   describe('Edge Cases', () => {
@@ -896,6 +986,18 @@ describe('Icon', () => {
 
       const iconDiv = container.firstChild as HTMLElement
       expect(iconDiv).toHaveStyle({ backgroundImage: 'url(/icon?name=test&size=large)' })
+    })
+
+    it('should handle object src with special emoji', () => {
+      render(<Icon src={{ content: '👨‍💻', background: '#123456' }} />)
+
+      expect(screen.getByTestId('app-icon')).toBeInTheDocument()
+    })
+
+    it('should handle object src with empty content', () => {
+      render(<Icon src={{ content: '', background: '#ffffff' }} />)
+
+      expect(screen.getByTestId('app-icon')).toBeInTheDocument()
     })
 
     it('should not render status indicators when src is object with installed=true', () => {
@@ -950,792 +1052,826 @@ describe('Icon', () => {
       expect(screen.queryByTestId('inner-icon')).not.toBeInTheDocument()
     })
   })
-})
-
-// ================================
-// CornerMark Component Tests
-// ================================
-describe('CornerMark', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
 
   // ================================
-  // Rendering Tests
+  // CornerMark Component Tests
   // ================================
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<CornerMark text="Tool" />)
-
-      expect(document.body).toBeInTheDocument()
+  describe('CornerMark', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
     })
 
-    it('should render text content', () => {
-      render(<CornerMark text="Tool" />)
-
-      expect(screen.getByText('Tool')).toBeInTheDocument()
-    })
-
-    it('should render LeftCorner icon', () => {
-      render(<CornerMark text="Model" />)
-
-      expect(screen.getByTestId('left-corner')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Props Testing
-  // ================================
-  describe('Props', () => {
-    it('should display different category text', () => {
-      const { rerender } = render(<CornerMark text="Tool" />)
-      expect(screen.getByText('Tool')).toBeInTheDocument()
-
-      rerender(<CornerMark text="Model" />)
-      expect(screen.getByText('Model')).toBeInTheDocument()
-
-      rerender(<CornerMark text="Extension" />)
-      expect(screen.getByText('Extension')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Edge Cases Tests
-  // ================================
-  describe('Edge Cases', () => {
-    it('should handle empty text', () => {
-      render(<CornerMark text="" />)
-
-      expect(document.body).toBeInTheDocument()
-    })
-
-    it('should handle long text', () => {
-      const longText = 'Very Long Category Name'
-      render(<CornerMark text={longText} />)
-
-      expect(screen.getByText(longText)).toBeInTheDocument()
-    })
-
-    it('should handle special characters in text', () => {
-      render(<CornerMark text="Test & Demo" />)
-
-      expect(screen.getByText('Test & Demo')).toBeInTheDocument()
-    })
-  })
-})
-
-// ================================
-// Description Component Tests
-// ================================
-describe('Description', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // ================================
-  // Rendering Tests
-  // ================================
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Description text="Test description" descriptionLineRows={2} />)
-
-      expect(document.body).toBeInTheDocument()
-    })
-
-    it('should render text content', () => {
-      render(<Description text="This is a description" descriptionLineRows={2} />)
-
-      expect(screen.getByText('This is a description')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Props Testing
-  // ================================
-  describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(
-        <Description text="Test" descriptionLineRows={2} className="custom-desc-class" />,
-      )
-
-      expect(container.querySelector('.custom-desc-class')).toBeInTheDocument()
-    })
-
-    it('should apply h-4 truncate for 1 line row', () => {
-      const { container } = render(
-        <Description text="Test" descriptionLineRows={1} />,
-      )
-
-      expect(container.querySelector('.h-4.truncate')).toBeInTheDocument()
-    })
-
-    it('should apply h-8 line-clamp-2 for 2 line rows', () => {
-      const { container } = render(
-        <Description text="Test" descriptionLineRows={2} />,
-      )
-
-      expect(container.querySelector('.h-8.line-clamp-2')).toBeInTheDocument()
-    })
-
-    it('should apply h-12 line-clamp-3 for 3+ line rows', () => {
-      const { container } = render(
-        <Description text="Test" descriptionLineRows={3} />,
-      )
-
-      expect(container.querySelector('.h-12.line-clamp-3')).toBeInTheDocument()
-    })
-
-    it('should apply h-12 line-clamp-3 for values greater than 3', () => {
-      const { container } = render(
-        <Description text="Test" descriptionLineRows={5} />,
-      )
-
-      expect(container.querySelector('.h-12.line-clamp-3')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Memoization Tests
-  // ================================
-  describe('Memoization', () => {
-    it('should memoize lineClassName based on descriptionLineRows', () => {
-      const { container, rerender } = render(
-        <Description text="Test" descriptionLineRows={2} />,
-      )
-
-      expect(container.querySelector('.line-clamp-2')).toBeInTheDocument()
-
-      // Re-render with same descriptionLineRows
-      rerender(<Description text="Different text" descriptionLineRows={2} />)
-
-      // Should still have same class (memoized)
-      expect(container.querySelector('.line-clamp-2')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Edge Cases Tests
-  // ================================
-  describe('Edge Cases', () => {
-    it('should handle empty text', () => {
-      render(<Description text="" descriptionLineRows={2} />)
-
-      expect(document.body).toBeInTheDocument()
-    })
-
-    it('should handle very long text', () => {
-      const longText = 'A'.repeat(1000)
-      const { container } = render(
-        <Description text={longText} descriptionLineRows={2} />,
-      )
-
-      expect(container.querySelector('.line-clamp-2')).toBeInTheDocument()
-    })
-
-    it('should handle text with HTML entities', () => {
-      render(<Description text="<script>alert('xss')</script>" descriptionLineRows={2} />)
-
-      // Text should be escaped
-      expect(screen.getByText('<script>alert(\'xss\')</script>')).toBeInTheDocument()
-    })
-  })
-})
-
-// ================================
-// DownloadCount Component Tests
-// ================================
-describe('DownloadCount', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // ================================
-  // Rendering Tests
-  // ================================
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DownloadCount downloadCount={100} />)
-
-      expect(document.body).toBeInTheDocument()
-    })
-
-    it('should render download count with formatted number', () => {
-      render(<DownloadCount downloadCount={1234567} />)
-
-      expect(screen.getByText('1,234,567')).toBeInTheDocument()
-    })
-
-    it('should render install icon', () => {
-      render(<DownloadCount downloadCount={100} />)
-
-      expect(screen.getByTestId('ri-install-line')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Props Testing
-  // ================================
-  describe('Props', () => {
-    it('should display small download count', () => {
-      render(<DownloadCount downloadCount={5} />)
-
-      expect(screen.getByText('5')).toBeInTheDocument()
-    })
-
-    it('should display large download count', () => {
-      render(<DownloadCount downloadCount={999999999} />)
-
-      expect(screen.getByText('999,999,999')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Memoization Tests
-  // ================================
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      expect(DownloadCount).toBeDefined()
-      expect(typeof DownloadCount).toBe('object')
-    })
-  })
-
-  // ================================
-  // Edge Cases Tests
-  // ================================
-  describe('Edge Cases', () => {
-    it('should handle zero download count', () => {
-      render(<DownloadCount downloadCount={0} />)
-
-      // 0 should still render with install icon
-      expect(screen.getByText('0')).toBeInTheDocument()
-      expect(screen.getByTestId('ri-install-line')).toBeInTheDocument()
-    })
-
-    it('should handle negative download count', () => {
-      render(<DownloadCount downloadCount={-100} />)
-
-      expect(screen.getByText('-100')).toBeInTheDocument()
-    })
-  })
-})
-
-// ================================
-// OrgInfo Component Tests
-// ================================
-describe('OrgInfo', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // ================================
-  // Rendering Tests
-  // ================================
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<OrgInfo packageName="test-plugin" />)
-
-      expect(document.body).toBeInTheDocument()
-    })
-
-    it('should render package name', () => {
-      render(<OrgInfo packageName="my-plugin" />)
-
-      expect(screen.getByText('my-plugin')).toBeInTheDocument()
-    })
-
-    it('should render org name and separator when provided', () => {
-      render(<OrgInfo orgName="my-org" packageName="my-plugin" />)
-
-      expect(screen.getByText('my-org')).toBeInTheDocument()
-      expect(screen.getByText('/')).toBeInTheDocument()
-      expect(screen.getByText('my-plugin')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Props Testing
-  // ================================
-  describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(
-        <OrgInfo packageName="test" className="custom-org-class" />,
-      )
-
-      expect(container.querySelector('.custom-org-class')).toBeInTheDocument()
-    })
-
-    it('should apply packageNameClassName', () => {
-      const { container } = render(
-        <OrgInfo packageName="test" packageNameClassName="custom-package-class" />,
-      )
-
-      expect(container.querySelector('.custom-package-class')).toBeInTheDocument()
-    })
-
-    it('should not render org name section when orgName is undefined', () => {
-      render(<OrgInfo packageName="test" />)
-
-      expect(screen.queryByText('/')).not.toBeInTheDocument()
-    })
-
-    it('should not render org name section when orgName is empty', () => {
-      render(<OrgInfo orgName="" packageName="test" />)
-
-      expect(screen.queryByText('/')).not.toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Edge Cases Tests
-  // ================================
-  describe('Edge Cases', () => {
-    it('should handle special characters in org name', () => {
-      render(<OrgInfo orgName="my-org_123" packageName="test" />)
-
-      expect(screen.getByText('my-org_123')).toBeInTheDocument()
-    })
-
-    it('should handle special characters in package name', () => {
-      render(<OrgInfo packageName="plugin@v1.0.0" />)
-
-      expect(screen.getByText('plugin@v1.0.0')).toBeInTheDocument()
-    })
-
-    it('should truncate long package name', () => {
-      const longName = 'a'.repeat(100)
-      const { container } = render(<OrgInfo packageName={longName} />)
-
-      expect(container.querySelector('.truncate')).toBeInTheDocument()
-    })
-  })
-})
-
-// ================================
-// Placeholder Component Tests
-// ================================
-describe('Placeholder', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // ================================
-  // Rendering Tests
-  // ================================
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Placeholder wrapClassName="test-class" />)
-
-      expect(document.body).toBeInTheDocument()
-    })
-
-    it('should render with wrapClassName', () => {
-      const { container } = render(
-        <Placeholder wrapClassName="custom-wrapper" />,
-      )
-
-      expect(container.querySelector('.custom-wrapper')).toBeInTheDocument()
-    })
-
-    it('should render skeleton elements', () => {
-      render(<Placeholder wrapClassName="test" />)
-
-      expect(screen.getByTestId('skeleton-container')).toBeInTheDocument()
-      expect(screen.getAllByTestId('skeleton-rectangle').length).toBeGreaterThan(0)
-    })
-
-    it('should render Group icon', () => {
-      render(<Placeholder wrapClassName="test" />)
-
-      expect(screen.getByTestId('group-icon')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Props Testing
-  // ================================
-  describe('Props', () => {
-    it('should render Title when loadingFileName is provided', () => {
-      render(<Placeholder wrapClassName="test" loadingFileName="my-file.zip" />)
-
-      expect(screen.getByText('my-file.zip')).toBeInTheDocument()
-    })
-
-    it('should render SkeletonRectangle when loadingFileName is not provided', () => {
-      render(<Placeholder wrapClassName="test" />)
-
-      // Should have skeleton rectangle for title area
-      const rectangles = screen.getAllByTestId('skeleton-rectangle')
-      expect(rectangles.length).toBeGreaterThan(0)
-    })
-
-    it('should render SkeletonRow for org info', () => {
-      render(<Placeholder wrapClassName="test" />)
-
-      // There are multiple skeleton rows in the component
-      const skeletonRows = screen.getAllByTestId('skeleton-row')
-      expect(skeletonRows.length).toBeGreaterThan(0)
-    })
-  })
-
-  // ================================
-  // Edge Cases Tests
-  // ================================
-  describe('Edge Cases', () => {
-    it('should handle empty wrapClassName', () => {
-      const { container } = render(<Placeholder wrapClassName="" />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
-    it('should handle undefined loadingFileName', () => {
-      render(<Placeholder wrapClassName="test" loadingFileName={undefined} />)
-
-      // Should show skeleton instead of title
-      const rectangles = screen.getAllByTestId('skeleton-rectangle')
-      expect(rectangles.length).toBeGreaterThan(0)
-    })
-
-    it('should handle long loadingFileName', () => {
-      const longFileName = 'very-long-file-name-that-goes-on-forever.zip'
-      render(<Placeholder wrapClassName="test" loadingFileName={longFileName} />)
-
-      expect(screen.getByText(longFileName)).toBeInTheDocument()
-    })
-  })
-})
-
-// ================================
-// LoadingPlaceholder Component Tests
-// ================================
-describe('LoadingPlaceholder', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // ================================
-  // Rendering Tests
-  // ================================
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<LoadingPlaceholder />)
-
-      expect(document.body).toBeInTheDocument()
-    })
-
-    it('should have correct base classes', () => {
-      const { container } = render(<LoadingPlaceholder />)
-
-      expect(container.querySelector('.h-2.rounded-sm')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Props Testing
-  // ================================
-  describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(<LoadingPlaceholder className="custom-loading" />)
-
-      expect(container.querySelector('.custom-loading')).toBeInTheDocument()
-    })
-
-    it('should merge className with base classes', () => {
-      const { container } = render(<LoadingPlaceholder className="w-full" />)
-
-      expect(container.querySelector('.h-2.rounded-sm.w-full')).toBeInTheDocument()
-    })
-  })
-})
-
-// ================================
-// Title Component Tests
-// ================================
-describe('Title', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // ================================
-  // Rendering Tests
-  // ================================
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Title title="Test Title" />)
-
-      expect(document.body).toBeInTheDocument()
-    })
-
-    it('should render title text', () => {
-      render(<Title title="My Plugin Title" />)
-
-      expect(screen.getByText('My Plugin Title')).toBeInTheDocument()
-    })
-
-    it('should have truncate class', () => {
-      const { container } = render(<Title title="Test" />)
-
-      expect(container.querySelector('.truncate')).toBeInTheDocument()
-    })
-
-    it('should have correct text styling', () => {
-      const { container } = render(<Title title="Test" />)
-
-      expect(container.querySelector('.system-md-semibold')).toBeInTheDocument()
-      expect(container.querySelector('.text-text-secondary')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Props Testing
-  // ================================
-  describe('Props', () => {
-    it('should display different titles', () => {
-      const { rerender } = render(<Title title="First Title" />)
-      expect(screen.getByText('First Title')).toBeInTheDocument()
-
-      rerender(<Title title="Second Title" />)
-      expect(screen.getByText('Second Title')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Edge Cases Tests
-  // ================================
-  describe('Edge Cases', () => {
-    it('should handle empty title', () => {
-      render(<Title title="" />)
-
-      expect(document.body).toBeInTheDocument()
-    })
-
-    it('should handle very long title', () => {
-      const longTitle = 'A'.repeat(500)
-      const { container } = render(<Title title={longTitle} />)
-
-      // Should have truncate for long text
-      expect(container.querySelector('.truncate')).toBeInTheDocument()
-    })
-
-    it('should handle special characters in title', () => {
-      render(<Title title={'Title with <special> & "chars"'} />)
-
-      expect(screen.getByText('Title with <special> & "chars"')).toBeInTheDocument()
-    })
-
-    it('should handle unicode characters', () => {
-      render(<Title title="标题 🎉 タイトル" />)
-
-      expect(screen.getByText('标题 🎉 タイトル')).toBeInTheDocument()
-    })
-  })
-})
-
-// ================================
-// Integration Tests
-// ================================
-describe('Card Integration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Complete Card Rendering', () => {
-    it('should render a complete card with all elements', () => {
-      const plugin = createMockPlugin({
-        label: { 'en-US': 'Complete Plugin' },
-        brief: { 'en-US': 'A complete plugin description' },
-        org: 'complete-org',
-        name: 'complete-plugin',
-        category: PluginCategoryEnum.tool,
-        verified: true,
-        badges: ['partner'],
+    // ================================
+    // Rendering Tests
+    // ================================
+    describe('Rendering', () => {
+      it('should render without crashing', () => {
+        render(<CornerMark text="Tool" />)
+
+        expect(document.body).toBeInTheDocument()
       })
 
-      render(
-        <Card
-          payload={plugin}
-          footer={<CardMoreInfo downloadCount={5000} tags={['search', 'api']} />}
-        />,
-      )
+      it('should render text content', () => {
+        render(<CornerMark text="Tool" />)
 
-      // Verify all elements are rendered
-      expect(screen.getByText('Complete Plugin')).toBeInTheDocument()
-      expect(screen.getByText('A complete plugin description')).toBeInTheDocument()
-      expect(screen.getByText('complete-org')).toBeInTheDocument()
-      expect(screen.getByText('complete-plugin')).toBeInTheDocument()
-      expect(screen.getByText('Tool')).toBeInTheDocument()
-      expect(screen.getByTestId('partner-badge')).toBeInTheDocument()
-      expect(screen.getByTestId('verified-badge')).toBeInTheDocument()
-      expect(screen.getByText('5,000')).toBeInTheDocument()
-      expect(screen.getByText('search')).toBeInTheDocument()
-      expect(screen.getByText('api')).toBeInTheDocument()
+        expect(screen.getByText('Tool')).toBeInTheDocument()
+      })
+
+      it('should render LeftCorner icon', () => {
+        render(<CornerMark text="Model" />)
+
+        expect(screen.getByTestId('left-corner')).toBeInTheDocument()
+      })
     })
 
-    it('should render loading state correctly', () => {
-      const plugin = createMockPlugin()
+    // ================================
+    // Props Testing
+    // ================================
+    describe('Props', () => {
+      it('should display different category text', () => {
+        const { rerender } = render(<CornerMark text="Tool" />)
+        expect(screen.getByText('Tool')).toBeInTheDocument()
 
-      render(
-        <Card
-          payload={plugin}
-          isLoading={true}
-          loadingFileName="loading-plugin.zip"
-        />,
-      )
+        rerender(<CornerMark text="Model" />)
+        expect(screen.getByText('Model')).toBeInTheDocument()
 
-      expect(screen.getByTestId('skeleton-container')).toBeInTheDocument()
-      expect(screen.getByText('loading-plugin.zip')).toBeInTheDocument()
-      expect(screen.queryByTestId('partner-badge')).not.toBeInTheDocument()
+        rerender(<CornerMark text="Extension" />)
+        expect(screen.getByText('Extension')).toBeInTheDocument()
+      })
     })
 
-    it('should handle installed state with footer', () => {
-      const plugin = createMockPlugin()
+    // ================================
+    // Edge Cases Tests
+    // ================================
+    describe('Edge Cases', () => {
+      it('should handle empty text', () => {
+        render(<CornerMark text="" />)
 
-      render(
-        <Card
-          payload={plugin}
-          installed={true}
-          footer={<CardMoreInfo downloadCount={100} tags={['tag1']} />}
-        />,
-      )
+        expect(document.body).toBeInTheDocument()
+      })
 
-      expect(screen.getByTestId('ri-check-line')).toBeInTheDocument()
-      expect(screen.getByText('100')).toBeInTheDocument()
+      it('should handle long text', () => {
+        const longText = 'Very Long Category Name'
+        render(<CornerMark text={longText} />)
+
+        expect(screen.getByText(longText)).toBeInTheDocument()
+      })
+
+      it('should handle special characters in text', () => {
+        render(<CornerMark text="Test & Demo" />)
+
+        expect(screen.getByText('Test & Demo')).toBeInTheDocument()
+      })
     })
   })
 
-  describe('Component Hierarchy', () => {
-    it('should render Icon inside Card', () => {
-      const plugin = createMockPlugin({
-        icon: '/test-icon.png',
+  // ================================
+  // Description Component Tests
+  // ================================
+  describe('Description', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    // ================================
+    // Rendering Tests
+    // ================================
+    describe('Rendering', () => {
+      it('should render without crashing', () => {
+        render(<Description text="Test description" descriptionLineRows={2} />)
+
+        expect(document.body).toBeInTheDocument()
       })
 
+      it('should render text content', () => {
+        render(<Description text="This is a description" descriptionLineRows={2} />)
+
+        expect(screen.getByText('This is a description')).toBeInTheDocument()
+      })
+    })
+
+    // ================================
+    // Props Testing
+    // ================================
+    describe('Props', () => {
+      it('should apply custom className', () => {
+        const { container } = render(
+          <Description text="Test" descriptionLineRows={2} className="custom-desc-class" />,
+        )
+
+        expect(container.querySelector('.custom-desc-class')).toBeInTheDocument()
+      })
+
+      it('should apply h-4 truncate for 1 line row', () => {
+        const { container } = render(
+          <Description text="Test" descriptionLineRows={1} />,
+        )
+
+        expect(container.querySelector('.h-4.truncate')).toBeInTheDocument()
+      })
+
+      it('should apply h-8 line-clamp-2 for 2 line rows', () => {
+        const { container } = render(
+          <Description text="Test" descriptionLineRows={2} />,
+        )
+
+        expect(container.querySelector('.h-8.line-clamp-2')).toBeInTheDocument()
+      })
+
+      it('should apply h-12 line-clamp-3 for 3+ line rows', () => {
+        const { container } = render(
+          <Description text="Test" descriptionLineRows={3} />,
+        )
+
+        expect(container.querySelector('.h-12.line-clamp-3')).toBeInTheDocument()
+      })
+
+      it('should apply h-12 line-clamp-3 for values greater than 3', () => {
+        const { container } = render(
+          <Description text="Test" descriptionLineRows={5} />,
+        )
+
+        expect(container.querySelector('.h-12.line-clamp-3')).toBeInTheDocument()
+      })
+
+      it('should apply h-12 line-clamp-3 for descriptionLineRows of 4', () => {
+        const { container } = render(
+          <Description text="Test" descriptionLineRows={4} />,
+        )
+
+        expect(container.querySelector('.h-12.line-clamp-3')).toBeInTheDocument()
+      })
+
+      it('should apply h-12 line-clamp-3 for descriptionLineRows of 10', () => {
+        const { container } = render(
+          <Description text="Test" descriptionLineRows={10} />,
+        )
+
+        expect(container.querySelector('.h-12.line-clamp-3')).toBeInTheDocument()
+      })
+
+      it('should apply h-12 line-clamp-3 for descriptionLineRows of 0', () => {
+        const { container } = render(
+          <Description text="Test" descriptionLineRows={0} />,
+        )
+
+        // 0 is neither 1 nor 2, so it should use the else branch
+        expect(container.querySelector('.h-12.line-clamp-3')).toBeInTheDocument()
+      })
+
+      it('should apply h-12 line-clamp-3 for negative descriptionLineRows', () => {
+        const { container } = render(
+          <Description text="Test" descriptionLineRows={-1} />,
+        )
+
+        // negative is neither 1 nor 2, so it should use the else branch
+        expect(container.querySelector('.h-12.line-clamp-3')).toBeInTheDocument()
+      })
+    })
+
+    // ================================
+    // Memoization Tests
+    // ================================
+    describe('Memoization', () => {
+      it('should memoize lineClassName based on descriptionLineRows', () => {
+        const { container, rerender } = render(
+          <Description text="Test" descriptionLineRows={2} />,
+        )
+
+        expect(container.querySelector('.line-clamp-2')).toBeInTheDocument()
+
+        // Re-render with same descriptionLineRows
+        rerender(<Description text="Different text" descriptionLineRows={2} />)
+
+        // Should still have same class (memoized)
+        expect(container.querySelector('.line-clamp-2')).toBeInTheDocument()
+      })
+    })
+
+    // ================================
+    // Edge Cases Tests
+    // ================================
+    describe('Edge Cases', () => {
+      it('should handle empty text', () => {
+        render(<Description text="" descriptionLineRows={2} />)
+
+        expect(document.body).toBeInTheDocument()
+      })
+
+      it('should handle very long text', () => {
+        const longText = 'A'.repeat(1000)
+        const { container } = render(
+          <Description text={longText} descriptionLineRows={2} />,
+        )
+
+        expect(container.querySelector('.line-clamp-2')).toBeInTheDocument()
+      })
+
+      it('should handle text with HTML entities', () => {
+        render(<Description text="<script>alert('xss')</script>" descriptionLineRows={2} />)
+
+        // Text should be escaped
+        expect(screen.getByText('<script>alert(\'xss\')</script>')).toBeInTheDocument()
+      })
+    })
+  })
+
+  // ================================
+  // DownloadCount Component Tests
+  // ================================
+  describe('DownloadCount', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    // ================================
+    // Rendering Tests
+    // ================================
+    describe('Rendering', () => {
+      it('should render without crashing', () => {
+        render(<DownloadCount downloadCount={100} />)
+
+        expect(document.body).toBeInTheDocument()
+      })
+
+      it('should render download count with formatted number', () => {
+        render(<DownloadCount downloadCount={1234567} />)
+
+        expect(screen.getByText('1,234,567')).toBeInTheDocument()
+      })
+
+      it('should render install icon', () => {
+        render(<DownloadCount downloadCount={100} />)
+
+        expect(screen.getByTestId('ri-install-line')).toBeInTheDocument()
+      })
+    })
+
+    // ================================
+    // Props Testing
+    // ================================
+    describe('Props', () => {
+      it('should display small download count', () => {
+        render(<DownloadCount downloadCount={5} />)
+
+        expect(screen.getByText('5')).toBeInTheDocument()
+      })
+
+      it('should display large download count', () => {
+        render(<DownloadCount downloadCount={999999999} />)
+
+        expect(screen.getByText('999,999,999')).toBeInTheDocument()
+      })
+    })
+
+    // ================================
+    // Memoization Tests
+    // ================================
+    describe('Memoization', () => {
+      it('should be memoized with React.memo', () => {
+        expect(DownloadCount).toBeDefined()
+        expect(typeof DownloadCount).toBe('object')
+      })
+    })
+
+    // ================================
+    // Edge Cases Tests
+    // ================================
+    describe('Edge Cases', () => {
+      it('should handle zero download count', () => {
+        render(<DownloadCount downloadCount={0} />)
+
+        // 0 should still render with install icon
+        expect(screen.getByText('0')).toBeInTheDocument()
+        expect(screen.getByTestId('ri-install-line')).toBeInTheDocument()
+      })
+
+      it('should handle negative download count', () => {
+        render(<DownloadCount downloadCount={-100} />)
+
+        expect(screen.getByText('-100')).toBeInTheDocument()
+      })
+    })
+  })
+
+  // ================================
+  // OrgInfo Component Tests
+  // ================================
+  describe('OrgInfo', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    // ================================
+    // Rendering Tests
+    // ================================
+    describe('Rendering', () => {
+      it('should render without crashing', () => {
+        render(<OrgInfo packageName="test-plugin" />)
+
+        expect(document.body).toBeInTheDocument()
+      })
+
+      it('should render package name', () => {
+        render(<OrgInfo packageName="my-plugin" />)
+
+        expect(screen.getByText('my-plugin')).toBeInTheDocument()
+      })
+
+      it('should render org name and separator when provided', () => {
+        render(<OrgInfo orgName="my-org" packageName="my-plugin" />)
+
+        expect(screen.getByText('my-org')).toBeInTheDocument()
+        expect(screen.getByText('/')).toBeInTheDocument()
+        expect(screen.getByText('my-plugin')).toBeInTheDocument()
+      })
+    })
+
+    // ================================
+    // Props Testing
+    // ================================
+    describe('Props', () => {
+      it('should apply custom className', () => {
+        const { container } = render(
+          <OrgInfo packageName="test" className="custom-org-class" />,
+        )
+
+        expect(container.querySelector('.custom-org-class')).toBeInTheDocument()
+      })
+
+      it('should apply packageNameClassName', () => {
+        const { container } = render(
+          <OrgInfo packageName="test" packageNameClassName="custom-package-class" />,
+        )
+
+        expect(container.querySelector('.custom-package-class')).toBeInTheDocument()
+      })
+
+      it('should not render org name section when orgName is undefined', () => {
+        render(<OrgInfo packageName="test" />)
+
+        expect(screen.queryByText('/')).not.toBeInTheDocument()
+      })
+
+      it('should not render org name section when orgName is empty', () => {
+        render(<OrgInfo orgName="" packageName="test" />)
+
+        expect(screen.queryByText('/')).not.toBeInTheDocument()
+      })
+    })
+
+    // ================================
+    // Edge Cases Tests
+    // ================================
+    describe('Edge Cases', () => {
+      it('should handle special characters in org name', () => {
+        render(<OrgInfo orgName="my-org_123" packageName="test" />)
+
+        expect(screen.getByText('my-org_123')).toBeInTheDocument()
+      })
+
+      it('should handle special characters in package name', () => {
+        render(<OrgInfo packageName="plugin@v1.0.0" />)
+
+        expect(screen.getByText('plugin@v1.0.0')).toBeInTheDocument()
+      })
+
+      it('should truncate long package name', () => {
+        const longName = 'a'.repeat(100)
+        const { container } = render(<OrgInfo packageName={longName} />)
+
+        expect(container.querySelector('.truncate')).toBeInTheDocument()
+      })
+    })
+  })
+
+  // ================================
+  // Placeholder Component Tests
+  // ================================
+  describe('Placeholder', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    // ================================
+    // Rendering Tests
+    // ================================
+    describe('Rendering', () => {
+      it('should render without crashing', () => {
+        render(<Placeholder wrapClassName="test-class" />)
+
+        expect(document.body).toBeInTheDocument()
+      })
+
+      it('should render with wrapClassName', () => {
+        const { container } = render(
+          <Placeholder wrapClassName="custom-wrapper" />,
+        )
+
+        expect(container.querySelector('.custom-wrapper')).toBeInTheDocument()
+      })
+
+      it('should render skeleton elements', () => {
+        render(<Placeholder wrapClassName="test" />)
+
+        expect(screen.getByTestId('skeleton-container')).toBeInTheDocument()
+        expect(screen.getAllByTestId('skeleton-rectangle').length).toBeGreaterThan(0)
+      })
+
+      it('should render Group icon', () => {
+        render(<Placeholder wrapClassName="test" />)
+
+        expect(screen.getByTestId('group-icon')).toBeInTheDocument()
+      })
+    })
+
+    // ================================
+    // Props Testing
+    // ================================
+    describe('Props', () => {
+      it('should render Title when loadingFileName is provided', () => {
+        render(<Placeholder wrapClassName="test" loadingFileName="my-file.zip" />)
+
+        expect(screen.getByText('my-file.zip')).toBeInTheDocument()
+      })
+
+      it('should render SkeletonRectangle when loadingFileName is not provided', () => {
+        render(<Placeholder wrapClassName="test" />)
+
+        // Should have skeleton rectangle for title area
+        const rectangles = screen.getAllByTestId('skeleton-rectangle')
+        expect(rectangles.length).toBeGreaterThan(0)
+      })
+
+      it('should render SkeletonRow for org info', () => {
+        render(<Placeholder wrapClassName="test" />)
+
+        // There are multiple skeleton rows in the component
+        const skeletonRows = screen.getAllByTestId('skeleton-row')
+        expect(skeletonRows.length).toBeGreaterThan(0)
+      })
+    })
+
+    // ================================
+    // Edge Cases Tests
+    // ================================
+    describe('Edge Cases', () => {
+      it('should handle empty wrapClassName', () => {
+        const { container } = render(<Placeholder wrapClassName="" />)
+
+        expect(container.firstChild).toBeInTheDocument()
+      })
+
+      it('should handle undefined loadingFileName', () => {
+        render(<Placeholder wrapClassName="test" loadingFileName={undefined} />)
+
+        // Should show skeleton instead of title
+        const rectangles = screen.getAllByTestId('skeleton-rectangle')
+        expect(rectangles.length).toBeGreaterThan(0)
+      })
+
+      it('should handle long loadingFileName', () => {
+        const longFileName = 'very-long-file-name-that-goes-on-forever.zip'
+        render(<Placeholder wrapClassName="test" loadingFileName={longFileName} />)
+
+        expect(screen.getByText(longFileName)).toBeInTheDocument()
+      })
+    })
+  })
+
+  // ================================
+  // LoadingPlaceholder Component Tests
+  // ================================
+  describe('LoadingPlaceholder', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    // ================================
+    // Rendering Tests
+    // ================================
+    describe('Rendering', () => {
+      it('should render without crashing', () => {
+        render(<LoadingPlaceholder />)
+
+        expect(document.body).toBeInTheDocument()
+      })
+
+      it('should have correct base classes', () => {
+        const { container } = render(<LoadingPlaceholder />)
+
+        expect(container.querySelector('.h-2.rounded-sm')).toBeInTheDocument()
+      })
+    })
+
+    // ================================
+    // Props Testing
+    // ================================
+    describe('Props', () => {
+      it('should apply custom className', () => {
+        const { container } = render(<LoadingPlaceholder className="custom-loading" />)
+
+        expect(container.querySelector('.custom-loading')).toBeInTheDocument()
+      })
+
+      it('should merge className with base classes', () => {
+        const { container } = render(<LoadingPlaceholder className="w-full" />)
+
+        expect(container.querySelector('.h-2.rounded-sm.w-full')).toBeInTheDocument()
+      })
+    })
+  })
+
+  // ================================
+  // Title Component Tests
+  // ================================
+  describe('Title', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    // ================================
+    // Rendering Tests
+    // ================================
+    describe('Rendering', () => {
+      it('should render without crashing', () => {
+        render(<Title title="Test Title" />)
+
+        expect(document.body).toBeInTheDocument()
+      })
+
+      it('should render title text', () => {
+        render(<Title title="My Plugin Title" />)
+
+        expect(screen.getByText('My Plugin Title')).toBeInTheDocument()
+      })
+
+      it('should have truncate class', () => {
+        const { container } = render(<Title title="Test" />)
+
+        expect(container.querySelector('.truncate')).toBeInTheDocument()
+      })
+
+      it('should have correct text styling', () => {
+        const { container } = render(<Title title="Test" />)
+
+        expect(container.querySelector('.system-md-semibold')).toBeInTheDocument()
+        expect(container.querySelector('.text-text-secondary')).toBeInTheDocument()
+      })
+    })
+
+    // ================================
+    // Props Testing
+    // ================================
+    describe('Props', () => {
+      it('should display different titles', () => {
+        const { rerender } = render(<Title title="First Title" />)
+        expect(screen.getByText('First Title')).toBeInTheDocument()
+
+        rerender(<Title title="Second Title" />)
+        expect(screen.getByText('Second Title')).toBeInTheDocument()
+      })
+    })
+
+    // ================================
+    // Edge Cases Tests
+    // ================================
+    describe('Edge Cases', () => {
+      it('should handle empty title', () => {
+        render(<Title title="" />)
+
+        expect(document.body).toBeInTheDocument()
+      })
+
+      it('should handle very long title', () => {
+        const longTitle = 'A'.repeat(500)
+        const { container } = render(<Title title={longTitle} />)
+
+        // Should have truncate for long text
+        expect(container.querySelector('.truncate')).toBeInTheDocument()
+      })
+
+      it('should handle special characters in title', () => {
+        render(<Title title={'Title with <special> & "chars"'} />)
+
+        expect(screen.getByText('Title with <special> & "chars"')).toBeInTheDocument()
+      })
+
+      it('should handle unicode characters', () => {
+        render(<Title title="标题 🎉 タイトル" />)
+
+        expect(screen.getByText('标题 🎉 タイトル')).toBeInTheDocument()
+      })
+    })
+  })
+
+  // ================================
+  // Integration Tests
+  // ================================
+  describe('Card Integration', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    describe('Complete Card Rendering', () => {
+      it('should render a complete card with all elements', () => {
+        const plugin = createMockPlugin({
+          label: { 'en-US': 'Complete Plugin' },
+          brief: { 'en-US': 'A complete plugin description' },
+          org: 'complete-org',
+          name: 'complete-plugin',
+          category: PluginCategoryEnum.tool,
+          verified: true,
+          badges: ['partner'],
+        })
+
+        render(
+          <Card
+            payload={plugin}
+            footer={<CardMoreInfo downloadCount={5000} tags={['search', 'api']} />}
+          />,
+        )
+
+        // Verify all elements are rendered
+        expect(screen.getByText('Complete Plugin')).toBeInTheDocument()
+        expect(screen.getByText('A complete plugin description')).toBeInTheDocument()
+        expect(screen.getByText('complete-org')).toBeInTheDocument()
+        expect(screen.getByText('complete-plugin')).toBeInTheDocument()
+        expect(screen.getByText('Tool')).toBeInTheDocument()
+        expect(screen.getByTestId('partner-badge')).toBeInTheDocument()
+        expect(screen.getByTestId('verified-badge')).toBeInTheDocument()
+        expect(screen.getByText('5,000')).toBeInTheDocument()
+        expect(screen.getByText('search')).toBeInTheDocument()
+        expect(screen.getByText('api')).toBeInTheDocument()
+      })
+
+      it('should render loading state correctly', () => {
+        const plugin = createMockPlugin()
+
+        render(
+          <Card
+            payload={plugin}
+            isLoading={true}
+            loadingFileName="loading-plugin.zip"
+          />,
+        )
+
+        expect(screen.getByTestId('skeleton-container')).toBeInTheDocument()
+        expect(screen.getByText('loading-plugin.zip')).toBeInTheDocument()
+        expect(screen.queryByTestId('partner-badge')).not.toBeInTheDocument()
+      })
+
+      it('should handle installed state with footer', () => {
+        const plugin = createMockPlugin()
+
+        render(
+          <Card
+            payload={plugin}
+            installed={true}
+            footer={<CardMoreInfo downloadCount={100} tags={['tag1']} />}
+          />,
+        )
+
+        expect(screen.getByTestId('ri-check-line')).toBeInTheDocument()
+        expect(screen.getByText('100')).toBeInTheDocument()
+      })
+    })
+
+    describe('Component Hierarchy', () => {
+      it('should render Icon inside Card', () => {
+        const plugin = createMockPlugin({
+          icon: '/test-icon.png',
+        })
+
+        const { container } = render(<Card payload={plugin} />)
+
+        // Icon should be rendered with background image
+        const iconElement = container.querySelector('[style*="background-image"]')
+        expect(iconElement).toBeInTheDocument()
+      })
+
+      it('should render Title inside Card', () => {
+        const plugin = createMockPlugin({
+          label: { 'en-US': 'Test Title' },
+        })
+
+        render(<Card payload={plugin} />)
+
+        expect(screen.getByText('Test Title')).toBeInTheDocument()
+      })
+
+      it('should render Description inside Card', () => {
+        const plugin = createMockPlugin({
+          brief: { 'en-US': 'Test Description' },
+        })
+
+        render(<Card payload={plugin} />)
+
+        expect(screen.getByText('Test Description')).toBeInTheDocument()
+      })
+
+      it('should render OrgInfo inside Card', () => {
+        const plugin = createMockPlugin({
+          org: 'test-org',
+          name: 'test-name',
+        })
+
+        render(<Card payload={plugin} />)
+
+        expect(screen.getByText('test-org')).toBeInTheDocument()
+        expect(screen.getByText('/')).toBeInTheDocument()
+        expect(screen.getByText('test-name')).toBeInTheDocument()
+      })
+
+      it('should render CornerMark inside Card', () => {
+        const plugin = createMockPlugin({
+          category: PluginCategoryEnum.model,
+        })
+
+        render(<Card payload={plugin} />)
+
+        expect(screen.getByText('Model')).toBeInTheDocument()
+        expect(screen.getByTestId('left-corner')).toBeInTheDocument()
+      })
+    })
+  })
+
+  // ================================
+  // Accessibility Tests
+  // ================================
+  describe('Accessibility', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    it('should have accessible text content', () => {
+      const plugin = createMockPlugin({
+        label: { 'en-US': 'Accessible Plugin' },
+        brief: { 'en-US': 'This plugin is accessible' },
+      })
+
+      render(<Card payload={plugin} />)
+
+      expect(screen.getByText('Accessible Plugin')).toBeInTheDocument()
+      expect(screen.getByText('This plugin is accessible')).toBeInTheDocument()
+    })
+
+    it('should have title attribute on tags', () => {
+      render(<CardMoreInfo downloadCount={100} tags={['search']} />)
+
+      expect(screen.getByTitle('# search')).toBeInTheDocument()
+    })
+
+    it('should have semantic structure', () => {
+      const plugin = createMockPlugin()
       const { container } = render(<Card payload={plugin} />)
 
-      // Icon should be rendered with background image
-      const iconElement = container.querySelector('[style*="background-image"]')
-      expect(iconElement).toBeInTheDocument()
-    })
-
-    it('should render Title inside Card', () => {
-      const plugin = createMockPlugin({
-        label: { 'en-US': 'Test Title' },
-      })
-
-      render(<Card payload={plugin} />)
-
-      expect(screen.getByText('Test Title')).toBeInTheDocument()
-    })
-
-    it('should render Description inside Card', () => {
-      const plugin = createMockPlugin({
-        brief: { 'en-US': 'Test Description' },
-      })
-
-      render(<Card payload={plugin} />)
-
-      expect(screen.getByText('Test Description')).toBeInTheDocument()
-    })
-
-    it('should render OrgInfo inside Card', () => {
-      const plugin = createMockPlugin({
-        org: 'test-org',
-        name: 'test-name',
-      })
-
-      render(<Card payload={plugin} />)
-
-      expect(screen.getByText('test-org')).toBeInTheDocument()
-      expect(screen.getByText('/')).toBeInTheDocument()
-      expect(screen.getByText('test-name')).toBeInTheDocument()
-    })
-
-    it('should render CornerMark inside Card', () => {
-      const plugin = createMockPlugin({
-        category: PluginCategoryEnum.model,
-      })
-
-      render(<Card payload={plugin} />)
-
-      expect(screen.getByText('Model')).toBeInTheDocument()
-      expect(screen.getByTestId('left-corner')).toBeInTheDocument()
+      // Card should have proper container structure
+      expect(container.firstChild).toHaveClass('rounded-xl')
     })
   })
-})
 
-// ================================
-// Accessibility Tests
-// ================================
-describe('Accessibility', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should have accessible text content', () => {
-    const plugin = createMockPlugin({
-      label: { 'en-US': 'Accessible Plugin' },
-      brief: { 'en-US': 'This plugin is accessible' },
+  // ================================
+  // Performance Tests
+  // ================================
+  describe('Performance', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
     })
 
-    render(<Card payload={plugin} />)
+    it('should render multiple cards efficiently', () => {
+      const plugins = Array.from({ length: 50 }, (_, i) =>
+        createMockPlugin({
+          name: `plugin-${i}`,
+          label: { 'en-US': `Plugin ${i}` },
+        }))
 
-    expect(screen.getByText('Accessible Plugin')).toBeInTheDocument()
-    expect(screen.getByText('This plugin is accessible')).toBeInTheDocument()
-  })
+      const startTime = performance.now()
+      const { container } = render(
+        <div>
+          {plugins.map(plugin => (
+            <Card key={plugin.name} payload={plugin} />
+          ))}
+        </div>,
+      )
+      const endTime = performance.now()
 
-  it('should have title attribute on tags', () => {
-    render(<CardMoreInfo downloadCount={100} tags={['search']} />)
+      // Should render all cards
+      const cards = container.querySelectorAll('.rounded-xl')
+      expect(cards.length).toBe(50)
 
-    expect(screen.getByTitle('# search')).toBeInTheDocument()
-  })
+      // Should render within reasonable time (less than 1 second)
+      expect(endTime - startTime).toBeLessThan(1000)
+    })
 
-  it('should have semantic structure', () => {
-    const plugin = createMockPlugin()
-    const { container } = render(<Card payload={plugin} />)
+    it('should handle CardMoreInfo with many tags', () => {
+      const tags = Array.from({ length: 20 }, (_, i) => `tag-${i}`)
 
-    // Card should have proper container structure
-    expect(container.firstChild).toHaveClass('rounded-xl')
-  })
-})
+      const startTime = performance.now()
+      render(<CardMoreInfo downloadCount={1000} tags={tags} />)
+      const endTime = performance.now()
 
-// ================================
-// Performance Tests
-// ================================
-describe('Performance', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render multiple cards efficiently', () => {
-    const plugins = Array.from({ length: 50 }, (_, i) =>
-      createMockPlugin({
-        name: `plugin-${i}`,
-        label: { 'en-US': `Plugin ${i}` },
-      }))
-
-    const startTime = performance.now()
-    const { container } = render(
-      <div>
-        {plugins.map(plugin => (
-          <Card key={plugin.name} payload={plugin} />
-        ))}
-      </div>,
-    )
-    const endTime = performance.now()
-
-    // Should render all cards
-    const cards = container.querySelectorAll('.rounded-xl')
-    expect(cards.length).toBe(50)
-
-    // Should render within reasonable time (less than 1 second)
-    expect(endTime - startTime).toBeLessThan(1000)
-  })
-
-  it('should handle CardMoreInfo with many tags', () => {
-    const tags = Array.from({ length: 20 }, (_, i) => `tag-${i}`)
-
-    const startTime = performance.now()
-    render(<CardMoreInfo downloadCount={1000} tags={tags} />)
-    const endTime = performance.now()
-
-    expect(endTime - startTime).toBeLessThan(100)
+      expect(endTime - startTime).toBeLessThan(100)
+    })
   })
 })
