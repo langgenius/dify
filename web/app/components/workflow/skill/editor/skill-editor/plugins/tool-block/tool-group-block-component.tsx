@@ -483,7 +483,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
       if (resolvedIcon.startsWith('http') || resolvedIcon.startsWith('/')) {
         return (
           <span
-            className="h-4 w-4 shrink-0 rounded-[4px] bg-cover bg-center"
+            className="h-[14px] w-[14px] shrink-0 rounded-[4px] bg-cover bg-center"
             style={{ backgroundImage: `url(${resolvedIcon})` }}
           />
         )
@@ -492,7 +492,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
         <AppIcon
           size="xs"
           icon={resolvedIcon}
-          className="!h-4 !w-4 shrink-0 !border-0"
+          className="!h-[14px] !w-[14px] shrink-0 !border-0"
         />
       )
     }
@@ -501,7 +501,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
         size="xs"
         icon={resolvedIcon.content}
         background={resolvedIcon.background}
-        className="!h-4 !w-4 shrink-0 !border-0"
+        className="!h-[14px] !w-[14px] shrink-0 !border-0"
       />
     )
   }
@@ -661,7 +661,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
       <span
         ref={ref}
         className={cn(
-          'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover px-[4px] py-[1px] shadow-xs',
+          'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover px-px py-[1px] shadow-xs',
           isSelected && 'border-text-accent',
         )}
         title={providerLabel}
@@ -675,7 +675,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
         <span className="system-xs-medium max-w-[160px] truncate text-text-accent">
           {providerLabel}
         </span>
-        <span className="system-2xs-medium-uppercase rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-[4px] py-[2px] text-text-accent-secondary">
+        <span className="system-2xs-medium-uppercase flex h-4 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 text-text-accent-secondary">
           {displayEnabledCount}
         </span>
       </span>

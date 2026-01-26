@@ -453,7 +453,7 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
       <span
         ref={ref}
         className={cn(
-          'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover px-[4px] py-[1px] shadow-xs',
+          'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover py-px pl-px pr-[3px] shadow-xs',
           isSelected && 'border-text-accent',
         )}
         title={`${provider}.${tool}`}
