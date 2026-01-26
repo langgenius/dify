@@ -1036,7 +1036,7 @@ class TestAccountService:
 
         with (
             patch("services.account_service.delete_account_task") as mock_delete_task,
-            patch("services.account_service.sync_account_deletion") as mock_sync,
+            patch("services.enterprise.account_deletion_sync.sync_account_deletion") as mock_sync,
         ):
             mock_sync.return_value = True
 
@@ -1759,7 +1759,7 @@ class TestTenantService:
         TenantService.create_tenant_member(tenant, member_account, role="normal")
 
         # Remove member
-        with patch("services.account_service.sync_workspace_member_removal") as mock_sync:
+        with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
             mock_sync.return_value = True
 
             TenantService.remove_member_from_tenant(tenant, member_account, owner_account)
