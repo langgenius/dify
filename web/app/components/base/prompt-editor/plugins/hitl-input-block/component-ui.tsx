@@ -111,7 +111,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
         </div>
       </div>
 
-      <div className="flex w-full items-center gap-x-0.5 pr-8">
+      <div className="flex w-full items-center gap-x-0.5 pr-5">
         <div className="min-w-0 grow">
           {/* Default Value Info */}
           {isDefaultValueVariable && (

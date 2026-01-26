@@ -61,7 +61,7 @@ export default function DraggableBlockPlugin({
       menuComponent={
         isSupportDrag
           ? (
-              <div ref={menuRef} className={cn(DRAGGABLE_BLOCK_MENU_CLASSNAME, 'absolute right-6 top-4 cursor-grab opacity-0 will-change-transform active:cursor-move')}>
+              <div ref={menuRef} className={cn(DRAGGABLE_BLOCK_MENU_CLASSNAME, 'absolute right-2.5 top-4 cursor-grab opacity-0 will-change-transform active:cursor-move')}>
                 <RiDraggable className="size-3.5 text-text-tertiary" />
               </div>
             )
