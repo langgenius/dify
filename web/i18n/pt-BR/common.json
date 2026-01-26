@@ -351,7 +351,7 @@
   "modelProvider.card.quota": "QUOTA",
   "modelProvider.card.quotaExhausted": "Quota esgotada",
   "modelProvider.card.removeKey": "Remover Chave da API",
-  "modelProvider.card.tip": "Créditos de mensagens suportam modelos do OpenAI. A prioridade será dada à quota paga. A quota gratuita será usada após a quota paga ser esgotada.",
+  "modelProvider.card.tip": "Créditos de mensagens suportam modelos de {{modelNames}}. A prioridade será dada à quota paga. A quota gratuita será usada após a quota paga ser esgotada.",
   "modelProvider.card.tokens": "Tokens",
   "modelProvider.collapse": "Recolher",
   "modelProvider.config": "Configuração",
