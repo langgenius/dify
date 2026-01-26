@@ -143,7 +143,7 @@ class BillingService:
                 raise ValueError("Invalid arguments.")
         if method == "POST" and response.status_code != httpx.codes.OK:
             raise ValueError(f"Unable to send request to {url}. Please try again later or contact support.")
-        logger.info("billing_service: _send_request: response: %s", response.json())
+        logger.info("billing_service: %s _send_request: response: %s", method, response.json())
         return response.json()
 
     @staticmethod
