@@ -10,6 +10,7 @@ import { DatasetAttr } from '@/types/feature'
 import { cn } from '@/utils/classnames'
 import { ToastProvider } from './components/base/toast'
 import BrowserInitializer from './components/browser-initializer'
+import { AgentationLoader } from './components/devtools/agentation/loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
 import { PWAProvider } from './components/provider/serwist'
@@ -121,6 +122,7 @@ const LocaleLayout = async ({
             </ThemeProvider>
           </JotaiProvider>
           <RoutePrefixHandle />
+          <AgentationLoader />
         </PWAProvider>
       </body>
     </html>

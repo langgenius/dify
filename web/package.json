@@ -204,6 +204,7 @@
     "@typescript/native-preview": "7.0.0-dev.20251209.1",
     "@vitejs/plugin-react": "5.1.2",
     "@vitest/coverage-v8": "4.0.17",
+    "agentation": "1.3.2",
     "autoprefixer": "10.4.21",
     "code-inspector-plugin": "1.3.6",
     "cross-env": "10.1.0",
