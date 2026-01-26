@@ -2,6 +2,7 @@ from typing import Literal, cast
 from uuid import UUID
 
 from flask import request
+from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -101,24 +102,34 @@ def upload_file() -> FileResponse:
     return FileResponse.model_validate(upload_file, from_attributes=True)
 
 
+class Preview(BaseModel):
+    content: str
+
+
 @console_router.get(
     "/files/<uuid:file_id>/preview",
     tags=["console"],
+    response_model=Preview,
 )
 @setup_required
 @login_required
 @account_initialization_required
-def get_file_preview(file_id: UUID) -> dict[str, str]:
+def get_file_preview(file_id: UUID) -> Preview:
     text = cast(str, FileService(db.engine).get_file_preview(str(file_id)))
-    return {"content": text}
+    return Preview(content=text)
+
+
+class SupportType(BaseModel):
+    allowed_extensions: list[str]
 
 
 @console_router.get(
     "/files/support-type",
     tags=["console"],
+    response_model=SupportType,
 )
 @setup_required
 @login_required
 @account_initialization_required
-def get_file_support_types() -> dict[str, list[str]]:
-    return {"allowed_extensions": list(DOCUMENT_EXTENSIONS)}
+def get_file_support_types() -> SupportType:
+    return SupportType(allowed_extensions=list(DOCUMENT_EXTENSIONS))
