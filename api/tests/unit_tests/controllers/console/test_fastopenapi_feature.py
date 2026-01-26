@@ -12,6 +12,7 @@ from services.feature_service import FeatureModel, SystemFeatureModel
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
+
 @pytest.fixture
 def app() -> Flask:
     app = Flask(__name__)
