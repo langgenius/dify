@@ -9,102 +9,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppModeEnum } from '@/types/app'
 import MCPServiceCard from './mcp-service-card'
 
-// Mutable mock state for dynamic testing
-type MockServerDetail = {
-  id: string
-  status: string
-  server_code: string
-  description: string
-  parameters?: Record<string, unknown>
-}
-
-type MockAppContext = {
-  isCurrentWorkspaceManager: boolean
-  isCurrentWorkspaceEditor: boolean
-}
-
-type MockWorkflowData = {
-  graph: {
-    nodes: Array<{
-      data: {
-        type: string
-        variables?: Array<{ variable: string, label: string }>
-      }
-    }>
-  }
-}
-
-type MockBasicAppConfig = {
-  updated_at?: string
-  user_input_form?: unknown[]
-}
-
-let mockServerDetail: MockServerDetail | undefined = {
-  id: 'server-123',
-  status: 'active',
-  server_code: 'abc123',
-  description: 'Test server',
-  parameters: {},
-}
-
-let mockAppContext: MockAppContext = {
-  isCurrentWorkspaceManager: true,
-  isCurrentWorkspaceEditor: true,
-}
-
-let mockWorkflowData: MockWorkflowData = {
-  graph: {
-    nodes: [
-      { data: { type: 'start', variables: [{ variable: 'input', label: 'Input' }] } },
-    ],
-  },
-}
-
-let mockBasicAppConfig: MockBasicAppConfig = {
-  updated_at: '2024-01-01',
-  user_input_form: [],
-}
-
-const mockUpdateMCPServer = vi.fn().mockResolvedValue({})
-const mockRefreshMCPServerCode = vi.fn().mockResolvedValue({})
-const mockInvalidateMCPServerDetail = vi.fn()
-
-// Mock service hooks
-vi.mock('@/service/use-tools', () => ({
-  useUpdateMCPServer: () => ({
-    mutateAsync: mockUpdateMCPServer,
-  }),
-  useRefreshMCPServerCode: () => ({
-    mutateAsync: mockRefreshMCPServerCode,
-    isPending: false,
-  }),
-  useMCPServerDetail: (appId: string) => ({
-    data: appId ? mockServerDetail : undefined,
-  }),
-  useInvalidateMCPServerDetail: () => mockInvalidateMCPServerDetail,
-}))
-
-// Mock workflow hook
-vi.mock('@/service/use-workflow', () => ({
-  useAppWorkflow: (appId: string) => ({
-    data: appId ? mockWorkflowData : undefined,
-  }),
-}))
-
-// Mock app context
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockAppContext,
-}))
-
-// Mock apps service
-vi.mock('@/service/apps', () => ({
-  fetchAppDetail: vi.fn().mockImplementation(() =>
-    Promise.resolve({
-      model_config: mockBasicAppConfig,
-    }),
-  ),
-}))
-
 // Mock MCPServerModal
 vi.mock('@/app/components/tools/mcp/mcp-server-modal', () => ({
   default: ({ show, onHide }: { show: boolean, onHide: () => void }) => {
@@ -133,15 +37,39 @@ vi.mock('@/app/components/base/confirm', () => ({
 }))
 
 // Mutable mock handlers for hook
-let mockHandleStatusChange = vi.fn().mockResolvedValue({ activated: true })
-let mockHandleServerModalHide = vi.fn().mockReturnValue({ shouldDeactivate: false })
-let mockHandleGenCode = vi.fn()
-let mockOpenConfirmDelete = vi.fn()
-let mockCloseConfirmDelete = vi.fn()
-let mockOpenServerModal = vi.fn()
+const mockHandleStatusChange = vi.fn().mockResolvedValue({ activated: true })
+const mockHandleServerModalHide = vi.fn().mockReturnValue({ shouldDeactivate: false })
+const mockHandleGenCode = vi.fn()
+const mockOpenConfirmDelete = vi.fn()
+const mockCloseConfirmDelete = vi.fn()
+const mockOpenServerModal = vi.fn()
 
-// Mutable hook state
-let mockHookState = {
+// Type for mock hook state
+type MockHookState = {
+  genLoading: boolean
+  isLoading: boolean
+  serverPublished: boolean
+  serverActivated: boolean
+  serverURL: string
+  detail: {
+    id: string
+    status: string
+    server_code: string
+    description: string
+    parameters: Record<string, unknown>
+  } | undefined
+  isCurrentWorkspaceManager: boolean
+  toggleDisabled: boolean
+  isMinimalState: boolean
+  appUnpublished: boolean
+  missingStartNode: boolean
+  showConfirmDelete: boolean
+  showMCPServerModal: boolean
+  latestParams: Array<unknown>
+}
+
+// Default hook state factory - creates fresh state for each test
+const createDefaultHookState = (): MockHookState => ({
   genLoading: false,
   isLoading: false,
   serverPublished: true,
@@ -162,9 +90,12 @@ let mockHookState = {
   showConfirmDelete: false,
   showMCPServerModal: false,
   latestParams: [],
-}
+})
 
-// Mock the hook
+// Mutable hook state - modify this in tests to change component behavior
+let mockHookState = createDefaultHookState()
+
+// Mock the hook - uses mockHookState which can be modified per test
 vi.mock('./hooks/use-mcp-service-card', () => ({
   useMCPServiceCardState: () => ({
     ...mockHookState,
@@ -198,63 +129,16 @@ describe('MCPServiceCard', () => {
   } as AppDetailResponse & Partial<AppSSO>)
 
   beforeEach(() => {
-    // Reset all mock states
-    mockServerDetail = {
-      id: 'server-123',
-      status: 'active',
-      server_code: 'abc123',
-      description: 'Test server',
-      parameters: {},
-    }
-    mockAppContext = {
-      isCurrentWorkspaceManager: true,
-      isCurrentWorkspaceEditor: true,
-    }
-    mockWorkflowData = {
-      graph: {
-        nodes: [
-          { data: { type: 'start', variables: [{ variable: 'input', label: 'Input' }] } },
-        ],
-      },
-    }
-    mockBasicAppConfig = {
-      updated_at: '2024-01-01',
-      user_input_form: [],
-    }
-    mockUpdateMCPServer.mockClear()
-    mockRefreshMCPServerCode.mockClear()
-    mockInvalidateMCPServerDetail.mockClear()
+    // Reset hook state to defaults before each test
+    mockHookState = createDefaultHookState()
 
-    // Reset hook mocks
-    mockHandleStatusChange = vi.fn().mockResolvedValue({ activated: true })
-    mockHandleServerModalHide = vi.fn().mockReturnValue({ shouldDeactivate: false })
-    mockHandleGenCode = vi.fn()
-    mockOpenConfirmDelete = vi.fn()
-    mockCloseConfirmDelete = vi.fn()
-    mockOpenServerModal = vi.fn()
-
-    mockHookState = {
-      genLoading: false,
-      isLoading: false,
-      serverPublished: true,
-      serverActivated: true,
-      serverURL: 'https://api.example.com/mcp/server/abc123/mcp',
-      detail: {
-        id: 'server-123',
-        status: 'active',
-        server_code: 'abc123',
-        description: 'Test server',
-        parameters: {},
-      },
-      isCurrentWorkspaceManager: true,
-      toggleDisabled: false,
-      isMinimalState: false,
-      appUnpublished: false,
-      missingStartNode: false,
-      showConfirmDelete: false,
-      showMCPServerModal: false,
-      latestParams: [],
-    }
+    // Reset all mock function call history
+    mockHandleStatusChange.mockClear().mockResolvedValue({ activated: true })
+    mockHandleServerModalHide.mockClear().mockReturnValue({ shouldDeactivate: false })
+    mockHandleGenCode.mockClear()
+    mockOpenConfirmDelete.mockClear()
+    mockCloseConfirmDelete.mockClear()
+    mockOpenServerModal.mockClear()
   })
 
   describe('Rendering', () => {
@@ -502,7 +386,15 @@ describe('MCPServiceCard', () => {
 
   describe('Server Not Published', () => {
     beforeEach(() => {
-      mockServerDetail = undefined
+      // Modify hookState to simulate unpublished server
+      mockHookState = {
+        ...createDefaultHookState(),
+        serverPublished: false,
+        serverActivated: false,
+        serverURL: '***********',
+        detail: undefined,
+        isMinimalState: true,
+      }
     })
 
     it('should show add description button when server is not published', () => {
@@ -541,12 +433,17 @@ describe('MCPServiceCard', () => {
 
   describe('Inactive Server', () => {
     beforeEach(() => {
-      mockServerDetail = {
-        id: 'server-123',
-        status: 'inactive',
-        server_code: 'abc123',
-        description: 'Test server',
-        parameters: {},
+      // Modify hookState to simulate inactive server
+      mockHookState = {
+        ...createDefaultHookState(),
+        serverActivated: false,
+        detail: {
+          id: 'server-123',
+          status: 'inactive',
+          server_code: 'abc123',
+          description: 'Test server',
+          parameters: {},
+        },
       }
     })
 
@@ -575,9 +472,10 @@ describe('MCPServiceCard', () => {
 
   describe('Non-Manager User', () => {
     beforeEach(() => {
-      mockAppContext = {
+      // Modify hookState to simulate non-manager user
+      mockHookState = {
+        ...createDefaultHookState(),
         isCurrentWorkspaceManager: false,
-        isCurrentWorkspaceEditor: true,
       }
     })
 
@@ -593,7 +491,7 @@ describe('MCPServiceCard', () => {
   describe('Non-Editor User', () => {
     it('should show disabled styling for non-editor switch', () => {
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         toggleDisabled: true,
       }
 
@@ -690,24 +588,31 @@ describe('MCPServiceCard', () => {
     })
 
     it('should deactivate switch when modal closes without previous activation', async () => {
-      mockServerDetail = undefined // Unpublished server
+      // Simulate unpublished server state
+      mockHookState = {
+        ...createDefaultHookState(),
+        serverPublished: false,
+        serverActivated: false,
+        detail: undefined,
+        showMCPServerModal: true,
+      }
 
       const appInfo = createMockAppInfo()
       render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
 
-      const switchElement = screen.getByRole('switch')
-      fireEvent.click(switchElement)
+      // Modal should be visible
+      const modal = screen.getByTestId('mcp-server-modal')
+      expect(modal).toBeInTheDocument()
+
+      const closeBtn = screen.getByTestId('close-modal-btn')
+      fireEvent.click(closeBtn)
 
       await waitFor(() => {
-        const modal = screen.queryByTestId('mcp-server-modal')
-        if (modal) {
-          expect(modal).toBeInTheDocument()
-          const closeBtn = screen.getByTestId('close-modal-btn')
-          fireEvent.click(closeBtn)
-        }
+        expect(mockHandleServerModalHide).toHaveBeenCalled()
       })
 
       // Switch should be off after closing modal without activation
+      const switchElement = screen.getByRole('switch')
       expect(switchElement).toBeInTheDocument()
     })
   })
@@ -715,7 +620,7 @@ describe('MCPServiceCard', () => {
   describe('Unpublished App', () => {
     it('should show minimal state for unpublished app', () => {
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         appUnpublished: true,
         isMinimalState: true,
       }
@@ -728,7 +633,7 @@ describe('MCPServiceCard', () => {
 
     it('should show disabled styling for unpublished app switch', () => {
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         appUnpublished: true,
         toggleDisabled: true,
       }
@@ -746,7 +651,7 @@ describe('MCPServiceCard', () => {
   describe('Workflow App Without Start Node', () => {
     it('should show minimal state for workflow without start node', () => {
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         missingStartNode: true,
         isMinimalState: true,
       }
@@ -759,7 +664,7 @@ describe('MCPServiceCard', () => {
 
     it('should show disabled styling for workflow without start node', () => {
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         missingStartNode: true,
         toggleDisabled: true,
       }
@@ -777,7 +682,7 @@ describe('MCPServiceCard', () => {
   describe('Loading State', () => {
     it('should return null when isLoading is true', () => {
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         isLoading: true,
       }
 
@@ -790,7 +695,7 @@ describe('MCPServiceCard', () => {
 
     it('should render content when isLoading is false', () => {
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         isLoading: false,
       }
 
@@ -829,10 +734,10 @@ describe('MCPServiceCard', () => {
     it('should call handleStatusChange with false when turning off', async () => {
       // Start with server activated
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         serverActivated: true,
       }
-      mockHandleStatusChange = vi.fn().mockResolvedValue({ activated: false })
+      mockHandleStatusChange.mockResolvedValue({ activated: false })
 
       const appInfo = createMockAppInfo()
       render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
@@ -850,10 +755,10 @@ describe('MCPServiceCard', () => {
     it('should call handleStatusChange with true when turning on', async () => {
       // Start with server deactivated
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         serverActivated: false,
       }
-      mockHandleStatusChange = vi.fn().mockResolvedValue({ activated: true })
+      mockHandleStatusChange.mockResolvedValue({ activated: true })
 
       const appInfo = createMockAppInfo()
       render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
@@ -871,12 +776,12 @@ describe('MCPServiceCard', () => {
     it('should set local activated to false when handleStatusChange returns activated: false and state is true', async () => {
       // Simulate unpublished server scenario where enabling opens modal
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         serverActivated: false,
         serverPublished: false,
       }
       // Handler returns activated: false (modal opened instead)
-      mockHandleStatusChange = vi.fn().mockResolvedValue({ activated: false })
+      mockHandleStatusChange.mockResolvedValue({ activated: false })
 
       const appInfo = createMockAppInfo()
       render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
@@ -899,11 +804,11 @@ describe('MCPServiceCard', () => {
     it('should deactivate when handleServerModalHide returns shouldDeactivate: true', async () => {
       // Set up to show modal
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         showMCPServerModal: true,
         serverActivated: false, // Server was not activated
       }
-      mockHandleServerModalHide = vi.fn().mockReturnValue({ shouldDeactivate: true })
+      mockHandleServerModalHide.mockReturnValue({ shouldDeactivate: true })
 
       const appInfo = createMockAppInfo()
       render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
@@ -919,11 +824,11 @@ describe('MCPServiceCard', () => {
 
     it('should not deactivate when handleServerModalHide returns shouldDeactivate: false', async () => {
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         showMCPServerModal: true,
         serverActivated: true, // Server was already activated
       }
-      mockHandleServerModalHide = vi.fn().mockReturnValue({ shouldDeactivate: false })
+      mockHandleServerModalHide.mockReturnValue({ shouldDeactivate: false })
 
       const appInfo = createMockAppInfo()
       render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
@@ -942,7 +847,7 @@ describe('MCPServiceCard', () => {
     it('should call handleGenCode and closeConfirmDelete when confirm is clicked', async () => {
       // Set up to show confirm dialog
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         showConfirmDelete: true,
       }
 
@@ -965,7 +870,7 @@ describe('MCPServiceCard', () => {
 
     it('should call closeConfirmDelete when cancel is clicked', async () => {
       mockHookState = {
-        ...mockHookState,
+        ...createDefaultHookState(),
         showConfirmDelete: true,
       }
 
@@ -984,7 +889,13 @@ describe('MCPServiceCard', () => {
 
   describe('getTooltipContent Function', () => {
     it('should show publish tip when app is unpublished', () => {
-      mockBasicAppConfig = {} // Unpublished
+      // Modify hookState to simulate unpublished app
+      mockHookState = {
+        ...createDefaultHookState(),
+        appUnpublished: true,
+        toggleDisabled: true,
+        isMinimalState: true,
+      }
 
       const appInfo = createMockAppInfo()
       render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
@@ -994,10 +905,12 @@ describe('MCPServiceCard', () => {
     })
 
     it('should show missing start node tooltip for workflow without start node', () => {
-      mockWorkflowData = {
-        graph: {
-          nodes: [{ data: { type: 'end' } }],
-        },
+      // Modify hookState to simulate missing start node
+      mockHookState = {
+        ...createDefaultHookState(),
+        missingStartNode: true,
+        toggleDisabled: true,
+        isMinimalState: true,
       }
 
       const appInfo = createMockAppInfo(AppModeEnum.WORKFLOW)

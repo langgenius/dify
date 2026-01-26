@@ -126,9 +126,19 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
     }
     catch (e) {
       let errorMessage = 'Failed to fetch remote icon'
-      const errorData = await (e as Response).json()
-      if (errorData?.code)
-        errorMessage = `Upload failed: ${errorData.code}`
+      if (e instanceof Response) {
+        try {
+          const errorData = await e.json()
+          if (errorData?.code)
+            errorMessage = `Upload failed: ${errorData.code}`
+        }
+        catch {
+          // Ignore JSON parsing errors
+        }
+      }
+      else if (e instanceof Error) {
+        errorMessage = e.message
+      }
       console.error('Failed to fetch remote icon:', e)
       Toast.notify({ type: 'warning', message: errorMessage })
     }

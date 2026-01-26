@@ -1,13 +1,27 @@
-/* eslint-disable react/no-unnecessary-use-prefix */
 import type { ReactNode } from 'react'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppModeEnum } from '@/types/app'
 import { useMCPServiceCardState } from './use-mcp-service-card'
+
+// Mutable mock data for MCP server detail
+let mockMCPServerDetailData: {
+  id: string
+  status: string
+  server_code: string
+  description: string
+  parameters: Record<string, unknown>
+} | undefined = {
+  id: 'server-123',
+  status: 'active',
+  server_code: 'abc123',
+  description: 'Test server',
+  parameters: {},
+}
 
 // Mock service hooks
 vi.mock('@/service/use-tools', () => ({
@@ -18,16 +32,8 @@ vi.mock('@/service/use-tools', () => ({
     mutateAsync: vi.fn().mockResolvedValue({}),
     isPending: false,
   }),
-  useMCPServerDetail: (appId: string) => ({
-    data: appId
-      ? {
-          id: 'server-123',
-          status: 'active',
-          server_code: 'abc123',
-          description: 'Test server',
-          parameters: {},
-        }
-      : undefined,
+  useMCPServerDetail: () => ({
+    data: mockMCPServerDetailData,
   }),
   useInvalidateMCPServerDetail: () => vi.fn(),
 }))
@@ -84,6 +90,17 @@ describe('useMCPServiceCardState', () => {
     mode,
     api_base_url: 'https://api.example.com/v1',
   } as AppDetailResponse & Partial<AppSSO>)
+
+  beforeEach(() => {
+    // Reset mock data to default (published server)
+    mockMCPServerDetailData = {
+      id: 'server-123',
+      status: 'active',
+      server_code: 'abc123',
+      description: 'Test server',
+      parameters: {},
+    }
+  })
 
   describe('Initialization', () => {
     it('should initialize with correct default values for basic app', () => {
@@ -350,38 +367,26 @@ describe('useMCPServiceCardState', () => {
 
   describe('Unpublished Server', () => {
     it('should open modal and return not activated when enabling unpublished server', async () => {
-      // Override mock to return no data (unpublished server)
-      vi.doMock('@/service/use-tools', () => ({
-        useUpdateMCPServer: () => ({
-          mutateAsync: vi.fn().mockResolvedValue({}),
-        }),
-        useRefreshMCPServerCode: () => ({
-          mutateAsync: vi.fn().mockResolvedValue({}),
-          isPending: false,
-        }),
-        useMCPServerDetail: () => ({
-          data: undefined, // No server data = unpublished
-        }),
-        useInvalidateMCPServerDetail: () => vi.fn(),
-      }))
+      // Set mock to return undefined (unpublished server)
+      mockMCPServerDetailData = undefined
 
-      // For this test, we need to test the scenario where server is not published
-      // Since we can't easily change the mock, we verify the behavior with the current mock
       const appInfo = createMockAppInfo()
       const { result } = renderHook(
         () => useMCPServiceCardState(appInfo, false),
         { wrapper: createWrapper() },
       )
 
-      // The current mock returns published server, so status change works normally
-      // This test documents the expected behavior
+      // Verify server is not published
+      expect(result.current.serverPublished).toBe(false)
+
       let statusResult: { activated: boolean } | undefined
       await act(async () => {
         statusResult = await result.current.handleStatusChange(true)
       })
 
-      // With published server, activation succeeds
-      expect(statusResult?.activated).toBe(true)
+      // Should open modal and return not activated
+      expect(result.current.showMCPServerModal).toBe(true)
+      expect(statusResult?.activated).toBe(false)
     })
   })
 

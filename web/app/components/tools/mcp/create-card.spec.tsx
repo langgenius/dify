@@ -1,9 +1,8 @@
-/* eslint-disable react/no-unnecessary-use-prefix */
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NewMCPCard from './create-card'
 
 // Track the mock functions
@@ -41,10 +40,13 @@ vi.mock('./modal', () => ({
   },
 }))
 
+// Mutable workspace manager state
+let mockIsCurrentWorkspaceManager = true
+
 // Mock the app context
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
     isCurrentWorkspaceEditor: true,
   }),
 }))
@@ -82,6 +84,11 @@ describe('NewMCPCard', () => {
   const defaultProps = {
     handleCreate: vi.fn(),
   }
+
+  beforeEach(() => {
+    mockCreateMCP.mockClear()
+    mockIsCurrentWorkspaceManager = true
+  })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
@@ -133,19 +140,11 @@ describe('NewMCPCard', () => {
 
   describe('Non-Manager User', () => {
     it('should not render card when user is not workspace manager', () => {
-      // Override the mock for this test
-      vi.doMock('@/context/app-context', () => ({
-        useAppContext: () => ({
-          isCurrentWorkspaceManager: false,
-          isCurrentWorkspaceEditor: false,
-        }),
-      }))
+      mockIsCurrentWorkspaceManager = false
 
-      // The component should not render
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      // Since isCurrentWorkspaceManager is mocked as true at module level,
-      // the card will still render. This test documents the expected behavior.
-      expect(screen.getByText('tools.mcp.create.cardTitle')).toBeInTheDocument()
+
+      expect(screen.queryByText('tools.mcp.create.cardTitle')).not.toBeInTheDocument()
     })
   })
 
@@ -166,10 +165,6 @@ describe('NewMCPCard', () => {
   })
 
   describe('Modal Interactions', () => {
-    beforeEach(() => {
-      mockCreateMCP.mockClear()
-    })
-
     it('should call create function when modal confirms', async () => {
       const handleCreate = vi.fn()
       render(<NewMCPCard handleCreate={handleCreate} />, { wrapper: createWrapper() })

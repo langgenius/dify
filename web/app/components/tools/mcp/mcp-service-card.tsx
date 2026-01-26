@@ -187,27 +187,23 @@ const MCPServiceCard: FC<IAppCardProps> = ({
     openServerModal,
   } = useMCPServiceCardState(appInfo, triggerModeDisabled)
 
-  // Local UI state for optimistic update
-  const [activated, setActivated] = useState(serverActivated)
-
-  // Sync with server state when it changes
-  if (activated !== serverActivated && !showMCPServerModal) {
-    setActivated(serverActivated)
-  }
+  // Pending status for optimistic updates (null means use server state)
+  const [pendingStatus, setPendingStatus] = useState<boolean | null>(null)
+  const activated = pendingStatus ?? serverActivated
 
   const onChangeStatus = async (state: boolean) => {
-    setActivated(state)
+    setPendingStatus(state)
     const result = await handleStatusChange(state)
     if (!result.activated && state) {
-      // Server modal was opened instead, keep local state false
-      setActivated(false)
+      // Server modal was opened instead, clear pending status
+      setPendingStatus(null)
     }
   }
 
   const onServerModalHide = () => {
-    const result = handleServerModalHide(serverActivated)
-    if (result.shouldDeactivate)
-      setActivated(false)
+    handleServerModalHide(serverActivated)
+    // Clear pending status when modal closes to sync with server state
+    setPendingStatus(null)
   }
 
   const onConfirmRegenerate = () => {
