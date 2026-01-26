@@ -2,7 +2,7 @@
 
 import type { FC } from 'react'
 import type { Emoji } from '@/app/components/tools/types'
-import { RiBookOpenLine, RiCloseLine } from '@remixicon/react'
+import { RiArrowLeftSLine, RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import AppIcon from '@/app/components/base/app-icon'
 
 type ToolHeaderProps = {
@@ -11,6 +11,8 @@ type ToolHeaderProps = {
   toolLabel: string
   description: string
   onClose: () => void
+  onBack?: () => void
+  backLabel?: string
 }
 
 const ToolHeader: FC<ToolHeaderProps> = ({
@@ -19,6 +21,8 @@ const ToolHeader: FC<ToolHeaderProps> = ({
   toolLabel,
   description,
   onClose,
+  onBack,
+  backLabel,
 }) => {
   const renderHeaderIcon = () => {
     if (!icon)
@@ -57,6 +61,20 @@ const ToolHeader: FC<ToolHeaderProps> = ({
       <div className="flex items-start gap-1 px-3 pb-2 pt-3">
         <div className="flex flex-1 flex-col items-start">
           <div className="flex items-center gap-1 rounded-md px-1 py-1">
+            {onBack && (
+              <button
+                type="button"
+                className="flex h-6 w-6 items-center justify-center rounded-[6px] text-text-tertiary hover:bg-state-base-hover"
+                aria-label={backLabel}
+                title={backLabel}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onBack()
+                }}
+              >
+                <RiArrowLeftSLine className="h-4 w-4" />
+              </button>
+            )}
             {renderHeaderIcon()}
             <span className="system-xs-medium text-text-tertiary">
               {providerLabel}

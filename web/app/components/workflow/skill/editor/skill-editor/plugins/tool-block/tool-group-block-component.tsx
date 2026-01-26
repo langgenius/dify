@@ -38,6 +38,7 @@ import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import { DELETE_TOOL_BLOCK_COMMAND } from './index'
 import { useToolBlockContext } from './tool-block-context'
+import ToolHeader from './tool-header'
 
 type ToolGroupBlockComponentProps = {
   nodeKey: string
@@ -294,6 +295,17 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
       return null
     return <ReadmeEntrance pluginDetail={currentProvider as unknown as PluginDetail} showType={ReadmeShowType.drawer} className="mt-auto" />
   }, [currentProvider])
+
+  const toolDescriptionText = useMemo(() => {
+    if (toolValue?.tool_description)
+      return toolValue.tool_description
+    if (currentTool?.description) {
+      return typeof currentTool.description === 'object'
+        ? (currentTool.description?.[language] || '')
+        : (currentTool.description || '')
+    }
+    return activeToolItem?.toolDescription || ''
+  }, [activeToolItem?.toolDescription, currentTool?.description, language, toolValue?.tool_description])
 
   useEffect(() => {
     if (!configuredToolValue)
@@ -552,7 +564,43 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
     </div>
   )
 
-  const groupPanelContent = (
+  const toolDetailContent = currentProvider && currentTool && toolValue && (
+    <div className="flex min-h-full flex-col">
+      <ToolHeader
+        icon={resolvedIcon}
+        providerLabel={currentProvider.label?.[language] || currentProvider.name || providerId}
+        toolLabel={toolValue.tool_label || activeToolItem?.toolLabel || currentTool.name}
+        description={toolDescriptionText}
+        onBack={() => {
+          setExpandedToolId(null)
+        }}
+        backLabel={t('operation.back', { ns: 'common' })}
+        onClose={() => {
+          setIsSettingOpen(false)
+          setExpandedToolId(null)
+        }}
+      />
+      <ToolAuthorizationSection
+        currentProvider={currentProvider}
+        credentialId={toolValue.credential_id}
+        onAuthorizationItemClick={(id) => {
+          setToolValue(prev => (prev ? { ...prev, credential_id: id } : prev))
+        }}
+        noDivider
+      />
+      {needAuthorization && (
+        <div className="flex min-h-[200px] flex-1 flex-col items-center justify-center px-4 py-6 text-text-tertiary">
+          <div className="system-xs-regular text-text-tertiary">
+            {t('skillEditor.authorizationRequired', { ns: 'workflow' })}
+          </div>
+        </div>
+      )}
+      {toolSettingsContent}
+      {readmeEntrance}
+    </div>
+  )
+
+  const groupListContent = (
     <div className="flex min-h-full flex-col">
       <div className="border-b border-divider-subtle px-4 pb-3 pt-4">
         <div className="flex items-start justify-between">
@@ -612,7 +660,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
                 key={item.configId}
                 className={cn(
                   'rounded-xl border-[0.5px] border-components-panel-border-subtle px-3 py-2 shadow-xs',
-                  expandedToolId === item.configId ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-components-panel-item-bg',
+                  'bg-components-panel-item-bg',
                 )}
               >
                 <div className="flex items-center gap-2">
@@ -625,7 +673,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
                           type="button"
                           className="flex items-center gap-1 rounded-md px-2 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                           onClick={() => {
-                            setExpandedToolId(prev => (prev === item.configId ? null : item.configId))
+                            setExpandedToolId(item.configId)
                           }}
                         >
                           <Settings01 className="h-3 w-3" />
@@ -648,7 +696,6 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
                     {item.toolDescription}
                   </div>
                 )}
-                {expandedToolId === item.configId && toolSettingsContent}
               </div>
             ))}
           </div>
@@ -657,6 +704,8 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
       {readmeEntrance}
     </div>
   )
+
+  const groupPanelContent = expandedToolId && toolDetailContent ? toolDetailContent : groupListContent
 
   return (
     <>
