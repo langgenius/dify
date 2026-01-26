@@ -235,7 +235,18 @@ class AgentNode(Node[AgentNodeData]):
                                 0,
                             ):
                                 value_param = param.get("value", {})
-                                params[key] = value_param.get("value", "") if value_param is not None else None
+                                if value_param and value_param.get("type", "") == "variable":
+                                    variable_selector = value_param.get("value")
+                                    if not variable_selector:
+                                        raise ValueError("Variable selector is missing for a variable-type parameter.")
+
+                                    variable = variable_pool.get(variable_selector)
+                                    if variable is None:
+                                        raise AgentVariableNotFoundError(str(variable_selector))
+
+                                    params[key] = variable.value
+                                else:
+                                    params[key] = value_param.get("value", "") if value_param is not None else None
                             else:
                                 params[key] = None
                         parameters = params
@@ -483,7 +494,7 @@ class AgentNode(Node[AgentNodeData]):
 
         text = ""
         files: list[File] = []
-        json_list: list[dict] = []
+        json_list: list[dict | list] = []
 
         agent_logs: list[AgentLogEvent] = []
         agent_execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = {}
@@ -557,13 +568,18 @@ class AgentNode(Node[AgentNodeData]):
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
                 if node_type == NodeType.AGENT:
-                    msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
-                    llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
-                    agent_execution_metadata = {
-                        WorkflowNodeExecutionMetadataKey(key): value
-                        for key, value in msg_metadata.items()
-                        if key in WorkflowNodeExecutionMetadataKey.__members__.values()
-                    }
+                    if isinstance(message.message.json_object, dict):
+                        msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
+                        llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
+                        agent_execution_metadata = {
+                            WorkflowNodeExecutionMetadataKey(key): value
+                            for key, value in msg_metadata.items()
+                            if key in WorkflowNodeExecutionMetadataKey.__members__.values()
+                        }
+                    else:
+                        msg_metadata = {}
+                        llm_usage = LLMUsage.empty_usage()
+                        agent_execution_metadata = {}
                 if message.message.json_object:
                     json_list.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
@@ -672,7 +688,7 @@ class AgentNode(Node[AgentNodeData]):
                 yield agent_log
 
         # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
-        json_output: list[dict[str, Any]] = []
+        json_output: list[dict[str, Any] | list[Any]] = []
 
         # Step 1: append each agent log as its own dict.
         if agent_logs:

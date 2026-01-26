@@ -279,7 +279,7 @@ vi.mock('@/app/components/plugins/card', () => ({
   default: ({ payload, footer }: { payload: Plugin, footer?: React.ReactNode }) => (
     <div data-testid={`card-${payload.name}`}>
       <div data-testid="card-name">{payload.name}</div>
-      {footer && <div data-testid="card-footer">{footer}</div>}
+      {!!footer && <div data-testid="card-footer">{footer}</div>}
     </div>
   ),
 }))
