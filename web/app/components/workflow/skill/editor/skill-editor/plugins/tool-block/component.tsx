@@ -66,6 +66,7 @@ type ToolConfigMetadata = {
   configuration: {
     fields: ToolConfigField[]
   }
+  enabled?: boolean
 }
 
 type SkillFileMetadata = {

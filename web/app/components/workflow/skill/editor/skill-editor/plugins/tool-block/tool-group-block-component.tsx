@@ -55,6 +55,8 @@ type ToolConfigMetadata = {
   configuration: {
     fields: ToolConfigField[]
   }
+  enabled?: boolean
+  [key: string]: string | boolean | number | undefined | object// Add index signature to allow string keys
 }
 
 type SkillFileMetadata = {
@@ -198,6 +200,14 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
     const metadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
     return metadata?.tools?.[activeToolItem.configId]
   }, [activeTabId, activeToolItem, fileMetadata, isUsingExternalMetadata, toolBlockContext?.metadata])
+
+  const metadataTools = useMemo(() => {
+    if (isUsingExternalMetadata)
+      return ((toolBlockContext?.metadata as SkillFileMetadata | undefined)?.tools || {}) as Record<string, ToolConfigMetadata>
+    if (!activeTabId || activeTabId === START_TAB_ID)
+      return {}
+    return ((fileMetadata.get(activeTabId) as SkillFileMetadata | undefined)?.tools || {}) as Record<string, ToolConfigMetadata>
+  }, [activeTabId, fileMetadata, isUsingExternalMetadata, toolBlockContext?.metadata])
 
   const getVarKindType = (type: FormTypeEnum | string) => {
     if (type === FormTypeEnum.file || type === FormTypeEnum.files)
@@ -346,17 +356,23 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
   const resolvedEnabledByConfigId = useMemo(() => {
     const next = { ...enabledByConfigId }
     toolItems.forEach((item) => {
+      const enabledFromMetadata = metadataTools[item.configId]?.enabled
+      if (enabledFromMetadata !== undefined) {
+        next[item.configId] = enabledFromMetadata
+        return
+      }
       if (next[item.configId] === undefined)
         next[item.configId] = true
     })
     return next
-  }, [enabledByConfigId, toolItems])
+  }, [enabledByConfigId, metadataTools, toolItems])
 
   const enabledCount = useMemo(() => {
     if (!toolItems.length)
       return 0
     return toolItems.reduce((count, item) => count + (resolvedEnabledByConfigId[item.configId] === false ? 0 : 1), 0)
   }, [resolvedEnabledByConfigId, toolItems])
+  const displayEnabledCount = needAuthorization ? 0 : enabledCount
 
   const handleToolValueChange = (nextValue: ToolValue) => {
     if (!activeToolItem || !currentProvider || !currentTool)
@@ -365,6 +381,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
     if (isUsingExternalMetadata) {
       const metadata = (toolBlockContext?.metadata || {}) as SkillFileMetadata
       const toolType = currentProvider.type === CollectionType.mcp ? 'mcp' : 'builtin'
+      const currentToolMetadata = (metadata.tools || {})[activeToolItem.configId]
       const buildFields = (value: Record<string, unknown> | undefined) => {
         if (!value)
           return []
@@ -386,6 +403,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
           [activeToolItem.configId]: {
             type: toolType,
             configuration: { fields },
+            enabled: currentToolMetadata?.enabled ?? resolvedEnabledByConfigId[activeToolItem.configId] ?? true,
           },
         },
       }
@@ -396,6 +414,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
       return
     const metadata = (fileMetadata.get(activeTabId) || {}) as SkillFileMetadata
     const toolType = currentProvider.type === CollectionType.mcp ? 'mcp' : 'builtin'
+    const currentToolMetadata = (metadata.tools || {})[activeToolItem.configId]
     const buildFields = (value: Record<string, unknown> | undefined) => {
       if (!value)
         return []
@@ -417,6 +436,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
         [activeToolItem.configId]: {
           type: toolType,
           configuration: { fields },
+          enabled: currentToolMetadata?.enabled ?? resolvedEnabledByConfigId[activeToolItem.configId] ?? true,
         },
       },
     }
@@ -426,7 +446,35 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
 
   const handleToggleTool = useCallback((configId: string, nextValue: boolean) => {
     setEnabledByConfigId(prev => ({ ...prev, [configId]: nextValue }))
-  }, [])
+    const applyEnabled = (metadata: SkillFileMetadata | undefined) => {
+      const nextMetadata: SkillFileMetadata = {
+        ...(metadata || {}),
+        tools: {
+          ...(metadata?.tools || {}),
+        },
+      }
+      const existing = nextMetadata.tools?.[configId]
+      const toolType = existing?.type || (currentProvider?.type === CollectionType.mcp ? 'mcp' : 'builtin')
+      if (!nextMetadata.tools)
+        nextMetadata.tools = {}
+      nextMetadata.tools[configId] = {
+        type: toolType,
+        configuration: existing?.configuration || { fields: [] },
+        enabled: nextValue,
+      }
+      return nextMetadata
+    }
+    if (isUsingExternalMetadata) {
+      toolBlockContext?.onMetadataChange?.(applyEnabled(toolBlockContext?.metadata as SkillFileMetadata | undefined))
+      return
+    }
+    if (!activeTabId || activeTabId === START_TAB_ID)
+      return
+    const metadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
+    const nextMetadata = applyEnabled(metadata)
+    storeApi.getState().setDraftMetadata(activeTabId, nextMetadata)
+    storeApi.getState().pinTab(activeTabId)
+  }, [activeTabId, currentProvider?.type, fileMetadata, isUsingExternalMetadata, storeApi, toolBlockContext])
 
   const renderIcon = () => {
     if (!resolvedIcon)
@@ -552,7 +600,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
       </div>
       <div className="flex flex-col gap-2 px-4 pb-4 pt-1">
         <div className="system-sm-semibold-uppercase text-text-secondary">
-          {t('toolGroup.actionsEnabled', { ns: 'workflow', num: enabledCount })}
+          {t('toolGroup.actionsEnabled', { ns: 'workflow', num: displayEnabledCount })}
         </div>
         <div className="flex flex-col gap-2">
           {toolItems.map(item => (
@@ -625,7 +673,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
           {providerLabel}
         </span>
         <span className="system-2xs-medium-uppercase rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-[4px] py-[2px] text-text-accent-secondary">
-          {tools.length}
+          {displayEnabledCount}
         </span>
       </span>
       {useModal && (
