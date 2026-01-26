@@ -49,6 +49,16 @@ class SecurityConfig(BaseSettings):
         default=5,
     )
 
+    WEB_FORM_SUBMIT_RATE_LIMIT_MAX_ATTEMPTS: PositiveInt = Field(
+        description="Maximum number of web form submissions allowed per IP within the rate limit window",
+        default=30,
+    )
+
+    WEB_FORM_SUBMIT_RATE_LIMIT_WINDOW_SECONDS: PositiveInt = Field(
+        description="Time window in seconds for web form submission rate limiting",
+        default=60,
+    )
+
     LOGIN_DISABLED: bool = Field(
         description="Whether to disable login checks",
         default=False,

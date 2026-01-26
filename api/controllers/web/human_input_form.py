@@ -6,19 +6,32 @@ import json
 import logging
 from datetime import datetime
 
-from flask import Response
+from flask import Response, request
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
+from configs import dify_config
 from controllers.web import web_ns
-from controllers.web.error import NotFoundError
+from controllers.web.error import NotFoundError, WebFormRateLimitExceededError
 from controllers.web.site import serialize_app_site_payload
 from extensions.ext_database import db
+from libs.helper import RateLimiter, extract_remote_ip
 from models.account import TenantStatus
 from models.model import App, Site
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
 
 logger = logging.getLogger(__name__)
+
+_FORM_SUBMIT_RATE_LIMITER = RateLimiter(
+    prefix="web_form_submit_rate_limit",
+    max_attempts=dify_config.WEB_FORM_SUBMIT_RATE_LIMIT_MAX_ATTEMPTS,
+    time_window=dify_config.WEB_FORM_SUBMIT_RATE_LIMIT_WINDOW_SECONDS,
+)
+_FORM_ACCESS_RATE_LIMITER = RateLimiter(
+    prefix="web_form_access_rate_limit",
+    max_attempts=dify_config.WEB_FORM_SUBMIT_RATE_LIMIT_MAX_ATTEMPTS,
+    time_window=dify_config.WEB_FORM_SUBMIT_RATE_LIMIT_WINDOW_SECONDS,
+)
 
 
 def _stringify_default_values(values: dict[str, object]) -> dict[str, str]:
@@ -68,6 +81,11 @@ class HumanInputFormApi(Resource):
 
         GET /api/form/human_input/<form_token>
         """
+        ip_address = extract_remote_ip(request)
+        if _FORM_ACCESS_RATE_LIMITER.is_rate_limited(ip_address):
+            raise WebFormRateLimitExceededError()
+        _FORM_ACCESS_RATE_LIMITER.increment_rate_limit(ip_address)
+
         service = HumanInputService(db.engine)
         # TODO(QuantumGhost): forbid submision for form tokens
         # that are only for console.
@@ -100,6 +118,11 @@ class HumanInputFormApi(Resource):
         parser.add_argument("inputs", type=dict, required=True, location="json")
         parser.add_argument("action", type=str, required=True, location="json")
         args = parser.parse_args()
+
+        ip_address = extract_remote_ip(request)
+        if _FORM_SUBMIT_RATE_LIMITER.is_rate_limited(ip_address):
+            raise WebFormRateLimitExceededError()
+        _FORM_SUBMIT_RATE_LIMITER.increment_rate_limit(ip_address)
 
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
