@@ -13,17 +13,29 @@ if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
 
+# 确保导入了 db
+from models.engine import db 
+
 @pytest.fixture
 def app() -> Flask:
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
+    
     db.init_app(app)
-
-    with app.app_context():
+    
+    with app.app_context():       
+        try:
+            import models
+        except ImportError:
+            pass
+            
+        db.create_all() 
+        
         yield app
+        
+        db.drop_all()
 
 
 def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.MonkeyPatch):
