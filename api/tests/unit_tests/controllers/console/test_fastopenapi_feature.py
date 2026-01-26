@@ -1,13 +1,12 @@
 import builtins
-from unittest.mock import patch
 
+import dify_config
 import pytest
 from flask import Flask
 from flask.views import MethodView
 
-import dify_config
-from models.engine import db
 from extensions import ext_fastopenapi
+from models.engine import db
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -17,7 +16,7 @@ if not hasattr(builtins, "MethodView"):
 def app() -> Flask:
     app = Flask(__name__)
     app.config["TESTING"] = True
-    
+
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
