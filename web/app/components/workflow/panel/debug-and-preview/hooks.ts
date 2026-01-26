@@ -865,7 +865,7 @@ export const useChat = (
         })
       },
       onWorkflowPaused: ({ data: workflowPausedData }) => {
-        const resumeUrl = `/apps/${configsMap?.flowId}/workflow/${workflowPausedData.workflow_run_id}/events`
+        const resumeUrl = `/workflow/${workflowPausedData.workflow_run_id}/events`
         sseGet(
           resumeUrl,
           {},
@@ -885,7 +885,7 @@ export const useChat = (
       {},
       otherOptions,
     )
-  }, [updateChatTreeNode, handleResponding, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer, configsMap?.flowId])
+  }, [updateChatTreeNode, handleResponding, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer])
 
   const handleSwitchSibling = useCallback((
     siblingMessageId: string,

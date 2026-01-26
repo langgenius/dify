@@ -50,11 +50,11 @@ const HumanInputFormList = ({
       {
         filteredHumanInputFormDataList.map(formData => (
           <ContentWrapper
-            key={formData.node_id}
+            key={formData.form_id}
             nodeTitle={formData.node_title}
           >
             <UnsubmittedHumanInputContent
-              key={formData.node_id}
+              key={formData.form_id}
               formData={formData}
               showEmailTip={!!deliveryMethodsConfig[formData.node_id]?.showEmailTip}
               isEmailDebugMode={!!deliveryMethodsConfig[formData.node_id]?.isEmailDebugMode}
