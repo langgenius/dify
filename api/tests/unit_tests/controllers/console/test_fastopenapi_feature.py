@@ -1,11 +1,13 @@
 import builtins
-
 import pytest
 from flask import Flask
 from flask.views import MethodView
 
 from extensions import ext_fastopenapi
 from models.engine import db
+
+from controllers.fastopenapi import console_router 
+import controllers.console.files 
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -19,6 +21,8 @@ def app() -> Flask:
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
+
+    app.register_blueprint(console_router, url_prefix="/console/api")
 
     with app.app_context():
         yield app
@@ -35,6 +39,10 @@ def test_console_files_fastopenapi_get_upload_config(app: Flask, monkeypatch: py
 
     client = app.test_client()
     response = client.get("/console/api/files/upload")
+
+    if response.status_code == 404:
+        print("\n=== Debug: Available Routes ===")
+        print(app.url_map)
 
     assert response.status_code == 200
     data = response.get_json()
