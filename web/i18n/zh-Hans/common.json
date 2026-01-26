@@ -110,6 +110,7 @@
   "chat.conversationName": "会话名称",
   "chat.conversationNameCanNotEmpty": "会话名称必填",
   "chat.conversationNamePlaceholder": "请输入会话名称",
+  "chat.inputDisabledPlaceholder": "仅供试用",
   "chat.inputPlaceholder": "和 {{botName}} 聊天",
   "chat.renameConversation": "重命名会话",
   "chat.resend": "重新发送",

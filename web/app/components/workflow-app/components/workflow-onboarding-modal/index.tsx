@@ -8,7 +8,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useDocLink } from '@/context/i18n'
 import StartNodeSelectionPanel from './start-node-selection-panel'
 
 type WorkflowOnboardingModalProps = {
@@ -23,7 +22,6 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
   onSelectStartNode,
 }) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
 
   const handleSelectUserInput = useCallback(() => {
     onSelectStartNode(BlockEnum.Start)
@@ -62,17 +60,6 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
             </h3>
             <div className="body-xs-regular leading-4 text-text-tertiary">
               {t('onboarding.description', { ns: 'workflow' })}
-              {' '}
-              <a
-                href={docLink('/guides/workflow/node/start')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-text-accent-hover cursor-pointer text-text-accent underline"
-              >
-                {t('onboarding.learnMore', { ns: 'workflow' })}
-              </a>
-              {' '}
-              {t('onboarding.aboutStartNode', { ns: 'workflow' })}
             </div>
           </div>
 

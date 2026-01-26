@@ -110,6 +110,7 @@
   "chat.conversationName": "会話名",
   "chat.conversationNameCanNotEmpty": "会話名は必須です",
   "chat.conversationNamePlaceholder": "会話名を入力してください",
+  "chat.inputDisabledPlaceholder": "プレビューのみ",
   "chat.inputPlaceholder": "{{botName}} と話す",
   "chat.renameConversation": "会話名を変更",
   "chat.resend": "再送信してください",
