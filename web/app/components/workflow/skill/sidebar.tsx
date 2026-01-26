@@ -5,7 +5,7 @@ type SidebarProps = PropsWithChildren
 
 const Sidebar: FC<SidebarProps> = ({ children }) => {
   return (
-    <aside className="flex w-[320px] shrink-0 flex-col gap-px overflow-hidden rounded-[10px] border border-components-panel-border-subtle bg-components-panel-bg">
+    <aside className="flex h-full w-[320px] shrink-0 flex-col gap-px overflow-hidden rounded-[10px] border border-components-panel-border-subtle bg-components-panel-bg">
       {children}
     </aside>
   )

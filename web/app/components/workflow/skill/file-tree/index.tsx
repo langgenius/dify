@@ -25,7 +25,6 @@ import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
 import { useSkillShortcuts } from '../hooks/use-skill-shortcuts'
 import { useSyncTreeWithActiveTab } from '../hooks/use-sync-tree-with-active-tab'
 import { isDescendantOf } from '../utils/tree-utils'
-import ArtifactsSection from './artifacts-section'
 import DragActionTooltip from './drag-action-tooltip'
 import TreeContextMenu from './tree-context-menu'
 import TreeNode from './tree-node'
@@ -235,41 +234,34 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
 
   if (treeChildren.length === 0 && !hasPendingCreate) {
     return (
-      <>
-        <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
-            <span className="system-xs-regular text-text-tertiary">
-              {t('skillSidebar.empty')}
-            </span>
-          </div>
-          <DropTip />
+      <div className={cn('flex min-h-[150px] flex-1 flex-col overflow-y-auto', className)}>
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
+          <span className="system-xs-regular text-text-tertiary">
+            {t('skillSidebar.empty')}
+          </span>
         </div>
-        <ArtifactsSection />
-      </>
+        <DropTip />
+      </div>
     )
   }
 
-  // Search has no matching results
   if (hasSearchNoResults) {
     return (
-      <>
-        <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 pb-20">
-            <SearchMenu className="size-8 text-text-tertiary" aria-hidden="true" />
-            <span className="system-xs-regular text-text-secondary">
-              {t('skillSidebar.searchNoResults')}
-            </span>
-            <Button
-              variant="secondary-accent"
-              size="small"
-              onClick={() => storeApi.getState().setFileTreeSearchTerm('')}
-            >
-              {t('skillSidebar.resetFilter')}
-            </Button>
-          </div>
+      <div className={cn('flex min-h-[150px] flex-1 flex-col overflow-y-auto', className)}>
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 pb-20">
+          <SearchMenu className="size-8 text-text-tertiary" aria-hidden="true" />
+          <span className="system-xs-regular text-text-secondary">
+            {t('skillSidebar.searchNoResults')}
+          </span>
+          <Button
+            variant="secondary-accent"
+            size="small"
+            onClick={() => storeApi.getState().setFileTreeSearchTerm('')}
+          >
+            {t('skillSidebar.resetFilter')}
+          </Button>
         </div>
-        <ArtifactsSection />
-      </>
+      </div>
     )
   }
 
@@ -278,7 +270,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
       <div
         data-skill-tree-container
         className={cn(
-          'flex min-h-0 flex-1 flex-col',
+          'flex min-h-[150px] flex-1 flex-col overflow-y-auto',
           isMutating && 'pointer-events-none opacity-50',
           className,
         )}
@@ -287,7 +279,6 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
           ref={containerRef}
           className={cn(
             'flex min-h-0 flex-1 flex-col overflow-hidden px-1 pt-1',
-            // Root dropzone highlight - dashed border without layout shift
             isRootDropzone && 'relative rounded-lg bg-state-accent-hover after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:border-[1.5px] after:border-dashed after:border-state-accent-solid after:content-[\'\']',
           )}
           onClick={handleBlankAreaClick}
@@ -321,11 +312,10 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
             {renderTreeNode}
           </Tree>
         </div>
+        {dragOverFolderId
+          ? <DragActionTooltip action={currentDragType ?? 'upload'} />
+          : <DropTip />}
       </div>
-      {dragOverFolderId
-        ? <DragActionTooltip action={currentDragType ?? 'upload'} />
-        : <DropTip />}
-      <ArtifactsSection />
       <TreeContextMenu treeRef={treeRef} />
     </>
   )

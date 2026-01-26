@@ -8,6 +8,7 @@ import ContentBody from './content-body'
 import FileContentPanel from './file-content-panel'
 import FileTabs from './file-tabs'
 import FileTree from './file-tree'
+import ArtifactsSection from './file-tree/artifacts-section'
 import { useSkillAutoSave } from './hooks/use-skill-auto-save'
 import { SkillSaveProvider } from './hooks/use-skill-save-manager'
 import Sidebar from './sidebar'
@@ -31,6 +32,7 @@ const SkillMain: FC = () => {
           <Sidebar>
             <SidebarSearchAdd />
             <FileTree />
+            <ArtifactsSection />
           </Sidebar>
           <ContentArea>
             <FileTabs />
