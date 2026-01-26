@@ -3,13 +3,15 @@ import type { SendCallback, SendParams, UpdateCurrentQAParams } from './types'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree, Inputs } from '@/app/components/base/chat/types'
 import { uniqBy } from 'es-toolkit/compat'
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getProcessedInputs } from '@/app/components/base/chat/chat/utils'
 import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { useToastContext } from '@/app/components/base/toast'
+import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { TransferMethod } from '@/types/app'
-import { useWorkflowRun } from '../../../hooks'
+import { useSetWorkflowVarsWithValue, useWorkflowRun } from '../../../hooks'
+import { useHooksStore } from '../../../hooks-store'
 import { useStore, useWorkflowStore } from '../../../store'
 import { createWorkflowEventHandlers } from './use-workflow-event-handlers'
 
@@ -46,9 +48,14 @@ export function useChatMessageSender({
   const { handleRun } = useWorkflowRun()
   const workflowStore = useWorkflowStore()
 
+  const configsMap = useHooksStore(s => s.configsMap)
+  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const setConversationId = useStore(s => s.setConversationId)
   const setTargetMessageId = useStore(s => s.setTargetMessageId)
   const setSuggestedQuestions = useStore(s => s.setSuggestedQuestions)
+
+  const activeRunIdRef = useRef(0)
 
   const handleSend = useCallback((
     params: SendParams,
@@ -58,6 +65,9 @@ export function useChatMessageSender({
       notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
+
+    const runId = ++activeRunIdRef.current
+    const isCurrentRun = () => runId === activeRunIdRef.current
 
     const parentMessage = threadMessages.find(item => item.id === params.parent_message_id)
 
@@ -158,7 +168,11 @@ export function useChatMessageSender({
           })
         },
         async onCompleted(hasError?: boolean, errorMessage?: string) {
+          if (!isCurrentRun())
+            return
           handleResponding(false)
+          fetchInspectVars({})
+          invalidAllLastRun()
 
           if (hasError) {
             if (errorMessage) {
@@ -203,6 +217,8 @@ export function useChatMessageSender({
           responseItem.content = messageReplace.answer
         },
         onError() {
+          if (!isCurrentRun())
+            return
           handleResponding(false)
         },
         onWorkflowStarted: (event) => {
@@ -231,6 +247,8 @@ export function useChatMessageSender({
     setTargetMessageId,
     setConversationId,
     setSuggestedQuestions,
+    fetchInspectVars,
+    invalidAllLastRun,
     workflowStore,
     hasStopResponded,
     taskIdRef,

@@ -19,11 +19,11 @@ export function useChat(
   stopChat?: (taskId: string) => void,
 ) {
   const chatTree = useStore(s => s.chatTree)
-  const updateChatTree = useStore(s => s.updateChatTree)
   const conversationId = useStore(s => s.conversationId)
   const isResponding = useStore(s => s.isResponding)
   const suggestedQuestions = useStore(s => s.suggestedQuestions)
   const targetMessageId = useStore(s => s.targetMessageId)
+  const updateChatTree = useStore(s => s.updateChatTree)
   const setTargetMessageId = useStore(s => s.setTargetMessageId)
 
   const initialChatTreeRef = useRef(prevChatTree)
