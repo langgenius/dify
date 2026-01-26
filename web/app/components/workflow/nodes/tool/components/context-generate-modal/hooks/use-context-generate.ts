@@ -1,6 +1,15 @@
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ToolParameter } from '@/app/components/tools/types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
-import type { ContextGenerateMessage, ContextGenerateResponse } from '@/service/debug'
+import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
+import type { Node, NodeOutPutVar, Var } from '@/app/components/workflow/types'
+import type {
+  ContextGenerateAvailableVar,
+  ContextGenerateCodeContext,
+  ContextGenerateMessage,
+  ContextGenerateParameterInfo,
+  ContextGenerateResponse,
+} from '@/service/debug'
 import type { CompletionParams, Model, ModelModeType } from '@/types/app'
 import { useSessionStorageState } from 'ahooks'
 import useBoolean from 'ahooks/lib/useBoolean'
@@ -9,7 +18,10 @@ import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { useStore } from '@/app/components/workflow/store'
+import { useGetLanguage } from '@/context/i18n'
 import { languages } from '@/i18n-config/language'
 import { fetchContextGenerateSuggestedQuestions, generateContext } from '@/service/debug'
 import { AppModeEnum } from '@/types/app'
@@ -37,12 +49,94 @@ export const normalizeCodeLanguage = (value?: string) => {
   return CodeLanguage.python3
 }
 
+// FIXME: Implement buildValueSelector function
+const buildValueSelector = (nodeId: string, variable: Var): string[] => {
+  if (!nodeId)
+    return variable.variable.split('.')
+  const isSys = variable.variable.startsWith('sys.')
+  const isEnv = variable.variable.startsWith('env.')
+  const isChatVar = variable.variable.startsWith('conversation.')
+  const isRagVariable = variable.isRagVariable
+  if (isSys || isEnv || isChatVar || isRagVariable)
+    return variable.variable.split('.')
+  return [nodeId, ...variable.variable.split('.')]
+}
+
+const resolveVarSchema = (variable: Var): Record<string, unknown> | undefined => {
+  const children = variable.children
+  if (!children || Array.isArray(children))
+    return undefined
+  if (!('schema' in children))
+    return undefined
+  const schema = children.schema
+  if (!schema)
+    return undefined
+  if (typeof schema === 'string') {
+    try {
+      return JSON.parse(schema) as Record<string, unknown>
+    }
+    catch {
+      return undefined
+    }
+  }
+  return schema as Record<string, unknown>
+}
+
+const toAvailableVarsPayload = (
+  availableVars: NodeOutPutVar[],
+  nodeMap: Map<string, { data?: { type?: string } }>,
+): ContextGenerateAvailableVar[] => {
+  const results: ContextGenerateAvailableVar[] = []
+  availableVars.forEach((nodeVar) => {
+    nodeVar.vars.forEach((variable) => {
+      const valueSelector = buildValueSelector(nodeVar.nodeId, variable)
+      if (!valueSelector.length)
+        return
+      const schema = resolveVarSchema(variable)
+      const description = (variable as { description?: string }).description || variable.des
+      const nodeInfo = nodeMap.get(nodeVar.nodeId)
+      results.push({
+        value_selector: valueSelector,
+        type: variable.type,
+        description,
+        node_id: nodeVar.nodeId,
+        node_title: nodeVar.title,
+        node_type: nodeInfo?.data?.type,
+        schema: schema ?? undefined,
+      })
+    })
+  })
+  return results
+}
+
+const mapCodeNodeOutputs = (outputs?: Record<string, { type: string } | { type: string, children?: null }>) => {
+  if (!outputs)
+    return undefined
+  const next: Record<string, { type: string }> = {}
+  Object.entries(outputs).forEach(([key, value]) => {
+    if (!value)
+      return
+    next[key] = { type: value.type }
+  })
+  return Object.keys(next).length ? next : undefined
+}
+
+const mapCodeNodeVariables = (variables?: Array<{ variable: string, value_selector?: string[] | null }>) => {
+  if (!variables)
+    return undefined
+  return variables.map(variable => ({
+    variable: variable.variable,
+    value_selector: Array.isArray(variable.value_selector) ? variable.value_selector : [],
+  }))
+}
+
 type UseContextGenerateOptions = {
   storageKey: string
-  flowId: string
   toolNodeId: string
   paramKey: string
   codeNodeData?: CodeNodeType
+  availableVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 
 type VersionOption = {
@@ -77,12 +171,14 @@ type UseContextGenerateResult = {
 
 const useContextGenerate = ({
   storageKey,
-  flowId,
   toolNodeId,
   paramKey,
   codeNodeData,
+  availableVars,
+  availableNodes,
 }: UseContextGenerateOptions): UseContextGenerateResult => {
   const { t, i18n } = useTranslation()
+  const locale = useGetLanguage()
   const {
     versions,
     addVersion,
@@ -101,6 +197,77 @@ const useContextGenerate = ({
 
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const [hasFetchedSuggestions, setHasFetchedSuggestions] = useState<boolean>(false)
+
+  const nodes = useStore(s => s.nodes)
+  const toolNodeData = useMemo(() => {
+    if (!toolNodeId)
+      return undefined
+    return nodes.find(node => node.id === toolNodeId)?.data as ToolNodeType | undefined
+  }, [nodes, toolNodeId])
+
+  const { availableVars: derivedAvailableVars, availableNodesWithParent } = useAvailableVarList(toolNodeId, {
+    onlyLeafNodeVar: false,
+    filterVar: () => true,
+    passedInAvailableNodes: availableNodes,
+  })
+  const resolvedAvailableVars = useMemo(() => {
+    if (availableVars && availableVars.length)
+      return availableVars
+    return derivedAvailableVars
+  }, [availableVars, derivedAvailableVars])
+  const resolvedAvailableNodes = useMemo(() => {
+    if (availableNodes && availableNodes.length)
+      return availableNodes
+    return availableNodesWithParent
+  }, [availableNodes, availableNodesWithParent])
+  const availableNodesMap = useMemo(() => {
+    return new Map(resolvedAvailableNodes.map(node => [node.id, node]))
+  }, [resolvedAvailableNodes])
+  const availableVarsPayload = useMemo(() => {
+    return toAvailableVarsPayload(resolvedAvailableVars, availableNodesMap)
+  }, [availableNodesMap, resolvedAvailableVars])
+
+  const parameterInfo = useMemo<ContextGenerateParameterInfo>(() => {
+    const defaultInfo: ContextGenerateParameterInfo = {
+      name: paramKey,
+      type: 'string',
+      description: '',
+    }
+    if (!Array.isArray(toolNodeData?.paramSchemas) || !toolNodeData.paramSchemas.length)
+      return defaultInfo
+    const paramSchema = (toolNodeData.paramSchemas as ToolParameter[]).find(param => param.name === paramKey)
+    if (!paramSchema)
+      return defaultInfo
+    const description = paramSchema.llm_description
+      || paramSchema.human_description?.[locale]
+      || paramSchema.human_description?.en_US
+      || ''
+    return {
+      name: paramSchema.name || paramKey,
+      type: paramSchema.type || 'string',
+      description,
+      required: paramSchema.required,
+      options: paramSchema.options?.map(option => option.value),
+      min: paramSchema.min,
+      max: paramSchema.max,
+      default: paramSchema.default ?? null,
+      multiple: paramSchema.multiple,
+      label: paramSchema.label?.[locale] || paramSchema.label?.en_US,
+    }
+  }, [locale, paramKey, toolNodeData])
+
+  const codeContext = useMemo<ContextGenerateCodeContext | undefined>(() => {
+    const code = current?.code || codeNodeData?.code || ''
+    const outputs = mapCodeNodeOutputs(current?.outputs || codeNodeData?.outputs)
+    const variables = mapCodeNodeVariables(current?.variables || codeNodeData?.variables)
+    if (!code && !outputs && !variables)
+      return undefined
+    return {
+      code,
+      outputs,
+      variables,
+    }
+  }, [codeNodeData?.code, codeNodeData?.outputs, codeNodeData?.variables, current?.code, current?.outputs, current?.variables])
 
   const [isFetchingSuggestions, { setTrue: setFetchingSuggestionsTrue, setFalse: setFetchingSuggestionsFalse }] = useBoolean(false)
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
@@ -196,7 +363,7 @@ const useContextGenerate = ({
   }, [clearVersions, isGenerating, setPromptMessages])
 
   const handleFetchSuggestedQuestions = useCallback(async () => {
-    if (!flowId || !toolNodeId || !paramKey)
+    if (!toolNodeId || !paramKey)
       return
     if (!model.name || !model.provider)
       return
@@ -208,15 +375,14 @@ const useContextGenerate = ({
     suggestedQuestionsAbortControllerRef.current?.abort()
     try {
       const response = await fetchContextGenerateSuggestedQuestions({
-        workflow_id: flowId,
-        node_id: toolNodeId,
-        parameter_name: paramKey,
         language: promptLanguage,
         model_config: {
           provider: model.provider,
           name: model.name,
           completion_params: model.completion_params,
         },
+        available_vars: availableVarsPayload,
+        parameter_info: parameterInfo,
       }, (abortController) => {
         suggestedQuestionsAbortControllerRef.current = abortController
       })
@@ -252,7 +418,7 @@ const useContextGenerate = ({
       setFetchingSuggestionsFalse()
     }
   }, [
-    flowId,
+    availableVarsPayload,
     hasFetchedSuggestions,
     isFetchingSuggestions,
     isInitView,
@@ -260,6 +426,7 @@ const useContextGenerate = ({
     model.name,
     model.provider,
     paramKey,
+    parameterInfo,
     promptLanguage,
     setFetchingSuggestionsFalse,
     setFetchingSuggestionsTrue,
@@ -281,7 +448,7 @@ const useContextGenerate = ({
     const trimmed = inputValue.trim()
     if (!trimmed || isGenerating)
       return
-    if (!flowId || !toolNodeId || !paramKey)
+    if (!toolNodeId || !paramKey)
       return
 
     const userMessage: ContextGenerateChatMessage = { role: 'user', content: trimmed }
@@ -292,16 +459,20 @@ const useContextGenerate = ({
     generateStartRef.current = Date.now()
     try {
       const response = await generateContext({
-        workflow_id: flowId,
-        node_id: toolNodeId,
-        parameter_name: paramKey,
         language: normalizeCodeLanguage(current?.code_language || codeNodeData?.code_language) as 'python3' | 'javascript',
-        prompt_messages: nextMessages.map(({ role, content }) => ({ role, content })),
+        prompt_messages: nextMessages.map(({ role, content, tool_call_id }) => ({
+          role,
+          content,
+          tool_call_id,
+        })),
         model_config: {
           provider: model.provider,
           name: model.name,
           completion_params: model.completion_params,
         },
+        available_vars: availableVarsPayload,
+        parameter_info: parameterInfo,
+        code_context: codeContext,
       })
 
       if (response.error) {
@@ -328,16 +499,18 @@ const useContextGenerate = ({
     }
   }, [
     addVersion,
+    availableVarsPayload,
+    codeContext,
     codeNodeData?.code_language,
     current?.code_language,
     defaultAssistantMessage,
-    flowId,
     inputValue,
     isGenerating,
     model.completion_params,
     model.name,
     model.provider,
     paramKey,
+    parameterInfo,
     promptMessages,
     setPromptMessages,
     setGeneratingFalse,

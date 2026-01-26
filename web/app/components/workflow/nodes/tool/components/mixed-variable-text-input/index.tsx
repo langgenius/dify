@@ -460,6 +460,8 @@ const MixedVariableTextInput = ({
           toolNodeId={toolNodeId}
           paramKey={paramKey}
           codeNodeId={assembleExtractorNodeId || `${toolNodeId}_ext_${paramKey}`}
+          availableVars={nodesOutputVars}
+          availableNodes={availableNodes}
         />
       )}
     </div>

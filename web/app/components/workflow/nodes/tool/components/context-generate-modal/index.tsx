@@ -1,5 +1,6 @@
 'use client'
 import type { CodeNodeType, OutputVar } from '@/app/components/workflow/nodes/code/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import type { ContextGenerateResponse } from '@/service/debug'
 import * as React from 'react'
 import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react'
@@ -20,6 +21,8 @@ type Props = {
   toolNodeId: string
   paramKey: string
   codeNodeId: string
+  availableVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 
 export type ContextGenerateModalHandle = {
@@ -54,6 +57,8 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
   toolNodeId,
   paramKey,
   codeNodeId,
+  availableVars,
+  availableNodes,
 }, ref) => {
   const configsMap = useHooksStore(s => s.configsMap)
   const nodes = useStore(s => s.nodes)
@@ -111,10 +116,11 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
     isInitView,
   } = useContextGenerate({
     storageKey,
-    flowId,
     toolNodeId,
     paramKey,
     codeNodeData,
+    availableVars,
+    availableNodes,
   })
 
   const handleCloseModal = useCallback(() => {
