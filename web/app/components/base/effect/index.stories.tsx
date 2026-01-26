@@ -1,5 +1,5 @@
 /* eslint-disable tailwindcss/classnames-order */
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import Effect from '.'
 
 const meta = {

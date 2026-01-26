@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { useEffect } from 'react'
 import { useStore } from '@/app/components/app/store'
