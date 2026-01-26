@@ -46,24 +46,28 @@ Comprehensive performance optimization guide for React and Next.js applications,
    - 4.3 [Use SWR for Automatic Deduplication](#43-use-swr-for-automatic-deduplication)
    - 4.4 [Version and Minimize localStorage Data](#44-version-and-minimize-localstorage-data)
 5. [Re-render Optimization](#5-re-render-optimization) — **MEDIUM**
-   - 5.1 [Defer State Reads to Usage Point](#51-defer-state-reads-to-usage-point)
-   - 5.2 [Do not wrap a simple expression with a primitive result type in useMemo](#52-do-not-wrap-a-simple-expression-with-a-primitive-result-type-in-usememo)
-   - 5.3 [Extract Default Non-primitive Parameter Value from Memoized Component to Constant](#53-extract-default-non-primitive-parameter-value-from-memoized-component-to-constant)
-   - 5.4 [Extract to Memoized Components](#54-extract-to-memoized-components)
-   - 5.5 [Narrow Effect Dependencies](#55-narrow-effect-dependencies)
-   - 5.6 [Subscribe to Derived State](#56-subscribe-to-derived-state)
-   - 5.7 [Use Functional setState Updates](#57-use-functional-setstate-updates)
-   - 5.8 [Use Lazy State Initialization](#58-use-lazy-state-initialization)
-   - 5.9 [Use Transitions for Non-Urgent Updates](#59-use-transitions-for-non-urgent-updates)
+   - 5.1 [Calculate Derived State During Rendering](#51-calculate-derived-state-during-rendering)
+   - 5.2 [Defer State Reads to Usage Point](#52-defer-state-reads-to-usage-point)
+   - 5.3 [Do not wrap a simple expression with a primitive result type in useMemo](#53-do-not-wrap-a-simple-expression-with-a-primitive-result-type-in-usememo)
+   - 5.4 [Extract Default Non-primitive Parameter Value from Memoized Component to Constant](#54-extract-default-non-primitive-parameter-value-from-memoized-component-to-constant)
+   - 5.5 [Extract to Memoized Components](#55-extract-to-memoized-components)
+   - 5.6 [Narrow Effect Dependencies](#56-narrow-effect-dependencies)
+   - 5.7 [Put Interaction Logic in Event Handlers](#57-put-interaction-logic-in-event-handlers)
+   - 5.8 [Subscribe to Derived State](#58-subscribe-to-derived-state)
+   - 5.9 [Use Functional setState Updates](#59-use-functional-setstate-updates)
+   - 5.10 [Use Lazy State Initialization](#510-use-lazy-state-initialization)
+   - 5.11 [Use Transitions for Non-Urgent Updates](#511-use-transitions-for-non-urgent-updates)
+   - 5.12 [Use useRef for Transient Values](#512-use-useref-for-transient-values)
 6. [Rendering Performance](#6-rendering-performance) — **MEDIUM**
    - 6.1 [Animate SVG Wrapper Instead of SVG Element](#61-animate-svg-wrapper-instead-of-svg-element)
    - 6.2 [CSS content-visibility for Long Lists](#62-css-content-visibility-for-long-lists)
    - 6.3 [Hoist Static JSX Elements](#63-hoist-static-jsx-elements)
    - 6.4 [Optimize SVG Precision](#64-optimize-svg-precision)
    - 6.5 [Prevent Hydration Mismatch Without Flickering](#65-prevent-hydration-mismatch-without-flickering)
-   - 6.6 [Use Activity Component for Show/Hide](#66-use-activity-component-for-showhide)
-   - 6.7 [Use Explicit Conditional Rendering](#67-use-explicit-conditional-rendering)
-   - 6.8 [Use useTransition Over Manual Loading States](#68-use-usetransition-over-manual-loading-states)
+   - 6.6 [Suppress Expected Hydration Mismatches](#66-suppress-expected-hydration-mismatches)
+   - 6.7 [Use Activity Component for Show/Hide](#67-use-activity-component-for-showhide)
+   - 6.8 [Use Explicit Conditional Rendering](#68-use-explicit-conditional-rendering)
+   - 6.9 [Use useTransition Over Manual Loading States](#69-use-usetransition-over-manual-loading-states)
 7. [JavaScript Performance](#7-javascript-performance) — **LOW-MEDIUM**
    - 7.1 [Avoid Layout Thrashing](#71-avoid-layout-thrashing)
    - 7.2 [Build Index Maps for Repeated Lookups](#72-build-index-maps-for-repeated-lookups)
@@ -78,8 +82,9 @@ Comprehensive performance optimization guide for React and Next.js applications,
    - 7.11 [Use Set/Map for O(1) Lookups](#711-use-setmap-for-o1-lookups)
    - 7.12 [Use toSorted() Instead of sort() for Immutability](#712-use-tosorted-instead-of-sort-for-immutability)
 8. [Advanced Patterns](#8-advanced-patterns) — **LOW**
-   - 8.1 [Store Event Handlers in Refs](#81-store-event-handlers-in-refs)
-   - 8.2 [useEffectEvent for Stable Callback Refs](#82-useeffectevent-for-stable-callback-refs)
+   - 8.1 [Initialize App Once, Not Per Mount](#81-initialize-app-once-not-per-mount)
+   - 8.2 [Store Event Handlers in Refs](#82-store-event-handlers-in-refs)
+   - 8.3 [useEffectEvent for Stable Callback Refs](#83-useeffectevent-for-stable-callback-refs)
 
 ---
 
@@ -1278,7 +1283,43 @@ function cachePrefs(user: FullUser) {
 
 Reducing unnecessary re-renders minimizes wasted computation and improves UI responsiveness.
 
-### 5.1 Defer State Reads to Usage Point
+### 5.1 Calculate Derived State During Rendering
+
+**Impact: MEDIUM (avoids redundant renders and state drift)**
+
+If a value can be computed from current props/state, do not store it in state or update it in an effect. Derive it during render to avoid extra renders and state drift. Do not set state in effects solely in response to prop changes; prefer derived values or keyed resets instead.
+
+**Incorrect: redundant state and effect**
+
+```tsx
+function Form() {
+  const [firstName, setFirstName] = useState('First')
+  const [lastName, setLastName] = useState('Last')
+  const [fullName, setFullName] = useState('')
+
+  useEffect(() => {
+    setFullName(firstName + ' ' + lastName)
+  }, [firstName, lastName])
+
+  return <p>{fullName}</p>
+}
+```
+
+**Correct: derive during render**
+
+```tsx
+function Form() {
+  const [firstName, setFirstName] = useState('First')
+  const [lastName, setLastName] = useState('Last')
+  const fullName = firstName + ' ' + lastName
+
+  return <p>{fullName}</p>
+}
+```
+
+Reference: [https://react.dev/learn/you-might-not-need-an-effect](https://react.dev/learn/you-might-not-need-an-effect)
+
+### 5.2 Defer State Reads to Usage Point
 
 **Impact: MEDIUM (avoids unnecessary subscriptions)**
 
@@ -1313,7 +1354,7 @@ function ShareButton({ chatId }: { chatId: string }) {
 }
 ```
 
-### 5.2 Do not wrap a simple expression with a primitive result type in useMemo
+### 5.3 Do not wrap a simple expression with a primitive result type in useMemo
 
 **Impact: LOW-MEDIUM (wasted computation on every render)**
 
@@ -1345,7 +1386,7 @@ function Header({ user, notifications }: Props) {
 }
 ```
 
-### 5.3 Extract Default Non-primitive Parameter Value from Memoized Component to Constant
+### 5.4 Extract Default Non-primitive Parameter Value from Memoized Component to Constant
 
 **Impact: MEDIUM (restores memoization by using a constant for default value)**
 
@@ -1377,7 +1418,7 @@ const UserAvatar = memo(function UserAvatar({ onClick = NOOP }: { onClick?: () =
 <UserAvatar />
 ```
 
-### 5.4 Extract to Memoized Components
+### 5.5 Extract to Memoized Components
 
 **Impact: MEDIUM (enables early returns)**
 
@@ -1417,7 +1458,7 @@ function Profile({ user, loading }: Props) {
 
 **Note:** If your project has [React Compiler](https://react.dev/learn/react-compiler) enabled, manual memoization with `memo()` and `useMemo()` is not necessary. The compiler automatically optimizes re-renders.
 
-### 5.5 Narrow Effect Dependencies
+### 5.6 Narrow Effect Dependencies
 
 **Impact: LOW (minimizes effect re-runs)**
 
@@ -1458,7 +1499,48 @@ useEffect(() => {
 }, [isMobile])
 ```
 
-### 5.6 Subscribe to Derived State
+### 5.7 Put Interaction Logic in Event Handlers
+
+**Impact: MEDIUM (avoids effect re-runs and duplicate side effects)**
+
+If a side effect is triggered by a specific user action (submit, click, drag), run it in that event handler. Do not model the action as state + effect; it makes effects re-run on unrelated changes and can duplicate the action.
+
+**Incorrect: event modeled as state + effect**
+
+```tsx
+function Form() {
+  const [submitted, setSubmitted] = useState(false)
+  const theme = useContext(ThemeContext)
+
+  useEffect(() => {
+    if (submitted) {
+      post('/api/register')
+      showToast('Registered', theme)
+    }
+  }, [submitted, theme])
+
+  return <button onClick={() => setSubmitted(true)}>Submit</button>
+}
+```
+
+**Correct: do it in the handler**
+
+```tsx
+function Form() {
+  const theme = useContext(ThemeContext)
+
+  function handleSubmit() {
+    post('/api/register')
+    showToast('Registered', theme)
+  }
+
+  return <button onClick={handleSubmit}>Submit</button>
+}
+```
+
+Reference: [https://react.dev/learn/removing-effect-dependencies#should-this-code-move-to-an-event-handler](https://react.dev/learn/removing-effect-dependencies#should-this-code-move-to-an-event-handler)
+
+### 5.8 Subscribe to Derived State
 
 **Impact: MEDIUM (reduces re-render frequency)**
 
@@ -1483,7 +1565,7 @@ function Sidebar() {
 }
 ```
 
-### 5.7 Use Functional setState Updates
+### 5.9 Use Functional setState Updates
 
 **Impact: MEDIUM (prevents stale closures and unnecessary callback recreations)**
 
@@ -1561,7 +1643,7 @@ function TodoList() {
 
 **Note:** If your project has [React Compiler](https://react.dev/learn/react-compiler) enabled, the compiler can automatically optimize some cases, but functional updates are still recommended for correctness and to prevent stale closure bugs.
 
-### 5.8 Use Lazy State Initialization
+### 5.10 Use Lazy State Initialization
 
 **Impact: MEDIUM (wasted computation on every render)**
 
@@ -1615,7 +1697,7 @@ Use lazy initialization when computing initial values from localStorage/sessionS
 
 For simple primitives (`useState(0)`), direct references (`useState(props.value)`), or cheap literals (`useState({})`), the function form is unnecessary.
 
-### 5.9 Use Transitions for Non-Urgent Updates
+### 5.11 Use Transitions for Non-Urgent Updates
 
 **Impact: MEDIUM (maintains UI responsiveness)**
 
@@ -1648,6 +1730,75 @@ function ScrollTracker() {
     window.addEventListener('scroll', handler, { passive: true })
     return () => window.removeEventListener('scroll', handler)
   }, [])
+}
+```
+
+### 5.12 Use useRef for Transient Values
+
+**Impact: MEDIUM (avoids unnecessary re-renders on frequent updates)**
+
+When a value changes frequently and you don't want a re-render on every update (e.g., mouse trackers, intervals, transient flags), store it in `useRef` instead of `useState`. Keep component state for UI; use refs for temporary DOM-adjacent values. Updating a ref does not trigger a re-render.
+
+**Incorrect: renders every update**
+
+```tsx
+function Tracker() {
+  const [lastX, setLastX] = useState(0)
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => setLastX(e.clientX)
+    window.addEventListener('mousemove', onMove)
+    return () => window.removeEventListener('mousemove', onMove)
+  }, [])
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: lastX,
+        width: 8,
+        height: 8,
+        background: 'black',
+      }}
+    />
+  )
+}
+```
+
+**Correct: no re-render for tracking**
+
+```tsx
+function Tracker() {
+  const lastXRef = useRef(0)
+  const dotRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      lastXRef.current = e.clientX
+      const node = dotRef.current
+      if (node) {
+        node.style.transform = `translateX(${e.clientX}px)`
+      }
+    }
+    window.addEventListener('mousemove', onMove)
+    return () => window.removeEventListener('mousemove', onMove)
+  }, [])
+
+  return (
+    <div
+      ref={dotRef}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: 8,
+        height: 8,
+        background: 'black',
+        transform: 'translateX(0px)',
+      }}
+    />
+  )
 }
 ```
 
@@ -1880,7 +2031,33 @@ The inline script executes synchronously before showing the element, ensuring th
 
 This pattern is especially useful for theme toggles, user preferences, authentication states, and any client-only data that should render immediately without flashing default values.
 
-### 6.6 Use Activity Component for Show/Hide
+### 6.6 Suppress Expected Hydration Mismatches
+
+**Impact: LOW-MEDIUM (avoids noisy hydration warnings for known differences)**
+
+In SSR frameworks (e.g., Next.js), some values are intentionally different on server vs client (random IDs, dates, locale/timezone formatting). For these *expected* mismatches, wrap the dynamic text in an element with `suppressHydrationWarning` to prevent noisy warnings. Do not use this to hide real bugs. Don’t overuse it.
+
+**Incorrect: known mismatch warnings**
+
+```tsx
+function Timestamp() {
+  return <span>{new Date().toLocaleString()}</span>
+}
+```
+
+**Correct: suppress expected mismatch only**
+
+```tsx
+function Timestamp() {
+  return (
+    <span suppressHydrationWarning>
+      {new Date().toLocaleString()}
+    </span>
+  )
+}
+```
+
+### 6.7 Use Activity Component for Show/Hide
 
 **Impact: MEDIUM (preserves state/DOM)**
 
@@ -1902,7 +2079,7 @@ function Dropdown({ isOpen }: Props) {
 
 Avoids expensive re-renders and state loss.
 
-### 6.7 Use Explicit Conditional Rendering
+### 6.8 Use Explicit Conditional Rendering
 
 **Impact: LOW (prevents rendering 0 or NaN)**
 
@@ -1938,7 +2115,7 @@ function Badge({ count }: { count: number }) {
 // When count = 5, renders: <div><span class="badge">5</span></div>
 ```
 
-### 6.8 Use useTransition Over Manual Loading States
+### 6.9 Use useTransition Over Manual Loading States
 
 **Impact: LOW (reduces re-renders and improves code clarity)**
 
@@ -2635,7 +2812,45 @@ const sorted = [...items].sort((a, b) => a.value - b.value)
 
 Advanced patterns for specific cases that require careful implementation.
 
-### 8.1 Store Event Handlers in Refs
+### 8.1 Initialize App Once, Not Per Mount
+
+**Impact: LOW-MEDIUM (avoids duplicate init in development)**
+
+Do not put app-wide initialization that must run once per app load inside `useEffect([])` of a component. Components can remount and effects will re-run. Use a module-level guard or top-level init in the entry module instead.
+
+**Incorrect: runs twice in dev, re-runs on remount**
+
+```tsx
+function Comp() {
+  useEffect(() => {
+    loadFromStorage()
+    checkAuthToken()
+  }, [])
+
+  // ...
+}
+```
+
+**Correct: once per app load**
+
+```tsx
+let didInit = false
+
+function Comp() {
+  useEffect(() => {
+    if (didInit) return
+    didInit = true
+    loadFromStorage()
+    checkAuthToken()
+  }, [])
+
+  // ...
+}
+```
+
+Reference: [https://react.dev/learn/you-might-not-need-an-effect#initializing-the-application](https://react.dev/learn/you-might-not-need-an-effect#initializing-the-application)
+
+### 8.2 Store Event Handlers in Refs
 
 **Impact: LOW (stable subscriptions)**
 
@@ -2671,7 +2886,7 @@ function useWindowEvent(event: string, handler: (e) => void) {
 
 `useEffectEvent` provides a cleaner API for the same pattern: it creates a stable function reference that always calls the latest version of the handler.
 
-### 8.2 useEffectEvent for Stable Callback Refs
+### 8.3 useEffectEvent for Stable Callback Refs
 
 **Impact: LOW (prevents effect re-runs)**
 
