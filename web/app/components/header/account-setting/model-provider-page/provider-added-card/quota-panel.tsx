@@ -12,44 +12,38 @@ import InstallFromMarketplace from '@/app/components/plugins/install-plugin/inst
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useTimestamp from '@/hooks/use-timestamp'
+import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import { PreferredProviderTypeEnum } from '../declarations'
 import { useMarketplaceAllPlugins } from '../hooks'
-import { modelNameMap, ModelProviderQuotaGetPaid } from '../utils'
+import { MODEL_PROVIDER_QUOTA_GET_PAID, modelNameMap } from '../utils'
 
-type ProviderConfig = {
-  key: ModelProviderQuotaGetPaid
-  Icon: ComponentType<{ className?: string }>
+// Icon map for each provider - single source of truth for provider icons
+const providerIconMap: Record<ModelProviderQuotaGetPaid, ComponentType<{ className?: string }>> = {
+  [ModelProviderQuotaGetPaid.OPENAI]: OpenaiSmall,
+  [ModelProviderQuotaGetPaid.ANTHROPIC]: AnthropicShortLight,
+  [ModelProviderQuotaGetPaid.GEMINI]: Gemini,
+  [ModelProviderQuotaGetPaid.X]: Grok,
+  [ModelProviderQuotaGetPaid.DEEPSEEK]: Deepseek,
+  [ModelProviderQuotaGetPaid.TONGYI]: Tongyi,
 }
 
-const allProviders: ProviderConfig[] = [
-  { key: ModelProviderQuotaGetPaid.OPENAI, Icon: OpenaiSmall },
-  { key: ModelProviderQuotaGetPaid.ANTHROPIC, Icon: AnthropicShortLight },
-  { key: ModelProviderQuotaGetPaid.GEMINI, Icon: Gemini },
-  { key: ModelProviderQuotaGetPaid.X, Icon: Grok },
-  { key: ModelProviderQuotaGetPaid.DEEPSEEK, Icon: Deepseek },
-  { key: ModelProviderQuotaGetPaid.TONGYI, Icon: Tongyi },
-]
+// Derive allProviders from the shared constant
+const allProviders = MODEL_PROVIDER_QUOTA_GET_PAID.map(key => ({
+  key,
+  Icon: providerIconMap[key],
+}))
 
 // Map provider key to plugin ID
 // provider key format: langgenius/provider/model, plugin ID format: langgenius/provider
-const providerKeyToPluginId: Record<string, string> = {
+const providerKeyToPluginId: Record<ModelProviderQuotaGetPaid, string> = {
   [ModelProviderQuotaGetPaid.OPENAI]: 'langgenius/openai',
   [ModelProviderQuotaGetPaid.ANTHROPIC]: 'langgenius/anthropic',
   [ModelProviderQuotaGetPaid.GEMINI]: 'langgenius/gemini',
   [ModelProviderQuotaGetPaid.X]: 'langgenius/x',
   [ModelProviderQuotaGetPaid.DEEPSEEK]: 'langgenius/deepseek',
   [ModelProviderQuotaGetPaid.TONGYI]: 'langgenius/tongyi',
-}
-
-const providerNameMap = {
-  [ModelProviderQuotaGetPaid.OPENAI]: 'OpenAI',
-  [ModelProviderQuotaGetPaid.ANTHROPIC]: 'Anthropic',
-  [ModelProviderQuotaGetPaid.GEMINI]: 'Gemini',
-  [ModelProviderQuotaGetPaid.X]: 'xAI',
-  [ModelProviderQuotaGetPaid.DEEPSEEK]: 'DeepSeek',
-  [ModelProviderQuotaGetPaid.TONGYI]: 'Tongyi',
 }
 
 type QuotaPanelProps = {
@@ -78,7 +72,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   }] = useBoolean(false)
   const selectedPluginIdRef = useRef<string | null>(null)
 
-  const handleIconClick = useCallback((key: string) => {
+  const handleIconClick = useCallback((key: ModelProviderQuotaGetPaid) => {
     const providerType = providerMap.get(key)
     if (!providerType && allPlugins) {
       const pluginId = providerKeyToPluginId[key]
@@ -113,7 +107,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
     <div className={cn('my-2 min-w-[72px] shrink-0 rounded-xl border-[0.5px] pb-2.5 pl-4 pr-2.5 pt-3 shadow-xs', credits <= 0 ? 'border-state-destructive-border hover:bg-state-destructive-hover' : 'border-components-panel-border bg-third-party-model-bg-default')}>
       <div className="system-xs-medium-uppercase mb-2 flex h-4 items-center text-text-tertiary">
         {t('modelProvider.quota', { ns: 'common' })}
-        <Tooltip popupContent={t('modelProvider.card.tip', { ns: 'common', modelNames: trial_models.map(key => providerNameMap[key as keyof typeof providerNameMap]).filter(Boolean).join(', ') })} />
+        <Tooltip popupContent={t('modelProvider.card.tip', { ns: 'common', modelNames: trial_models.map(key => modelNameMap[key as keyof typeof modelNameMap]).filter(Boolean).join(', ') })} />
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 text-xs text-text-tertiary">
@@ -135,7 +129,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
             : null}
         </div>
         <div className="flex items-center gap-1">
-          {allProviders.map(({ key, Icon }) => {
+          {allProviders.filter(({ key }) => trial_models.includes(key)).map(({ key, Icon }) => {
             const providerType = providerMap.get(key)
             const usingQuota = providerType === PreferredProviderTypeEnum.system
             const getTooltipKey = () => {
@@ -146,22 +140,21 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
               return 'modelProvider.card.modelNotSupported'
             }
             return (
-              trial_models.includes(key) && (
-                <Tooltip
-                  key={key}
-                  popupContent={t(getTooltipKey(), { modelName: modelNameMap[key], ns: 'common' })}
+              <Tooltip
+                key={key}
+                popupContent={t(getTooltipKey(), { modelName: modelNameMap[key], ns: 'common' })}
+              >
+                <div
+                  className={cn('relative h-6 w-6', !providerType && 'cursor-pointer hover:opacity-80')}
+                  onClick={() => handleIconClick(key)}
                 >
-                  <div
-                    className={cn('relative h-6 w-6', !providerType && 'cursor-pointer hover:opacity-80')}
-                    onClick={() => handleIconClick(key)}
-                  >
-                    <Icon className="h-6 w-6 rounded-lg" />
-                    {!usingQuota && (
-                      <div className="absolute inset-0 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge opacity-30" />
-                    )}
-                  </div>
-                </Tooltip>
-              ))
+                  <Icon className="h-6 w-6 rounded-lg" />
+                  {!usingQuota && (
+                    <div className="absolute inset-0 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge opacity-30" />
+                  )}
+                </div>
+              </Tooltip>
+            )
           })}
         </div>
       </div>

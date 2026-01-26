@@ -1,4 +1,4 @@
-import type { ModelProviderQuotaGetPaid } from '@/app/components/header/account-setting/model-provider-page/utils'
+import type { ModelProviderQuotaGetPaid } from './model-provider'
 
 export enum SSOProtocol {
   SAML = 'saml',
