@@ -11,7 +11,6 @@ import logging
 from celery import shared_task
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import sessionmaker
 
 from core.db.session_factory import session_factory
 from core.workflow.entities.workflow_execution import WorkflowExecution
