@@ -14,7 +14,8 @@ class CodeBasedExtensionService:
     def get_code_based_extension(module: str):
         module_extensions = code_based_extension.module_extensions(module)
         return [
-            Extension(name=module_extension.name,
+            Extension(
+                name=module_extension.name,
                 label=module_extension.label,
                 form_schema=module_extension.form_schema,
             )
