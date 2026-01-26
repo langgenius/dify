@@ -1185,6 +1185,8 @@
   "tabs.usePlugin": "Select tool",
   "tabs.utilities": "Utilities",
   "tabs.workflowTool": "Workflow",
+  "toolGroup.actionsEnabled": "{{num}} ACTIONS ENABLED",
+  "toolGroup.byAuthor": "by {{author}}",
   "tracing.stopBy": "Stop by {{user}}",
   "triggerStatus.disabled": "TRIGGER • DISABLED",
   "triggerStatus.enabled": "TRIGGER",

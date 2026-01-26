@@ -1175,6 +1175,8 @@
   "tabs.usePlugin": "选择工具",
   "tabs.utilities": "工具",
   "tabs.workflowTool": "工作流",
+  "toolGroup.actionsEnabled": "{{num}} 个操作已启用",
+  "toolGroup.byAuthor": "由 {{author}} 提供",
   "tracing.stopBy": "由{{user}}终止",
   "triggerStatus.disabled": "触发器 • 已禁用",
   "triggerStatus.enabled": "触发器",
