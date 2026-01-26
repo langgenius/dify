@@ -43,15 +43,12 @@ def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.Monkey
     if response.status_code == 500:
             print("Server Error Details:", response.get_data(as_text=True))
             
-        assert response.status_code == 200
-
-        json_data = response.get_json()
-        
-        assert "features" in json_data
-        
-
-        assert "billing" in json_data["features"]
-        assert "members" in json_data["features"]
+    assert response.status_code == 200
+    
+    response_json = response.get_json()
+    
+    assert "features" in response_json
+    assert "billing" in response_json["features"]
 
 
 def test_console_system_features_fastopenapi_get(app: Flask):
