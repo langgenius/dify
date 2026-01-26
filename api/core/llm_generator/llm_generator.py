@@ -476,11 +476,8 @@ class LLMGenerator:
             )
 
             return {
-                "variables": response.variables,
+                **response.model_dump(),
                 "code_language": language,
-                "code": response.code,
-                "outputs": response.outputs,
-                "message": response.explanation,
                 "error": "",
             }
 
@@ -529,7 +526,7 @@ class LLMGenerator:
         )
 
         prompt_messages: list[PromptMessage] = [
-            SystemPromptMessage(content=system_prompt),
+            UserPromptMessage(content=system_prompt),
         ]
 
         # Get model instance - use default if model_config not provided

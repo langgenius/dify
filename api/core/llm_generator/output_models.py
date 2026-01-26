@@ -55,7 +55,7 @@ class CodeNodeStructuredOutput(BaseModel):
     outputs: list[CodeNodeOutputItem] = Field(
         description="Output variable definitions specifying name and type for each return value"
     )
-    explanation: str = Field(description="Brief explanation of what the generated code does")
+    message: str = Field(description="Brief explanation of what the generated code does")
 
 
 class InstructionModifyOutput(BaseModel):
