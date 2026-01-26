@@ -1111,6 +1111,14 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Enable queue monitor task",
         default=False,
     )
+    ENABLE_HUMAN_INPUT_TIMEOUT_TASK: bool = Field(
+        description="Enable human input timeout check task",
+        default=True,
+    )
+    HUMAN_INPUT_TIMEOUT_TASK_INTERVAL: PositiveInt = Field(
+        description="Human input timeout check interval in minutes",
+        default=1,
+    )
     ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: bool = Field(
         description="Enable check upgradable plugin task",
         default=True,

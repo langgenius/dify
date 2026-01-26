@@ -66,7 +66,7 @@ def _handle_global_timeout(*, form_id: str, workflow_run_id: str, node_id: str, 
             session.add(pause_model)
 
 
-@shared_task(name="human_input_form_timeout.check_and_resume")
+@shared_task(name="human_input_form_timeout.check_and_resume", queue="schedule_executor")
 def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
     """Scan for expired human input forms and resume or end workflows."""
 
