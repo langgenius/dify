@@ -1061,6 +1061,7 @@
   "skillEditor.unsupportedPreview": "该文件类型不支持预览",
   "skillSidebar.addFile": "上传文件",
   "skillSidebar.addFolder": "新建文件夹",
+  "skillSidebar.artifacts.emptyState": "代理在测试运行期间生成的文件。这些文件可能会在稍后自动清除。",
   "skillSidebar.artifacts.openArtifacts": "打开产物文件夹",
   "skillSidebar.artifacts.title": "产物",
   "skillSidebar.dragAction.moveTo": "移动到 ",
