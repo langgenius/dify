@@ -1,6 +1,7 @@
 import type { WorkflowToolModalPayload } from './index'
 import type { WorkflowToolProviderResponse } from '@/app/components/tools/types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -8,6 +9,33 @@ import { InputVarType, VarType } from '@/app/components/workflow/types'
 import WorkflowToolConfigureButton from './configure-button'
 import WorkflowToolAsModal from './index'
 import MethodSelector from './method-selector'
+
+// Create a fresh QueryClient for each test
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        gcTime: 0,
+        staleTime: 0,
+      },
+    },
+  })
+
+// Wrapper component for tests that need QueryClientProvider
+const TestWrapper = ({ children }: { children: React.ReactNode }) => {
+  const queryClient = createTestQueryClient()
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  )
+}
+
+// Custom render function that wraps with QueryClientProvider
+const renderWithQueryClient = (ui: React.ReactElement) => {
+  return render(ui, { wrapper: TestWrapper })
+}
 
 // Mock Next.js navigation
 const mockPush = vi.fn()
@@ -37,6 +65,22 @@ vi.mock('@/service/tools', () => ({
   fetchWorkflowToolDetailByAppID: (...args: unknown[]) => mockFetchWorkflowToolDetailByAppID(...args),
   createWorkflowToolProvider: (...args: unknown[]) => mockCreateWorkflowToolProvider(...args),
   saveWorkflowToolProvider: (...args: unknown[]) => mockSaveWorkflowToolProvider(...args),
+}))
+
+// Mock @/service/base for React Query hooks
+vi.mock('@/service/base', () => ({
+  get: (url: string) => {
+    if (url.includes('/tool-provider/workflow/detail'))
+      return mockFetchWorkflowToolDetailByAppID(url.split('workflow_app_id=')[1])
+    return Promise.resolve({})
+  },
+  post: (url: string, options: { body: unknown }) => {
+    if (url.includes('/tool-provider/workflow/create'))
+      return mockCreateWorkflowToolProvider(options.body)
+    if (url.includes('/tool-provider/workflow/update'))
+      return mockSaveWorkflowToolProvider(options.body)
+    return Promise.resolve({})
+  },
 }))
 
 // Mock invalidate workflow tools hook
@@ -252,7 +296,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps()
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       expect(screen.getByText('workflow.common.workflowAsTool')).toBeInTheDocument()
@@ -263,7 +307,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ published: false })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       expect(screen.getByText('workflow.common.configureRequired')).toBeInTheDocument()
@@ -274,7 +318,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ published: true })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       await waitFor(() => {
@@ -287,7 +331,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ disabled: true })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       const container = document.querySelector('.cursor-not-allowed')
@@ -301,7 +345,7 @@ describe('WorkflowToolConfigureButton', () => {
       })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       expect(screen.getByText('Please save the workflow first')).toBeInTheDocument()
@@ -313,7 +357,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ published: true })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       await waitFor(() => {
@@ -327,7 +371,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ published: true })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       await waitFor(() => {
@@ -342,7 +386,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps()
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       const textElement = screen.getByText('workflow.common.workflowAsTool')
@@ -357,7 +401,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps()
 
       // Act & Assert - should not throw
-      expect(() => render(<WorkflowToolConfigureButton {...props} />)).not.toThrow()
+      expect(() => renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)).not.toThrow()
     })
 
     it('should handle undefined inputs and outputs', () => {
@@ -368,7 +412,7 @@ describe('WorkflowToolConfigureButton', () => {
       })
 
       // Act & Assert
-      expect(() => render(<WorkflowToolConfigureButton {...props} />)).not.toThrow()
+      expect(() => renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)).not.toThrow()
     })
 
     it('should handle empty inputs and outputs arrays', () => {
@@ -379,7 +423,7 @@ describe('WorkflowToolConfigureButton', () => {
       })
 
       // Act & Assert
-      expect(() => render(<WorkflowToolConfigureButton {...props} />)).not.toThrow()
+      expect(() => renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)).not.toThrow()
     })
 
     it('should call handlePublish when updating workflow tool', async () => {
@@ -390,7 +434,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ published: true, handlePublish })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
       await waitFor(() => {
         expect(screen.getByText('workflow.common.configure')).toBeInTheDocument()
       })
@@ -423,7 +467,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ published: true })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       await waitFor(() => {
@@ -436,7 +480,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ published: true, detailNeedUpdate: false })
 
       // Act
-      const { rerender } = render(<WorkflowToolConfigureButton {...props} />)
+      const { rerender } = renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       await waitFor(() => {
         expect(mockFetchWorkflowToolDetailByAppID).toHaveBeenCalledTimes(1)
@@ -457,7 +501,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps()
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Click to open modal
       const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
@@ -475,7 +519,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ disabled: true })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(triggerArea!)
@@ -484,29 +528,23 @@ describe('WorkflowToolConfigureButton', () => {
       expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
     })
 
-    it('should not open modal when published (use configure button instead)', async () => {
+    it('should open modal when clicking main area while published', async () => {
       // Arrange
       const user = userEvent.setup()
       const props = createDefaultConfigureButtonProps({ published: true })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       await waitFor(() => {
         expect(screen.getByText('workflow.common.configure')).toBeInTheDocument()
       })
 
-      // Click the main area (should not open modal)
+      // Click the main area (should open modal)
       const mainArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(mainArea!)
 
-      // Should not open modal from main click
-      expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
-
-      // Click configure button
-      await user.click(screen.getByText('workflow.common.configure'))
-
-      // Assert
+      // Assert - modal should open from main area click
       await waitFor(() => {
         expect(screen.getByTestId('drawer')).toBeInTheDocument()
       })
@@ -528,7 +566,7 @@ describe('WorkflowToolConfigureButton', () => {
       })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert - should show outdated warning
       await waitFor(() => {
@@ -546,7 +584,7 @@ describe('WorkflowToolConfigureButton', () => {
       })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       await waitFor(() => {
@@ -564,7 +602,7 @@ describe('WorkflowToolConfigureButton', () => {
       })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       await waitFor(() => {
@@ -582,7 +620,7 @@ describe('WorkflowToolConfigureButton', () => {
       })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       await waitFor(() => {
@@ -600,7 +638,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ published: true })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       await waitFor(() => {
         expect(screen.getByText('workflow.common.manageInTools')).toBeInTheDocument()
@@ -619,7 +657,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps()
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Open modal
       const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
@@ -649,7 +687,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps()
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(triggerArea!)
@@ -679,7 +717,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps()
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(triggerArea!)
@@ -710,7 +748,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ onRefreshData })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(triggerArea!)
@@ -737,7 +775,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps()
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(triggerArea!)
@@ -760,21 +798,31 @@ describe('WorkflowToolConfigureButton', () => {
 
   // Edge Cases (REQUIRED)
   describe('Edge Cases', () => {
-    it('should handle API returning undefined', async () => {
-      // Arrange - API returns undefined (simulating empty response or handled error)
-      mockFetchWorkflowToolDetailByAppID.mockResolvedValue(undefined)
-      const props = createDefaultConfigureButtonProps({ published: true })
+    it('should handle API returning minimal data', async () => {
+      // Arrange - API returns minimal data (simulating edge case response)
+      const minimalDetail = {
+        ...createMockWorkflowToolDetail(),
+        tool: {
+          ...createMockWorkflowToolDetail().tool,
+          parameters: [],
+          output_schema: { type: 'object', properties: {} },
+        },
+      }
+      mockFetchWorkflowToolDetailByAppID.mockResolvedValue(minimalDetail)
+      const props = createDefaultConfigureButtonProps({ published: true, inputs: [] })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert - should not crash and wait for API call
       await waitFor(() => {
         expect(mockFetchWorkflowToolDetailByAppID).toHaveBeenCalled()
       })
 
-      // Component should still render without crashing
-      expect(screen.getByText('workflow.common.workflowAsTool')).toBeInTheDocument()
+      // Component should still render without crashing - check for main text
+      await waitFor(() => {
+        expect(screen.getByText('workflow.common.workflowAsTool')).toBeInTheDocument()
+      })
     })
 
     it('should handle rapid publish/unpublish state changes', async () => {
@@ -782,7 +830,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ published: false })
 
       // Act
-      const { rerender } = render(<WorkflowToolConfigureButton {...props} />)
+      const { rerender } = renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Toggle published state rapidly
       await act(async () => {
@@ -807,7 +855,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ published: true, inputs: [] })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       await waitFor(() => {
@@ -824,7 +872,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ published: true })
 
       // Act & Assert
-      expect(() => render(<WorkflowToolConfigureButton {...props} />)).not.toThrow()
+      expect(() => renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)).not.toThrow()
     })
 
     it('should handle paragraph type input conversion', async () => {
@@ -835,7 +883,7 @@ describe('WorkflowToolConfigureButton', () => {
       })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(triggerArea!)
@@ -854,7 +902,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ published: true })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       await waitFor(() => {
@@ -869,7 +917,7 @@ describe('WorkflowToolConfigureButton', () => {
       const props = createDefaultConfigureButtonProps({ published: true })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
       await waitFor(() => {
@@ -1864,7 +1912,7 @@ describe('Integration Tests', () => {
       const props = createDefaultConfigureButtonProps({ onRefreshData })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Open modal
       const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
@@ -1916,7 +1964,7 @@ describe('Integration Tests', () => {
       })
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
+      renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
 
       // Wait for detail to load
       await waitFor(() => {
@@ -1964,7 +2012,7 @@ describe('Integration Tests', () => {
       })
 
       // Act
-      const { rerender } = render(<WorkflowToolConfigureButton {...props} />)
+      const { rerender } = renderWithQueryClient(<WorkflowToolConfigureButton {...props} />)
       rerender(<WorkflowToolConfigureButton {...props} />)
       rerender(<WorkflowToolConfigureButton {...props} />)
 

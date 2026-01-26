@@ -62,7 +62,7 @@ const UnpublishedCard = ({ disabled, isManager, onConfigureClick }: UnpublishedC
   )
 }
 
-type NonManagerCardProps = object
+type NonManagerCardProps = Record<string, never>
 
 const NonManagerCard = (_props: NonManagerCardProps) => {
   const { t } = useTranslation()
@@ -125,7 +125,7 @@ const PublishedActions = ({ disabled, isManager, outdated, onConfigureClick, onM
 const WorkflowToolConfigureButton = ({
   disabled,
   published,
-  detailNeedUpdate: _detailNeedUpdate,
+  detailNeedUpdate,
   workflowAppId,
   icon,
   name,
@@ -151,6 +151,7 @@ const WorkflowToolConfigureButton = ({
     handleUpdate,
   } = useConfigureButton({
     published,
+    detailNeedUpdate,
     workflowAppId,
     icon,
     name,

@@ -3,7 +3,7 @@ import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest,
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { useBoolean } from 'ahooks'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
@@ -16,6 +16,7 @@ import {
 
 export type ConfigureButtonProps = {
   published: boolean
+  detailNeedUpdate?: boolean
   workflowAppId: string
   icon: Emoji
   name: string
@@ -105,6 +106,7 @@ function buildOutputParameters(outputs: Variable[] | undefined, detail?: Workflo
  */
 export const useConfigureButton = ({
   published,
+  detailNeedUpdate,
   workflowAppId,
   icon,
   name,
@@ -123,6 +125,12 @@ export const useConfigureButton = ({
     isLoading,
     refetch: refetchDetail,
   } = useWorkflowToolDetail(workflowAppId, published)
+
+  // Refetch detail when external updates occur
+  useEffect(() => {
+    if (detailNeedUpdate)
+      refetchDetail()
+  }, [detailNeedUpdate, refetchDetail])
 
   // Mutations
   const { mutateAsync: createTool } = useCreateWorkflowTool()
@@ -151,6 +159,7 @@ export const useConfigureButton = ({
       outputParameters,
       labels: detail?.tool?.labels ?? [],
       privacy_policy: detail?.privacy_policy ?? '',
+      tool: detail?.tool,
       ...(published
         ? { workflow_tool_id: detail?.workflow_tool_id }
         : { workflow_app_id: workflowAppId }),
