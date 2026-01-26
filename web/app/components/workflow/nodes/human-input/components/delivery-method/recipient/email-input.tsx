@@ -1,7 +1,7 @@
 import type { Recipient as RecipientItem } from '../../../types'
 import type { Member } from '@/models/common'
 import * as React from 'react'
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -45,6 +45,8 @@ const EmailInput = ({
       return member ? { ...item, email: member.email, name: member.name } : item
     })
   }, [list, value])
+
+  const isErrorMember = useCallback((emailItem: RecipientItem) => emailItem.type === 'member' && list.every(item => item.id !== emailItem.user_id), [list])
 
   const placeholder = useMemo(() => {
     return (selectedEmails.length === 0 || isFocus)
@@ -135,6 +137,7 @@ const EmailInput = ({
             data={item as unknown as Member}
             onDelete={onDelete}
             disabled={disabled}
+            isError={isErrorMember(item)}
           />
         ))}
         {!disabled && (
