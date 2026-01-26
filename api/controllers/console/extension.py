@@ -1,4 +1,5 @@
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -7,7 +8,7 @@ from controllers.fastopenapi import console_router
 from libs.login import current_account_with_tenant, login_required
 from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
-from services.code_based_extension_service import CodeBasedExtensionService
+from services.code_based_extension_service import CodeBasedExtensionService, Extension
 
 from .wraps import account_initialization_required, setup_required
 
@@ -24,7 +25,7 @@ class APIBasedExtensionPayload(BaseModel):
 
 class CodeBasedExtensionResponse(BaseModel):
     module: str = Field(description="Module name")
-    data: dict = Field(description="Extension data")
+    data: list[Extension] = Field(description="Extension data")
 
 
 class APIBasedExtensionResponse(BaseModel):
@@ -122,7 +123,7 @@ def create_api_based_extension(payload: APIBasedExtensionPayload) -> APIBasedExt
 @setup_required
 @login_required
 @account_initialization_required
-def get_api_based_extension(extension_id: str) -> APIBasedExtensionResponse:
+def get_api_based_extension(extension_id: UUID) -> APIBasedExtensionResponse:
     api_based_extension_id = str(extension_id)
     _, tenant_id = current_account_with_tenant()
 
@@ -140,7 +141,7 @@ def get_api_based_extension(extension_id: str) -> APIBasedExtensionResponse:
 @login_required
 @account_initialization_required
 def update_api_based_extension(
-    extension_id: str,
+    extension_id: UUID,
     payload: APIBasedExtensionPayload,
 ) -> APIBasedExtensionResponse:
     api_based_extension_id = str(extension_id)
@@ -165,7 +166,7 @@ def update_api_based_extension(
 @setup_required
 @login_required
 @account_initialization_required
-def delete_api_based_extension(extension_id: str) -> tuple[DeleteResponse, int]:
+def delete_api_based_extension(extension_id: UUID) -> tuple[DeleteResponse, int]:
     api_based_extension_id = str(extension_id)
     _, current_tenant_id = current_account_with_tenant()
 
