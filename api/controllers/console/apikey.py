@@ -59,11 +59,11 @@ def _get_resource(resource_id: str, tenant_id: str, resource_model: type[App] | 
     resource = None
     with Session(db.engine) as session:
         match resource_model:
-            case App():
+            case App:
                 resource = session.execute(
                     select(App).filter_by(id=resource_id, tenant_id=tenant_id)
                 ).scalar_one_or_none()
-            case Dataset():
+            case Dataset:
                 resource = session.execute(
                     select(Dataset).filter_by(id=resource_id, tenant_id=tenant_id)
                 ).scalar_one_or_none()
