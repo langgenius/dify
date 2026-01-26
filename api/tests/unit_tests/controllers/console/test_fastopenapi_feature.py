@@ -6,9 +6,8 @@ from flask import Flask
 from flask.views import MethodView
 
 from extensions import ext_fastopenapi
-from services.feature_service import FeatureModel, SystemFeatureModel
-
 from models.engine import db
+from services.feature_service import FeatureModel, SystemFeatureModel
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -20,9 +19,9 @@ def app() -> Flask:
     app.config["TESTING"] = True
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    
+
     db.init_app(app)
-    
+
     with app.app_context():
         yield app
 
@@ -51,7 +50,7 @@ def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.Monkey
         print("Server Error Details:", response.get_data(as_text=True))
 
     assert response.status_code == 200
-    
+
     json_resp = response.get_json()
     assert "features" in json_resp
     assert "billing" in json_resp["features"]
