@@ -86,7 +86,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
         showInstallFromMarketplace()
       }
     }
-  }, [allPlugins, installedProvidersMap, showInstallFromMarketplace])
+  }, [allPlugins, providerMap, showInstallFromMarketplace])
 
   useEffect(() => {
     if (isShowInstallModal && selectedPluginIdRef.current) {
