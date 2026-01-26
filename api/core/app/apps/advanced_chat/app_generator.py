@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import contextvars
 import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, Union, overload
+from typing import TYPE_CHECKING, Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -13,6 +15,9 @@ from sqlalchemy.orm import Session, sessionmaker
 import contexts
 from configs import dify_config
 from constants import UUID_NIL
+
+if TYPE_CHECKING:
+    from controllers.console.app.workflow import LoopNodeRunPayload
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
@@ -304,7 +309,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow: Workflow,
         node_id: str,
         user: Account | EndUser,
-        args: Mapping,
+        args: LoopNodeRunPayload,
         streaming: bool = True,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
         """
@@ -320,7 +325,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         if not node_id:
             raise ValueError("node_id is required")
 
-        if args.get("inputs") is None:
+        if args.inputs is None:
             raise ValueError("inputs is required")
 
         # convert to app config
@@ -338,7 +343,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
-            single_loop_run=AdvancedChatAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
+            single_loop_run=AdvancedChatAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args.inputs),
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
