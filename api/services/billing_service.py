@@ -143,6 +143,14 @@ class BillingService:
                 raise ValueError("Invalid arguments.")
         if method == "POST" and response.status_code != httpx.codes.OK:
             raise ValueError(f"Unable to send request to {url}. Please try again later or contact support.")
+        if method == "DELETE" and response.status_code != httpx.codes.OK:
+            logger.error(
+                "billing_service: %s _send_request: response: %s %s", method, response.status_code, response.text
+            )
+            raise ValueError(f"Unable to process delete request {url}. Please try again later or contact support.")
+        logger.info(
+            "billing_service: %s _send_request: response: %s %s", method, response.status_code, response.text
+        )
         return response.json()
 
     @staticmethod
@@ -165,7 +173,7 @@ class BillingService:
     def delete_account(cls, account_id: str):
         """Delete account."""
         params = {"account_id": account_id}
-        return cls._send_request("DELETE", "/account/", params=params)
+        return cls._send_request("DELETE", "/account", params=params)
 
     @classmethod
     def is_email_in_freeze(cls, email: str) -> bool:
