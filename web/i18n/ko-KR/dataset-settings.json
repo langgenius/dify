@@ -16,7 +16,7 @@
   "form.indexMethod": "인덱스 방법",
   "form.indexMethodChangeToEconomyDisabledTip": "HQ 에서 ECO 로 다운그레이드할 수 없습니다.",
   "form.indexMethodEconomy": "경제적",
-  "form.indexMethodEconomyTip": "오프라인 벡터 엔진, 키워드 인덱스 등을 사용하여 토큰을 소비하지 않고도 정확도를 감소시킵니다.",
+  "form.indexMethodEconomyTip": "각 청크에 {{count}}개의 키워드를 사용하여 검색하며, 토큰을 소비하지 않는 대신 정확도가 감소합니다.",
   "form.indexMethodHighQuality": "고품질",
   "form.indexMethodHighQualityTip": "사용자 쿼리 시 더 높은 정확도를 제공하기 위해 Embedding 모델을 호출하여 처리합니다.",
   "form.me": "(당신)",

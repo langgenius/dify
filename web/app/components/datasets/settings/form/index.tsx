@@ -265,7 +265,7 @@ const Form = () => {
         </div>
       </div>
       {
-        currentDataset?.doc_form && (
+        !!currentDataset?.doc_form && (
           <>
             <Divider
               type="horizontal"
@@ -281,7 +281,7 @@ const Form = () => {
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
-                    href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/chunking-and-cleaning-text')}
+                    href={docLink('/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text')}
                     className="text-text-accent"
                   >
                     {t('form.chunkStructure.learnMore', { ns: 'datasetSettings' })}
@@ -298,13 +298,13 @@ const Form = () => {
           </>
         )
       }
-      {(isShowIndexMethod || indexMethod === 'high_quality') && (
+      {!!(isShowIndexMethod || indexMethod === 'high_quality') && (
         <Divider
           type="horizontal"
           className="my-1 h-px bg-divider-subtle"
         />
       )}
-      {isShowIndexMethod && (
+      {!!isShowIndexMethod && (
         <div className={rowClass}>
           <div className={labelClass}>
             <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
@@ -403,7 +403,7 @@ const Form = () => {
               </div>
             </>
           )
-        // eslint-disable-next-line sonarjs/no-nested-conditional
+
         : indexMethod
           ? (
               <>
@@ -421,10 +421,7 @@ const Form = () => {
                         <a
                           target="_blank"
                           rel="noopener noreferrer"
-                          href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting', {
-                            'zh-Hans': '/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#指定检索方式',
-                            'ja-JP': '/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#検索方法の指定',
-                          })}
+                          href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')}
                           className="text-text-accent"
                         >
                           {t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}

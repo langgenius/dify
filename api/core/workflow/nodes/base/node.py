@@ -469,12 +469,8 @@ class Node(Generic[NodeDataT]):
         import core.workflow.nodes as _nodes_pkg
 
         for _, _modname, _ in pkgutil.walk_packages(_nodes_pkg.__path__, _nodes_pkg.__name__ + "."):
-            # Avoid importing modules that depend on the registry to prevent circular imports
-            # e.g. node_factory imports node_mapping which builds the mapping here.
-            if _modname in {
-                "core.workflow.nodes.node_factory",
-                "core.workflow.nodes.node_mapping",
-            }:
+            # Avoid importing modules that depend on the registry to prevent circular imports.
+            if _modname == "core.workflow.nodes.node_mapping":
                 continue
             importlib.import_module(_modname)
 
