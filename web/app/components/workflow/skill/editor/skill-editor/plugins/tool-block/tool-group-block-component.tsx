@@ -4,13 +4,12 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { RiCloseLine } from '@remixicon/react'
+import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Modal from '@/app/components/base/modal'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
 import Switch from '@/app/components/base/switch'
@@ -650,7 +649,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
         )}
       </div>
       {!needAuthorization && (
-        <div className="flex flex-col gap-2 px-4 pb-4 pt-1">
+        <div className="mt-2 flex flex-col gap-2 border-t border-divider-subtle px-4 pb-4 pt-2">
           <div className="system-sm-semibold-uppercase text-text-secondary">
             {t('toolGroup.actionsEnabled', { ns: 'workflow', num: displayEnabledCount })}
           </div>
@@ -659,8 +658,8 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
               <div
                 key={item.configId}
                 className={cn(
-                  'rounded-xl border-[0.5px] border-components-panel-border-subtle px-3 py-2 shadow-xs',
-                  'bg-components-panel-item-bg',
+                  'group cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-3 py-2 shadow-xs',
+                  'bg-components-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover',
                 )}
               >
                 <div className="flex items-center gap-2">
@@ -669,16 +668,19 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
                   </div>
                   {item.toolParams?.length
                     ? (
-                        <button
-                          type="button"
-                          className="flex items-center gap-1 rounded-md px-2 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                          onClick={() => {
-                            setExpandedToolId(item.configId)
-                          }}
-                        >
-                          <Settings01 className="h-3 w-3" />
-                          <span className="system-xs-medium">{t('operation.settings', { ns: 'common' })}</span>
-                        </button>
+                        <div className="hidden items-center group-hover:flex">
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 rounded-md px-2 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                            onClick={() => {
+                              setExpandedToolId(item.configId)
+                            }}
+                          >
+                            <RiEqualizer2Line className="size-3.5" />
+                            <span className="system-xs-medium">{t('operation.settings', { ns: 'common' })}</span>
+                          </button>
+                          <div className="mx-1 h-3 w-px bg-divider-regular "></div>
+                        </div>
                       )
                     : null}
                   <div className="pl-1">

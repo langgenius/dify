@@ -2,7 +2,7 @@
 
 import type { FC } from 'react'
 import type { Emoji } from '@/app/components/tools/types'
-import { RiArrowLeftSLine, RiBookOpenLine, RiCloseLine } from '@remixicon/react'
+import { RiArrowLeftSLine, RiCloseLine } from '@remixicon/react'
 import AppIcon from '@/app/components/base/app-icon'
 
 type ToolHeaderProps = {
@@ -82,15 +82,6 @@ const ToolHeader: FC<ToolHeaderProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-1 pt-1">
-          <button
-            type="button"
-            className="flex h-6 w-6 items-center justify-center rounded-[6px] text-text-tertiary hover:bg-state-base-hover"
-            onClick={(event) => {
-              event.stopPropagation()
-            }}
-          >
-            <RiBookOpenLine className="h-4 w-4" />
-          </button>
           <button
             type="button"
             className="flex h-6 w-6 items-center justify-center rounded-[6px] text-text-tertiary hover:bg-state-base-hover"
