@@ -5,6 +5,7 @@ import type { VarInInspect } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
+import { InteractionMode } from '@/app/components/workflow'
 import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import {
@@ -23,14 +24,17 @@ import {
 } from '@/service/use-tools'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { VarInInspectType } from '@/types/workflow'
+import { applyAgentSubgraphInspectVars } from './inspect-vars-agent-alias'
 
 type Params = {
   flowId: string
   flowType: FlowType
+  interactionMode?: InteractionMode
 }
 export const useInspectVarsCrudCommon = ({
   flowId,
   flowType,
+  interactionMode,
 }: Params) => {
   const workflowStore = useWorkflowStore()
   const store = useStoreApi()
@@ -108,6 +112,7 @@ export const useInspectVarsCrudCommon = ({
   const fetchInspectVarValue = useCallback(async (selector: ValueSelector, schemaTypeDefinitions: SchemaTypeDefinition[]) => {
     const {
       setNodeInspectVars,
+      setNodesWithInspectVars,
       dataSourceList,
     } = workflowStore.getState()
     const nodeId = selector[0]
@@ -141,7 +146,13 @@ export const useInspectVarsCrudCommon = ({
       }
     })
     setNodeInspectVars(nodeId, varsWithSchemaType)
-  }, [workflowStore, flowType, flowId, invalidateSysVarValues, invalidateConversationVarValues, buildInTools, customTools, workflowTools, mcpTools])
+    const resolvedInteractionMode = interactionMode ?? InteractionMode.Default
+    if (resolvedInteractionMode !== InteractionMode.Subgraph) {
+      const { nodesWithInspectVars } = workflowStore.getState()
+      const nextNodes = applyAgentSubgraphInspectVars(nodesWithInspectVars, nodeArr)
+      setNodesWithInspectVars(nextNodes)
+    }
+  }, [workflowStore, flowType, flowId, invalidateSysVarValues, invalidateConversationVarValues, buildInTools, customTools, workflowTools, mcpTools, interactionMode])
 
   // after last run would call this
   const appendNodeInspectVars = useCallback((nodeId: string, payload: VarInInspect[], allNodes: Node[]) => {
@@ -169,9 +180,12 @@ export const useInspectVarsCrudCommon = ({
         }
       }
     })
-    setNodesWithInspectVars(nodes)
+    const resolvedInteractionMode = interactionMode ?? InteractionMode.Default
+    const shouldApplyAlias = resolvedInteractionMode !== InteractionMode.Subgraph
+    const nextNodes = shouldApplyAlias ? applyAgentSubgraphInspectVars(nodes, allNodes) : nodes
+    setNodesWithInspectVars(nextNodes)
     handleCancelNodeSuccessStatus(nodeId)
-  }, [workflowStore, handleCancelNodeSuccessStatus])
+  }, [workflowStore, handleCancelNodeSuccessStatus, interactionMode])
 
   const hasNodeInspectVar = useCallback((nodeId: string, varId: string) => {
     const { nodesWithInspectVars } = workflowStore.getState()

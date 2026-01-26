@@ -11,6 +11,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 // import Button from '@/app/components/base/button'
 import ActionButton from '@/app/components/base/action-button'
+import { AtSign } from '@/app/components/base/icons/src/vender/workflow'
 import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
@@ -147,24 +148,32 @@ const Group = ({
       {/* var item list */}
       {!isCollapsed && !nodeData?.isSingRunRunning && (
         <div className="px-0.5">
-          {visibleVarList.length > 0 && visibleVarList.map(varItem => (
-            <div
-              key={varItem.id}
-              className={cn(
-                'relative flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover',
-                varItem.id === currentVar?.var?.id && 'bg-state-base-hover-alt hover:bg-state-base-hover-alt',
-              )}
-              onClick={() => handleSelectVar(varItem, varType)}
-            >
-              <VariableIconWithColor
-                variableCategory={varType}
-                isExceptionVariable={['error_type', 'error_message'].includes(varItem.name)}
-                className="size-4"
-              />
-              <div className="system-sm-medium grow truncate text-text-secondary">{varItem.name}</div>
-              <div className="system-xs-regular shrink-0 text-text-tertiary">{formatVarTypeLabel(varItem.value_type)}</div>
-            </div>
-          ))}
+          {visibleVarList.length > 0 && visibleVarList.map((varItem) => {
+            const isAgentAliasVar = typeof varItem.name === 'string' && varItem.name.startsWith('@')
+            const displayName = isAgentAliasVar ? varItem.name.slice(1) : varItem.name
+            return (
+              <div
+                key={varItem.id}
+                className={cn(
+                  'relative flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover',
+                  varItem.id === currentVar?.var?.id && 'bg-state-base-hover-alt hover:bg-state-base-hover-alt',
+                )}
+                onClick={() => handleSelectVar(varItem, varType)}
+              >
+                {isAgentAliasVar
+                  ? <AtSign className="size-4 shrink-0 text-util-colors-violet-violet-600" />
+                  : (
+                      <VariableIconWithColor
+                        variableCategory={varType}
+                        isExceptionVariable={['error_type', 'error_message'].includes(varItem.name)}
+                        className="size-4"
+                      />
+                    )}
+                <div className="system-sm-medium grow truncate text-text-secondary">{displayName}</div>
+                <div className="system-xs-regular shrink-0 text-text-tertiary">{formatVarTypeLabel(varItem.value_type)}</div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

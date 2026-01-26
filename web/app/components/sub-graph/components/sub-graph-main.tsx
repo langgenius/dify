@@ -58,10 +58,12 @@ const SubGraphMain: FC<SubGraphMainProps> = (props) => {
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     flowType,
     flowId,
+    interactionMode: InteractionMode.Subgraph,
   })
   const inspectVarsCrud = useInspectVarsCrudCommon({
     flowType,
     flowId,
+    interactionMode: InteractionMode.Subgraph,
   })
 
   const handleSyncSubGraphDraft = useCallback(async () => {

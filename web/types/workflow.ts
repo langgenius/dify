@@ -477,6 +477,12 @@ export type FullContent = {
   download_url: string
 }
 
+export type VarInInspectAliasMeta = {
+  extractorNodeId: string
+  outputSelector: string[]
+  sourceVarId: string
+}
+
 export type VarInInspect = {
   id: string
   type: VarInInspectType
@@ -490,6 +496,7 @@ export type VarInInspect = {
   is_truncated: boolean
   full_content: FullContent
   schemaType?: string
+  aliasMeta?: VarInInspectAliasMeta
 }
 
 export type NodeWithVar = {
@@ -500,4 +507,5 @@ export type NodeWithVar = {
   vars: VarInInspect[]
   isSingRunRunning?: boolean
   isValueFetched?: boolean
+  isHidden?: boolean
 }

@@ -19,14 +19,15 @@ import Empty from './empty'
 import Left from './left'
 import Listening from './listening'
 import Right from './right'
+import { toEnvVarInInspect } from './utils'
 
 export type currentVarType = {
   nodeId: string
   nodeType: string
   title: string
   isValueFetched?: boolean
-  var: VarInInspect
-  nodeData: NodeProps['data']
+  var?: VarInInspect
+  nodeData?: NodeProps['data']
 }
 
 const Panel: FC = () => {
@@ -59,23 +60,12 @@ const Panel: FC = () => {
       return
     if (currentFocusNodeId === VarInInspectType.environment) {
       const currentVar = environmentVariables.find(v => v.id === currentVarId)
-      const res = {
+      return {
         nodeId: VarInInspectType.environment,
         title: VarInInspectType.environment,
         nodeType: VarInInspectType.environment,
+        var: currentVar ? toEnvVarInInspect(currentVar) : undefined,
       }
-      if (currentVar) {
-        return {
-          ...res,
-          var: {
-            ...currentVar,
-            type: VarInInspectType.environment,
-            visible: true,
-            ...(currentVar.value_type === 'secret' ? { value: '******************' } : {}),
-          },
-        }
-      }
-      return res
     }
     if (currentFocusNodeId === VarInInspectType.conversation) {
       const currentVar = conversationVars.find(v => v.id === currentVarId)
@@ -83,15 +73,12 @@ const Panel: FC = () => {
         nodeId: VarInInspectType.conversation,
         title: VarInInspectType.conversation,
         nodeType: VarInInspectType.conversation,
-      }
-      if (currentVar) {
-        return {
-          ...res,
-          var: {
-            ...currentVar,
-            type: VarInInspectType.conversation,
-          },
-        }
+        var: currentVar
+          ? {
+              ...currentVar,
+              type: VarInInspectType.conversation,
+            }
+          : undefined,
       }
       return res
     }
@@ -101,15 +88,12 @@ const Panel: FC = () => {
         nodeId: VarInInspectType.system,
         title: VarInInspectType.system,
         nodeType: VarInInspectType.system,
-      }
-      if (currentVar) {
-        return {
-          ...res,
-          var: {
-            ...currentVar,
-            type: VarInInspectType.system,
-          },
-        }
+        var: currentVar
+          ? {
+              ...currentVar,
+              type: VarInInspectType.system,
+            }
+          : undefined,
       }
       return res
     }
@@ -124,22 +108,32 @@ const Panel: FC = () => {
       isSingRunRunning: targetNode.isSingRunRunning,
       isValueFetched: targetNode.isValueFetched,
       nodeData: targetNode.nodePayload,
-      ...(currentVar ? { var: currentVar } : {}),
+      var: currentVar,
     }
   }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
+  const currentAliasMeta = useMemo(() => {
+    if (!currentFocusNodeId || !currentVarId)
+      return undefined
+    const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
+    const targetVar = targetNode?.vars.find(v => v.id === currentVarId)
+    return targetVar?.aliasMeta
+  }, [currentFocusNodeId, currentVarId, nodesWithInspectVars])
+  const fetchNodeId = currentAliasMeta?.extractorNodeId || currentFocusNodeId
+
   const isCurrentNodeVarValueFetching = useMemo(() => {
-    if (!currentNodeInfo)
+    if (!fetchNodeId)
       return false
-    const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentNodeInfo.nodeId)
+    const targetNode = nodesWithInspectVars.find(node => node.nodeId === fetchNodeId)
     if (!targetNode)
       return false
     return !targetNode.isValueFetched
-  }, [currentNodeInfo, nodesWithInspectVars])
+  }, [fetchNodeId, nodesWithInspectVars])
 
   const handleNodeVarSelect = useCallback((node: currentVarType) => {
     setCurrentFocusNodeId(node.nodeId)
-    setCurrentVarId(node.var.id)
+    if (node.var)
+      setCurrentVarId(node.var.id)
   }, [setCurrentFocusNodeId, setCurrentVarId])
 
   const { isLoading, schemaTypeDefinitions } = useMatchSchemaType()
@@ -150,12 +144,12 @@ const Panel: FC = () => {
   }, [eventEmitter])
 
   useEffect(() => {
-    if (currentFocusNodeId && currentVarId && !isLoading) {
-      const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
+    if (currentFocusNodeId && currentVarId && !isLoading && fetchNodeId) {
+      const targetNode = nodesWithInspectVars.find(node => node.nodeId === fetchNodeId)
       if (targetNode && !targetNode.isValueFetched)
-        fetchInspectVarValue([currentFocusNodeId], schemaTypeDefinitions!)
+        fetchInspectVarValue([fetchNodeId], schemaTypeDefinitions!)
     }
-  }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue, schemaTypeDefinitions, isLoading])
+  }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue, schemaTypeDefinitions, isLoading, fetchNodeId])
 
   if (isListening) {
     return (

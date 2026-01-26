@@ -4,6 +4,7 @@ import type { FlowType } from '@/types/common'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
+import { InteractionMode } from '@/app/components/workflow'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import {
@@ -16,15 +17,18 @@ import { useInvalidateConversationVarValues, useInvalidateSysVarValues } from '@
 import { fetchAllInspectVars } from '@/service/workflow'
 import useMatchSchemaType, { getMatchedSchemaType } from '../nodes/_base/components/variable/use-match-schema-type'
 import { toNodeOutputVars } from '../nodes/_base/components/variable/utils'
+import { applyAgentSubgraphInspectVars } from './inspect-vars-agent-alias'
 
 type Params = {
   flowType: FlowType
   flowId: string
+  interactionMode?: InteractionMode
 }
 
 export const useSetWorkflowVarsWithValue = ({
   flowType,
   flowId,
+  interactionMode,
 }: Params) => {
   const workflowStore = useWorkflowStore()
   const store = useStoreApi()
@@ -94,7 +98,10 @@ export const useSetWorkflowVarsWithValue = ({
       }
       return nodeWithVar
     })
-    setNodesWithInspectVars(res)
+    const resolvedInteractionMode = interactionMode ?? InteractionMode.Default
+    const shouldApplyAlias = resolvedInteractionMode !== InteractionMode.Subgraph
+    const nextNodes = shouldApplyAlias ? applyAgentSubgraphInspectVars(res, nodeArr) : res
+    setNodesWithInspectVars(nextNodes)
   }
 
   const fetchInspectVars = useCallback(async (params: {

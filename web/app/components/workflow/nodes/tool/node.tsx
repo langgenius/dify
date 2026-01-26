@@ -15,19 +15,12 @@ import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data
 import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { AGENT_CONTEXT_VAR_PATTERN, getAgentNodeIdFromContextVar } from '@/app/components/workflow/utils/agent-context'
 import { useGetLanguage } from '@/context/i18n'
 import { useStrategyProviders } from '@/service/use-strategy'
 import { cn } from '@/utils/classnames'
 import { VarType } from './types'
 
-const AGENT_CONTEXT_VAR_PATTERN = /\{\{@[^.@#]+\.context@\}\}/g
-const AGENT_CONTEXT_VAR_PREFIX = '{{@'
-const AGENT_CONTEXT_VAR_SUFFIX = '.context@}}'
-const getAgentNodeIdFromContextVar = (placeholder: string) => {
-  if (!placeholder.startsWith(AGENT_CONTEXT_VAR_PREFIX) || !placeholder.endsWith(AGENT_CONTEXT_VAR_SUFFIX))
-    return ''
-  return placeholder.slice(AGENT_CONTEXT_VAR_PREFIX.length, -AGENT_CONTEXT_VAR_SUFFIX.length)
-}
 type AgentCheckValidContext = {
   provider?: StrategyPluginDetail
   strategy?: StrategyDetail

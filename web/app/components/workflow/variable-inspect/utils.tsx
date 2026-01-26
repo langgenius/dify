@@ -1,4 +1,8 @@
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { VarInInspect } from '@/types/workflow'
 import { z } from 'zod'
+import { VarType } from '@/app/components/workflow/types'
+import { VarInInspectType } from '@/types/workflow'
 
 const arrayStringSchemaParttern = z.array(z.string())
 const arrayNumberSchemaParttern = z.array(z.number())
@@ -9,6 +13,34 @@ type Literal = z.infer<typeof literalSchema>
 type Json = Literal | { [key: string]: Json } | Json[]
 const jsonSchema: z.ZodType<Json> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]))
 const arrayJsonSchema: z.ZodType<Json[]> = z.lazy(() => z.array(jsonSchema))
+
+const toEnvVarType = (valueType: EnvironmentVariable['value_type']): VarInInspect['value_type'] => {
+  switch (valueType) {
+    case 'number':
+      return VarType.number
+    case 'secret':
+      return VarType.secret
+    default:
+      return VarType.string
+  }
+}
+
+export const toEnvVarInInspect = (envVar: EnvironmentVariable): VarInInspect => {
+  const valueType = envVar.value_type
+  return {
+    id: envVar.id,
+    type: VarInInspectType.environment,
+    name: envVar.name,
+    description: envVar.description,
+    selector: [VarInInspectType.environment, envVar.name],
+    value_type: toEnvVarType(valueType),
+    value: valueType === 'secret' ? '******************' : envVar.value,
+    edited: false,
+    visible: true,
+    is_truncated: false,
+    full_content: { size_bytes: 0, download_url: '' },
+  }
+}
 
 export const validateJSONSchema = (schema: any, type: string) => {
   if (type === 'array[string]') {

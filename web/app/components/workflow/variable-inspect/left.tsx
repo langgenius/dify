@@ -36,6 +36,8 @@ const Left = ({
   } = useCurrentVars()
   const { handleNodeSelect } = useNodesInteractions()
 
+  const visibleNodesWithInspectVars = nodesWithInspectVars.filter(node => !node.isHidden)
+
   const showDivider = environmentVariables.length > 0 || conversationVars.length > 0 || systemVars.length > 0
 
   const handleClearAll = () => {
@@ -91,7 +93,7 @@ const Left = ({
           </div>
         )}
         {/* group nodes */}
-        {nodesWithInspectVars.length > 0 && nodesWithInspectVars.map(group => (
+        {visibleNodesWithInspectVars.length > 0 && visibleNodesWithInspectVars.map(group => (
           <Group
             key={group.nodeId}
             varType={VarInInspectType.node}
