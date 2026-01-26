@@ -1,16 +1,16 @@
 import builtins
 from unittest.mock import Mock, patch
+
 import pytest
 from flask import Flask
 from flask.views import MethodView
 
+# [补丁2] 必须显式导入 Controller 以触发路由加载
+from controllers.fastopenapi import console_router
+from extensions import ext_fastopenapi
+
 # [补丁1] 必须导入 db 和 路由
 from models.engine import db
-from controllers.fastopenapi import console_router
-# [补丁2] 必须显式导入 Controller 以触发路由加载
-import controllers.console.feature 
-
-from extensions import ext_fastopenapi
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -20,12 +20,12 @@ if not hasattr(builtins, "MethodView"):
 def app() -> Flask:
     app = Flask(__name__)
     app.config["TESTING"] = True
-    
+
     # [补丁3] 配置内存数据库 (解决 "Flask app not registered" 报错)
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
-    
+
     # [补丁4] 手动注册路由 (解决 404 报错)
     # 尝试找到 console_router 内部的 Blueprint
     bp = getattr(console_router, "blueprint", getattr(console_router, "_blueprint", None))
@@ -33,14 +33,14 @@ def app() -> Flask:
         app.register_blueprint(bp, url_prefix="/console/api")
     else:
         # 如果找不到 blueprint 属性，使用底层方法注册 (保底方案)
-        if hasattr(console_router, '_routes'):
+        if hasattr(console_router, "_routes"):
             for route in console_router._routes:
                 path = route.path.replace("{", "<").replace("}", ">")
                 app.add_url_rule(
                     f"/console/api{path}",
                     endpoint=route.endpoint.__name__,
                     view_func=route.endpoint,
-                    methods=list(route.methods)
+                    methods=list(route.methods),
                 )
 
     with app.app_context():
@@ -77,7 +77,7 @@ def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.Monkey
 def test_console_system_features_fastopenapi_get(app: Flask, monkeypatch: pytest.MonkeyPatch):
     # 同样需要 Mock Config
     monkeypatch.setattr("controllers.console.wraps.dify_config.EDITION", "CLOUD")
-    
+
     ext_fastopenapi.init_app(app)
 
     with patch(
