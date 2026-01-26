@@ -1,27 +1,47 @@
 # API Agent Guide
 
-## Agent Notes (must-check)
+## Notes for Agent (must-check)
 
-Before you start work on any backend file under `api/`, you MUST check whether a related note exists under:
+Before changing any backend code under `api/`, you MUST read the surrounding docstrings and comments. These notes contain required context (invariants, edge cases, trade-offs) and are treated as part of the spec.
 
-- `agent-notes/<same-relative-path-as-target-file>.md`
+Look for:
 
-Rules:
+- The module (file) docstring at the top of a source code file
+- Docstrings on classes and functions/methods
+- Paragraph/block comments for non-obvious logic
 
-- **Path mapping**: for a target file `<path>/<name>.py`, the note must be `agent-notes/<path>/<name>.py.md` (same folder structure, same filename, plus `.md`).
-- **Before working**:
-  - If the note exists, read it first and follow any constraints/decisions recorded there.
-  - If the note conflicts with the current code, or references an "origin" file/path that has been deleted, renamed, or migrated, treat the **code as the single source of truth** and update the note to match reality.
-  - If the note does not exist, create it with a short architecture/intent summary and any relevant invariants/edge cases.
-- **During working**:
-  - Keep the note in sync as you discover constraints, make decisions, or change approach.
-  - If you move/rename a file, migrate its note to the new mapped path (and fix any outdated references inside the note).
-  - Record non-obvious edge cases, trade-offs, and the test/verification plan as you go (not just at the end).
-  - Keep notes **coherent**: integrate new findings into the relevant sections and rewrite for clarity; avoid append-only “recent fix” / changelog-style additions unless the note is explicitly intended to be a changelog.
-- **When finishing work**:
-  - Update the related note(s) to reflect what changed, why, and any new edge cases/tests.
-  - If a file is deleted, remove or clearly deprecate the corresponding note so it cannot be mistaken as current guidance.
-  - Keep notes concise and accurate; they are meant to prevent repeated rediscovery.
+### What to write where
+
+- Keep notes scoped: module notes cover module-wide context, class notes cover class-wide context, function/method notes cover behavioural contracts, and paragraph/block comments cover local “why”. Avoid duplicating the same content across scopes unless repetition prevents misuse.
+- **Module (file) docstring**: purpose, boundaries, key invariants, and “gotchas” that a new reader must know before editing.
+  - Include cross-links to the key collaborators (modules/services) when discovery is otherwise hard.
+  - Prefer stable facts (invariants, contracts) over ephemeral “today we…” notes.
+- **Class docstring**: responsibility, lifecycle, invariants, and how it should be used (or not used).
+  - If the class is intentionally stateful, note what state exists and what methods mutate it.
+  - If concurrency/async assumptions matter, state them explicitly.
+- **Function/method docstring**: behavioural contract.
+  - Document arguments, return shape, side effects (DB writes, external I/O, task dispatch), and raised domain exceptions.
+  - Add examples only when they prevent misuse.
+- **Paragraph/block comments**: explain *why* (trade-offs, historical constraints, surprising edge cases), not what the code already states.
+  - Keep comments adjacent to the logic they justify; delete or rewrite comments that no longer match reality.
+
+### Rules (must follow)
+
+In this section, “notes” means module/class/function docstrings plus any relevant paragraph/block comments.
+
+- **Before working**
+  - Read the notes in the area you’ll touch; treat them as part of the spec.
+  - If a docstring or comment conflicts with the current code, treat the **code as the single source of truth** and update the docstring or comment to match reality.
+  - If important intent/invariants/edge cases are missing, add them in the closest docstring or comment (module for overall scope, function for behaviour).
+- **During working**
+  - Keep the notes in sync as you discover constraints, make decisions, or change approach.
+  - If you move/rename responsibilities across modules/classes, update the affected docstrings and comments so readers can still find the “why” and the invariants.
+  - Record non-obvious edge cases, trade-offs, and the test/verification plan in the nearest docstring or comment that will stay correct.
+  - Keep the notes **coherent**: integrate new findings into the relevant docstrings and comments; avoid append-only “recent fix” / changelog-style additions.
+- **When finishing**
+  - Update the notes to reflect what changed, why, and any new edge cases/tests.
+  - Remove or rewrite any comments that could be mistaken as current guidance but no longer apply.
+  - Keep docstrings and comments concise and accurate; they are meant to prevent repeated rediscovery.
 
 ## Skill Index
 
@@ -226,7 +246,7 @@ Before opening a PR / submitting:
 
 - Controllers: parse input via Pydantic, invoke services, return serialised responses; no business logic.
 - Services: coordinate repositories, providers, background tasks; keep side effects explicit.
-- Document non-obvious behaviour with concise comments.
+- Document non-obvious behaviour with concise docstrings and comments.
 
 ### Miscellaneous
 
