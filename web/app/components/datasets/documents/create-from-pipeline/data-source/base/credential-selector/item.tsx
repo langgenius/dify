@@ -1,5 +1,4 @@
 import type { DataSourceCredential } from '@/types/pipeline'
-import { RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
@@ -36,7 +35,7 @@ const Item = ({
       </span>
       {
         isSelected && (
-          <RiCheckLine className="size-4 shrink-0 text-text-accent" />
+          <span className="i-ri-check-line size-4 shrink-0 text-text-accent" />
         )
       }
     </div>

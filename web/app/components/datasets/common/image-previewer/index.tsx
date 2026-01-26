@@ -1,4 +1,3 @@
-import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiRefreshLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -162,7 +161,7 @@ const ImagePreviewer = ({
           className="size-9 rounded-[10px] p-0"
           size="large"
         >
-          <RiCloseLine className="size-5" />
+          <span className="i-ri-close-line size-5" />
         </Button>
         <span className="system-2xs-medium-uppercase text-text-tertiary">
           Esc
@@ -180,7 +179,7 @@ const ImagePreviewer = ({
             className="size-9 rounded-full p-0"
             size="large"
           >
-            <RiRefreshLine className="size-5" />
+            <span className="i-ri-refresh-line size-5" />
           </Button>
         </div>
       )}
@@ -207,7 +206,7 @@ const ImagePreviewer = ({
         disabled={currentIndex === 0}
         size="large"
       >
-        <RiArrowLeftLine className="size-5" />
+        <span className="i-ri-arrow-left-line size-5" />
       </Button>
       <Button
         variant="secondary"
@@ -216,7 +215,7 @@ const ImagePreviewer = ({
         disabled={currentIndex === images.length - 1}
         size="large"
       >
-        <RiArrowRightLine className="size-5" />
+        <span className="i-ri-arrow-right-line size-5" />
       </Button>
     </div>,
     document.body,

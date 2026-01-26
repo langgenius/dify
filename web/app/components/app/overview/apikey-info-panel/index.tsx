@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -69,7 +68,7 @@ const APIKeyInfoPanel: FC = () => {
         onClick={() => setIsShow(false)}
         className="absolute right-4 top-4 flex h-8 w-8 cursor-pointer items-center justify-center "
       >
-        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+        <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
       </div>
     </div>
   )

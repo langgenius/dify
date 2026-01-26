@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { RiDeleteBinLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -49,7 +48,7 @@ const BatchAction: FC<IBatchActionProps> = ({
         </div>
         <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
         <div className="flex cursor-pointer items-center gap-x-0.5 px-3 py-2" onClick={showDeleteConfirm}>
-          <RiDeleteBinLine className="h-4 w-4 text-components-button-destructive-ghost-text" />
+          <span className="i-ri-delete-bin-line h-4 w-4 text-components-button-destructive-ghost-text" />
           <button type="button" className="px-0.5 text-[13px] font-medium leading-[16px] text-components-button-destructive-ghost-text">
             {t('operation.delete', { ns: 'common' })}
           </button>

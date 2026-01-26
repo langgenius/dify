@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { TryAppInfo } from '@/service/try-app'
-import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
@@ -65,7 +64,7 @@ const AppInfo: FC<Props> = ({
         <div className="system-sm-regular mt-[14px] shrink-0 text-text-secondary">{appDetail.description}</div>
       )}
       <Button variant="primary" className="mt-3 flex w-full max-w-full" onClick={onCreate}>
-        <RiAddLine className="mr-1 size-4 shrink-0" />
+        <span className="i-ri-add-line mr-1 size-4 shrink-0" />
         <span className="truncate">{t('tryApp.createFromSampleApp', { ns: 'explore' })}</span>
       </Button>
 

@@ -1,9 +1,6 @@
 'use client'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import {
-  RiArrowDownSLine,
-  RiEqualizer2Line,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -52,10 +49,10 @@ const ToolTrigger = ({
         </div>
       )}
       {isConfigure && (
-        <RiEqualizer2Line className={cn('ml-0.5 h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
+        <span className={`i-ri-equalizer-2-line ${cn('ml-0.5 h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')}`} />
       )}
       {!isConfigure && (
-        <RiArrowDownSLine className={cn('ml-0.5 h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
+        <span className={`i-ri-arrow-down-sline ${cn('ml-0.5 h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')}`} />
       )}
     </div>
   )

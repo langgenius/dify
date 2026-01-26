@@ -1,7 +1,6 @@
 /* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
 import type { FC } from 'react'
 import type { Banner } from '@/models/app'
-import { RiArrowRightLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCarousel } from '@/app/components/base/carousel'
@@ -142,7 +141,7 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
               style={viewMoreStyle}
             >
               <div className="flex h-4 w-4 items-center justify-center rounded-full bg-text-accent p-[2px]">
-                <RiArrowRightLine className="h-3 w-3 text-text-primary-on-surface" />
+                <span className="i-ri-arrow-right-line h-3 w-3 text-text-primary-on-surface" />
               </div>
               <span className="system-sm-semibold-uppercase text-text-accent">
                 {t('banner.viewMore', { ns: 'explore' })}

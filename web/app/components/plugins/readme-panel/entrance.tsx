@@ -1,5 +1,4 @@
 import type { PluginDetail } from '../types'
-import { RiBookReadLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -40,7 +39,7 @@ export const ReadmeEntrance = ({
         className="flex w-full items-center justify-start gap-1 text-text-tertiary transition-opacity hover:text-text-accent-light-mode-only"
       >
         <div className="relative flex h-3 w-3 items-center justify-center overflow-hidden">
-          <RiBookReadLine className="h-3 w-3" />
+          <span className="i-ri-book-read-line h-3 w-3" />
         </div>
         <span className="text-xs font-normal leading-4">
           {!showShortTip ? t('readmeInfo.needHelpCheckReadme', { ns: 'plugin' }) : t('readmeInfo.title', { ns: 'plugin' })}

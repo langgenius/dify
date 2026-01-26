@@ -5,7 +5,6 @@ import type {
   ModelCredential,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { RiAddLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -51,7 +50,7 @@ const AddCredentialInLoadBalancing = ({
         open && 'bg-state-base-hover',
       )}
       >
-        <RiAddLine className="mr-2 h-4 w-4" />
+        <span className="i-ri-add-line mr-2 h-4 w-4" />
         {t('modelProvider.auth.addCredential', { ns: 'common' })}
       </div>
     )

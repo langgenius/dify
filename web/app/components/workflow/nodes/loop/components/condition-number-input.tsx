@@ -2,7 +2,6 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { capitalize } from 'es-toolkit/string'
 import {
@@ -76,7 +75,7 @@ const ConditionNumberInput = ({
             size="small"
           >
             {capitalize(numberVarType)}
-            <RiArrowDownSLine className="ml-[1px] h-3.5 w-3.5" />
+            <span className="i-ri-arrow-down-sline ml-[1px] h-3.5 w-3.5" />
           </Button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[1000]">

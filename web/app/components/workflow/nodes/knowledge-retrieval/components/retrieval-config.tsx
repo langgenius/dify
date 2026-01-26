@@ -5,7 +5,6 @@ import type { MultipleRetrievalConfig, SingleRetrievalConfig } from '../types'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
-import { RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -135,7 +134,7 @@ const RetrievalConfig: FC<Props> = ({
           disabled={readonly}
           className={cn(rerankModalOpen && 'bg-components-button-ghost-bg-hover')}
         >
-          <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
+          <span className="i-ri-equalizer-2-line mr-1 h-3.5 w-3.5" />
           {t('retrievalSettings', { ns: 'dataset' })}
         </Button>
       </PortalToFollowElemTrigger>

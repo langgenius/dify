@@ -1,6 +1,5 @@
 'use client'
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
-import { RiAlertFill, RiCloseCircleFill, RiLockLine, RiOrganizationChart } from '@remixicon/react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
@@ -28,7 +27,7 @@ export default function SpecificGroupsOrMembers() {
     return (
       <div className="flex items-center p-3">
         <div className="flex grow items-center gap-x-2">
-          <RiLockLine className="h-4 w-4 text-text-primary" />
+          <span className="i-ri-lock-line h-4 w-4 text-text-primary" />
           <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
         </div>
       </div>
@@ -39,7 +38,7 @@ export default function SpecificGroupsOrMembers() {
     <div>
       <div className="flex items-center gap-x-1 p-3">
         <div className="flex grow items-center gap-x-1">
-          <RiLockLine className="h-4 w-4 text-text-primary" />
+          <span className="i-ri-lock-line h-4 w-4 text-text-primary" />
           <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
         </div>
         <div className="flex items-center gap-x-1">
@@ -86,7 +85,7 @@ function GroupItem({ group }: GroupItemProps) {
   }, [group, setSpecificGroups, specificGroups])
   return (
     <BaseItem
-      icon={<RiOrganizationChart className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" />}
+      icon={<span className="i-ri-organization-chart h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" />}
       onRemove={handleRemoveGroup}
     >
       <p className="system-xs-regular text-text-primary">{group.name}</p>
@@ -129,7 +128,7 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
       </div>
       {children}
       <div className="flex h-4 w-4 cursor-pointer items-center justify-center" onClick={onRemove}>
-        <RiCloseCircleFill className="h-[14px] w-[14px] text-text-quaternary" />
+        <span className="i-ri-close-circle-fill h-[14px] w-[14px] text-text-quaternary" />
       </div>
     </div>
   )
@@ -139,7 +138,7 @@ export function WebAppSSONotEnabledTip() {
   const { t } = useTranslation()
   return (
     <Tooltip asChild={false} popupContent={t('accessControlDialog.webAppSSONotEnabledTip', { ns: 'app' })}>
-      <RiAlertFill className="h-4 w-4 shrink-0 text-text-warning-secondary" />
+      <span className="i-ri-alert-fill h-4 w-4 shrink-0 text-text-warning-secondary" />
     </Tooltip>
   )
 }

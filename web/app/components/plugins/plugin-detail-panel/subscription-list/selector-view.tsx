@@ -1,6 +1,5 @@
 'use client'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { RiCheckLine, RiDeleteBinLine, RiWebhookLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -58,9 +57,9 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
             >
               <div className="flex items-center">
                 {selectedId === subscription.id && (
-                  <RiCheckLine className="mr-2 h-4 w-4 shrink-0 text-text-accent" />
+                  <span className="i-ri-check-line mr-2 h-4 w-4 shrink-0 text-text-accent" />
                 )}
-                <RiWebhookLine className={cn('mr-1.5 h-3.5 w-3.5 text-text-secondary', selectedId !== subscription.id && 'ml-6')} />
+                <span className={`i-ri-webhook-line ${cn('mr-1.5 h-3.5 w-3.5 text-text-secondary', selectedId !== subscription.id && 'ml-6')}`} />
                 <span className="system-md-regular leading-6 text-text-secondary">
                   {subscription.name}
                 </span>
@@ -73,7 +72,7 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
               }}
               className="subscription-delete-btn hidden shrink-0 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive group-hover:flex"
             >
-              <RiDeleteBinLine className="size-4" />
+              <span className="i-ri-delete-bin-line size-4" />
             </ActionButton>
           </div>
         ))}

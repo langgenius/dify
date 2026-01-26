@@ -1,9 +1,6 @@
 import type { CreateExternalAPIReq } from '../declarations'
 import type { ExternalAPIItem } from '@/models/datasets'
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -119,7 +116,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
         </div>
         <div className="flex items-start gap-1">
           <ActionButton onClick={handleEditClick}>
-            <RiEditLine className="h-4 w-4 text-text-tertiary hover:text-text-secondary" />
+            <span className="i-ri-edit-line h-4 w-4 text-text-tertiary hover:text-text-secondary" />
           </ActionButton>
           <ActionButton
             className="hover:bg-state-destructive-hover"
@@ -127,7 +124,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
-            <RiDeleteBinLine className="h-4 w-4 text-text-tertiary hover:text-text-destructive" />
+            <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary hover:text-text-destructive" />
           </ActionButton>
         </div>
       </div>

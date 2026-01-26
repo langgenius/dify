@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { RiResetLeftLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
 import * as React from 'react'
 import { useRef } from 'react'
@@ -24,7 +23,7 @@ const EditedBeacon: FC<Props> = ({
         ? (
             <Tooltip popupContent={t('operation.reset', { ns: 'common' })}>
               <div className="flex size-4 items-center justify-center rounded-full bg-text-accent-secondary" onClick={onReset}>
-                <RiResetLeftLine className="size-[10px] text-text-primary-on-surface" />
+                <span className="i-ri-reset-left-line size-[10px] text-text-primary-on-surface" />
               </div>
             </Tooltip>
           )

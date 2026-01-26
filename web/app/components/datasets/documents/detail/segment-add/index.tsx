@@ -1,11 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiAddLine,
-  RiArrowDownSLine,
-  RiErrorWarningFill,
-  RiLoader2Line,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
@@ -72,7 +67,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
             shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]"
           >
             <div className={cn('absolute left-0 top-0 z-0 h-full border-r-[1.5px] border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress', importStatus === ProcessStatus.WAITING ? 'w-3/12' : 'w-2/3')} />
-            <RiLoader2Line className="mr-1 h-4 w-4 animate-spin" />
+            <span className="i-ri-loader-2-line mr-1 h-4 w-4 animate-spin" />
             <span className="system-sm-medium z-10 pr-0.5">{t('list.batchModal.processing', { ns: 'datasetDocuments' })}</span>
           </div>
         )}
@@ -91,7 +86,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
         {importStatus === ProcessStatus.ERROR && (
           <div className="relative mr-2 inline-flex items-center overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]">
             <div className="inline-flex items-center border-r border-r-divider-subtle px-2.5 py-2 text-text-destructive">
-              <RiErrorWarningFill className="mr-1 h-4 w-4" />
+              <span className="i-ri-error-warning-fill mr-1 h-4 w-4" />
               <span className="system-sm-medium pr-0.5">{t('list.batchModal.error', { ns: 'datasetDocuments' })}</span>
             </div>
             <div className="m-1 inline-flex items-center">
@@ -117,7 +112,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
         onClick={withNeedUpgradeCheck(showNewSegmentModal)}
         disabled={embedding}
       >
-        <RiAddLine className={cn('h-4 w-4', textColor)} />
+        <span className={`i-ri-add-line ${cn('h-4 w-4', textColor)}`} />
         <span className={cn('ml-0.5 px-0.5 text-[13px] font-medium capitalize leading-[16px]', textColor)}>
           {t('list.action.addButton', { ns: 'datasetDocuments' })}
         </span>
@@ -140,7 +135,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
         )}
         btnElement={(
           <div className="flex items-center justify-center">
-            <RiArrowDownSLine className={cn('h-4 w-4', textColor)} />
+            <span className={`i-ri-arrow-down-sline ${cn('h-4 w-4', textColor)}`} />
           </div>
         )}
         btnClassName={open => cn(

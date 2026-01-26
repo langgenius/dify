@@ -5,11 +5,7 @@ import type { ModelAndParameter } from './types'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { Inputs } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
-import {
-  RiAddLine,
-  RiEqualizer2Line,
-  RiSparklingFill,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { cloneDeep } from 'es-toolkit/object'
@@ -405,7 +401,7 @@ const Debug: FC<IDebug> = ({
                         onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
                         disabled={multipleModelConfigs.length >= 4}
                       >
-                        <RiAddLine className="mr-1 h-3.5 w-3.5" />
+                        <span className="i-ri-add-line mr-1 h-3.5 w-3.5" />
                         {t('modelProvider.addModel', { ns: 'common' })}
                         (
                         {multipleModelConfigs.length}
@@ -438,7 +434,7 @@ const Debug: FC<IDebug> = ({
                         popupContent={t('panel.userInputField', { ns: 'workflow' })}
                       >
                         <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => !readonly && setExpanded(!expanded)}>
-                          <RiEqualizer2Line className="h-4 w-4" />
+                          <span className="i-ri-equalizer-2-line h-4 w-4" />
                         </ActionButton>
                       </TooltipPlus>
                       {expanded && <div className="absolute bottom-[-14px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
@@ -538,7 +534,7 @@ const Debug: FC<IDebug> = ({
                 )}
                 {!completionRes && !isResponding && (
                   <div className="flex grow flex-col items-center justify-center gap-2">
-                    <RiSparklingFill className="h-12 w-12 text-text-empty-state-icon" />
+                    <span className="i-ri-sparkling-fill h-12 w-12 text-text-empty-state-icon" />
                     <div className="system-sm-regular text-text-quaternary">{t('noResult', { ns: 'appDebug' })}</div>
                   </div>
                 )}

@@ -4,9 +4,7 @@ import type { CredentialFormSchema } from '@/app/components/header/account-setti
 import type { Event } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import {
-  RiBracesLine,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
@@ -76,7 +74,7 @@ const TriggerFormItem: FC<Props> = ({
                 onClick={showSchema}
                 className="system-xs-regular px-1 text-text-tertiary"
               >
-                <RiBracesLine className="mr-1 size-3.5" />
+                <span className="i-ri-braces-line mr-1 size-3.5" />
                 <span>JSON Schema</span>
               </Button>
             </>

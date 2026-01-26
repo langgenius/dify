@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,7 +21,7 @@ type Props = {
 
 export const EditTitle: FC<{ className?: string, title: string }> = ({ className, title }) => (
   <div className={cn(className, 'system-xs-medium flex h-[18px] items-center text-text-tertiary')}>
-    <RiEditFill className="mr-1 h-3.5 w-3.5" />
+    <span className="i-ri-edit-fill mr-1 h-3.5 w-3.5" />
     <div>{title}</div>
     <div
       className="ml-2 h-px grow"
@@ -94,7 +93,7 @@ const EditItem: FC<Props> = ({
                         setIsEdit(true)
                       }}
                     >
-                      <RiEditLine className="mr-1 h-3.5 w-3.5" />
+                      <span className="i-ri-edit-line mr-1 h-3.5 w-3.5" />
                       <div>{t('operation.edit', { ns: 'common' })}</div>
                     </div>
                   )}
@@ -117,7 +116,7 @@ const EditItem: FC<Props> = ({
                         }}
                       >
                         <div className="h-3.5 w-3.5">
-                          <RiDeleteBinLine className="h-3.5 w-3.5" />
+                          <span className="i-ri-delete-bin-line h-3.5 w-3.5" />
                         </div>
                         <div>{t('operation.delete', { ns: 'common' })}</div>
                       </div>

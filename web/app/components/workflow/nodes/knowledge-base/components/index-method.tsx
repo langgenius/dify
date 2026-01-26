@@ -1,4 +1,3 @@
-import { RiQuestionLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -100,7 +99,7 @@ const IndexMethod = ({
                   <Tooltip
                     popupContent="number of keywords"
                   >
-                    <RiQuestionLine className="ml-0.5 h-3.5 w-3.5 text-text-quaternary" />
+                    <span className="i-ri-question-line ml-0.5 h-3.5 w-3.5 text-text-quaternary" />
                   </Tooltip>
                 </div>
                 <Slider

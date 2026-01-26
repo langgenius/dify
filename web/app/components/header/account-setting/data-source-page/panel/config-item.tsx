@@ -1,8 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiDeleteBinLine,
-} from '@remixicon/react'
+
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -74,7 +72,7 @@ const ConfigItem: FC<Props> = ({
       {
         isWebsite && !readOnly && (
           <div className="cursor-pointer rounded-md p-2 text-text-tertiary hover:bg-state-base-hover" onClick={onRemove}>
-            <RiDeleteBinLine className="h-4 w-4" />
+            <span className="i-ri-delete-bin-line h-4 w-4" />
           </div>
         )
       }

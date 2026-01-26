@@ -1,5 +1,4 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import { RiArrowLeftLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import AgentLogNavMore from './agent-log-nav-more'
@@ -28,7 +27,7 @@ const AgentLogNav = ({
           onShowAgentOrToolLog()
         }}
       >
-        <RiArrowLeftLine className="mr-1 h-3.5 w-3.5" />
+        <span className="i-ri-arrow-left-line mr-1 h-3.5 w-3.5" />
         AGENT
       </Button>
       <div className="system-xs-regular mx-0.5 shrink-0 text-divider-deep">/</div>

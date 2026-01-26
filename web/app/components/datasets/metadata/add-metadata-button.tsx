@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -23,7 +22,7 @@ const AddedMetadataButton: FC<Props> = ({
       variant="tertiary"
       onClick={onClick}
     >
-      <RiAddLine className="mr-1 size-3.5" />
+      <span className="i-ri-add-line mr-1 size-3.5" />
       <div>{t('metadata.addMetadata', { ns: 'dataset' })}</div>
     </Button>
   )

@@ -1,6 +1,5 @@
 import type { Plan } from '@/app/components/billing/type'
 import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -47,7 +46,7 @@ const WorkplaceSelector = () => {
               </div>
               <div className="flex min-w-0 items-center">
                 <div className="system-sm-medium min-w-0  max-w-[149px] truncate text-text-secondary max-[800px]:hidden">{currentWorkspace?.name}</div>
-                <RiArrowDownSLine className="h-4 w-4 shrink-0 text-text-secondary" />
+                <span className="i-ri-arrow-down-sline h-4 w-4 shrink-0 text-text-secondary" />
               </div>
             </MenuButton>
             <Transition

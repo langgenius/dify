@@ -1,4 +1,3 @@
-import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useState,
@@ -27,9 +26,7 @@ const UserInput = () => {
         `}
         onClick={() => setExpanded(!expanded)}
       >
-        <RiArrowDownSLine
-          className={`mr-1 h-3 w-3 ${!expanded ? '-rotate-90 text-text-accent' : 'text-text-tertiary'}`}
-        />
+        <span className={`i-ri-arrow-down-sline ${`mr-1 h-3 w-3 ${!expanded ? '-rotate-90 text-text-accent' : 'text-text-tertiary'}`}`} />
         {t('panel.userInputField', { ns: 'workflow' }).toLocaleUpperCase()}
       </div>
       <div className="px-2 pb-3 pt-1">

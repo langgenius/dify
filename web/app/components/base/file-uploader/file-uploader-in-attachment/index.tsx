@@ -1,9 +1,6 @@
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import {
-  RiLink,
-  RiUploadCloud2Line,
-} from '@remixicon/react'
+
 import {
   useCallback,
 } from 'react'
@@ -43,12 +40,12 @@ const FileUploaderInAttachment = ({
     {
       value: TransferMethod.local_file,
       label: t('fileUploader.uploadFromComputer', { ns: 'common' }),
-      icon: <RiUploadCloud2Line className="h-4 w-4" />,
+      icon: <span className="i-ri-upload-cloud-2-line h-4 w-4" />,
     },
     {
       value: TransferMethod.remote_url,
       label: t('fileUploader.pasteFileLink', { ns: 'common' }),
-      icon: <RiLink className="h-4 w-4" />,
+      icon: <span className="i-ri-link h-4 w-4" />,
     },
   ]
 

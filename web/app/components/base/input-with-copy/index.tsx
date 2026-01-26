@@ -1,6 +1,5 @@
 'use client'
 import type { InputProps } from '../input'
-import { RiClipboardFill, RiClipboardLine } from '@remixicon/react'
 import { useClipboard } from 'foxact/use-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -72,10 +71,10 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
             >
               {copied
                 ? (
-                    <RiClipboardFill className="h-3.5 w-3.5 text-text-tertiary" />
+                    <span className="i-ri-clipboard-fill h-3.5 w-3.5 text-text-tertiary" />
                   )
                 : (
-                    <RiClipboardLine className="h-3.5 w-3.5 text-text-tertiary" />
+                    <span className="i-ri-clipboard-line h-3.5 w-3.5 text-text-tertiary" />
                   )}
             </ActionButton>
           </Tooltip>

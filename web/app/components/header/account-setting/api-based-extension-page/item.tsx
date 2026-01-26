@@ -1,9 +1,6 @@
 import type { FC } from 'react'
 import type { ApiBasedExtension } from '@/models/common'
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-} from '@remixicon/react'
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -47,13 +44,13 @@ const Item: FC<ItemProps> = ({
           className="mr-1"
           onClick={handleOpenApiBasedExtensionModal}
         >
-          <RiEditLine className="mr-1 h-4 w-4" />
+          <span className="i-ri-edit-line mr-1 h-4 w-4" />
           {t('operation.edit', { ns: 'common' })}
         </Button>
         <Button
           onClick={() => setShowDeleteConfirm(true)}
         >
-          <RiDeleteBinLine className="mr-1 h-4 w-4" />
+          <span className="i-ri-delete-bin-line mr-1 h-4 w-4" />
           {t('operation.delete', { ns: 'common' })}
         </Button>
       </div>

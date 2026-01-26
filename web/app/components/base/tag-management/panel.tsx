@@ -1,7 +1,6 @@
 import type { TagSelectorProps } from './selector'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import type { Tag } from '@/app/components/base/tag-management/constant'
-import { RiAddLine, RiPriceTag3Line } from '@remixicon/react'
 import { useUnmount } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -133,7 +132,7 @@ const Panel = (props: PanelProps) => {
             className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
             onClick={createNewTag}
           >
-            <RiAddLine className="h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
             <div className="system-md-regular grow truncate px-1 text-text-secondary">
               {`${t('tag.create', { ns: 'common' })} `}
               <span className="system-md-medium">{`'${keywords}'`}</span>
@@ -189,7 +188,7 @@ const Panel = (props: PanelProps) => {
       {!keywords && !filteredTagList.length && !filteredSelectedTagList.length && (
         <div className="p-1">
           <div className="flex flex-col items-center gap-y-1 p-3">
-            <RiPriceTag3Line className="h-6 w-6 text-text-quaternary" />
+            <span className="i-ri-price-tag-3-line h-6 w-6 text-text-quaternary" />
             <div className="system-xs-regular text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
           </div>
         </div>
@@ -200,7 +199,7 @@ const Panel = (props: PanelProps) => {
           className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
           onClick={() => setShowTagManagementModal(true)}
         >
-          <RiPriceTag3Line className="h-4 w-4 text-text-tertiary" />
+          <span className="i-ri-price-tag-3-line h-4 w-4 text-text-tertiary" />
           <div className="system-md-regular grow truncate px-1 text-text-secondary">
             {t('tag.manageTags', { ns: 'common' })}
           </div>

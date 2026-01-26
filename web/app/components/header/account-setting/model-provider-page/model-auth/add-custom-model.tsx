@@ -3,10 +3,7 @@ import type {
   CustomConfigurationModelFixedFields,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  RiAddCircleFill,
-  RiAddLine,
-} from '@remixicon/react'
+
 import {
   memo,
   useCallback,
@@ -79,7 +76,7 @@ const AddCustomModel = ({
           notAllowCustomCredential && !!noModels && 'cursor-not-allowed opacity-50',
         )}
       >
-        <RiAddCircleFill className="mr-1 h-3.5 w-3.5" />
+        <span className="i-ri-add-circle-fill mr-1 h-3.5 w-3.5" />
         {t('modelProvider.addModel', { ns: 'common' })}
       </Button>
     )
@@ -154,7 +151,7 @@ const AddCustomModel = ({
                   setOpen(false)
                 }}
               >
-                <RiAddLine className="mr-1 h-4 w-4" />
+                <span className="i-ri-add-line mr-1 h-4 w-4" />
                 {t('modelProvider.auth.addNewModel', { ns: 'common' })}
               </div>
             )

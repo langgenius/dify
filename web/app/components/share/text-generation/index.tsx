@@ -9,10 +9,7 @@ import type {
 import type { InstalledApp } from '@/models/explore'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
-import {
-  RiBookmark3Line,
-  RiErrorWarningFill,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import { useSearchParams } from 'next/navigation'
 import * as React from 'react'
@@ -495,7 +492,7 @@ const TextGeneration: FC<IMainProps> = ({
       </div>
       {isCallBatchAPI && allFailedTaskList.length > 0 && (
         <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-sm">
-          <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
+          <span className="i-ri-error-warning-fill h-4 w-4 text-text-destructive" />
           <div className="system-sm-medium text-text-secondary">{t('generation.batchFailed.info', { ns: 'share', num: allFailedTaskList.length })}</div>
           <div className="h-3.5 w-px bg-divider-regular"></div>
           <div onClick={handleRetryAllFailedTask} className="system-sm-semibold-uppercase cursor-pointer text-text-accent">{t('generation.batchFailed.retry', { ns: 'share' })}</div>
@@ -551,7 +548,7 @@ const TextGeneration: FC<IMainProps> = ({
                     id: 'saved',
                     name: t('generation.tabs.saved', { ns: 'share' }),
                     isRight: true,
-                    icon: <RiBookmark3Line className="h-4 w-4" />,
+                    icon: <span className="i-ri-bookmark-3-line h-4 w-4" />,
                     extra: savedMessages.length > 0
                       ? (
                           <Badge className="ml-1">

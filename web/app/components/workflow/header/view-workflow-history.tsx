@@ -1,8 +1,5 @@
 import type { WorkflowHistoryState } from '../workflow-history-store'
-import {
-  RiCloseLine,
-  RiHistoryLine,
-} from '@remixicon/react'
+
 import {
   memo,
   useCallback,
@@ -152,7 +149,7 @@ const ViewWorkflowHistory = () => {
                 setShowMessageLogModal(false)
               }}
             >
-              <RiHistoryLine className="h-4 w-4" />
+              <span className="i-ri-history-line h-4 w-4" />
             </div>
           </TipPopup>
         </PortalToFollowElemTrigger>
@@ -170,7 +167,7 @@ const ViewWorkflowHistory = () => {
                   setOpen(false)
                 }}
               >
-                <RiCloseLine className="h-4 w-4 text-text-secondary" />
+                <span className="i-ri-close-line h-4 w-4 text-text-secondary" />
               </div>
             </div>
             <div
@@ -182,7 +179,7 @@ const ViewWorkflowHistory = () => {
               {
                 !calculateChangeList.statesCount && (
                   <div className="py-12">
-                    <RiHistoryLine className="mx-auto mb-2 h-8 w-8 text-text-tertiary" />
+                    <span className="i-ri-history-line mx-auto mb-2 h-8 w-8 text-text-tertiary" />
                     <div className="text-center text-[13px] text-text-tertiary">
                       {t('changeHistory.placeholder', { ns: 'workflow' })}
                     </div>

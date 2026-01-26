@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { SchemaRoot, StructuredOutput } from '../types'
-import { RiEditLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -47,7 +46,7 @@ const StructureOutput: FC<Props> = ({
           className="flex"
           onClick={showConfigModal}
         >
-          <RiEditLine className="mr-1 size-3.5" />
+          <span className="i-ri-edit-line mr-1 size-3.5" />
           <div className="system-xs-medium text-components-button-secondary-text">{t('structOutput.configure', { ns: 'app' })}</div>
         </Button>
       </div>

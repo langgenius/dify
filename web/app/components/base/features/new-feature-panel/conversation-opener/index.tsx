@@ -1,7 +1,6 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
-import { RiEditLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -106,7 +105,7 @@ const ConversationOpener = ({
             )}
             {isHovering && (
               <Button className="w-full" onClick={handleOpenOpeningModal} disabled={disabled}>
-                <RiEditLine className="mr-1 h-4 w-4" />
+                <span className="i-ri-edit-line mr-1 h-4 w-4" />
                 {t('openingStatement.writeOpener', { ns: 'appDebug' })}
               </Button>
             )}

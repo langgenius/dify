@@ -2,7 +2,6 @@
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import type { BuildTriggerSubscriptionPayload } from '@/service/use-triggers'
-import { RiLoader2Line } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -457,7 +456,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
 
                 <div className="mb-1 flex items-center justify-center gap-1 rounded-lg bg-background-section p-3">
                   <div className="h-3.5 w-3.5">
-                    <RiLoader2Line className="h-full w-full animate-spin" />
+                    <span className="i-ri-loader-2-line h-full w-full animate-spin" />
                   </div>
                   <div className="system-xs-regular text-text-tertiary">
                     {t('modal.manual.logs.loading', { ns: 'pluginTrigger', pluginName: detail?.name || '' })}

@@ -1,5 +1,4 @@
 import type { Step } from './step-indicator'
-import { RiArrowLeftLine } from '@remixicon/react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import * as React from 'react'
@@ -41,7 +40,7 @@ const LeftHeader = ({
             variant="secondary-accent"
             className="absolute -left-11 top-3.5 size-9 rounded-full p-0"
           >
-            <RiArrowLeftLine className="size-5 " />
+            <span className="i-ri-arrow-left-line size-5 " />
           </Button>
         </Link>
       )}

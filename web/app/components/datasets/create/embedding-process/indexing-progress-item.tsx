@@ -1,9 +1,6 @@
 import type { FC } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
-import {
-  RiCheckboxCircleFill,
-  RiErrorWarningFill,
-} from '@remixicon/react'
+
 import NotionIcon from '@/app/components/base/notion-icon'
 import Tooltip from '@/app/components/base/tooltip'
 import PriorityLabel from '@/app/components/billing/priority-label'
@@ -23,7 +20,7 @@ type IndexingProgressItemProps = {
 // Status icon component for completed/error states
 const StatusIcon: FC<{ status: string, error?: string }> = ({ status, error }) => {
   if (status === 'completed')
-    return <RiCheckboxCircleFill className="size-4 shrink-0 text-text-success" />
+    return <span className="i-ri-checkbox-circle-fill size-4 shrink-0 text-text-success" />
 
   if (status === 'error') {
     return (
@@ -33,7 +30,7 @@ const StatusIcon: FC<{ status: string, error?: string }> = ({ status, error }) =
         popupContent={error}
       >
         <span>
-          <RiErrorWarningFill className="size-4 shrink-0 text-text-destructive" />
+          <span className="i-ri-error-warning-fill size-4 shrink-0 text-text-destructive" />
         </span>
       </Tooltip>
     )

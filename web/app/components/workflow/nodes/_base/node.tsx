@@ -4,12 +4,7 @@ import type {
 } from 'react'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import {
-  RiAlertFill,
-  RiCheckboxCircleFill,
-  RiErrorWarningFill,
-  RiLoader2Line,
-} from '@remixicon/react'
+
 import {
   cloneElement,
   memo,
@@ -288,13 +283,13 @@ const BaseNode: FC<BaseNodeProps> = ({
           }
           {
             isLoading
-              ? <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
+              ? <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin text-text-accent" />
               : data._runningStatus === NodeRunningStatus.Failed
-                ? <RiErrorWarningFill className="h-3.5 w-3.5 text-text-destructive" />
+                ? <span className="i-ri-error-warning-fill h-3.5 w-3.5 text-text-destructive" />
                 : data._runningStatus === NodeRunningStatus.Exception
-                  ? <RiAlertFill className="h-3.5 w-3.5 text-text-warning-secondary" />
+                  ? <span className="i-ri-alert-fill h-3.5 w-3.5 text-text-warning-secondary" />
                   : (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue)
-                      ? <RiCheckboxCircleFill className="h-3.5 w-3.5 text-text-success" />
+                      ? <span className="i-ri-checkbox-circle-fill h-3.5 w-3.5 text-text-success" />
                       : null
           }
         </div>

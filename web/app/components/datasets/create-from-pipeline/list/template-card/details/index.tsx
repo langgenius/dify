@@ -1,5 +1,4 @@
 import type { AppIconType } from '@/types/app'
-import { RiAddLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -62,7 +61,7 @@ const Details = ({
           className="absolute right-4 top-4 z-10 flex size-8 items-center justify-center"
           onClick={onClose}
         >
-          <RiCloseLine className="size-4 text-text-tertiary" />
+          <span className="i-ri-close-line size-4 text-text-tertiary" />
         </button>
         <div className="flex items-start gap-x-3 pb-2 pl-4 pr-12 pt-6">
           <AppIcon
@@ -102,7 +101,7 @@ const Details = ({
             onClick={onApplyTemplate}
             className="w-full gap-x-0.5"
           >
-            <RiAddLine className="size-4" />
+            <span className="i-ri-add-line size-4" />
             <span className="px-0.5">{t('operations.useTemplate', { ns: 'datasetPipeline' })}</span>
           </Button>
         </div>

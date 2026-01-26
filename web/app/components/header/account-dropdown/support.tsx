@@ -1,5 +1,4 @@
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { RiArrowRightSLine, RiArrowRightUpLine, RiChatSmile2Line, RiDiscordLine, RiDiscussLine, RiMailSendLine, RiQuestionLine } from '@remixicon/react'
 import Link from 'next/link'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,9 +33,9 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
               cn('group flex h-9 w-full items-center gap-1 rounded-lg py-2 pl-3 pr-2 hover:bg-state-base-hover', open && 'bg-state-base-hover')
             }
             >
-              <RiQuestionLine className="size-4 shrink-0 text-text-tertiary" />
+              <span className="i-ri-question-line size-4 shrink-0 text-text-tertiary" />
               <div className="system-md-regular grow px-1 text-left text-text-secondary">{t('userProfile.support', { ns: 'common' })}</div>
-              <RiArrowRightSLine className="size-[14px] shrink-0 text-text-tertiary" />
+              <span className="i-ri-arrow-right-sline size-[14px] shrink-0 text-text-tertiary" />
             </MenuButton>
             <Transition
               as={Fragment}
@@ -66,7 +65,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                                 closeAccountDropdown()
                               }}
                             >
-                              <RiChatSmile2Line className="size-4 shrink-0 text-text-tertiary" />
+                              <span className="i-ri-chat-smile-2-line size-4 shrink-0 text-text-tertiary" />
                               <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.contactUs', { ns: 'common' })}</div>
                             </button>
                           )
@@ -77,9 +76,9 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              <RiMailSendLine className="size-4 shrink-0 text-text-tertiary" />
+                              <span className="i-ri-mail-send-line size-4 shrink-0 text-text-tertiary" />
                               <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.emailSupport', { ns: 'common' })}</div>
-                              <RiArrowRightUpLine className="size-[14px] shrink-0 text-text-tertiary" />
+                              <span className="i-ri-arrow-right-up-line size-[14px] shrink-0 text-text-tertiary" />
                             </a>
                           )}
                     </MenuItem>
@@ -91,9 +90,9 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <RiDiscussLine className="size-4 shrink-0 text-text-tertiary" />
+                      <span className="i-ri-discuss-line size-4 shrink-0 text-text-tertiary" />
                       <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.forum', { ns: 'common' })}</div>
-                      <RiArrowRightUpLine className="size-[14px] shrink-0 text-text-tertiary" />
+                      <span className="i-ri-arrow-right-up-line size-[14px] shrink-0 text-text-tertiary" />
                     </Link>
                   </MenuItem>
                   <MenuItem>
@@ -103,9 +102,9 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <RiDiscordLine className="size-4 shrink-0 text-text-tertiary" />
+                      <span className="i-ri-discord-line size-4 shrink-0 text-text-tertiary" />
                       <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.community', { ns: 'common' })}</div>
-                      <RiArrowRightUpLine className="size-[14px] shrink-0 text-text-tertiary" />
+                      <span className="i-ri-arrow-right-up-line size-[14px] shrink-0 text-text-tertiary" />
                     </Link>
                   </MenuItem>
                 </div>

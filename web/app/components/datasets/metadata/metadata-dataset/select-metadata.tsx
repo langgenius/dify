@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { MetadataItem } from '../types'
-import { RiAddLine, RiArrowRightUpLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -67,14 +66,14 @@ const SelectMetadata: FC<Props> = ({
       </div>
       <div className="mt-1 flex justify-between border-t border-divider-subtle p-1">
         <div className="flex h-6 cursor-pointer items-center space-x-1 rounded-md px-3 text-text-secondary hover:bg-state-base-hover" onClick={onNew}>
-          <RiAddLine className="size-3.5" />
+          <span className="i-ri-add-line size-3.5" />
           <div className="system-sm-medium">{t(`${i18nPrefix}.newAction`, { ns: 'dataset' })}</div>
         </div>
         <div className="flex h-6 items-center text-text-secondary ">
           <div className="mr-[3px] h-3 w-px bg-divider-regular"></div>
           <div className="flex h-full cursor-pointer items-center rounded-md px-1.5 hover:bg-state-base-hover" onClick={onManage}>
             <div className="system-sm-medium mr-1">{t(`${i18nPrefix}.manageAction`, { ns: 'dataset' })}</div>
-            <RiArrowRightUpLine className="size-3.5" />
+            <span className="i-ri-arrow-right-up-line size-3.5" />
           </div>
         </div>
       </div>

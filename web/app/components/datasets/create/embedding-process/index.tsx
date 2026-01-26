@@ -1,11 +1,7 @@
 import type { FC } from 'react'
 import type { FullDocumentDetail } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import {
-  RiArrowRightLine,
-  RiLoader2Fill,
-  RiTerminalBoxLine,
-} from '@remixicon/react'
+
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo } from 'react'
@@ -42,7 +38,7 @@ const StatusHeader: FC<{ isEmbedding: boolean, isCompleted: boolean }> = ({
     <div className="system-md-semibold-uppercase flex items-center gap-x-1 text-text-secondary">
       {isEmbedding && (
         <>
-          <RiLoader2Fill className="size-4 animate-spin" />
+          <span className="i-ri-loader-2-fill size-4 animate-spin" />
           <span>{t('embedding.processing', { ns: 'datasetDocuments' })}</span>
         </>
       )}
@@ -62,7 +58,7 @@ const ActionButtons: FC<{
     <div className="mt-6 flex items-center gap-x-2 py-2">
       <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
         <Button className="w-fit gap-x-0.5 px-3">
-          <RiTerminalBoxLine className="size-4" />
+          <span className="i-ri-terminal-box-line size-4" />
           <span className="px-0.5">Access the API</span>
         </Button>
       </Link>
@@ -72,7 +68,7 @@ const ActionButtons: FC<{
         onClick={onNavToDocuments}
       >
         <span className="px-0.5">{t('stepThree.navTo', { ns: 'datasetCreation' })}</span>
-        <RiArrowRightLine className="size-4 stroke-current stroke-1" />
+        <span className="i-ri-arrow-right-line size-4 stroke-current stroke-1" />
       </Button>
     </div>
   )

@@ -6,7 +6,6 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { App } from '@/types/app'
-import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
@@ -381,22 +380,22 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           <div className="flex h-5 w-5 shrink-0 items-center justify-center">
             {app.access_mode === AccessMode.PUBLIC && (
               <Tooltip asChild={false} popupContent={t('accessItemsDescription.anyone', { ns: 'app' })}>
-                <RiGlobalLine className="h-4 w-4 text-text-quaternary" />
+                <span className="i-ri-global-line h-4 w-4 text-text-quaternary" />
               </Tooltip>
             )}
             {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && (
               <Tooltip asChild={false} popupContent={t('accessItemsDescription.specific', { ns: 'app' })}>
-                <RiLockLine className="h-4 w-4 text-text-quaternary" />
+                <span className="i-ri-lock-line h-4 w-4 text-text-quaternary" />
               </Tooltip>
             )}
             {app.access_mode === AccessMode.ORGANIZATION && (
               <Tooltip asChild={false} popupContent={t('accessItemsDescription.organization', { ns: 'app' })}>
-                <RiBuildingLine className="h-4 w-4 text-text-quaternary" />
+                <span className="i-ri-building-line h-4 w-4 text-text-quaternary" />
               </Tooltip>
             )}
             {app.access_mode === AccessMode.EXTERNAL_MEMBERS && (
               <Tooltip asChild={false} popupContent={t('accessItemsDescription.external', { ns: 'app' })}>
-                <RiVerifiedBadgeLine className="h-4 w-4 text-text-quaternary" />
+                <span className="i-ri-verified-badge-line h-4 w-4 text-text-quaternary" />
               </Tooltip>
             )}
           </div>
@@ -441,7 +440,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                     <div
                       className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md"
                     >
-                      <RiMoreFill className="h-4 w-4 text-text-tertiary" />
+                      <span className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
                     </div>
                   )}
                   btnClassName={open =>

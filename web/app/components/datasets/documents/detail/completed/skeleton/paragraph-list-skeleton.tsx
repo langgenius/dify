@@ -1,4 +1,3 @@
-import { RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
@@ -37,7 +36,7 @@ const CardSkelton = React.memo(() => {
       <SkeletonContainer className="p-1 pb-2">
         <SkeletonRow>
           <SkeletonRow className="h-7 gap-x-0.5 rounded-lg bg-dataset-child-chunk-expand-btn-bg pl-1 pr-3">
-            <RiArrowRightSLine className="h-4 w-4 text-text-secondary opacity-20" />
+            <span className="i-ri-arrow-right-sline h-4 w-4 text-text-secondary opacity-20" />
             <SkeletonRectangle className="w-32 bg-text-quaternary" />
           </SkeletonRow>
         </SkeletonRow>

@@ -1,4 +1,3 @@
-import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -41,7 +40,7 @@ const Publisher = () => {
           variant="primary"
         >
           <span className="pl-1">{t('common.publish', { ns: 'workflow' })}</span>
-          <RiArrowDownSLine className="h-4 w-4" />
+          <span className="i-ri-arrow-down-sline h-4 w-4" />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[11]">

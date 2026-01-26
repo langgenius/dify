@@ -4,9 +4,7 @@ import type { ToolVarInputs } from '../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import {
-  RiBracesLine,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
@@ -80,7 +78,7 @@ const ToolFormItem: FC<Props> = ({
                 onClick={showSchema}
                 className="system-xs-regular px-1 text-text-tertiary"
               >
-                <RiBracesLine className="mr-1 size-3.5" />
+                <span className="i-ri-braces-line mr-1 size-3.5" />
                 <span>JSON Schema</span>
               </Button>
             </>

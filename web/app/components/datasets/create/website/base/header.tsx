@@ -1,4 +1,3 @@
-import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
@@ -38,7 +37,7 @@ const Header = ({
           className={cn(isInPipeline ? 'size-6 px-1' : 'gap-x-0.5 px-1.5')}
           onClick={onClickConfiguration}
         >
-          <RiEqualizer2Line className="size-4" />
+          <span className="i-ri-equalizer-2-line size-4" />
           {!isInPipeline && (
             <span className="system-xs-medium">
               {buttonText}
@@ -52,7 +51,7 @@ const Header = ({
         target="_blank"
         rel="noopener noreferrer"
       >
-        <RiBookOpenLine className="size-3.5 shrink-0" />
+        <span className="i-ri-book-open-line size-3.5 shrink-0" />
         <span className="grow truncate" title={docTitle}>{docTitle}</span>
       </a>
     </div>

@@ -1,5 +1,5 @@
 import type { EndpointListItem, PluginDetail } from '../types'
-import { RiClipboardLine, RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
+import { RiClipboardLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -140,15 +140,15 @@ const EndpointCard = ({
       <div className="group rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-2.5 pl-3">
         <div className="flex items-center">
           <div className="system-md-semibold mb-1 flex h-6 grow items-center gap-1 text-text-secondary">
-            <RiLoginCircleLine className="h-4 w-4" />
+            <span className="i-ri-login-circle-line h-4 w-4" />
             <div>{data.name}</div>
           </div>
           <div className="hidden items-center group-hover:flex">
             <ActionButton onClick={showEndpointModalConfirm}>
-              <RiEditLine className="h-4 w-4" />
+              <span className="i-ri-edit-line h-4 w-4" />
             </ActionButton>
             <ActionButton onClick={showDeleteConfirm} className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive">
-              <RiDeleteBinLine className="h-4 w-4" />
+              <span className="i-ri-delete-bin-line h-4 w-4" />
             </ActionButton>
           </div>
         </div>

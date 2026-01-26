@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { Label } from '@/app/components/tools/labels/constant'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -84,7 +83,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
             )}
             {!value.length && (
               <div className="p-[1px]">
-                <RiArrowDownSLine className="h-3.5 w-3.5 text-text-tertiary" />
+                <span className="i-ri-arrow-down-sline h-3.5 w-3.5 text-text-tertiary" />
               </div>
             )}
             {!!value.length && (

@@ -4,7 +4,6 @@ import type {
   NodeOutPutVar,
   Var,
 } from '@/app/components/workflow/types'
-import { RiLoopLeftLine } from '@remixicon/react'
 import { useCallback, useMemo } from 'react'
 import { cn } from '@/utils/classnames'
 import {
@@ -94,7 +93,7 @@ const ConditionList = ({
               onClick={doToggleConditionLogicalOperator}
             >
               {logical_operator.toUpperCase()}
-              <RiLoopLeftLine className="ml-0.5 h-3 w-3" />
+              <span className="i-ri-loop-left-line ml-0.5 h-3 w-3" />
             </div>
           </div>
         )

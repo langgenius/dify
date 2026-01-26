@@ -1,4 +1,3 @@
-import { RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 
 type PermissionItemProps = {
@@ -23,7 +22,7 @@ const PermissionItem = ({
       <div className="system-md-regular grow px-1 text-text-secondary">
         {text}
       </div>
-      {isSelected && <RiCheckLine className="size-4 text-text-accent" />}
+      {isSelected && <span className="i-ri-check-line size-4 text-text-accent" />}
     </div>
   )
 }

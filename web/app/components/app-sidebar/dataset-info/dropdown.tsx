@@ -1,5 +1,4 @@
 import type { DataSet } from '@/models/datasets'
-import { RiMoreFill } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -120,7 +119,7 @@ const DropDown = ({
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         <ActionButton className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md')}>
-          <RiMoreFill className="size-4" />
+          <span className="i-ri-more-fill size-4" />
         </ActionButton>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[60]">

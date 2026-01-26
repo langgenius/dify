@@ -6,9 +6,7 @@ import type { Event, Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
-import { ChevronDownIcon } from '@heroicons/react/20/solid'
 
-import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
 import { useEffect, useMemo, useState } from 'react'
 import CheckboxList from '@/app/components/base/checkbox-list'
 import Input from '@/app/components/base/input'
@@ -406,10 +404,7 @@ const FormInputItem: FC<Props> = ({
                 {getSelectedLabels(varInput?.value) || placeholder?.[language] || placeholder?.en_US || 'Select options'}
               </span>
               <span className="absolute inset-y-0 right-0 flex items-center pr-2">
-                <ChevronDownIcon
-                  className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
-                  aria-hidden="true"
-                />
+                <span className="i-heroicons-chevron-down-20-solid h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary" aria-hidden="true" />
               </span>
             </ListboxButton>
             <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm">
@@ -436,7 +431,7 @@ const FormInputItem: FC<Props> = ({
                       </div>
                       {selected && (
                         <span className="absolute inset-y-0 right-0 flex items-center pr-2 text-text-accent">
-                          <RiCheckLine className="h-4 w-4" aria-hidden="true" />
+                          <span className="i-ri-check-line h-4 w-4" aria-hidden="true" />
                         </span>
                       )}
                     </>
@@ -494,13 +489,10 @@ const FormInputItem: FC<Props> = ({
               <span className="absolute inset-y-0 right-0 flex items-center pr-2">
                 {isLoadingOptions
                   ? (
-                      <RiLoader4Line className="h-3.5 w-3.5 animate-spin text-text-secondary" />
+                      <span className="i-ri-loader-4-line h-3.5 w-3.5 animate-spin text-text-secondary" />
                     )
                   : (
-                      <ChevronDownIcon
-                        className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
-                        aria-hidden="true"
-                      />
+                      <span className="i-heroicons-chevron-down-20-solid h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary" aria-hidden="true" />
                     )}
               </span>
             </ListboxButton>
@@ -528,7 +520,7 @@ const FormInputItem: FC<Props> = ({
                       </div>
                       {selected && (
                         <span className="absolute inset-y-0 right-0 flex items-center pr-2 text-text-accent">
-                          <RiCheckLine className="h-4 w-4" aria-hidden="true" />
+                          <span className="i-ri-check-line h-4 w-4" aria-hidden="true" />
                         </span>
                       )}
                     </>

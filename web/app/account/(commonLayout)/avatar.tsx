@@ -1,8 +1,6 @@
 'use client'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import {
-  RiGraduationCapFill,
-} from '@remixicon/react'
+
 import { useRouter } from 'next/navigation'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -77,7 +75,7 @@ export default function AppSelector() {
                           {userProfile.name}
                           {isEducationAccount && (
                             <PremiumBadge size="s" color="blue" className="ml-1 !px-2">
-                              <RiGraduationCapFill className="mr-1 h-3 w-3" />
+                              <span className="i-ri-graduation-cap-fill mr-1 h-3 w-3" />
                               <span className="system-2xs-medium">EDU</span>
                             </PremiumBadge>
                           )}

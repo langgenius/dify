@@ -1,7 +1,6 @@
 'use client'
 
 import type { AppIconSelection } from '../../base/app-icon-picker'
-import { RiArrowRightLine, RiArrowRightSLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import Image from 'next/image'
@@ -130,7 +129,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     description={t('newApp.workflowShortDescription', { ns: 'app' })}
                     icon={(
                       <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-indigo-solid">
-                        <RiExchange2Fill className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+                        <span className="i-ri-exchange-2-fill h-4 w-4 text-components-avatar-shape-fill-stop-100" />
                       </div>
                     )}
                     onClick={() => {
@@ -160,7 +159,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
                   >
                     <span className="system-2xs-medium-uppercase text-text-tertiary">{t('newApp.forBeginners', { ns: 'app' })}</span>
-                    <RiArrowRightSLine className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} />
+                    <span className={`i-ri-arrow-right-sline ${`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`}`} />
                   </button>
                 </div>
                 {isAppTypeExpanded && (
@@ -262,7 +261,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               <div className="system-xs-regular flex cursor-pointer items-center gap-1 text-text-tertiary" onClick={onCreateFromTemplate}>
                 <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
                 <div className="p-[1px]">
-                  <RiArrowRightLine className="h-3.5 w-3.5" />
+                  <span className="i-ri-arrow-right-line h-3.5 w-3.5" />
                 </div>
               </div>
               <div className="flex gap-2">
@@ -270,8 +269,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
                   <span>{t('newApp.Create', { ns: 'app' })}</span>
                   <div className="flex gap-0.5">
-                    <RiCommandLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
-                    <RiCornerDownLeftLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
+                    <span className="system-kbd i-ri-command-line size-3.5 rounded-sm bg-components-kbd-bg-white p-0.5" />
+                    <span className="system-kbd i-ri-corner-down-left-line size-3.5 rounded-sm bg-components-kbd-bg-white p-0.5" />
                   </div>
                 </Button>
               </div>

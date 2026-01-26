@@ -1,8 +1,6 @@
 import type { FC } from 'react'
 import type { RoleName } from './index'
-import {
-  RiMoreFill,
-} from '@remixicon/react'
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
@@ -64,7 +62,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
             ${open ? 'bg-[#DD2590] text-white' : 'bg-white/50 group-hover:bg-white group-hover:shadow-xs'}
           `}
           >
-            <RiMoreFill className="h-3 w-3" />
+            <span className="i-ri-more-fill h-3 w-3" />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{ zIndex: 100 }}>

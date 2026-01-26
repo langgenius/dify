@@ -1,9 +1,5 @@
 import type { FileEntity } from '../types'
-import {
-  RiDeleteBinLine,
-  RiDownloadLine,
-  RiEyeLine,
-} from '@remixicon/react'
+
 import {
   memo,
   useState,
@@ -125,14 +121,14 @@ const FileInAttachmentItem = ({
           {
             showDeleteAction && (
               <ActionButton onClick={() => onRemove?.(id)}>
-                <RiDeleteBinLine className="h-4 w-4" />
+                <span className="i-ri-delete-bin-line h-4 w-4" />
               </ActionButton>
             )
           }
           {
             canPreview && isImageFile && (
               <ActionButton className="mr-1" onClick={() => setImagePreviewUrl(url || '')}>
-                <RiEyeLine className="h-4 w-4" />
+                <span className="i-ri-eye-line h-4 w-4" />
               </ActionButton>
             )
           }
@@ -143,7 +139,7 @@ const FileInAttachmentItem = ({
                 downloadFile(url || base64Url || '', name)
               }}
               >
-                <RiDownloadLine className="h-4 w-4" />
+                <span className="i-ri-download-line h-4 w-4" />
               </ActionButton>
             )
           }

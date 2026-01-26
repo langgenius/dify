@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { ChunkingMode, FileItem } from '@/models/datasets'
-import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -44,7 +43,7 @@ const BatchModal: FC<IBatchModalProps> = ({
     <Modal isShow={isShow} onClose={noop} className="!max-w-[520px] !rounded-xl px-8 py-6">
       <div className="relative pb-1 text-xl font-medium leading-[30px] text-text-primary">{t('list.batchModal.title', { ns: 'datasetDocuments' })}</div>
       <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onCancel}>
-        <RiCloseLine className="h-4 w-4 text-text-secondary" />
+        <span className="i-ri-close-line h-4 w-4 text-text-secondary" />
       </div>
       <CSVUploader
         file={currentCSV}

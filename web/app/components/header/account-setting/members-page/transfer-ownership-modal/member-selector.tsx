@@ -1,8 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -74,7 +72,7 @@ const MemberSelector: FC<Props> = ({
               <div className="system-xs-regular text-text-quaternary">{currentValue.email}</div>
             </>
           )}
-          <RiArrowDownSLine className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
+          <span className={`i-ri-arrow-down-sline ${cn('h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')}`} />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[1000]">

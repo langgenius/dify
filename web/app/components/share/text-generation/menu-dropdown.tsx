@@ -2,9 +2,7 @@
 import type { Placement } from '@floating-ui/react'
 import type { FC } from 'react'
 import type { SiteInfo } from '@/models/share'
-import {
-  RiEqualizer2Line,
-} from '@remixicon/react'
+
 import { usePathname, useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -78,7 +76,7 @@ const MenuDropdown: FC<Props> = ({
         <PortalToFollowElemTrigger onClick={handleTrigger}>
           <div>
             <ActionButton size="l" className={cn(open && 'bg-state-base-hover')}>
-              <RiEqualizer2Line className="h-[18px] w-[18px]" />
+              <span className="i-ri-equalizer-2-line h-[18px] w-[18px]" />
             </ActionButton>
           </div>
         </PortalToFollowElemTrigger>

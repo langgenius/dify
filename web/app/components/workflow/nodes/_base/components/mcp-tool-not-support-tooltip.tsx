@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { RiAlertFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
@@ -15,7 +14,7 @@ const McpToolNotSupportTooltip: FC = () => {
         </div>
       )}
     >
-      <RiAlertFill className="size-4 text-text-warning-secondary" />
+      <span className="i-ri-alert-fill size-4 text-text-warning-secondary" />
     </Tooltip>
   )
 }

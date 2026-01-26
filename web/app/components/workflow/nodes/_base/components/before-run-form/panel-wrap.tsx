@@ -1,8 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiCloseLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -35,7 +33,7 @@ const PanelWrap: FC<Props> = ({
               onHide()
             }}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary " />
+            <span className="i-ri-close-line h-4 w-4 text-text-tertiary " />
           </div>
         </div>
         {children}

@@ -1,6 +1,3 @@
-import {
-  RiExternalLinkLine,
-} from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -102,7 +99,7 @@ function Confirm({
               {showLink && (
                 <>
                   <a onClick={handleClick} href={eduDocLink} target="_blank" className="system-xs-regular cursor-pointer text-text-accent">{t('learn', { ns: 'education' })}</a>
-                  <RiExternalLinkLine className="h-3 w-3 text-text-accent" />
+                  <span className="i-ri-external-link-line h-3 w-3 text-text-accent" />
                 </>
               )}
             </div>

@@ -1,8 +1,6 @@
 import type { FC } from 'react'
 import type { ActionButtonProps } from '@/app/components/base/action-button'
-import {
-  RiMoreFill,
-} from '@remixicon/react'
+
 import { useState } from 'react'
 import ActionButton from '@/app/components/base/action-button'
 import {
@@ -61,7 +59,7 @@ const Dropdown: FC<DropdownProps> = ({
                     triggerProps?.className,
                   )}
                 >
-                  <RiMoreFill className="h-4 w-4 text-text-tertiary" />
+                  <span className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
                 </ActionButton>
               )
         }

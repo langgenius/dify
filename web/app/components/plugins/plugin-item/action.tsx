@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { MetaData } from '../types'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { RiDeleteBinLine, RiInformation2Line, RiLoopLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -116,7 +115,7 @@ const Action: FC<Props> = ({
         && (
           <Tooltip popupContent={t(`${i18nPrefix}.checkForUpdates`, { ns: 'plugin' })}>
             <ActionButton onClick={handleFetchNewVersion}>
-              <RiLoopLeftLine className="h-4 w-4 text-text-tertiary" />
+              <span className="i-ri-loop-left-line h-4 w-4 text-text-tertiary" />
             </ActionButton>
           </Tooltip>
         )}
@@ -125,7 +124,7 @@ const Action: FC<Props> = ({
         && (
           <Tooltip popupContent={t(`${i18nPrefix}.pluginInfo`, { ns: 'plugin' })}>
             <ActionButton onClick={showPluginInfo}>
-              <RiInformation2Line className="h-4 w-4 text-text-tertiary" />
+              <span className="i-ri-information-2-line h-4 w-4 text-text-tertiary" />
             </ActionButton>
           </Tooltip>
         )
@@ -138,7 +137,7 @@ const Action: FC<Props> = ({
               className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
               onClick={showDeleteConfirm}
             >
-              <RiDeleteBinLine className="h-4 w-4" />
+              <span className="i-ri-delete-bin-line h-4 w-4" />
             </ActionButton>
           </Tooltip>
         )

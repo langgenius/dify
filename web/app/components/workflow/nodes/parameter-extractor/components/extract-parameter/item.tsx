@@ -1,10 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Param } from '../../types'
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -44,14 +41,14 @@ const Item: FC<Props> = ({
           className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
           onClick={onEdit}
         >
-          <RiEditLine className="h-4 w-4 text-text-tertiary" />
+          <span className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
         </div>
 
         <div
           className="group shrink-0 cursor-pointer rounded-md p-1 hover:!bg-state-destructive-hover"
           onClick={onDelete}
         >
-          <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
+          <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
         </div>
       </div>
     </div>

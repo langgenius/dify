@@ -1,4 +1,3 @@
-import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,7 +29,7 @@ const ResultPreview = ({
     <>
       {isRunning && !outputs && (
         <div className="flex grow flex-col items-center justify-center gap-y-2 pb-20">
-          <RiLoader2Line className="size-4 animate-spin text-text-tertiary" />
+          <span className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary" />
           <div className="system-sm-regular text-text-tertiary">{t('result.resultPreview.loading', { ns: 'pipeline' })}</div>
         </div>
       )}

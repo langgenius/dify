@@ -4,10 +4,7 @@ import type {
   Model,
   ModelItem,
 } from '../declarations'
-import {
-  RiArrowRightUpLine,
-  RiSearchLine,
-} from '@remixicon/react'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
@@ -89,11 +86,10 @@ const Popup: FC<PopupProps> = ({
           ${searchText ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-transparent bg-components-input-bg-normal'}
         `}
         >
-          <RiSearchLine
-            className={`
+          <span className={`i-ri-search-line ${`
               mr-[7px] h-[14px] w-[14px] shrink-0
               ${searchText ? 'text-text-tertiary' : 'text-text-quaternary'}
-            `}
+            `}`}
           />
           <input
             className="block h-[18px] grow appearance-none bg-transparent text-[13px] text-text-primary outline-none"
@@ -138,7 +134,7 @@ const Popup: FC<PopupProps> = ({
         }}
       >
         <span className="system-xs-medium">{t('model.settingsLink', { ns: 'common' })}</span>
-        <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
+        <span className="i-ri-arrow-right-up-line ml-0.5 h-3 w-3" />
       </div>
     </div>
   )

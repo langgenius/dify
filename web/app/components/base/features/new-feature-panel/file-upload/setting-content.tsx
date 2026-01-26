@@ -1,6 +1,5 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
-import { RiCloseLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -59,7 +58,7 @@ const SettingContent = ({
     <>
       <div className="mb-4 flex items-center justify-between">
         <div className="system-xl-semibold text-text-primary">{!imageUpload ? t('feature.fileUpload.modalTitle', { ns: 'appDebug' }) : t('feature.imageUpload.modalTitle', { ns: 'appDebug' })}</div>
-        <div className="cursor-pointer p-1" onClick={onClose}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
+        <div className="cursor-pointer p-1" onClick={onClose}><span className="i-ri-close-line h-4 w-4 text-text-tertiary" /></div>
       </div>
       <FileUploadSetting
         isMultiple

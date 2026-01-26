@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { Dependency, InstallStatus, InstallStatusResponse, Plugin, VersionInfo } from '../../../types'
 import type { ExposeRefs } from './install-multi'
-import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -211,7 +210,7 @@ const Install: FC<Props> = ({
               disabled={!canInstall || isInstalling || selectedPlugins.length === 0 || !canInstallPluginFromMarketplace}
               onClick={handleInstall}
             >
-              {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
+              {isInstalling && <span className="i-ri-loader-2-line h-4 w-4 animate-spin-slow" />}
               <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
             </Button>
           </div>

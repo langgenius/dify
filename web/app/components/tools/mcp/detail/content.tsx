@@ -1,11 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ToolWithProvider } from '../../../workflow/types'
-import {
-  RiCloseLine,
-  RiLoader2Line,
-  RiLoopLeftLine,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -174,7 +170,7 @@ const MCPDetailContent: FC<Props> = ({
               onRemove={showDeleteConfirm}
             />
             <ActionButton onClick={onHide}>
-              <RiCloseLine className="h-4 w-4" />
+              <span className="i-ri-close-line h-4 w-4" />
             </ActionButton>
           </div>
         </div>
@@ -206,7 +202,7 @@ const MCPDetailContent: FC<Props> = ({
               className="w-full"
               disabled
             >
-              <RiLoader2Line className={cn('mr-1 h-4 w-4 animate-spin')} />
+              <span className={`i-ri-loader-2-line ${cn('mr-1 h-4 w-4 animate-spin')}`} />
               {t('mcp.authorizing', { ns: 'tools' })}
             </Button>
           )}
@@ -247,7 +243,7 @@ const MCPDetailContent: FC<Props> = ({
               </div>
               <div>
                 <Button size="small" onClick={showUpdateConfirm}>
-                  <RiLoopLeftLine className="mr-1 h-3.5 w-3.5" />
+                  <span className="i-ri-loop-left-line mr-1 h-3.5 w-3.5" />
                   {t('mcp.update', { ns: 'tools' })}
                 </Button>
               </div>

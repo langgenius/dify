@@ -1,7 +1,6 @@
 'use client'
 import type { AccessControlAccount, AccessControlGroup, Subject, SubjectAccount, SubjectGroup } from '@/models/access-control'
 import { FloatingOverlay } from '@floating-ui/react'
-import { RiAddCircleFill, RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -48,7 +47,7 @@ export default function AddMemberOrGroupDialog() {
     <PortalToFollowElem open={open} onOpenChange={setOpen} offset={{ crossAxis: 300 }} placement="bottom-end">
       <PortalToFollowElemTrigger asChild>
         <Button variant="ghost-accent" size="small" className="flex shrink-0 items-center gap-x-0.5" onClick={() => setOpen(!open)}>
-          <RiAddCircleFill className="h-4 w-4" />
+          <span className="i-ri-add-circle-fill h-4 w-4" />
           <span>{t('operation.add', { ns: 'common' })}</span>
         </Button>
       </PortalToFollowElemTrigger>
@@ -158,7 +157,7 @@ function GroupItem({ group }: GroupItemProps) {
       <div className="item-center flex grow">
         <div className="mr-2 h-5 w-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
           <div className="bg-access-app-icon-mask-bg flex h-full w-full items-center justify-center">
-            <RiOrganizationChart className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" />
+            <span className="i-ri-organization-chart h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" />
           </div>
         </div>
         <p className="system-sm-medium mr-1 text-text-secondary">{group.name}</p>
@@ -172,7 +171,7 @@ function GroupItem({ group }: GroupItemProps) {
         onClick={handleExpandClick}
       >
         <span className="px-[3px]">{t('accessControlDialog.operateGroupAndMember.expand', { ns: 'app' })}</span>
-        <RiArrowRightSLine className="h-4 w-4" />
+        <span className="i-ri-arrow-right-sline h-4 w-4" />
       </Button>
     </BaseItem>
   )

@@ -1,4 +1,3 @@
-import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import {
@@ -49,7 +48,7 @@ const Dropdown = ({
             open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
           )}
         >
-          <RiMoreFill className="size-4 text-text-tertiary" />
+          <span className="i-ri-more-fill size-4 text-text-tertiary" />
         </button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[11]">

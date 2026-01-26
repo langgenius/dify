@@ -1,8 +1,5 @@
 import type { NavIcon } from './navLink'
-import {
-  RiEqualizer2Line,
-  RiMenuLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -68,7 +65,7 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
                 background={appDetail.icon_background}
                 imageUrl={appDetail.icon_url}
               />
-              <RiMenuLine className="h-4 w-4 text-text-tertiary" />
+              <span className="i-ri-menu-line h-4 w-4 text-text-tertiary" />
             </div>
           </PortalToFollowElemTrigger>
           <PortalToFollowElemContent className="z-[1000]">
@@ -91,7 +88,7 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
                     />
                     <div className="flex items-center justify-center rounded-md p-0.5">
                       <div className="flex h-5 w-5 items-center justify-center">
-                        <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                        <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
                       </div>
                     </div>
                   </div>

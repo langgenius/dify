@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -34,7 +33,7 @@ const SearchInput: FC<SearchInputProps> = ({
     )}
     >
       <div className="pointer-events-none mr-1.5 flex h-4 w-4 shrink-0 items-center justify-center">
-        <RiSearchLine className="h-4 w-4 text-components-input-text-placeholder" aria-hidden="true" />
+        <span className="i-ri-search-line h-4 w-4 text-components-input-text-placeholder" aria-hidden="true" />
       </div>
       <input
         ref={inputRef}
@@ -76,7 +75,7 @@ const SearchInput: FC<SearchInputProps> = ({
             inputRef.current?.focus()
           }}
         >
-          <RiCloseCircleFill className="h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
+          <span className="i-ri-close-circle-fill h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
         </button>
       )}
     </div>

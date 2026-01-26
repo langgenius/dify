@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { IInputTypeIconProps } from '@/app/components/app/configuration/config-var/input-type-icon'
-import { ChevronDownIcon } from '@heroicons/react/24/outline'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -76,7 +75,7 @@ const VarPicker: FC<Props> = ({
                   </div>
                 )}
           </div>
-          <ChevronDownIcon className={cn(open && 'rotate-180 text-text-tertiary', 'h-3.5 w-3.5')} />
+          <span className={`i-heroicons-chevron-down-24-outline ${cn(open && 'rotate-180 text-text-tertiary', 'h-3.5 w-3.5')}`} />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>

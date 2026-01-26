@@ -2,7 +2,6 @@ import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { RiCloseLine } from '@remixicon/react'
 import Divider from '@/app/components/base/divider'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
@@ -212,7 +211,7 @@ export const RetrievalChangeTip: FC<RetrievalChangeTipProps> = ({
         }}
         aria-label="close-retrieval-change-tip"
       >
-        <RiCloseLine className="h-4 w-4 text-gray-500" />
+        <span className="i-ri-close-line h-4 w-4 text-gray-500" />
       </button>
     </div>
   )

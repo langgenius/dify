@@ -2,7 +2,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { ViewType } from '@/app/components/workflow/block-selector/view-type-select'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
-import { RiMoreLine } from '@remixicon/react'
 import Link from 'next/link'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -125,7 +124,7 @@ const RAGToolRecommendations = ({
                 onClick={loadMore}
               >
                 <div className="px-1">
-                  <RiMoreLine className="size-4 text-text-tertiary" />
+                  <span className="i-ri-more-line size-4 text-text-tertiary" />
                 </div>
                 <div className="system-xs-regular text-text-tertiary">
                   {t('operation.more', { ns: 'common' })}

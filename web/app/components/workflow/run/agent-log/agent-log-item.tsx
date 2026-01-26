@@ -1,8 +1,5 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import {
-  RiArrowRightSLine,
-  RiListView,
-} from '@remixicon/react'
+
 import {
   useMemo,
   useState,
@@ -64,8 +61,8 @@ const AgentLogItem = ({
       >
         {
           expanded
-            ? <RiArrowRightSLine className="h-4 w-4 shrink-0 rotate-90 text-text-quaternary" />
-            : <RiArrowRightSLine className="h-4 w-4 shrink-0 text-text-quaternary" />
+            ? <span className="i-ri-arrow-right-sline h-4 w-4 shrink-0 rotate-90 text-text-quaternary" />
+            : <span className="i-ri-arrow-right-sline h-4 w-4 shrink-0 text-text-quaternary" />
         }
         <BlockIcon
           className="mr-1.5 shrink-0"
@@ -99,11 +96,11 @@ const AgentLogItem = ({
                   onClick={() => onShowAgentOrToolLog(item)}
                 >
                   <div className="flex items-center">
-                    <RiListView className="mr-1 h-4 w-4 shrink-0 text-components-button-tertiary-text" />
+                    <span className="i-ri-list-view mr-1 h-4 w-4 shrink-0 text-components-button-tertiary-text" />
                     {`${children.length} Action Logs`}
                   </div>
                   <div className="flex">
-                    <RiArrowRightSLine className="h-4 w-4 shrink-0 text-components-button-tertiary-text" />
+                    <span className="i-ri-arrow-right-sline h-4 w-4 shrink-0 text-components-button-tertiary-text" />
                   </div>
                 </Button>
               )

@@ -2,11 +2,7 @@
 import type { FC } from 'react'
 import type { Node, NodeOutPutVar, Var } from '../../../types'
 import type { CaseItem, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition } from '../types'
-import {
-  RiAddLine,
-  RiDeleteBinLine,
-  RiDraggable,
-} from '@remixicon/react'
+
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -105,10 +101,10 @@ const ConditionWrap: FC<Props> = ({
               >
                 {!isSubVariable && (
                   <>
-                    <RiDraggable className={cn(
+                    <span className={`i-ri-draggable ${cn(
                       'handle absolute left-1 top-2 hidden h-3 w-3 cursor-pointer text-text-quaternary',
                       casesLength > 1 && 'group-hover:block',
-                    )}
+                    )}`}
                     />
                     <div className={cn(
                       'absolute left-4 text-[13px] font-semibold leading-4 text-text-secondary',
@@ -176,7 +172,7 @@ const ConditionWrap: FC<Props> = ({
                               size="small"
                               disabled={readOnly}
                             >
-                              <RiAddLine className="mr-1 h-3.5 w-3.5" />
+                              <span className="i-ri-add-line mr-1 h-3.5 w-3.5" />
                               {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
                             </Button>
                           )}
@@ -203,7 +199,7 @@ const ConditionWrap: FC<Props> = ({
                         onMouseEnter={() => setWillDeleteCaseId(item.case_id)}
                         onMouseLeave={() => setWillDeleteCaseId('')}
                       >
-                        <RiDeleteBinLine className="mr-1 h-3.5 w-3.5" />
+                        <span className="i-ri-delete-bin-line mr-1 h-3.5 w-3.5" />
                         {t('operation.remove', { ns: 'common' })}
                       </Button>
                     )
@@ -223,7 +219,7 @@ const ConditionWrap: FC<Props> = ({
           disabled={readOnly}
           onClick={() => handleAddSubVariableCondition?.(caseId!, conditionId!)}
         >
-          <RiAddLine className="mr-1 h-3.5 w-3.5" />
+          <span className="i-ri-add-line mr-1 h-3.5 w-3.5" />
           {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
         </Button>
       )}

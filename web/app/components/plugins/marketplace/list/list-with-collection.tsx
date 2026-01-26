@@ -3,7 +3,6 @@
 import type { MarketplaceCollection } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { useLocale, useTranslation } from '#i18n'
-import { RiArrowRightSLine } from '@remixicon/react'
 import { getLanguage } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
 import { useMarketplaceMoreClick } from '../atoms'
@@ -49,7 +48,7 @@ const ListWithCollection = ({
                     onClick={() => onMoreClick(collection.search_params)}
                   >
                     {t('marketplace.viewMore', { ns: 'plugin' })}
-                    <RiArrowRightSLine className="h-4 w-4" />
+                    <span className="i-ri-arrow-right-sline h-4 w-4" />
                   </div>
                 )
               }

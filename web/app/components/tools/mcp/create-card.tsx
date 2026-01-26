@@ -1,10 +1,6 @@
 'use client'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import {
-  RiAddCircleFill,
-  RiArrowRightUpLine,
-  RiBookOpenLine,
-} from '@remixicon/react'
+
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
@@ -39,16 +35,16 @@ const NewMCPCard = ({ handleCreate }: Props) => {
           <div className="group grow rounded-t-xl" onClick={() => setShowModal(true)}>
             <div className="flex shrink-0 items-center p-4 pb-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-divider-deep group-hover:border-solid group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover">
-                <RiAddCircleFill className="h-4 w-4 text-text-quaternary group-hover:text-text-accent" />
+                <span className="i-ri-add-circle-fill h-4 w-4 text-text-quaternary group-hover:text-text-accent" />
               </div>
               <div className="system-md-semibold ml-3 text-text-secondary group-hover:text-text-accent">{t('mcp.create.cardTitle', { ns: 'tools' })}</div>
             </div>
           </div>
           <div className="rounded-b-xl border-t-[0.5px] border-divider-subtle px-4 py-3 text-text-tertiary hover:text-text-accent">
             <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1">
-              <RiBookOpenLine className="h-3 w-3 shrink-0" />
+              <span className="i-ri-book-open-line h-3 w-3 shrink-0" />
               <div className="system-xs-regular grow truncate" title={t('mcp.create.cardLink', { ns: 'tools' }) || ''}>{t('mcp.create.cardLink', { ns: 'tools' })}</div>
-              <RiArrowRightUpLine className="h-3 w-3 shrink-0" />
+              <span className="i-ri-arrow-right-up-line h-3 w-3 shrink-0" />
             </a>
           </div>
         </div>

@@ -1,12 +1,6 @@
 import type { currentVarType } from './panel'
 import type { GenRes } from '@/service/debug'
-import {
-  RiArrowGoBackLine,
-  RiCloseLine,
-  RiFileDownloadFill,
-  RiMenuLine,
-  RiSparklingFill,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useMemo } from 'react'
@@ -167,7 +161,7 @@ const Right = ({
       <div className="flex shrink-0 items-center justify-between gap-1 px-2 pt-2">
         {bottomPanelWidth < 488 && (
           <ActionButton className="shrink-0" onClick={handleOpenMenu}>
-            <RiMenuLine className="h-4 w-4" />
+            <span className="i-ri-menu-line h-4 w-4" />
           </ActionButton>
         )}
         <div className="flex w-0 grow items-center gap-1">
@@ -222,7 +216,7 @@ const Right = ({
                     className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
                     onClick={handleShowPromptGenerator}
                   >
-                    <RiSparklingFill className="size-4 text-components-input-border-active-prompt-1" />
+                    <span className="i-ri-sparkling-fill size-4 text-components-input-border-active-prompt-1" />
                   </div>
                 </Tooltip>
               )}
@@ -233,7 +227,7 @@ const Right = ({
                       href={fullContent?.download_url}
                       target="_blank"
                     >
-                      <RiFileDownloadFill className="size-4" />
+                      <span className="i-ri-file-download-fill size-4" />
                     </a>
                   </ActionButton>
                 </Tooltip>
@@ -247,14 +241,14 @@ const Right = ({
               {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type !== VarInInspectType.conversation && (
                 <Tooltip popupContent={t('debug.variableInspect.reset', { ns: 'workflow' })}>
                   <ActionButton onClick={resetValue}>
-                    <RiArrowGoBackLine className="h-4 w-4" />
+                    <span className="i-ri-arrow-go-back-line h-4 w-4" />
                   </ActionButton>
                 </Tooltip>
               )}
               {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type === VarInInspectType.conversation && (
                 <Tooltip popupContent={t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}>
                   <ActionButton onClick={handleClear}>
-                    <RiArrowGoBackLine className="h-4 w-4" />
+                    <span className="i-ri-arrow-go-back-line h-4 w-4" />
                   </ActionButton>
                 </Tooltip>
               )}
@@ -264,7 +258,7 @@ const Right = ({
             </>
           )}
           <ActionButton onClick={handleClose}>
-            <RiCloseLine className="h-4 w-4" />
+            <span className="i-ri-close-line h-4 w-4" />
           </ActionButton>
         </div>
       </div>

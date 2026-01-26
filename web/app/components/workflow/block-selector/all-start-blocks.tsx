@@ -5,7 +5,6 @@ import type {
 import type { BlockEnum, OnSelectBlock } from '../types'
 import type { ListRef } from './market-place-plugin/list'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
-import { RiArrowRightUpLine } from '@remixicon/react'
 import Link from 'next/link'
 import {
   useCallback,
@@ -215,7 +214,7 @@ const AllStartBlocks = ({
             target="_blank"
           >
             <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
-            <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
+            <span className="i-ri-arrow-right-up-line ml-0.5 h-3 w-3" />
           </Link>
         )}
       </div>

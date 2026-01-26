@@ -1,4 +1,3 @@
-import { RiArrowRightUpLine, RiBookOpenLine } from '@remixicon/react'
 import Link from 'next/link'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -78,11 +77,11 @@ const Card = ({
           rel="noopener noreferrer"
           className="flex h-8 items-center space-x-[7px] rounded-lg px-2 text-text-tertiary hover:bg-state-base-hover"
         >
-          <RiBookOpenLine className="size-3.5 shrink-0" />
+          <span className="i-ri-book-open-line size-3.5 shrink-0" />
           <div className="system-sm-regular grow truncate">
             {t('overview.apiInfo.doc', { ns: 'appOverview' })}
           </div>
-          <RiArrowRightUpLine className="size-3.5 shrink-0" />
+          <span className="i-ri-arrow-right-up-line size-3.5 shrink-0" />
         </Link>
       </div>
     </div>

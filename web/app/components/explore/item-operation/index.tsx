@@ -1,9 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -77,13 +74,13 @@ const ItemOperation: FC<IItemOperationProps> = ({
           </div>
           {isShowRenameConversation && (
             <div className={cn(s.actionItem, 'group hover:bg-state-base-hover')} onClick={onRenameConversation}>
-              <RiEditLine className="h-4 w-4 shrink-0 text-text-secondary" />
+              <span className="i-ri-edit-line h-4 w-4 shrink-0 text-text-secondary" />
               <span className={s.actionName}>{t('sidebar.action.rename', { ns: 'explore' })}</span>
             </div>
           )}
           {isShowDelete && (
             <div className={cn(s.actionItem, s.deleteActionItem, 'group hover:bg-state-base-hover')} onClick={onDelete}>
-              <RiDeleteBinLine className={cn(s.deleteActionItemChild, 'h-4 w-4 shrink-0 stroke-current stroke-2 text-text-secondary')} />
+              <span className={`i-ri-delete-bin-line ${cn(s.deleteActionItemChild, 'h-4 w-4 shrink-0 stroke-current stroke-2 text-text-secondary')}`} />
               <span className={cn(s.actionName, s.deleteActionItemChild)}>{t('sidebar.action.delete', { ns: 'explore' })}</span>
             </div>
           )}

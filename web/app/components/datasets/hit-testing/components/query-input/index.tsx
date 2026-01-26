@@ -10,10 +10,7 @@ import type {
   Query,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import {
-  RiEqualizer2Line,
-  RiPlayCircleLine,
-} from '@remixicon/react'
+
 import Image from 'next/image'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -196,7 +193,7 @@ const QueryInput = ({
         disabled={(text.length === 0 && images.length === 0) || text.length > 200 || (images.length > 0 && !isAllUploaded)}
         className="w-[88px]"
       >
-        <RiPlayCircleLine className="mr-1 size-4" />
+        <span className="i-ri-play-circle-line mr-1 size-4" />
         {t('input.testing', { ns: 'datasetHitTesting' })}
       </Button>
     )
@@ -216,7 +213,7 @@ const QueryInput = ({
                   size="small"
                   onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                 >
-                  <RiEqualizer2Line className="h-3.5 w-3.5 text-components-button-secondary-text" />
+                  <span className="i-ri-equalizer-2-line h-3.5 w-3.5 text-components-button-secondary-text" />
                   <div className="flex items-center justify-center gap-1 px-[3px]">
                     <span className="system-xs-medium text-components-button-secondary-text">{t('settingTitle', { ns: 'datasetHitTesting' })}</span>
                   </div>
@@ -229,7 +226,7 @@ const QueryInput = ({
                 >
                   {icon}
                   <div className="text-xs font-medium uppercase text-text-secondary">{t(`retrieval.${retrievalMethod}.title`, { ns: 'dataset' })}</div>
-                  <RiEqualizer2Line className="size-4 text-components-menu-item-text"></RiEqualizer2Line>
+                  <span className="i-ri-equalizer-2-line size-4 text-components-menu-item-text"></span>
                 </div>
               )}
           {

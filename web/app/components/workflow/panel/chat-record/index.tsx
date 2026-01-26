@@ -1,6 +1,5 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree } from '@/app/components/base/chat/types'
-import { RiCloseLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -108,7 +107,7 @@ const ChatRecord = () => {
                 workflowStore.setState({ historyWorkflowData: undefined })
               }}
             >
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+              <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
             </div>
           </div>
           <div className="h-0 grow">

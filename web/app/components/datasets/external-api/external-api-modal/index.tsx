@@ -1,11 +1,6 @@
 import type { FC } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
-import {
-  RiBook2Line,
-  RiCloseLine,
-  RiInformation2Line,
-  RiLock2Fill,
-} from '@remixicon/react'
+
 import {
   memo,
   useEffect,
@@ -143,7 +138,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
                           </div>
                           {datasetBindings?.map(binding => (
                             <div key={binding.id} className="flex items-center gap-1 self-stretch px-2 py-1">
-                              <RiBook2Line className="h-4 w-4 text-text-secondary" />
+                              <span className="i-ri-book-2-line h-4 w-4 text-text-secondary" />
                               <div className="system-sm-medium text-text-secondary">{binding.name}</div>
                             </div>
                           ))}
@@ -152,14 +147,14 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
                       asChild={false}
                       position="bottom"
                     >
-                      <RiInformation2Line className="h-3.5 w-3.5" />
+                      <span className="i-ri-information-2-line h-3.5 w-3.5" />
                     </Tooltip>
                   </span>
                 </div>
               )}
             </div>
             <ActionButton className="absolute right-5 top-5" onClick={onCancel}>
-              <RiCloseLine className="h-[18px] w-[18px] shrink-0 text-text-tertiary" />
+              <span className="i-ri-close-line h-[18px] w-[18px] shrink-0 text-text-tertiary" />
             </ActionButton>
             <Form
               value={formData}
@@ -191,7 +186,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
             <div className="system-xs-regular flex items-center justify-center gap-1 self-stretch rounded-b-2xl border-t-[0.5px]
               border-divider-subtle bg-background-soft px-2 py-3 text-text-tertiary"
             >
-              <RiLock2Fill className="h-3 w-3 text-text-quaternary" />
+              <span className="i-ri-lock-2-fill h-3 w-3 text-text-quaternary" />
               {t('externalAPIForm.encrypted.front', { ns: 'dataset' })}
               <a
                 className="text-text-accent"

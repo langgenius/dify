@@ -4,7 +4,6 @@ import type {
   EmbeddedChatbotContextValue,
 } from '@/app/components/base/chat/embedded-chatbot/context'
 import type { TryAppInfo } from '@/service/try-app'
-import { RiResetLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect } from 'react'
@@ -82,7 +81,7 @@ const TryApp: FC<Props> = ({
                 popupContent={t('chat.resetChat', { ns: 'share' })}
               >
                 <ActionButton size="l" onClick={handleNewConversation}>
-                  <RiResetLeftLine className="h-[18px] w-[18px]" />
+                  <span className="i-ri-reset-left-line h-[18px] w-[18px]" />
                 </ActionButton>
               </Tooltip>
             )}

@@ -1,5 +1,4 @@
 import type { FileEntity } from './types'
-import { RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -79,7 +78,7 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
         )}
         <div className="flex cursor-pointer items-center gap-1" onClick={() => setExpanded(!expanded)}>
           {!expanded && <div className="system-xs-medium-uppercase text-text-tertiary">{t('runDetail.fileListDetail', { ns: 'appLog' })}</div>}
-          <RiArrowRightSLine className={cn('h-4 w-4 text-text-tertiary', expanded && 'rotate-90')} />
+          <span className={`i-ri-arrow-right-sline ${cn('h-4 w-4 text-text-tertiary', expanded && 'rotate-90')}`} />
         </div>
       </div>
       {expanded && (

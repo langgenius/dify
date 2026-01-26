@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -108,7 +107,7 @@ const CustomizedPagination: FC<Props> = ({
             className="h-7 w-7 px-1.5"
             disabled={current === 0}
           >
-            <RiArrowLeftLine className="h-4 w-4" />
+            <span className="i-ri-arrow-left-line h-4 w-4" />
           </Button>
         </Pagination.PrevButton>
         {!showInput && (
@@ -145,7 +144,7 @@ const CustomizedPagination: FC<Props> = ({
             className="h-7 w-7 px-1.5"
             disabled={current === totalPages - 1}
           >
-            <RiArrowRightLine className="h-4 w-4" />
+            <span className="i-ri-arrow-right-line h-4 w-4" />
           </Button>
         </Pagination.NextButton>
       </div>

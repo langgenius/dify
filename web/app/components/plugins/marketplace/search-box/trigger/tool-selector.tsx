@@ -1,5 +1,4 @@
 import type { Tag } from '../../../hooks'
-import { RiCloseCircleFill, RiPriceTag3Line } from '@remixicon/react'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
@@ -27,7 +26,7 @@ const ToolSelectorTrigger = ({
     )}
     >
       <div className="p-0.5">
-        <RiPriceTag3Line className={cn('size-4', !!selectedTagsLength && 'text-text-secondary')} />
+        <span className={`i-ri-price-tag-3-line ${cn('size-4', !!selectedTagsLength && 'text-text-secondary')}`} />
       </div>
       {
         !!selectedTagsLength && (
@@ -48,8 +47,8 @@ const ToolSelectorTrigger = ({
       }
       {
         !!selectedTagsLength && (
-          <RiCloseCircleFill
-            className="size-4 text-text-quaternary"
+          <span
+            className="i-ri-close-circle-fill size-4 text-text-quaternary"
             onClick={(e) => {
               e.stopPropagation()
               onTagsChange([])

@@ -1,11 +1,7 @@
 import type { FC } from 'react'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentDetailModel } from '@/models/datasets'
-import {
-  RiCloseLine,
-  RiCollapseDiagonalLine,
-  RiExpandDiagonalLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -161,12 +157,12 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
           <div className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={toggleFullScreen}>
             {
               fullScreen
-                ? <RiCollapseDiagonalLine className="h-4 w-4 text-text-tertiary" />
-                : <RiExpandDiagonalLine className="h-4 w-4 text-text-tertiary" />
+                ? <span className="i-ri-collapse-diagonal-line h-4 w-4 text-text-tertiary" />
+                : <span className="i-ri-expand-diagonal-line h-4 w-4 text-text-tertiary" />
             }
           </div>
           <div className="flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={onCancel}>
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
           </div>
         </div>
       </div>

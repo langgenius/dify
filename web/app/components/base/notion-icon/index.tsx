@@ -1,5 +1,4 @@
 import type { DataSourceNotionPage } from '@/models/common'
-import { RiFileTextLine } from '@remixicon/react'
 import { cn } from '@/utils/classnames'
 
 type IconTypes = 'workspace' | 'page'
@@ -51,7 +50,7 @@ const NotionIcon = ({
   }
 
   return (
-    <RiFileTextLine className={cn('h-5 w-5 text-text-tertiary', className)} />
+    <span className={`i-ri-file-text-line ${cn('h-5 w-5 text-text-tertiary', className)}`} />
   )
 }
 

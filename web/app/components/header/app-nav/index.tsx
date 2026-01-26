@@ -1,10 +1,7 @@
 'use client'
 
 import type { NavItem } from '../nav/nav-selector'
-import {
-  RiRobot2Fill,
-  RiRobot2Line,
-} from '@remixicon/react'
+
 import { flatten } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import { useParams } from 'next/navigation'
@@ -102,8 +99,8 @@ const AppNav = () => {
     <>
       <Nav
         isApp
-        icon={<RiRobot2Line className="h-4 w-4" />}
-        activeIcon={<RiRobot2Fill className="h-4 w-4" />}
+        icon={<span className="i-ri-robot-2-line h-4 w-4" />}
+        activeIcon={<span className="i-ri-robot-2-fill h-4 w-4" />}
         text={t('menus.apps', { ns: 'common' })}
         activeSegment={['apps', 'app']}
         link="/apps"

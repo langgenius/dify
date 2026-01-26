@@ -1,9 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiArrowRightUpLine,
-  RiBugLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -35,7 +32,7 @@ const DebugInfo: FC = () => {
             <span className="system-sm-semibold flex shrink-0 grow basis-0 flex-col items-start justify-center text-text-secondary">{t(`${i18nPrefix}.title`, { ns: 'plugin' })}</span>
             <a href={docLink('/develop-plugin/features-and-specs/plugin-types/remote-debug-a-plugin')} target="_blank" className="flex cursor-pointer items-center gap-0.5 text-text-accent-light-mode-only">
               <span className="system-xs-medium">{t(`${i18nPrefix}.viewDocs`, { ns: 'plugin' })}</span>
-              <RiArrowRightUpLine className="h-3 w-3" />
+              <span className="i-ri-arrow-right-up-line h-3 w-3" />
             </a>
           </div>
           <div className="space-y-0.5">
@@ -57,7 +54,7 @@ const DebugInfo: FC = () => {
       position="bottom"
     >
       <Button className="h-full w-full p-2 text-components-button-secondary-text">
-        <RiBugLine className="h-4 w-4" />
+        <span className="i-ri-bug-line h-4 w-4" />
       </Button>
     </Tooltip>
   )

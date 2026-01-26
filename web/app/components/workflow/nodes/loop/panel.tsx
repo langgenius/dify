@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import type { LoopNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
@@ -50,7 +49,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
               className="mr-4 flex h-5 w-5 cursor-pointer items-center justify-center"
               onClick={handleAddLoopVariable}
             >
-              <RiAddLine className="h-4 w-4 text-text-tertiary" />
+              <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
             </div>
           )}
         >

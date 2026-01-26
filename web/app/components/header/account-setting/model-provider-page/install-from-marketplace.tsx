@@ -2,10 +2,7 @@ import type {
   ModelProvider,
 } from './declarations'
 import type { Plugin } from '@/app/components/plugins/types'
-import {
-  RiArrowDownSLine,
-  RiArrowRightUpLine,
-} from '@remixicon/react'
+
 import { useTheme } from 'next-themes'
 import Link from 'next/link'
 import { useCallback, useState } from 'react'
@@ -48,14 +45,14 @@ const InstallFromMarketplace = ({
       <Divider className="!mt-4 h-px" />
       <div className="flex items-center justify-between">
         <div className="system-md-semibold flex cursor-pointer items-center gap-1 text-text-primary" onClick={() => setCollapse(!collapse)}>
-          <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} />
+          <span className={`i-ri-arrow-down-sline ${cn('h-4 w-4', collapse && '-rotate-90')}`} />
           {t('modelProvider.installProvider', { ns: 'common' })}
         </div>
         <div className="mb-2 flex items-center pt-2">
           <span className="system-sm-regular pr-1 text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
           <Link target="_blank" href={getMarketplaceUrl('', { theme })} className="system-sm-medium inline-flex items-center text-text-accent">
             {t('marketplace.difyMarketplace', { ns: 'plugin' })}
-            <RiArrowRightUpLine className="h-4 w-4" />
+            <span className="i-ri-arrow-right-up-line h-4 w-4" />
           </Link>
         </div>
       </div>

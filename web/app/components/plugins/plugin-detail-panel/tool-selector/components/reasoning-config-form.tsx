@@ -8,10 +8,7 @@ import type {
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
-import {
-  RiArrowRightUpLine,
-  RiBracesLine,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
@@ -248,7 +245,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                   className="ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                   onClick={() => showSchema(input_schema as SchemaRoot, label[language] || label.en_US)}
                 >
-                  <RiBracesLine className="size-3.5" />
+                  <span className="i-ri-braces-line size-3.5" />
                 </div>
               </Tooltip>
             )}
@@ -362,7 +359,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             className="inline-flex items-center text-xs text-text-accent"
           >
             {t('howToGet', { ns: 'tools' })}
-            <RiArrowRightUpLine className="ml-1 h-3 w-3" />
+            <span className="i-ri-arrow-right-up-line ml-1 h-3 w-3" />
           </a>
         )}
       </div>

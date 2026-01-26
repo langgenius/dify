@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { AgentConfig } from '@/models/debug'
-import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -120,7 +119,7 @@ const AssistantTypePicker: FC<Props> = ({
           <div className={cn(open && 'bg-gray-50', 'flex h-8 cursor-pointer select-none items-center space-x-1 rounded-lg border border-black/5 px-3 text-indigo-600')}>
             {isAgent ? <BubbleText className="h-3 w-3" /> : <CuteRobot className="h-3 w-3" />}
             <div className="text-xs font-medium">{t(`assistantType.${isAgent ? 'agentAssistant' : 'chatAssistant'}.name`, { ns: 'appDebug' })}</div>
-            <RiArrowDownSLine className="h-3 w-3" />
+            <span className="i-ri-arrow-down-sline h-3 w-3" />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{ zIndex: 1000 }}>

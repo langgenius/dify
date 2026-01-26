@@ -5,9 +5,7 @@ import type {
   MetadataFilteringCondition,
   MetadataShape,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import {
-  RiDeleteBinLine,
-} from '@remixicon/react'
+
 import {
   useCallback,
   useMemo,
@@ -196,7 +194,7 @@ const ConditionItem = ({
         onMouseLeave={() => setIsHovered(false)}
         onClick={doRemoveCondition}
       >
-        <RiDeleteBinLine className="h-4 w-4" />
+        <span className="i-ri-delete-bin-line h-4 w-4" />
       </div>
     </div>
   )

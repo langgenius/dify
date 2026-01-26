@@ -1,12 +1,6 @@
 import type { currentVarType } from './panel'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
-import {
-  RiArrowRightSLine,
-  RiDeleteBinLine,
-  RiFileList3Line,
-  RiLoader2Line,
-  // RiErrorWarningFill,
-} from '@remixicon/react'
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 // import Button from '@/app/components/base/button'
@@ -102,10 +96,10 @@ const Group = ({
       <div className="group flex h-6 items-center gap-0.5">
         <div className="h-3 w-3 shrink-0">
           {nodeData?.isSingRunRunning && (
-            <RiLoader2Line className="h-3 w-3 animate-spin text-text-accent" />
+            <span className="i-ri-loader-2-line h-3 w-3 animate-spin text-text-accent" />
           )}
           {(!nodeData || !nodeData.isSingRunRunning) && visibleVarList.length > 0 && (
-            <RiArrowRightSLine className={cn('h-3 w-3 text-text-tertiary', !isCollapsed && 'rotate-90')} onClick={() => setIsCollapsed(!isCollapsed)} />
+            <span className={`i-ri-arrow-right-sline ${cn('h-3 w-3 text-text-tertiary', !isCollapsed && 'rotate-90')}`} onClick={() => setIsCollapsed(!isCollapsed)} />
           )}
         </div>
         <div className="flex grow cursor-pointer items-center gap-1" onClick={() => setIsCollapsed(!isCollapsed)}>
@@ -132,12 +126,12 @@ const Group = ({
           <div className="hidden shrink-0 items-center group-hover:flex">
             <Tooltip popupContent={t('debug.variableInspect.view', { ns: 'workflow' })}>
               <ActionButton onClick={handleView}>
-                <RiFileList3Line className="h-4 w-4" />
+                <span className="i-ri-file-list-3-line h-4 w-4" />
               </ActionButton>
             </Tooltip>
             <Tooltip popupContent={t('debug.variableInspect.clearNode', { ns: 'workflow' })}>
               <ActionButton onClick={handleClear}>
-                <RiDeleteBinLine className="h-4 w-4" />
+                <span className="i-ri-delete-bin-line h-4 w-4" />
               </ActionButton>
             </Tooltip>
           </div>

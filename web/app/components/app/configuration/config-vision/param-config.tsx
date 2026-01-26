@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { RiSettings2Line } from '@remixicon/react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -27,7 +26,7 @@ const ParamsConfig: FC = () => {
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <Button variant="ghost" size="small" className={cn('')}>
-          <RiSettings2Line className="h-3.5 w-3.5" />
+          <span className="i-ri-settings-2-line h-3.5 w-3.5" />
           <div className="ml-1">{t('voice.settings', { ns: 'appDebug' })}</div>
         </Button>
       </PortalToFollowElemTrigger>

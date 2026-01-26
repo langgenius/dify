@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
-import { RiDraggable } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
@@ -111,10 +110,10 @@ const VarList: FC<Props> = ({
             canDrag={canDrag}
           />
           {canDrag && (
-            <RiDraggable className={cn(
+            <span className={`i-ri-draggable ${cn(
               'handle absolute left-3 top-2.5 hidden h-3 w-3 cursor-pointer text-text-tertiary',
               'group-hover:block',
-            )}
+            )}`}
             />
           )}
         </div>

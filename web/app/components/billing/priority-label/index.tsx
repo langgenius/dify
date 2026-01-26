@@ -1,4 +1,3 @@
-import { RiAedFill } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
@@ -55,7 +54,7 @@ const PriorityLabel = ({ className }: PriorityLabelProps) => {
       >
         {
           (plan.type === Plan.professional || plan.type === Plan.team || plan.type === Plan.enterprise) && (
-            <RiAedFill className="mr-0.5 size-3" />
+            <span className="i-ri-aed-fill mr-0.5 size-3" />
           )
         }
         <span>{t(`plansCommon.priority.${priority}`, { ns: 'billing' })}</span>

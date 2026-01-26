@@ -1,5 +1,4 @@
 import type { Category } from '.'
-import { RiArrowRightUpLine } from '@remixicon/react'
 import Link from 'next/link'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,7 +33,7 @@ const Footer = ({
           >
             {t('plansCommon.comparePlanAndFeatures', { ns: 'billing' })}
           </Link>
-          <RiArrowRightUpLine className="size-4" />
+          <span className="i-ri-arrow-right-up-line size-4" />
         </span>
       </div>
     </div>

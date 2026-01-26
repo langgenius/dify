@@ -2,7 +2,6 @@ import type {
   ComparisonOperator,
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { RiArrowDownSLine } from '@remixicon/react'
 import {
   useMemo,
   useState,
@@ -70,7 +69,7 @@ const ConditionOperator = ({
               ? selectedOption.label
               : t(`${i18nPrefix}.select`, { ns: 'workflow' })
           }
-          <RiArrowDownSLine className="ml-1 h-3.5 w-3.5" />
+          <span className="i-ri-arrow-down-sline ml-1 h-3.5 w-3.5" />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-10">

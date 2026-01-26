@@ -1,7 +1,6 @@
 'use client'
 import type { RoleKey } from './role-selector'
 import type { InvitationResult } from '@/models/common'
-import { RiCloseLine, RiErrorWarningFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useEffect, useState } from 'react'
@@ -85,7 +84,7 @@ const InviteModal = ({
       <Modal overflowVisible isShow onClose={noop} className={cn(s.modal)}>
         <div className="mb-2 flex justify-between">
           <div className="text-xl font-semibold text-text-primary">{t('members.inviteTeamMember', { ns: 'common' })}</div>
-          <RiCloseLine className="h-4 w-4 cursor-pointer text-text-tertiary" onClick={onCancel} />
+          <span className="i-ri-close-line h-4 w-4 cursor-pointer text-text-tertiary" onClick={onCancel} />
         </div>
         <div className="mb-3 text-[13px] text-text-tertiary">{t('members.inviteTeamMemberTip', { ns: 'common' })}</div>
         {!isEmailSetup && (
@@ -94,7 +93,7 @@ const InviteModal = ({
               <div className="absolute left-0 top-0 h-full w-full rounded-xl opacity-40" style={{ background: 'linear-gradient(92deg, rgba(255, 171, 0, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
               <div className="relative flex h-full w-full items-start">
                 <div className="mr-0.5 shrink-0 p-0.5">
-                  <RiErrorWarningFill className="h-5 w-5 text-text-warning" />
+                  <span className="i-ri-error-warning-fill h-5 w-5 text-text-warning" />
                 </div>
                 <div className="system-xs-medium text-text-primary">
                   <span>{t('members.emailNotSetup', { ns: 'common' })}</span>

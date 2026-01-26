@@ -1,9 +1,7 @@
 'use client'
 import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '../types'
 import type { WorkflowToolModalPayload } from '@/app/components/tools/workflow-tool'
-import {
-  RiCloseLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -260,7 +258,7 @@ const ProviderDetail = ({
             </div>
             <div className="flex gap-1">
               <ActionButton onClick={onHide}>
-                <RiCloseLine className="h-4 w-4" />
+                <span className="i-ri-close-line h-4 w-4" />
               </ActionButton>
             </div>
           </div>

@@ -1,7 +1,6 @@
 import type { FormData } from './form/types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 import type { InputVar } from '@/models/pipeline'
-import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -53,7 +52,7 @@ const InputFieldEditorPanel = ({
         className="absolute right-2.5 top-2.5 flex size-8 items-center justify-center"
         onClick={onClose}
       >
-        <RiCloseLine className="size-4 text-text-tertiary" />
+        <span className="i-ri-close-line size-4 text-text-tertiary" />
       </button>
       <InputFieldForm
         initialData={formData}

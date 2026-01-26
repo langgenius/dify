@@ -1,6 +1,5 @@
 'use client'
 
-import { RiHourglass2Fill } from '@remixicon/react'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -16,7 +15,7 @@ const LicenseNav = () => {
     const count = dayjs(expiredAt).diff(dayjs(), 'days')
     return (
       <PremiumBadge color="orange" className="select-none">
-        <RiHourglass2Fill className="flex size-3 items-center pl-0.5 text-components-premium-badge-indigo-text-stop-0" />
+        <span className="i-ri-hourglass-2-fill flex size-3 items-center pl-0.5 text-components-premium-badge-indigo-text-stop-0" />
         {count <= 1 && <span className="system-xs-medium px-0.5">{t('license.expiring', { ns: 'common', count })}</span>}
         {count > 1 && <span className="system-xs-medium px-0.5">{t('license.expiring_plural', { ns: 'common', count })}</span>}
       </PremiumBadge>

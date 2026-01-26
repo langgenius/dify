@@ -1,7 +1,6 @@
 'use client'
 import type { OffsetOptions, Placement } from '@floating-ui/react'
 import type { FC } from 'react'
-import { RiQuestionLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -104,7 +103,7 @@ const Tooltip: FC<TooltipProps> = ({
         asChild={asChild}
         className={!asChild ? triggerClassName : ''}
       >
-        {children || <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-[1px]'}><RiQuestionLine className="h-full w-full text-text-quaternary hover:text-text-tertiary" /></div>}
+        {children || <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-[1px]'}><span className="i-ri-question-line h-full w-full text-text-quaternary hover:text-text-tertiary" /></div>}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
         className={cn('z-[9999]', portalContentClassName || '')}

@@ -1,9 +1,6 @@
 import type { FC } from 'react'
 import type { ImageFile } from '@/types/app'
-import {
-  RiCloseLine,
-  RiLoader2Line,
-} from '@remixicon/react'
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -86,7 +83,7 @@ const ImageList: FC<ImageListProps> = ({
                 `}
             >
               {item.progress > -1 && (
-                <RiLoader2Line className="h-5 w-5 animate-spin text-white" />
+                <span className="i-ri-loader-2-line h-5 w-5 animate-spin text-white" />
               )}
               {item.progress === -1 && (
                 <Tooltip
@@ -125,7 +122,7 @@ const ImageList: FC<ImageListProps> = ({
               )}
               onClick={() => onRemove?.(item._id)}
             >
-              <RiCloseLine className="h-3 w-3 text-text-tertiary" />
+              <span className="i-ri-close-line h-3 w-3 text-text-tertiary" />
             </button>
           )}
         </div>

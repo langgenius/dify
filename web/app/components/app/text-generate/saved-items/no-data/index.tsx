@@ -1,9 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiAddLine,
-  RiBookmark3Line,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -20,7 +17,7 @@ const NoData: FC<INoDataProps> = ({
   return (
     <div className="rounded-xl bg-background-section-burn p-6 ">
       <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg-alt shadow-lg backdrop-blur-sm">
-        <RiBookmark3Line className="h-4 w-4 text-text-accent" />
+        <span className="i-ri-bookmark-3-line h-4 w-4 text-text-accent" />
       </div>
       <div className="mt-3">
         <span className="system-xl-semibold text-text-secondary">{t('generation.savedNoData.title', { ns: 'share' })}</span>
@@ -33,7 +30,7 @@ const NoData: FC<INoDataProps> = ({
         className="mt-3"
         onClick={onStartCreateContent}
       >
-        <RiAddLine className="mr-1 h-4 w-4" />
+        <span className="i-ri-add-line mr-1 h-4 w-4" />
         <span>{t('generation.savedNoData.startCreateContent', { ns: 'share' })}</span>
       </Button>
     </div>

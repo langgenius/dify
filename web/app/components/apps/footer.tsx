@@ -1,4 +1,3 @@
-import { RiDiscordFill, RiDiscussLine, RiGithubFill } from '@remixicon/react'
 import Link from 'next/link'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,13 +32,13 @@ const Footer = () => {
       <p className="system-sm-regular mt-1 text-text-tertiary">{t('communityIntro', { ns: 'app' })}</p>
       <div className="mt-3 flex items-center gap-2">
         <CustomLink href="https://github.com/langgenius/dify">
-          <RiGithubFill className="h-5 w-5 text-text-tertiary" />
+          <span className="i-ri-github-fill h-5 w-5 text-text-tertiary" />
         </CustomLink>
         <CustomLink href="https://discord.gg/FngNHpbcY7">
-          <RiDiscordFill className="h-5 w-5 text-text-tertiary" />
+          <span className="i-ri-discord-fill h-5 w-5 text-text-tertiary" />
         </CustomLink>
         <CustomLink href="https://forum.dify.ai">
-          <RiDiscussLine className="h-5 w-5 text-text-tertiary" />
+          <span className="i-ri-discuss-line h-5 w-5 text-text-tertiary" />
         </CustomLink>
       </div>
     </footer>

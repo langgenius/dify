@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { ConfigItemType } from './config-item'
-import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -95,7 +94,7 @@ const Panel: FC<Props> = ({
                           }
                           onClick={onConfigure}
                         >
-                          <RiAddLine className="mr-[5px] h-4 w-4 text-components-button-secondary-accent-text" />
+                          <span className="i-ri-add-line mr-[5px] h-4 w-4 text-components-button-secondary-accent-text" />
                           {t('dataSource.connect', { ns: 'common' })}
                         </div>
                       )}

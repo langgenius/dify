@@ -1,4 +1,3 @@
-import { RiAddCircleFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,7 +26,7 @@ const AddField = () => {
         className="flex items-center gap-x-[1px]"
         onClick={handleAddField}
       >
-        <RiAddCircleFill className="h-3.5 w-3.5" />
+        <span className="i-ri-add-circle-fill h-3.5 w-3.5" />
         <span className="px-[3px]">{t('nodes.llm.jsonSchema.addField', { ns: 'workflow' })}</span>
       </Button>
     </div>

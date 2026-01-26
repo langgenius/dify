@@ -1,7 +1,6 @@
 'use client'
 import type { AppDetailResponse } from '@/models/app'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/solid'
 import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
 import { Fragment, useState } from 'react'
@@ -39,10 +38,7 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
             "
           >
             {curApp?.name}
-            <ChevronDownIcon
-              className="ml-1 h-3 w-3"
-              aria-hidden="true"
-            />
+            <span className="i-heroicons-chevron-down-24-solid ml-1 h-3 w-3" aria-hidden="true" />
           </MenuButton>
         </div>
         <Transition
@@ -97,7 +93,7 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
                       border-dashed border-gray-200 bg-gray-100
                     "
                     >
-                      <PlusIcon className="h-4 w-4 text-gray-500" />
+                      <span className="i-heroicons-plus-24-solid h-4 w-4 text-gray-500" />
                     </div>
                     <div className="text-[14px] font-normal text-gray-700">{t('menus.newApp', { ns: 'common' })}</div>
                   </div>

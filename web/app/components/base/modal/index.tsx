@@ -1,5 +1,4 @@
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
-import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { Fragment } from 'react'
 import { cn } from '@/utils/classnames'
@@ -68,8 +67,8 @@ export default function Modal({
                 {closable
                   && (
                     <div className="absolute right-6 top-6 z-10 flex h-5 w-5 items-center justify-center rounded-2xl hover:cursor-pointer hover:bg-state-base-hover">
-                      <RiCloseLine
-                        className="h-4 w-4 text-text-tertiary"
+                      <span
+                        className="i-ri-close-line h-4 w-4 text-text-tertiary"
                         onClick={
                           (e) => {
                             e.stopPropagation()

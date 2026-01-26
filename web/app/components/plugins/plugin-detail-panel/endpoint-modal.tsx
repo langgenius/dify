@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { FormSchema } from '../../base/form/types'
 import type { PluginDetail } from '../types'
-import { RiArrowRightUpLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -85,7 +84,7 @@ const EndpointModal: FC<Props> = ({
           <div className="flex items-center justify-between">
             <div className="system-xl-semibold text-text-primary">{t('detailPanel.endpointModalTitle', { ns: 'plugin' })}</div>
             <ActionButton onClick={onCancel}>
-              <RiCloseLine className="h-4 w-4" />
+              <span className="i-ri-close-line h-4 w-4" />
             </ActionButton>
           </div>
           <div className="system-xs-regular mt-0.5 text-text-tertiary">{t('detailPanel.endpointModalDesc', { ns: 'plugin' })}</div>
@@ -112,7 +111,7 @@ const EndpointModal: FC<Props> = ({
                       className="body-xs-regular inline-flex items-center text-text-accent-secondary"
                     >
                       {t('howToGet', { ns: 'tools' })}
-                      <RiArrowRightUpLine className="ml-1 h-3 w-3" />
+                      <span className="i-ri-arrow-right-up-line ml-1 h-3 w-3" />
                     </a>
                   )
                 : null}

@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { RiArrowDownSLine, RiCheckLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import {
   PortalToFollowElem,
@@ -62,7 +61,7 @@ const Chip: FC<Props> = ({
             {showLeftIcon && (
               <div className="p-0.5">
                 {leftIcon || (
-                  <RiFilter3Line className={cn('h-4 w-4 text-text-tertiary', !!value && 'text-text-secondary')} />
+                  <span className={`i-ri-filter-3-line ${cn('h-4 w-4 text-text-tertiary', !!value && 'text-text-secondary')}`} />
                 )}
               </div>
             )}
@@ -71,7 +70,7 @@ const Chip: FC<Props> = ({
                 {triggerContent}
               </div>
             </div>
-            {!value && <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />}
+            {!value && <span className="i-ri-arrow-down-sline h-4 w-4 text-text-tertiary" />}
             {!!value && (
               <div
                 className="group/clear cursor-pointer p-[1px]"
@@ -80,7 +79,7 @@ const Chip: FC<Props> = ({
                   onClear()
                 }}
               >
-                <RiCloseCircleFill className="h-3.5 w-3.5 text-text-quaternary group-hover/clear:text-text-tertiary" />
+                <span className="i-ri-close-circle-fill h-3.5 w-3.5 text-text-quaternary group-hover/clear:text-text-tertiary" />
               </div>
             )}
           </div>
@@ -98,7 +97,7 @@ const Chip: FC<Props> = ({
                   }}
                 >
                   <div title={item.name} className="system-sm-medium grow truncate text-text-secondary">{item.name}</div>
-                  {value === item.value && <RiCheckLine className="h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
+                  {value === item.value && <span className="i-ri-check-line h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
                 </div>
               ))}
             </div>

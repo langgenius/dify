@@ -1,5 +1,4 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import { RiEqualizer2Line } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -91,7 +90,7 @@ const FileUpload = ({
                 onChange={onChange}
               >
                 <Button className="w-full" disabled={disabled}>
-                  <RiEqualizer2Line className="mr-1 h-4 w-4" />
+                  <span className="i-ri-equalizer-2-line mr-1 h-4 w-4" />
                   {t('operation.settings', { ns: 'common' })}
                 </Button>
               </SettingModal>

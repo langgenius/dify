@@ -2,7 +2,6 @@ import type {
   Credential,
   PluginPayload,
 } from './types'
-import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -90,7 +89,7 @@ const PluginAuthInAgent = ({
         {
           unavailable && t('auth.unavailable', { ns: 'plugin' })
         }
-        <RiArrowDownSLine className="ml-0.5 h-4 w-4" />
+        <span className="i-ri-arrow-down-sline ml-0.5 h-4 w-4" />
       </Button>
     )
   }, [credentialId, credentials, t])

@@ -1,13 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { PluginDetail } from '../types'
-import {
-  RiArrowRightUpLine,
-  RiBugLine,
-  RiErrorWarningLine,
-  RiHardDrive3Line,
-  RiLoginCircleLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -124,7 +118,7 @@ const PluginItem: FC<Props> = ({
                   t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })
                 }
                 >
-                  <RiErrorWarningLine color="red" className="ml-0.5 h-4 w-4 shrink-0 text-text-accent" />
+                  <span className="i-ri-error-warning-line ml-0.5 h-4 w-4 shrink-0 text-text-accent" color="red" />
                 </Tooltip>
               )}
               <Badge
@@ -166,7 +160,7 @@ const PluginItem: FC<Props> = ({
             <>
               <div className="system-xs-regular mx-2 text-text-quaternary">·</div>
               <div className="system-xs-regular flex items-center gap-x-1 overflow-hidden text-text-tertiary">
-                <RiLoginCircleLine className="size-3 shrink-0" />
+                <span className="i-ri-login-circle-line size-3 shrink-0" />
                 <span
                   className="truncate"
                   title={t('endpointsEnabled', { ns: 'plugin', num: endpoints_active })}
@@ -187,7 +181,7 @@ const PluginItem: FC<Props> = ({
                   <div className="flex items-center space-x-0.5 text-text-secondary">
                     <Github className="h-3 w-3" />
                     <div className="system-2xs-semibold-uppercase">GitHub</div>
-                    <RiArrowRightUpLine className="h-3 w-3" />
+                    <span className="i-ri-arrow-right-up-line h-3 w-3" />
                   </div>
                 </a>
               </>
@@ -201,7 +195,7 @@ const PluginItem: FC<Props> = ({
                     {' '}
                     <span className="text-text-secondary">marketplace</span>
                   </div>
-                  <RiArrowRightUpLine className="h-3 w-3 text-text-secondary" />
+                  <span className="i-ri-arrow-right-up-line h-3 w-3 text-text-secondary" />
                 </a>
               </>
             )}
@@ -209,7 +203,7 @@ const PluginItem: FC<Props> = ({
             && (
               <>
                 <div className="flex items-center gap-1">
-                  <RiHardDrive3Line className="h-3 w-3 text-text-tertiary" />
+                  <span className="i-ri-hard-drive-3-line h-3 w-3 text-text-tertiary" />
                   <div className="system-2xs-medium-uppercase text-text-tertiary">Local Plugin</div>
                 </div>
               </>
@@ -218,7 +212,7 @@ const PluginItem: FC<Props> = ({
             && (
               <>
                 <div className="flex items-center gap-1">
-                  <RiBugLine className="h-3 w-3 text-text-warning" />
+                  <span className="i-ri-bug-line h-3 w-3 text-text-warning" />
                   <div className="system-2xs-medium-uppercase text-text-warning">Debugging Plugin</div>
                 </div>
               </>

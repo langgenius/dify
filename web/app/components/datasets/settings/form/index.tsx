@@ -4,7 +4,6 @@ import type { DefaultModel } from '@/app/components/header/account-setting/model
 import type { Member } from '@/models/common'
 import type { IconInfo } from '@/models/datasets'
 import type { AppIconType, RetrievalConfig } from '@/types/app'
-import { RiAlertFill } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -322,7 +321,7 @@ const Form = () => {
               <div className="relative mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 shadow-xs shadow-shadow-shadow-3">
                 <div className="absolute left-0 top-0 flex h-full w-full items-center bg-toast-warning-bg opacity-40" />
                 <div className="p-1">
-                  <RiAlertFill className="size-4 text-text-warning-secondary" />
+                  <span className="i-ri-alert-fill size-4 text-text-warning-secondary" />
                 </div>
                 <span className="system-xs-medium text-text-primary">
                   {t('form.upgradeHighQualityTip', { ns: 'datasetSettings' })}

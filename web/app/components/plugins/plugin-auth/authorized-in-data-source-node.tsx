@@ -1,4 +1,3 @@
-import { RiEqualizer2Line } from '@remixicon/react'
 import {
   memo,
 } from 'react'
@@ -31,10 +30,9 @@ const AuthorizedInDataSourceNode = ({
           ? t('auth.authorizations', { ns: 'plugin' })
           : t('auth.authorization', { ns: 'plugin' })
       }
-      <RiEqualizer2Line
-        className={cn(
-          'h-3.5 w-3.5 text-components-button-ghost-text',
-        )}
+      <span className={`i-ri-equalizer-2-line ${cn(
+        'h-3.5 w-3.5 text-components-button-ghost-text',
+      )}`}
       />
     </Button>
   )

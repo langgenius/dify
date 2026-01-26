@@ -1,5 +1,4 @@
 import type { BasicPlan } from '../../../type'
-import { RiArrowRightLine } from '@remixicon/react'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import { Plan } from '../../../type'
@@ -45,7 +44,7 @@ const Button = ({
       onClick={handleGetPayUrl}
     >
       <span className="grow text-start">{btnText}</span>
-      {!isPlanDisabled && <RiArrowRightLine className="size-5 shrink-0" />}
+      {!isPlanDisabled && <span className="i-ri-arrow-right-line size-5 shrink-0" />}
     </button>
   )
 }

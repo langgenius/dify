@@ -1,9 +1,7 @@
 import type { FC } from 'react'
 import type { IfElseNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import {
-  RiAddLine,
-} from '@remixicon/react'
+
 import {
   memo,
 } from 'react'
@@ -69,7 +67,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
           onClick={() => handleAddCase()}
           disabled={readOnly}
         >
-          <RiAddLine className="mr-1 h-4 w-4" />
+          <span className="i-ri-add-line mr-1 h-4 w-4" />
           ELIF
         </Button>
       </div>

@@ -3,10 +3,7 @@ import type {
   BlockEnum,
   CommonEdgeType,
 } from '../types'
-import {
-  RiCloseLine,
-  RiListCheck3,
-} from '@remixicon/react'
+
 import {
   memo,
   useState,
@@ -81,9 +78,7 @@ const WorkflowChecklist = ({
           <div
             className={cn('group flex h-full w-full cursor-pointer items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
           >
-            <RiListCheck3
-              className={cn('h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')}
-            />
+            <span className={`i-ri-list-check-3 ${cn('h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')}`} />
           </div>
           {
             !!needWarningNodes.length && (
@@ -110,7 +105,7 @@ const WorkflowChecklist = ({
               className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center"
               onClick={() => setOpen(false)}
             >
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+              <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
             </div>
           </div>
           <div className="pb-2">

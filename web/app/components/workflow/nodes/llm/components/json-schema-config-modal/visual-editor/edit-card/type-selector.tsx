@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { ArrayType, Type } from '../../../../types'
-import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
 import { useState } from 'react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
@@ -41,7 +40,7 @@ const TypeSelector: FC<TypeSelectorProps> = ({
         )}
         >
           <span className="system-xs-medium text-text-tertiary">{currentValue}</span>
-          <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
+          <span className="i-ri-arrow-down-sline h-4 w-4 text-text-tertiary" />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={popupClassName}>
@@ -58,7 +57,7 @@ const TypeSelector: FC<TypeSelectorProps> = ({
                 }}
               >
                 <span className="system-sm-medium px-1 text-text-secondary">{item.text}</span>
-                {isSelected && <RiCheckLine className="h-4 w-4 text-text-accent" />}
+                {isSelected && <span className="i-ri-check-line h-4 w-4 text-text-accent" />}
               </div>
             )
           })}

@@ -1,4 +1,3 @@
-import { RiFontSize } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
@@ -46,7 +45,7 @@ const FontSizeSelector = () => {
           fontSizeSelectorShow && 'bg-state-base-hover text-text-secondary',
         )}
         >
-          <RiFontSize className="mr-1 h-4 w-4" />
+          <span className="i-ri-font-size mr-1 h-4 w-4" />
           {FONT_SIZE_LIST.find(font => font.key === fontSize)?.value || t('nodes.note.editor.small', { ns: 'workflow' })}
         </div>
       </PortalToFollowElemTrigger>

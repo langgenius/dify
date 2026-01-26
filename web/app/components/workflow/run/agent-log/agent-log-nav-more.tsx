@@ -1,5 +1,4 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import { RiMoreLine } from '@remixicon/react'
 import { useState } from 'react'
 import Button from '@/app/components/base/button'
 import {
@@ -33,7 +32,7 @@ const AgentLogNavMore = ({
           className="h-6 w-6"
           variant="ghost-accent"
         >
-          <RiMoreLine className="h-4 w-4" />
+          <span className="i-ri-more-line h-4 w-4" />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>

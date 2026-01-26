@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { Dependency, PluginDeclaration } from '../../../types'
-import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -61,7 +60,7 @@ const Uploading: FC<Props> = ({
     <>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
         <div className="flex items-center gap-1 self-stretch">
-          <RiLoader2Line className="h-4 w-4 animate-spin-slow text-text-accent" />
+          <span className="i-ri-loader-2-line h-4 w-4 animate-spin-slow text-text-accent" />
           <div className="system-md-regular text-text-secondary">
             {t(`${i18nPrefix}.uploadingPackage`, {
               ns: 'plugin',

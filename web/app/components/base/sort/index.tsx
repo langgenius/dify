@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { RiArrowDownSLine, RiCheckLine, RiSortAsc, RiSortDesc } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -57,7 +56,7 @@ const Sort: FC<Props> = ({
                   {triggerContent}
                 </div>
               </div>
-              <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
+              <span className="i-ri-arrow-down-sline h-4 w-4 text-text-tertiary" />
             </div>
           </PortalToFollowElemTrigger>
           <PortalToFollowElemContent className="z-[1002]">
@@ -73,7 +72,7 @@ const Sort: FC<Props> = ({
                     }}
                   >
                     <div title={item.name} className="system-sm-medium grow truncate text-text-secondary">{item.name}</div>
-                    {value === item.value && <RiCheckLine className="h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
+                    {value === item.value && <span className="i-ri-check-line h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
                   </div>
                 ))}
               </div>
@@ -82,8 +81,8 @@ const Sort: FC<Props> = ({
         </div>
       </PortalToFollowElem>
       <div className="ml-px cursor-pointer rounded-r-lg bg-components-button-tertiary-bg p-2 hover:bg-components-button-tertiary-bg-hover" onClick={() => onSelect(`${order ? '' : '-'}${value}`)}>
-        {!order && <RiSortAsc className="h-4 w-4 text-components-button-tertiary-text" />}
-        {order && <RiSortDesc className="h-4 w-4 text-components-button-tertiary-text" />}
+        {!order && <span className="i-ri-sort-asc h-4 w-4 text-components-button-tertiary-text" />}
+        {order && <span className="i-ri-sort-desc h-4 w-4 text-components-button-tertiary-text" />}
       </div>
     </div>
 

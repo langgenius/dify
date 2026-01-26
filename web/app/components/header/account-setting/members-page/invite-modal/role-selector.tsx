@@ -1,4 +1,3 @@
-import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -44,7 +43,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
         >
           <div className={cn('flex cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-3 py-2 hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
             <div className="mr-2 grow text-sm leading-5 text-text-primary">{t('members.invitedAsRole', { ns: 'common', role: t(roleI18nKeyMap[value], { ns: 'common' }) })}</div>
-            <RiArrowDownSLine className="h-4 w-4 shrink-0 text-text-secondary" />
+            <span className="i-ri-arrow-down-sline h-4 w-4 shrink-0 text-text-secondary" />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[1002]">

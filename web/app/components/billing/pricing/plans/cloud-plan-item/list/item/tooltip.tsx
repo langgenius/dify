@@ -1,4 +1,3 @@
-import { RiInfoI } from '@remixicon/react'
 import * as React from 'react'
 
 type TooltipProps = {
@@ -16,7 +15,7 @@ const Tooltip = ({
         {content}
       </div>
       <div className="flex h-full w-full items-center justify-center rounded-[4px] bg-state-base-hover transition-all duration-500 ease-in-out group-hover:rounded-none group-hover:bg-saas-dify-blue-static">
-        <RiInfoI className="size-3.5 text-text-tertiary group-hover:text-text-primary-on-surface" data-testid="tooltip-icon" />
+        <span className="i-ri-info-i size-3.5 text-text-tertiary group-hover:text-text-primary-on-surface" data-testid="tooltip-icon" />
       </div>
     </div>
   )

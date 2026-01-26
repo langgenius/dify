@@ -1,5 +1,4 @@
 import type { I18nKeysWithPrefix } from '@/types/i18n'
-import { RiLock2Fill } from '@remixicon/react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -21,7 +20,7 @@ export const EncryptedBottom = (props: Props) => {
 
   return (
     <div className={cn('system-xs-regular flex items-center justify-center rounded-b-2xl border-t-[0.5px] border-divider-subtle bg-background-soft px-2 py-3 text-text-tertiary', className)}>
-      <RiLock2Fill className="mx-1 h-3 w-3 text-text-quaternary" />
+      <span className="i-ri-lock-2-fill mx-1 h-3 w-3 text-text-quaternary" />
       {t(frontTextKey, { ns: 'common' })}
       <Link
         className="mx-1 text-text-accent"

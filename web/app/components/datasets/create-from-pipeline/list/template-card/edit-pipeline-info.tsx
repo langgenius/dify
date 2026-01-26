@@ -1,6 +1,5 @@
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { PipelineTemplate } from '@/models/pipeline'
-import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -105,7 +104,7 @@ const EditPipelineInfo = ({
         className="absolute right-5 top-5 flex size-8 items-center justify-center"
         onClick={onClose}
       >
-        <RiCloseLine className="size-5 text-text-tertiary" />
+        <span className="i-ri-close-line size-5 text-text-tertiary" />
       </button>
       {/* Form */}
       <div className="flex flex-col gap-y-5 px-6 py-3">

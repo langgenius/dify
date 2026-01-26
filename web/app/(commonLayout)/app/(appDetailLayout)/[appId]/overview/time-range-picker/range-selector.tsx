@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import type { PeriodParamsWithTimeRange, TimeRange } from '@/app/components/app/overview/app-chart'
 import type { Item } from '@/app/components/base/select'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -46,7 +45,7 @@ const RangeSelector: FC<Props> = ({
     return (
       <div className={cn('flex h-8 cursor-pointer items-center space-x-1.5 rounded-lg bg-components-input-bg-normal pl-3 pr-2', isOpen && 'bg-state-base-hover-alt')}>
         <div className="system-sm-regular text-components-input-text-filled">{isCustomRange ? t('filter.period.custom', { ns: 'appLog' }) : item?.name}</div>
-        <RiArrowDownSLine className={cn('size-4 text-text-quaternary', isOpen && 'text-text-secondary')} />
+        <span className={`i-ri-arrow-down-sline ${cn('size-4 text-text-quaternary', isOpen && 'text-text-secondary')}`} />
       </div>
     )
   }, [isCustomRange])
@@ -60,7 +59,7 @@ const RangeSelector: FC<Props> = ({
               'absolute left-2 top-[9px] flex items-center  text-text-accent',
             )}
           >
-            <RiCheckLine className="h-4 w-4" aria-hidden="true" />
+            <span className="i-ri-check-line h-4 w-4" aria-hidden="true" />
           </span>
         )}
         <span className={cn('system-md-regular block truncate')}>{item.name}</span>

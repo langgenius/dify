@@ -1,8 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiAddLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
@@ -25,7 +23,7 @@ const AddButton: FC<Props> = ({
       size="medium"
       onClick={onClick}
     >
-      <RiAddLine className="mr-1 h-3.5 w-3.5" />
+      <span className="i-ri-add-line mr-1 h-3.5 w-3.5" />
       <div>{text}</div>
     </Button>
   )

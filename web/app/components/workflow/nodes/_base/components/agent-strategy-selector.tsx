@@ -3,7 +3,6 @@ import type { ToolWithProvider } from '../../../types'
 import type { Strategy } from './agent-strategy'
 import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { ListProps, ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import { RiArrowDownSLine, RiErrorWarningFill } from '@remixicon/react'
 import Link from 'next/link'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -53,7 +52,7 @@ const NotFoundWarn = (props: {
       )}
     >
       <div>
-        <RiErrorWarningFill className="size-4 text-text-destructive" />
+        <span className="i-ri-error-warning-fill size-4 text-text-destructive" />
       </div>
     </Tooltip>
   )
@@ -197,7 +196,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                       description={t('nodes.agent.strategyNotFoundDesc', { ns: 'workflow' })}
                     />
                   )
-                : <RiArrowDownSLine className="size-4 text-text-tertiary" />}
+                : <span className="i-ri-arrow-down-sline size-4 text-text-tertiary" />}
             {showSwitchVersion && (
               <SwitchPluginVersion
                 uniqueIdentifier={value.plugin_unique_identifier}

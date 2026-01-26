@@ -1,8 +1,6 @@
 import type { NavIcon } from './navLink'
 import type { DataSet } from '@/models/datasets'
-import {
-  RiMenuLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -88,7 +86,7 @@ const DatasetSidebarDropdown = ({
                 background={iconInfo.icon_background}
                 imageUrl={iconInfo.icon_url}
               />
-              <RiMenuLine className="size-4 text-text-tertiary" />
+              <span className="i-ri-menu-line size-4 text-text-tertiary" />
             </div>
           </PortalToFollowElemTrigger>
           <PortalToFollowElemContent className="z-50">

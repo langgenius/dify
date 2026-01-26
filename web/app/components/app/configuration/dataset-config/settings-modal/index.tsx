@@ -2,7 +2,6 @@ import type { FC } from 'react'
 import type { Member } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { RiCloseLine } from '@remixicon/react'
 import { isEqual } from 'es-toolkit/predicate'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -202,7 +201,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             onClick={onCancel}
             className="flex h-6 w-6 cursor-pointer items-center justify-center"
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
           </div>
         </div>
       </div>

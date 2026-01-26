@@ -1,4 +1,3 @@
-import { RiFileUploadLine } from '@remixicon/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -46,7 +45,7 @@ const Footer = () => {
         className="system-md-medium flex items-center gap-x-3 text-text-accent"
         onClick={openImportFromDSL}
       >
-        <RiFileUploadLine className="size-5" />
+        <span className="i-ri-file-upload-line size-5" />
         <span>{t('creation.importDSL', { ns: 'datasetPipeline' })}</span>
       </button>
       <CreateFromDSLModal

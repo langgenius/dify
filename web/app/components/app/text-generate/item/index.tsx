@@ -3,17 +3,7 @@ import type { FC } from 'react'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
-import {
-  RiBookmark3Line,
-  RiClipboardLine,
-  RiFileList3Line,
-  RiPlayList2Line,
-  RiReplay15Line,
-  RiSparklingFill,
-  RiSparklingLine,
-  RiThumbDownLine,
-  RiThumbUpLine,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import { useParams } from 'next/navigation'
@@ -236,7 +226,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   >
                     {taskId && (
                       <div className={cn('system-2xs-medium-uppercase mb-2 flex items-center text-text-accent-secondary', isError && 'text-text-destructive')}>
-                        <RiPlayList2Line className="mr-1 h-3 w-3" />
+                        <span className="i-ri-play-list-2-line mr-1 h-3 w-3" />
                         <span>{t('generation.execution', { ns: 'share' })}</span>
                         <span className="px-1">·</span>
                         <span>{taskId}</span>
@@ -281,7 +271,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               )}
               {!workflowProcessData && taskId && (
                 <div className={cn('system-2xs-medium-uppercase sticky left-0 top-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 text-text-accent-secondary', isError && 'text-text-destructive')}>
-                  <RiPlayList2Line className="mr-1 h-3 w-3" />
+                  <span className="i-ri-play-list-2-line mr-1 h-3 w-3" />
                   <span>{t('generation.execution', { ns: 'share' })}</span>
                   <span className="px-1">·</span>
                   <span>{`${taskId}${depth > 1 ? `-${depth - 1}` : ''}`}</span>
@@ -314,7 +304,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 {!isInWebApp && (appSourceType !== AppSourceType.installedApp) && !isResponding && (
                   <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
                     <ActionButton disabled={isError || !messageId} onClick={handleOpenLogModal}>
-                      <RiFileList3Line className="h-4 w-4" />
+                      <span className="i-ri-file-list-3-line h-4 w-4" />
                       {/* <div>{t('common.operation.log')}</div> */}
                     </ActionButton>
                   </div>
@@ -322,7 +312,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
                   {moreLikeThis && !isTryApp && (
                     <ActionButton state={depth === MAX_DEPTH ? ActionButtonState.Disabled : ActionButtonState.Default} disabled={depth === MAX_DEPTH} onClick={handleMoreLikeThis}>
-                      <RiSparklingLine className="h-4 w-4" />
+                      <span className="i-ri-sparkling-line h-4 w-4" />
                     </ActionButton>
                   )}
                   {isShowTextToSpeech && !isTryApp && (
@@ -343,17 +333,17 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                         Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
                       }}
                     >
-                      <RiClipboardLine className="h-4 w-4" />
+                      <span className="i-ri-clipboard-line h-4 w-4" />
                     </ActionButton>
                   )}
                   {isInWebApp && isError && (
                     <ActionButton onClick={onRetry}>
-                      <RiReplay15Line className="h-4 w-4" />
+                      <span className="i-ri-replay-15-line h-4 w-4" />
                     </ActionButton>
                   )}
                   {isInWebApp && !isWorkflow && !isTryApp && (
                     <ActionButton disabled={isError || !messageId} onClick={() => { onSave?.(messageId as string) }}>
-                      <RiBookmark3Line className="h-4 w-4" />
+                      <span className="i-ri-bookmark-3-line h-4 w-4" />
                     </ActionButton>
                   )}
                 </div>
@@ -362,21 +352,21 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                     {!feedback?.rating && (
                       <>
                         <ActionButton onClick={() => onFeedback?.({ rating: 'like' })}>
-                          <RiThumbUpLine className="h-4 w-4" />
+                          <span className="i-ri-thumb-up-line h-4 w-4" />
                         </ActionButton>
                         <ActionButton onClick={() => onFeedback?.({ rating: 'dislike' })}>
-                          <RiThumbDownLine className="h-4 w-4" />
+                          <span className="i-ri-thumb-down-line h-4 w-4" />
                         </ActionButton>
                       </>
                     )}
                     {feedback?.rating === 'like' && (
                       <ActionButton state={ActionButtonState.Active} onClick={() => onFeedback?.({ rating: null })}>
-                        <RiThumbUpLine className="h-4 w-4" />
+                        <span className="i-ri-thumb-up-line h-4 w-4" />
                       </ActionButton>
                     )}
                     {feedback?.rating === 'dislike' && (
                       <ActionButton state={ActionButtonState.Destructive} onClick={() => onFeedback?.({ rating: null })}>
-                        <RiThumbDownLine className="h-4 w-4" />
+                        <span className="i-ri-thumb-down-line h-4 w-4" />
                       </ActionButton>
                     )}
                   </div>
@@ -396,7 +386,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   isMobile ? 'top-[3.5px]' : 'top-2',
                 )}
                 >
-                  <RiSparklingFill className="h-3 w-3 text-text-primary-on-surface" />
+                  <span className="i-ri-sparkling-fill h-3 w-3 text-text-primary-on-surface" />
                 </div>
               </div>
             )}

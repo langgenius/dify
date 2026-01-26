@@ -1,10 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiDeleteBinLine,
-  RiNodeTree,
-  RiUploadCloud2Line,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -113,7 +109,7 @@ const Uploader: FC<Props> = ({
             )}
           >
             <div className="flex w-full items-center justify-center space-x-2">
-              <RiUploadCloud2Line className="h-6 w-6 text-text-tertiary" />
+              <span className="i-ri-upload-cloud-2-line h-6 w-6 text-text-tertiary" />
               <div className="text-text-tertiary">
                 {t('dslUploader.button', { ns: 'app' })}
                 <span
@@ -130,7 +126,7 @@ const Uploader: FC<Props> = ({
         {file && (
           <div className="group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
             <div className="flex items-center justify-center p-3">
-              <RiNodeTree className="h-6 w-6 shrink-0 text-text-secondary" />
+              <span className="i-ri-node-tree h-6 w-6 shrink-0 text-text-secondary" />
             </div>
             <div className="flex grow flex-col items-start gap-0.5 py-1 pr-2">
               <span className="font-inter max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium leading-4 text-text-secondary">
@@ -144,7 +140,7 @@ const Uploader: FC<Props> = ({
             </div>
             <div className="hidden items-center pr-3 group-hover:flex">
               <ActionButton onClick={removeFile}>
-                <RiDeleteBinLine className="h-4 w-4 text-text-tertiary" />
+                <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary" />
               </ActionButton>
             </div>
           </div>

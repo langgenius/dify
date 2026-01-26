@@ -1,8 +1,6 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import Tooltip from '@/app/components/base/tooltip'
@@ -57,7 +55,7 @@ const Field: FC<Props> = ({
         <div className="flex">
           {!!operations && <div>{operations}</div>}
           {supportFold && (
-            <RiArrowDownSLine className="h-4 w-4 cursor-pointer text-text-tertiary transition-transform" style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
+            <span className="i-ri-arrow-down-sline h-4 w-4 cursor-pointer text-text-tertiary transition-transform" style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
           )}
         </div>
       </div>

@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
-import { RiArrowRightUpLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
@@ -33,7 +32,7 @@ const ResultItemFooter: FC<Props> = ({
         onClick={showDetailModal}
       >
         <div className="text-xs uppercase">{t(`${i18nPrefix}open`, { ns: 'datasetHitTesting' })}</div>
-        <RiArrowRightUpLine className="size-3.5" />
+        <span className="i-ri-arrow-right-up-line size-3.5" />
       </div>
     </div>
   )

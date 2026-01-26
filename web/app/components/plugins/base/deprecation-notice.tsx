@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import { useTranslation } from '#i18n'
-import { RiAlertFill } from '@remixicon/react'
 import { camelCase } from 'es-toolkit/string'
 import Link from 'next/link'
 import * as React from 'react'
@@ -64,7 +63,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
       >
         <div className="absolute left-0 top-0 -z-10 h-full w-full bg-toast-warning-bg opacity-40" />
         <div className={cn('flex size-6 shrink-0 items-center justify-center', iconWrapperClassName)}>
-          <RiAlertFill className="size-4 text-text-warning-secondary" />
+          <span className="i-ri-alert-fill size-4 text-text-warning-secondary" />
         </div>
         <div className={cn('system-xs-regular grow py-1 text-text-primary', textClassName)}>
           {

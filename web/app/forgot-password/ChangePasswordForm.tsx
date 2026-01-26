@@ -1,5 +1,4 @@
 'use client'
-import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -154,7 +153,7 @@ const ChangePasswordForm = () => {
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">
-              <CheckCircleIcon className="h-10 w-10 text-[#039855]" />
+              <span className="i-heroicons-check-circle-24-solid h-10 w-10 text-[#039855]" />
             </div>
             <h2 className="text-[32px] font-bold text-text-primary">
               {t('passwordChangedTip', { ns: 'login' })}

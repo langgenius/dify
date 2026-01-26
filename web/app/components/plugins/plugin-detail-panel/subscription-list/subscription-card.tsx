@@ -1,11 +1,7 @@
 'use client'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-  RiWebhookLine,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -42,7 +38,7 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
       >
         <div className="flex items-center justify-between">
           <div className="flex h-6 items-center gap-1">
-            <RiWebhookLine className="h-4 w-4 text-text-secondary" />
+            <span className="i-ri-webhook-line h-4 w-4 text-text-secondary" />
             <span className="system-md-semibold text-text-secondary">
               {data.name}
             </span>
@@ -53,13 +49,13 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
               onClick={showEditModal}
               className="transition-colors hover:bg-state-base-hover"
             >
-              <RiEditLine className="h-4 w-4" />
+              <span className="i-ri-edit-line h-4 w-4" />
             </ActionButton>
             <ActionButton
               onClick={showDeleteModal}
               className="subscription-delete-btn transition-colors hover:bg-state-destructive-hover hover:text-text-destructive"
             >
-              <RiDeleteBinLine className="h-4 w-4" />
+              <span className="i-ri-delete-bin-line h-4 w-4" />
             </ActionButton>
           </div>
         </div>

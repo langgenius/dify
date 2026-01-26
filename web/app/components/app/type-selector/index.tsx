@@ -1,4 +1,3 @@
-import { RiArrowDownSLine, RiCloseCircleFill, RiExchange2Fill, RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -50,9 +49,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
                   onChange([])
                 }}
               >
-                <RiCloseCircleFill
-                  className="h-3.5 w-3.5 text-text-quaternary group-hover:text-text-tertiary"
-                />
+                <span className="i-ri-close-circle-fill h-3.5 w-3.5 text-text-quaternary group-hover:text-text-tertiary" />
               </button>
             )}
           </div>
@@ -115,7 +112,7 @@ export const AppTypeIcon = React.memo(({ type, className, wrapperClassName, styl
   if (type === AppModeEnum.WORKFLOW) {
     return (
       <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-indigo-solid')}>
-        <RiExchange2Fill className={iconClassNames} />
+        <span className={`i-ri-exchange-2-fill ${iconClassNames}`} />
       </div>
     )
   }
@@ -137,9 +134,9 @@ function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['v
         'flex h-8 items-center justify-between gap-1',
       )}
       >
-        <RiFilter3Line className="h-4 w-4 text-text-tertiary" />
+        <span className="i-ri-filter-3-line h-4 w-4 text-text-tertiary" />
         <div className="system-sm-medium min-w-[65px] grow text-center text-text-tertiary">{t('typeSelector.all', { ns: 'app' })}</div>
-        <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
+        <span className="i-ri-arrow-down-sline h-4 w-4 text-text-tertiary" />
       </div>
     )
   }

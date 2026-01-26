@@ -1,6 +1,5 @@
 'use client'
 import type { InvitationResult } from '@/models/common'
-import { RiPencilLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Avatar from '@/app/components/base/avatar'
@@ -69,7 +68,7 @@ const MembersPage = () => {
                         setEditWorkspaceModalVisible(true)
                       }}
                     >
-                      <RiPencilLine className="h-4 w-4 text-text-tertiary" />
+                      <span className="i-ri-pencil-line h-4 w-4 text-text-tertiary" />
                     </div>
                   </Tooltip>
                 </span>

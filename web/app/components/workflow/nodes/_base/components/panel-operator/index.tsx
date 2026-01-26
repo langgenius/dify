@@ -1,6 +1,5 @@
 import type { OffsetOptions } from '@floating-ui/react'
 import type { Node } from '@/app/components/workflow/types'
-import { RiMoreFill } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -58,7 +57,7 @@ const PanelOperator = ({
             ${triggerClassName}
           `}
         >
-          <RiMoreFill className="h-4 w-4 text-text-tertiary" />
+          <span className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[11]">

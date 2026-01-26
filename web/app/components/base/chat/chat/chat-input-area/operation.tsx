@@ -4,10 +4,7 @@ import type {
   EnableType,
 } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import {
-  RiMicLine,
-  RiSendPlane2Fill,
-} from '@remixicon/react'
+
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import ActionButton from '@/app/components/base/action-button'
@@ -52,7 +49,7 @@ const Operation: FC<OperationProps> = ({
                 disabled={readonly}
                 onClick={onShowVoiceInput}
               >
-                <RiMicLine className="h-5 w-5" />
+                <span className="i-ri-mic-line h-5 w-5" />
               </ActionButton>
             )
           }
@@ -69,7 +66,7 @@ const Operation: FC<OperationProps> = ({
               : {}
           }
         >
-          <RiSendPlane2Fill className="h-4 w-4" />
+          <span className="i-ri-send-plane-2-fill h-4 w-4" />
         </Button>
       </div>
     </div>

@@ -4,7 +4,6 @@ import type {
   CustomModel,
   ModelProvider,
 } from '../declarations'
-import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -84,7 +83,7 @@ const SwitchCredentialInLoadBalancing = ({
             <Badge className="ml-2">Enterprise</Badge>
           )
         }
-        <RiArrowDownSLine className="h-4 w-4" />
+        <span className="i-ri-arrow-down-sline h-4 w-4" />
       </Button>
     )
     if (empty && notAllowCustomCredential) {

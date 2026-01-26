@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
-import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
@@ -36,7 +35,7 @@ const SchemaModal: FC<Props> = ({
             {t('nodes.agent.parameterSchema', { ns: 'workflow' })}
           </div>
           <div className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center p-1.5" onClick={onClose}>
-            <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
+            <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" />
           </div>
         </div>
         {/* Content */}

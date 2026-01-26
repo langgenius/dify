@@ -1,4 +1,3 @@
-import { RiUploadCloud2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -37,7 +36,7 @@ const ImageUploader = () => {
         )}
       >
         <div className="system-sm-medium flex items-center justify-center gap-x-2 text-text-secondary">
-          <RiUploadCloud2Line className="size-5 text-text-tertiary" />
+          <span className="i-ri-upload-cloud-2-line size-5 text-text-tertiary" />
           <div>
             <span>{t('imageUploader.button', { ns: 'dataset' })}</span>
             <span

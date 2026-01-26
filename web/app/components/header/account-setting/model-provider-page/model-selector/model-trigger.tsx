@@ -3,7 +3,6 @@ import type {
   Model,
   ModelItem,
 } from '../declarations'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
@@ -63,9 +62,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
                     </Tooltip>
                   )
                 : (
-                    <RiArrowDownSLine
-                      className="h-3.5 w-3.5 text-text-tertiary"
-                    />
+                    <span className="i-ri-arrow-down-sline h-3.5 w-3.5 text-text-tertiary" />
                   )
             }
           </div>

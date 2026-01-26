@@ -1,8 +1,5 @@
 import type { FC } from 'react'
-import {
-  RiZoomInLine,
-  RiZoomOutLine,
-} from '@remixicon/react'
+
 import {
   Fragment,
   memo,
@@ -155,7 +152,7 @@ const ZoomInOut: FC = () => {
                   zoomOut()
                 }}
               >
-                <RiZoomOutLine className="h-4 w-4 text-text-tertiary hover:text-text-secondary" />
+                <span className="i-ri-zoom-out-line h-4 w-4 text-text-tertiary hover:text-text-secondary" />
               </div>
             </TipPopup>
             <div onClick={handleTrigger} className={cn('system-sm-medium w-[34px] text-text-tertiary hover:text-text-secondary')}>
@@ -176,7 +173,7 @@ const ZoomInOut: FC = () => {
                   zoomIn()
                 }}
               >
-                <RiZoomInLine className="h-4 w-4 text-text-tertiary hover:text-text-secondary" />
+                <span className="i-ri-zoom-in-line h-4 w-4 text-text-tertiary hover:text-text-secondary" />
               </div>
             </TipPopup>
           </div>

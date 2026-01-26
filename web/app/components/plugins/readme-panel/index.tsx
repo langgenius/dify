@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { RiBookReadLine, RiCloseLine } from '@remixicon/react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -36,13 +35,13 @@ const ReadmePanel: FC = () => {
       <div className="rounded-t-xl bg-background-body px-4 py-4">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <RiBookReadLine className="h-3 w-3 text-text-tertiary" />
+            <span className="i-ri-book-read-line h-3 w-3 text-text-tertiary" />
             <span className="text-xs font-medium uppercase text-text-tertiary">
               {t('readmeInfo.title', { ns: 'plugin' })}
             </span>
           </div>
           <ActionButton onClick={onClose}>
-            <RiCloseLine className="h-4 w-4" />
+            <span className="i-ri-close-line h-4 w-4" />
           </ActionButton>
         </div>
         <DetailHeader detail={detail} isReadmeView={true} />

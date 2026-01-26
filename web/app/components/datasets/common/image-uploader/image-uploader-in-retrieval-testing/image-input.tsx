@@ -1,4 +1,3 @@
-import { RiImageAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
@@ -45,7 +44,7 @@ const ImageUploader = () => {
             onClick={selectHandle}
           >
             <div className="flex size-8 items-center justify-center rounded-lg border-[1px] border-dashed border-components-dropzone-border bg-components-button-tertiary-bg group-hover:bg-components-button-tertiary-bg-hover">
-              <RiImageAddLine className="size-4 text-text-tertiary" />
+              <span className="i-ri-image-add-line size-4 text-text-tertiary" />
             </div>
             {files.length === 0 && (
               <span className="system-sm-regular text-text-quaternary group-hover:text-text-tertiary">

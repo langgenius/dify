@@ -1,6 +1,5 @@
 'use client'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
-import { RiDeleteBinLine, RiUploadCloud2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -318,7 +317,7 @@ const FileUploader = ({
       {!hideUpload && (
         <div ref={dropRef} className={cn('relative mb-2 box-border flex min-h-20 max-w-[640px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-xs leading-4 text-text-tertiary', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
           <div className="flex min-h-5 items-center justify-center text-sm leading-4 text-text-secondary">
-            <RiUploadCloud2Line className="mr-2 size-5" />
+            <span className="i-ri-upload-cloud-2-line mr-2 size-5" />
 
             <span>
               {supportBatchUpload ? t('stepOne.uploader.button', { ns: 'datasetCreation' }) : t('stepOne.uploader.buttonSingleFile', { ns: 'datasetCreation' })}
@@ -385,7 +384,7 @@ const FileUploader = ({
                   removeFile(fileItem.fileID)
                 }}
               >
-                <RiDeleteBinLine className="size-4 text-text-tertiary" />
+                <span className="i-ri-delete-bin-line size-4 text-text-tertiary" />
               </span>
             </div>
           </div>

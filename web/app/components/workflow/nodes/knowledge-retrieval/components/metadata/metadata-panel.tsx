@@ -1,5 +1,4 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import AddCondition from './add-condition'
 import ConditionList from './condition-list'
@@ -26,7 +25,7 @@ const MetadataPanel = ({
           className="absolute bottom-0 right-2.5 flex h-8 w-8 cursor-pointer items-center justify-center"
           onClick={onCancel}
         >
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
         </div>
       </div>
       <div className="px-1 py-2">

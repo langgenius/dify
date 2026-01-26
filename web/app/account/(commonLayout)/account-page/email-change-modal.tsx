@@ -1,5 +1,4 @@
 import type { ResponseError } from '@/service/fetch'
-import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
@@ -205,7 +204,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
       className="!w-[420px] !p-6"
     >
       <div className="absolute right-5 top-5 cursor-pointer p-1.5" onClick={onClose}>
-        <RiCloseLine className="h-5 w-5 text-text-tertiary" />
+        <span className="i-ri-close-line h-5 w-5 text-text-tertiary" />
       </div>
       {step === STEP.start && (
         <>

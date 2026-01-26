@@ -1,4 +1,3 @@
-import { RiArrowLeftLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -23,7 +22,7 @@ const Actions = ({
         onClick={onBack}
         className="gap-x-0.5"
       >
-        <RiArrowLeftLine className="size-4" />
+        <span className="i-ri-arrow-left-line size-4" />
         <span className="px-0.5">{t('operations.dataSource', { ns: 'datasetPipeline' })}</span>
       </Button>
       <Button

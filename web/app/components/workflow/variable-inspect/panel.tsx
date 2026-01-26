@@ -1,9 +1,7 @@
 import type { FC } from 'react'
 import type { NodeProps } from '../types'
 import type { VarInInspect } from '@/types/workflow'
-import {
-  RiCloseLine,
-} from '@remixicon/react'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -163,7 +161,7 @@ const Panel: FC = () => {
         <div className="flex shrink-0 items-center justify-between pl-4 pr-2 pt-2">
           <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className="h-4 w-4" />
+            <span className="i-ri-close-line h-4 w-4" />
           </ActionButton>
         </div>
         <div className="grow p-2">
@@ -181,7 +179,7 @@ const Panel: FC = () => {
         <div className="flex shrink-0 items-center justify-between pl-4 pr-2 pt-2">
           <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className="h-4 w-4" />
+            <span className="i-ri-close-line h-4 w-4" />
           </ActionButton>
         </div>
         <div className="grow p-2">

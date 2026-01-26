@@ -1,9 +1,7 @@
 'use client'
 import type { Placement } from '@floating-ui/react'
 import type { FC } from 'react'
-import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -46,7 +44,7 @@ const Operation: FC<Props> = ({
       >
         <div className={cn('flex cursor-pointer items-center rounded-lg p-1.5 pl-2 text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
           <div className="system-md-semibold">{title}</div>
-          <RiArrowDownSLine className="h-4 w-4 " />
+          <span className="i-ri-arrow-down-sline h-4 w-4 " />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">

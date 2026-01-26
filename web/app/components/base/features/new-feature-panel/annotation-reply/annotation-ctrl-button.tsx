@@ -1,9 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiEditLine,
-  RiFileEditLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -60,7 +57,7 @@ const AnnotationCtrlButton: FC<Props> = ({
           popupContent={t('feature.annotation.edit', { ns: 'appDebug' })}
         >
           <ActionButton onClick={onEdit}>
-            <RiEditLine className="h-4 w-4" />
+            <span className="i-ri-edit-line h-4 w-4" />
           </ActionButton>
         </Tooltip>
       )}
@@ -69,7 +66,7 @@ const AnnotationCtrlButton: FC<Props> = ({
           popupContent={t('feature.annotation.add', { ns: 'appDebug' })}
         >
           <ActionButton onClick={handleAdd}>
-            <RiFileEditLine className="h-4 w-4" />
+            <span className="i-ri-file-edit-line h-4 w-4" />
           </ActionButton>
         </Tooltip>
       )}

@@ -1,5 +1,4 @@
 'use client'
-import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
@@ -168,7 +167,7 @@ const ChangePasswordForm = () => {
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
-              <RiCheckboxCircleFill className="h-6 w-6 text-text-success" />
+              <span className="i-ri-checkbox-circle-fill h-6 w-6 text-text-success" />
             </div>
             <h2 className="title-4xl-semi-bold text-text-primary">
               {t('passwordChangedTip', { ns: 'login' })}

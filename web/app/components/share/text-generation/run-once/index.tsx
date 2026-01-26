@@ -3,10 +3,7 @@ import type { InputValueTypes } from '../types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
-import {
-  RiLoader2Line,
-  RiPlayLargeLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -241,14 +238,14 @@ const RunOnce: FC<IRunOnceProps> = ({
                   ? (
                       <>
                         {runControl?.isStopping
-                          ? <RiLoader2Line className="mr-1 h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
+                          ? <span className="i-ri-loader-2-line mr-1 h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
                           : <StopCircle className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />}
                         <span className="text-[13px]">{stopLabel}</span>
                       </>
                     )
                   : (
                       <>
-                        <RiPlayLargeLine className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span className="i-ri-play-large-line mr-1 h-4 w-4 shrink-0" aria-hidden="true" />
                         <span className="text-[13px]">{t('generation.run', { ns: 'share' })}</span>
                       </>
                     )}

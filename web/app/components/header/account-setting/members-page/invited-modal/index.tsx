@@ -1,7 +1,4 @@
 import type { InvitationResult } from '@/models/common'
-import { XMarkIcon } from '@heroicons/react/24/outline'
-import { CheckCircleIcon } from '@heroicons/react/24/solid'
-import { RiQuestionLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -38,9 +35,9 @@ const InvitedModal = ({
             shadow-xl
           "
           >
-            <CheckCircleIcon className="h-[22px] w-[22px] text-[#039855]" />
+            <span className="i-heroicons-check-circle-24-solid h-[22px] w-[22px] text-[#039855]" />
           </div>
-          <XMarkIcon className="h-4 w-4 cursor-pointer" onClick={onCancel} />
+          <span className="i-heroicons-xmark-24-outline h-4 w-4 cursor-pointer" onClick={onCancel} />
         </div>
         <div className="mb-1 text-xl font-semibold text-text-primary">{t('members.invitationSent', { ns: 'common' })}</div>
         {!IS_CE_EDITION && (
@@ -74,7 +71,7 @@ const InvitedModal = ({
                             >
                               <div className="flex items-center justify-center gap-1 text-sm">
                                 {item.email}
-                                <RiQuestionLine className="h-4 w-4 text-red-300" />
+                                <span className="i-ri-question-line h-4 w-4 text-red-300" />
                               </div>
                             </Tooltip>
                           </div>

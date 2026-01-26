@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSourceInfo, FileItem, LegacyDataSourceInfo } from '@/models/datasets'
-import { RiArrowLeftLine, RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -163,7 +162,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       <div className="flex h-full flex-col bg-background-default">
         <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pl-3 pr-4">
           <div onClick={backToPrev} className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-components-button-tertiary-bg">
-            <RiArrowLeftLine className="h-4 w-4 text-components-button-ghost-text hover:text-text-tertiary" />
+            <span className="i-ri-arrow-left-line h-4 w-4 text-components-button-ghost-text hover:text-text-tertiary" />
           </div>
           <DocumentTitle
             datasetId={datasetId}
@@ -221,8 +220,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             >
               {
                 showMetadata
-                  ? <RiLayoutLeft2Line className="h-4 w-4 text-components-button-secondary-text" />
-                  : <RiLayoutRight2Line className="h-4 w-4 text-components-button-secondary-text" />
+                  ? <span className="i-ri-layout-left-2-line h-4 w-4 text-components-button-secondary-text" />
+                  : <span className="i-ri-layout-right-2-line h-4 w-4 text-components-button-secondary-text" />
               }
             </button>
           </div>

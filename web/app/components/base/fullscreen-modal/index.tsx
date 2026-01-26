@@ -1,5 +1,4 @@
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
-import { RiCloseLargeLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { cn } from '@/utils/classnames'
 
@@ -51,7 +50,7 @@ export default function FullScreenModal({
                         onClose()
                       }}
                     >
-                      <RiCloseLargeLine className="h-3.5 w-3.5 text-components-button-tertiary-text" />
+                      <span className="i-ri-close-large-line h-3.5 w-3.5 text-components-button-tertiary-text" />
                     </div>
                   )}
                 {children}

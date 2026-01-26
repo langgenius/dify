@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { InputProps } from '../input'
-import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback } from 'react'
 import { cn } from '@/utils/classnames'
 import Input from '../input'
@@ -108,7 +107,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
           aria-label="increment"
           className={cn(size === 'regular' ? 'pt-1' : 'pt-1.5', 'px-1.5 hover:bg-components-input-bg-hover', disabled && 'cursor-not-allowed hover:bg-transparent', controlClassName)}
         >
-          <RiArrowUpSLine className="size-3" />
+          <span className="i-ri-arrow-up-sline size-3" />
         </button>
         <button
           type="button"
@@ -117,7 +116,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
           aria-label="decrement"
           className={cn(size === 'regular' ? 'pb-1' : 'pb-1.5', 'px-1.5 hover:bg-components-input-bg-hover', disabled && 'cursor-not-allowed hover:bg-transparent', controlClassName)}
         >
-          <RiArrowDownSLine className="size-3" />
+          <span className="i-ri-arrow-down-sline size-3" />
         </button>
       </div>
     </div>

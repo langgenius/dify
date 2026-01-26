@@ -1,7 +1,6 @@
 'use client'
 
 import type { CreateKnowledgeBaseReq } from './declarations'
-import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -74,7 +73,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 variant="tertiary"
                 onClick={navBackHandle}
               >
-                <RiArrowLeftLine className="h-4 w-4 text-text-tertiary" />
+                <span className="i-ri-arrow-left-line h-4 w-4 text-text-tertiary" />
               </Button>
             </div>
             <KnowledgeBaseInfo
@@ -119,7 +118,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 loading={loading}
               >
                 <div className="system-sm-medium text-components-button-primary-text">{t('externalKnowledgeForm.connect', { ns: 'dataset' })}</div>
-                <RiArrowRightLine className="h-4 w-4 text-components-button-primary-text" />
+                <span className="i-ri-arrow-right-line h-4 w-4 text-components-button-primary-text" />
               </Button>
             </div>
           </div>

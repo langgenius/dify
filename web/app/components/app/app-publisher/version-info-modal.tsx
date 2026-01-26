@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
-import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -78,7 +77,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
           {versionInfo?.marked_name ? t('versionHistory.editVersionInfo', { ns: 'workflow' }) : t('versionHistory.nameThisVersion', { ns: 'workflow' })}
         </div>
         <div className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={onClose}>
-          <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
+          <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" />
         </div>
       </div>
       <div className="flex flex-col gap-y-4 px-6 py-3">

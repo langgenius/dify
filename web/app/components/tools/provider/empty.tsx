@@ -1,5 +1,4 @@
 'use client'
-import { RiArrowRightUpLine } from '@remixicon/react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
@@ -45,7 +44,7 @@ const Empty = ({
         <Comp className={cn('flex items-center text-[13px] leading-[18px] text-text-tertiary', hasLink && 'cursor-pointer hover:text-text-accent')} {...linkProps}>
           {t(`addToolModal.${renderType}.tip`, { ns: 'tools' })}
           {' '}
-          {hasLink && <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />}
+          {hasLink && <span className="i-ri-arrow-right-up-line ml-0.5 h-3 w-3" />}
         </Comp>
       )}
     </div>

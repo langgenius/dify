@@ -1,6 +1,5 @@
 'use client'
 import type { VersionHistory } from '@/types/workflow'
-import { RiArrowDownDoubleLine, RiCloseLine, RiLoader2Line } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -240,7 +239,7 @@ export const VersionHistoryPanel = ({
           className="flex h-6 w-6 cursor-pointer items-center justify-center p-0.5"
           onClick={handleClose}
         >
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
         </div>
       </div>
       <div className="flex h-0 flex-1 flex-col">
@@ -281,8 +280,8 @@ export const VersionHistoryPanel = ({
             >
               <div className="item-center flex justify-center p-0.5">
                 {isFetching
-                  ? <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
-                  : <RiArrowDownDoubleLine className="h-3.5 w-3.5 text-text-accent" />}
+                  ? <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin text-text-accent" />
+                  : <span className="i-ri-arrow-down-double-line h-3.5 w-3.5 text-text-accent" />}
               </div>
               <div className="system-xs-medium-uppercase py-[1px] text-text-accent">
                 {t('common.loadMore', { ns: 'workflow' })}

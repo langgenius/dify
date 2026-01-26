@@ -1,8 +1,6 @@
 import type { FC } from 'react'
 import type { Dataset } from './index'
-import {
-  RiAddLine,
-} from '@remixicon/react'
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { File05, Folder } from '@/app/components/base/icons/src/vender/solid/files'
@@ -89,7 +87,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
                 </div>
                 <div className="flex h-8 cursor-pointer items-center text-[#155EEF]" onClick={onAddContext}>
                   <div className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-gray-100">
-                    <RiAddLine className="h-[14px] w-[14px]" />
+                    <span className="i-ri-add-line h-[14px] w-[14px]" />
                   </div>
                   <div className="text-[13px] font-medium" title="">{t('promptEditor.context.modal.add', { ns: 'common' })}</div>
                 </div>

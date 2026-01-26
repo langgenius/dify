@@ -1,7 +1,5 @@
 import type { FC } from 'react'
-import {
-  RiGraduationCapFill,
-} from '@remixicon/react'
+
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
 import { SparklesSoft } from '../../base/icons/src/public/common'
@@ -49,7 +47,7 @@ const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, sandboxAsUpgrade = fa
       <PremiumBadge className="select-none" size="s" color="blue" allowHover={allowHover} onClick={onClick}>
         <div className="system-2xs-medium-uppercase">
           <span className="inline-flex items-center gap-1 p-1">
-            {isEducationWorkspace && <RiGraduationCapFill className="h-3 w-3" />}
+            {isEducationWorkspace && <span className="i-ri-graduation-cap-fill h-3 w-3" />}
             pro
           </span>
         </div>

@@ -1,4 +1,3 @@
-import { RiCloseLine, RiDatabase2Line, RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -60,19 +59,19 @@ const RunMode = ({
       >
         {!isDisabled && (
           <>
-            <RiPlayLargeLine className="mr-1 size-4" />
+            <span className="i-ri-play-large-line mr-1 size-4" />
             {workflowRunningData ? t('common.reRun', { ns: 'pipeline' }) : (text ?? t('common.testRun', { ns: 'pipeline' }))}
           </>
         )}
         {isRunning && (
           <>
-            <RiLoader2Line className="mr-1 size-4 animate-spin" />
+            <span className="i-ri-loader-2-line mr-1 size-4 animate-spin" />
             {t('common.processing', { ns: 'pipeline' })}
           </>
         )}
         {isPreparingDataSource && (
           <>
-            <RiDatabase2Line className="mr-1 size-4" />
+            <span className="i-ri-database-2-line mr-1 size-4" />
             {t('common.preparingDataSource', { ns: 'pipeline' })}
           </>
         )}
@@ -108,7 +107,7 @@ const RunMode = ({
           )}
           onClick={handleCancelPreparingDataSource}
         >
-          <RiCloseLine className="size-4 text-text-accent" />
+          <span className="i-ri-close-line size-4 text-text-accent" />
         </button>
       )}
     </div>

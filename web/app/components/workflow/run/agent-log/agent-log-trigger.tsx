@@ -2,7 +2,6 @@ import type {
   AgentLogItemWithChildren,
   NodeTracing,
 } from '@/types/workflow'
-import { RiArrowRightLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 
 type AgentLogTriggerProps = {
@@ -39,7 +38,7 @@ const AgentLogTrigger = ({
           className="system-xs-regular-uppercase flex shrink-0 cursor-pointer items-center px-[1px] text-text-tertiary"
         >
           {t('detail', { ns: 'runLog' })}
-          <RiArrowRightLine className="ml-0.5 h-3.5 w-3.5" />
+          <span className="i-ri-arrow-right-line ml-0.5 h-3.5 w-3.5" />
         </div>
       </div>
     </div>

@@ -1,10 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { NodeTracing } from '@/types/workflow'
-import {
-  RiArrowDownSLine,
-  RiMenu4Line,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import {
   useCallback,
@@ -116,7 +113,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
                 isHovered ? 'rounded border-components-button-primary-border bg-components-button-primary-bg text-text-primary-on-surface' : 'text-text-secondary hover:text-text-primary',
               )}
             >
-              {isHovered ? <RiArrowDownSLine className="h-3 w-3" /> : <RiMenu4Line className="h-3 w-3 text-text-tertiary" />}
+              {isHovered ? <span className="i-ri-arrow-down-sline h-3 w-3" /> : <span className="i-ri-menu-4-line h-3 w-3 text-text-tertiary" />}
             </button>
             <div className="system-xs-semibold-uppercase flex items-center text-text-secondary">
               <span>{parallelDetail.parallelTitle}</span>

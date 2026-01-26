@@ -2,7 +2,6 @@ import type {
   IterationDurationMap,
   NodeTracing,
 } from '@/types/workflow'
-import { RiArrowRightSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
@@ -144,7 +143,7 @@ const IterationLogTrigger = ({
           </>
         )}
       </div>
-      <RiArrowRightSLine className="h-4 w-4 shrink-0 text-components-button-tertiary-text" />
+      <span className="i-ri-arrow-right-sline h-4 w-4 shrink-0 text-components-button-tertiary-text" />
     </Button>
   )
 }

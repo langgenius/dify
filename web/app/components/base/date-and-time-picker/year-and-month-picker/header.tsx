@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { YearAndMonthPickerHeaderProps } from '../types'
-import { RiArrowUpSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMonths } from '../hooks'
 
@@ -20,7 +19,7 @@ const Header: FC<YearAndMonthPickerHeaderProps> = ({
         className="system-md-semibold flex items-center gap-x-0.5 rounded-lg px-2 py-1.5 text-text-primary hover:bg-state-base-hover"
       >
         <span>{`${months[selectedMonth]} ${selectedYear}`}</span>
-        <RiArrowUpSLine className="h-4 w-4 text-text-tertiary" />
+        <span className="i-ri-arrow-up-sline h-4 w-4 text-text-tertiary" />
       </button>
     </div>
   )

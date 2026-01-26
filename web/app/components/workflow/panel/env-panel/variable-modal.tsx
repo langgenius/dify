@@ -1,5 +1,4 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -95,7 +94,7 @@ const VariableModal = ({
             className="flex h-6 w-6 cursor-pointer items-center justify-center"
             onClick={onClose}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
           </div>
         </div>
       </div>

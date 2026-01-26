@@ -3,10 +3,7 @@ import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { TriggerEvent } from '@/app/components/plugins/types'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
-import {
-  RiArrowLeftLine,
-  RiCloseLine,
-} from '@remixicon/react'
+
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
@@ -93,14 +90,14 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
       <div className="relative border-b border-divider-subtle p-4 pb-3">
         <div className="absolute right-3 top-3">
           <ActionButton onClick={onClose}>
-            <RiCloseLine className="h-4 w-4" />
+            <span className="i-ri-close-line h-4 w-4" />
           </ActionButton>
         </div>
         <div
           className="system-xs-semibold-uppercase mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary"
           onClick={onClose}
         >
-          <RiArrowLeftLine className="h-4 w-4" />
+          <span className="i-ri-arrow-left-line h-4 w-4" />
           {t('detailPanel.operation.back', { ns: 'plugin' })}
         </div>
         <div className="flex items-center gap-1">

@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { InputVarType } from '@/app/components/workflow/types'
-import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import * as React from 'react'
 import { useState } from 'react'
 import Badge from '@/app/components/base/badge'
@@ -62,7 +61,7 @@ const TypeSelector: FC<Props> = ({
           </div>
           <div className="flex items-center space-x-1">
             <Badge uppercase={false}>{inputVarTypeToVarType(selectedItem?.value as InputVarType)}</Badge>
-            <ChevronDownIcon className={cn('h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
+            <span className={`i-heroicons-chevron-down-20-solid ${cn('h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')}`} />
           </div>
         </div>
 

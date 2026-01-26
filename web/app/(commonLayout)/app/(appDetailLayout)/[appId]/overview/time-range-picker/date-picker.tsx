@@ -2,7 +2,6 @@
 import type { Dayjs } from 'dayjs'
 import type { FC } from 'react'
 import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
-import { RiCalendarLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -53,7 +52,7 @@ const DatePicker: FC<Props> = ({
   return (
     <div className="flex h-8 items-center space-x-0.5 rounded-lg bg-components-input-bg-normal px-2">
       <div className="p-px">
-        <RiCalendarLine className="size-3.5 text-text-tertiary" />
+        <span className="i-ri-calendar-line size-3.5 text-text-tertiary" />
       </div>
       <Picker
         value={start}

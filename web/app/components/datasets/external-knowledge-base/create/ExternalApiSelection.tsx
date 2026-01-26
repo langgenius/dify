@@ -1,6 +1,5 @@
 'use client'
 
-import { RiAddLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -78,7 +77,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
             )
           : (
               <Button variant="tertiary" onClick={handleAddNewAPI} className="justify-start gap-0.5">
-                <RiAddLine className="h-4 w-4 text-text-tertiary" />
+                <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
                 <span className="system-sm-regular text-text-tertiary">{t('noExternalKnowledge', { ns: 'dataset' })}</span>
               </Button>
             )}

@@ -1,12 +1,6 @@
 'use client'
 import type { ReactNode } from 'react'
-import {
-  RiAlertFill,
-  RiCheckboxCircleFill,
-  RiCloseLine,
-  RiErrorWarningFill,
-  RiInformation2Fill,
-} from '@remixicon/react'
+
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -70,10 +64,10 @@ const Toast = ({
       />
       <div className={cn('flex', size === 'md' ? 'gap-1' : 'gap-0.5')}>
         <div className={cn('flex items-center justify-center', size === 'md' ? 'p-0.5' : 'p-1')}>
-          {type === 'success' && <RiCheckboxCircleFill className={cn('text-text-success', size === 'md' ? 'h-5 w-5' : 'h-4 w-4')} aria-hidden="true" />}
-          {type === 'error' && <RiErrorWarningFill className={cn('text-text-destructive', size === 'md' ? 'h-5 w-5' : 'h-4 w-4')} aria-hidden="true" />}
-          {type === 'warning' && <RiAlertFill className={cn('text-text-warning-secondary', size === 'md' ? 'h-5 w-5' : 'h-4 w-4')} aria-hidden="true" />}
-          {type === 'info' && <RiInformation2Fill className={cn('text-text-accent', size === 'md' ? 'h-5 w-5' : 'h-4 w-4')} aria-hidden="true" />}
+          {type === 'success' && <span className={`i-ri-checkbox-circle-fill ${cn('text-text-success', size === 'md' ? 'h-5 w-5' : 'h-4 w-4')}`} aria-hidden="true" />}
+          {type === 'error' && <span className={`i-ri-error-warning-fill ${cn('text-text-destructive', size === 'md' ? 'h-5 w-5' : 'h-4 w-4')}`} aria-hidden="true" />}
+          {type === 'warning' && <span className={`i-ri-alert-fill ${cn('text-text-warning-secondary', size === 'md' ? 'h-5 w-5' : 'h-4 w-4')}`} aria-hidden="true" />}
+          {type === 'info' && <span className={`i-ri-information-2-fill ${cn('text-text-accent', size === 'md' ? 'h-5 w-5' : 'h-4 w-4')}`} aria-hidden="true" />}
         </div>
         <div className={cn('flex grow flex-col items-start gap-1 py-1', size === 'md' ? 'px-1' : 'px-0.5')}>
           <div className="flex items-center gap-1">
@@ -89,7 +83,7 @@ const Toast = ({
         {close
           && (
             <ActionButton className="z-[1000]" onClick={close}>
-              <RiCloseLine className="h-4 w-4 shrink-0 text-text-tertiary" />
+              <span className="i-ri-close-line h-4 w-4 shrink-0 text-text-tertiary" />
             </ActionButton>
           )}
       </div>

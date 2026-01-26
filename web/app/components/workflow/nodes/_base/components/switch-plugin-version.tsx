@@ -1,7 +1,6 @@
 'use client'
 
 import type { FC, ReactNode } from 'react'
-import { RiArrowLeftRightLine, RiExternalLinkLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import Link from 'next/link'
 import { useCallback, useState } from 'react'
@@ -99,7 +98,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                 <span className="system-xs-regular text-xs text-text-accent">
                   {t('nodes.agent.installPlugin.changelog', { ns: 'workflow' })}
                 </span>
-                <RiExternalLinkLine className="size-3 text-text-accent" />
+                <span className="i-ri-external-link-line size-3 text-text-accent" />
               </Link>
             )}
           />
@@ -127,7 +126,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                 text={(
                   <>
                     <div>{pluginDetail.version}</div>
-                    <RiArrowLeftRightLine className="ml-1 h-3 w-3 text-text-tertiary" />
+                    <span className="i-ri-arrow-left-right-line ml-1 h-3 w-3 text-text-tertiary" />
                   </>
                 )}
                 hasRedCornerMark={true}

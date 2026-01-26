@@ -1,8 +1,5 @@
 import type { VariablePayload } from '../types'
-import {
-  RiErrorWarningFill,
-  RiMoreLine,
-} from '@remixicon/react'
+
 import { capitalize } from 'es-toolkit/string'
 import { memo } from 'react'
 import Tooltip from '@/app/components/base/tooltip'
@@ -46,7 +43,7 @@ const VariableLabel = ({
       {
         notShowFullPath && (
           <>
-            <RiMoreLine className="h-3 w-3 shrink-0 text-text-secondary" />
+            <span className="i-ri-more-line h-3 w-3 shrink-0 text-text-secondary" />
             <div className="system-xs-regular shrink-0 text-divider-deep">/</div>
           </>
         )
@@ -73,7 +70,7 @@ const VariableLabel = ({
             popupContent={errorMsg}
             asChild
           >
-            <RiErrorWarningFill className="h-3 w-3 shrink-0 text-text-destructive" />
+            <span className="i-ri-error-warning-fill h-3 w-3 shrink-0 text-text-destructive" />
           </Tooltip>
         )
       }

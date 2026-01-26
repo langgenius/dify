@@ -1,4 +1,3 @@
-import { RiMoreFill } from '@remixicon/react'
 import {
   memo,
   useState,
@@ -44,7 +43,7 @@ const Operator = ({
             open && 'bg-state-base-hover text-text-secondary',
           )}
         >
-          <RiMoreFill className="h-4 w-4" />
+          <span className="i-ri-more-fill h-4 w-4" />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>

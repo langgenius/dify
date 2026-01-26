@@ -4,7 +4,6 @@ import type {
 } from 'react'
 import type { Theme } from '../embedded-chatbot/theme/theme-context'
 import type { ChatItem } from '../types'
-import { RiClipboardLine, RiEditLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -113,11 +112,11 @@ const Question: FC<QuestionProps> = ({
               Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
             }}
             >
-              <RiClipboardLine className="h-4 w-4" />
+              <span className="i-ri-clipboard-line h-4 w-4" />
             </ActionButton>
             {enableEdit && (
               <ActionButton onClick={handleEdit}>
-                <RiEditLine className="h-4 w-4" />
+                <span className="i-ri-edit-line h-4 w-4" />
               </ActionButton>
             )}
           </div>

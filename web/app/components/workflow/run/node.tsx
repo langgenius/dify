@@ -7,13 +7,7 @@ import type {
   LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
-import {
-  RiAlertFill,
-  RiArrowRightSLine,
-  RiCheckboxCircleFill,
-  RiErrorWarningLine,
-  RiLoader2Line,
-} from '@remixicon/react'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
@@ -123,11 +117,10 @@ const NodePanel: FC<Props> = ({
           onClick={() => setCollapseState(!collapseState)}
         >
           {!hideProcessDetail && (
-            <RiArrowRightSLine
-              className={cn(
-                'mr-1 h-4 w-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
-                !collapseState && 'rotate-90',
-              )}
+            <span className={`i-ri-arrow-right-sline ${cn(
+              'mr-1 h-4 w-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
+              !collapseState && 'rotate-90',
+            )}`}
             />
           )}
           <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && '!mr-1')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
@@ -151,21 +144,21 @@ const NodePanel: FC<Props> = ({
             </div>
           )}
           {nodeInfo.status === 'succeeded' && (
-            <RiCheckboxCircleFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-success" />
+            <span className="i-ri-checkbox-circle-fill ml-2 h-3.5 w-3.5 shrink-0 text-text-success" />
           )}
           {nodeInfo.status === 'failed' && (
-            <RiErrorWarningLine className="ml-2 h-3.5 w-3.5 shrink-0 text-text-warning" />
+            <span className="i-ri-error-warning-line ml-2 h-3.5 w-3.5 shrink-0 text-text-warning" />
           )}
           {nodeInfo.status === 'stopped' && (
-            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <span className={`i-ri-alert-fill ${cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')}`} />
           )}
           {nodeInfo.status === 'exception' && (
-            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <span className={`i-ri-alert-fill ${cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')}`} />
           )}
           {nodeInfo.status === 'running' && (
             <div className="flex shrink-0 items-center text-[13px] font-medium leading-[16px] text-text-accent">
               <span className="mr-2 text-xs font-normal">Running</span>
-              <RiLoader2Line className="h-3.5 w-3.5 animate-spin" />
+              <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />
             </div>
           )}
         </div>

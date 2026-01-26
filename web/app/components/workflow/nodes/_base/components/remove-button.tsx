@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import ActionButton from '@/app/components/base/action-button'
 
@@ -14,7 +13,7 @@ const Remove: FC<Props> = ({
 }) => {
   return (
     <ActionButton size="l" className="group shrink-0 hover:!bg-state-destructive-hover" onClick={onClick}>
-      <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
+      <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
     </ActionButton>
   )
 }

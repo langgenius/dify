@@ -1,7 +1,5 @@
 import type { FileEntity } from '../types'
-import {
-  RiCloseLine,
-} from '@remixicon/react'
+
 import {
   memo,
   useCallback,
@@ -57,7 +55,7 @@ const ImageItem = ({
             className="absolute -right-1.5 -top-1.5 z-[11] hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex"
             onClick={handleRemove}
           >
-            <RiCloseLine className="h-4 w-4 text-components-button-secondary-text" />
+            <span className="i-ri-close-line h-4 w-4 text-components-button-secondary-text" />
           </Button>
         )
       }

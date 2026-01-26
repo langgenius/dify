@@ -1,4 +1,3 @@
-import { RiArrowDownSLine } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { useState } from 'react'
 import Button from '@/app/components/base/button'
@@ -37,7 +36,7 @@ const ConditionValueMethod = ({
           size="small"
         >
           {capitalize(valueMethod)}
-          <RiArrowDownSLine className="ml-[1px] h-3.5 w-3.5" />
+          <span className="i-ri-arrow-down-sline ml-[1px] h-3.5 w-3.5" />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[1000]">

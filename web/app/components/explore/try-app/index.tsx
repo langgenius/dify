@@ -1,7 +1,6 @@
 /* eslint-disable style/multiline-ternary */
 'use client'
 import type { FC } from 'react'
-import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import Loading from '@/app/components/base/loading'
@@ -52,7 +51,7 @@ const TryApp: FC<Props> = ({
               className="flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text"
               onClick={onClose}
             >
-              <RiCloseLine className="size-5" onClick={onClose} />
+              <span className="i-ri-close-line size-5" onClick={onClose} />
             </Button>
           </div>
           {/* Main content */}

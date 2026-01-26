@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { RiFileList2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -47,7 +46,7 @@ const Empty: FC<IEmptyProps> = ({
     <div className="relative z-0 flex h-full items-center justify-center">
       <div className="flex flex-col items-center">
         <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-xl border border-divider-subtle bg-components-card-bg shadow-lg shadow-shadow-shadow-5">
-          <RiFileList2Line className="h-6 w-6 text-text-secondary" />
+          <span className="i-ri-file-list-2-line h-6 w-6 text-text-secondary" />
           <Line className="absolute -right-px top-1/2 -translate-y-1/2" />
           <Line className="absolute -left-px top-1/2 -translate-y-1/2" />
           <Line className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rotate-90" />

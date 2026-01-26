@@ -1,9 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
-import {
-  RiDeleteBinLine,
-} from '@remixicon/react'
+
 import { useBoolean, useHover } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -90,7 +88,7 @@ const VarItem: FC<Props> = ({
                       <Edit03 className="h-4 w-4 text-text-tertiary" />
                     </div>
                     <div onClick={onRemove} className="group cursor-pointer rounded-md p-1 hover:bg-state-destructive-hover">
-                      <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
+                      <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
                     </div>
                   </>
                 ))}

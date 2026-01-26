@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { RiAddLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -49,7 +48,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                 )}
                 key={index}
               >
-                <RiDraggable className="handle h-4 w-4 cursor-grab text-text-quaternary" />
+                <span className="handle i-ri-draggable h-4 w-4 cursor-grab text-text-quaternary" />
                 <input
                   key={index}
                   type="input"
@@ -77,7 +76,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                   onMouseEnter={() => setDeletingID(index)}
                   onMouseLeave={() => setDeletingID(null)}
                 >
-                  <RiDeleteBinLine className="h-3.5 w-3.5" />
+                  <span className="i-ri-delete-bin-line h-3.5 w-3.5" />
                 </div>
               </div>
             ))}
@@ -89,7 +88,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
         onClick={() => { onChange([...options, '']) }}
         className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3  text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
       >
-        <RiAddLine className="h-4 w-4" />
+        <span className="i-ri-add-line h-4 w-4" />
         <div className="system-sm-medium text-[13px]">{t('variableConfig.addOption', { ns: 'appDebug' })}</div>
       </div>
     </div>

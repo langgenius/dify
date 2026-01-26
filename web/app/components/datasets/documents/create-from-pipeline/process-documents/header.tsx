@@ -1,4 +1,3 @@
-import { RiSearchEyeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -32,7 +31,7 @@ const Header = ({
         className="gap-x-0.5"
         disabled={previewDisabled}
       >
-        <RiSearchEyeLine className="size-4" />
+        <span className="i-ri-search-eye-line size-4" />
         <span className="px-0.5">{t('addDocuments.stepTwo.previewChunks', { ns: 'datasetPipeline' })}</span>
       </Button>
     </div>

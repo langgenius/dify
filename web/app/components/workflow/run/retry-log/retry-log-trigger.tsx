@@ -1,8 +1,5 @@
 import type { NodeTracing } from '@/types/workflow'
-import {
-  RiArrowRightSLine,
-  RiRestartFill,
-} from '@remixicon/react'
+
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 
@@ -30,10 +27,10 @@ const RetryLogTrigger = ({
       onClick={handleShowRetryResultList}
     >
       <div className="flex items-center">
-        <RiRestartFill className="mr-0.5 h-4 w-4 shrink-0 text-components-button-tertiary-text" />
+        <span className="i-ri-restart-fill mr-0.5 h-4 w-4 shrink-0 text-components-button-tertiary-text" />
         {t('nodes.common.retry.retries', { ns: 'workflow', num: retryDetail?.length })}
       </div>
-      <RiArrowRightSLine className="h-4 w-4 shrink-0 text-components-button-tertiary-text" />
+      <span className="i-ri-arrow-right-sline h-4 w-4 shrink-0 text-components-button-tertiary-text" />
     </Button>
   )
 }

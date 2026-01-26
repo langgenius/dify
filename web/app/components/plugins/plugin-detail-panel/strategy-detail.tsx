@@ -4,10 +4,7 @@ import type {
   StrategyDetail as StrategyDetailType,
 } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
-import {
-  RiArrowLeftLine,
-  RiCloseLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -88,14 +85,14 @@ const StrategyDetail: FC<Props> = ({
         <div className="relative border-b border-divider-subtle p-4 pb-3">
           <div className="absolute right-3 top-3">
             <ActionButton onClick={onHide}>
-              <RiCloseLine className="h-4 w-4" />
+              <span className="i-ri-close-line h-4 w-4" />
             </ActionButton>
           </div>
           <div
             className="system-xs-semibold-uppercase mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary"
             onClick={onHide}
           >
-            <RiArrowLeftLine className="h-4 w-4" />
+            <span className="i-ri-arrow-left-line h-4 w-4" />
             BACK
           </div>
           <div className="flex items-center gap-1">

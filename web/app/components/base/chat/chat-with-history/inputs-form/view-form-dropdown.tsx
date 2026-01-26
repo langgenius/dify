@@ -1,6 +1,3 @@
-import {
-  RiChatSettingsLine,
-} from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
@@ -26,7 +23,7 @@ const ViewFormDropdown = () => {
         onClick={() => setOpen(v => !v)}
       >
         <ActionButton size="l" state={open ? ActionButtonState.Hover : ActionButtonState.Default}>
-          <RiChatSettingsLine className="h-[18px] w-[18px]" />
+          <span className="i-ri-chat-settings-line h-[18px] w-[18px]" />
         </ActionButton>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">

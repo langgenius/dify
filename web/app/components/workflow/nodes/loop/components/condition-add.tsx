@@ -4,7 +4,6 @@ import type {
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
-import { RiAddLine } from '@remixicon/react'
 import {
   useCallback,
   useState,
@@ -54,7 +53,7 @@ const ConditionAdd = ({
           className={className}
           disabled={disabled}
         >
-          <RiAddLine className="mr-1 h-3.5 w-3.5" />
+          <span className="i-ri-add-line mr-1 h-3.5 w-3.5" />
           {t('nodes.ifElse.addCondition', { ns: 'workflow' })}
         </Button>
       </PortalToFollowElemTrigger>

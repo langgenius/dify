@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { Credential, CustomCollectionBackend, CustomParamSchema, Emoji } from '../types'
-import { RiSettings2Line } from '@remixicon/react'
 import { useDebounce, useGetState } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -302,7 +301,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                 <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.title', { ns: 'tools' })}</div>
                 <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5" onClick={() => setCredentialsModalShow(true)}>
                   <div className="system-xs-regular text-text-primary">{t(`createTool.authMethod.types.${credential.auth_type}`, { ns: 'tools' })}</div>
-                  <RiSettings2Line className="h-4 w-4 text-text-secondary" />
+                  <span className="i-ri-settings-2-line h-4 w-4 text-text-secondary" />
                 </div>
               </div>
 

@@ -9,9 +9,7 @@ import type {
 import type {
   PortalToFollowElemOptions,
 } from '@/app/components/base/portal-to-follow-elem'
-import {
-  RiAddLine,
-} from '@remixicon/react'
+
 import {
   Fragment,
   memo,
@@ -220,7 +218,7 @@ const Authorized = ({
                   )}
                   className="system-xs-medium flex h-[40px] cursor-pointer items-center px-3 text-text-accent-light-mode-only"
                 >
-                  <RiAddLine className="mr-1 h-4 w-4" />
+                  <span className="i-ri-add-line mr-1 h-4 w-4" />
                   {t('modelProvider.auth.addModelCredential', { ns: 'common' })}
                 </div>
               )

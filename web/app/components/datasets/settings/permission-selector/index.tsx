@@ -1,5 +1,4 @@
 import type { Member } from '@/models/common'
-import { RiArrowDownSLine, RiGroup2Line, RiLock2Line } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -118,7 +117,7 @@ const PermissionSelector = ({
               isAllTeamMembers && (
                 <>
                   <div className="flex size-6 shrink-0 items-center justify-center">
-                    <RiGroup2Line className="size-4 text-text-secondary" />
+                    <span className="i-ri-group-2-line size-4 text-text-secondary" />
                   </div>
                   <div className="system-sm-regular grow p-1 text-components-input-text-filled">
                     {t('form.permissionsAllMember', { ns: 'datasetSettings' })}
@@ -167,12 +166,11 @@ const PermissionSelector = ({
                 </>
               )
             }
-            <RiArrowDownSLine
-              className={cn(
-                'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
-                open && 'text-text-secondary',
-                disabled && '!text-components-input-text-placeholder',
-              )}
+            <span className={`i-ri-arrow-down-sline ${cn(
+              'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
+              open && 'text-text-secondary',
+              disabled && '!text-components-input-text-placeholder',
+            )}`}
             />
           </div>
         </PortalToFollowElemTrigger>
@@ -192,7 +190,7 @@ const PermissionSelector = ({
               <Item
                 leftIcon={(
                   <div className="flex size-6 shrink-0 items-center justify-center">
-                    <RiGroup2Line className="size-4 text-text-secondary" />
+                    <span className="i-ri-group-2-line size-4 text-text-secondary" />
                   </div>
                 )}
                 text={t('form.permissionsAllMember', { ns: 'datasetSettings' })}
@@ -203,7 +201,7 @@ const PermissionSelector = ({
               <Item
                 leftIcon={(
                   <div className="flex size-6 shrink-0 items-center justify-center">
-                    <RiLock2Line className="size-4 text-text-secondary" />
+                    <span className="i-ri-lock-2-line size-4 text-text-secondary" />
                   </div>
                 )}
                 text={t('form.permissionsInvitedMembers', { ns: 'datasetSettings' })}

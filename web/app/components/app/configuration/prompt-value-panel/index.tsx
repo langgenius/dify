@@ -2,11 +2,7 @@
 import type { FC } from 'react'
 import type { Inputs } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
-import {
-  RiArrowDownSLine,
-  RiArrowRightSLine,
-  RiPlayLargeFill,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -113,8 +109,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         <div className={cn('px-4 pt-3', userInputFieldCollapse ? 'pb-3' : 'pb-1')}>
           <div className="flex cursor-pointer items-center gap-0.5 py-0.5" onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
             <div className="system-md-semibold-uppercase text-text-secondary">{t('inputs.userInputField', { ns: 'appDebug' })}</div>
-            {userInputFieldCollapse && <RiArrowRightSLine className="h-4 w-4 text-text-secondary" />}
-            {!userInputFieldCollapse && <RiArrowDownSLine className="h-4 w-4 text-text-secondary" />}
+            {userInputFieldCollapse && <span className="i-ri-arrow-right-sline h-4 w-4 text-text-secondary" />}
+            {!userInputFieldCollapse && <span className="i-ri-arrow-down-sline h-4 w-4 text-text-secondary" />}
           </div>
           {!userInputFieldCollapse && (
             <div className="system-xs-regular mt-1 text-text-tertiary">{t('inputs.completionVarTip', { ns: 'appDebug' })}</div>
@@ -219,7 +215,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                   onClick={() => onSend?.()}
                   className="w-[96px]"
                 >
-                  <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="i-ri-play-large-fill mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                   {t('inputs.run', { ns: 'appDebug' })}
                 </Button>
               </Tooltip>
@@ -231,7 +227,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                 onClick={() => onSend?.()}
                 className="w-[96px]"
               >
-                <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="i-ri-play-large-fill mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 {t('inputs.run', { ns: 'appDebug' })}
               </Button>
             )}

@@ -1,9 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { FileItem } from '@/models/datasets'
-import {
-  RiDeleteBinLine,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -232,7 +230,7 @@ const CSVUploader: FC<Props> = ({
               <Button onClick={selectHandle}>{t('stepOne.uploader.change', { ns: 'datasetCreation' })}</Button>
               <div className="mx-2 h-4 w-px bg-text-secondary" />
               <div className="cursor-pointer p-2" onClick={removeFile}>
-                <RiDeleteBinLine className="h-4 w-4 text-text-secondary" />
+                <span className="i-ri-delete-bin-line h-4 w-4 text-text-secondary" />
               </div>
             </div>
           </div>

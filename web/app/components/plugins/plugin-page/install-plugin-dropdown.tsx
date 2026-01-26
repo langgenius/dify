@@ -1,6 +1,5 @@
 'use client'
 
-import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -89,9 +88,9 @@ const InstallPluginDropdown = ({
           <Button
             className={cn('h-full w-full p-2 text-components-button-secondary-text', isMenuOpen && 'bg-state-base-hover')}
           >
-            <RiAddLine className="h-4 w-4" />
+            <span className="i-ri-add-line h-4 w-4" />
             <span className="pl-1">{t('installPlugin', { ns: 'plugin' })}</span>
-            <RiArrowDownSLine className="ml-1 h-4 w-4" />
+            <span className="i-ri-arrow-down-sline ml-1 h-4 w-4" />
           </Button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[1002]">

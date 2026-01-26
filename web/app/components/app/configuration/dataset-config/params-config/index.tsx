@@ -1,7 +1,6 @@
 'use client'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
-import { RiEqualizer2Line } from '@remixicon/react'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -122,7 +121,7 @@ const ParamsConfig = ({
         }}
         disabled={disabled}
       >
-        <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
+        <span className="i-ri-equalizer-2-line mr-1 h-3.5 w-3.5" />
         {t('retrievalSettings', { ns: 'dataset' })}
       </Button>
       {

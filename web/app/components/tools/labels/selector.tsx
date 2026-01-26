@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { Label } from '@/app/components/tools/labels/constant'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useMemo, useState } from 'react'
@@ -76,7 +75,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
               {!!value.length && selectedLabels}
             </div>
             <div className="ml-1 shrink-0 text-text-secondary opacity-60">
-              <RiArrowDownSLine className="h-4 w-4" />
+              <span className="i-ri-arrow-down-sline h-4 w-4" />
             </div>
           </div>
         </PortalToFollowElemTrigger>

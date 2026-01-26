@@ -1,7 +1,3 @@
-import {
-  RiPauseCircleFill,
-  RiPlayLargeFill,
-} from '@remixicon/react'
 import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -302,10 +298,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
       <button type="button" className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled" onClick={togglePlay} disabled={!isAudioAvailable}>
         {isPlaying
           ? (
-              <RiPauseCircleFill className="h-5 w-5" />
+              <span className="i-ri-pause-circle-fill h-5 w-5" />
             )
           : (
-              <RiPlayLargeFill className="h-5 w-5" />
+              <span className="i-ri-play-large-fill h-5 w-5" />
             )}
       </button>
       <div className={cn(isAudioAvailable && 'grow')} hidden={!isAudioAvailable}>

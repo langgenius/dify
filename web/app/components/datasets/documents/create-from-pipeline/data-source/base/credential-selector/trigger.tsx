@@ -1,5 +1,4 @@
 import type { DataSourceCredential } from '@/types/pipeline'
-import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
 import { cn } from '@/utils/classnames'
@@ -34,7 +33,7 @@ const Trigger = ({
         <span className="system-md-semibold grow truncate text-text-secondary">
           {name}
         </span>
-        <RiArrowDownSLine className="size-4 shrink-0 text-text-secondary" />
+        <span className="i-ri-arrow-down-sline size-4 shrink-0 text-text-secondary" />
       </div>
     </div>
   )

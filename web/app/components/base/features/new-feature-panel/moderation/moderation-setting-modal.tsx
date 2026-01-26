@@ -1,7 +1,6 @@
 import type { ChangeEvent, FC } from 'react'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
-import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -239,7 +238,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     >
       <div className="flex items-center justify-between">
         <div className="title-2xl-semi-bold text-text-primary">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
-        <div className="cursor-pointer p-1" onClick={onCancel}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
+        <div className="cursor-pointer p-1" onClick={onCancel}><span className="i-ri-close-line h-4 w-4 text-text-tertiary" /></div>
       </div>
       <div className="py-2">
         <div className="text-sm font-medium leading-9 text-text-primary">

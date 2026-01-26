@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { RiEqualizer2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 import { cn } from '@/utils/classnames'
@@ -33,7 +32,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
         </div>
       </div>
       <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-        <RiEqualizer2Line className="h-3.5 w-3.5 text-text-tertiary" />
+        <span className="i-ri-equalizer-2-line h-3.5 w-3.5 text-text-tertiary" />
       </div>
     </div>
   )

@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { Theme } from '../theme/theme-context'
-import { RiCollapseDiagonal2Line, RiExpandDiagonal2Line, RiResetLeftLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -115,8 +114,8 @@ const Header: FC<IHeaderProps> = ({
                 <ActionButton size="l" onClick={handleToggleExpand}>
                   {
                     expanded
-                      ? <RiCollapseDiagonal2Line className="h-[18px] w-[18px]" />
-                      : <RiExpandDiagonal2Line className="h-[18px] w-[18px]" />
+                      ? <span className="i-ri-collapse-diagonal-2-line h-[18px] w-[18px]" />
+                      : <span className="i-ri-expand-diagonal-2-line h-[18px] w-[18px]" />
                   }
                 </ActionButton>
               </Tooltip>
@@ -127,7 +126,7 @@ const Header: FC<IHeaderProps> = ({
               popupContent={t('chat.resetChat', { ns: 'share' })}
             >
               <ActionButton size="l" onClick={onCreateNewChat}>
-                <RiResetLeftLine className="h-[18px] w-[18px]" />
+                <span className="i-ri-reset-left-line h-[18px] w-[18px]" />
               </ActionButton>
             </Tooltip>
           )}
@@ -162,8 +161,8 @@ const Header: FC<IHeaderProps> = ({
               <ActionButton size="l" onClick={handleToggleExpand}>
                 {
                   expanded
-                    ? <RiCollapseDiagonal2Line className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
-                    : <RiExpandDiagonal2Line className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
+                    ? <span className={`i-ri-collapse-diagonal-2-line ${cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)}`} />
+                    : <span className={`i-ri-expand-diagonal-2-line ${cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)}`} />
                 }
               </ActionButton>
             </Tooltip>
@@ -174,7 +173,7 @@ const Header: FC<IHeaderProps> = ({
             popupContent={t('chat.resetChat', { ns: 'share' })}
           >
             <ActionButton size="l" onClick={onCreateNewChat}>
-              <RiResetLeftLine className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
+              <span className={`i-ri-reset-left-line ${cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)}`} />
             </ActionButton>
           </Tooltip>
         )}

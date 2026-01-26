@@ -4,7 +4,6 @@ import type { QueryParam } from './filter'
 import type { AnnotationItem, AnnotationItemBasic } from './type'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import type { App } from '@/types/app'
-import { RiEqualizer2Line } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -182,7 +181,7 @@ const Annotation: FC<Props> = (props) => {
                     <div className="flex items-center pl-1.5">
                       <div className="mr-1 h-3.5 w-[1px] shrink-0 bg-divider-subtle"></div>
                       <ActionButton onClick={() => setIsShowEdit(true)}>
-                        <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                        <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
                       </ActionButton>
                     </div>
                   )}

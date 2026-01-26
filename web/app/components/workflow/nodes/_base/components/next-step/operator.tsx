@@ -2,7 +2,6 @@ import type {
   CommonNodeType,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
-import { RiMoreFill } from '@remixicon/react'
 import { intersection } from 'es-toolkit/array'
 import {
   useCallback,
@@ -94,7 +93,7 @@ const Operator = ({
     >
       <PortalToFollowElemTrigger onClick={() => onOpenChange(!open)}>
         <Button className="h-6 w-6 p-0">
-          <RiMoreFill className="h-4 w-4" />
+          <span className="i-ri-more-fill h-4 w-4" />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-10">

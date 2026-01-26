@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -123,7 +122,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
             )}
         >
           <span className="text-sm text-text-secondary">{t(`${prefixCustomize}.way2.operation`, { ns: 'appOverview' })}</span>
-          <ArrowTopRightOnSquareIcon className="ml-1 h-4 w-4 shrink-0 text-text-secondary" />
+          <span className="i-heroicons-arrow-top-right-on-square-24-outline ml-1 h-4 w-4 shrink-0 text-text-secondary" />
         </Button>
       </div>
     </Modal>

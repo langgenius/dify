@@ -1,7 +1,6 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
-import { RiCloseLine, RiInformation2Fill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
 
@@ -60,7 +59,7 @@ const NewFeaturePanel = ({
             <div className="system-xl-semibold text-text-primary">{t('common.features', { ns: 'workflow' })}</div>
             <div className="body-xs-regular text-text-tertiary">{t('common.featuresDescription', { ns: 'workflow' })}</div>
           </div>
-          <div className="h-8 w-8 cursor-pointer p-2" onClick={onClose}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
+          <div className="h-8 w-8 cursor-pointer p-2" onClick={onClose}><span className="i-ri-close-line h-4 w-4 text-text-tertiary" /></div>
         </div>
         {/* list */}
         <div className="grow basis-0 overflow-y-auto px-4 pb-4">
@@ -69,7 +68,7 @@ const NewFeaturePanel = ({
               <div className="absolute left-0 top-0 h-full w-full rounded-xl opacity-40" style={{ background: 'linear-gradient(92deg, rgba(11, 165, 236, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
               <div className="relative flex h-full w-full items-start">
                 <div className="mr-0.5 shrink-0 p-0.5">
-                  <RiInformation2Fill className="h-5 w-5 text-text-accent" />
+                  <span className="i-ri-information-2-fill h-5 w-5 text-text-accent" />
                 </div>
                 <div className="system-xs-medium p-1 text-text-primary">
                   <span>{isChatMode ? t('common.fileUploadTip', { ns: 'workflow' }) : t('common.ImageUploadLegacyTip', { ns: 'workflow' })}</span>

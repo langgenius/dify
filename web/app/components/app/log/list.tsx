@@ -8,7 +8,6 @@ import {
   HandThumbDownIcon,
   HandThumbUpIcon,
 } from '@heroicons/react/24/outline'
-import { RiCloseLine, RiEditFill } from '@remixicon/react'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
@@ -610,7 +609,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           {!isAdvanced && <ModelInfo model={detail.model_config.model} />}
         </div>
         <ActionButton size="l" onClick={onClose}>
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
         </ActionButton>
       </div>
       {/* Panel Body */}
@@ -974,7 +973,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       <Tooltip
         popupContent={(
           <span className="inline-flex items-center text-xs text-text-tertiary">
-            <RiEditFill className="mr-1 h-3 w-3" />
+            <span className="i-ri-edit-fill mr-1 h-3 w-3" />
             {`${t('detail.annotationTip', { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         )}

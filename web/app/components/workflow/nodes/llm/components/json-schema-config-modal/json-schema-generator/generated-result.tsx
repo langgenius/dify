@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { SchemaRoot } from '../../../types'
-import { RiArrowLeftLine, RiCloseLine, RiSparklingLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -69,7 +68,7 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
         ) : (
           <>
             <div className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center" onClick={onClose}>
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+              <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
             </div>
             {/* Title */}
             <div className="flex flex-col gap-y-[0.5px] px-3 pb-1 pt-3.5">
@@ -95,7 +94,7 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
             {/* Footer */}
             <div className="flex items-center justify-between p-4 pt-2">
               <Button variant="secondary" className="flex items-center gap-x-0.5" onClick={onBack}>
-                <RiArrowLeftLine className="h-4 w-4" />
+                <span className="i-ri-arrow-left-line h-4 w-4" />
                 <span>{t('nodes.llm.jsonSchema.back', { ns: 'workflow' })}</span>
               </Button>
               <div className="flex items-center gap-x-2">
@@ -104,7 +103,7 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
                   className="flex items-center gap-x-0.5"
                   onClick={onRegenerate}
                 >
-                  <RiSparklingLine className="h-4 w-4" />
+                  <span className="i-ri-sparkling-line h-4 w-4" />
                   <span>{t('nodes.llm.jsonSchema.regenerate', { ns: 'workflow' })}</span>
                 </Button>
                 <Button variant="primary" onClick={handleApply}>

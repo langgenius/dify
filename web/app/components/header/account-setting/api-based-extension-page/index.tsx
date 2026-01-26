@@ -1,6 +1,3 @@
-import {
-  RiAddLine,
-} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useModalContext } from '@/context/modal-context'
@@ -43,7 +40,7 @@ const ApiBasedExtensionPage = () => {
         className="w-full"
         onClick={handleOpenApiBasedExtensionModal}
       >
-        <RiAddLine className="mr-1 h-4 w-4" />
+        <span className="i-ri-add-line mr-1 h-4 w-4" />
         {t('apiBasedExtension.add', { ns: 'common' })}
       </Button>
     </div>

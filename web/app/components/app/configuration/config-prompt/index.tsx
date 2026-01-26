@@ -2,9 +2,7 @@
 import type { FC } from 'react'
 import type { PromptItem, PromptVariable } from '@/models/debug'
 import type { AppModeEnum } from '@/types/app'
-import {
-  RiAddLine,
-} from '@remixicon/react'
+
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -161,7 +159,7 @@ const Prompt: FC<IPromptProps> = ({
           onClick={handleAddMessage}
           className="mt-3 w-full"
         >
-          <RiAddLine className="mr-2 h-4 w-4" />
+          <span className="i-ri-add-line mr-2 h-4 w-4" />
           <div>{t('promptMode.operation.addMessage', { ns: 'appDebug' })}</div>
         </Button>
       )}

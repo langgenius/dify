@@ -1,4 +1,3 @@
-import { RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,7 +30,7 @@ const KeyWordNumber = ({
         <Tooltip
           popupContent="number of keywords"
         >
-          <RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary" />
+          <span className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary" />
         </Tooltip>
       </div>
       <Slider

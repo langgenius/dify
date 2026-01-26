@@ -1,5 +1,4 @@
 'use client'
-import { RiFileCopyLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { debounce } from 'es-toolkit/compat'
 import * as React from 'react'
@@ -44,7 +43,7 @@ const CopyFeedbackNew = ({ content }: Props) => {
           >
             {content}
           </div>
-          <RiFileCopyLine className="h-3 w-3 shrink-0 text-text-tertiary opacity-0 group-hover/copy:opacity-100" />
+          <span className="i-ri-file-copy-line h-3 w-3 shrink-0 text-text-tertiary opacity-0 group-hover/copy:opacity-100" />
         </div>
       </Tooltip>
     </div>

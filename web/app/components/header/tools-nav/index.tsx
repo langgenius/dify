@@ -1,9 +1,5 @@
 'use client'
 
-import {
-  RiHammerFill,
-  RiHammerLine,
-} from '@remixicon/react'
 import Link from 'next/link'
 import { useSelectedLayoutSegment } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -27,8 +23,8 @@ const ToolsNav = ({
     >
       {
         activated
-          ? <RiHammerFill className="h-4 w-4" />
-          : <RiHammerLine className="h-4 w-4" />
+          ? <span className="i-ri-hammer-fill h-4 w-4" />
+          : <span className="i-ri-hammer-line h-4 w-4" />
       }
       <div className="ml-2 max-[1024px]:hidden">
         {t('menus.tools', { ns: 'common' })}

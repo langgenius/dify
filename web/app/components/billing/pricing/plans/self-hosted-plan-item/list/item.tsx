@@ -1,4 +1,3 @@
-import { RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 
 type ItemProps = {
@@ -11,7 +10,7 @@ const Item = ({
   return (
     <div className="flex items-center gap-x-1">
       <div className="py-px">
-        <RiCheckLine className="size-4 shrink-0 text-text-tertiary" />
+        <span className="i-ri-check-line size-4 shrink-0 text-text-tertiary" />
       </div>
       <span className="system-sm-regular grow text-text-secondary">{label}</span>
     </div>

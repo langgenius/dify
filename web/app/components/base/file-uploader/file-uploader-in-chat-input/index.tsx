@@ -1,7 +1,5 @@
 import type { FileUpload } from '@/app/components/base/features/types'
-import {
-  RiAttachmentLine,
-} from '@remixicon/react'
+
 import {
   memo,
   useCallback,
@@ -26,7 +24,7 @@ const FileUploaderInChatInput = ({
         className={cn(open && 'bg-state-base-hover')}
         disabled={readonly}
       >
-        <RiAttachmentLine className="h-5 w-5" />
+        <span className="i-ri-attachment-line h-5 w-5" />
       </ActionButton>
     )
   }, [])

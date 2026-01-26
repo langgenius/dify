@@ -5,11 +5,7 @@ import {
   shift,
   useFloating,
 } from '@floating-ui/react'
-import {
-  RiEditLine,
-  RiExternalLinkLine,
-  RiLinkUnlinkM,
-} from '@remixicon/react'
+
 import { useClickAway } from 'ahooks'
 import { escape } from 'es-toolkit/string'
 import {
@@ -106,7 +102,7 @@ const LinkEditorComponent = ({
                       target="_blank"
                       rel="noreferrer"
                     >
-                      <RiExternalLinkLine className="mr-1 h-3 w-3" />
+                      <span className="i-ri-external-link-line mr-1 h-3 w-3" />
                       <div className="mr-1">
                         {t('nodes.note.editor.openLink', { ns: 'workflow' })}
                       </div>
@@ -125,14 +121,14 @@ const LinkEditorComponent = ({
                         setLinkOperatorShow(false)
                       }}
                     >
-                      <RiEditLine className="mr-1 h-3 w-3" />
+                      <span className="i-ri-edit-line mr-1 h-3 w-3" />
                       {t('operation.edit', { ns: 'common' })}
                     </div>
                     <div
                       className="flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover"
                       onClick={handleUnlink}
                     >
-                      <RiLinkUnlinkM className="mr-1 h-3 w-3" />
+                      <span className="i-ri-link-unlink-m mr-1 h-3 w-3" />
                       {t('nodes.note.editor.unlink', { ns: 'workflow' })}
                     </div>
                   </>

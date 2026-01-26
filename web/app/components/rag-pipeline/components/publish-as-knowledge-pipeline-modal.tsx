@@ -1,7 +1,6 @@
 'use client'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { IconInfo } from '@/models/datasets'
-import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -89,7 +88,7 @@ const PublishAsKnowledgePipelineModal = ({
             className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center"
             onClick={onCancel}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
           </div>
         </div>
         <div className="px-6 py-3">

@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { RiNodeTree, RiSortAlphabetAsc } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { cn } from '@/utils/classnames'
@@ -37,7 +36,7 @@ const ViewTypeSelect: FC<Props> = ({
         }
         onClick={handleChange(ViewType.flat)}
       >
-        <RiSortAlphabetAsc className="h-4 w-4" />
+        <span className="i-ri-sort-alphabet-asc h-4 w-4" />
       </div>
       <div
         className={
@@ -47,7 +46,7 @@ const ViewTypeSelect: FC<Props> = ({
         }
         onClick={handleChange(ViewType.tree)}
       >
-        <RiNodeTree className="h-4 w-4 " />
+        <span className="i-ri-node-tree h-4 w-4 " />
       </div>
     </div>
   )

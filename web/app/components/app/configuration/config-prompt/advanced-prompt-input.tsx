@@ -2,10 +2,7 @@
 import type { FC } from 'react'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptRole, PromptVariable } from '@/models/debug'
-import {
-  RiDeleteBinLine,
-  RiErrorWarningFill,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import { produce } from 'immer'
@@ -151,7 +148,7 @@ const AdvancedPromptInput: FC<Props> = ({
       }}
     >
       <div className="flex items-center pr-2">
-        <RiErrorWarningFill className="mr-1 h-4 w-4 text-[#F79009]" />
+        <span className="i-ri-error-warning-fill mr-1 h-4 w-4 text-[#F79009]" />
         <div className="text-[13px] font-medium leading-[18px] text-[#DC6803]">{t('promptMode.contextMissing', { ns: 'appDebug' })}</div>
       </div>
       <Button
@@ -191,7 +188,7 @@ const AdvancedPromptInput: FC<Props> = ({
                     )}
                 <div className={cn(s.optionWrap, 'items-center space-x-1')}>
                   {canDelete && (
-                    <RiDeleteBinLine onClick={onDelete} className="h-6 w-6 cursor-pointer p-1 text-text-tertiary" />
+                    <span className="i-ri-delete-bin-line h-6 w-6 cursor-pointer p-1 text-text-tertiary" onClick={onDelete} />
                   )}
                   {!isCopied
                     ? (

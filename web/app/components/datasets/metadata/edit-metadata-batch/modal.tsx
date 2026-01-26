@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemInBatchEdit, MetadataItemWithEdit } from '../types'
-import { RiQuestionLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -171,7 +170,7 @@ const EditMetadataBatchModal: FC<Props> = ({
           }
           >
             <div className="cursor-pointer p-px">
-              <RiQuestionLine className="size-3.5 text-text-tertiary" />
+              <span className="i-ri-question-line size-3.5 text-text-tertiary" />
             </div>
           </Tooltip>
         </div>

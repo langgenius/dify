@@ -3,15 +3,9 @@ import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import {
-  RiArrowDownSLine,
-  RiArrowRightSLine,
   RiBuildingLine,
   RiGlobalLine,
   RiLockLine,
-  RiPlanetLine,
-  RiPlayCircleLine,
-  RiPlayList2Line,
-  RiTerminalBoxLine,
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
@@ -286,7 +280,7 @@ const AppPublisher = ({
             disabled={disabled}
           >
             {t('common.publish', { ns: 'workflow' })}
-            <RiArrowDownSLine className="h-4 w-4 text-components-button-primary-text" />
+            <span className="i-ri-arrow-down-sline h-4 w-4 text-components-button-primary-text" />
           </Button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[11]">
@@ -398,7 +392,7 @@ const AppPublisher = ({
                           </div>
                           {!isAppAccessSet && <p className="system-xs-regular shrink-0 text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
                           <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-                            <RiArrowRightSLine className="h-4 w-4 text-text-quaternary" />
+                            <span className="i-ri-arrow-right-sline h-4 w-4 text-text-quaternary" />
                           </div>
                         </div>
                         {!isAppAccessSet && <p className="system-xs-regular mt-1 text-text-warning">{t('publishApp.notSetDesc', { ns: 'app' })}</p>}
@@ -413,7 +407,7 @@ const AppPublisher = ({
                               className="flex-1"
                               disabled={disabledFunctionButton}
                               link={appURL}
-                              icon={<RiPlayCircleLine className="h-4 w-4" />}
+                              icon={<span className="i-ri-play-circle-line h-4 w-4" />}
                             >
                               {t('common.runApp', { ns: 'workflow' })}
                             </SuggestedAction>
@@ -425,7 +419,7 @@ const AppPublisher = ({
                                     className="flex-1"
                                     disabled={disabledFunctionButton}
                                     link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
-                                    icon={<RiPlayList2Line className="h-4 w-4" />}
+                                    icon={<span className="i-ri-play-list-2-line h-4 w-4" />}
                                   >
                                     {t('common.batchRunApp', { ns: 'workflow' })}
                                   </SuggestedAction>
@@ -451,7 +445,7 @@ const AppPublisher = ({
                                   handleOpenInExplore()
                               }}
                               disabled={disabledFunctionButton}
-                              icon={<RiPlanetLine className="h-4 w-4" />}
+                              icon={<span className="i-ri-planet-line h-4 w-4" />}
                             >
                               {t('common.openInExplore', { ns: 'workflow' })}
                             </SuggestedAction>
@@ -461,7 +455,7 @@ const AppPublisher = ({
                               className="flex-1"
                               disabled={!publishedAt || missingStartNode}
                               link="./develop"
-                              icon={<RiTerminalBoxLine className="h-4 w-4" />}
+                              icon={<span className="i-ri-terminal-box-line h-4 w-4" />}
                             >
                               {t('common.accessAPIReference', { ns: 'workflow' })}
                             </SuggestedAction>

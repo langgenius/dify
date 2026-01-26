@@ -3,11 +3,7 @@ import type { FC } from 'react'
 import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import type { CommonResponse } from '@/models/common'
 import type { LegacyDataSourceInfo, LocalFileInfo, OnlineDocumentInfo, OnlineDriveInfo, SimpleDocumentDetail } from '@/models/datasets'
-import {
-  RiArrowDownLine,
-  RiEditLine,
-  RiGlobalLine,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import { uniq } from 'es-toolkit/array'
 import { pick } from 'es-toolkit/object'
@@ -184,9 +180,7 @@ const DocumentList: FC<IDocumentListProps> = ({
     return (
       <div className="flex cursor-pointer items-center hover:text-text-secondary" onClick={() => handleSort(field)}>
         {label}
-        <RiArrowDownLine
-          className={cn('ml-0.5 h-3 w-3 transition-all', isActive ? 'text-text-tertiary' : 'text-text-disabled', isActive && !isDesc ? 'rotate-180' : '')}
-        />
+        <span className={`i-ri-arrow-down-line ${cn('ml-0.5 h-3 w-3 transition-all', isActive ? 'text-text-tertiary' : 'text-text-disabled', isActive && !isDesc ? 'rotate-180' : '')}`} />
       </div>
     )
   }
@@ -436,7 +430,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                           />
                         )}
                         {isWebsiteCrawl(doc.data_source_type) && (
-                          <RiGlobalLine className="mr-1.5 size-4" />
+                          <span className="i-ri-global-line mr-1.5 size-4" />
                         )}
                       </div>
                       <Tooltip
@@ -455,7 +449,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                               handleShowRenameModal(doc)
                             }}
                           >
-                            <RiEditLine className="h-4 w-4 text-text-tertiary" />
+                            <span className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
                           </div>
                         </Tooltip>
                       </div>

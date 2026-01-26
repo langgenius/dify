@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { RiArrowLeftLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -52,7 +51,7 @@ const CreateContent: FC<Props> = ({
       hideCloseBtn={hasBack}
       beforeHeader={hasBack && (
         <div className="relative left-[-4px] mb-1 flex cursor-pointer items-center space-x-1 py-1 text-text-accent" onClick={onBack}>
-          <RiArrowLeftLine className="size-4" />
+          <span className="i-ri-arrow-left-line size-4" />
           <div className="system-xs-semibold-uppercase">{t(`${i18nPrefix}.back`, { ns: 'dataset' })}</div>
         </div>
       )}

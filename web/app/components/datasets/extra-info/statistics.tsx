@@ -1,5 +1,4 @@
 import type { RelatedAppResponse } from '@/models/datasets'
-import { RiInformation2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -57,7 +56,7 @@ const Statistics = ({
         >
           <div className="system-2xs-medium-uppercase flex cursor-pointer items-center gap-x-0.5 text-text-tertiary">
             <span>{t('datasetMenus.relatedApp', { ns: 'common' })}</span>
-            <RiInformation2Line className="size-3" />
+            <span className="i-ri-information-2-line size-3" />
           </div>
         </Tooltip>
       </div>

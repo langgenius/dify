@@ -2,7 +2,6 @@ import type {
   LoopVariable,
   LoopVariablesComponentShape,
 } from '@/app/components/workflow/nodes/loop/types'
-import { RiDeleteBinLine } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -101,7 +100,7 @@ const Item = ({
         size="l"
         onClick={() => handleRemoveLoopVariable(item.id)}
       >
-        <RiDeleteBinLine className="h-4 w-4 text-text-tertiary" />
+        <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary" />
       </ActionButton>
     </div>
   )

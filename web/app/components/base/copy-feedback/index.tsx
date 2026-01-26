@@ -1,8 +1,5 @@
 'use client'
-import {
-  RiClipboardFill,
-  RiClipboardLine,
-} from '@remixicon/react'
+
 import { useClipboard } from 'foxact/use-clipboard'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -38,8 +35,8 @@ const CopyFeedback = ({ content }: Props) => {
           onClick={handleCopy}
           onMouseLeave={reset}
         >
-          {copied && <RiClipboardFill className="h-4 w-4" />}
-          {!copied && <RiClipboardLine className="h-4 w-4" />}
+          {copied && <span className="i-ri-clipboard-fill h-4 w-4" />}
+          {!copied && <span className="i-ri-clipboard-line h-4 w-4" />}
         </div>
       </ActionButton>
     </Tooltip>

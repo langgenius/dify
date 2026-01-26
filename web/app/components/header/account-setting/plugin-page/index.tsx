@@ -1,5 +1,4 @@
 import type { PluginProvider } from '@/models/common'
-import { LockClosedIcon } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import { usePluginProviders } from '@/service/use-common'
@@ -19,7 +18,7 @@ const PluginPage = () => {
         {plugins?.map(plugin => Plugin_MAP[plugin.tool_name](plugin))}
       </div>
       <div className="fixed bottom-0 flex h-[42px] w-[472px] items-center bg-white text-xs text-gray-500">
-        <LockClosedIcon className="mr-1 h-3 w-3" />
+        <span className="i-heroicons-lock-closed-24-solid mr-1 h-3 w-3" />
         {t('provider.encrypted.front', { ns: 'common' })}
         <Link
           className="mx-1 text-primary-600"

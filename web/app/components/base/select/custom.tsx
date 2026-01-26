@@ -1,10 +1,7 @@
 import type {
   PortalToFollowElemOptions,
 } from '@/app/components/base/portal-to-follow-elem'
-import {
-  RiArrowDownSLine,
-  RiCheckLine,
-} from '@remixicon/react'
+
 import {
   useCallback,
   useState,
@@ -109,11 +106,10 @@ const CustomSelect = <T extends Option>({
                   >
                     {triggerText}
                   </div>
-                  <RiArrowDownSLine
-                    className={cn(
-                      'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
-                      mergedOpen && 'text-text-secondary',
-                    )}
+                  <span className={`i-ri-arrow-down-sline ${cn(
+                    'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
+                    mergedOpen && 'text-text-secondary',
+                  )}`}
                   />
                 </>
               )}
@@ -154,7 +150,7 @@ const CustomSelect = <T extends Option>({
                             {option.label}
                           </div>
                           {
-                            selected && <RiCheckLine className="h-4 w-4 shrink-0 text-text-accent" />
+                            selected && <span className="i-ri-check-line h-4 w-4 shrink-0 text-text-accent" />
                           }
                         </>
                       )}

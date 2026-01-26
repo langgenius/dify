@@ -4,9 +4,7 @@ import type {
   AddOAuthButtonProps,
   PluginPayload,
 } from '@/app/components/plugins/plugin-auth/types'
-import {
-  RiAddLine,
-} from '@remixicon/react'
+
 import {
   memo,
   useCallback,
@@ -80,7 +78,7 @@ const Configure = ({
           <Button
             variant="secondary-accent"
           >
-            <RiAddLine className="h-4 w-4" />
+            <span className="i-ri-add-line h-4 w-4" />
             {t('dataSource.configure', { ns: 'common' })}
           </Button>
         </PortalToFollowElemTrigger>

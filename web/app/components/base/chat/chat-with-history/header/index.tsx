@@ -1,9 +1,5 @@
 import type { ConversationItem } from '@/models/share'
-import {
-  RiEditBoxLine,
-  RiLayoutRight2Line,
-  RiResetLeftLine,
-} from '@remixicon/react'
+
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
@@ -75,7 +71,7 @@ const Header = () => {
       <div className="flex h-14 shrink-0 items-center justify-between p-3">
         <div className={cn('flex items-center gap-1 transition-all duration-200 ease-in-out', !isSidebarCollapsed && 'user-select-none opacity-0')}>
           <ActionButton className={cn(!isSidebarCollapsed && 'cursor-default')} size="l" onClick={() => handleSidebarCollapse(false)}>
-            <RiLayoutRight2Line className="h-[18px] w-[18px]" />
+            <span className="i-ri-layout-right-2-line h-[18px] w-[18px]" />
           </ActionButton>
           <div className="mr-1 shrink-0">
             <AppIcon
@@ -118,7 +114,7 @@ const Header = () => {
                   disabled={!currentConversationId || isResponding}
                   onClick={handleNewConversation}
                 >
-                  <RiEditBoxLine className="h-[18px] w-[18px]" />
+                  <span className="i-ri-edit-box-line h-[18px] w-[18px]" />
                 </ActionButton>
               </div>
             </Tooltip>
@@ -130,7 +126,7 @@ const Header = () => {
               popupContent={t('chat.resetChat', { ns: 'share' })}
             >
               <ActionButton size="l" onClick={handleNewConversation}>
-                <RiResetLeftLine className="h-[18px] w-[18px]" />
+                <span className="i-ri-reset-left-line h-[18px] w-[18px]" />
               </ActionButton>
             </Tooltip>
           )}

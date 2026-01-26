@@ -1,7 +1,6 @@
 'use client'
 import type { RefObject } from 'react'
 import type { Plugin, PluginCategoryEnum } from '@/app/components/plugins/types'
-import { RiArrowRightUpLine, RiSearchLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
 import { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
@@ -84,7 +83,7 @@ const List = ({
         target="_blank"
       >
         <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
-        <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
+        <span className="i-ri-arrow-right-up-line ml-0.5 h-3 w-3" />
       </Link>
     )
   }
@@ -106,7 +105,7 @@ const List = ({
             onClick={e => e.stopPropagation()}
           >
             <span>{t('searchInMarketplace', { ns: 'plugin' })}</span>
-            <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
+            <span className="i-ri-arrow-right-up-line ml-0.5 h-3 w-3" />
           </Link>
         </div>
       )}
@@ -126,7 +125,7 @@ const List = ({
               target="_blank"
               className="system-sm-medium flex h-4 shrink-0 items-center text-text-accent-light-mode-only"
             >
-              <RiSearchLine className="mr-0.5 h-3 w-3" />
+              <span className="i-ri-search-line mr-0.5 h-3 w-3" />
               <span>{t('searchInMarketplace', { ns: 'plugin' })}</span>
             </Link>
             <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(255,255,255,0.01)] to-[rgba(16,24,40,0.08)]"></div>

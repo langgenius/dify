@@ -6,9 +6,7 @@ import type {
   NodeOutPutVar,
   Variable,
 } from '../../../../types'
-import {
-  RiDeleteBinLine,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -216,7 +214,7 @@ const Editor: FC<Props> = ({
                 )}
                 {showRemove && (
                   <ActionButton onClick={onRemove}>
-                    <RiDeleteBinLine className="h-4 w-4" />
+                    <span className="i-ri-delete-bin-line h-4 w-4" />
                   </ActionButton>
                 )}
                 {!isCopied

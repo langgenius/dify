@@ -3,8 +3,6 @@ import type { FC } from 'react'
 import type { Item } from '@/app/components/base/select'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
 import type { SortType } from '@/service/datasets'
-import { PlusIcon } from '@heroicons/react/24/solid'
-import { RiDraftLine, RiExternalLinkLine } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -124,7 +122,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
             href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
           >
             <span>{t('list.learnMore', { ns: 'datasetDocuments' })}</span>
-            <RiExternalLinkLine className="h-3 w-3" />
+            <span className="i-ri-external-link-line h-3 w-3" />
           </a>
         </div>
       </div>
@@ -170,7 +168,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           )}
           {embeddingAvailable && (
             <Button variant="secondary" className="shrink-0" onClick={showEditMetadataModal}>
-              <RiDraftLine className="mr-1 size-4" />
+              <span className="i-ri-draft-line mr-1 size-4" />
               {t('metadata.metadata', { ns: 'dataset' })}
             </Button>
           )}
@@ -188,7 +186,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           )}
           {embeddingAvailable && (
             <Button variant="primary" onClick={onAddDocument} className="shrink-0">
-              <PlusIcon className="mr-2 h-4 w-4 stroke-current" />
+              <span className="i-heroicons-plus-24-solid mr-2 h-4 w-4 stroke-current" />
               {addButtonText}
             </Button>
           )}

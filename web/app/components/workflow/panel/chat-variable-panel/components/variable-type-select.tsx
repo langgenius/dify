@@ -1,5 +1,4 @@
 'use client'
-import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import {
@@ -48,7 +47,7 @@ const VariableTypeSelector = ({
           >
             {value}
           </div>
-          <RiArrowDownSLine className="ml-0.5 h-4 w-4 text-text-quaternary" />
+          <span className="i-ri-arrow-down-sline ml-0.5 h-4 w-4 text-text-quaternary" />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={cn('z-[11] w-full', popupClassName)}>
@@ -63,7 +62,7 @@ const VariableTypeSelector = ({
               }}
             >
               <div className="system-md-regular grow truncate text-text-secondary">{item}</div>
-              {value === item && <RiCheckLine className="h-4 w-4 text-text-accent" />}
+              {value === item && <span className="i-ri-check-line h-4 w-4 text-text-accent" />}
             </div>
           ))}
         </div>

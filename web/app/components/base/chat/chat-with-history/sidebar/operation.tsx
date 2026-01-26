@@ -1,12 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-  RiMoreFill,
-  RiPushpinLine,
-  RiUnpinLine,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -64,7 +58,7 @@ const Operation: FC<Props> = ({
                 : ActionButtonState.Default
           }
         >
-          <RiMoreFill className="h-4 w-4" />
+          <span className="i-ri-more-fill h-4 w-4" />
         </ActionButton>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">
@@ -78,19 +72,19 @@ const Operation: FC<Props> = ({
           }}
         >
           <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={togglePin}>
-            {isPinned && <RiUnpinLine className="h-4 w-4 shrink-0 text-text-tertiary" />}
-            {!isPinned && <RiPushpinLine className="h-4 w-4 shrink-0 text-text-tertiary" />}
+            {isPinned && <span className="i-ri-unpin-line h-4 w-4 shrink-0 text-text-tertiary" />}
+            {!isPinned && <span className="i-ri-pushpin-line h-4 w-4 shrink-0 text-text-tertiary" />}
             <span className="grow">{isPinned ? t('sidebar.action.unpin', { ns: 'explore' }) : t('sidebar.action.pin', { ns: 'explore' })}</span>
           </div>
           {isShowRenameConversation && (
             <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={onRenameConversation}>
-              <RiEditLine className="h-4 w-4 shrink-0 text-text-tertiary" />
+              <span className="i-ri-edit-line h-4 w-4 shrink-0 text-text-tertiary" />
               <span className="grow">{t('sidebar.action.rename', { ns: 'explore' })}</span>
             </div>
           )}
           {isShowDelete && (
             <div className={cn('system-md-regular group flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive')} onClick={onDelete}>
-              <RiDeleteBinLine className={cn('h-4 w-4 shrink-0 text-text-tertiary group-hover:text-text-destructive')} />
+              <span className={`i-ri-delete-bin-line ${cn('h-4 w-4 shrink-0 text-text-tertiary group-hover:text-text-destructive')}`} />
               <span className="grow">{t('sidebar.action.delete', { ns: 'explore' })}</span>
             </div>
           )}

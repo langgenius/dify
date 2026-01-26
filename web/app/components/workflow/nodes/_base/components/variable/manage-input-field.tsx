@@ -1,4 +1,3 @@
-import { RiAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 
 type ManageInputFieldProps = {
@@ -16,7 +15,7 @@ const ManageInputField = ({
         className="flex h-8 grow cursor-pointer items-center px-3"
         onClick={onManage}
       >
-        <RiAddLine className="mr-1 h-4 w-4 text-text-tertiary" />
+        <span className="i-ri-add-line mr-1 h-4 w-4 text-text-tertiary" />
         <div
           className="system-xs-medium truncate text-text-tertiary"
           title="Create user input field"

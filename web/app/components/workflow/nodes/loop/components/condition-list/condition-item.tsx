@@ -14,7 +14,6 @@ import type {
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
-import { RiDeleteBinLine } from '@remixicon/react'
 import { produce } from 'immer'
 import {
   useCallback,
@@ -337,7 +336,7 @@ const ConditionItem = ({
         onMouseLeave={() => setIsHovered(false)}
         onClick={doRemoveCondition}
       >
-        <RiDeleteBinLine className="h-4 w-4" />
+        <span className="i-ri-delete-bin-line h-4 w-4" />
       </div>
     </div>
   )

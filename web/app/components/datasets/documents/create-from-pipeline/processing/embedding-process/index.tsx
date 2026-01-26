@@ -2,14 +2,7 @@ import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import {
-  RiAedFill,
-  RiArrowRightLine,
-  RiCheckboxCircleFill,
-  RiErrorWarningFill,
-  RiLoader2Fill,
-  RiTerminalBoxLine,
-} from '@remixicon/react'
+
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
@@ -137,7 +130,7 @@ const EmbeddingProcess = ({
         <div className="system-md-semibold-uppercase flex items-center gap-x-1 text-text-secondary">
           {(isEmbeddingWaiting || isEmbedding) && (
             <>
-              <RiLoader2Fill className="size-4 animate-spin" />
+              <span className="i-ri-loader-2-fill size-4 animate-spin" />
               <span>
                 {isEmbeddingWaiting ? t('embedding.waiting', { ns: 'datasetDocuments' }) : t('embedding.processing', { ns: 'datasetDocuments' })}
               </span>
@@ -149,7 +142,7 @@ const EmbeddingProcess = ({
           enableBilling && plan.type !== Plan.team && (
             <div className="flex h-[52px] items-center gap-x-2 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2.5 pl-3 shadow-xs shadow-shadow-shadow-3">
               <div className="flex shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5">
-                <RiAedFill className="size-4 text-text-primary-on-surface" />
+                <span className="i-ri-aed-fill size-4 text-text-primary-on-surface" />
               </div>
               <div className="system-md-medium grow text-text-primary">
                 {t('plansCommon.documentProcessingPriorityUpgrade', { ns: 'billing' })}
@@ -209,12 +202,12 @@ const EmbeddingProcess = ({
                     popupContent={indexingStatusDetail.error}
                   >
                     <span>
-                      <RiErrorWarningFill className="size-4 shrink-0 text-text-destructive" />
+                      <span className="i-ri-error-warning-fill size-4 shrink-0 text-text-destructive" />
                     </span>
                   </Tooltip>
                 )}
                 {indexingStatusDetail.indexing_status === 'completed' && (
-                  <RiCheckboxCircleFill className="size-4 shrink-0 text-text-success" />
+                  <span className="i-ri-checkbox-circle-fill size-4 shrink-0 text-text-success" />
                 )}
               </div>
             </div>
@@ -236,7 +229,7 @@ const EmbeddingProcess = ({
           <Button
             className="w-fit gap-x-0.5 px-3"
           >
-            <RiTerminalBoxLine className="size-4" />
+            <span className="i-ri-terminal-box-line size-4" />
             <span className="px-0.5">Access the API</span>
           </Button>
         </Link>
@@ -246,7 +239,7 @@ const EmbeddingProcess = ({
           onClick={navToDocumentList}
         >
           <span className="px-0.5">{t('stepThree.navTo', { ns: 'datasetCreation' })}</span>
-          <RiArrowRightLine className="size-4 stroke-current stroke-1" />
+          <span className="i-ri-arrow-right-line size-4 stroke-current stroke-1" />
         </Button>
       </div>
     </>

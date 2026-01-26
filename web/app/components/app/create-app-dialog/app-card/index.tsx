@@ -1,7 +1,5 @@
 'use client'
 import type { App } from '@/models/explore'
-import { PlusIcon } from '@heroicons/react/20/solid'
-import { RiInformation2Line } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContextSelector } from 'use-context-selector'
@@ -66,12 +64,12 @@ const AppCard = ({
         <div className={cn('absolute bottom-0 left-0 right-0 hidden bg-gradient-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
           <div className={cn('grid h-8 w-full grid-cols-1 items-center space-x-2', isTrialApp && 'grid-cols-2')}>
             <Button variant="primary" onClick={() => onCreate()}>
-              <PlusIcon className="mr-1 h-4 w-4" />
+              <span className="i-heroicons-plus-20-solid mr-1 h-4 w-4" />
               <span className="text-xs">{t('newApp.useTemplate', { ns: 'app' })}</span>
             </Button>
             {isTrialApp && (
               <Button onClick={showTryAPPPanel(app.app_id)}>
-                <RiInformation2Line className="mr-1 size-4" />
+                <span className="i-ri-information-2-line mr-1 size-4" />
                 <span>{t('appCard.try', { ns: 'explore' })}</span>
               </Button>
             )}

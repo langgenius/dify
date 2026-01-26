@@ -2,7 +2,6 @@ import type {
   Credential,
   PluginPayload,
 } from './types'
-import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -86,11 +85,10 @@ const AuthorizedInNode = ({
             </>
           )
         }
-        <RiArrowDownSLine
-          className={cn(
-            'h-3.5 w-3.5 text-components-button-ghost-text',
-            removed && 'text-text-destructive',
-          )}
+        <span className={`i-ri-arrow-down-sline ${cn(
+          'h-3.5 w-3.5 text-components-button-ghost-text',
+          removed && 'text-text-destructive',
+        )}`}
         />
       </Button>
     )

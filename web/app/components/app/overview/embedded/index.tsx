@@ -1,8 +1,5 @@
 import type { SiteInfo } from '@/models/share'
-import {
-  RiClipboardFill,
-  RiClipboardLine,
-} from '@remixicon/react'
+
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -185,8 +182,8 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
               <div
                 onClick={onClickCopy}
               >
-                {isCopied[option] && <RiClipboardFill className="h-4 w-4" />}
-                {!isCopied[option] && <RiClipboardLine className="h-4 w-4" />}
+                {isCopied[option] && <span className="i-ri-clipboard-fill h-4 w-4" />}
+                {!isCopied[option] && <span className="i-ri-clipboard-line h-4 w-4" />}
               </div>
             </ActionButton>
           </Tooltip>

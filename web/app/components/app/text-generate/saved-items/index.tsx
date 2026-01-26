@@ -1,10 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { SavedMessage } from '@/models/debug'
-import {
-  RiClipboardLine,
-  RiDeleteBinLine,
-} from '@remixicon/react'
+
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -63,13 +60,13 @@ const SavedItems: FC<ISavedItemsProps> = ({
                         Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
                       }}
                       >
-                        <RiClipboardLine className="h-4 w-4" />
+                        <span className="i-ri-clipboard-line h-4 w-4" />
                       </ActionButton>
                       <ActionButton onClick={() => {
                         onRemove(id)
                       }}
                       >
-                        <RiDeleteBinLine className="h-4 w-4" />
+                        <span className="i-ri-delete-bin-line h-4 w-4" />
                       </ActionButton>
                     </div>
                   </div>

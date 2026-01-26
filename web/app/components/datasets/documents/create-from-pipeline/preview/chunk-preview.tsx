@@ -1,7 +1,6 @@
 import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem, CustomFile, DocumentItem, FileIndexingEstimateResponse } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { RiSearchEyeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -215,7 +214,7 @@ const ChunkPreview = ({
       {isIdle && (
         <div className="flex h-full w-full items-center justify-center">
           <div className="flex flex-col items-center justify-center gap-3 pb-4">
-            <RiSearchEyeLine className="size-10 text-text-empty-state-icon" />
+            <span className="i-ri-search-eye-line size-10 text-text-empty-state-icon" />
             <p className="text-sm text-text-tertiary">
               {t('stepTwo.previewChunkTip', { ns: 'datasetCreation' })}
             </p>

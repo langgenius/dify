@@ -4,11 +4,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '../utils'
-import {
-  RiArrowRightSLine,
-  RiInformation2Fill,
-  RiLoader2Line,
-} from '@remixicon/react'
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -123,7 +119,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                       ? t('modelProvider.modelsNum', { ns: 'common', num: modelList.length })
                       : t('modelProvider.showModels', { ns: 'common' })
                   }
-                  {!loading && <RiArrowRightSLine className="h-4 w-4" />}
+                  {!loading && <span className="i-ri-arrow-right-sline h-4 w-4" />}
                 </div>
                 <div
                   className="hidden h-6 cursor-pointer items-center rounded-lg pl-1 pr-1.5 hover:bg-components-button-ghost-bg-hover group-hover:flex"
@@ -134,10 +130,10 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                       ? t('modelProvider.showModelsNum', { ns: 'common', num: modelList.length })
                       : t('modelProvider.showModels', { ns: 'common' })
                   }
-                  {!loading && <RiArrowRightSLine className="h-4 w-4" />}
+                  {!loading && <span className="i-ri-arrow-right-sline h-4 w-4" />}
                   {
                     loading && (
-                      <RiLoader2Line className="ml-0.5 h-3 w-3 animate-spin" />
+                      <span className="i-ri-loader-2-line ml-0.5 h-3 w-3 animate-spin" />
                     )
                   }
                 </div>
@@ -145,7 +141,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             )}
             {!showModelProvider && notConfigured && (
               <div className="flex h-6 items-center pl-1 pr-1.5">
-                <RiInformation2Fill className="mr-1 h-4 w-4 text-text-accent" />
+                <span className="i-ri-information-2-fill mr-1 h-4 w-4 text-text-accent" />
                 <span className="system-xs-medium text-text-secondary">{t('modelProvider.configureTip', { ns: 'common' })}</span>
               </div>
             )}

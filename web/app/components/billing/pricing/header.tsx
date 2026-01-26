@@ -1,4 +1,3 @@
-import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '../../base/button'
@@ -32,7 +31,7 @@ const Header = ({
           className="absolute bottom-[40.5px] right-[-18px] z-10 size-9 rounded-full p-2"
           onClick={onClose}
         >
-          <RiCloseLine className="size-5" />
+          <span className="i-ri-close-line size-5" />
         </Button>
       </div>
     </div>

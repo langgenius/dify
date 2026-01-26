@@ -1,9 +1,5 @@
 'use client'
-import {
-  RiDeleteBinLine,
-  RiEqualizer2Line,
-  RiErrorWarningFill,
-} from '@remixicon/react'
+
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -101,7 +97,7 @@ const ToolItem = ({
       <div className="hidden items-center gap-1 group-hover:flex">
         {!noAuth && !isError && !uninstalled && !versionMismatch && !isShowCanNotChooseMCPTip && (
           <ActionButton>
-            <RiEqualizer2Line className="h-4 w-4" />
+            <span className="i-ri-equalizer-2-line h-4 w-4" />
           </ActionButton>
         )}
         <div
@@ -113,7 +109,7 @@ const ToolItem = ({
           onMouseOver={() => setIsDeleting(true)}
           onMouseLeave={() => setIsDeleting(false)}
         >
-          <RiDeleteBinLine className="h-4 w-4" />
+          <span className="i-ri-delete-bin-line h-4 w-4" />
         </div>
       </div>
       {!isError && !uninstalled && !noAuth && !versionMismatch && !isShowCanNotChooseMCPTip && showSwitch && (
@@ -171,7 +167,7 @@ const ToolItem = ({
           popupContent={errorTip}
         >
           <div>
-            <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
+            <span className="i-ri-error-warning-fill h-4 w-4 text-text-destructive" />
           </div>
         </Tooltip>
       )}

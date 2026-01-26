@@ -1,4 +1,3 @@
-import { RiArrowRightLine } from '@remixicon/react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import * as React from 'react'
@@ -85,7 +84,7 @@ const Actions = ({
           className="gap-x-0.5"
         >
           <span className="px-0.5">{t('stepOne.button', { ns: 'datasetCreation' })}</span>
-          <RiArrowRightLine className="size-4" />
+          <span className="i-ri-arrow-right-line size-4" />
         </Button>
       </div>
     </div>

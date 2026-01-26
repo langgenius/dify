@@ -1,10 +1,7 @@
 import type {
   ModelProvider,
 } from './declarations'
-import {
-  RiAlertFill,
-  RiBrainLine,
-} from '@remixicon/react'
+
 import { useDebounce } from 'ahooks'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -108,7 +105,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
           {defaultModelNotConfigured && <div className="absolute bottom-0 left-0 right-0 top-0 opacity-40" style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
           {defaultModelNotConfigured && (
             <div className="system-xs-medium flex items-center gap-1 text-text-primary">
-              <RiAlertFill className="h-4 w-4 text-text-warning-secondary" />
+              <span className="i-ri-alert-fill h-4 w-4 text-text-warning-secondary" />
               <span className="max-w-[460px] truncate" title={t('modelProvider.notConfigured', { ns: 'common' })}>{t('modelProvider.notConfigured', { ns: 'common' })}</span>
             </div>
           )}
@@ -127,7 +124,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
       {!filteredConfiguredProviders?.length && (
         <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur">
-            <RiBrainLine className="h-5 w-5 text-text-primary" />
+            <span className="i-ri-brain-line h-5 w-5 text-text-primary" />
           </div>
           <div className="system-sm-medium mt-2 text-text-secondary">{t('modelProvider.emptyProviderTitle', { ns: 'common' })}</div>
           <div className="system-xs-regular mt-1 text-text-tertiary">{t('modelProvider.emptyProviderTip', { ns: 'common' })}</div>

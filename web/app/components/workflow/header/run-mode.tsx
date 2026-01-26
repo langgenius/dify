@@ -1,5 +1,4 @@
 import type { TestRunMenuRef, TriggerOption } from './test-run-menu'
-import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -125,7 +124,7 @@ const RunMode = ({
                 )}
                 disabled={true}
               >
-                <RiLoader2Line className="mr-1 size-4 animate-spin" />
+                <span className="i-ri-loader-2-line mr-1 size-4 animate-spin" />
                 {isListening ? t('common.listening', { ns: 'workflow' }) : t('common.running', { ns: 'workflow' })}
               </button>
             )
@@ -141,7 +140,7 @@ const RunMode = ({
                   )}
                   style={{ userSelect: 'none' }}
                 >
-                  <RiPlayLargeLine className="mr-1 size-4" />
+                  <span className="i-ri-play-large-line mr-1 size-4" />
                   {text ?? t('common.run', { ns: 'workflow' })}
                   <div className="system-kbd flex items-center gap-x-0.5 text-text-tertiary">
                     <div className="flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray">

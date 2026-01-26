@@ -2,7 +2,6 @@
 import type {
   ConversationVariable,
 } from '@/app/components/workflow/types'
-import { RiCloseLine } from '@remixicon/react'
 import { useMount } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import { noop } from 'es-toolkit/function'
@@ -82,7 +81,7 @@ const ConversationVariableModal = ({
       className={cn('h-[640px] w-[920px] max-w-[920px] p-0')}
     >
       <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onHide}>
-        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+        <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
       </div>
       <div className="flex h-full w-full">
         {/* LEFT */}

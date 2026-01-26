@@ -1,7 +1,6 @@
 'use client'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
-import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -245,7 +244,7 @@ function MCPServiceCard({
                             className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
                             onClick={() => setShowConfirmDelete(true)}
                           >
-                            <RiLoopLeftLine className={cn('h-4 w-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')} />
+                            <span className={`i-ri-loop-left-line ${cn('h-4 w-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')}`} />
                           </div>
                         </Tooltip>
                       )}
@@ -265,7 +264,7 @@ function MCPServiceCard({
               >
 
                 <div className="flex items-center justify-center gap-[1px]">
-                  <RiEditLine className="h-3.5 w-3.5" />
+                  <span className="i-ri-edit-line h-3.5 w-3.5" />
                   <div className="system-xs-medium px-[3px] text-text-tertiary">{serverPublished ? t('mcp.server.edit', { ns: 'tools' }) : t('mcp.server.addDescription', { ns: 'tools' })}</div>
                 </div>
               </Button>

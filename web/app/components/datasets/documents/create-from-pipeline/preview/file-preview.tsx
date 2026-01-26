@@ -1,6 +1,5 @@
 'use client'
 import type { CustomFile as File } from '@/models/datasets'
-import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -56,7 +55,7 @@ const FilePreview = ({
           className="flex h-8 w-8 shrink-0 items-center justify-center"
           onClick={hidePreview}
         >
-          <RiCloseLine className="size-[18px]" />
+          <span className="i-ri-close-line size-[18px]" />
         </button>
       </div>
       {isFetching && (

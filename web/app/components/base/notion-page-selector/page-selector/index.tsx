@@ -1,6 +1,5 @@
 import type { ListChildComponentProps } from 'react-window'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
-import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { memo, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { areEqual, FixedSizeList as List } from 'react-window'
@@ -113,8 +112,8 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
         >
           {
             current.expand
-              ? <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
-              : <RiArrowRightSLine className="h-4 w-4 text-text-tertiary" />
+              ? <span className="i-ri-arrow-down-sline h-4 w-4 text-text-tertiary" />
+              : <span className="i-ri-arrow-right-sline h-4 w-4 text-text-tertiary" />
           }
         </div>
       )

@@ -1,6 +1,4 @@
 import type { MermaidConfig } from 'mermaid'
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
-import { MoonIcon, SunIcon } from '@heroicons/react/24/solid'
 import mermaid from 'mermaid'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -558,7 +556,7 @@ const Flowchart = (props: FlowchartProps) => {
               title={(currentTheme === Theme.light ? t('theme.switchDark', { ns: 'app' }) : t('theme.switchLight', { ns: 'app' })) || ''}
               style={{ transform: 'translate3d(0, 0, 0)' }}
             >
-              {currentTheme === Theme.light ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}
+              {currentTheme === Theme.light ? <span className="i-heroicons-moon-24-solid h-5 w-5" /> : <span className="i-heroicons-sun-24-solid h-5 w-5" />}
             </button>
           </div>
 
@@ -572,7 +570,7 @@ const Flowchart = (props: FlowchartProps) => {
       {errMsg && (
         <div className={themeClasses.errorMessage}>
           <div className="flex items-center">
-            <ExclamationTriangleIcon className={themeClasses.errorIcon} />
+            <span className={`i-heroicons-exclamation-triangle-24-outline ${themeClasses.errorIcon}`} />
             <span className="ml-2">{errMsg}</span>
           </div>
         </div>

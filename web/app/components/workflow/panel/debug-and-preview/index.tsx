@@ -1,6 +1,5 @@
 import type { StartNodeType } from '../../nodes/start/types'
 
-import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import {
@@ -112,7 +111,7 @@ const DebugAndPreview = () => {
                   popupContent={t('panel.userInputField', { ns: 'workflow' })}
                 >
                   <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
-                    <RiEqualizer2Line className="h-4 w-4" />
+                    <span className="i-ri-equalizer-2-line h-4 w-4" />
                   </ActionButton>
                 </Tooltip>
                 {expanded && <div className="absolute bottom-[-17px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
@@ -123,7 +122,7 @@ const DebugAndPreview = () => {
               className="flex h-6 w-6 cursor-pointer items-center justify-center"
               onClick={handleCancelDebugAndPreviewPanel}
             >
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+              <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
             </div>
           </div>
         </div>

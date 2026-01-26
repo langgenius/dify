@@ -1,4 +1,3 @@
-import { RiHistoryLine } from '@remixicon/react'
 import {
   useCallback,
 } from 'react'
@@ -100,7 +99,7 @@ const HeaderInRestoring = ({
           )}
         >
           <div className="flex items-center gap-x-0.5">
-            <RiHistoryLine className="h-4 w-4" />
+            <span className="i-ri-history-line h-4 w-4" />
             <span className="px-0.5">{t('common.exitVersions', { ns: 'workflow' })}</span>
           </div>
         </Button>

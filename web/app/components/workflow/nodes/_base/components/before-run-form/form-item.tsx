@@ -2,9 +2,7 @@
 import type { FC } from 'react'
 import type { InputVar } from '../../../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import {
-  RiDeleteBinLine,
-} from '@remixicon/react'
+
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
@@ -304,10 +302,7 @@ const FormItem: FC<Props> = ({
                   headerRight={
                     (value as any).length > 1
                       ? (
-                          <RiDeleteBinLine
-                            onClick={handleArrayItemRemove(index)}
-                            className="mr-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary"
-                          />
+                          <span className="i-ri-delete-bin-line mr-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary" onClick={handleArrayItemRemove(index)} />
                         )
                       : undefined
                   }
@@ -339,10 +334,7 @@ const FormItem: FC<Props> = ({
                   headerRight={
                     (value as any).length > 1
                       ? (
-                          <RiDeleteBinLine
-                            onClick={handleArrayItemRemove(index)}
-                            className="mr-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary"
-                          />
+                          <span className="i-ri-delete-bin-line mr-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary" onClick={handleArrayItemRemove(index)} />
                         )
                       : undefined
                   }

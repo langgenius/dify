@@ -1,9 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiArrowDownSLine,
-  RiArrowRightSLine,
-} from '@remixicon/react'
+
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useState } from 'react'
@@ -35,8 +32,8 @@ const VarPanel: FC<Props> = ({
         <div className="system-md-medium grow">{t('detail.variables', { ns: 'appLog' })}</div>
         {
           isCollapse
-            ? <RiArrowRightSLine className="h-4 w-4" />
-            : <RiArrowDownSLine className="h-4 w-4" />
+            ? <span className="i-ri-arrow-right-sline h-4 w-4" />
+            : <span className="i-ri-arrow-down-sline h-4 w-4" />
         }
       </div>
       {!isCollapse && (

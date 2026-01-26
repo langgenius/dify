@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -32,7 +31,7 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
         className={cn(open && 'bg-state-base-hover')}
       >
         {t('modelProvider.loadPresets', { ns: 'common' })}
-        <RiArrowDownSLine className="ml-0.5 h-3.5 w-3.5" />
+        <span className="i-ri-arrow-down-sline ml-0.5 h-3.5 w-3.5" />
       </Button>
     )
   }, [t])

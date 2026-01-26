@@ -1,7 +1,3 @@
-import {
-  RiArrowDownSLine,
-  RiCheckLine,
-} from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -58,7 +54,7 @@ const ErrorHandleTypeSelector = ({
           size="small"
         >
           {selectedOption?.label}
-          <RiArrowDownSLine className="h-3.5 w-3.5" />
+          <span className="i-ri-arrow-down-sline h-3.5 w-3.5" />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[11]">
@@ -78,7 +74,7 @@ const ErrorHandleTypeSelector = ({
                 <div className="mr-1 w-4 shrink-0">
                   {
                     value === option.value && (
-                      <RiCheckLine className="h-4 w-4 text-text-accent" />
+                      <span className="i-ri-check-line h-4 w-4 text-text-accent" />
                     )
                   }
                 </div>

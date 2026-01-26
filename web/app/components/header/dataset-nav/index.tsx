@@ -2,10 +2,7 @@
 
 import type { NavItem } from '../nav/nav-selector'
 import type { DataSet } from '@/models/datasets'
-import {
-  RiBook2Fill,
-  RiBook2Line,
-} from '@remixicon/react'
+
 import { flatten } from 'es-toolkit/compat'
 import { useParams, useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
@@ -84,8 +81,8 @@ const DatasetNav = () => {
   return (
     <Nav
       isApp={false}
-      icon={<RiBook2Line className="h-4 w-4" />}
-      activeIcon={<RiBook2Fill className="h-4 w-4" />}
+      icon={<span className="i-ri-book-2-line h-4 w-4" />}
+      activeIcon={<span className="i-ri-book-2-fill h-4 w-4" />}
       text={t('menus.datasets', { ns: 'common' })}
       activeSegment="datasets"
       link="/datasets"

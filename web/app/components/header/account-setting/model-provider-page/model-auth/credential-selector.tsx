@@ -1,8 +1,5 @@
 import type { Credential } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  RiAddLine,
-  RiArrowDownSLine,
-} from '@remixicon/react'
+
 import {
   memo,
   useCallback,
@@ -74,7 +71,7 @@ const CredentialSelector = ({
               <div className="system-sm-regular grow truncate text-components-input-text-placeholder">{t('modelProvider.auth.selectModelCredential', { ns: 'common' })}</div>
             )
           }
-          <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
+          <span className="i-ri-arrow-down-sline h-4 w-4 text-text-quaternary" />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[100]">
@@ -101,7 +98,7 @@ const CredentialSelector = ({
                 className="system-xs-medium flex h-10 cursor-pointer items-center border-t border-t-divider-subtle px-7 text-text-accent-light-mode-only"
                 onClick={handleAddNewCredential}
               >
-                <RiAddLine className="mr-1 h-4 w-4" />
+                <span className="i-ri-add-line mr-1 h-4 w-4" />
                 {t('modelProvider.auth.addNewModelCredential', { ns: 'common' })}
               </div>
             )

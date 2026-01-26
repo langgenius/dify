@@ -3,7 +3,6 @@
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
-import { RiFolder6Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -269,7 +268,7 @@ const StepOne = ({
                     className="inline-flex cursor-pointer items-center text-[13px] leading-4 text-text-accent"
                     onClick={openModal}
                   >
-                    <RiFolder6Line className="mr-1 size-4" />
+                    <span className="i-ri-folder-6-line mr-1 size-4" />
                     {t('stepOne.emptyDatasetCreation', { ns: 'datasetCreation' })}
                   </span>
                 </>

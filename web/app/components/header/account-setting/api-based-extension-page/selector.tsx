@@ -1,8 +1,5 @@
 import type { FC } from 'react'
-import {
-  RiAddLine,
-  RiArrowDownSLine,
-} from '@remixicon/react'
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -57,14 +54,14 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
                     <div className="mr-1.5 w-[270px] truncate text-right text-xs text-text-quaternary">
                       {currentItem.api_endpoint}
                     </div>
-                    <RiArrowDownSLine className={`h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`} />
+                    <span className={`i-ri-arrow-down-sline ${`h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`}`} />
                   </div>
                 </div>
               )
             : (
                 <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pl-3 pr-2.5 text-sm text-text-quaternary">
                   {t('apiBasedExtension.selector.placeholder', { ns: 'common' })}
-                  <RiArrowDownSLine className={`h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`} />
+                  <span className={`i-ri-arrow-down-sline ${`h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`}`} />
                 </div>
               )
         }
@@ -111,7 +108,7 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
                 setShowApiBasedExtensionModal({ payload: {}, onSaveCallback: () => mutate() })
               }}
             >
-              <RiAddLine className="mr-2 h-4 w-4" />
+              <span className="i-ri-add-line mr-2 h-4 w-4" />
               {t('operation.add', { ns: 'common' })}
             </div>
           </div>

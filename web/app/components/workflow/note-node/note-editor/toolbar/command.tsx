@@ -1,11 +1,4 @@
 import {
-  RiBold,
-  RiItalic,
-  RiLink,
-  RiListUnordered,
-  RiStrikethrough,
-} from '@remixicon/react'
-import {
   memo,
   useMemo,
 } from 'react'
@@ -32,15 +25,15 @@ const Command = ({
   const icon = useMemo(() => {
     switch (type) {
       case 'bold':
-        return <RiBold className={cn('h-4 w-4', selectedIsBold && 'text-primary-600')} />
+        return <span className={`i-ri-bold ${cn('h-4 w-4', selectedIsBold && 'text-primary-600')}`} />
       case 'italic':
-        return <RiItalic className={cn('h-4 w-4', selectedIsItalic && 'text-primary-600')} />
+        return <span className={`i-ri-italic ${cn('h-4 w-4', selectedIsItalic && 'text-primary-600')}`} />
       case 'strikethrough':
-        return <RiStrikethrough className={cn('h-4 w-4', selectedIsStrikeThrough && 'text-primary-600')} />
+        return <span className={`i-ri-strikethrough ${cn('h-4 w-4', selectedIsStrikeThrough && 'text-primary-600')}`} />
       case 'link':
-        return <RiLink className={cn('h-4 w-4', selectedIsLink && 'text-primary-600')} />
+        return <span className={`i-ri-link ${cn('h-4 w-4', selectedIsLink && 'text-primary-600')}`} />
       case 'bullet':
-        return <RiListUnordered className={cn('h-4 w-4', selectedIsBullet && 'text-primary-600')} />
+        return <span className={`i-ri-list-unordered ${cn('h-4 w-4', selectedIsBullet && 'text-primary-600')}`} />
     }
   }, [type, selectedIsBold, selectedIsItalic, selectedIsStrikeThrough, selectedIsLink, selectedIsBullet])
 

@@ -1,7 +1,6 @@
 'use client'
 
 import type { Plugin, PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
-import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -171,7 +170,7 @@ const Loaded: React.FC<LoadedProps> = ({
           onClick={handleInstall}
           disabled={isInstalling || isLoading}
         >
-          {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
+          {isInstalling && <span className="i-ri-loader-2-line h-4 w-4 animate-spin-slow" />}
           <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
         </Button>
       </div>

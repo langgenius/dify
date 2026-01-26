@@ -1,6 +1,5 @@
 'use client'
 import type { CrawlResultItem } from '@/models/datasets'
-import { XMarkIcon } from '@heroicons/react/20/solid'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -23,7 +22,7 @@ const WebsitePreview = ({
         <div className={cn(s.title, 'title-md-semi-bold')}>
           <span>{t('stepOne.pagePreview', { ns: 'datasetCreation' })}</span>
           <div className="flex h-6 w-6 cursor-pointer items-center justify-center" onClick={hidePreview}>
-            <XMarkIcon className="h-4 w-4"></XMarkIcon>
+            <span className="i-heroicons-xmark-20-solid h-4 w-4"></span>
           </div>
         </div>
         <div className="title-sm-semi-bold break-words text-text-primary">

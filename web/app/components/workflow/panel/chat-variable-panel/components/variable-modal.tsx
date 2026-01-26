@@ -1,5 +1,4 @@
 import type { ConversationVariable } from '@/app/components/workflow/types'
-import { RiCloseLine, RiDraftLine, RiInputField } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -280,7 +279,7 @@ const ChatVariableModal = ({
             className="flex h-6 w-6 cursor-pointer items-center justify-center"
             onClick={onClose}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
           </div>
         </div>
       </div>
@@ -321,7 +320,7 @@ const ChatVariableModal = ({
                 className="text-text-tertiary"
                 onClick={() => handleEditorChange(!editInJSON)}
               >
-                {editInJSON ? <RiInputField className="mr-1 h-3.5 w-3.5" /> : <RiDraftLine className="mr-1 h-3.5 w-3.5" />}
+                {editInJSON ? <span className="i-ri-input-field mr-1 h-3.5 w-3.5" /> : <span className="i-ri-draft-line mr-1 h-3.5 w-3.5" />}
                 {editInJSON ? t('chatVariable.modal.oneByOne', { ns: 'workflow' }) : t('chatVariable.modal.editInJSON', { ns: 'workflow' })}
               </Button>
             )}
@@ -332,7 +331,7 @@ const ChatVariableModal = ({
                 className="text-text-tertiary"
                 onClick={() => handleEditorChange(!editInJSON)}
               >
-                {editInJSON ? <RiInputField className="mr-1 h-3.5 w-3.5" /> : <RiDraftLine className="mr-1 h-3.5 w-3.5" />}
+                {editInJSON ? <span className="i-ri-input-field mr-1 h-3.5 w-3.5" /> : <span className="i-ri-draft-line mr-1 h-3.5 w-3.5" />}
                 {editInJSON ? t('chatVariable.modal.editInForm', { ns: 'workflow' }) : t('chatVariable.modal.editInJSON', { ns: 'workflow' })}
               </Button>
             )}

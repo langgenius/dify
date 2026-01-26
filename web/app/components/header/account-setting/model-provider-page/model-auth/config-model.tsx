@@ -1,7 +1,3 @@
-import {
-  RiEqualizer2Line,
-  RiScales3Line,
-} from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -28,7 +24,7 @@ const ConfigModel = ({
         className="system-2xs-medium-uppercase relative flex h-[18px] cursor-pointer items-center rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 text-text-warning"
         onClick={onClick}
       >
-        <RiScales3Line className="mr-0.5 h-3 w-3" />
+        <span className="i-ri-scales-3-line mr-0.5 h-3 w-3" />
         {t('modelProvider.auth.authorizationError', { ns: 'common' })}
         <Indicator color="orange" className="absolute right-[-1px] top-[-1px] h-1.5 w-1.5" />
       </div>
@@ -56,7 +52,7 @@ const ConfigModel = ({
       {
         !loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
           <>
-            <RiEqualizer2Line className="mr-1 h-4 w-4" />
+            <span className="i-ri-equalizer-2-line mr-1 h-4 w-4" />
             {t('operation.config', { ns: 'common' })}
           </>
         )
@@ -64,7 +60,7 @@ const ConfigModel = ({
       {
         loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
           <>
-            <RiScales3Line className="mr-1 h-4 w-4" />
+            <span className="i-ri-scales-3-line mr-1 h-4 w-4" />
             {t('modelProvider.auth.configLoadBalancing', { ns: 'common' })}
           </>
         )

@@ -1,5 +1,4 @@
 'use client'
-import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -71,7 +70,7 @@ export default function CheckCode() {
   return (
     <div className="flex flex-col gap-3">
       <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
-        <RiLockPasswordLine className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
+        <span className="i-ri-lock-password-line h-6 w-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pb-4 pt-2">
         <h2 className="title-4xl-semi-bold text-text-primary">{t('resetPassword', { ns: 'login' })}</h2>
@@ -97,7 +96,7 @@ export default function CheckCode() {
       </div>
       <Link href={`/webapp-signin?${searchParams.toString()}`} className="flex h-9 items-center justify-center text-text-tertiary hover:text-text-primary">
         <div className="inline-block rounded-full bg-background-default-dimmed p-1">
-          <RiArrowLeftLine size={12} />
+          <span className="i-ri-arrow-left-line size-3" />
         </div>
         <span className="system-xs-regular ml-2">{t('backToLogin', { ns: 'login' })}</span>
       </Link>

@@ -1,10 +1,5 @@
 import type { ToolInfoInThought } from '../type'
-import {
-  RiArrowDownSLine,
-  RiArrowRightSLine,
-  RiHammerFill,
-  RiLoader2Line,
-} from '@remixicon/react'
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -35,12 +30,12 @@ const ToolDetail = ({
         )}
         onClick={() => setExpand(!expand)}
       >
-        {isFinished && <RiHammerFill className="mr-1 h-3.5 w-3.5" />}
-        {!isFinished && <RiLoader2Line className="mr-1 h-3.5 w-3.5 animate-spin" />}
+        {isFinished && <span className="i-ri-hammer-fill mr-1 h-3.5 w-3.5" />}
+        {!isFinished && <span className="i-ri-loader-2-line mr-1 h-3.5 w-3.5 animate-spin" />}
         {t(`thought.${isFinished ? 'used' : 'using'}`, { ns: 'tools' })}
         <div className="mx-1 text-text-secondary">{toolLabel}</div>
-        {!expand && <RiArrowRightSLine className="h-4 w-4" />}
-        {expand && <RiArrowDownSLine className="ml-auto h-4 w-4" />}
+        {!expand && <span className="i-ri-arrow-right-sline h-4 w-4" />}
+        {expand && <span className="i-ri-arrow-down-sline ml-auto h-4 w-4" />}
       </div>
       {
         expand && (

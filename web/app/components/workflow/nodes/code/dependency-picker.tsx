@@ -1,8 +1,6 @@
 import type { FC } from 'react'
 import type { CodeDependency } from './types'
-import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
+
 import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -41,7 +39,7 @@ const DependencyPicker: FC<Props> = ({
       <PortalToFollowElemTrigger onClick={() => setOpen(!open)} className="grow cursor-pointer">
         <div className="flex h-8 items-center justify-between rounded-lg border-0 bg-gray-100 px-2.5 text-[13px] text-gray-900">
           <div className="w-0 grow truncate" title={value.name}>{value.name}</div>
-          <RiArrowDownSLine className="h-3.5 w-3.5 shrink-0 text-gray-700" />
+          <span className="i-ri-arrow-down-sline h-3.5 w-3.5 shrink-0 text-gray-700" />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{
