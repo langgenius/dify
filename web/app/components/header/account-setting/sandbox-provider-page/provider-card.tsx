@@ -6,6 +6,7 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
+import { IS_CE_EDITION } from '@/config'
 import { cn } from '@/utils/classnames'
 import { PROVIDER_DESCRIPTION_KEYS, PROVIDER_LABEL_KEYS } from './constants'
 import ProviderIcon from './provider-icon'
@@ -47,7 +48,7 @@ const ProviderCard = ({
           <span className="system-md-semibold text-text-primary">
             {t(PROVIDER_LABEL_KEYS[provider.provider_type as keyof typeof PROVIDER_LABEL_KEYS] ?? 'sandboxProvider.e2b.label', { ns: 'common' })}
           </span>
-          {provider.is_system_configured && !provider.is_tenant_configured && (
+          {!IS_CE_EDITION && provider.is_system_configured && !provider.is_tenant_configured && (
             <span className="system-2xs-medium rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary">
               {t('sandboxProvider.managedBySaas', { ns: 'common' })}
             </span>
