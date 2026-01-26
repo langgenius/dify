@@ -339,6 +339,8 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
       const panelEl = portalContainer?.querySelector('[data-tool-group-setting-panel="true"]')
       if (!target || !panelEl)
         return
+      if (target instanceof Element && target.closest('[data-readme-panel-root="true"], [data-readme-panel="true"]'))
+        return
       if (target instanceof Element && target.closest('[data-modal-root="true"]'))
         return
       if (panelEl.contains(target))
