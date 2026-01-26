@@ -27,14 +27,42 @@ export type CodeGenRes = {
 }
 
 export type ContextGenerateMessage = {
-  role: 'user' | 'assistant' | 'system'
+  role: 'user' | 'assistant' | 'system' | 'tool'
   content: string
+  tool_call_id?: string
+}
+
+// FIXME
+export type ContextGenerateAvailableVar = {
+  value_selector: string[]
+  type: string
+  description?: string
+  node_id?: string
+  node_title?: string
+  node_type?: string
+  schema?: Record<string, unknown> | null
+}
+
+export type ContextGenerateParameterInfo = {
+  name: string
+  type?: string
+  description?: string
+  required?: boolean
+  options?: string[]
+  min?: number
+  max?: number
+  default?: string | number | boolean | null
+  multiple?: boolean
+  label?: string
+}
+
+export type ContextGenerateCodeContext = {
+  code: string
+  outputs?: Record<string, { type: string }>
+  variables?: ContextGenerateVariable[]
 }
 
 export type ContextGenerateRequest = {
-  workflow_id: string
-  node_id: string
-  parameter_name: string
   language?: 'python3' | 'javascript'
   prompt_messages: ContextGenerateMessage[]
   model_config: {
@@ -42,6 +70,9 @@ export type ContextGenerateRequest = {
     name: string
     completion_params?: CompletionParams
   }
+  available_vars: ContextGenerateAvailableVar[]
+  parameter_info: ContextGenerateParameterInfo
+  code_context?: ContextGenerateCodeContext | null
 }
 
 export type ContextGenerateVariable = {
@@ -59,15 +90,14 @@ export type ContextGenerateResponse = {
 }
 
 export type ContextGenerateSuggestedQuestionsRequest = {
-  workflow_id: string
-  node_id: string
-  parameter_name: string
   language: string
-  model_config: {
+  model_config?: {
     provider: string
     name: string
     completion_params?: CompletionParams
   }
+  available_vars: ContextGenerateAvailableVar[]
+  parameter_info: ContextGenerateParameterInfo
 }
 
 export type ContextGenerateSuggestedQuestionsResponse = {

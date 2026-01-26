@@ -316,10 +316,16 @@ export enum ValueType {
   constant = 'constant',
 }
 
+export type VarSchemaContainer = {
+  schema?: StructuredOutput['schema'] | Record<string, unknown> | string
+}
+
+export type VarChildren = Var[] | StructuredOutput | VarSchemaContainer
+
 export type Var = {
   variable: string
   type: VarType
-  children?: Var[] | StructuredOutput // if type is obj, has the children struct
+  children?: VarChildren // if type is obj, has the children struct
   isParagraph?: boolean
   isSelect?: boolean
   options?: string[]

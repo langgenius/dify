@@ -1,11 +1,17 @@
 'use client'
 
 import type { FC } from 'react'
+import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import type { SandboxFileTreeNode } from '@/types/sandbox-file'
-import { RiDownloadLine, RiFile3Fill, RiFolderLine } from '@remixicon/react'
+import { RiDownloadLine, RiFolderLine, RiFolderOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
+import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import { cn } from '@/utils/classnames'
+import { getFileIconType } from '../utils/file-utils'
+import TreeGuideLines from './tree-guide-lines'
+
+const INDENT_SIZE = 20
 
 type ArtifactsTreeProps = {
   data: SandboxFileTreeNode[] | undefined
@@ -40,6 +46,8 @@ const ArtifactsTreeNode: FC<ArtifactsTreeNodeProps> = ({
     onDownload(node)
   }, [node, onDownload])
 
+  const fileIconType = !isFolder ? getFileIconType(node.name) : null
+
   return (
     <div>
       <div
@@ -55,19 +63,24 @@ const ArtifactsTreeNode: FC<ArtifactsTreeNodeProps> = ({
             }
           : undefined}
         className={cn(
-          'group flex items-center gap-0 rounded-md py-0.5 pr-1.5',
+          'group relative flex h-6 items-center rounded-md px-2',
           isFolder && 'cursor-pointer hover:bg-state-base-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-components-input-border-active',
           !isFolder && 'hover:bg-state-base-hover',
         )}
-        style={{ paddingLeft: `${8 + depth * 20}px` }}
+        style={{ paddingLeft: `${8 + depth * INDENT_SIZE}px` }}
       >
+        <TreeGuideLines level={depth} lineOffset={2} />
         <div className="flex size-5 shrink-0 items-center justify-center">
           {isFolder
-            ? <RiFolderLine className="size-4 text-text-tertiary" />
-            : <RiFile3Fill className="size-4 text-text-quaternary" />}
+            ? (
+                isExpanded
+                  ? <RiFolderOpenLine className="size-4 text-text-accent" aria-hidden="true" />
+                  : <RiFolderLine className="size-4 text-text-secondary" aria-hidden="true" />
+              )
+            : <FileTypeIcon type={fileIconType as FileAppearanceType} size="sm" />}
         </div>
 
-        <span className="system-sm-regular flex-1 truncate px-1 py-0.5 text-text-secondary">
+        <span className="min-w-0 flex-1 truncate text-[13px] font-normal leading-4 text-text-secondary">
           {node.name}
         </span>
 
