@@ -23,7 +23,7 @@ import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
 import { HeaderShell } from '@/app/components/workflow/header'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import {
   SupportUploadFileTypes,
@@ -63,6 +63,7 @@ const WorkflowViewContent = ({
 }: WorkflowViewContentProps) => {
   const features = useFeatures(s => s.features)
   const isSupportSandbox = !!features.sandbox?.enabled
+  const isResponding = useStore(s => s.isResponding)
   const [viewType, doSetViewType] = useQueryState(WORKFLOW_VIEW_PARAM_KEY, parseAsViewType)
   const { syncWorkflowDraftImmediately } = useNodesSyncDraft()
   const pendingSyncRef = useRef<Promise<void> | null>(null)
@@ -101,6 +102,7 @@ const WorkflowViewContent = ({
     <ViewPicker
       value={viewType}
       onChange={handleViewTypeChange}
+      disabled={isResponding}
     />
   )
   const viewPickerDock = (

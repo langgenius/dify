@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback } from 'react'
 import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../../constants'
 import { useEdgesInteractionsWithoutSync } from '../../../hooks/use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from '../../../hooks/use-nodes-interactions-without-sync'
@@ -19,17 +19,8 @@ export function useChatFlowControl({
   const setHasStopResponded = useStore(s => s.setHasStopResponded)
   const setSuggestedQuestionsAbortController = useStore(s => s.setSuggestedQuestionsAbortController)
   const invalidateRun = useStore(s => s.invalidateRun)
-
-  const isMountedRef = useRef(true)
-  useEffect(() => {
-    isMountedRef.current = true
-    return () => {
-      isMountedRef.current = false
-    }
-  }, [])
-
-  const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync(isMountedRef)
-  const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync(isMountedRef)
+  const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync()
+  const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
 
   const { setIterTimes, setLoopTimes } = workflowStore.getState()
 

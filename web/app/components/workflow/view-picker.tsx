@@ -12,18 +12,20 @@ type ViewPickerProps = {
   value: ViewType
   onChange: (value: ViewType) => void
   className?: string
+  disabled?: boolean
 }
 
 const ViewPicker: FC<ViewPickerProps> = ({
   value,
   onChange,
   className,
+  disabled,
 }) => {
   const { t } = useTranslation()
   const options = useMemo(() => ([
-    { value: ViewType.graph, text: t('viewPicker.graph', { ns: 'workflow' }) },
-    { value: ViewType.skill, text: t('viewPicker.skill', { ns: 'workflow' }) },
-  ]), [t])
+    { value: ViewType.graph, text: t('viewPicker.graph', { ns: 'workflow' }), disabled: disabled && value !== ViewType.graph },
+    { value: ViewType.skill, text: t('viewPicker.skill', { ns: 'workflow' }), disabled: disabled && value !== ViewType.skill },
+  ]), [t, disabled, value])
 
   const handleChange = useCallback((nextValue: string | number | symbol) => {
     if (nextValue === value)
