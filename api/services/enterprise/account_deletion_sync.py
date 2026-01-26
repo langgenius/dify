@@ -81,7 +81,7 @@ def sync_workspace_member_removal(workspace_id: str, member_id: str, *, source: 
         bool: True if task was queued (or skipped in community), False if queueing failed
     """
     if not dify_config.ENTERPRISE_ENABLED:
-        return True 
+        return True
 
     return _queue_task(workspace_id=workspace_id, member_id=member_id, source=source)
 
@@ -101,7 +101,7 @@ def sync_account_deletion(account_id: str, *, source: str) -> bool:
         bool: True if all tasks were queued (or skipped in community), False if any queueing failed
     """
     if not dify_config.ENTERPRISE_ENABLED:
-        return True 
+        return True
 
     # Fetch all workspaces the account belongs to
     workspace_joins = db.session.query(TenantAccountJoin).filter_by(account_id=account_id).all()
