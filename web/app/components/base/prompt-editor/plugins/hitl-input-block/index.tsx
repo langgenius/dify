@@ -13,6 +13,7 @@ import {
   memo,
   useEffect,
 } from 'react'
+import { CustomTextNode } from '../custom-text/node'
 import {
   $createHITLInputNode,
   HITLInputNode,
@@ -70,9 +71,11 @@ const HITLInputBlock = memo(({
             undefined,
             readonly,
           )
-
+          const prev = new CustomTextNode('\n')
+          $insertNodes([prev])
           $insertNodes([currentHITLNode])
-
+          const next = new CustomTextNode('\n')
+          $insertNodes([next])
           if (onInsert)
             onInsert()
 
