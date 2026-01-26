@@ -3,6 +3,7 @@ import noAsAnyInT from './rules/no-as-any-in-t.js'
 import noExtraKeys from './rules/no-extra-keys.js'
 import noLegacyNamespacePrefix from './rules/no-legacy-namespace-prefix.js'
 import noVersionPrefix from './rules/no-version-prefix.js'
+import preferTailwindIcon from './rules/prefer-tailwind-icon.js'
 import requireNsOption from './rules/require-ns-option.js'
 import validI18nKeys from './rules/valid-i18n-keys.js'
 
@@ -18,6 +19,7 @@ const plugin = {
     'no-extra-keys': noExtraKeys,
     'no-legacy-namespace-prefix': noLegacyNamespacePrefix,
     'no-version-prefix': noVersionPrefix,
+    'prefer-tailwind-icon': preferTailwindIcon,
     'require-ns-option': requireNsOption,
     'valid-i18n-keys': validI18nKeys,
   },

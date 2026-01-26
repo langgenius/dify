@@ -118,6 +118,17 @@ export default antfu(
   //     // 'dify-i18n/require-ns-option': 'error',
   //   },
   // },
+  // Prefer Tailwind CSS icons over @remixicon/react
+  {
+    files: ['**/*.tsx'],
+    ignores: ['eslint-rules/**'],
+    plugins: {
+      'dify-i18n': difyI18n,
+    },
+    rules: {
+      'dify-i18n/prefer-tailwind-icon': 'error',
+    },
+  },
   // i18n JSON validation rules
   {
     files: ['i18n/**/*.json'],

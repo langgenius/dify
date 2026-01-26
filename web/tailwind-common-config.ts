@@ -1,3 +1,4 @@
+import { iconsPlugin } from '@egoist/tailwindcss-icons'
 import tailwindTypography from '@tailwindcss/typography'
 // @ts-expect-error workaround for turbopack issue
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define.ts'
@@ -146,7 +147,7 @@ const config = {
       },
     },
   },
-  plugins: [tailwindTypography],
+  plugins: [tailwindTypography, iconsPlugin()],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
   corePlugins: {
     preflight: false,

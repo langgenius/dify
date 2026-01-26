@@ -162,7 +162,10 @@
   "devDependencies": {
     "@antfu/eslint-config": "7.0.1",
     "@chromatic-com/storybook": "5.0.0",
+    "@egoist/tailwindcss-icons": "1.9.0",
     "@eslint-react/eslint-plugin": "2.7.0",
+    "@iconify-json/heroicons": "1.2.3",
+    "@iconify-json/ri": "1.2.7",
     "@mdx-js/loader": "3.1.1",
     "@mdx-js/react": "3.1.1",
     "@next/bundle-analyzer": "16.1.4",
