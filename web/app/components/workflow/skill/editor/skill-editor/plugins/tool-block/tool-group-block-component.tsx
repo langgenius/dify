@@ -56,6 +56,7 @@ type ToolConfigMetadata = {
     fields: ToolConfigField[]
   }
   enabled?: boolean
+  credential_id?: string
   [key: string]: string | boolean | number | undefined | object// Add index signature to allow string keys
 }
 
@@ -219,6 +220,12 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
     return VarKindType.constant
   }
 
+  const normalizeCredentialId = (credentialId?: string) => {
+    if (!credentialId || credentialId === '__workspace_default__')
+      return undefined
+    return credentialId
+  }
+
   const defaultToolValue = useMemo(() => {
     if (!currentProvider || !currentTool || !activeToolItem)
       return null
@@ -282,6 +289,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
         ...(defaultToolValue.parameters || {}),
         ...applyFields(paramsSchemas),
       },
+      credential_id: toolConfigFromMetadata?.credential_id ?? defaultToolValue.credential_id,
     }
   }, [currentTool, defaultToolValue, toolConfigFromMetadata])
 
@@ -393,6 +401,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
     if (!activeToolItem || !currentProvider || !currentTool)
       return
     setToolValue(nextValue)
+    const credentialId = normalizeCredentialId(nextValue.credential_id)
     if (isUsingExternalMetadata) {
       const metadata = (toolBlockContext?.metadata || {}) as SkillFileMetadata
       const toolType = currentProvider.type === CollectionType.mcp ? 'mcp' : 'builtin'
@@ -419,6 +428,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
             type: toolType,
             configuration: { fields },
             enabled: currentToolMetadata?.enabled ?? resolvedEnabledByConfigId[activeToolItem.configId] ?? true,
+            ...(credentialId ? { credential_id: credentialId } : {}),
           },
         },
       }
@@ -452,6 +462,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
           type: toolType,
           configuration: { fields },
           enabled: currentToolMetadata?.enabled ?? resolvedEnabledByConfigId[activeToolItem.configId] ?? true,
+          ...(credentialId ? { credential_id: credentialId } : {}),
         },
       },
     }
@@ -476,6 +487,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
         type: toolType,
         configuration: existing?.configuration || { fields: [] },
         enabled: nextValue,
+        ...(existing?.credential_id ? { credential_id: existing.credential_id } : {}),
       }
       return nextMetadata
     }
@@ -585,7 +597,10 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
         currentProvider={currentProvider}
         credentialId={toolValue.credential_id}
         onAuthorizationItemClick={(id) => {
-          setToolValue(prev => (prev ? { ...prev, credential_id: id } : prev))
+          const credentialId = normalizeCredentialId(id)
+          setToolValue(prev => (prev ? { ...prev, credential_id: credentialId } : prev))
+          if (activeToolItem)
+            handleToolValueChange({ ...(toolValue as ToolValue), credential_id: credentialId })
         }}
         noDivider
       />
@@ -636,9 +651,46 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
       <div className="pt-2">
         <ToolAuthorizationSection
           currentProvider={currentProvider}
-          credentialId={toolValue?.credential_id}
+          credentialId={metadataTools[toolItems[0]?.configId || '']?.credential_id}
           onAuthorizationItemClick={(id) => {
-            setToolValue(prev => (prev ? { ...prev, credential_id: id } : prev))
+            const credentialId = normalizeCredentialId(id)
+            if (!toolItems.length)
+              return
+            if (activeToolItem && toolValue)
+              handleToolValueChange({ ...toolValue, credential_id: credentialId })
+            const applyCredential = (metadata: SkillFileMetadata | undefined) => {
+              const nextMetadata: SkillFileMetadata = {
+                ...(metadata || {}),
+                tools: {
+                  ...(metadata?.tools || {}),
+                },
+              }
+              toolItems.forEach((item) => {
+                const existing = nextMetadata.tools?.[item.configId]
+                const toolType = existing?.type || (currentProvider?.type === CollectionType.mcp ? 'mcp' : 'builtin')
+                const nextEntry: ToolConfigMetadata = {
+                  type: toolType,
+                  configuration: existing?.configuration || { fields: [] },
+                  ...(existing?.enabled !== undefined ? { enabled: existing.enabled } : {}),
+                }
+                if (credentialId)
+                  nextEntry.credential_id = credentialId
+                if (!nextMetadata.tools)
+                  nextMetadata.tools = {}
+                nextMetadata.tools[item.configId] = nextEntry
+              })
+              return nextMetadata
+            }
+            if (isUsingExternalMetadata) {
+              toolBlockContext?.onMetadataChange?.(applyCredential(toolBlockContext?.metadata as SkillFileMetadata | undefined))
+              return
+            }
+            if (!activeTabId || activeTabId === START_TAB_ID)
+              return
+            const metadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
+            const nextMetadata = applyCredential(metadata)
+            storeApi.getState().setDraftMetadata(activeTabId, nextMetadata)
+            storeApi.getState().pinTab(activeTabId)
           }}
           noDivider
         />
