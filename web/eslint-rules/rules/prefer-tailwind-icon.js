@@ -301,9 +301,26 @@ export default {
       },
 
       'Program:exit': function () {
+        const sourceCode = context.sourceCode
+
         // Report icons that were imported but not found in JSX
         for (const [, iconInfo] of iconImports) {
           if (!iconInfo.used) {
+            // Verify the import is still referenced somewhere in the file (besides the import itself)
+            try {
+              const variables = sourceCode.getDeclaredVariables(iconInfo.node)
+              const variable = variables[0]
+              // Check if there are any references besides the import declaration
+              const hasReferences = variable && variable.references.some(
+                ref => ref.identifier !== iconInfo.node.local,
+              )
+              if (!hasReferences)
+                continue
+            }
+            catch {
+              continue
+            }
+
             const iconClass = getIconClass(iconInfo.importedName, iconInfo.config)
             context.report({
               node: iconInfo.node,
