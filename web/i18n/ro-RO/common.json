@@ -351,7 +351,7 @@
   "modelProvider.card.quota": "COTĂ",
   "modelProvider.card.quotaExhausted": "Cotă epuizată",
   "modelProvider.card.removeKey": "Elimină cheia API",
-  "modelProvider.card.tip": "Creditele de mesaje acceptă modele de la OpenAI. Prioritate va fi acordată cotei plătite. Cota gratuită va fi utilizată după epuizarea cotei plătite.",
+  "modelProvider.card.tip": "Creditele de mesaje acceptă modele de la {{modelNames}}. Prioritate va fi acordată cotei plătite. Cota gratuită va fi utilizată după epuizarea cotei plătite.",
   "modelProvider.card.tokens": "Jetoane",
   "modelProvider.collapse": "Restrânge",
   "modelProvider.config": "Configurare",
