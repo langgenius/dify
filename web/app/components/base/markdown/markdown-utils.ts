@@ -8,7 +8,7 @@ import { ALLOW_UNSAFE_DATA_SCHEME } from '@/config'
 
 export const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')
-    return content
+    return ''
 
   const codeBlockRegex = /```[\s\S]*?```/g
   const codeBlocks = content.match(codeBlockRegex) || []
@@ -32,6 +32,9 @@ export const preprocessLaTeX = (content: string) => {
 }
 
 export const preprocessThinkTag = (content: string) => {
+  if (typeof content !== 'string')
+    return ''
+
   const thinkOpenTagRegex = /(<think>\s*)+/g
   const thinkCloseTagRegex = /(\s*<\/think>)+/g
   return flow([
