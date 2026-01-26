@@ -1,13 +1,12 @@
 import builtins
+
 import pytest
 from flask import Flask
 from flask.views import MethodView
 
+from controllers.fastopenapi import console_router
 from extensions import ext_fastopenapi
 from models.engine import db
-
-from controllers.fastopenapi import console_router 
-import controllers.console.files 
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
