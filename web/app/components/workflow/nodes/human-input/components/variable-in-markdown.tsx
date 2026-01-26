@@ -123,11 +123,18 @@ export const Variable: React.FC<{ path: string }> = ({ path }) => {
   )
 }
 
-export const Note: React.FC<{ defaultInput: FormInputItemDefault }> = ({ defaultInput }) => {
+export const Note: React.FC<{ defaultInput: FormInputItemDefault, nodeName: (nodeId: string) => string }> = ({ defaultInput, nodeName }) => {
   const isVariable = defaultInput.type === 'variable'
+  const path = `{{#${defaultInput.selector.join('.')}#}}`
+  let newPath = path
+  if (path) {
+    newPath = path.replace(/#([^#.]+)([.#])/g, (match, nodeId, sep) => {
+      return `#${nodeName(nodeId)}${sep}`
+    })
+  }
   return (
     <div className="my-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
-      {isVariable ? <Variable path={`{{${defaultInput.selector.join('.')}}}`} /> : <span>{defaultInput.value}</span>}
+      {isVariable ? <Variable path={newPath} /> : <span>{defaultInput.value}</span>}
     </div>
   )
 }

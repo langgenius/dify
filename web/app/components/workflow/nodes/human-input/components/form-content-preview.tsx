@@ -77,7 +77,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
               }
               const defaultInput = input.default
               return (
-                <Note defaultInput={defaultInput!} />
+                <Note defaultInput={defaultInput!} nodeName={nodeName} />
               )
             })(),
           }}
