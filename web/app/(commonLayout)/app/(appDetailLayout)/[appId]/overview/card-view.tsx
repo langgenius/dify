@@ -10,18 +10,17 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppCard from '@/app/components/app/overview/app-card'
 import TriggerCard from '@/app/components/app/overview/trigger-card'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { ToastContext } from '@/app/components/base/toast'
 import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import { isTriggerNode } from '@/app/components/workflow/types'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import {
-  fetchAppDetail,
   updateAppSiteAccessToken,
   updateAppSiteConfig,
   updateAppSiteStatus,
 } from '@/service/apps'
+import { useAppDetail, useInvalidateAppDetail } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
@@ -35,8 +34,8 @@ export type ICardViewProps = {
 const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
+  const { data: appDetail } = useAppDetail(appId)
+  const invalidateAppDetail = useInvalidateAppDetail()
 
   const isWorkflowApp = appDetail?.mode === AppModeEnum.WORKFLOW
   const showMCPCard = isInPanel
@@ -74,21 +73,13 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     ? buildTriggerModeMessage(t('mcp.server.title', { ns: 'tools' }))
     : null
 
-  const updateAppDetail = async () => {
-    try {
-      const res = await fetchAppDetail({ url: '/apps', id: appId })
-      setAppDetail({ ...res })
-    }
-    catch (error) { console.error(error) }
-  }
-
   const handleCallbackResult = (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
     const type = err ? 'error' : 'success'
 
     message ||= (type === 'success' ? 'modifiedSuccessfully' : 'modifiedUnsuccessfully')
 
     if (type === 'success')
-      updateAppDetail()
+      invalidateAppDetail(appId)
 
     notify({
       type,

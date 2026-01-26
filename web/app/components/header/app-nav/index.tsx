@@ -6,16 +6,14 @@ import {
   RiRobot2Line,
 } from '@remixicon/react'
 import { flatten } from 'es-toolkit/compat'
-import { produce } from 'immer'
 import { useParams } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CreateAppTemplateDialog from '@/app/components/app/create-app-dialog'
 import CreateAppModal from '@/app/components/app/create-app-modal'
 import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
-import { useInfiniteAppList } from '@/service/use-apps'
+import { useAppDetail, useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import Nav from '../nav'
 
@@ -23,11 +21,10 @@ const AppNav = () => {
   const { t } = useTranslation()
   const { appId } = useParams()
   const { isCurrentWorkspaceEditor } = useAppContext()
-  const appDetail = useAppStore(state => state.appDetail)
+  const { data: appDetail } = useAppDetail(appId as string)
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
-  const [navItems, setNavItems] = useState<NavItem[]>([])
 
   const {
     data: appsData,
@@ -55,48 +52,34 @@ const AppNav = () => {
       setShowCreateFromDSLModal(true)
   }
 
-  useEffect(() => {
-    if (appsData) {
-      const appItems = flatten((appsData.pages ?? []).map(appData => appData.data))
-      const navItems = appItems.map((app) => {
-        const link = ((isCurrentWorkspaceEditor, app) => {
-          if (!isCurrentWorkspaceEditor) {
-            return `/app/${app.id}/overview`
-          }
-          else {
-            if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
-              return `/app/${app.id}/workflow`
-            else
-              return `/app/${app.id}/configuration`
-          }
-        })(isCurrentWorkspaceEditor, app)
-        return {
-          id: app.id,
-          icon_type: app.icon_type,
-          icon: app.icon,
-          icon_background: app.icon_background,
-          icon_url: app.icon_url,
-          name: app.name,
-          mode: app.mode,
-          link,
-        }
-      })
-      setNavItems(navItems as any)
-    }
-  }, [appsData, isCurrentWorkspaceEditor, setNavItems])
+  const navItems = useMemo(() => {
+    if (!appsData)
+      return []
 
-  // update current app name
-  useEffect(() => {
-    if (appDetail) {
-      const newNavItems = produce(navItems, (draft: NavItem[]) => {
-        navItems.forEach((app, index) => {
-          if (app.id === appDetail.id)
-            draft[index].name = appDetail.name
-        })
-      })
-      setNavItems(newNavItems)
-    }
-  }, [appDetail, navItems])
+    const appItems = flatten((appsData.pages ?? []).map(appData => appData.data))
+    return appItems.map((app) => {
+      const link = (() => {
+        if (!isCurrentWorkspaceEditor)
+          return `/app/${app.id}/overview`
+
+        if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
+          return `/app/${app.id}/workflow`
+
+        return `/app/${app.id}/configuration`
+      })()
+
+      return {
+        id: app.id,
+        icon_type: app.icon_type,
+        icon: app.icon,
+        icon_background: app.icon_background,
+        icon_url: app.icon_url,
+        name: app.id === appDetail?.id ? appDetail.name : app.name,
+        mode: app.mode,
+        link,
+      }
+    }) as NavItem[]
+  }, [appsData, isCurrentWorkspaceEditor, appDetail])
 
   return (
     <>

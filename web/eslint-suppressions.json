@@ -73,14 +73,6 @@
       "count": 1
     }
   },
-  "app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/svg-attribute-error-reproduction.spec.tsx": {
     "no-console": {
       "count": 19
@@ -245,9 +237,6 @@
     }
   },
   "app/components/app/app-publisher/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -655,9 +644,6 @@
   },
   "app/components/base/agent-log-modal/index.stories.tsx": {
     "no-console": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -2154,14 +2140,6 @@
   "app/components/header/account-setting/plugin-page/utils.ts": {
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "app/components/header/app-nav/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/header/header-wrapper.tsx": {

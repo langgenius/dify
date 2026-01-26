@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/app/store'
 import TooltipPlus from '@/app/components/base/tooltip'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import Run from '@/app/components/workflow/run'
+import { useAppDetail } from '@/service/use-apps'
 
 type ILogDetail = {
   runID: string
@@ -16,7 +16,8 @@ type ILogDetail = {
 
 const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
   const { t } = useTranslation()
-  const appDetail = useStore(state => state.appDetail)
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
   const router = useRouter()
 
   const handleReplay = () => {

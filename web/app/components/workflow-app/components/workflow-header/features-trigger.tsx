@@ -6,6 +6,7 @@ import type {
 } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { RiApps2AddLine } from '@remixicon/react'
+import { useParams } from 'next/navigation'
 import {
   memo,
   useCallback,
@@ -14,7 +15,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import AppPublisher from '@/app/components/app/app-publisher'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { useToastContext } from '@/app/components/base/toast'
@@ -39,7 +39,7 @@ import {
 } from '@/app/components/workflow/types'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
-import { fetchAppDetail } from '@/service/apps'
+import { useInvalidateAppDetail } from '@/service/use-apps'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 import { cn } from '@/utils/classnames'
@@ -49,9 +49,9 @@ const FeaturesTrigger = () => {
   const { theme } = useTheme()
   const isChatMode = useIsChatMode()
   const workflowStore = useWorkflowStore()
-  const appDetail = useAppStore(s => s.appDetail)
-  const appID = appDetail?.id
-  const setAppDetail = useAppStore(s => s.setAppDetail)
+  const { appId } = useParams()
+  const appID = appId as string
+  const invalidateAppDetail = useInvalidateAppDetail()
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const { plan, isFetchedPlan } = useProviderContext()
   const publishedAt = useStore(s => s.publishedAt)
@@ -125,15 +125,9 @@ const FeaturesTrigger = () => {
     setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
 
-  const updateAppDetail = useCallback(async () => {
-    try {
-      const res = await fetchAppDetail({ url: '/apps', id: appID! })
-      setAppDetail({ ...res })
-    }
-    catch (error) {
-      console.error(error)
-    }
-  }, [appID, setAppDetail])
+  const updateAppDetail = useCallback(() => {
+    invalidateAppDetail(appID)
+  }, [appID, invalidateAppDetail])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()

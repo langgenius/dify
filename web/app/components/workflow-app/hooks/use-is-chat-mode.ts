@@ -1,8 +1,10 @@
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useParams } from 'next/navigation'
+import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 
 export const useIsChatMode = () => {
-  const appDetail = useAppStore(s => s.appDetail)
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
 
   return appDetail?.mode === AppModeEnum.ADVANCED_CHAT
 }

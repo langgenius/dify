@@ -4,14 +4,15 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentIteration, AgentLogDetailResponse } from '@/models/log'
 import { uniq } from 'es-toolkit/array'
 import { flatten } from 'es-toolkit/compat'
+import { useParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchAgentLogDetail } from '@/service/log'
+import { useAppDetail } from '@/service/use-apps'
 import { cn } from '@/utils/classnames'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
@@ -32,7 +33,8 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
-  const appDetail = useAppStore(s => s.appDetail)
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<AgentLogDetailResponse>()
   const [list, setList] = useState<AgentIteration[]>([])

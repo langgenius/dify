@@ -2,10 +2,11 @@ import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
+import { useParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/app/store'
 import Run from '@/app/components/workflow/run'
+import { useAppDetail } from '@/service/use-apps'
 import { cn } from '@/utils/classnames'
 
 type MessageLogModalProps = {
@@ -25,7 +26,8 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
   const { t } = useTranslation()
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
-  const appDetail = useStore(state => state.appDetail)
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
 
   useClickAway(() => {
     if (mounted)

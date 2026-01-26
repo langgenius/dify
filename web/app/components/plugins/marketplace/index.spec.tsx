@@ -1,7 +1,7 @@
 import type { MarketplaceCollection } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { act, render, renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 
 // ================================
@@ -157,6 +157,45 @@ vi.mock('@/config', () => ({
   MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1',
 }))
 
+// Mock service/client - configurable mock for testing
+const {
+  mockMarketplaceCollections,
+  mockMarketplaceCollectionPlugins,
+  mockMarketplaceSearchAdvanced,
+} = vi.hoisted(() => {
+  const mockMarketplaceCollections = vi.fn(() => Promise.resolve({
+    data: {
+      collections: [
+        { name: 'test-collection', label: 'Test Collection' },
+      ],
+    },
+  }))
+  const mockMarketplaceCollectionPlugins = vi.fn(() => Promise.resolve({
+    data: {
+      plugins: [
+        { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
+      ],
+    },
+  }))
+  const mockMarketplaceSearchAdvanced = vi.fn(() => Promise.resolve({
+    data: {
+      plugins: [
+        { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
+      ],
+      bundles: [],
+      total: 1,
+    },
+  }))
+  return { mockMarketplaceCollections, mockMarketplaceCollectionPlugins, mockMarketplaceSearchAdvanced }
+})
+vi.mock('@/service/client', () => ({
+  marketplaceClient: {
+    collections: mockMarketplaceCollections,
+    collectionPlugins: mockMarketplaceCollectionPlugins,
+    searchAdvanced: mockMarketplaceSearchAdvanced,
+  },
+}))
+
 // Mock var utils
 vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: (path: string, _params?: Record<string, string | undefined>) => `https://marketplace.dify.ai${path}`,
@@ -199,7 +238,7 @@ vi.mock('@/i18n-config/language', () => ({
 }))
 
 // Mock global fetch for utils testing
-const originalFetch = globalThis.fetch
+const _originalFetch = globalThis.fetch
 
 // Mock useTags hook
 const mockTags = [
@@ -1477,25 +1516,33 @@ describe('flatMap Coverage', () => {
 describe('Async Utils', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch
+    // Reset mocks to default behavior
+    mockMarketplaceCollections.mockImplementation(() => Promise.resolve({
+      data: {
+        collections: [
+          { name: 'test-collection', label: 'Test Collection' },
+        ],
+      },
+    }))
+    mockMarketplaceCollectionPlugins.mockImplementation(() => Promise.resolve({
+      data: {
+        plugins: [
+          { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
+        ],
+      },
+    }))
   })
 
   describe('getMarketplacePluginsByCollectionId', () => {
     it('should fetch plugins by collection id successfully', async () => {
       const mockPlugins = [
-        { type: 'plugin', org: 'test', name: 'plugin1' },
-        { type: 'plugin', org: 'test', name: 'plugin2' },
+        { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
+        { type: 'plugin', org: 'test', name: 'plugin2', tags: [] },
       ]
 
-      globalThis.fetch = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ data: { plugins: mockPlugins } }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
+      mockMarketplaceCollectionPlugins.mockResolvedValue({
+        data: { plugins: mockPlugins },
+      })
 
       const { getMarketplacePluginsByCollectionId } = await import('./utils')
       const result = await getMarketplacePluginsByCollectionId('test-collection', {
@@ -1504,12 +1551,12 @@ describe('Async Utils', () => {
         type: 'plugin',
       })
 
-      expect(globalThis.fetch).toHaveBeenCalled()
+      expect(mockMarketplaceCollectionPlugins).toHaveBeenCalled()
       expect(result).toHaveLength(2)
     })
 
     it('should handle fetch error and return empty array', async () => {
-      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+      mockMarketplaceCollectionPlugins.mockRejectedValue(new Error('Network error'))
 
       const { getMarketplacePluginsByCollectionId } = await import('./utils')
       const result = await getMarketplacePluginsByCollectionId('test-collection')
@@ -1518,53 +1565,39 @@ describe('Async Utils', () => {
     })
 
     it('should pass abort signal when provided', async () => {
-      const mockPlugins = [{ type: 'plugins', org: 'test', name: 'plugin1' }]
-      globalThis.fetch = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ data: { plugins: mockPlugins } }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
+      const mockPlugins = [{ type: 'plugins', org: 'test', name: 'plugin1', tags: [] }]
+      mockMarketplaceCollectionPlugins.mockResolvedValue({
+        data: { plugins: mockPlugins },
+      })
 
       const controller = new AbortController()
       const { getMarketplacePluginsByCollectionId } = await import('./utils')
       await getMarketplacePluginsByCollectionId('test-collection', {}, { signal: controller.signal })
 
-      // oRPC uses Request objects, so check that fetch was called with a Request containing the right URL
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        expect.any(Request),
-        expect.any(Object),
+      // Check that collectionPlugins was called with the correct params including signal
+      expect(mockMarketplaceCollectionPlugins).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: { collectionId: 'test-collection' },
+        }),
+        expect.objectContaining({
+          signal: controller.signal,
+        }),
       )
-      const call = vi.mocked(globalThis.fetch).mock.calls[0]
-      const request = call[0] as Request
-      expect(request.url).toContain('test-collection')
     })
   })
 
   describe('getMarketplaceCollectionsAndPlugins', () => {
     it('should fetch collections and plugins successfully', async () => {
       const mockCollections = [
-        { name: 'collection1', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
+        { name: 'collection1', label: 'Collection 1' },
       ]
-      const mockPlugins = [{ type: 'plugins', org: 'test', name: 'plugin1' }]
+      const mockPlugins = [{ type: 'plugins', org: 'test', name: 'plugin1', tags: [] }]
 
-      let callCount = 0
-      globalThis.fetch = vi.fn().mockImplementation(() => {
-        callCount++
-        if (callCount === 1) {
-          return Promise.resolve(
-            new Response(JSON.stringify({ data: { collections: mockCollections } }), {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' },
-            }),
-          )
-        }
-        return Promise.resolve(
-          new Response(JSON.stringify({ data: { plugins: mockPlugins } }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        )
+      mockMarketplaceCollections.mockResolvedValue({
+        data: { collections: mockCollections },
+      })
+      mockMarketplaceCollectionPlugins.mockResolvedValue({
+        data: { plugins: mockPlugins },
       })
 
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
@@ -1578,7 +1611,7 @@ describe('Async Utils', () => {
     })
 
     it('should handle fetch error and return empty data', async () => {
-      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+      mockMarketplaceCollections.mockRejectedValue(new Error('Network error'))
 
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
       const result = await getMarketplaceCollectionsAndPlugins()
@@ -1588,12 +1621,9 @@ describe('Async Utils', () => {
     })
 
     it('should append condition and type to URL when provided', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ data: { collections: [] } }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
+      mockMarketplaceCollections.mockResolvedValue({
+        data: { collections: [] },
+      })
 
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
       await getMarketplaceCollectionsAndPlugins({
@@ -1601,11 +1631,16 @@ describe('Async Utils', () => {
         type: 'bundle',
       })
 
-      // oRPC uses Request objects, so check that fetch was called with a Request containing the right URL
-      expect(globalThis.fetch).toHaveBeenCalled()
-      const call = vi.mocked(globalThis.fetch).mock.calls[0]
-      const request = call[0] as Request
-      expect(request.url).toContain('condition=category%3Dtool')
+      // Check that collections was called with the correct query params
+      expect(mockMarketplaceCollections).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: expect.objectContaining({
+            condition: 'category=tool',
+            type: 'bundle',
+          }),
+        }),
+        expect.any(Object),
+      )
     })
   })
 })

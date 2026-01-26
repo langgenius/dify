@@ -2,7 +2,6 @@ import type { App } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { Plan } from '@/app/components/billing/type'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -16,9 +15,13 @@ vi.mock('next/navigation', () => ({
     push: mockPush,
     replace: mockReplace,
   }),
+  useParams: () => ({ appId: 'app-123' }),
 }))
 
-// Use real store - global zustand mock will auto-reset between tests
+const mockInvalidateAppDetail = vi.fn()
+vi.mock('@/service/use-apps', () => ({
+  useInvalidateAppDetail: () => mockInvalidateAppDetail,
+}))
 
 const mockSwitchApp = vi.fn()
 const mockDeleteApp = vi.fn()
@@ -135,17 +138,9 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
   }
 }
 
-const setAppDetailSpy = vi.fn()
-
 describe('SwitchAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Spy on setAppDetail
-    const originalSetAppDetail = useAppStore.getState().setAppDetail
-    setAppDetailSpy.mockImplementation((...args: Parameters<typeof originalSetAppDetail>) => {
-      originalSetAppDetail(...args)
-    })
-    useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
     mockIsEditor = true
     mockEnableBilling = false
     mockPlan = {
@@ -281,7 +276,7 @@ describe('SwitchAppModal', () => {
       })
       expect(mockReplace).toHaveBeenCalledWith('/app/new-app-002/workflow')
       expect(mockPush).not.toHaveBeenCalled()
-      expect(setAppDetailSpy).toHaveBeenCalledTimes(1)
+      expect(mockInvalidateAppDetail).toHaveBeenCalledWith('app-123')
     })
 
     it('should notify error when switch app fails', async () => {

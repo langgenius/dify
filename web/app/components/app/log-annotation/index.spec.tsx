@@ -1,15 +1,21 @@
 import type { App, AppIconType } from '@/types/app'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
+import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import LogAnnotation from './index'
+
+vi.mock('@/service/use-apps')
+const mockUseAppDetail = vi.mocked(useAppDetail)
 
 const mockRouterPush = vi.fn()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
+  }),
+  useParams: () => ({
+    appId: 'app-123',
   }),
 }))
 
@@ -61,17 +67,25 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   ...overrides,
 })
 
+function mockAppDetailReturn(app: App | undefined) {
+  mockUseAppDetail.mockReturnValue({
+    data: app,
+    isLoading: false,
+    error: null,
+  } as ReturnType<typeof useAppDetail>)
+}
+
 describe('LogAnnotation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({ appDetail: createMockApp() })
+    mockAppDetailReturn(createMockApp())
   })
 
   // Rendering behavior
   describe('Rendering', () => {
     it('should render loading state when app detail is missing', () => {
       // Arrange
-      useAppStore.setState({ appDetail: undefined })
+      mockAppDetailReturn(undefined)
 
       // Act
       render(<LogAnnotation pageType={PageType.log} />)
@@ -82,7 +96,7 @@ describe('LogAnnotation', () => {
 
     it('should render log and annotation tabs for non-completion apps', () => {
       // Arrange
-      useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.CHAT }) })
+      mockAppDetailReturn(createMockApp({ mode: AppModeEnum.CHAT }))
 
       // Act
       render(<LogAnnotation pageType={PageType.log} />)
@@ -94,7 +108,7 @@ describe('LogAnnotation', () => {
 
     it('should render only log tab for completion apps', () => {
       // Arrange
-      useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.COMPLETION }) })
+      mockAppDetailReturn(createMockApp({ mode: AppModeEnum.COMPLETION }))
 
       // Act
       render(<LogAnnotation pageType={PageType.log} />)
@@ -106,7 +120,7 @@ describe('LogAnnotation', () => {
 
     it('should hide tabs and render workflow log in workflow mode', () => {
       // Arrange
-      useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.WORKFLOW }) })
+      mockAppDetailReturn(createMockApp({ mode: AppModeEnum.WORKFLOW }))
 
       // Act
       render(<LogAnnotation pageType={PageType.log} />)
@@ -121,7 +135,7 @@ describe('LogAnnotation', () => {
   describe('Props', () => {
     it('should render log content when page type is log', () => {
       // Arrange
-      useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.CHAT }) })
+      mockAppDetailReturn(createMockApp({ mode: AppModeEnum.CHAT }))
 
       // Act
       render(<LogAnnotation pageType={PageType.log} />)
@@ -133,7 +147,7 @@ describe('LogAnnotation', () => {
 
     it('should render annotation content when page type is annotation', () => {
       // Arrange
-      useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.CHAT }) })
+      mockAppDetailReturn(createMockApp({ mode: AppModeEnum.CHAT }))
 
       // Act
       render(<LogAnnotation pageType={PageType.annotation} />)

@@ -2,12 +2,11 @@
 
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
-import { useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import {
   useEffect,
   useMemo,
 } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { FeaturesProvider } from '@/app/components/base/features'
 import Loading from '@/app/components/base/loading'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
@@ -26,6 +25,7 @@ import {
 } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
 import { fetchRunDetail } from '@/service/log'
+import { useAppDetail } from '@/service/use-apps'
 import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
 import WorkflowAppMain from './components/workflow-main'
@@ -47,10 +47,10 @@ const WorkflowAppWithAdditionalContext = () => {
 
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()
-  const appDetail = useAppStore(s => s.appDetail)
-  const appId = appDetail?.id
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
   const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
-  const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
+  const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId as string : undefined, {
     staleTime: 5 * 60 * 1000, // 5 minutes cache
     refetchOnWindowFocus: false,
   })

@@ -2,11 +2,13 @@ import type { ReactNode } from 'react'
 import type { IConfigVarProps } from './index'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
+import type { App } from '@/types/app'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { vi } from 'vitest'
 import Toast from '@/app/components/base/toast'
 import DebugConfigurationContext from '@/context/debug-configuration'
+import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 
 import ConfigVar, { ADD_EXTERNAL_DATA_TOOL } from './index'
@@ -37,6 +39,15 @@ vi.mock('@/context/modal-context', () => ({
     setShowExternalDataToolModal,
   }),
 }))
+
+vi.mock('next/navigation', () => ({
+  useParams: () => ({
+    appId: 'test-app-id',
+  }),
+}))
+
+vi.mock('@/service/use-apps')
+const mockUseAppDetail = vi.mocked(useAppDetail)
 
 type SortableItem = {
   id: string
@@ -83,6 +94,18 @@ const createPromptVariable = (overrides: Partial<PromptVariable> = {}): PromptVa
     required: false,
     ...overrides,
   }
+}
+
+function setupUseAppDetailMock() {
+  mockUseAppDetail.mockReturnValue({
+    data: {
+      id: 'test-app-id',
+      mode: AppModeEnum.CHAT,
+    } as App,
+    isLoading: false,
+    isPending: false,
+    error: null,
+  } as ReturnType<typeof useAppDetail>)
 }
 
 const renderConfigVar = (props: Partial<IConfigVarProps> = {}, debugOverrides: Partial<DebugConfigurationState> = {}) => {
@@ -219,6 +242,7 @@ describe('ConfigVar', () => {
       subscriptionCallback = null
       variableIndex = 0
       notifySpy.mockClear()
+      setupUseAppDetailMock()
     })
 
     it('should save updates when editing a basic variable', async () => {

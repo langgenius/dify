@@ -7,6 +7,7 @@ import { AppModeEnum } from '@/types/app'
 import WorkflowHeader from './index'
 
 const mockResetWorkflowVersionHistory = vi.fn()
+const mockUseAppDetail = vi.fn()
 
 const createMockApp = (overrides: Partial<App> = {}): App => ({
   id: 'app-id',
@@ -38,14 +39,19 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   ...overrides,
 })
 
-// Helper to set up app store state
-const setupAppStore = (overrides: Partial<App> = {}) => {
+const setupAppDetail = (overrides: Partial<App> = {}) => {
   const appDetail = createMockApp(overrides)
-  useAppStore.setState({ appDetail })
+  mockUseAppDetail.mockReturnValue({ data: appDetail })
   return appDetail
 }
 
-// Use real store - global zustand mock will auto-reset between tests
+vi.mock('next/navigation', () => ({
+  useParams: () => ({ appId: 'app-id' }),
+}))
+
+vi.mock('@/service/use-apps', () => ({
+  useAppDetail: (...args: unknown[]) => mockUseAppDetail(...args),
+}))
 
 vi.mock('@/app/components/workflow/header', () => ({
   default: (props: HeaderProps) => {
@@ -80,7 +86,7 @@ vi.mock('@/service/use-workflow', () => ({
 describe('WorkflowHeader', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    setupAppStore()
+    setupAppDetail()
   })
 
   afterEach(() => {
@@ -103,7 +109,7 @@ describe('WorkflowHeader', () => {
   describe('Props', () => {
     it('should configure preview mode when app is in advanced chat mode', () => {
       // Arrange
-      setupAppStore({ mode: AppModeEnum.ADVANCED_CHAT })
+      setupAppDetail({ mode: AppModeEnum.ADVANCED_CHAT })
 
       // Act
       render(<WorkflowHeader />)
@@ -117,7 +123,7 @@ describe('WorkflowHeader', () => {
 
     it('should configure run mode when app is not in advanced chat mode', () => {
       // Arrange
-      setupAppStore({ mode: AppModeEnum.COMPLETION })
+      setupAppDetail({ mode: AppModeEnum.COMPLETION })
 
       // Act
       render(<WorkflowHeader />)

@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Annotation from '@/app/components/app/annotation'
 import Log from '@/app/components/app/log'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import WorkflowLog from '@/app/components/app/workflow-log'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
 import Loading from '@/app/components/base/loading'
 import TabSlider from '@/app/components/base/tab-slider-plain'
+import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 
@@ -23,7 +23,8 @@ const LogAnnotation: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const appDetail = useAppStore(state => state.appDetail)
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
 
   const options = useMemo(() => {
     if (appDetail?.mode === AppModeEnum.COMPLETION)

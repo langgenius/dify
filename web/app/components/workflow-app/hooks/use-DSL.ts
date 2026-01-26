@@ -1,15 +1,16 @@
+import { useParams } from 'next/navigation'
 import {
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useToastContext } from '@/app/components/base/toast'
 import {
   DSL_EXPORT_CHECK,
 } from '@/app/components/workflow/constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { exportAppConfig } from '@/service/apps'
+import { useAppDetail } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
@@ -20,7 +21,8 @@ export const useDSL = () => {
   const [exporting, setExporting] = useState(false)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
-  const appDetail = useAppStore(s => s.appDetail)
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
 
   const handleExportDSL = useCallback(async (include = false, workflowId?: string) => {
     if (!appDetail)

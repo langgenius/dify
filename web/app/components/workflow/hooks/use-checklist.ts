@@ -14,6 +14,7 @@ import type {
 import type { Emoji } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
+import { useParams } from 'next/navigation'
 import {
   useCallback,
   useMemo,
@@ -21,7 +22,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges, useStoreApi } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useToastContext } from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -29,6 +29,7 @@ import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { fetchDatasets } from '@/service/datasets'
+import { useAppDetail } from '@/service/use-apps'
 import { useStrategyProviders } from '@/service/use-strategy'
 import {
   useAllBuiltInTools,
@@ -96,7 +97,9 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
   const getToolIcon = useGetToolIcon()
-  const appMode = useAppStore.getState().appDetail?.mode
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
+  const appMode = appDetail?.mode
   const shouldCheckStartNode = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
 
   const map = useNodesAvailableVarList(nodes)
@@ -249,7 +252,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     })
 
     return list
-  }, [nodes, nodesExtraData, edges, buildInTools, customTools, workflowTools, language, dataSourceList, getToolIcon, strategyProviders, getCheckData, t, map, shouldCheckStartNode])
+  }, [nodes, nodesExtraData, edges, buildInTools, customTools, workflowTools, language, dataSourceList, getToolIcon, strategyProviders, triggerPlugins, getCheckData, t, map, shouldCheckStartNode])
 
   return needWarningNodes
 }
@@ -270,7 +273,9 @@ export const useChecklistBeforePublish = () => {
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
-  const appMode = useAppStore.getState().appDetail?.mode
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
+  const appMode = appDetail?.mode
   const shouldCheckStartNode = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
 
   const getCheckData = useCallback((data: CommonNodeType<{}>, datasets: DataSet[]) => {
@@ -419,7 +424,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [store, notify, t, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData, workflowStore, buildInTools, customTools, workflowTools, shouldCheckStartNode])
+  }, [store, notify, t, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData, workflowStore, buildInTools, customTools, workflowTools, shouldCheckStartNode, getNodesAvailableVarList])
 
   return {
     handleCheckBeforePublish,

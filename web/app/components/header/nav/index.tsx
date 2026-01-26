@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useSelectedLayoutSegment } from 'next/navigation'
 import * as React from 'react'
 import { useState } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import { cn } from '@/utils/classnames'
 import NavSelector from './nav-selector'
@@ -33,7 +32,6 @@ const Nav = ({
   isLoadingMore,
   isApp,
 }: INavProps) => {
-  const setAppDetail = useAppStore(state => state.setAppDetail)
   const [hovered, setHovered] = useState(false)
   const segment = useSelectedLayoutSegment()
   const isActivated = Array.isArray(activeSegment) ? activeSegment.includes(segment!) : segment === activeSegment
@@ -47,12 +45,6 @@ const Nav = ({
     >
       <Link href={link}>
         <div
-          onClick={(e) => {
-            // Don't clear state if opening in new tab/window
-            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0)
-              return
-            setAppDetail()
-          }}
           className={cn('flex h-7 cursor-pointer items-center rounded-[10px] px-2.5', isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text', curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover')}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}

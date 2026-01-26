@@ -1,13 +1,15 @@
 import type { ReactElement } from 'react'
 import type { AppPublisherProps } from '@/app/components/app/app-publisher'
-import type { App } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import FeaturesTrigger from './features-trigger'
+
+vi.mock('next/navigation', () => ({
+  useParams: () => ({ appId: 'app-id' }),
+}))
 
 const mockUseIsChatMode = vi.fn()
 const mockUseTheme = vi.fn()
@@ -27,7 +29,7 @@ const mockPublishWorkflow = vi.fn()
 const mockUpdatePublishedWorkflow = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
-const mockFetchAppDetail = vi.fn()
+const mockInvalidateAppDetail = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
 
@@ -126,15 +128,13 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAppTriggers: () => mockInvalidateAppTriggers,
 }))
 
-vi.mock('@/service/apps', () => ({
-  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
+vi.mock('@/service/use-apps', () => ({
+  useInvalidateAppDetail: () => mockInvalidateAppDetail,
 }))
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => mockUseTheme(),
 }))
-
-// Use real app store - global zustand mock will auto-reset between tests
 
 const createProviderContext = ({
   type = Plan.sandbox,
@@ -176,9 +176,6 @@ describe('FeaturesTrigger', () => {
     mockUseProviderContext.mockReturnValue(createProviderContext({}))
     mockUseNodes.mockReturnValue([])
     mockUseEdges.mockReturnValue([])
-    // Set up app store state
-    useAppStore.setState({ appDetail: { id: 'app-id' } as unknown as App })
-    mockFetchAppDetail.mockResolvedValue({ id: 'app-id' })
     mockPublishWorkflow.mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
   })
 
@@ -422,8 +419,7 @@ describe('FeaturesTrigger', () => {
         expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
         expect(mockResetWorkflowVersionHistory).toHaveBeenCalled()
         expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
-        expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
-        expect(useAppStore.getState().appDetail).toBeDefined()
+        expect(mockInvalidateAppDetail).toHaveBeenCalledWith('app-id')
       })
     })
 
@@ -443,24 +439,6 @@ describe('FeaturesTrigger', () => {
           releaseNotes: 'Test notes',
         })
       })
-    })
-
-    it('should log error when app detail refresh fails after publish', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-      mockFetchAppDetail.mockRejectedValue(new Error('fetch failed'))
-
-      renderWithToast(<FeaturesTrigger />)
-
-      // Act
-      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
-
-      // Assert
-      await waitFor(() => {
-        expect(consoleErrorSpy).toHaveBeenCalled()
-      })
-      consoleErrorSpy.mockRestore()
     })
   })
 })

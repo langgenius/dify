@@ -4,11 +4,11 @@ import type { Item as SelectItem } from './type-select'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, MoreInfo, UploadFileSetting } from '@/app/components/workflow/types'
 import { produce } from 'immer'
+import { useParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Checkbox from '@/app/components/base/checkbox'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import Input from '@/app/components/base/input'
@@ -22,6 +22,7 @@ import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
+import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum, TransferMethod } from '@/types/app'
 import { checkKeys, getNewVarInWorkflow, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import ConfigSelect from '../config-select'
@@ -72,10 +73,11 @@ const ConfigModal: FC<IConfigModalProps> = ({
 }) => {
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation()
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
   const [tempPayload, setTempPayload] = useState<InputVar>(() => normalizeSelectDefaultValue(payload || getNewVarInWorkflow('') as any))
   const { type, label, variable, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
-  const appDetail = useAppStore(state => state.appDetail)
   const isBasicApp = appDetail?.mode !== AppModeEnum.ADVANCED_CHAT && appDetail?.mode !== AppModeEnum.WORKFLOW
   const jsonSchemaStr = useMemo(() => {
     const isJsonObject = type === InputVarType.jsonObject

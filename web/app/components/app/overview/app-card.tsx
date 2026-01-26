@@ -19,7 +19,6 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppBasic from '@/app/components/app-sidebar/basic'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import CopyFeedback from '@/app/components/base/copy-feedback'
@@ -35,7 +34,7 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
-import { fetchAppDetailDirect } from '@/service/apps'
+import { useAppDetail, useInvalidateAppDetail } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
@@ -73,11 +72,11 @@ function AppCard({
 }: IAppCardProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const invalidateAppDetail = useInvalidateAppDetail()
   const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
   const { data: currentWorkflow } = useAppWorkflow(appInfo.mode === AppModeEnum.WORKFLOW ? appInfo.id : '')
   const docLink = useDocLink()
-  const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
+  const { data: appDetail } = useAppDetail(appInfo.id)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
@@ -178,16 +177,10 @@ function AppCard({
       return
     setShowAccessControl(true)
   }, [appDetail])
-  const handleAccessControlUpdate = useCallback(async () => {
-    try {
-      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail!.id })
-      setAppDetail(res)
-      setShowAccessControl(false)
-    }
-    catch (error) {
-      console.error('Failed to fetch app detail:', error)
-    }
-  }, [appDetail, setAppDetail])
+  const handleAccessControlUpdate = useCallback(() => {
+    invalidateAppDetail(appInfo.id)
+    setShowAccessControl(false)
+  }, [invalidateAppDetail, appInfo.id])
 
   return (
     <div

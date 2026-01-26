@@ -1,23 +1,23 @@
 import type { HeaderProps } from '@/app/components/workflow/header'
+import { useParams } from 'next/navigation'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
-import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Header from '@/app/components/workflow/header'
+import { useAppDetail } from '@/service/use-apps'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 import { useIsChatMode } from '../../hooks'
 import ChatVariableTrigger from './chat-variable-trigger'
 import FeaturesTrigger from './features-trigger'
 
 const WorkflowHeader = () => {
-  const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
-    appDetail: state.appDetail,
-    setCurrentLogItem: state.setCurrentLogItem,
-    setShowMessageLogModal: state.setShowMessageLogModal,
-  })))
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
+  const setCurrentLogItem = useAppStore(state => state.setCurrentLogItem)
+  const setShowMessageLogModal = useAppStore(state => state.setShowMessageLogModal)
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const isChatMode = useIsChatMode()
 

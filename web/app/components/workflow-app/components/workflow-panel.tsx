@@ -1,5 +1,6 @@
 import type { PanelProps } from '@/app/components/workflow/panel'
 import dynamic from 'next/dynamic'
+import { useParams } from 'next/navigation'
 import {
   memo,
   useMemo,
@@ -8,6 +9,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Panel from '@/app/components/workflow/panel'
 import { useStore } from '@/app/components/workflow/store'
+import { useAppDetail } from '@/service/use-apps'
 import {
   useIsChatMode,
 } from '../hooks'
@@ -104,16 +106,16 @@ const WorkflowPanelOnRight = () => {
   )
 }
 const WorkflowPanel = () => {
-  const appDetail = useAppStore(s => s.appDetail)
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
   const versionHistoryPanelProps = useMemo(() => {
-    const appId = appDetail?.id
     return {
       getVersionListUrl: `/apps/${appId}/workflows`,
       deleteVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}`,
       updateVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}`,
       latestVersionId: appDetail?.workflow?.id,
     }
-  }, [appDetail?.id, appDetail?.workflow?.id])
+  }, [appId, appDetail?.workflow?.id])
 
   const panelProps: PanelProps = useMemo(() => {
     return {
