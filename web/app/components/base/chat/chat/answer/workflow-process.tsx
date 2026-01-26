@@ -1,5 +1,9 @@
 import type { ChatItem, WorkflowProcess } from '../../types'
-
+import {
+  RiArrowRightSLine,
+  RiErrorWarningFill,
+  RiLoader2Line,
+} from '@remixicon/react'
 import {
   useEffect,
   useState,
@@ -55,7 +59,7 @@ const WorkflowProcessItem = ({
       >
         {
           running && (
-            <span className="i-ri-loader-2-line mr-1 h-3.5 w-3.5 shrink-0 animate-spin text-text-tertiary" />
+            <RiLoader2Line className="mr-1 h-3.5 w-3.5 shrink-0 animate-spin text-text-tertiary" />
           )
         }
         {
@@ -65,13 +69,13 @@ const WorkflowProcessItem = ({
         }
         {
           failed && (
-            <span className="i-ri-error-warning-fill mr-1 h-3.5 w-3.5 shrink-0 text-text-destructive" />
+            <RiErrorWarningFill className="mr-1 h-3.5 w-3.5 shrink-0 text-text-destructive" />
           )
         }
         <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
           {t('common.workflowProcess', { ns: 'workflow' })}
         </div>
-        <span className={`i-ri-arrow-right-sline ${cn('ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')}`} />
+        <RiArrowRightSLine className={cn('ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')} />
       </div>
       {
         !collapse && (

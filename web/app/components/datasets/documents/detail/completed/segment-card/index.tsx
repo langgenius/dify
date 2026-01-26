@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
+import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -184,7 +185,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                                 onClickEdit?.()
                               }}
                             >
-                              <span className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
+                              <RiEditLine className="h-4 w-4 text-text-tertiary" />
                             </div>
                           </Tooltip>
                           <Tooltip
@@ -199,7 +200,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                                 setShowModal(true)
                               }}
                             >
-                              <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover/delete:text-text-destructive" />
+                              <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover/delete:text-text-destructive" />
                             </div>
                           </Tooltip>
                           <Divider type="vertical" className="h-3.5 bg-divider-regular" />

@@ -1,5 +1,6 @@
 'use client'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
+import { RiDeleteBinLine, RiErrorWarningFill, RiUploadCloud2Line } from '@remixicon/react'
 import { produce } from 'immer'
 import dynamic from 'next/dynamic'
 import * as React from 'react'
@@ -294,7 +295,7 @@ const LocalFile = ({
           )}
         >
           <div className="flex min-h-5 items-center justify-center text-sm leading-4 text-text-secondary">
-            <span className="i-ri-upload-cloud-2-line mr-2 size-5" />
+            <RiUploadCloud2Line className="mr-2 size-5" />
 
             <span>
               {supportBatchUpload ? t('stepOne.uploader.button', { ns: 'datasetCreation' }) : t('stepOne.uploader.buttonSingleFile', { ns: 'datasetCreation' })}
@@ -353,7 +354,7 @@ const LocalFile = ({
                   )}
                   {
                     isError && (
-                      <span className="i-ri-error-warning-fill size-4 text-text-destructive" />
+                      <RiErrorWarningFill className="size-4 text-text-destructive" />
                     )
                   }
                   <span
@@ -363,7 +364,7 @@ const LocalFile = ({
                       removeFile(fileItem.fileID)
                     }}
                   >
-                    <span className="i-ri-delete-bin-line size-4 text-text-tertiary" />
+                    <RiDeleteBinLine className="size-4 text-text-tertiary" />
                   </span>
                 </div>
               </div>

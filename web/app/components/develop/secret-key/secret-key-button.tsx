@@ -1,4 +1,5 @@
 'use client'
+import { RiKey2Line } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -22,7 +23,7 @@ const SecretKeyButton = ({ className, appId, textCls }: ISecretKeyButtonProps) =
         variant="ghost"
       >
         <div className="flex h-3.5 w-3.5 items-center justify-center">
-          <span className="i-ri-key-2-line h-3.5 w-3.5 text-text-tertiary" />
+          <RiKey2Line className="h-3.5 w-3.5 text-text-tertiary" />
         </div>
         <div className={`system-xs-medium px-[3px] text-text-tertiary ${textCls}`}>{t('apiKey', { ns: 'appApi' })}</div>
       </Button>

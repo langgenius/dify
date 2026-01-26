@@ -1,3 +1,4 @@
+import { RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
@@ -59,7 +60,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                         <Tooltip
                           popupContent={t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
                         >
-                          <span className="i-ri-question-line h-3 w-3 text-text-quaternary" />
+                          <RiQuestionLine className="h-3 w-3 text-text-quaternary" />
                         </Tooltip>
                       </div>
                     )

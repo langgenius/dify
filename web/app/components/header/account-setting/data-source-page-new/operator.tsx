@@ -2,7 +2,13 @@ import type {
   DataSourceCredential,
 } from './types'
 import type { Item } from '@/app/components/base/dropdown'
-
+import {
+  RiDeleteBinLine,
+  RiEditLine,
+  RiEqualizer2Line,
+  RiHome9Line,
+  RiStickyNoteAddLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -32,7 +38,7 @@ const Operator = ({
         value: 'setDefault',
         text: (
           <div className="flex items-center">
-            <span className="i-ri-home-9-line mr-2 h-4 w-4 text-text-tertiary" />
+            <RiHome9Line className="mr-2 h-4 w-4 text-text-tertiary" />
             <div className="system-sm-semibold text-text-secondary">{t('auth.setDefault', { ns: 'plugin' })}</div>
           </div>
         ),
@@ -44,7 +50,7 @@ const Operator = ({
                 value: 'rename',
                 text: (
                   <div className="flex items-center">
-                    <span className="i-ri-edit-line mr-2 h-4 w-4 text-text-tertiary" />
+                    <RiEditLine className="mr-2 h-4 w-4 text-text-tertiary" />
                     <div className="system-sm-semibold text-text-secondary">{t('operation.rename', { ns: 'common' })}</div>
                   </div>
                 ),
@@ -59,7 +65,7 @@ const Operator = ({
                 value: 'edit',
                 text: (
                   <div className="flex items-center">
-                    <span className="i-ri-equalizer-2-line mr-2 h-4 w-4 text-text-tertiary" />
+                    <RiEqualizer2Line className="mr-2 h-4 w-4 text-text-tertiary" />
                     <div className="system-sm-semibold text-text-secondary">{t('operation.edit', { ns: 'common' })}</div>
                   </div>
                 ),
@@ -74,7 +80,7 @@ const Operator = ({
           value: 'change',
           text: (
             <div className="flex items-center">
-              <span className="i-ri-sticky-note-add-line mr-2 h-4 w-4 text-text-tertiary" />
+              <RiStickyNoteAddLine className="mr-2 h-4 w-4 text-text-tertiary" />
               <div className="system-sm-semibold mb-1 text-text-secondary">{t('dataSource.notion.changeAuthorizedPages', { ns: 'common' })}</div>
             </div>
           ),
@@ -91,7 +97,7 @@ const Operator = ({
         value: 'delete',
         text: (
           <div className="flex items-center">
-            <span className="i-ri-delete-bin-line mr-2 h-4 w-4 text-text-tertiary" />
+            <RiDeleteBinLine className="mr-2 h-4 w-4 text-text-tertiary" />
             <div className="system-sm-semibold text-text-secondary">
               {t('operation.remove', { ns: 'common' })}
             </div>

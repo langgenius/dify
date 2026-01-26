@@ -1,9 +1,10 @@
+import { RiAddLine } from '@remixicon/react'
 import ActionButton from '@/app/components/base/action-button'
 
 const Add = () => {
   return (
     <ActionButton>
-      <span className="i-ri-add-line h-4 w-4" />
+      <RiAddLine className="h-4 w-4" />
     </ActionButton>
   )
 }

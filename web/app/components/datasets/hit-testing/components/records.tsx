@@ -1,5 +1,5 @@
 import type { Attachment, HitTestingRecord, Query } from '@/models/datasets'
-import { RiApps2Line, RiFocus2Line } from '@remixicon/react'
+import { RiApps2Line, RiArrowDownLine, RiFocus2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -58,10 +58,11 @@ const Records = ({
                 onClick={handleSortTime}
               >
                 {t('table.header.time', { ns: 'datasetHitTesting' })}
-                <span className={`i-ri-arrow-down-line ${cn(
-                  'ml-0.5 size-3.5',
-                  sortTimeOrder === 'asc' ? 'rotate-180' : '',
-                )}`}
+                <RiArrowDownLine
+                  className={cn(
+                    'ml-0.5 size-3.5',
+                    sortTimeOrder === 'asc' ? 'rotate-180' : '',
+                  )}
                 />
               </div>
             </td>

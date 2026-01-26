@@ -1,4 +1,5 @@
 import type { CredentialSelectorProps } from './credential-selector'
+import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -38,7 +39,10 @@ const Header = ({
             size="small"
             className="size-6 shrink-0 px-1"
           >
-            <span className="i-ri-equalizer-2-line h-4 w-4" onClick={onClickConfiguration} />
+            <RiEqualizer2Line
+              className="h-4 w-4"
+              onClick={onClickConfiguration}
+            />
           </Button>
         </Tooltip>
       </div>
@@ -48,7 +52,7 @@ const Header = ({
         target="_blank"
         rel="noopener noreferrer"
       >
-        <span className="i-ri-book-open-line size-3.5 shrink-0" />
+        <RiBookOpenLine className="size-3.5 shrink-0" />
         <span title={docTitle}>{docTitle}</span>
       </a>
     </div>

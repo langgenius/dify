@@ -1,5 +1,6 @@
 import type { Dayjs } from 'dayjs'
 import type { TimePickerProps } from '../types'
+import { RiCloseCircleFill, RiTimeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -230,17 +231,17 @@ const TimePicker = ({
                 {showTimezone && timezone && (
                   <TimezoneLabel timezone={timezone} inline className="shrink-0 select-none text-xs" />
                 )}
-                <span className={`i-ri-time-line ${cn(
+                <RiTimeLine className={cn(
                   'h-4 w-4 shrink-0 text-text-quaternary',
                   isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
                   (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:hidden',
-                )}`}
+                )}
                 />
-                <span
-                  className={`i-ri-close-circle-fill ${cn(
+                <RiCloseCircleFill
+                  className={cn(
                     'hidden h-4 w-4 shrink-0 text-text-quaternary',
                     (displayValue || (isOpen && selectedTime)) && !notClearable && 'hover:text-text-secondary group-hover:inline-block',
-                  )}`}
+                  )}
                   role="button"
                   aria-label={t('operation.clear', { ns: 'common' })}
                   onClick={handleClear}

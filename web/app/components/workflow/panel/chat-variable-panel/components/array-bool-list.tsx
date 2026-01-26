@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiAddLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -63,7 +64,7 @@ const ArrayValueList: FC<Props> = ({
         </div>
       ))}
       <Button variant="tertiary" className="w-full" onClick={handleItemAdd}>
-        <span className="i-ri-add-line mr-1 h-4 w-4" />
+        <RiAddLine className="mr-1 h-4 w-4" />
         <span>{t('chatVariable.modal.addArrayValue', { ns: 'workflow' })}</span>
       </Button>
     </div>

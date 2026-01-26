@@ -1,3 +1,4 @@
+import { RiArrowRightLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -48,7 +49,7 @@ const Button = ({
           </span>
         )}
       </div>
-      <span className="i-ri-arrow-right-line size-5 shrink-0" />
+      <RiArrowRightLine className="size-5 shrink-0" />
     </button>
   )
 }

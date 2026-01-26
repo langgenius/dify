@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { LLMNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -268,7 +269,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 )}
               >
                 <div>
-                  <span className="i-ri-alert-fill mr-1 size-4 text-text-warning-secondary" />
+                  <RiAlertFill className="mr-1 size-4 text-text-warning-secondary" />
                 </div>
               </Tooltip>
             )}
@@ -278,7 +279,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             }
             >
               <div>
-                <span className="i-ri-question-line size-3.5 text-text-quaternary" />
+                <RiQuestionLine className="size-3.5 text-text-quaternary" />
               </div>
             </Tooltip>
             <Switch

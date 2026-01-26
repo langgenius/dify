@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 import Popover from '@/app/components/base/popover'
 import { languages } from '@/i18n-config/language'
@@ -31,7 +32,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
               onClick={() => onSelect(prompt_name)}
             >
               <span className="system-sm-medium text-text-secondary">{prompt_name}</span>
-              {(currentLanguage === prompt_name) && <span className="i-ri-check-line size-4 text-text-accent" />}
+              {(currentLanguage === prompt_name) && <RiCheckLine className="size-4 text-text-accent" />}
             </div>
           ))}
         </div>
@@ -45,10 +46,10 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
           >
             {currentLanguage}
           </span>
-          <span className={`i-ri-arrow-down-sline ${cn(
+          <RiArrowDownSLine className={cn(
             'size-3.5 text-components-button-tertiary-text',
             disabled ? 'text-components-button-tertiary-text-disabled' : '',
-          )}`}
+          )}
           />
         </div>
       )}

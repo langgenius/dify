@@ -167,7 +167,7 @@ export default function OAuthAuthorize() {
             const Icon = SCOPE_INFO_MAP[scope]
             return (
               <div key={scope} className="body-sm-medium flex items-center gap-2 text-text-secondary">
-                {Icon ? <Icon.icon className="h-4 w-4" /> : <span className="i-ri-account-circle-line h-4 w-4" />}
+                {Icon ? <Icon.icon className="h-4 w-4" /> : <RiAccountCircleLine className="h-4 w-4" />}
                 {Icon.label}
               </div>
             )

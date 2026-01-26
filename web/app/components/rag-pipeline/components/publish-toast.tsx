@@ -1,4 +1,8 @@
 import {
+  RiCloseLine,
+  RiInformation2Fill,
+} from '@remixicon/react'
+import {
   memo,
   useState,
 } from 'react'
@@ -21,7 +25,7 @@ const PublishToast = () => {
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent opacity-[0.4]">
         </div>
         <div className="flex h-6 w-6 items-center justify-center">
-          <span className="i-ri-information-2-fill text-text-accent" />
+          <RiInformation2Fill className="text-text-accent" />
         </div>
         <div className="p-1">
           <div className="system-sm-semibold mb-1 text-text-primary">{t('publishToast.title', { ns: 'pipeline' })}</div>
@@ -33,7 +37,7 @@ const PublishToast = () => {
           className="pointer-events-auto flex h-6 w-6 cursor-pointer items-center justify-center"
           onClick={() => setHideToast(true)}
         >
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
       </div>
     </div>

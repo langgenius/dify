@@ -1,5 +1,6 @@
 'use client'
 import type { ErrorInfo, ReactNode } from 'react'
+import { RiAlertLine, RiBugLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Button from '@/app/components/base/button'
@@ -115,7 +116,7 @@ class ErrorBoundaryInner extends React.Component<
           )}
         >
           <div className="mb-4 flex items-center gap-2">
-            <span className="text-state-critical-solid i-ri-alert-line h-8 w-8" />
+            <RiAlertLine className="text-state-critical-solid h-8 w-8" />
             <h2 className="text-xl font-semibold text-text-primary">
               {customTitle || 'Something went wrong'}
             </h2>
@@ -129,7 +130,7 @@ class ErrorBoundaryInner extends React.Component<
             <details className="mb-6 w-full max-w-2xl">
               <summary className="mb-2 cursor-pointer text-sm font-medium text-text-tertiary hover:text-text-secondary">
                 <span className="inline-flex items-center gap-1">
-                  <span className="i-ri-bug-line h-4 w-4" />
+                  <RiBugLine className="h-4 w-4" />
                   Error Details (Development Only)
                 </span>
               </summary>

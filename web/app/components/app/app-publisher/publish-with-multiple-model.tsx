@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -72,7 +73,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
           className="mt-3 w-full"
         >
           {t('operation.applyConfig', { ns: 'appDebug' })}
-          <span className="i-ri-arrow-down-sline ml-0.5 h-3 w-3" />
+          <RiArrowDownSLine className="ml-0.5 h-3 w-3" />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50 mt-1 w-[288px]">

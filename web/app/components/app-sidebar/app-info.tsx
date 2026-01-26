@@ -2,7 +2,15 @@ import type { Operation } from './app-operations'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-
+import {
+  RiDeleteBinLine,
+  RiEditLine,
+  RiEqualizer2Line,
+  RiExchange2Line,
+  RiFileCopy2Line,
+  RiFileDownloadLine,
+  RiFileUploadLine,
+} from '@remixicon/react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
@@ -208,7 +216,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     {
       id: 'edit',
       title: t('editApp', { ns: 'app' }),
-      icon: <span className="i-ri-edit-line" />,
+      icon: <RiEditLine />,
       onClick: () => {
         setOpen(false)
         onDetailExpand?.(false)
@@ -218,7 +226,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     {
       id: 'duplicate',
       title: t('duplicate', { ns: 'app' }),
-      icon: <span className="i-ri-file-copy-2-line" />,
+      icon: <RiFileCopy2Line />,
       onClick: () => {
         setOpen(false)
         onDetailExpand?.(false)
@@ -228,7 +236,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     {
       id: 'export',
       title: t('export', { ns: 'app' }),
-      icon: <span className="i-ri-file-download-line" />,
+      icon: <RiFileDownloadLine />,
       onClick: exportCheck,
     },
   ]
@@ -239,7 +247,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       ? [{
           id: 'import',
           title: t('common.importDSL', { ns: 'workflow' }),
-          icon: <span className="i-ri-file-upload-line" />,
+          icon: <RiFileUploadLine />,
           onClick: () => {
             setOpen(false)
             onDetailExpand?.(false)
@@ -259,7 +267,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     {
       id: 'delete',
       title: t('operation.delete', { ns: 'common' }),
-      icon: <span className="i-ri-delete-bin-line" />,
+      icon: <RiDeleteBinLine />,
       onClick: () => {
         setOpen(false)
         onDetailExpand?.(false)
@@ -273,7 +281,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     ? {
         id: 'switch',
         title: t('switch', { ns: 'app' }),
-        icon: <span className="i-ri-exchange-2-line" />,
+        icon: <RiExchange2Line />,
         onClick: () => {
           setOpen(false)
           onDetailExpand?.(false)
@@ -307,7 +315,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
               {expand && (
                 <div className="ml-auto flex items-center justify-center rounded-md p-0.5">
                   <div className="flex h-5 w-5 items-center justify-center">
-                    <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
+                    <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
                   </div>
                 </div>
               )}
@@ -315,7 +323,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
             {!expand && (
               <div className="flex items-center justify-center">
                 <div className="flex h-5 w-5 items-center justify-center rounded-md p-0.5">
-                  <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
+                  <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
                 </div>
               </div>
             )}

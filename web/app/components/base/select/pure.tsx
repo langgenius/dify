@@ -1,7 +1,10 @@
 import type {
   PortalToFollowElemOptions,
 } from '@/app/components/base/portal-to-follow-elem'
-
+import {
+  RiArrowDownSLine,
+  RiCheckLine,
+} from '@remixicon/react'
 import {
   useCallback,
   useMemo,
@@ -128,10 +131,11 @@ const PureSelect = (props: PureSelectProps) => {
           >
             {triggerText}
           </div>
-          <span className={`i-ri-arrow-down-sline ${cn(
-            'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
-            mergedOpen && 'text-text-secondary',
-          )}`}
+          <RiArrowDownSLine
+            className={cn(
+              'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
+              mergedOpen && 'text-text-secondary',
+            )}
           />
         </div>
       </PortalToFollowElemTrigger>
@@ -189,7 +193,7 @@ const PureSelect = (props: PureSelectProps) => {
                     multiple
                       ? (value ?? []).includes(option.value)
                       : value === option.value
-                  ) && <span className="i-ri-check-line h-4 w-4 shrink-0 text-text-accent" />
+                  ) && <RiCheckLine className="h-4 w-4 shrink-0 text-text-accent" />
                 }
               </div>
             ))

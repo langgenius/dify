@@ -1,6 +1,8 @@
 'use client'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-
+import {
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -34,7 +36,7 @@ const TransferOwnership = ({ onOperate }: Props) => {
           <>
             <MenuButton className={cn('system-sm-regular group flex h-full w-full cursor-pointer items-center justify-between px-3 text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
               {t('members.owner', { ns: 'common' })}
-              <span className={`i-ri-arrow-down-sline ${cn('h-4 w-4 group-hover:block', open ? 'block' : 'hidden')}`} />
+              <RiArrowDownSLine className={cn('h-4 w-4 group-hover:block', open ? 'block' : 'hidden')} />
             </MenuButton>
             <Transition
               as={Fragment}

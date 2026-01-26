@@ -1,4 +1,5 @@
 import type { DataSet } from '@/models/datasets'
+import { RiFileTextFill, RiRobot2Fill } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -40,14 +41,14 @@ const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
     >
       <Tooltip popupContent={documentCountTooltip}>
         <div className="flex items-center gap-x-1">
-          <span className="i-ri-file-text-fill size-3 text-text-quaternary" />
+          <RiFileTextFill className="size-3 text-text-quaternary" />
           <span className="system-xs-medium">{documentCount}</span>
         </div>
       </Tooltip>
       {!isExternalProvider && (
         <Tooltip popupContent={`${dataset.app_count} ${t('appCount', { ns: 'dataset' })}`}>
           <div className="flex items-center gap-x-1">
-            <span className="i-ri-robot-2-fill size-3 text-text-quaternary" />
+            <RiRobot2Fill className="size-3 text-text-quaternary" />
             <span className="system-xs-medium">{dataset.app_count}</span>
           </div>
         </Tooltip>

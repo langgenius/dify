@@ -1,7 +1,11 @@
 import type { FC, ReactNode } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
-
+import {
+  RiCheckboxCircleFill,
+  RiErrorWarningFill,
+  RiLoaderLine,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import CardIcon from '@/app/components/plugins/card/base/card-icon'
@@ -141,7 +145,7 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
           getIconUrl={getIconUrl}
           language={language}
           statusIcon={
-            <span className="i-ri-loader-line absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 animate-spin text-text-accent" />
+            <RiLoaderLine className="absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 animate-spin text-text-accent" />
           }
           defaultStatusText={t('task.installing', { ns: 'plugin' })}
         />
@@ -156,7 +160,7 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
           getIconUrl={getIconUrl}
           language={language}
           statusIcon={
-            <span className="i-ri-checkbox-circle-fill absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 text-text-success" />
+            <RiCheckboxCircleFill className="absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 text-text-success" />
           }
           defaultStatusText={t('task.installed', { ns: 'plugin' })}
           statusClassName="text-text-success"
@@ -182,7 +186,7 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
           getIconUrl={getIconUrl}
           language={language}
           statusIcon={
-            <span className="i-ri-error-warning-fill absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 text-text-destructive" />
+            <RiErrorWarningFill className="absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 text-text-destructive" />
           }
           defaultStatusText={t('task.installError', { ns: 'plugin', errorLength: errorPlugins.length })}
           statusClassName="text-text-destructive break-all"

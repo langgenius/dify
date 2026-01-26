@@ -3,6 +3,7 @@
 import type { MouseEventHandler } from 'react'
 import type { AppIconSelection } from '../../base/app-icon-picker'
 import type { DataSet } from '@/models/datasets'
+import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -104,7 +105,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
       <div className="flex items-center justify-between pb-2">
         <div className="text-xl font-medium leading-[30px] text-text-primary">{t('title', { ns: 'datasetSettings' })}</div>
         <div className="cursor-pointer p-2" onClick={onClose}>
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
       </div>
       <div>

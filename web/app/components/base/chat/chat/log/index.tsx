@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { RiFileList3Line } from '@remixicon/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ActionButton from '@/app/components/base/action-button'
 
@@ -32,7 +33,7 @@ const Log: FC<LogProps> = ({
       }}
     >
       <ActionButton>
-        <span className="i-ri-file-list-3-line h-4 w-4" />
+        <RiFileList3Line className="h-4 w-4" />
       </ActionButton>
     </div>
   )

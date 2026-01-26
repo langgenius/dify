@@ -2,7 +2,10 @@ import type { FC, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
-
+import {
+  RiCloseLine,
+  RiPlayLargeLine,
+} from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import * as React from 'react'
 import {
@@ -505,7 +508,7 @@ const BasePanel: FC<BasePanelProps> = ({
                       {
                         isSingleRunning
                           ? <Stop className="h-4 w-4 text-text-tertiary" />
-                          : <span className="i-ri-play-large-line h-4 w-4 text-text-tertiary" />
+                          : <RiPlayLargeLine className="h-4 w-4 text-text-tertiary" />
                       }
                     </div>
                   </Tooltip>
@@ -518,7 +521,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 className="flex h-6 w-6 cursor-pointer items-center justify-center"
                 onClick={() => handleNodeSelect(id, true)}
               >
-                <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+                <RiCloseLine className="h-4 w-4 text-text-tertiary" />
               </div>
             </div>
           </div>

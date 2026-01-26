@@ -1,7 +1,9 @@
 import type { FC } from 'react'
 import type { TemplateTransformNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AddButton from '@/app/components/base/button/add-button'
@@ -72,7 +74,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
                 target="_blank"
               >
                 <span>{t(`${i18nPrefix}.codeSupportTip`, { ns: 'workflow' })}</span>
-                <span className="i-ri-question-line h-3 w-3" />
+                <RiQuestionLine className="h-3 w-3" />
               </a>
               <div className="mx-1.5 h-3 w-px bg-divider-regular"></div>
             </div>

@@ -3,7 +3,12 @@ import type {
   ChatItem,
   Feedback,
 } from '../../types'
-
+import {
+  RiClipboardLine,
+  RiResetLeftLine,
+  RiThumbDownLine,
+  RiThumbUpLine,
+} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -198,8 +203,8 @@ const Operation: FC<OperationProps> = ({
                       onClick={() => handleFeedback(null, undefined, 'user')}
                     >
                       {displayUserFeedback?.rating === 'like'
-                        ? <span className="i-ri-thumb-up-line h-4 w-4" />
-                        : <span className="i-ri-thumb-down-line h-4 w-4" />}
+                        ? <RiThumbUpLine className="h-4 w-4" />
+                        : <RiThumbDownLine className="h-4 w-4" />}
                     </ActionButton>
                   </Tooltip>
                 )
@@ -209,13 +214,13 @@ const Operation: FC<OperationProps> = ({
                       state={displayUserFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Default}
                       onClick={() => handleLikeClick('user')}
                     >
-                      <span className="i-ri-thumb-up-line h-4 w-4" />
+                      <RiThumbUpLine className="h-4 w-4" />
                     </ActionButton>
                     <ActionButton
                       state={displayUserFeedback?.rating === 'dislike' ? ActionButtonState.Destructive : ActionButtonState.Default}
                       onClick={() => handleDislikeClick('user')}
                     >
-                      <span className="i-ri-thumb-down-line h-4 w-4" />
+                      <RiThumbDownLine className="h-4 w-4" />
                     </ActionButton>
                   </>
                 )}
@@ -236,12 +241,12 @@ const Operation: FC<OperationProps> = ({
                 {displayUserFeedback.rating === 'like'
                   ? (
                       <ActionButton state={ActionButtonState.Active}>
-                        <span className="i-ri-thumb-up-line h-4 w-4" />
+                        <RiThumbUpLine className="h-4 w-4" />
                       </ActionButton>
                     )
                   : (
                       <ActionButton state={ActionButtonState.Destructive}>
-                        <span className="i-ri-thumb-down-line h-4 w-4" />
+                        <RiThumbDownLine className="h-4 w-4" />
                       </ActionButton>
                     )}
               </Tooltip>
@@ -260,8 +265,8 @@ const Operation: FC<OperationProps> = ({
                       onClick={() => handleFeedback(null, undefined, 'admin')}
                     >
                       {adminLocalFeedback?.rating === 'like'
-                        ? <span className="i-ri-thumb-up-line h-4 w-4" />
-                        : <span className="i-ri-thumb-down-line h-4 w-4" />}
+                        ? <RiThumbUpLine className="h-4 w-4" />
+                        : <RiThumbDownLine className="h-4 w-4" />}
                     </ActionButton>
                   </Tooltip>
                 )
@@ -275,7 +280,7 @@ const Operation: FC<OperationProps> = ({
                         state={adminLocalFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Default}
                         onClick={() => handleLikeClick('admin')}
                       >
-                        <span className="i-ri-thumb-up-line h-4 w-4" />
+                        <RiThumbUpLine className="h-4 w-4" />
                       </ActionButton>
                     </Tooltip>
                     <Tooltip
@@ -286,7 +291,7 @@ const Operation: FC<OperationProps> = ({
                         state={adminLocalFeedback?.rating === 'dislike' ? ActionButtonState.Destructive : ActionButtonState.Default}
                         onClick={() => handleDislikeClick('admin')}
                       >
-                        <span className="i-ri-thumb-down-line h-4 w-4" />
+                        <RiThumbDownLine className="h-4 w-4" />
                       </ActionButton>
                     </Tooltip>
                   </>
@@ -312,11 +317,11 @@ const Operation: FC<OperationProps> = ({
               Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
             }}
             >
-              <span className="i-ri-clipboard-line h-4 w-4" />
+              <RiClipboardLine className="h-4 w-4" />
             </ActionButton>
             {!noChatInput && (
               <ActionButton onClick={() => onRegenerate?.(item)}>
-                <span className="i-ri-reset-left-line h-4 w-4" />
+                <RiResetLeftLine className="h-4 w-4" />
               </ActionButton>
             )}
             {(config?.supportAnnotation && config.annotation_reply?.enabled) && (

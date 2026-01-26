@@ -1,5 +1,8 @@
 import type { FileEntity } from '../types'
-
+import {
+  RiCloseLine,
+  RiDownloadLine,
+} from '@remixicon/react'
 import { useState } from 'react'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
@@ -60,7 +63,7 @@ const FileItem = ({
               className="absolute -right-1.5 -top-1.5 z-[11] hidden h-5 w-5 rounded-full p-0 group-hover/file-item:flex"
               onClick={() => onRemove?.(id)}
             >
-              <span className="i-ri-close-line h-4 w-4 text-components-button-secondary-text" />
+              <RiCloseLine className="h-4 w-4 text-components-button-secondary-text" />
             </Button>
           )
         }
@@ -100,7 +103,7 @@ const FileItem = ({
                   downloadFile(download_url || '', name)
                 }}
               >
-                <span className="i-ri-download-line h-3.5 w-3.5 text-text-tertiary" />
+                <RiDownloadLine className="h-3.5 w-3.5 text-text-tertiary" />
               </ActionButton>
             )
           }

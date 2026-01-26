@@ -1,5 +1,9 @@
 'use client'
 
+import {
+  RiPlanetFill,
+  RiPlanetLine,
+} from '@remixicon/react'
 import Link from 'next/link'
 import { useSelectedLayoutSegment } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -23,8 +27,8 @@ const ExploreNav = ({
     >
       {
         activated
-          ? <span className="i-ri-planet-fill h-4 w-4" />
-          : <span className="i-ri-planet-line h-4 w-4" />
+          ? <RiPlanetFill className="h-4 w-4" />
+          : <RiPlanetLine className="h-4 w-4" />
       }
       <div className="ml-2 max-[1024px]:hidden">
         {t('menus.explore', { ns: 'common' })}

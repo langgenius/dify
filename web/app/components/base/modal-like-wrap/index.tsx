@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -36,7 +37,7 @@ const ModalLikeWrap: FC<Props> = ({
             className="cursor-pointer p-1.5 text-text-tertiary"
             onClick={onClose}
           >
-            <span className="i-ri-close-line size-4" />
+            <RiCloseLine className="size-4" />
           </div>
         )}
       </div>

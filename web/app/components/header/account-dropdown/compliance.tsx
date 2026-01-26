@@ -1,5 +1,6 @@
 import type { FC, MouseEvent } from 'react'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
+import { RiArrowDownCircleLine, RiArrowRightSLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import { useMutation } from '@tanstack/react-query'
 import { Fragment, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -78,7 +79,7 @@ const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
   if (isCurrentPlanCanDownload) {
     return (
       <Button loading={isPending} disabled={isPending} size="small" variant="secondary" className="flex items-center gap-[1px]" onClick={handleDownloadClick}>
-        <span className="i-ri-arrow-down-circle-line size-[14px] text-components-button-secondary-text-disabled" />
+        <RiArrowDownCircleLine className="size-[14px] text-components-button-secondary-text-disabled" />
         <span className="system-xs-medium px-[3px] text-components-button-secondary-text">{t('operation.download', { ns: 'common' })}</span>
       </Button>
     )
@@ -119,9 +120,9 @@ export default function Compliance() {
               cn('group flex h-9 w-full items-center gap-1 rounded-lg py-2 pl-3 pr-2 hover:bg-state-base-hover', open && 'bg-state-base-hover')
             }
             >
-              <span className="i-ri-verified-badge-line size-4 shrink-0 text-text-tertiary" />
+              <RiVerifiedBadgeLine className="size-4 shrink-0 text-text-tertiary" />
               <div className="system-md-regular grow px-1 text-left text-text-secondary">{t('userProfile.compliance', { ns: 'common' })}</div>
-              <span className="i-ri-arrow-right-sline size-[14px] shrink-0 text-text-tertiary" />
+              <RiArrowRightSLine className="size-[14px] shrink-0 text-text-tertiary" />
             </MenuButton>
             <Transition
               as={Fragment}

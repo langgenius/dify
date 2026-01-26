@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
+import { ClipboardDocumentIcon, HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,7 +35,7 @@ const Header: FC<IResultHeaderProps> = ({
           }}
         >
           <>
-            <span className="i-heroicons-clipboard-document-24-outline mr-1 h-3 w-4 text-gray-500" />
+            <ClipboardDocumentIcon className="mr-1 h-3 w-4 text-gray-500" />
             <span className="text-xs leading-3 text-gray-500">{t('generation.copy', { ns: 'share' })}</span>
           </>
         </Button>
@@ -51,7 +52,7 @@ const Header: FC<IResultHeaderProps> = ({
               }}
               className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md  border border-primary-200 bg-primary-100 !text-primary-600 hover:border-primary-300 hover:bg-primary-200"
             >
-              <span className="i-heroicons-hand-thumb-up-24-outline h-4 w-4" />
+              <HandThumbUpIcon width={16} height={16} />
             </div>
           </Tooltip>
         )}
@@ -68,7 +69,7 @@ const Header: FC<IResultHeaderProps> = ({
               }}
               className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md  border border-red-200 bg-red-100 !text-red-600 hover:border-red-300 hover:bg-red-200"
             >
-              <span className="i-heroicons-hand-thumb-down-24-outline h-4 w-4" />
+              <HandThumbDownIcon width={16} height={16} />
             </div>
           </Tooltip>
         )}
@@ -87,7 +88,7 @@ const Header: FC<IResultHeaderProps> = ({
                 }}
                 className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-gray-100"
               >
-                <span className="i-heroicons-hand-thumb-up-24-outline h-4 w-4" />
+                <HandThumbUpIcon width={16} height={16} />
               </div>
             </Tooltip>
             <Tooltip
@@ -102,7 +103,7 @@ const Header: FC<IResultHeaderProps> = ({
                 }}
                 className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-gray-100"
               >
-                <span className="i-heroicons-hand-thumb-down-24-outline h-4 w-4" />
+                <HandThumbDownIcon width={16} height={16} />
               </div>
             </Tooltip>
           </div>

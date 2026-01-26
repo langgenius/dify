@@ -1,6 +1,7 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types'
 import { useLocale, useTranslation } from '#i18n'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
@@ -67,7 +68,7 @@ const CardWrapperComponent = ({
               className="w-full gap-0.5"
             >
               {t('detailPanel.operation.detail', { ns: 'plugin' })}
-              <span className="i-ri-arrow-right-up-line ml-1 h-4 w-4" />
+              <RiArrowRightUpLine className="ml-1 h-4 w-4" />
             </Button>
           </a>
         </div>

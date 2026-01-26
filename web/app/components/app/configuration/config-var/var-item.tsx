@@ -1,7 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import type { IInputTypeIconProps } from './input-type-icon'
-
+import {
+  RiDeleteBinLine,
+  RiDraggable,
+  RiEditLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import Badge from '@/app/components/base/badge'
@@ -38,7 +42,7 @@ const VarItem: FC<ItemProps> = ({
     <div className={cn('group relative mb-1 flex h-[34px] w-full items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-2.5 pr-3 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm', isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover', readonly && 'cursor-not-allowed', className)}>
       <VarIcon className={cn('mr-1 h-4 w-4 shrink-0 text-text-accent', canDrag && 'group-hover:opacity-0')} />
       {canDrag && (
-        <span className="i-ri-draggable absolute left-3 top-3 hidden h-3 w-3 cursor-pointer text-text-tertiary group-hover:block" />
+        <RiDraggable className="absolute left-3 top-3 hidden h-3 w-3 cursor-pointer text-text-tertiary group-hover:block" />
       )}
       <div className="flex w-0 grow items-center">
         <div className="truncate" title={`${name} · ${label}`}>
@@ -58,7 +62,7 @@ const VarItem: FC<ItemProps> = ({
             className="mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-black/5"
             onClick={onEdit}
           >
-            <span className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
+            <RiEditLine className="h-4 w-4 text-text-tertiary" />
           </div>
           <div
             data-testid="var-item-delete-btn"
@@ -67,7 +71,7 @@ const VarItem: FC<ItemProps> = ({
             onMouseOver={() => setIsDeleting(true)}
             onMouseLeave={() => setIsDeleting(false)}
           >
-            <span className="i-ri-delete-bin-line h-4 w-4" />
+            <RiDeleteBinLine className="h-4 w-4" />
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import type { Option } from '@/app/components/base/select/custom'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import { RiAddLine, RiEqualizer2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -85,7 +86,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
         extra: (
           <Tooltip popupContent={t('subscription.addType.options.oauth.clientSettings', { ns: 'pluginTrigger' })}>
             <ActionButton onClick={onClickClientSettings}>
-              <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
+              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
             </ActionButton>
           </Tooltip>
         ),
@@ -182,7 +183,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                   onClick={onClickCreate}
                 >
                   <div className="flex flex-1 items-center justify-center">
-                    <span className="i-ri-add-line mr-2 size-4" />
+                    <RiAddLine className="mr-2 size-4" />
                     {buttonTextMap[methodType]}
                     {methodType === SupportedCreationMethods.OAUTH && oauthConfig?.custom_enabled && oauthConfig?.custom_configured && (
                       <Badge
@@ -198,7 +199,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                         <div className="h-4 w-px bg-text-primary-on-surface opacity-15" />
                         <Tooltip popupContent={t('subscription.addType.options.oauth.clientSettings', { ns: 'pluginTrigger' })}>
                           <div onClick={onClickClientSettings} className="p-2">
-                            <span className="i-ri-equalizer-2-line size-4 text-components-button-primary-text" />
+                            <RiEqualizer2Line className="size-4 text-components-button-primary-text" />
                           </div>
                         </Tooltip>
                       </div>
@@ -218,7 +219,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                     )}
                     state={subscriptionCount >= MAX_COUNT ? ActionButtonState.Disabled : ActionButtonState.Default}
                   >
-                    <span className="i-ri-add-line size-4" />
+                    <RiAddLine className="size-4" />
                   </ActionButton>
                 </Tooltip>
               )

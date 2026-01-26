@@ -1,4 +1,5 @@
 'use client'
+import { RiAddLine, RiCloseLine, RiSearchLine } from '@remixicon/react'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import { cn } from '@/utils/classnames'
@@ -65,7 +66,7 @@ const SearchBox = ({
                       onClick={() => onSearchChange('')}
                       className="shrink-0"
                     >
-                      <span className="i-ri-close-line size-4" />
+                      <RiCloseLine className="size-4" />
                     </ActionButton>
                   )
                 }
@@ -77,7 +78,7 @@ const SearchBox = ({
           !usedInMarketplace && (
             <>
               <div className="flex grow items-center py-[7px] pl-2 pr-3">
-                <span className="i-ri-search-line size-4 text-components-input-text-placeholder" />
+                <RiSearchLine className="size-4 text-components-input-text-placeholder" />
                 <input
                   autoFocus={autoFocus}
                   className={cn(
@@ -96,7 +97,7 @@ const SearchBox = ({
                       onClick={() => onSearchChange('')}
                       className="shrink-0"
                     >
-                      <span className="i-ri-close-line size-4" />
+                      <RiCloseLine className="size-4" />
                     </ActionButton>
                   )
                 }
@@ -116,7 +117,7 @@ const SearchBox = ({
             className="ml-2 rounded-full bg-components-button-primary-bg text-components-button-primary-text hover:bg-components-button-primary-bg hover:text-components-button-primary-text"
             onClick={onShowAddCustomCollectionModal}
           >
-            <span className="i-ri-add-line h-4 w-4" />
+            <RiAddLine className="h-4 w-4" />
           </ActionButton>
         </div>
       )}

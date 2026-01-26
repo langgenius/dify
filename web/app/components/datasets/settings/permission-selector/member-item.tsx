@@ -1,3 +1,4 @@
+import { RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -38,7 +39,7 @@ const MemberItem = ({
         </div>
         <div className="system-xs-regular truncate text-text-tertiary">{email}</div>
       </div>
-      {isSelected && <span className={`i-ri-check-line ${cn('size-4 shrink-0 text-text-accent', isMe && 'opacity-30')}`} />}
+      {isSelected && <RiCheckLine className={cn('size-4 shrink-0 text-text-accent', isMe && 'opacity-30')} />}
     </div>
   )
 }

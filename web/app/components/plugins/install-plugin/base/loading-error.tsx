@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
@@ -25,7 +26,7 @@ const LoadingError: FC = () => {
               <Group className="text-text-quaternary" />
             </div>
             <div className="absolute bottom-[-4px] right-[-4px] rounded-full border-[2px] border-components-panel-bg bg-state-destructive-solid">
-              <span className="i-ri-close-line h-3 w-3 text-text-primary-on-surface" />
+              <RiCloseLine className="h-3 w-3 text-text-primary-on-surface" />
             </div>
           </div>
           <div className="ml-3 grow">

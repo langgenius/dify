@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
+import { RiLoader2Line, RiStopCircleFill } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
@@ -103,7 +104,7 @@ const VariableInspectTrigger: FC = () => {
             className="system-xs-medium flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-accent shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent"
             onClick={() => setShowVariableInspectPanel(true)}
           >
-            <span className="i-ri-loader-2-line h-4 w-4 animate-spin" />
+            <RiLoader2Line className="h-4 w-4 animate-spin" />
             <span className="text-text-accent">{t('debug.variableInspect.trigger.running', { ns: 'workflow' })}</span>
           </div>
           {isPreviewRunning && (
@@ -114,7 +115,7 @@ const VariableInspectTrigger: FC = () => {
                 className="flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent"
                 onClick={handleStop}
               >
-                <span className="i-ri-stop-circle-fill h-4 w-4 text-text-accent" />
+                <RiStopCircleFill className="h-4 w-4 text-text-accent" />
               </div>
             </Tooltip>
           )}

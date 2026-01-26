@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { AgentConfig } from '@/models/debug'
+import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -67,7 +68,7 @@ const AgentSetting: FC<Props> = ({
               onClick={onCancel}
               className="flex h-6 w-6 cursor-pointer items-center justify-center"
             >
-              <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
             </div>
           </div>
         </div>

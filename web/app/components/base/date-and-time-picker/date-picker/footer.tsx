@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { DatePickerFooterProps } from '../types'
+import { RiTimeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -30,7 +31,7 @@ const Footer: FC<DatePickerFooterProps> = ({
                       py-1 text-components-button-secondary-accent-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]"
           onClick={handleClickTimePicker}
         >
-          <span className="i-ri-time-line h-3.5 w-3.5" />
+          <RiTimeLine className="h-3.5 w-3.5" />
           {view === ViewType.date && <span>{displayTime}</span>}
           {view === ViewType.time && <span>{t('operation.pickDate', { ns: 'time' })}</span>}
         </button>

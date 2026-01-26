@@ -1,6 +1,8 @@
 'use client'
 import type { CustomCollectionBackend } from '../types'
-
+import {
+  RiAddCircleFill,
+} from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
@@ -34,7 +36,7 @@ const Contribute = ({ onRefreshData }: Props) => {
           <div className="group grow rounded-t-xl" onClick={() => setIsShowEditCustomCollectionModal(true)}>
             <div className="flex shrink-0 items-center p-4 pb-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-divider-deep group-hover:border-solid group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover">
-                <span className="i-ri-add-circle-fill h-4 w-4 text-text-quaternary group-hover:text-text-accent" />
+                <RiAddCircleFill className="h-4 w-4 text-text-quaternary group-hover:text-text-accent" />
               </div>
               <div className="system-md-semibold ml-3 text-text-secondary group-hover:text-text-accent">{t('createCustomTool', { ns: 'tools' })}</div>
             </div>

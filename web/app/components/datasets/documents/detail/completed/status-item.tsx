@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { Item } from '@/app/components/base/select'
+import { RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 
 type IStatusItemProps = {
@@ -14,7 +15,7 @@ const StatusItem: FC<IStatusItemProps> = ({
   return (
     <div className="flex items-center justify-between px-2 py-1.5">
       <span className="system-md-regular">{item.name}</span>
-      {selected && <span className="i-ri-check-line h-4 w-4 text-text-accent" />}
+      {selected && <RiCheckLine className="h-4 w-4 text-text-accent" />}
     </div>
   )
 }

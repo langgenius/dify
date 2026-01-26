@@ -1,5 +1,10 @@
 import type { FC } from 'react'
-
+import {
+  RiFileTextLine,
+  RiFilmAiLine,
+  RiImageCircleAiLine,
+  RiVoiceAiFill,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
@@ -63,7 +68,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         <ModelBadge
           className={cn('gap-x-0.5', className)}
         >
-          <span className="i-ri-image-circle-ai-line size-3" />
+          <RiImageCircleAiLine className="size-3" />
           <span>{ModelFeatureTextEnum.vision}</span>
         </ModelBadge>
       )
@@ -80,7 +85,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
               className,
             )}
           >
-            <span className="i-ri-image-circle-ai-line size-3" />
+            <RiImageCircleAiLine className="size-3" />
           </ModelBadge>
         </div>
       </Tooltip>
@@ -93,7 +98,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         <ModelBadge
           className={cn('gap-x-0.5', className)}
         >
-          <span className="i-ri-file-text-line size-3" />
+          <RiFileTextLine className="size-3" />
           <span>{ModelFeatureTextEnum.document}</span>
         </ModelBadge>
       )
@@ -110,7 +115,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
               className,
             )}
           >
-            <span className="i-ri-file-text-line size-3" />
+            <RiFileTextLine className="size-3" />
           </ModelBadge>
         </div>
       </Tooltip>
@@ -123,7 +128,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         <ModelBadge
           className={cn('gap-x-0.5', className)}
         >
-          <span className="i-ri-voice-ai-fill size-3" />
+          <RiVoiceAiFill className="size-3" />
           <span>{ModelFeatureTextEnum.audio}</span>
         </ModelBadge>
       )
@@ -140,7 +145,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
               className,
             )}
           >
-            <span className="i-ri-voice-ai-fill size-3" />
+            <RiVoiceAiFill className="size-3" />
           </ModelBadge>
         </div>
       </Tooltip>
@@ -153,7 +158,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         <ModelBadge
           className={cn('gap-x-0.5', className)}
         >
-          <span className="i-ri-film-ai-line size-3" />
+          <RiFilmAiLine className="size-3" />
           <span>{ModelFeatureTextEnum.video}</span>
         </ModelBadge>
       )
@@ -170,7 +175,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
               className,
             )}
           >
-            <span className="i-ri-film-ai-line size-3" />
+            <RiFilmAiLine className="size-3" />
           </ModelBadge>
         </div>
       </Tooltip>

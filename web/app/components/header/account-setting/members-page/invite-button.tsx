@@ -1,3 +1,4 @@
+import { RiUserAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
@@ -25,7 +26,7 @@ const InviteButton = (props: InviteButtonProps) => {
   }
   return (
     <Button variant="primary" {...props}>
-      <span className="i-ri-user-add-line mr-1 h-4 w-4" />
+      <RiUserAddLine className="mr-1 h-4 w-4" />
       {t('members.invite', { ns: 'common' })}
     </Button>
   )

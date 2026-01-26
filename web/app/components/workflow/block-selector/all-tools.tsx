@@ -11,6 +11,7 @@ import type {
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { ListProps, ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -316,7 +317,7 @@ const AllTools = ({
             target="_blank"
           >
             <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
-            <span className="i-ri-arrow-right-up-line ml-0.5 h-3 w-3" />
+            <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
           </Link>
         )}
       </div>

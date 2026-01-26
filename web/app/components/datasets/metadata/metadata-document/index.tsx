@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { FullDocumentDetail } from '@/models/datasets'
+import { RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -69,7 +70,7 @@ const MetadataDocument: FC<Props> = ({
                     )
                   : (
                       <Button variant="ghost" size="small" onClick={startToEdit}>
-                        <span className="i-ri-edit-line mr-1 size-3.5 cursor-pointer text-text-tertiary" />
+                        <RiEditLine className="mr-1 size-3.5 cursor-pointer text-text-tertiary" />
                         <div>{t('operation.edit', { ns: 'common' })}</div>
                       </Button>
                     ))}

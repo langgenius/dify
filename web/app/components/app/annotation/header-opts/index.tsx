@@ -2,7 +2,11 @@
 import type { FC } from 'react'
 import type { AnnotationItemBasic } from '../type'
 import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
-
+import {
+  RiAddLine,
+  RiDeleteBinLine,
+  RiMoreFill,
+} from '@remixicon/react'
 import * as React from 'react'
 import { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -149,7 +153,7 @@ const HeaderOptions: FC<Props> = ({
           onClick={handleClearAll}
           className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
         >
-          <span className="i-ri-delete-bin-line h-4 w-4" />
+          <RiDeleteBinLine className="h-4 w-4" />
           <span className="system-sm-regular grow text-left">
             {t('table.header.clearAll', { ns: 'appAnnotation' })}
           </span>
@@ -163,7 +167,7 @@ const HeaderOptions: FC<Props> = ({
   return (
     <div className="flex space-x-2">
       <Button variant="primary" onClick={() => setShowAddModal(true)}>
-        <span className="i-ri-add-line mr-0.5 h-4 w-4" />
+        <RiAddLine className="mr-0.5 h-4 w-4" />
         <div>{t('table.header.addAnnotation', { ns: 'appAnnotation' })}</div>
       </Button>
       <CustomPopover
@@ -171,7 +175,7 @@ const HeaderOptions: FC<Props> = ({
         position="br"
         trigger="click"
         btnElement={
-          <span className="i-ri-more-fill h-4 w-4" />
+          <RiMoreFill className="h-4 w-4" />
         }
         btnClassName="btn btn-secondary btn-medium w-8 p-0"
         className="!z-20 h-fit !w-[155px]"

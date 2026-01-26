@@ -1,5 +1,9 @@
 import type { Node } from '@/app/components/workflow/types'
-
+import {
+  RiAlertFill,
+  RiCheckboxCircleFill,
+  RiLoader2Line,
+} from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
@@ -51,7 +55,7 @@ const RetryOnNode = ({
           {
             isRunning && (
               <>
-                <span className="i-ri-loader-2-line mr-1 h-3.5 w-3.5 animate-spin" />
+                <RiLoader2Line className="mr-1 h-3.5 w-3.5 animate-spin" />
                 {t('nodes.common.retry.retrying', { ns: 'workflow' })}
               </>
             )
@@ -59,7 +63,7 @@ const RetryOnNode = ({
           {
             isSuccessful && (
               <>
-                <span className="i-ri-checkbox-circle-fill mr-1 h-3.5 w-3.5" />
+                <RiCheckboxCircleFill className="mr-1 h-3.5 w-3.5" />
                 {t('nodes.common.retry.retrySuccessful', { ns: 'workflow' })}
               </>
             )
@@ -67,7 +71,7 @@ const RetryOnNode = ({
           {
             (isFailed || isException) && (
               <>
-                <span className="i-ri-alert-fill mr-1 h-3.5 w-3.5" />
+                <RiAlertFill className="mr-1 h-3.5 w-3.5" />
                 {t('nodes.common.retry.retryFailed', { ns: 'workflow' })}
               </>
             )

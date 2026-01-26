@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiDownloadLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -34,12 +35,12 @@ const ResDownload: FC<IResDownloadProps> = ({
     >
       {isMobile && (
         <ActionButton>
-          <span className="i-ri-download-line h-4 w-4" />
+          <RiDownloadLine className="h-4 w-4" />
         </ActionButton>
       )}
       {!isMobile && (
         <Button className={cn('space-x-1')}>
-          <span className="i-ri-download-line h-4 w-4" />
+          <RiDownloadLine className="h-4 w-4" />
           <span>{t('operation.download', { ns: 'common' })}</span>
         </Button>
       )}

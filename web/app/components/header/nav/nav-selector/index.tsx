@@ -1,7 +1,11 @@
 'use client'
 import type { AppIconType, AppModeEnum } from '@/types/app'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-
+import {
+  RiAddLine,
+  RiArrowDownSLine,
+  RiArrowRightSLine,
+} from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import { useRouter } from 'next/navigation'
 import { Fragment, useCallback } from 'react'
@@ -59,7 +63,10 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
           )}
           >
             <div className="max-w-[157px] truncate" title={curNav?.name}>{curNav?.name}</div>
-            <span className={`i-ri-arrow-down-sline ${cn('ml-1 h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100', open && '!opacity-100')}`} aria-hidden="true" />
+            <RiArrowDownSLine
+              className={cn('ml-1 h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100', open && '!opacity-100')}
+              aria-hidden="true"
+            />
           </MenuButton>
           <MenuItems
             className="
@@ -116,7 +123,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                   )}
                 >
                   <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border-[0.5px] border-divider-regular bg-background-default">
-                    <span className="i-ri-add-line h-4 w-4 text-text-primary" />
+                    <RiAddLine className="h-4 w-4 text-text-primary" />
                   </div>
                   <div className="grow text-left text-[14px] font-normal text-text-secondary">{createText}</div>
                 </div>
@@ -133,10 +140,10 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                       )}
                       >
                         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border-[0.5px] border-divider-regular bg-background-default">
-                          <span className="i-ri-add-line h-4 w-4 text-text-primary" />
+                          <RiAddLine className="h-4 w-4 text-text-primary" />
                         </div>
                         <div className="grow text-left text-[14px] font-normal text-text-secondary">{createText}</div>
-                        <span className="i-ri-arrow-right-sline h-3.5 w-3.5 shrink-0 text-text-primary" />
+                        <RiArrowRightSLine className="h-3.5 w-3.5 shrink-0 text-text-primary" />
                       </div>
                     </MenuButton>
                     <Transition

@@ -1,7 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { LoopDurationMap, LoopVariableMap, NodeTracing } from '@/types/workflow'
-
+import {
+  RiArrowLeftLine,
+  RiArrowRightSLine,
+  RiErrorWarningLine,
+  RiLoader2Line,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -51,10 +56,10 @@ const LoopResultPanel: FC<Props> = ({
     const hasDurationMap = loopDurationMap && Object.keys(loopDurationMap).length !== 0
 
     if (hasFailed)
-      return <span className="i-ri-error-warning-line h-4 w-4 text-text-destructive" />
+      return <RiErrorWarningLine className="h-4 w-4 text-text-destructive" />
 
     if (isRunning)
-      return <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin text-primary-600" />
+      return <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-primary-600" />
 
     return (
       <>
@@ -63,10 +68,11 @@ const LoopResultPanel: FC<Props> = ({
             {countLoopDuration(loop, loopDurationMap)}
           </div>
         )}
-        <span className={`i-ri-arrow-right-sline ${cn(
-          'h-4 w-4 shrink-0 text-text-tertiary transition-transform duration-200',
-          expandedLoops[index] && 'rotate-90',
-        )}`}
+        <RiArrowRightSLine
+          className={cn(
+            'h-4 w-4 shrink-0 text-text-tertiary transition-transform duration-200',
+            expandedLoops[index] && 'rotate-90',
+          )}
         />
       </>
     )
@@ -82,7 +88,7 @@ const LoopResultPanel: FC<Props> = ({
           onBack()
         }}
       >
-        <span className="i-ri-arrow-left-line mr-1 h-4 w-4" />
+        <RiArrowLeftLine className="mr-1 h-4 w-4" />
         <div className="system-sm-medium">{t(`${i18nPrefix}.back`, { ns: 'workflow' })}</div>
       </div>
       {/* List */}

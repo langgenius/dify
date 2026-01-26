@@ -1,3 +1,4 @@
+import { RiCheckLine, RiCloseLine } from '@remixicon/react'
 import AppIcon from '@/app/components/base/app-icon'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import { cn } from '@/utils/classnames'
@@ -53,7 +54,7 @@ const Icon = ({
         installed
         && (
           <div className={cn(iconClassName, 'bg-state-success-solid')}>
-            <span className="i-ri-check-line h-3 w-3 text-text-primary-on-surface" />
+            <RiCheckLine className="h-3 w-3 text-text-primary-on-surface" />
           </div>
         )
       }
@@ -61,7 +62,7 @@ const Icon = ({
         installFailed
         && (
           <div className={cn(iconClassName, 'bg-state-destructive-solid')}>
-            <span className="i-ri-close-line h-3 w-3 text-text-primary-on-surface" />
+            <RiCloseLine className="h-3 w-3 text-text-primary-on-surface" />
           </div>
         )
       }

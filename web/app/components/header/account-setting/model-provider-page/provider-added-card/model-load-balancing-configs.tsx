@@ -8,7 +8,9 @@ import type {
   ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
-
+import {
+  RiIndeterminateCircleLine,
+} from '@remixicon/react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
@@ -214,7 +216,7 @@ const ModelLoadBalancingConfigs = ({
                               className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover"
                               onClick={() => updateConfigEntry(index, () => undefined)}
                             >
-                              <span className="i-ri-indeterminate-circle-line h-4 w-4" />
+                              <RiIndeterminateCircleLine className="h-4 w-4" />
                             </span>
                           </Tooltip>
                         </div>

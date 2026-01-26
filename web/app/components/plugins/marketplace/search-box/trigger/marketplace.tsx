@@ -1,5 +1,6 @@
 import type { Tag } from '../../../hooks'
 import { useTranslation } from '#i18n'
+import { RiArrowDownSLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
@@ -29,7 +30,7 @@ const MarketplaceTrigger = ({
       )}
     >
       <div className="p-0.5">
-        <span className={`i-ri-filter-3-line ${cn('size-4', !!selectedTagsLength && 'text-text-secondary')}`} />
+        <RiFilter3Line className={cn('size-4', !!selectedTagsLength && 'text-text-secondary')} />
       </div>
       <div className="system-sm-medium flex items-center gap-x-1 p-1">
         {
@@ -53,13 +54,16 @@ const MarketplaceTrigger = ({
       </div>
       {
         !!selectedTagsLength && (
-          <span className="i-ri-close-circle-fill size-4 text-text-quaternary" onClick={() => onTagsChange([])} />
+          <RiCloseCircleFill
+            className="size-4 text-text-quaternary"
+            onClick={() => onTagsChange([])}
+          />
         )
       }
       {
         !selectedTagsLength && (
           <div className="p-0.5">
-            <span className="i-ri-arrow-down-sline size-4 text-text-tertiary" />
+            <RiArrowDownSLine className="size-4 text-text-tertiary" />
           </div>
         )
       }

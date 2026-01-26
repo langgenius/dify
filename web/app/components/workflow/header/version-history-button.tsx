@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { RiHistoryLine } from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -65,7 +66,7 @@ const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({
         )}
         onClick={handleViewVersionHistory}
       >
-        <span className="i-ri-history-line h-4 w-4 text-components-button-secondary-text" />
+        <RiHistoryLine className="h-4 w-4 text-components-button-secondary-text" />
       </Button>
     </Tooltip>
   )

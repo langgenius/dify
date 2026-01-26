@@ -2,7 +2,9 @@ import type {
   CommonNodeType,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
-
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -74,7 +76,7 @@ const Add = ({
         `}
       >
         <div className="mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed">
-          <span className="i-ri-add-line h-3 w-3" />
+          <RiAddLine className="h-3 w-3" />
         </div>
         <div className="flex items-center uppercase">
           {tip}

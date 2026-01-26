@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiArrowRightUpLine, RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -56,7 +57,7 @@ const OperationDropdown: FC<Props> = ({
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         <div>
           <ActionButton className={cn(open && 'bg-state-base-hover')}>
-            <span className="i-ri-more-fill h-4 w-4" />
+            <RiMoreFill className="h-4 w-4" />
           </ActionButton>
         </div>
       </PortalToFollowElemTrigger>
@@ -87,7 +88,7 @@ const OperationDropdown: FC<Props> = ({
           {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
             <a href={detailUrl} target="_blank" className="system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover">
               <span className="grow">{t('detailPanel.operation.viewDetail', { ns: 'plugin' })}</span>
-              <span className="i-ri-arrow-right-up-line h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+              <RiArrowRightUpLine className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
             </a>
           )}
           {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (

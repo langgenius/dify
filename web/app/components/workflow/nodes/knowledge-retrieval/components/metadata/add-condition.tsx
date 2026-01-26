@@ -1,6 +1,8 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { MetadataInDoc } from '@/models/datasets'
-
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import {
   useCallback,
   useMemo,
@@ -48,7 +50,7 @@ const AddCondition = ({
           size="small"
           variant="secondary"
         >
-          <span className="i-ri-add-line h-3.5 w-3.5" />
+          <RiAddLine className="h-3.5 w-3.5" />
           {t('nodes.knowledgeRetrieval.metadata.panel.add', { ns: 'workflow' })}
         </Button>
       </PortalToFollowElemTrigger>

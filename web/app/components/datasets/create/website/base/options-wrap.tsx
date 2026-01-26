@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiEqualizer2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect } from 'react'
@@ -38,7 +39,7 @@ const OptionsWrap: FC<Props> = ({
         onClick={foldToggle}
       >
         <div className="flex grow items-center">
-          <span className="i-ri-equalizer-2-line mr-1 h-4 w-4 text-text-secondary" />
+          <RiEqualizer2Line className="mr-1 h-4 w-4 text-text-secondary" />
           <span className="text-[13px] font-semibold uppercase leading-[16px] text-text-secondary">{t(`${I18N_PREFIX}.options`, { ns: 'datasetCreation' })}</span>
         </div>
         <ChevronRight className={cn(!fold && 'rotate-90', 'h-4 w-4 shrink-0 text-text-tertiary')} />

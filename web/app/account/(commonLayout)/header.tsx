@@ -1,4 +1,5 @@
 'use client'
+import { RiArrowRightUpLine, RiRobot2Line } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,9 +36,9 @@ const Header = () => {
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <Button className="system-sm-medium gap-2 px-3 py-2" onClick={goToStudio}>
-          <span className="i-ri-robot-2-line h-4 w-4" />
+          <RiRobot2Line className="h-4 w-4" />
           <p>{t('account.studio', { ns: 'common' })}</p>
-          <span className="i-ri-arrow-right-up-line h-4 w-4" />
+          <RiArrowRightUpLine className="h-4 w-4" />
         </Button>
         <div className="h-4 w-[1px] bg-divider-regular" />
         <Avatar />

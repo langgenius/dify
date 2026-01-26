@@ -1,6 +1,7 @@
 import type {
   ConversationVariable,
 } from '@/app/components/workflow/types'
+import { RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -129,13 +130,13 @@ const ChatVariablePanel = () => {
         {t('chatVariable.panelTitle', { ns: 'workflow' })}
         <div className="flex items-center gap-1">
           <ActionButton state={showTip ? ActionButtonState.Active : undefined} onClick={() => setShowTip(!showTip)}>
-            <span className="i-ri-book-open-line h-4 w-4" />
+            <RiBookOpenLine className="h-4 w-4" />
           </ActionButton>
           <div
             className="flex h-6 w-6 cursor-pointer items-center justify-center"
             onClick={() => setShowChatVariablePanel(false)}
           >
-            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
       </div>

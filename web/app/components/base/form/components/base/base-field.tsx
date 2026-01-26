@@ -1,5 +1,6 @@
 import type { AnyFieldApi } from '@tanstack/react-form'
 import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base/form/types'
+import { RiExternalLinkLine } from '@remixicon/react'
 import { useStore } from '@tanstack/react-form'
 import {
   isValidElement,
@@ -338,7 +339,7 @@ const BaseField = ({
             <span className="break-all">
               {translatedHelp}
             </span>
-            <span className="i-ri-external-link-line ml-1 h-3 w-3 shrink-0" />
+            <RiExternalLinkLine className="ml-1 h-3 w-3 shrink-0" />
           </a>
         )
       }

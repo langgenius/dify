@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import {
   RiBook2Line,
   RiFileEditLine,
+  RiGraduationCapLine,
   RiGroupLine,
 } from '@remixicon/react'
 import { useUnmountedRef } from 'ahooks'
@@ -109,7 +110,7 @@ const PlanComp: FC<Props> = ({
           <div className="flex shrink-0 items-center gap-1">
             {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
-                <span className="i-ri-graduation-cap-line mr-1 h-4 w-4" />
+                <RiGraduationCapLine className="mr-1 h-4 w-4" />
                 {t('toVerified', { ns: 'education' })}
                 {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>

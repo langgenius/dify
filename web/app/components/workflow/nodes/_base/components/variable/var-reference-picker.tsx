@@ -4,7 +4,13 @@ import type { CredentialFormSchema, CredentialFormSchemaSelect, FormOption } fro
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
-
+import {
+  RiArrowDownSLine,
+  RiCloseLine,
+  RiErrorWarningFill,
+  RiLoader4Line,
+  RiMoreLine,
+} from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -452,7 +458,7 @@ const VarReferencePicker: FC<Props> = ({
                               trigger={(
                                 <div className="radius-md flex h-8 items-center bg-components-input-bg-normal px-2">
                                   <div className="system-sm-regular mr-1 text-components-input-text-filled">{varKindTypes.find(item => item.value === varKindType)?.label}</div>
-                                  <span className="i-ri-arrow-down-sline h-4 w-4 text-text-quaternary" />
+                                  <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
                                 </div>
                               )}
                               popupClassName="top-8"
@@ -529,12 +535,12 @@ const VarReferencePicker: FC<Props> = ({
                                           )}
                                           {isShowAPart && (
                                             <div className="flex items-center">
-                                              <span className="i-ri-more-line h-3 w-3 text-text-secondary" />
+                                              <RiMoreLine className="h-3 w-3 text-text-secondary" />
                                               <Line3 className="mr-0.5 text-divider-deep"></Line3>
                                             </div>
                                           )}
                                           <div className="flex items-center text-text-accent">
-                                            {isLoading && <span className="i-ri-loader-4-line h-3.5 w-3.5 animate-spin text-text-secondary" />}
+                                            {isLoading && <RiLoader4Line className="h-3.5 w-3.5 animate-spin text-text-secondary" />}
                                             <VariableIconWithColor
                                               variables={value as ValueSelector}
                                               variableCategory={variableCategory}
@@ -559,7 +565,7 @@ const VarReferencePicker: FC<Props> = ({
                                           >
                                             {type}
                                           </div>
-                                          {!isValidVar && <span className="i-ri-error-warning-fill ml-0.5 h-3 w-3 text-text-destructive" />}
+                                          {!isValidVar && <RiErrorWarningFill className="ml-0.5 h-3 w-3 text-text-destructive" />}
                                         </>
                                       )
                                     : (
@@ -567,7 +573,7 @@ const VarReferencePicker: FC<Props> = ({
                                           {isLoading
                                             ? (
                                                 <div className="flex items-center">
-                                                  <span className="i-ri-loader-4-line mr-1 h-3.5 w-3.5 animate-spin text-text-secondary" />
+                                                  <RiLoader4Line className="mr-1 h-3.5 w-3.5 animate-spin text-text-secondary" />
                                                   <span>{placeholder ?? t('common.setVarValuePlaceholder', { ns: 'workflow' })}</span>
                                                 </div>
                                               )
@@ -587,7 +593,7 @@ const VarReferencePicker: FC<Props> = ({
                         className="group invisible absolute right-1 top-[50%] h-5 translate-y-[-50%] cursor-pointer rounded-md p-1 hover:bg-state-base-hover group-hover/wrap:visible"
                         onClick={handleClearVar}
                       >
-                        <span className="i-ri-close-line h-3.5 w-3.5 text-text-tertiary group-hover:text-text-secondary" />
+                        <RiCloseLine className="h-3.5 w-3.5 text-text-tertiary group-hover:text-text-secondary" />
                       </div>
                     )}
                     {!hasValue && valueTypePlaceHolder && (

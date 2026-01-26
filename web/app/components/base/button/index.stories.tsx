@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 
+import { RocketLaunchIcon } from '@heroicons/react/20/solid'
 import { Button } from '.'
 
 const meta = {
@@ -99,7 +100,7 @@ export const WithIcon: Story = {
     variant: 'primary',
     children: (
       <>
-        <span className="i-heroicons-rocket-launch-20-solid mr-1.5 h-4 w-4 stroke-[1.8px]" />
+        <RocketLaunchIcon className="mr-1.5 h-4 w-4 stroke-[1.8px]" />
         Launch
       </>
     ),

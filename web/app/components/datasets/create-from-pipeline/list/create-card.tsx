@@ -1,3 +1,4 @@
+import { RiAddCircleLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -46,7 +47,7 @@ const CreateCard = () => {
     >
       <div className="flex items-center gap-x-3 p-4 pb-2">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-dashed border-divider-regular bg-background-section group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover">
-          <span className="i-ri-add-circle-line size-5 text-text-quaternary group-hover:text-text-accent" />
+          <RiAddCircleLine className="size-5 text-text-quaternary group-hover:text-text-accent" />
         </div>
         <div className="system-md-semibold truncate text-text-primary">
           {t('creation.createFromScratch.title', { ns: 'datasetPipeline' })}

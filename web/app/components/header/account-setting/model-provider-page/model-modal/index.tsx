@@ -9,6 +9,7 @@ import type {
   FormRefObject,
   FormSchema,
 } from '@/app/components/base/form/types'
+import { RiCloseLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -297,7 +298,7 @@ const ModelModal: FC<ModelModalProps> = ({
               className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center"
               onClick={onCancel}
             >
-              <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
             </div>
             <div className="p-6 pb-3">
               {modalTitle}

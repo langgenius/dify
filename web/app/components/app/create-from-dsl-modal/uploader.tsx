@@ -1,6 +1,9 @@
 'use client'
 import type { FC } from 'react'
-
+import {
+  RiDeleteBinLine,
+  RiUploadCloud2Line,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -108,7 +111,7 @@ const Uploader: FC<Props> = ({
         {!file && (
           <div className={cn('flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
             <div className="flex w-full items-center justify-center space-x-2">
-              <span className="i-ri-upload-cloud-2-line h-6 w-6 text-text-tertiary" />
+              <RiUploadCloud2Line className="h-6 w-6 text-text-tertiary" />
               <div className="text-text-tertiary">
                 {t('dslUploader.button', { ns: 'app' })}
                 <span className="cursor-pointer pl-1 text-text-accent" onClick={selectHandle}>{t('dslUploader.browse', { ns: 'app' })}</span>
@@ -132,7 +135,7 @@ const Uploader: FC<Props> = ({
             </div>
             <div className="hidden items-center pr-3 group-hover:flex">
               <ActionButton onClick={removeFile}>
-                <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary" />
+                <RiDeleteBinLine className="h-4 w-4 text-text-tertiary" />
               </ActionButton>
             </div>
           </div>

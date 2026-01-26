@@ -1,4 +1,9 @@
 import {
+  RiCheckboxCircleLine,
+  RiCloseLine,
+  RiErrorWarningLine,
+} from '@remixicon/react'
+import {
   memo,
   useState,
 } from 'react'
@@ -124,7 +129,7 @@ const ViewHistory = ({
                   setOpen(false)
                 }}
               >
-                <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+                <RiCloseLine className="h-4 w-4 text-text-tertiary" />
               </div>
             </div>
             {
@@ -176,12 +181,12 @@ const ViewHistory = ({
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Failed && (
-                            <span className="i-ri-error-warning-line mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F04438]" />
+                            <RiErrorWarningLine className="mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F04438]" />
                           )
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
-                            <span className="i-ri-checkbox-circle-line mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#12B76A]" />
+                            <RiCheckboxCircleLine className="mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#12B76A]" />
                           )
                         }
                         <div>

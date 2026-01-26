@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { RiCloseLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { t } from 'i18next'
 import * as React from 'react'
@@ -81,7 +82,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({
           className="absolute right-24 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={zoomOut}
         >
-          <span className="i-ri-zoom-out-line h-4 w-4 text-gray-500" />
+          <RiZoomOutLine className="h-4 w-4 text-gray-500" />
         </div>
       </Tooltip>
       <Tooltip popupContent={t('operation.zoomIn', { ns: 'common' })}>
@@ -89,7 +90,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({
           className="absolute right-16 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={zoomIn}
         >
-          <span className="i-ri-zoom-in-line h-4 w-4 text-gray-500" />
+          <RiZoomInLine className="h-4 w-4 text-gray-500" />
         </div>
       </Tooltip>
       <Tooltip popupContent={t('operation.cancel', { ns: 'common' })}>
@@ -97,7 +98,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({
           className="absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
           onClick={onCancel}
         >
-          <span className="i-ri-close-line h-4 w-4 text-gray-500" />
+          <RiCloseLine className="h-4 w-4 text-gray-500" />
         </div>
       </Tooltip>
     </div>,

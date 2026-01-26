@@ -1,5 +1,6 @@
 'use client'
 import type { AppIconType } from '@/types/app'
+import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -118,7 +119,7 @@ const CreateAppModal = ({
         className="relative !max-w-[480px] px-8"
       >
         <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onHide}>
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
         {isEditModal && (
           <div className="mb-9 text-xl font-semibold leading-[30px] text-text-primary">{t('editAppTitle', { ns: 'app' })}</div>
@@ -198,8 +199,8 @@ const CreateAppModal = ({
           >
             <span>{!isEditModal ? t('operation.create', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</span>
             <div className="flex gap-0.5">
-              <span className="system-kbd i-ri-command-line size-3.5 rounded-sm bg-components-kbd-bg-white p-0.5" />
-              <span className="system-kbd i-ri-corner-down-left-line size-3.5 rounded-sm bg-components-kbd-bg-white p-0.5" />
+              <RiCommandLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
+              <RiCornerDownLeftLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
             </div>
           </Button>
           <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>

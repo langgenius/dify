@@ -2,7 +2,9 @@
 import type { ChangeEvent, FC } from 'react'
 import type { VarGroupItem as VarGroupItemType } from '../types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
-
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -137,7 +139,9 @@ const VarGroupItem: FC<Props> = ({
                   className="ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive group-hover:block"
                   onClick={onRemove}
                 >
-                  <span className="i-ri-delete-bin-line h-4 w-4" />
+                  <RiDeleteBinLine
+                    className="h-4 w-4"
+                  />
                 </div>
               )}
             </div>

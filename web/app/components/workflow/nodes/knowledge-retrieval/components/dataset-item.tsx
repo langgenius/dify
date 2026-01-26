@@ -1,7 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
-
+import {
+  RiDeleteBinLine,
+  RiEditLine,
+} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -87,7 +90,7 @@ const DatasetItem: FC<Props> = ({
                   showSettingsModal()
                 }}
               >
-                <span className="i-ri-edit-line h-4 w-4 shrink-0 text-text-tertiary" />
+                <RiEditLine className="h-4 w-4 shrink-0 text-text-tertiary" />
               </ActionButton>
             )
           }
@@ -97,7 +100,7 @@ const DatasetItem: FC<Props> = ({
             onMouseEnter={() => setIsDeleteHovered(true)}
             onMouseLeave={() => setIsDeleteHovered(false)}
           >
-            <span className={`i-ri-delete-bin-line ${`h-4 w-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`}`} />
+            <RiDeleteBinLine className={`h-4 w-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`} />
           </ActionButton>
         </div>
       )}

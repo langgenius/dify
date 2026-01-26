@@ -1,3 +1,8 @@
+import {
+  RiAddLine,
+  RiBookOpenLine,
+  RiCloseLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -52,13 +57,13 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
               href={docLink('/use-dify/knowledge/external-knowledge-api')}
               target="_blank"
             >
-              <span className="i-ri-book-open-line h-3 w-3 text-text-accent" />
+              <RiBookOpenLine className="h-3 w-3 text-text-accent" />
               <div className="body-xs-regular grow text-text-accent">{t('externalAPIPanelDocumentation', { ns: 'dataset' })}</div>
             </a>
           </div>
           <div className="flex items-center">
             <ActionButton onClick={() => onClose()}>
-              <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
             </ActionButton>
           </div>
         </div>
@@ -68,7 +73,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
             className="flex items-center justify-center gap-0.5 px-3 py-2"
             onClick={handleOpenExternalAPIModal}
           >
-            <span className="i-ri-add-line h-4 w-4 text-components-button-primary-text" />
+            <RiAddLine className="h-4 w-4 text-components-button-primary-text" />
             <div className="system-sm-medium text-components-button-primary-text">{t('createExternalAPI', { ns: 'dataset' })}</div>
           </Button>
         </div>

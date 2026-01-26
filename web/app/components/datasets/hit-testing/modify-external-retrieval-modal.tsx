@@ -1,3 +1,6 @@
+import {
+  RiCloseLine,
+} from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -45,7 +48,7 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
       <div className="flex items-center justify-between self-stretch p-4 pb-2">
         <div className="system-xl-semibold grow text-text-primary">{t('settingTitle', { ns: 'datasetHitTesting' })}</div>
         <ActionButton className="ml-auto" onClick={onClose}>
-          <span className="i-ri-close-line h-4 w-4 shrink-0" />
+          <RiCloseLine className="h-4 w-4 shrink-0" />
         </ActionButton>
       </div>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch p-4 pt-2">

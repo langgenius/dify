@@ -1,3 +1,4 @@
+import { RiApps2AddLine, RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
@@ -9,7 +10,7 @@ const NoLinkedAppsPanel = () => {
   return (
     <div className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4">
       <div className="inline-flex rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle p-2">
-        <span className="i-ri-apps-2-add-line size-4 text-text-tertiary" />
+        <RiApps2AddLine className="size-4 text-text-tertiary" />
       </div>
       <div className="my-2 text-xs text-text-tertiary">{t('datasetMenus.emptyTip', { ns: 'common' })}</div>
       <a
@@ -18,7 +19,7 @@ const NoLinkedAppsPanel = () => {
         target="_blank"
         rel="noopener noreferrer"
       >
-        <span className="i-ri-book-open-line mr-1 size-4 text-text-accent" />
+        <RiBookOpenLine className="mr-1 size-4 text-text-accent" />
         {t('datasetMenus.viewDoc', { ns: 'common' })}
       </a>
     </div>

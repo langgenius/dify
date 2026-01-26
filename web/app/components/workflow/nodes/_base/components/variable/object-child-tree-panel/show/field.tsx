@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Field as FieldType } from '../../../../../llm/types'
+import { RiArrowDropDownLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -38,7 +39,10 @@ const Field: FC<Props> = ({
         <div className="w-0 grow">
           <div className="relative flex select-none">
             {hasChildren && (
-              <span className={`i-ri-arrow-drop-down-line ${cn('absolute left-[-18px] top-[50%] h-4 w-4 translate-y-[-50%] cursor-pointer bg-components-panel-bg text-text-tertiary', fold && 'rotate-[270deg] text-text-accent')}`} onClick={toggleFold} />
+              <RiArrowDropDownLine
+                className={cn('absolute left-[-18px] top-[50%] h-4 w-4 translate-y-[-50%] cursor-pointer bg-components-panel-bg text-text-tertiary', fold && 'rotate-[270deg] text-text-accent')}
+                onClick={toggleFold}
+              />
             )}
             <div className={cn('system-sm-medium ml-[7px] h-6 truncate leading-6 text-text-secondary', isRoot && rootClassName)}>{name}</div>
             <div className="system-xs-regular ml-3 shrink-0 leading-6 text-text-tertiary">

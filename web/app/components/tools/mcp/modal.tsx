@@ -3,6 +3,7 @@ import type { HeaderItem } from './headers-input'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
+import { RiCloseLine, RiEditLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -228,7 +229,7 @@ const MCPModal = ({
         className={cn('relative !max-w-[520px]', 'p-6')}
       >
         <div className="absolute right-5 top-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
-          <span className="i-ri-close-line h-5 w-5 text-text-tertiary" />
+          <RiCloseLine className="h-5 w-5 text-text-tertiary" />
         </div>
         <div className="title-2xl-semi-bold relative pb-3 text-xl text-text-primary">{!isCreate ? t('mcp.modal.editTitle', { ns: 'tools' }) : t('mcp.modal.title', { ns: 'tools' })}</div>
         <div className="space-y-5 py-3">
@@ -272,7 +273,7 @@ const MCPModal = ({
                   isHovering
                     ? (
                         <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl bg-background-overlay-alt">
-                          <span className="i-ri-edit-line size-6 text-text-primary-on-surface" />
+                          <RiEditLine className="size-6 text-text-primary-on-surface" />
                         </div>
                       )
                     : null

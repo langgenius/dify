@@ -1,4 +1,5 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { RiEqualizer2Line } from '@remixicon/react'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -156,7 +157,7 @@ const Moderation = ({
             )}
             {isHovering && (
               <Button className="w-full" onClick={handleOpenModerationSettingModal} disabled={disabled}>
-                <span className="i-ri-equalizer-2-line mr-1 h-4 w-4" />
+                <RiEqualizer2Line className="mr-1 h-4 w-4" />
                 {t('operation.settings', { ns: 'common' })}
               </Button>
             )}

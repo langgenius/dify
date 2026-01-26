@@ -2,7 +2,9 @@
 import type { FC } from 'react'
 import type { Node, NodeOutPutVar, Var } from '../../../types'
 import type { Condition, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LogicalOperator } from '../types'
-
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -122,7 +124,7 @@ const ConditionWrap: FC<Props> = ({
                         size="small"
                         disabled={readOnly}
                       >
-                        <span className="i-ri-add-line mr-1 h-3.5 w-3.5" />
+                        <RiAddLine className="mr-1 h-3.5 w-3.5" />
                         {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
                       </Button>
                     )}

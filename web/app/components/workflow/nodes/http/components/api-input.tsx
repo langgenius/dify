@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Var } from '../../../types'
+import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -55,7 +56,7 @@ const ApiInput: FC<Props> = ({
         trigger={(
           <div className={cn(readonly && 'cursor-pointer', 'flex h-8 shrink-0 items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-2.5')}>
             <div className="w-12 pl-0.5 text-xs font-medium uppercase leading-[18px] text-text-primary">{method}</div>
-            {!readonly && <span className="i-ri-arrow-down-sline ml-1 h-3.5 w-3.5 text-text-secondary" />}
+            {!readonly && <RiArrowDownSLine className="ml-1 h-3.5 w-3.5 text-text-secondary" />}
           </div>
         )}
         popupClassName="top-[34px] w-[108px]"

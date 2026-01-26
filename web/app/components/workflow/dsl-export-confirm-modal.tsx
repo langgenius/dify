@@ -1,5 +1,6 @@
 'use client'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import { RiCloseLine, RiLock2Line } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useState } from 'react'
@@ -38,7 +39,7 @@ const DSLExportConfirmModal = ({
     >
       <div className="title-2xl-semi-bold relative pb-6 text-text-primary">{t('env.export.title', { ns: 'workflow' })}</div>
       <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onClose}>
-        <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>
       <div className="relative">
         <table className="radius-md w-full border-separate border-spacing-0 border border-divider-regular shadow-xs">
@@ -56,7 +57,7 @@ const DSLExportConfirmModal = ({
                     <Env className="h-4 w-4 shrink-0 text-util-colors-violet-violet-600" />
                     <div className="truncate text-text-primary">{env.name}</div>
                     <div className="shrink-0 text-text-tertiary">Secret</div>
-                    <span className="i-ri-lock-2-line h-3 w-3 shrink-0 text-text-tertiary" />
+                    <RiLock2Line className="h-3 w-3 shrink-0 text-text-tertiary" />
                   </div>
                 </td>
                 <td className={cn('h-7 pl-3', index + 1 !== envList.length && 'border-b')}>

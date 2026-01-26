@@ -1,6 +1,9 @@
 'use client'
 import type { FC } from 'react'
-
+import {
+  RiAddLine,
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import { useClickAway } from 'ahooks'
 import * as React from 'react'
 import { useState } from 'react'
@@ -61,7 +64,7 @@ const GetSchema: FC<Props> = ({
           className="space-x-1 "
           onClick={() => { setShowImportFromUrl(!showImportFromUrl) }}
         >
-          <span className="i-ri-add-line h-3 w-3" />
+          <RiAddLine className="h-3 w-3" />
           <div className="system-xs-medium text-text-secondary">{t('createTool.importFromUrl', { ns: 'tools' })}</div>
         </Button>
         {showImportFromUrl && (
@@ -95,7 +98,7 @@ const GetSchema: FC<Props> = ({
           onClick={() => { setShowExamples(!showExamples) }}
         >
           <div className="system-xs-medium text-text-secondary">{t('createTool.examples', { ns: 'tools' })}</div>
-          <span className="i-ri-arrow-down-sline h-3 w-3" />
+          <RiArrowDownSLine className="h-3 w-3" />
         </Button>
         {showExamples && (
           <div className="absolute right-0 top-7 rounded-lg bg-components-panel-bg p-1 shadow-sm">

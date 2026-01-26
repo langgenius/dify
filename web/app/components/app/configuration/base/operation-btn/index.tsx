@@ -1,6 +1,9 @@
 'use client'
 import type { FC } from 'react'
-
+import {
+  RiAddLine,
+  RiEditLine,
+} from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,8 +17,8 @@ export type IOperationBtnProps = {
 }
 
 const iconMap = {
-  add: <span className="i-ri-add-line h-3.5 w-3.5" />,
-  edit: <span className="i-ri-edit-line h-3.5 w-3.5" />,
+  add: <RiAddLine className="h-3.5 w-3.5" />,
+  edit: <RiEditLine className="h-3.5 w-3.5" />,
 }
 
 const OperationBtn: FC<IOperationBtnProps> = ({

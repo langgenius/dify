@@ -1,4 +1,5 @@
 import type { FileTypeSelectOption } from './types'
+import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -30,10 +31,11 @@ const Trigger = ({
         : (
             <span className="grow p-1">{t('placeholder.select', { ns: 'common' })}</span>
           )}
-      <span className={`i-ri-arrow-down-sline ${cn(
-        'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
-        open && 'text-text-secondary',
-      )}`}
+      <RiArrowDownSLine
+        className={cn(
+          'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
+          open && 'text-text-secondary',
+        )}
       />
     </>
   )

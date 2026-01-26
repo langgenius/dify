@@ -3,6 +3,7 @@
 import type { FC } from 'react'
 import type { Plugin } from '../plugins/types'
 import type { SearchResult } from './actions'
+import { RiSearchLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce, useKeyPress } from 'ahooks'
 import { Command } from 'cmdk'
@@ -306,7 +307,7 @@ const GotoAnything: FC<Props> = ({
             loop
           >
             <div className="flex items-center gap-3 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3">
-              <span className="i-ri-search-line h-4 w-4 text-text-quaternary" />
+              <RiSearchLine className="h-4 w-4 text-text-quaternary" />
               <div className="flex flex-1 items-center gap-2">
                 <Input
                   ref={inputRef}

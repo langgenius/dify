@@ -1,5 +1,6 @@
 'use client'
 
+import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -23,7 +24,7 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
       onClose={noop}
     >
       <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onClose}>
-        <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>
       <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-section p-3 shadow-xl">
         <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />

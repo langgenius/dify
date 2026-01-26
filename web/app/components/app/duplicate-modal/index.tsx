@@ -1,5 +1,6 @@
 'use client'
 import type { AppIconType } from '@/types/app'
+import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useState } from 'react'
@@ -76,7 +77,7 @@ const DuplicateAppModal = ({
         className={cn('relative !max-w-[480px]', 'px-8')}
       >
         <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onHide}>
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
         <div className="relative mb-9 mt-3 text-xl font-semibold leading-[30px] text-text-primary">{t('duplicateTitle', { ns: 'app' })}</div>
         <div className="system-sm-regular mb-9 text-text-secondary">

@@ -1,7 +1,17 @@
 import type { OperationName } from '../types'
 import type { CommonResponse } from '@/models/common'
 import type { DocumentDownloadResponse } from '@/service/datasets'
-
+import {
+  RiArchive2Line,
+  RiDeleteBinLine,
+  RiDownload2Line,
+  RiEditLine,
+  RiEqualizer2Line,
+  RiLoopLeftLine,
+  RiMoreFill,
+  RiPauseCircleLine,
+  RiPlayCircleLine,
+} from '@remixicon/react'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
@@ -207,7 +217,7 @@ const Operations = ({
                 : 'p-0.5 hover:bg-state-base-hover')}
               onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}
             >
-              <span className="i-ri-equalizer-2-line h-4 w-4 text-components-button-secondary-text" />
+              <RiEqualizer2Line className="h-4 w-4 text-components-button-secondary-text" />
             </button>
           </Tooltip>
           <CustomPopover
@@ -224,7 +234,7 @@ const Operations = ({
                         })
                       }}
                     >
-                      <span className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
+                      <RiEditLine className="h-4 w-4 text-text-tertiary" />
                       <span className={s.actionName}>{t('list.table.rename', { ns: 'datasetDocuments' })}</span>
                     </div>
                     {data_source_type === DataSourceType.FILE && (
@@ -237,13 +247,13 @@ const Operations = ({
                           handleDownload()
                         }}
                       >
-                        <span className="i-ri-download-2-line h-4 w-4 text-text-tertiary" />
+                        <RiDownload2Line className="h-4 w-4 text-text-tertiary" />
                         <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
                       </div>
                     )}
                     {['notion_import', DataSourceType.WEB].includes(data_source_type) && (
                       <div className={s.actionItem} onClick={() => onOperate('sync')}>
-                        <span className="i-ri-loop-left-line h-4 w-4 text-text-tertiary" />
+                        <RiLoopLeftLine className="h-4 w-4 text-text-tertiary" />
                         <span className={s.actionName}>{t('list.action.sync', { ns: 'datasetDocuments' })}</span>
                       </div>
                     )}
@@ -261,7 +271,7 @@ const Operations = ({
                         handleDownload()
                       }}
                     >
-                      <span className="i-ri-download-2-line h-4 w-4 text-text-tertiary" />
+                      <RiDownload2Line className="h-4 w-4 text-text-tertiary" />
                       <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
                     </div>
                     <Divider className="my-1" />
@@ -269,30 +279,30 @@ const Operations = ({
                 )}
                 {!archived && display_status?.toLowerCase() === 'indexing' && (
                   <div className={s.actionItem} onClick={() => onOperate('pause')}>
-                    <span className="i-ri-pause-circle-line h-4 w-4 text-text-tertiary" />
+                    <RiPauseCircleLine className="h-4 w-4 text-text-tertiary" />
                     <span className={s.actionName}>{t('list.action.pause', { ns: 'datasetDocuments' })}</span>
                   </div>
                 )}
                 {!archived && display_status?.toLowerCase() === 'paused' && (
                   <div className={s.actionItem} onClick={() => onOperate('resume')}>
-                    <span className="i-ri-play-circle-line h-4 w-4 text-text-tertiary" />
+                    <RiPlayCircleLine className="h-4 w-4 text-text-tertiary" />
                     <span className={s.actionName}>{t('list.action.resume', { ns: 'datasetDocuments' })}</span>
                   </div>
                 )}
                 {!archived && (
                   <div className={s.actionItem} onClick={() => onOperate('archive')}>
-                    <span className="i-ri-archive-2-line h-4 w-4 text-text-tertiary" />
+                    <RiArchive2Line className="h-4 w-4 text-text-tertiary" />
                     <span className={s.actionName}>{t('list.action.archive', { ns: 'datasetDocuments' })}</span>
                   </div>
                 )}
                 {archived && (
                   <div className={s.actionItem} onClick={() => onOperate('un_archive')}>
-                    <span className="i-ri-archive-2-line h-4 w-4 text-text-tertiary" />
+                    <RiArchive2Line className="h-4 w-4 text-text-tertiary" />
                     <span className={s.actionName}>{t('list.action.unarchive', { ns: 'datasetDocuments' })}</span>
                   </div>
                 )}
                 <div className={cn(s.actionItem, s.deleteActionItem, 'group')} onClick={() => setShowModal(true)}>
-                  <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
+                  <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
                   <span className={cn(s.actionName, 'group-hover:text-text-destructive')}>{t('list.action.delete', { ns: 'datasetDocuments' })}</span>
                 </div>
               </div>
@@ -301,7 +311,7 @@ const Operations = ({
             position="br"
             btnElement={(
               <div className={cn(s.commonIcon)}>
-                <span className="i-ri-more-fill h-4 w-4 text-components-button-secondary-text" />
+                <RiMoreFill className="h-4 w-4 text-components-button-secondary-text" />
               </div>
             )}
             btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!hover:bg-state-base-hover !shadow-none' : '!bg-transparent')}

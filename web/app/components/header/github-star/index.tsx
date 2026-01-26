@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { GithubRepo } from '@/models/common'
+import { RiLoader2Line } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 
@@ -27,7 +28,7 @@ const GithubStar: FC<{ className: string }> = (props) => {
   })
 
   if (isFetching)
-    return <span className="i-ri-loader-2-line size-3 shrink-0 animate-spin text-text-tertiary" />
+    return <RiLoader2Line className="size-3 shrink-0 animate-spin text-text-tertiary" />
 
   if (isError)
     return <span {...props}>{defaultData.stargazers_count.toLocaleString()}</span>

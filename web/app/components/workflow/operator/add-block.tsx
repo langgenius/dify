@@ -2,6 +2,7 @@ import type { OffsetOptions } from '@floating-ui/react'
 import type {
   OnSelectBlock,
 } from '@/app/components/workflow/types'
+import { RiAddCircleFill } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -94,7 +95,7 @@ const AddBlock = ({
           open && 'bg-state-accent-active text-text-accent',
         )}
         >
-          <span className="i-ri-add-circle-fill h-4 w-4" />
+          <RiAddCircleFill className="h-4 w-4" />
         </div>
       </TipPopup>
     )

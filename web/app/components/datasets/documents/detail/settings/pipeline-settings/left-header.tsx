@@ -1,3 +1,4 @@
+import { RiArrowLeftLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -33,7 +34,7 @@ const LeftHeader = ({
         onClick={navigateBack}
         aria-label={t('operation.back', { ns: 'common' })}
       >
-        <span className="i-ri-arrow-left-line size-5 " />
+        <RiArrowLeftLine className="size-5 " />
       </Button>
       <Effect className="left-8 top-[-34px] opacity-20" />
     </div>

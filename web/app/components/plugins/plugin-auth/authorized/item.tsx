@@ -1,5 +1,10 @@
 import type { Credential } from '../types'
-
+import {
+  RiCheckLine,
+  RiDeleteBinLine,
+  RiEditLine,
+  RiEqualizer2Line,
+} from '@remixicon/react'
 import {
   memo,
   useMemo,
@@ -115,7 +120,7 @@ const Item = ({
                 <div className="h-4 w-4">
                   {
                     selectedCredentialId === credential.id && (
-                      <span className="i-ri-check-line h-4 w-4 text-text-accent" />
+                      <RiCheckLine className="h-4 w-4 text-text-accent" />
                     )
                   }
                 </div>
@@ -176,7 +181,7 @@ const Item = ({
                       setRenameValue(credential.name)
                     }}
                   >
-                    <span className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
+                    <RiEditLine className="h-4 w-4 text-text-tertiary" />
                   </ActionButton>
                 </Tooltip>
               )
@@ -198,7 +203,7 @@ const Item = ({
                       )
                     }}
                   >
-                    <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
+                    <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
                   </ActionButton>
                 </Tooltip>
               )
@@ -214,7 +219,7 @@ const Item = ({
                       onDelete?.(credential.id)
                     }}
                   >
-                    <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary hover:text-text-destructive" />
+                    <RiDeleteBinLine className="h-4 w-4 text-text-tertiary hover:text-text-destructive" />
                   </ActionButton>
                 </Tooltip>
               )

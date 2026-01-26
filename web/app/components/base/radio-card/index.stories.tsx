@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { RiCloudLine, RiCpuLine, RiDatabase2Line, RiLightbulbLine, RiRocketLine, RiShieldLine } from '@remixicon/react'
 import { useState } from 'react'
 import RadioCard from '.'
 
@@ -63,7 +64,7 @@ const RadioCardDemo = (args: any) => {
 export const Default: Story = {
   render: args => <RadioCardDemo {...args} />,
   args: {
-    icon: <span className="i-ri-rocket-line h-5 w-5 text-purple-600" />,
+    icon: <RiRocketLine className="h-5 w-5 text-purple-600" />,
     iconBgClassName: 'bg-purple-100',
     title: 'Quick Start',
     description: 'Get started quickly with default settings',
@@ -76,7 +77,7 @@ export const Default: Story = {
 export const Selected: Story = {
   render: args => <RadioCardDemo {...args} />,
   args: {
-    icon: <span className="i-ri-rocket-line h-5 w-5 text-purple-600" />,
+    icon: <RiRocketLine className="h-5 w-5 text-purple-600" />,
     iconBgClassName: 'bg-purple-100',
     title: 'Quick Start',
     description: 'Get started quickly with default settings',
@@ -89,7 +90,7 @@ export const Selected: Story = {
 export const NoRadio: Story = {
   render: args => <RadioCardDemo {...args} />,
   args: {
-    icon: <span className="i-ri-rocket-line h-5 w-5 text-purple-600" />,
+    icon: <RiRocketLine className="h-5 w-5 text-purple-600" />,
     iconBgClassName: 'bg-purple-100',
     title: 'Information Card',
     description: 'Card without radio indicator',
@@ -104,7 +105,7 @@ const WithConfigurationDemo = () => {
   return (
     <div style={{ width: '400px' }}>
       <RadioCard
-        icon={<span className="i-ri-database-2-line h-5 w-5 text-blue-600" />}
+        icon={<RiDatabase2Line className="h-5 w-5 text-blue-600" />}
         iconBgClassName="bg-blue-100"
         title="Database Storage"
         description="Store data in a managed database"
@@ -147,21 +148,21 @@ const MultipleCardsDemo = () => {
   const options = [
     {
       value: 'standard',
-      icon: <span className="i-ri-rocket-line h-5 w-5 text-purple-600" />,
+      icon: <RiRocketLine className="h-5 w-5 text-purple-600" />,
       iconBg: 'bg-purple-100',
       title: 'Standard',
       description: 'Perfect for most use cases',
     },
     {
       value: 'advanced',
-      icon: <span className="i-ri-cpu-line h-5 w-5 text-blue-600" />,
+      icon: <RiCpuLine className="h-5 w-5 text-blue-600" />,
       iconBg: 'bg-blue-100',
       title: 'Advanced',
       description: 'More features and customization',
     },
     {
       value: 'enterprise',
-      icon: <span className="i-ri-shield-line h-5 w-5 text-green-600" />,
+      icon: <RiShieldLine className="h-5 w-5 text-green-600" />,
       iconBg: 'bg-green-100',
       title: 'Enterprise',
       description: 'Full features with premium support',
@@ -205,7 +206,7 @@ const CloudProviderSelectionDemo = () => {
       <h3 className="mb-4 text-lg font-semibold">Select Cloud Provider</h3>
       <div className="space-y-3">
         <RadioCard
-          icon={<span className="i-ri-cloud-line h-5 w-5 text-orange-600" />}
+          icon={<RiCloudLine className="h-5 w-5 text-orange-600" />}
           iconBgClassName="bg-orange-100"
           title="Amazon Web Services"
           description="Industry-leading cloud infrastructure"
@@ -228,7 +229,7 @@ const CloudProviderSelectionDemo = () => {
           )}
         />
         <RadioCard
-          icon={<span className="i-ri-cloud-line h-5 w-5 text-blue-600" />}
+          icon={<RiCloudLine className="h-5 w-5 text-blue-600" />}
           iconBgClassName="bg-blue-100"
           title="Microsoft Azure"
           description="Enterprise-grade cloud platform"
@@ -236,7 +237,7 @@ const CloudProviderSelectionDemo = () => {
           onChosen={() => setProvider('azure')}
         />
         <RadioCard
-          icon={<span className="i-ri-cloud-line h-5 w-5 text-red-600" />}
+          icon={<RiCloudLine className="h-5 w-5 text-red-600" />}
           iconBgClassName="bg-red-100"
           title="Google Cloud Platform"
           description="Scalable and reliable infrastructure"
@@ -263,7 +264,7 @@ const DeploymentStrategyDemo = () => {
       <p className="mb-4 text-sm text-gray-600">Choose how you want to deploy your application</p>
       <div className="space-y-3">
         <RadioCard
-          icon={<span className="i-ri-rocket-line h-5 w-5 text-green-600" />}
+          icon={<RiRocketLine className="h-5 w-5 text-green-600" />}
           iconBgClassName="bg-green-100"
           title="Rolling Deployment"
           description="Gradually replace instances with zero downtime"
@@ -280,7 +281,7 @@ const DeploymentStrategyDemo = () => {
           )}
         />
         <RadioCard
-          icon={<span className="i-ri-cpu-line h-5 w-5 text-blue-600" />}
+          icon={<RiCpuLine className="h-5 w-5 text-blue-600" />}
           iconBgClassName="bg-blue-100"
           title="Blue-Green Deployment"
           description="Switch between two identical environments"
@@ -297,7 +298,7 @@ const DeploymentStrategyDemo = () => {
           )}
         />
         <RadioCard
-          icon={<span className="i-ri-lightbulb-line h-5 w-5 text-yellow-600" />}
+          icon={<RiLightbulbLine className="h-5 w-5 text-yellow-600" />}
           iconBgClassName="bg-yellow-100"
           title="Canary Deployment"
           description="Test with a small subset of users first"
@@ -337,7 +338,7 @@ const StorageOptionsDemo = () => {
   const storageOptions = [
     {
       value: 'ssd',
-      icon: <span className="i-ri-database-2-line h-5 w-5 text-purple-600" />,
+      icon: <RiDatabase2Line className="h-5 w-5 text-purple-600" />,
       iconBg: 'bg-purple-100',
       title: 'SSD Storage',
       description: 'Fast and reliable solid state drives',
@@ -346,7 +347,7 @@ const StorageOptionsDemo = () => {
     },
     {
       value: 'hdd',
-      icon: <span className="i-ri-database-2-line h-5 w-5 text-gray-600" />,
+      icon: <RiDatabase2Line className="h-5 w-5 text-gray-600" />,
       iconBg: 'bg-gray-100',
       title: 'HDD Storage',
       description: 'Cost-effective magnetic disk storage',
@@ -355,7 +356,7 @@ const StorageOptionsDemo = () => {
     },
     {
       value: 'nvme',
-      icon: <span className="i-ri-database-2-line h-5 w-5 text-red-600" />,
+      icon: <RiDatabase2Line className="h-5 w-5 text-red-600" />,
       iconBg: 'bg-red-100',
       title: 'NVMe Storage',
       description: 'Ultra-fast PCIe-based storage',
@@ -421,7 +422,7 @@ const APIAuthMethodDemo = () => {
       <h3 className="mb-4 text-lg font-semibold">API Authentication</h3>
       <div className="space-y-3">
         <RadioCard
-          icon={<span className="i-ri-shield-line h-5 w-5 text-blue-600" />}
+          icon={<RiShieldLine className="h-5 w-5 text-blue-600" />}
           iconBgClassName="bg-blue-100"
           title="API Key"
           description="Simple authentication using a secret key"
@@ -442,7 +443,7 @@ const APIAuthMethodDemo = () => {
           )}
         />
         <RadioCard
-          icon={<span className="i-ri-shield-line h-5 w-5 text-green-600" />}
+          icon={<RiShieldLine className="h-5 w-5 text-green-600" />}
           iconBgClassName="bg-green-100"
           title="OAuth 2.0"
           description="Industry-standard authorization protocol"
@@ -460,7 +461,7 @@ const APIAuthMethodDemo = () => {
           )}
         />
         <RadioCard
-          icon={<span className="i-ri-shield-line h-5 w-5 text-purple-600" />}
+          icon={<RiShieldLine className="h-5 w-5 text-purple-600" />}
           iconBgClassName="bg-purple-100"
           title="JWT Token"
           description="JSON Web Token based authentication"
@@ -489,7 +490,7 @@ const PlaygroundDemo = () => {
   return (
     <div style={{ width: '450px' }} className="space-y-3">
       <RadioCard
-        icon={<span className="i-ri-rocket-line h-5 w-5 text-purple-600" />}
+        icon={<RiRocketLine className="h-5 w-5 text-purple-600" />}
         iconBgClassName="bg-purple-100"
         title="Option 1"
         description="First option with icon and description"
@@ -497,7 +498,7 @@ const PlaygroundDemo = () => {
         onChosen={() => setSelected('option1')}
       />
       <RadioCard
-        icon={<span className="i-ri-database-2-line h-5 w-5 text-blue-600" />}
+        icon={<RiDatabase2Line className="h-5 w-5 text-blue-600" />}
         iconBgClassName="bg-blue-100"
         title="Option 2"
         description="Second option with different styling"
@@ -510,7 +511,7 @@ const PlaygroundDemo = () => {
         )}
       />
       <RadioCard
-        icon={<span className="i-ri-cloud-line h-5 w-5 text-green-600" />}
+        icon={<RiCloudLine className="h-5 w-5 text-green-600" />}
         iconBgClassName="bg-green-100"
         title="Option 3"
         description="Third option to demonstrate selection"

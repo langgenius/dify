@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
@@ -41,7 +42,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
               {value === 'llm' ? t('createTool.toolInput.methodParameter', { ns: 'tools' }) : t('createTool.toolInput.methodSetting', { ns: 'tools' })}
             </div>
             <div className="ml-1 shrink-0 text-text-secondary opacity-60">
-              <span className="i-ri-arrow-down-sline h-4 w-4" />
+              <RiArrowDownSLine className="h-4 w-4" />
             </div>
           </div>
         </PortalToFollowElemTrigger>

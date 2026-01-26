@@ -1,7 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { NodeTracing } from '@/types/workflow'
-
+import {
+  RiArrowRightSLine,
+  RiCloseLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -43,7 +46,7 @@ const LoopResultPanel: FC<Props> = ({
             {t(`${i18nPrefix}.testRunLoop`, { ns: 'workflow' }) }
           </div>
           <div className="ml-2 shrink-0 cursor-pointer p-1" onClick={onHide}>
-            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
         <div className="flex cursor-pointer items-center space-x-1 py-2 text-text-accent-secondary" onClick={onBack}>
@@ -72,10 +75,10 @@ const LoopResultPanel: FC<Props> = ({
                   {' '}
                   {index + 1}
                 </span>
-                <span className={`i-ri-arrow-right-sline ${cn(
+                <RiArrowRightSLine className={cn(
                   'h-4 w-4 shrink-0 text-text-tertiary transition-transform duration-200',
                   expandedLoops[index] && 'rotate-90',
-                )}`}
+                )}
                 />
               </div>
             </div>

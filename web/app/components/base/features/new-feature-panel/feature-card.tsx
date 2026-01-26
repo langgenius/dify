@@ -1,3 +1,6 @@
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
@@ -41,7 +44,7 @@ const FeatureCard = ({
             <Tooltip
               popupContent={tooltip}
             >
-              <div className="ml-0.5 p-px"><span className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary" /></div>
+              <div className="ml-0.5 p-px"><RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary" /></div>
             </Tooltip>
           )}
         </div>

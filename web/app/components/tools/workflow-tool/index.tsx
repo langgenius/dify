@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
+import { RiErrorWarningLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -308,7 +309,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                                             </div>
                                           )}
                                         >
-                                          <span className="i-ri-error-warning-line h-3 w-3 text-text-warning-secondary" />
+                                          <RiErrorWarningLine className="h-3 w-3 text-text-warning-secondary" />
                                         </Tooltip>
                                       )
                                     : null

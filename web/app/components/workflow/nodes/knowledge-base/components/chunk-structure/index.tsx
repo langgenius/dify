@@ -1,4 +1,5 @@
 import type { ChunkStructureEnum } from '../../types'
+import { RiAddLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -61,7 +62,7 @@ const ChunkStructure = ({
                   className="w-full"
                   variant="secondary-accent"
                 >
-                  <span className="i-ri-add-line mr-1 h-4 w-4" />
+                  <RiAddLine className="mr-1 h-4 w-4" />
                   {t('nodes.knowledgeBase.chooseChunkStructure', { ns: 'workflow' })}
                 </Button>
               )}

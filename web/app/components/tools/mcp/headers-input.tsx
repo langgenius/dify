@@ -1,4 +1,5 @@
 'use client'
+import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid } from 'uuid'
@@ -60,7 +61,7 @@ const HeadersInput = ({
             onClick={handleAddItem}
             className="w-full"
           >
-            <span className="i-ri-add-line mr-1 h-4 w-4" />
+            <RiAddLine className="mr-1 h-4 w-4" />
             {t('mcp.modal.addHeader', { ns: 'tools' })}
           </Button>
         )}
@@ -110,7 +111,7 @@ const HeadersInput = ({
                   onClick={() => handleRemoveItem(index)}
                   className="mr-2"
                 >
-                  <span className="i-ri-delete-bin-line h-4 w-4 text-text-destructive" />
+                  <RiDeleteBinLine className="h-4 w-4 text-text-destructive" />
                 </ActionButton>
               )}
             </div>
@@ -124,7 +125,7 @@ const HeadersInput = ({
           onClick={handleAddItem}
           className="w-full"
         >
-          <span className="i-ri-add-line mr-1 h-4 w-4" />
+          <RiAddLine className="mr-1 h-4 w-4" />
           {t('mcp.modal.addHeader', { ns: 'tools' })}
         </Button>
       )}

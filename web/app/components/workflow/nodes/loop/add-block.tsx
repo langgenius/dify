@@ -2,7 +2,9 @@ import type { LoopNodeType } from './types'
 import type {
   OnSelectBlock,
 } from '@/app/components/workflow/types'
-
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -53,7 +55,7 @@ const AddBlock = ({
         open && 'bg-components-button-secondary-bg-hover',
       )}
       >
-        <span className="i-ri-add-line mr-1 h-4 w-4" />
+        <RiAddLine className="mr-1 h-4 w-4" />
         {t('common.addBlock', { ns: 'workflow' })}
       </div>
     )

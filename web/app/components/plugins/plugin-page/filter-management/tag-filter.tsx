@@ -1,5 +1,9 @@
 'use client'
 
+import {
+  RiArrowDownSLine,
+  RiCloseCircleFill,
+} from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
@@ -70,12 +74,15 @@ const TagsFilter = ({
           </div>
           {
             !!selectedTagsLength && (
-              <span className="i-ri-close-circle-fill h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => onChange([])} />
+              <RiCloseCircleFill
+                className="h-4 w-4 cursor-pointer text-text-quaternary"
+                onClick={() => onChange([])}
+              />
             )
           }
           {
             !selectedTagsLength && (
-              <span className="i-ri-arrow-down-sline h-4 w-4" />
+              <RiArrowDownSLine className="h-4 w-4" />
             )
           }
         </div>

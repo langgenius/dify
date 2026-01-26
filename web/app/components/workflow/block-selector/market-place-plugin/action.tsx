@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiMoreFill } from '@remixicon/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
@@ -85,7 +86,7 @@ const OperationDropdown: FC<Props> = ({
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         <ActionButton className={cn(open && 'bg-state-base-hover')}>
-          <span className="i-ri-more-fill h-4 w-4 text-components-button-secondary-accent-text" />
+          <RiMoreFill className="h-4 w-4 text-components-button-secondary-accent-text" />
         </ActionButton>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[9999]">

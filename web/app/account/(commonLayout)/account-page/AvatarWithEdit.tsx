@@ -4,6 +4,7 @@ import type { Area } from 'react-easy-crop'
 import type { OnImageInput } from '@/app/components/base/app-icon-picker/ImageInput'
 import type { AvatarProps } from '@/app/components/base/avatar'
 import type { ImageFile } from '@/types/app'
+import { RiDeleteBin5Line, RiPencilLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -121,12 +122,12 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
             {hoverArea === 'right' && !onAvatarError
               ? (
                   <span className="text-xs text-white">
-                    <span className="i-ri-delete-bin-5-line" />
+                    <RiDeleteBin5Line />
                   </span>
                 )
               : (
                   <span className="text-xs text-white">
-                    <span className="i-ri-pencil-line" />
+                    <RiPencilLine />
                   </span>
                 )}
           </div>

@@ -5,6 +5,7 @@ import type {
   Node,
 } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
+import { RiApps2AddLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -192,7 +193,7 @@ const FeaturesTrigger = () => {
           )}
           onClick={handleShowFeatures}
         >
-          <span className="i-ri-apps-2-add-line mr-1 h-4 w-4 text-components-button-secondary-text" />
+          <RiApps2AddLine className="mr-1 h-4 w-4 text-components-button-secondary-text" />
           {t('common.features', { ns: 'workflow' })}
         </Button>
       )}

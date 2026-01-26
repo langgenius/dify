@@ -1,6 +1,8 @@
 'use client'
 import type { FC } from 'react'
-
+import {
+  RiInformation2Line,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -82,7 +84,7 @@ const ModelInfo: FC<Props> = ({
               open && 'bg-components-button-tertiary-bg-hover',
             )}
             >
-              <span className="i-ri-information-2-line h-4 w-4 text-text-tertiary" />
+              <RiInformation2Line className="h-4 w-4 text-text-tertiary" />
             </div>
           </PortalToFollowElemTrigger>
           <PortalToFollowElemContent className="z-[1002]">

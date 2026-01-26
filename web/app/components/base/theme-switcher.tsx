@@ -1,5 +1,9 @@
 'use client'
-
+import {
+  RiComputerLine,
+  RiMoonLine,
+  RiSunLine,
+} from '@remixicon/react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/utils/classnames'
 
@@ -22,7 +26,7 @@ export default function ThemeSwitcher() {
         onClick={() => handleThemeChange('system')}
       >
         <div className="p-0.5">
-          <span className="i-ri-computer-line h-4 w-4" />
+          <RiComputerLine className="h-4 w-4" />
         </div>
       </div>
       <div className={cn('h-[14px] w-px bg-transparent', theme === 'dark' && 'bg-divider-regular')}></div>
@@ -34,7 +38,7 @@ export default function ThemeSwitcher() {
         onClick={() => handleThemeChange('light')}
       >
         <div className="p-0.5">
-          <span className="i-ri-sun-line h-4 w-4" />
+          <RiSunLine className="h-4 w-4" />
         </div>
       </div>
       <div className={cn('h-[14px] w-px bg-transparent', theme === 'system' && 'bg-divider-regular')}></div>
@@ -46,7 +50,7 @@ export default function ThemeSwitcher() {
         onClick={() => handleThemeChange('dark')}
       >
         <div className="p-0.5">
-          <span className="i-ri-moon-line h-4 w-4" />
+          <RiMoonLine className="h-4 w-4" />
         </div>
       </div>
     </div>

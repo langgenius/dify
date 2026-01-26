@@ -1,5 +1,6 @@
 'use client'
 
+import { RiCloseLine } from '@remixicon/react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -65,7 +66,7 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
     >
       <div className="relative pb-2 text-xl font-semibold leading-[30px] text-text-primary">{t('tag.manageTags', { ns: 'common' })}</div>
       <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={() => setShowTagManagementModal(false)}>
-        <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         <input

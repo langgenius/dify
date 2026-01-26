@@ -1,6 +1,7 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
 import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
+import { RiCloseLine, RiEyeLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -114,7 +115,7 @@ const InputFieldPanel = () => {
           onClick={togglePreviewPanel}
           disabled={isEditing}
         >
-          <span className="i-ri-eye-line size-3.5" />
+          <RiEyeLine className="size-3.5" />
           <span className="px-[3px]">{t('operations.preview', { ns: 'datasetPipeline' })}</span>
         </Button>
         <Divider type="vertical" className="mx-1 h-3" />
@@ -123,7 +124,7 @@ const InputFieldPanel = () => {
           className="flex size-6 shrink-0 items-center justify-center p-0.5"
           onClick={closePanel}
         >
-          <span className="i-ri-close-line size-4 text-text-tertiary" />
+          <RiCloseLine className="size-4 text-text-tertiary" />
         </button>
       </div>
       <div className="system-sm-regular shrink-0 px-4 pb-2 pt-1 text-text-tertiary">

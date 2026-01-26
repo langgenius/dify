@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { RelatedApp } from '@/models/datasets'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import Link from 'next/link'
 import * as React from 'react'
 import AppIcon from '@/app/components/base/app-icon'
@@ -34,7 +35,7 @@ const LikedItem = ({
         {!isMobile && <div className={cn(' system-sm-medium ml-2 truncate text-text-primary')}>{detail?.name || '--'}</div>}
       </div>
       <div className="system-2xs-medium-uppercase shrink-0 text-text-tertiary group-hover/link-item:hidden">{appTypeMap[detail.mode]}</div>
-      <span className="i-ri-arrow-right-up-line hidden h-4 w-4 text-text-tertiary group-hover/link-item:block" />
+      <RiArrowRightUpLine className="hidden h-4 w-4 text-text-tertiary group-hover/link-item:block" />
     </Link>
   )
 }

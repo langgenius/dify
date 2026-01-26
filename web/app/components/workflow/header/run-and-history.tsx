@@ -1,5 +1,7 @@
 import type { ViewHistoryProps } from './view-history'
-
+import {
+  RiPlayLargeLine,
+} from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -23,7 +25,7 @@ const PreviewMode = memo(() => {
       )}
       onClick={() => handleWorkflowStartRunInChatflow()}
     >
-      <span className="i-ri-play-large-line mr-1 h-4 w-4" />
+      <RiPlayLargeLine className="mr-1 h-4 w-4" />
       {t('common.debugAndPreview', { ns: 'workflow' })}
     </div>
   )

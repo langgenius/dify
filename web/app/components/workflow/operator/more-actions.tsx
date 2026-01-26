@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { RiExportLine, RiMoreFill } from '@remixicon/react'
 import { toJpeg, toPng, toSvg } from 'html-to-image'
 import {
   memo,
@@ -198,7 +199,7 @@ const MoreActions: FC = () => {
               )}
               onClick={handleTrigger}
             >
-              <span className="i-ri-more-fill h-4 w-4" />
+              <RiMoreFill className="h-4 w-4" />
             </div>
           </TipPopup>
         </PortalToFollowElemTrigger>
@@ -206,7 +207,7 @@ const MoreActions: FC = () => {
           <div className="min-w-[180px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur text-text-secondary shadow-lg">
             <div className="p-1">
               <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">
-                <span className="i-ri-export-line h-3 w-3" />
+                <RiExportLine className="h-3 w-3" />
                 {t('common.exportImage', { ns: 'workflow' })}
               </div>
               <div className="px-2 py-1 text-xs font-medium text-text-tertiary">

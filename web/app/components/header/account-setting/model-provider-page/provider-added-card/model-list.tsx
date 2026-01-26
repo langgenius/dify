@@ -4,7 +4,9 @@ import type {
   ModelItem,
   ModelProvider,
 } from '../declarations'
-
+import {
+  RiArrowRightSLine,
+} from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -55,14 +57,14 @@ const ModelList: FC<ModelListProps> = ({
           <span className="group mr-2 flex shrink-0 items-center">
             <span className="system-xs-medium inline-flex h-6 items-center pl-1 pr-1.5 text-text-tertiary group-hover:hidden">
               {t('modelProvider.modelsNum', { ns: 'common', num: models.length })}
-              <span className="i-ri-arrow-right-sline mr-0.5 h-4 w-4 rotate-90" />
+              <RiArrowRightSLine className="mr-0.5 h-4 w-4 rotate-90" />
             </span>
             <span
               className="system-xs-medium hidden h-6 cursor-pointer items-center rounded-lg bg-state-base-hover pl-1 pr-1.5 text-text-tertiary group-hover:inline-flex"
               onClick={() => onCollapse()}
             >
               {t('modelProvider.modelsNum', { ns: 'common', num: models.length })}
-              <span className="i-ri-arrow-right-sline mr-0.5 h-4 w-4 rotate-90" />
+              <RiArrowRightSLine className="mr-0.5 h-4 w-4 rotate-90" />
             </span>
           </span>
           {

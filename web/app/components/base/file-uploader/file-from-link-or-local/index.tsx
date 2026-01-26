@@ -1,4 +1,5 @@
 import type { FileUpload } from '@/app/components/base/features/types'
+import { RiUploadCloud2Line } from '@remixicon/react'
 import {
   memo,
   useState,
@@ -114,7 +115,7 @@ const FileFromLinkOrLocal = ({
                 variant="secondary-accent"
                 disabled={disabled}
               >
-                <span className="i-ri-upload-cloud-2-line mr-1 h-4 w-4" />
+                <RiUploadCloud2Line className="mr-1 h-4 w-4" />
                 {t('fileUploader.uploadFromComputer', { ns: 'common' })}
                 <FileInput fileConfig={fileConfig} />
               </Button>

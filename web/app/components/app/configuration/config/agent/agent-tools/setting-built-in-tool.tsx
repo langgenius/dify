@@ -2,7 +2,10 @@
 import type { FC } from 'react'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-
+import {
+  RiArrowLeftLine,
+  RiCloseLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -178,7 +181,7 @@ const SettingBuiltInTool: FC<Props> = ({
             <div className="relative border-b border-divider-subtle p-4 pb-3">
               <div className="absolute right-3 top-3">
                 <ActionButton onClick={onHide}>
-                  <span className="i-ri-close-line h-4 w-4" />
+                  <RiCloseLine className="h-4 w-4" />
                 </ActionButton>
               </div>
               {showBackButton && (
@@ -186,7 +189,7 @@ const SettingBuiltInTool: FC<Props> = ({
                   className="system-xs-semibold-uppercase mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary"
                   onClick={onHide}
                 >
-                  <span className="i-ri-arrow-left-line h-4 w-4" />
+                  <RiArrowLeftLine className="h-4 w-4" />
                   {t('detailPanel.operation.back', { ns: 'plugin' })}
                 </div>
               )}

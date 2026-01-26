@@ -1,5 +1,6 @@
 'use client'
 import type { CustomFile as File } from '@/models/datasets'
+import { XMarkIcon } from '@heroicons/react/20/solid'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -50,7 +51,7 @@ const FilePreview = ({
         <div className={cn(s.title, 'title-md-semi-bold')}>
           <span>{t('stepOne.filePreview', { ns: 'datasetCreation' })}</span>
           <div className="flex h-6 w-6 cursor-pointer items-center justify-center" onClick={hidePreview}>
-            <span className="i-heroicons-xmark-20-solid h-4 w-4"></span>
+            <XMarkIcon className="h-4 w-4"></XMarkIcon>
           </div>
         </div>
         <div className={cn(s.fileName, 'system-xs-medium')}>

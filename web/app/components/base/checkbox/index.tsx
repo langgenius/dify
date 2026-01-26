@@ -1,3 +1,4 @@
+import { RiCheckLine } from '@remixicon/react'
 import { cn } from '@/utils/classnames'
 import IndeterminateIcon from './assets/indeterminate-icon'
 
@@ -42,7 +43,7 @@ const Checkbox = ({
       data-testid={`checkbox-${id}`}
     >
       {!checked && indeterminate && <IndeterminateIcon />}
-      {checked && <span className="i-ri-check-line h-3 w-3" data-testid={`check-icon-${id}`} />}
+      {checked && <RiCheckLine className="h-3 w-3" data-testid={`check-icon-${id}`} />}
     </div>
   )
 }

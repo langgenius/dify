@@ -1,3 +1,4 @@
+import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { useState } from 'react'
 import { cn } from '@/utils/classnames'
 
@@ -29,8 +30,8 @@ const Collapse = ({
         {title}
         {
           open
-            ? <span className="i-heroicons-chevron-down-24-outline h-3 w-3 text-components-button-tertiary-text" />
-            : <span className="i-heroicons-chevron-right-24-outline h-3 w-3 text-components-button-tertiary-text" />
+            ? <ChevronDownIcon className="h-3 w-3 text-components-button-tertiary-text" />
+            : <ChevronRightIcon className="h-3 w-3 text-components-button-tertiary-text" />
         }
       </div>
       {

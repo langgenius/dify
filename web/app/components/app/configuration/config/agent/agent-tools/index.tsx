@@ -4,7 +4,11 @@ import type { Collection } from '@/app/components/tools/types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentTool } from '@/types/app'
-
+import {
+  RiDeleteBinLine,
+  RiEqualizer2Line,
+  RiInformation2Line,
+} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -222,7 +226,7 @@ const AgentTools: FC = () => {
                     >
                       <div className="h-4 w-4">
                         <div className="ml-0.5 hidden group-hover:inline-block" data-testid="tool-info-tooltip">
-                          <span className="i-ri-information-2-line h-4 w-4 text-text-tertiary" />
+                          <RiInformation2Line className="h-4 w-4 text-text-tertiary" />
                         </div>
                       </div>
                     </Tooltip>
@@ -251,7 +255,7 @@ const AgentTools: FC = () => {
                       onMouseOver={() => setIsDeleting(index)}
                       onMouseLeave={() => setIsDeleting(-1)}
                     >
-                      <span className="i-ri-delete-bin-line h-4 w-4" />
+                      <RiDeleteBinLine className="h-4 w-4" />
                     </div>
                   </div>
                 )}
@@ -269,7 +273,7 @@ const AgentTools: FC = () => {
                             setIsShowSettingTool(true)
                           }}
                         >
-                          <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
+                          <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
                         </div>
                       </Tooltip>
                     )}
@@ -286,7 +290,7 @@ const AgentTools: FC = () => {
                       onMouseLeave={() => setIsDeleting(-1)}
                       data-testid="delete-removed-tool"
                     >
-                      <span className="i-ri-delete-bin-line h-4 w-4" />
+                      <RiDeleteBinLine className="h-4 w-4" />
                     </div>
                   </div>
                 )}

@@ -1,6 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
+import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -136,7 +138,7 @@ const Select: FC<ISelectProps> = ({
               }
             }
           >
-            {open ? <span className="i-heroicons-chevron-up-20-solid h-5 w-5" /> : <span className="i-heroicons-chevron-down-20-solid h-5 w-5" />}
+            {open ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
           </ComboboxButton>
         </div>
 
@@ -160,7 +162,7 @@ const Select: FC<ISelectProps> = ({
                               <span
                                 className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary')}
                               >
-                                <span className="i-ri-check-line h-4 w-4" aria-hidden="true" />
+                                <RiCheckLine className="h-4 w-4" aria-hidden="true" />
                               </span>
                             )}
                           </>
@@ -237,26 +239,32 @@ const SimpleSelect: FC<ISelectProps> = ({
               <span className={cn('system-sm-regular block truncate text-left text-components-input-text-filled', !selectedItem?.name && 'text-components-input-text-placeholder')}>{selectedItem?.name ?? localPlaceholder}</span>
               <span className="absolute inset-y-0 right-0 flex items-center pr-2">
                 {isLoading
-                  ? <span className="i-ri-loader-4-line h-3.5 w-3.5 animate-spin text-text-secondary" />
+                  ? <RiLoader4Line className="h-3.5 w-3.5 animate-spin text-text-secondary" />
                   : (selectedItem && !notClearable)
                       ? (
-                          <span
-                            className="i-heroicons-xmark-20-solid h-4 w-4 cursor-pointer text-text-quaternary"
+                          <XMarkIcon
                             onClick={(e) => {
                               e.stopPropagation()
                               setSelectedItem(null)
                               onSelect({ name: '', value: '' })
                             }}
+                            className="h-4 w-4 cursor-pointer text-text-quaternary"
                             aria-hidden="false"
                           />
                         )
                       : (
                           open
                             ? (
-                                <span className="i-heroicons-chevron-up-20-solid h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary" aria-hidden="true" />
+                                <ChevronUpIcon
+                                  className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
+                                  aria-hidden="true"
+                                />
                               )
                             : (
-                                <span className="i-heroicons-chevron-down-20-solid h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary" aria-hidden="true" />
+                                <ChevronDownIcon
+                                  className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
+                                  aria-hidden="true"
+                                />
                               )
                         )}
               </span>
@@ -293,7 +301,7 @@ const SimpleSelect: FC<ISelectProps> = ({
                                   <span
                                     className={cn('absolute inset-y-0 right-0 flex items-center pr-2 text-text-accent')}
                                   >
-                                    <span className="i-ri-check-line h-4 w-4" aria-hidden="true" />
+                                    <RiCheckLine className="h-4 w-4" aria-hidden="true" />
                                   </span>
                                 )}
                               </>
@@ -382,7 +390,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
                     </Badge>
                   )}
                 </div>
-                <span className="i-heroicons-chevron-down-20-solid h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary" />
+                <ChevronDownIcon className="h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary" />
               </div>
             )}
 
@@ -414,7 +422,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
                 )}
               </span>
               {!hideChecked && item.value === value && (
-                <span className="i-ri-check-line h-4 w-4 shrink-0 text-text-accent" />
+                <RiCheckLine className="h-4 w-4 shrink-0 text-text-accent" />
               )}
               {item.extra}
             </div>

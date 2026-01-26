@@ -1,7 +1,10 @@
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-
+import {
+  RiAddLine,
+  RiQuestionLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -112,7 +115,7 @@ const MultipleToolSelector = ({
             <Tooltip
               popupContent={tooltip}
             >
-              <div><span className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" /></div>
+              <div><RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" /></div>
             </Tooltip>
           )}
           {supportCollapse && (
@@ -142,7 +145,7 @@ const MultipleToolSelector = ({
               setPanelShowState(true)
             }}
           >
-            <span className="i-ri-add-line h-4 w-4" />
+            <RiAddLine className="h-4 w-4" />
           </ActionButton>
         )}
       </div>

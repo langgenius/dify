@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { ModelAndParameter } from '../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
@@ -107,7 +108,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
               </div>
             )
           }
-          <span className={`i-ri-arrow-down-sline ${`h-3 w-3 ${(currentModel && currentProvider) ? 'text-text-tertiary' : 'text-text-accent'}`}`} />
+          <RiArrowDownSLine className={`h-3 w-3 ${(currentModel && currentProvider) ? 'text-text-tertiary' : 'text-text-accent'}`} />
           {
             currentModel && currentModel.status !== ModelStatusEnum.active && (
               <Tooltip popupContent={MODEL_STATUS_TEXT[currentModel.status][language]}>

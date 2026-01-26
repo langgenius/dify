@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { CitationItem } from '../type'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Popup from './popup'
@@ -111,7 +112,7 @@ const Citation: FC<CitationProps> = ({
               {
                 !showMore
                   ? `+ ${resourcesLength - limitNumberInOneLine}`
-                  : <span className="i-ri-arrow-down-sline h-4 w-4 rotate-180 text-text-tertiary" />
+                  : <RiArrowDownSLine className="h-4 w-4 rotate-180 text-text-tertiary" />
               }
             </div>
           )

@@ -1,5 +1,9 @@
 import type { ExternalDataTool } from '@/models/common'
-
+import {
+  RiAddLine,
+  RiArrowDownSLine,
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 // abandoned
 import { useState } from 'react'
@@ -99,7 +103,7 @@ const Tools = () => {
             }
             {
               !!externalDataToolsConfig.length && (
-                <span className={`i-ri-arrow-down-sline ${`hidden h-4 w-4 cursor-pointer text-primary-600 group-hover:block ${expanded ? 'rotate-180' : 'rotate-0'}`}`} />
+                <RiArrowDownSLine className={`hidden h-4 w-4 cursor-pointer text-primary-600 group-hover:block ${expanded ? 'rotate-180' : 'rotate-0'}`} />
               )
             }
           </div>
@@ -126,7 +130,7 @@ const Tools = () => {
           className="flex h-7 cursor-pointer items-center px-3 text-xs font-medium text-gray-700"
           onClick={() => handleOpenExternalDataToolModal({}, -1)}
         >
-          <span className="i-ri-add-line mr-[5px] h-3.5 w-3.5 " />
+          <RiAddLine className="mr-[5px] h-3.5 w-3.5 " />
           {t('operation.add', { ns: 'common' })}
         </div>
       </div>
@@ -171,7 +175,7 @@ const Tools = () => {
                     className="group/action hidden h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-[#FEE4E2] group-hover:flex"
                     onClick={() => setExternalDataToolsConfig([...externalDataToolsConfig.slice(0, index), ...externalDataToolsConfig.slice(index + 1)])}
                   >
-                    <span className="i-ri-delete-bin-line h-4 w-4 text-gray-500 group-hover/action:text-[#D92D20]" />
+                    <RiDeleteBinLine className="h-4 w-4 text-gray-500 group-hover/action:text-[#D92D20]" />
                   </div>
                   <div className="ml-2 mr-3 hidden h-3.5 w-[1px] bg-gray-200 group-hover:block" />
                   <Switch

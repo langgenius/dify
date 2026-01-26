@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -20,7 +21,10 @@ const InputHasSetMultipleValue: FC<Props> = ({
         <div className="system-xs-regular text-text-secondary">{t('metadata.batchEditMetadata.multipleValue', { ns: 'dataset' })}</div>
         {!readOnly && (
           <div className="cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary">
-            <span className="i-ri-close-line size-3.5 " onClick={onClear} />
+            <RiCloseLine
+              className="size-3.5 "
+              onClick={onClear}
+            />
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin, PluginManifestInMarket } from '../../../types'
+import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -168,7 +169,7 @@ const Installed: FC<Props> = ({
           disabled={isInstalling || isLoading || !canInstall}
           onClick={handleInstall}
         >
-          {isInstalling && <span className="i-ri-loader-2-line h-4 w-4 animate-spin-slow" />}
+          {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
           <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
         </Button>
       </div>

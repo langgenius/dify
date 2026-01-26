@@ -1,6 +1,8 @@
 'use client'
 import type { App } from '@/types/app'
-
+import {
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -39,7 +41,7 @@ const AppTrigger = ({
       {!appDetail && (
         <div className="system-sm-regular grow truncate text-components-input-text-placeholder">{t('appSelector.placeholder', { ns: 'app' })}</div>
       )}
-      <span className={`i-ri-arrow-down-sline ${cn('ml-0.5 h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')}`} />
+      <RiArrowDownSLine className={cn('ml-0.5 h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
     </div>
   )
 }

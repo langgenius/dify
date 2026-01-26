@@ -1,5 +1,9 @@
 import type { ConversationItem } from '@/models/share'
-
+import {
+  RiEditBoxLine,
+  RiExpandRightLine,
+  RiLayoutLeft2Line,
+} from '@remixicon/react'
 import {
   useCallback,
   useState,
@@ -97,18 +101,18 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
         <div className={cn('system-md-semibold grow truncate text-text-secondary')}>{appData?.site.title}</div>
         {!isMobile && isSidebarCollapsed && (
           <ActionButton size="l" onClick={() => handleSidebarCollapse(false)}>
-            <span className="i-ri-expand-right-line h-[18px] w-[18px]" />
+            <RiExpandRightLine className="h-[18px] w-[18px]" />
           </ActionButton>
         )}
         {!isMobile && !isSidebarCollapsed && (
           <ActionButton size="l" onClick={() => handleSidebarCollapse(true)}>
-            <span className="i-ri-layout-left-2-line h-[18px] w-[18px]" />
+            <RiLayoutLeft2Line className="h-[18px] w-[18px]" />
           </ActionButton>
         )}
       </div>
       <div className="shrink-0 px-3 py-4">
         <Button variant="secondary-accent" disabled={isResponding} className="w-full justify-center" onClick={handleNewConversation}>
-          <span className="i-ri-edit-box-line mr-1 h-4 w-4" />
+          <RiEditBoxLine className="mr-1 h-4 w-4" />
           {t('chat.newChat', { ns: 'share' })}
         </Button>
       </div>

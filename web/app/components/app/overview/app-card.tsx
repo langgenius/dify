@@ -3,10 +3,15 @@ import type { ConfigParams } from './settings'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import {
+  RiArrowRightSLine,
   RiBookOpenLine,
+  RiBuildingLine,
   RiEqualizer2Line,
   RiExternalLinkLine,
+  RiGlobalLine,
+  RiLockLine,
   RiPaintBrushLine,
+  RiVerifiedBadgeLine,
   RiWindowLine,
 } from '@remixicon/react'
 import { usePathname, useRouter } from 'next/navigation'
@@ -323,35 +328,35 @@ function AppCard({
                   {appDetail?.access_mode === AccessMode.ORGANIZATION
                     && (
                       <>
-                        <span className="i-ri-building-line h-4 w-4 shrink-0 text-text-secondary" />
+                        <RiBuildingLine className="h-4 w-4 shrink-0 text-text-secondary" />
                         <p className="system-sm-medium text-text-secondary">{t('accessControlDialog.accessItems.organization', { ns: 'app' })}</p>
                       </>
                     )}
                   {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS
                     && (
                       <>
-                        <span className="i-ri-lock-line h-4 w-4 shrink-0 text-text-secondary" />
+                        <RiLockLine className="h-4 w-4 shrink-0 text-text-secondary" />
                         <p className="system-sm-medium text-text-secondary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
                       </>
                     )}
                   {appDetail?.access_mode === AccessMode.PUBLIC
                     && (
                       <>
-                        <span className="i-ri-global-line h-4 w-4 shrink-0 text-text-secondary" />
+                        <RiGlobalLine className="h-4 w-4 shrink-0 text-text-secondary" />
                         <p className="system-sm-medium text-text-secondary">{t('accessControlDialog.accessItems.anyone', { ns: 'app' })}</p>
                       </>
                     )}
                   {appDetail?.access_mode === AccessMode.EXTERNAL_MEMBERS
                     && (
                       <>
-                        <span className="i-ri-verified-badge-line h-4 w-4 shrink-0 text-text-secondary" />
+                        <RiVerifiedBadgeLine className="h-4 w-4 shrink-0 text-text-secondary" />
                         <p className="system-sm-medium text-text-secondary">{t('accessControlDialog.accessItems.external', { ns: 'app' })}</p>
                       </>
                     )}
                 </div>
                 {!isAppAccessSet && <p className="system-xs-regular shrink-0 text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-                  <span className="i-ri-arrow-right-sline h-4 w-4 text-text-quaternary" />
+                  <RiArrowRightSLine className="h-4 w-4 text-text-quaternary" />
                 </div>
               </div>
             </div>

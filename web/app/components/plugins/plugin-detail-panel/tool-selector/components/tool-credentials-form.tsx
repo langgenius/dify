@@ -2,7 +2,9 @@
 import type { FC } from 'react'
 import type { Collection } from '@/app/components/tools/types'
 import type { ToolCredentialFormSchema } from '@/app/components/tools/utils/to-form-schema'
-
+import {
+  RiArrowRightUpLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -80,7 +82,7 @@ const ToolCredentialForm: FC<Props> = ({
                           className="inline-flex items-center text-xs text-text-accent"
                         >
                           {t('howToGet', { ns: 'tools' })}
-                          <span className="i-ri-arrow-right-up-line ml-1 h-3 w-3" />
+                          <RiArrowRightUpLine className="ml-1 h-3 w-3" />
                         </a>
                       )
                     : null}

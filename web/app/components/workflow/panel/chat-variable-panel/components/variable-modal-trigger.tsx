@@ -1,5 +1,6 @@
 'use client'
 import type { ConversationVariable } from '@/app/components/workflow/types'
+import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -50,7 +51,7 @@ const VariableModalTrigger = ({
       }}
       >
         <Button variant="primary">
-          <span className="i-ri-add-line mr-1 h-4 w-4" />
+          <RiAddLine className="mr-1 h-4 w-4" />
           <span className="system-sm-medium">{t('chatVariable.button', { ns: 'workflow' })}</span>
         </Button>
       </PortalToFollowElemTrigger>

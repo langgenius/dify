@@ -2,6 +2,7 @@ import type { OffsetOptions } from '@floating-ui/react'
 import type { FC, ReactNode } from 'react'
 import type { SliceProps } from './type'
 import { autoUpdate, flip, FloatingFocusManager, offset, shift, useDismiss, useFloating, useHover, useInteractions, useRole } from '@floating-ui/react'
+import { RiDeleteBinLine } from '@remixicon/react'
 // @ts-expect-error no types available
 import lineClamp from 'line-clamp'
 import { useState } from 'react'
@@ -101,7 +102,7 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
                 }}
                 state={ActionButtonState.Destructive}
               >
-                <span className="i-ri-delete-bin-line h-4 w-4" />
+                <RiDeleteBinLine className="h-4 w-4" />
               </ActionButton>
             </span>
           </FloatingFocusManager>

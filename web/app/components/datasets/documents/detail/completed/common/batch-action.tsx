@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDownload2Line, RiDraftLine, RiRefreshLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -62,7 +63,7 @@ const BatchAction: FC<IBatchActionProps> = ({
           className="gap-x-0.5 px-3"
           onClick={onBatchEnable}
         >
-          <span className="i-ri-checkbox-circle-line size-4" />
+          <RiCheckboxCircleLine className="size-4" />
           <span className="px-0.5">{t(`${i18nPrefix}.enable`, { ns: 'dataset' })}</span>
         </Button>
         <Button
@@ -70,7 +71,7 @@ const BatchAction: FC<IBatchActionProps> = ({
           className="gap-x-0.5 px-3"
           onClick={onBatchDisable}
         >
-          <span className="i-ri-close-circle-line size-4" />
+          <RiCloseCircleLine className="size-4" />
           <span className="px-0.5">{t(`${i18nPrefix}.disable`, { ns: 'dataset' })}</span>
         </Button>
         {onEditMetadata && (
@@ -79,7 +80,7 @@ const BatchAction: FC<IBatchActionProps> = ({
             className="gap-x-0.5 px-3"
             onClick={onEditMetadata}
           >
-            <span className="i-ri-draft-line size-4" />
+            <RiDraftLine className="size-4" />
             <span className="px-0.5">{t('metadata.metadata', { ns: 'dataset' })}</span>
           </Button>
         )}
@@ -90,7 +91,7 @@ const BatchAction: FC<IBatchActionProps> = ({
             className="gap-x-0.5 px-3"
             onClick={onArchive}
           >
-            <span className="i-ri-archive-2-line size-4" />
+            <RiArchive2Line className="size-4" />
             <span className="px-0.5">{t(`${i18nPrefix}.archive`, { ns: 'dataset' })}</span>
           </Button>
         )}
@@ -100,7 +101,7 @@ const BatchAction: FC<IBatchActionProps> = ({
             className="gap-x-0.5 px-3"
             onClick={onBatchReIndex}
           >
-            <span className="i-ri-refresh-line size-4" />
+            <RiRefreshLine className="size-4" />
             <span className="px-0.5">{t(`${i18nPrefix}.reIndex`, { ns: 'dataset' })}</span>
           </Button>
         )}
@@ -110,7 +111,7 @@ const BatchAction: FC<IBatchActionProps> = ({
             className="gap-x-0.5 px-3"
             onClick={onBatchDownload}
           >
-            <span className="i-ri-download-2-line size-4" />
+            <RiDownload2Line className="size-4" />
             <span className="px-0.5">{t(`${i18nPrefix}.download`, { ns: 'dataset' })}</span>
           </Button>
         )}
@@ -120,7 +121,7 @@ const BatchAction: FC<IBatchActionProps> = ({
           className="gap-x-0.5 px-3"
           onClick={showDeleteConfirm}
         >
-          <span className="i-ri-delete-bin-line size-4" />
+          <RiDeleteBinLine className="size-4" />
           <span className="px-0.5">{t(`${i18nPrefix}.delete`, { ns: 'dataset' })}</span>
         </Button>
 

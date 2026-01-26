@@ -1,3 +1,7 @@
+import {
+  RiCloseLine,
+  RiLoader2Line,
+} from '@remixicon/react'
 import { useRafInterval } from 'ahooks'
 import Recorder from 'js-audio-recorder'
 import { useParams, usePathname } from 'next/navigation'
@@ -166,7 +170,7 @@ const VoiceInput = ({
       <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pl-[14.5px] pr-[6.5px]">
         <canvas id="voice-input-record" className="absolute bottom-0 left-0 h-4 w-full" />
         {
-          startConvert && <span className="i-ri-loader-2-line mr-2 h-4 w-4 animate-spin text-primary-700" />
+          startConvert && <RiLoader2Line className="mr-2 h-4 w-4 animate-spin text-primary-700" />
         }
         <div className="grow">
           {
@@ -200,7 +204,7 @@ const VoiceInput = ({
               className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg  hover:bg-gray-200"
               onClick={onCancel}
             >
-              <span className="i-ri-close-line h-4 w-4 text-gray-500" />
+              <RiCloseLine className="h-4 w-4 text-gray-500" />
             </div>
           )
         }

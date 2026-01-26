@@ -3,6 +3,7 @@ import type {
   ModelItem,
   ModelProvider,
 } from '../declarations'
+import { RiEqualizer2Line } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -130,7 +131,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
               )}
               {modelProvider && !disabled && !needsConfiguration && (
                 <div className="flex items-center pr-1">
-                  <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary group-hover:text-text-secondary" />
+                  <RiEqualizer2Line className="h-4 w-4 text-text-tertiary group-hover:text-text-secondary" />
                 </div>
               )}
             </>
@@ -143,7 +144,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
                 </span>
               </div>
               <div className="flex items-center pr-1">
-                <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary group-hover:text-text-secondary" />
+                <RiEqualizer2Line className="h-4 w-4 text-text-tertiary group-hover:text-text-secondary" />
               </div>
             </>
           )}

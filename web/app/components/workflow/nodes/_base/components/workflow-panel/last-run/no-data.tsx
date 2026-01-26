@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiPlayLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -25,7 +26,7 @@ const NoData: FC<Props> = ({
           size="small"
           onClick={onSingleRun}
         >
-          <span className="i-ri-play-line mr-1 h-3.5 w-3.5" />
+          <RiPlayLine className="mr-1 h-3.5 w-3.5" />
           <div>{t('debug.noData.runThisNode', { ns: 'workflow' })}</div>
         </Button>
       )}

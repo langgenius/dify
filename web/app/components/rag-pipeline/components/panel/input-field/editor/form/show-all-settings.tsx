@@ -1,3 +1,4 @@
+import { RiArrowRightSLine } from '@remixicon/react'
 import { useStore } from '@tanstack/react-form'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -32,7 +33,7 @@ const ShowAllSettings = ({
             {hiddenFieldNames}
           </span>
         </div>
-        <span className="i-ri-arrow-right-sline h-4 w-4 shrink-0 text-text-secondary" />
+        <RiArrowRightSLine className="h-4 w-4 shrink-0 text-text-secondary" />
       </div>
     )
   },

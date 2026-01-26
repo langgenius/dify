@@ -1,4 +1,5 @@
 import type { DataSet } from '@/models/datasets'
+import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import CustomPopover from '@/app/components/base/popover'
 import { cn } from '@/utils/classnames'
@@ -36,7 +37,7 @@ const OperationsPopover = ({
       trigger="click"
       btnElement={(
         <div className="flex size-8 items-center justify-center rounded-[10px] hover:bg-state-base-hover">
-          <span className="i-ri-more-fill h-5 w-5 text-text-tertiary" />
+          <RiMoreFill className="h-5 w-5 text-text-tertiary" />
         </div>
       )}
       btnClassName={open =>

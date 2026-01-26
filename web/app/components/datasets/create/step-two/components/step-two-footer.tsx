@@ -1,6 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
+import { RiArrowLeftLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 
@@ -25,7 +26,7 @@ export const StepTwoFooter: FC<StepTwoFooterProps> = ({
     return (
       <div className="mt-8 flex items-center py-2">
         <Button onClick={onPrevious}>
-          <span className="i-ri-arrow-left-line mr-1 h-4 w-4" />
+          <RiArrowLeftLine className="mr-1 h-4 w-4" />
           {t('stepTwo.previousStep', { ns: 'datasetCreation' })}
         </Button>
         <Button

@@ -1,6 +1,7 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
+import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
@@ -236,7 +237,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             className="flex h-8 w-8 cursor-pointer items-center"
             onClick={() => onClose()}
           >
-            <span className="i-ri-close-line h-5 w-5 text-text-tertiary" />
+            <RiCloseLine className="h-5 w-5 text-text-tertiary" />
           </div>
         </div>
         <div className="system-md-semibold flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary">
@@ -298,8 +299,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           >
             <span>{t('newApp.Create', { ns: 'app' })}</span>
             <div className="flex gap-0.5">
-              <span className="system-kbd i-ri-command-line size-3.5 rounded-sm bg-components-kbd-bg-white p-0.5" />
-              <span className="system-kbd i-ri-corner-down-left-line size-3.5 rounded-sm bg-components-kbd-bg-white p-0.5" />
+              <RiCommandLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
+              <RiCornerDownLeftLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
             </div>
           </Button>
         </div>

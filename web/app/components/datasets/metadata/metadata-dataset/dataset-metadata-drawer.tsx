@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
+import { RiAddLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { useBoolean, useHover } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
@@ -89,9 +90,9 @@ const Item: FC<ItemProps> = ({
           </div>
         )}
         <div className="ml-2 hidden items-center space-x-1 text-text-tertiary group-hover/item:flex">
-          <span className="i-ri-edit-line size-4 cursor-pointer" onClick={handleRename} />
+          <RiEditLine className="size-4 cursor-pointer" onClick={handleRename} />
           <div ref={deleteBtnRef} className="hover:text-text-destructive">
-            <span className="i-ri-delete-bin-line size-4 cursor-pointer" onClick={showDeleteConfirm} />
+            <RiDeleteBinLine className="size-4 cursor-pointer" onClick={showDeleteConfirm} />
           </div>
         </div>
         {isShowDeleteConfirm && (
@@ -182,7 +183,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
           setOpen={setOpen}
           trigger={(
             <Button variant="primary" className="mt-3">
-              <span className="i-ri-add-line mr-1" />
+              <RiAddLine className="mr-1" />
               {t(`${i18nPrefix}.addMetaData`, { ns: 'dataset' })}
             </Button>
           )}

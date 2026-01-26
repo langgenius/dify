@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { ToastHandle } from '@/app/components/base/toast'
 import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
+import { RiDraggable } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -170,10 +171,10 @@ const VarList: FC<Props> = ({
               <RemoveButton onClick={handleVarRemove(index)} />
             )}
             {canDrag && (
-              <span className={`i-ri-draggable ${cn(
+              <RiDraggable className={cn(
                 'handle absolute -left-4 top-2.5 hidden h-3 w-3 cursor-pointer text-text-quaternary',
                 'group-hover:block',
-              )}`}
+              )}
               />
             )}
           </div>

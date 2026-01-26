@@ -1,4 +1,5 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { RiLoopLeftLine } from '@remixicon/react'
 import { LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { cn } from '@/utils/classnames'
 import ConditionItem from './condition-item'
@@ -42,7 +43,7 @@ const ConditionList = ({
               onClick={() => handleToggleConditionLogicalOperator()}
             >
               {logical_operator.toUpperCase()}
-              <span className="i-ri-loop-left-line ml-0.5 h-3 w-3" />
+              <RiLoopLeftLine className="ml-0.5 h-3 w-3" />
             </div>
           </div>
         )

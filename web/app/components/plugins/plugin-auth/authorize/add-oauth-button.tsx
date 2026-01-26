@@ -1,7 +1,11 @@
 import type { PluginPayload } from '../types'
 import type { ButtonProps } from '@/app/components/base/button'
 import type { FormSchema } from '@/app/components/base/form/types'
-
+import {
+  RiClipboardLine,
+  RiEqualizer2Line,
+  RiInformation2Fill,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -87,7 +91,7 @@ const AddOAuthButton = ({
       <div className="w-full">
         <div className="mb-4 flex rounded-xl bg-background-section-burn p-4">
           <div className="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
-            <span className="i-ri-information-2-fill h-5 w-5 text-text-accent" />
+            <RiInformation2Fill className="h-5 w-5 text-text-accent" />
           </div>
           <div className="w-0 grow">
             <div className="system-sm-regular mb-1.5">
@@ -103,7 +107,7 @@ const AddOAuthButton = ({
                       navigator.clipboard.writeText(redirect_uri || '')
                     }}
                   >
-                    <span className="i-ri-clipboard-line h-4 w-4" />
+                    <RiClipboardLine className="h-4 w-4" />
                   </ActionButton>
                 </div>
               )
@@ -231,7 +235,7 @@ const AddOAuthButton = ({
                 setIsOAuthSettingsOpen(true)
               }}
             >
-              <span className="i-ri-equalizer-2-line h-4 w-4" />
+              <RiEqualizer2Line className="h-4 w-4" />
             </div>
           </Button>
         )
@@ -244,7 +248,7 @@ const AddOAuthButton = ({
             disabled={disabled}
             className="w-full"
           >
-            <span className="i-ri-equalizer-2-line mr-0.5 h-4 w-4" />
+            <RiEqualizer2Line className="mr-0.5 h-4 w-4" />
             {t('auth.setupOAuth', { ns: 'plugin' })}
           </Button>
         )

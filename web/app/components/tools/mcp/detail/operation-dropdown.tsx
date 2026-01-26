@@ -1,6 +1,10 @@
 'use client'
 import type { FC } from 'react'
-
+import {
+  RiDeleteBinLine,
+  RiEditLine,
+  RiMoreFill,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -51,7 +55,7 @@ const OperationDropdown: FC<Props> = ({
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         <div>
           <ActionButton size={inCard ? 'l' : 'm'} className={cn(open && 'bg-state-base-hover')}>
-            <span className={`i-ri-more-fill ${cn('h-4 w-4', inCard && 'h-5 w-5')}`} />
+            <RiMoreFill className={cn('h-4 w-4', inCard && 'h-5 w-5')} />
           </ActionButton>
         </div>
       </PortalToFollowElemTrigger>
@@ -64,7 +68,7 @@ const OperationDropdown: FC<Props> = ({
               handleTrigger()
             }}
           >
-            <span className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
+            <RiEditLine className="h-4 w-4 text-text-tertiary" />
             <div className="system-md-regular ml-2 text-text-secondary">{t('mcp.operation.edit', { ns: 'tools' })}</div>
           </div>
           <div
@@ -74,7 +78,7 @@ const OperationDropdown: FC<Props> = ({
               handleTrigger()
             }}
           >
-            <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover:text-text-destructive-secondary" />
+            <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive-secondary" />
             <div className="system-md-regular ml-2 text-text-secondary group-hover:text-text-destructive">{t('mcp.operation.remove', { ns: 'tools' })}</div>
           </div>
         </div>

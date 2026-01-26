@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { AppIconType } from '@/types/app'
 import data from '@emoji-mart/data'
+import { RiEditLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
 import { cva } from 'class-variance-authority'
 import { init } from 'emoji-mart'
@@ -122,7 +123,7 @@ const AppIcon: FC<AppIconProps> = ({
       {
         showEditIcon && isHovering && (
           <div className={EditIconWrapperVariants({ size, rounded })}>
-            <span className={`i-ri-edit-line ${EditIconVariants({ size })}`} />
+            <RiEditLine className={EditIconVariants({ size })} />
           </div>
         )
       }

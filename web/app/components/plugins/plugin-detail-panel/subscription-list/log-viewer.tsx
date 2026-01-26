@@ -1,6 +1,12 @@
 'use client'
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
-
+import {
+  RiArrowDownSLine,
+  RiArrowRightSLine,
+  RiCheckboxCircleFill,
+  RiErrorWarningFill,
+  RiFileCopyLine,
+} from '@remixicon/react'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useState } from 'react'
@@ -90,7 +96,7 @@ const LogViewer = ({ logs, className }: Props) => {
             }}
             className="rounded-md p-0.5 hover:bg-components-panel-border"
           >
-            <span className="i-ri-file-copy-line h-4 w-4 text-text-tertiary" />
+            <RiFileCopyLine className="h-4 w-4 text-text-tertiary" />
           </button>
         </div>
         <div className="px-2 pb-2 pt-1">
@@ -150,10 +156,10 @@ const LogViewer = ({ logs, className }: Props) => {
               <div className="flex items-center gap-0">
                 {isExpanded
                   ? (
-                      <span className="i-ri-arrow-down-sline h-4 w-4 text-text-tertiary" />
+                      <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
                     )
                   : (
-                      <span className="i-ri-arrow-right-sline h-4 w-4 text-text-tertiary" />
+                      <RiArrowRightSLine className="h-4 w-4 text-text-tertiary" />
                     )}
                 <div className="system-xs-semibold-uppercase text-text-secondary">
                   {t(`modal.manual.logs.${LogTypeEnum.REQUEST}`, { ns: 'pluginTrigger' })}
@@ -170,10 +176,10 @@ const LogViewer = ({ logs, className }: Props) => {
                 <div className="h-3.5 w-3.5">
                   {isSuccess
                     ? (
-                        <span className="i-ri-checkbox-circle-fill h-full w-full text-text-success" />
+                        <RiCheckboxCircleFill className="h-full w-full text-text-success" />
                       )
                     : (
-                        <span className="i-ri-error-warning-fill h-full w-full text-text-destructive" />
+                        <RiErrorWarningFill className="h-full w-full text-text-destructive" />
                       )}
                 </div>
               </div>

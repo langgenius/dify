@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import Divider from '@/app/components/base/divider'
@@ -52,7 +53,7 @@ const Filter: FC<FilterProps> = ({
             isFiltering ? 'bg-state-accent-active-alt' : 'hover:bg-state-base-hover',
           )}
         >
-          <span className={`i-ri-filter-3-line ${cn('h-4 w-4', isFiltering ? 'text-text-accent' : ' text-text-tertiary')}`} />
+          <RiFilter3Line className={cn('h-4 w-4', isFiltering ? 'text-text-accent' : ' text-text-tertiary')} />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[12]">

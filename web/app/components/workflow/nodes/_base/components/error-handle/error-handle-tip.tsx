@@ -1,3 +1,4 @@
+import { RiAlertFill } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ErrorHandleTypeEnum } from './types'
@@ -32,7 +33,7 @@ const ErrorHandleTip = ({
         }}
       >
       </div>
-      <span className="i-ri-alert-fill mr-1 h-4 w-4 shrink-0 text-text-warning-secondary" />
+      <RiAlertFill className="mr-1 h-4 w-4 shrink-0 text-text-warning-secondary" />
       <div className="system-xs-medium grow text-text-primary">
         {text}
       </div>

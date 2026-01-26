@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { RiAddLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -24,7 +25,7 @@ const PluginAuthInDataSourceNode = ({
               variant="primary"
               onClick={onJumpToDataSourcePage}
             >
-              <span className="i-ri-add-line mr-1 h-4 w-4" />
+              <RiAddLine className="mr-1 h-4 w-4" />
               {t('integrations.connect', { ns: 'common' })}
             </Button>
           </div>

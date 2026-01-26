@@ -1,3 +1,4 @@
+import { RiAddLine, RiArrowRightUpLine, RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -30,7 +31,7 @@ const Actions = ({
         onClick={onApplyTemplate}
         className="grow gap-x-0.5"
       >
-        <span className="i-ri-add-line size-4" />
+        <RiAddLine className="size-4" />
         <span className="px-0.5">{t('operations.choose', { ns: 'datasetPipeline' })}</span>
       </Button>
       <Button
@@ -38,7 +39,7 @@ const Actions = ({
         onClick={handleShowTemplateDetails}
         className="grow gap-x-0.5"
       >
-        <span className="i-ri-arrow-right-up-line size-4" />
+        <RiArrowRightUpLine className="size-4" />
         <span className="px-0.5">{t('operations.details', { ns: 'datasetPipeline' })}</span>
       </Button>
       {
@@ -56,7 +57,7 @@ const Actions = ({
             position="br"
             trigger="click"
             btnElement={
-              <span className="i-ri-more-fill size-4 text-text-tertiary" />
+              <RiMoreFill className="size-4 text-text-tertiary" />
             }
             btnClassName="size-8 cursor-pointer justify-center rounded-lg p-0 shadow-xs shadow-shadow-shadow-3"
           />

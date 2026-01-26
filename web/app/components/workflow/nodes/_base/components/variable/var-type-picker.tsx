@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
@@ -45,7 +46,7 @@ const VarReferencePicker: FC<Props> = ({
         <PortalToFollowElemTrigger onClick={() => setOpen(!open)} className="w-[120px] cursor-pointer">
           <div className="flex h-8 items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2.5 text-[13px] text-text-primary">
             <div className="w-0 grow truncate capitalize" title={value}>{value}</div>
-            <span className="i-ri-arrow-down-sline h-3.5 w-3.5 shrink-0 text-text-secondary" />
+            <RiArrowDownSLine className="h-3.5 w-3.5 shrink-0 text-text-secondary" />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{

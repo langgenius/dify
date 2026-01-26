@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import type { Area } from 'react-easy-crop'
 import type { OnImageInput } from './ImageInput'
 import type { AppIconType, ImageFile } from '@/types/app'
+import { RiImageCircleAiLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -45,7 +46,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
 
   const tabs = [
     { key: 'emoji', label: t('iconPicker.emoji', { ns: 'app' }), icon: <span className="text-lg">🤖</span> },
-    { key: 'image', label: t('iconPicker.image', { ns: 'app' }), icon: <span className="i-ri-image-circle-ai-line size-4" /> },
+    { key: 'image', label: t('iconPicker.image', { ns: 'app' }), icon: <RiImageCircleAiLine className="size-4" /> },
   ]
   const [activeTab, setActiveTab] = useState<AppIconType>('emoji')
 

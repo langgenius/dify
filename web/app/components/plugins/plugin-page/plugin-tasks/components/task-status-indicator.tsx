@@ -1,5 +1,9 @@
 import type { FC } from 'react'
-
+import {
+  RiCheckboxCircleFill,
+  RiErrorWarningFill,
+  RiInstallLine,
+} from '@remixicon/react'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import Tooltip from '@/app/components/base/tooltip'
 import DownloadingIcon from '@/app/components/header/plugins-nav/downloading-icon'
@@ -53,10 +57,11 @@ const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
         {showDownloadingIcon
           ? <DownloadingIcon />
           : (
-              <span className={`i-ri-install-line ${cn(
-                'h-4 w-4 text-components-button-secondary-text',
-                showErrorStyle && 'text-components-button-destructive-secondary-text',
-              )}`}
+              <RiInstallLine
+                className={cn(
+                  'h-4 w-4 text-components-button-secondary-text',
+                  showErrorStyle && 'text-components-button-destructive-secondary-text',
+                )}
               />
             )}
 
@@ -77,10 +82,10 @@ const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
             />
           )}
           {showSuccessIcon && !isInstalling && !isInstallingWithSuccess && !isInstallingWithError && (
-            <span className="i-ri-checkbox-circle-fill h-3.5 w-3.5 text-text-success" />
+            <RiCheckboxCircleFill className="h-3.5 w-3.5 text-text-success" />
           )}
           {isFailed && (
-            <span className="i-ri-error-warning-fill h-3.5 w-3.5 text-text-destructive" />
+            <RiErrorWarningFill className="h-3.5 w-3.5 text-text-destructive" />
           )}
         </div>
       </div>

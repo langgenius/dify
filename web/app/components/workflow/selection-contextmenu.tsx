@@ -1,3 +1,11 @@
+import {
+  RiAlignBottom,
+  RiAlignCenter,
+  RiAlignJustify,
+  RiAlignLeft,
+  RiAlignRight,
+  RiAlignTop,
+} from '@remixicon/react'
 import { useClickAway } from 'ahooks'
 import { produce } from 'immer'
 import {
@@ -382,28 +390,28 @@ const SelectionContextmenu = () => {
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.Top)}
           >
-            <span className="i-ri-align-top h-4 w-4" />
+            <RiAlignTop className="h-4 w-4" />
             {t('operator.alignTop', { ns: 'workflow' })}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.Middle)}
           >
-            <span className="i-ri-align-center h-4 w-4 rotate-90" />
+            <RiAlignCenter className="h-4 w-4 rotate-90" />
             {t('operator.alignMiddle', { ns: 'workflow' })}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.Bottom)}
           >
-            <span className="i-ri-align-bottom h-4 w-4" />
+            <RiAlignBottom className="h-4 w-4" />
             {t('operator.alignBottom', { ns: 'workflow' })}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.DistributeVertical)}
           >
-            <span className="i-ri-align-justify h-4 w-4 rotate-90" />
+            <RiAlignJustify className="h-4 w-4 rotate-90" />
             {t('operator.distributeVertical', { ns: 'workflow' })}
           </div>
         </div>
@@ -416,28 +424,28 @@ const SelectionContextmenu = () => {
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.Left)}
           >
-            <span className="i-ri-align-left h-4 w-4" />
+            <RiAlignLeft className="h-4 w-4" />
             {t('operator.alignLeft', { ns: 'workflow' })}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.Center)}
           >
-            <span className="i-ri-align-center h-4 w-4" />
+            <RiAlignCenter className="h-4 w-4" />
             {t('operator.alignCenter', { ns: 'workflow' })}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.Right)}
           >
-            <span className="i-ri-align-right h-4 w-4" />
+            <RiAlignRight className="h-4 w-4" />
             {t('operator.alignRight', { ns: 'workflow' })}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.DistributeHorizontal)}
           >
-            <span className="i-ri-align-justify h-4 w-4" />
+            <RiAlignJustify className="h-4 w-4" />
             {t('operator.distributeHorizontal', { ns: 'workflow' })}
           </div>
         </div>

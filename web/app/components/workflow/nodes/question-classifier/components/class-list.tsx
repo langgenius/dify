@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { Topic } from '@/app/components/workflow/nodes/question-classifier/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { RiDraggable } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -139,10 +140,10 @@ const ClassList: FC<Props> = ({
                   >
                     <div>
                       {canDrag && (
-                        <span className={`i-ri-draggable ${cn(
+                        <RiDraggable className={cn(
                           'handle absolute left-2 top-3 hidden h-3 w-3 cursor-pointer text-text-tertiary',
                           'group-hover:block',
-                        )}`}
+                        )}
                         />
                       )}
                       <Item

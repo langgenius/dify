@@ -1,5 +1,8 @@
 import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
-
+import {
+  RiCalendarLine,
+  RiCloseCircleFill,
+} from '@remixicon/react'
 import dayjs from 'dayjs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -41,17 +44,18 @@ const WrappedDatePicker = ({
         >
           {value ? formatTimestamp(value, t('metadata.dateTimeFormat', { ns: 'datasetDocuments' })) : t('metadata.chooseTime', { ns: 'dataset' })}
         </div>
-        <span
-          className={`i-ri-close-circle-fill ${cn(
+        <RiCloseCircleFill
+          className={cn(
             'hidden h-4 w-4 cursor-pointer hover:text-components-input-text-filled group-hover:block',
             value && 'text-text-quaternary',
-          )}`}
+          )}
           onClick={() => handleDateChange()}
         />
-        <span className={`i-ri-calendar-line ${cn(
-          'block h-4 w-4 shrink-0 group-hover:hidden',
-          value ? 'text-text-quaternary' : 'text-text-tertiary',
-        )}`}
+        <RiCalendarLine
+          className={cn(
+            'block h-4 w-4 shrink-0 group-hover:hidden',
+            value ? 'text-text-quaternary' : 'text-text-tertiary',
+          )}
         />
       </div>
     )

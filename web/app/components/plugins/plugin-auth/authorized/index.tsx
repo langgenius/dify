@@ -2,7 +2,9 @@ import type { Credential, PluginPayload } from '../types'
 import type {
   PortalToFollowElemOptions,
 } from '@/app/components/base/portal-to-follow-elem'
-
+import {
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -209,7 +211,7 @@ const Authorized = ({
                         ` (${unavailableCredentials.length} ${t('auth.unavailable', { ns: 'plugin' })})`
                       )
                     }
-                    <span className="i-ri-arrow-down-sline ml-0.5 h-4 w-4" />
+                    <RiArrowDownSLine className="ml-0.5 h-4 w-4" />
                   </Button>
                 )
           }

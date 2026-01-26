@@ -1,3 +1,7 @@
+import {
+  RiAddLine,
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -72,7 +76,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
           : (
               <span className="system-sm-regular text-components-input-text-placeholder">{t('selectExternalKnowledgeAPI.placeholder', { ns: 'dataset' })}</span>
             )}
-        <span className={`i-ri-arrow-down-sline ${`h-4 w-4 text-text-quaternary transition-transform ${isOpen ? 'text-text-secondary' : ''}`}`} />
+        <RiArrowDownSLine className={`h-4 w-4 text-text-quaternary transition-transform ${isOpen ? 'text-text-secondary' : ''}`} />
       </div>
       {isOpen && (
         <div className="absolute z-10 mt-1 w-full rounded-xl border bg-components-panel-bg-blur shadow-lg">
@@ -94,7 +98,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
               className="flex cursor-pointer items-center gap-2 self-stretch rounded-lg p-2 hover:bg-state-base-hover"
               onClick={handleAddNewAPI}
             >
-              <span className="i-ri-add-line h-4 w-4 text-text-secondary" />
+              <RiAddLine className="h-4 w-4 text-text-secondary" />
               <span className="system-sm-medium grow overflow-hidden text-ellipsis text-text-secondary">{t('createNewExternalAPI', { ns: 'dataset' })}</span>
             </div>
           </div>

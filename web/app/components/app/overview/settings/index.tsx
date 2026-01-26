@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppIconType, AppSSO, Language } from '@/types/app'
+import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
 import Link from 'next/link'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
@@ -232,7 +233,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <div className="flex items-center gap-1">
             <div className="title-2xl-semi-bold grow text-text-primary">{t(`${prefixSettings}.title`, { ns: 'appOverview' })}</div>
             <ActionButton className="shrink-0" onClick={onHide}>
-              <span className="i-ri-close-line h-4 w-4" />
+              <RiCloseLine className="h-4 w-4" />
             </ActionButton>
           </div>
           <div className="system-xs-regular mt-0.5 text-text-tertiary">
@@ -345,7 +346,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   {t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' })}
                 </p>
               </div>
-              <span className="i-ri-arrow-right-sline ml-1 h-4 w-4 shrink-0 text-text-secondary" />
+              <RiArrowRightSLine className="ml-1 h-4 w-4 shrink-0 text-text-secondary" />
             </div>
           )}
           {/* more settings */}

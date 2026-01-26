@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { CommonResponse } from '@/models/common'
 import type { IndexingStatusResponse, ProcessRuleResponse } from '@/models/datasets'
+import { RiLoader2Line, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
 import Image from 'next/image'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -246,7 +247,7 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
     <>
       <div className="flex flex-col gap-y-2 px-16 py-12">
         <div className="flex h-6 items-center gap-x-1">
-          {isEmbedding && <span className="i-ri-loader-2-line h-4 w-4 animate-spin text-text-secondary" />}
+          {isEmbedding && <RiLoader2Line className="h-4 w-4 animate-spin text-text-secondary" />}
           <span className="system-md-semibold-uppercase grow text-text-secondary">
             {isEmbedding && t('embedding.processing', { ns: 'datasetDocuments' })}
             {isEmbeddingCompleted && t('embedding.completed', { ns: 'datasetDocuments' })}
@@ -260,7 +261,7 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
               border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 py-1 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]`}
               onClick={handleSwitch}
             >
-              <span className="i-ri-pause-circle-line h-3.5 w-3.5 text-components-button-secondary-text" />
+              <RiPauseCircleLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
               <span className="system-xs-medium pr-[3px] text-components-button-secondary-text">
                 {t('embedding.pause', { ns: 'datasetDocuments' })}
               </span>
@@ -273,7 +274,7 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
               border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 py-1 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]`}
               onClick={handleSwitch}
             >
-              <span className="i-ri-play-circle-line h-3.5 w-3.5 text-components-button-secondary-text" />
+              <RiPlayCircleLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
               <span className="system-xs-medium pr-[3px] text-components-button-secondary-text">
                 {t('embedding.resume', { ns: 'datasetDocuments' })}
               </span>

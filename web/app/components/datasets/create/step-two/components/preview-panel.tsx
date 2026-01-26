@@ -3,6 +3,7 @@
 import type { FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
 import type { DataSourceType, FileIndexingEstimateResponse } from '@/models/datasets'
+import { RiSearchEyeLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -139,7 +140,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
         {isIdle && (
           <div className="flex h-full w-full items-center justify-center">
             <div className="flex flex-col items-center justify-center gap-3">
-              <span className="i-ri-search-eye-line size-10 text-text-empty-state-icon" />
+              <RiSearchEyeLine className="size-10 text-text-empty-state-icon" />
               <p className="text-sm text-text-tertiary">
                 {t('stepTwo.previewChunkTip', { ns: 'datasetCreation' })}
               </p>

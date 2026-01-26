@@ -1,6 +1,9 @@
 import type { FC } from 'react'
 import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
-
+import {
+  RiCheckLine,
+  RiMoreFill,
+} from '@remixicon/react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -37,7 +40,7 @@ const Selector: FC<SelectorProps> = ({
               open && 'bg-components-button-secondary-bg-hover',
             )}
             >
-              <span className="i-ri-more-fill h-3 w-3" />
+              <RiMoreFill className="h-3 w-3" />
             </Button>
           )
         }
@@ -59,7 +62,7 @@ const Selector: FC<SelectorProps> = ({
                     onClick={() => onSelect(option.key)}
                   >
                     <div className="grow">{option.text}</div>
-                    {value === option.key && <span className="i-ri-check-line h-4 w-4 text-text-accent" />}
+                    {value === option.key && <RiCheckLine className="h-4 w-4 text-text-accent" />}
                   </div>
                 </PopoverButton>
               ))

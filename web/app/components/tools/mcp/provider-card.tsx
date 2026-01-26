@@ -1,5 +1,6 @@
 'use client'
 import type { ToolWithProvider } from '../../workflow/types'
+import { RiHammerFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -93,7 +94,7 @@ const MCPCard = ({
       <div className="flex items-center gap-1 rounded-b-xl pb-2.5 pl-4 pr-2.5 pt-1.5">
         <div className="flex w-0 grow items-center gap-2">
           <div className="flex items-center gap-1">
-            <span className="i-ri-hammer-fill h-3 w-3 shrink-0 text-text-quaternary" />
+            <RiHammerFill className="h-3 w-3 shrink-0 text-text-quaternary" />
             {data.tools.length > 0 && (
               <div className="system-xs-regular shrink-0 text-text-tertiary">{t('mcp.toolsCount', { ns: 'tools', count: data.tools.length })}</div>
             )}

@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Model } from '@/types/app'
+import { RiCloseLine, RiSparklingFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -44,7 +45,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   return (
     <div className="relative flex w-[480px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
       <div className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center" onClick={onClose}>
-        <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>
       {/* Title */}
       <div className="flex flex-col gap-y-[0.5px] px-3 pb-1 pt-3.5">
@@ -96,7 +97,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           className="flex items-center gap-x-0.5"
           onClick={onGenerate}
         >
-          <span className="i-ri-sparkling-fill h-4 w-4" />
+          <RiSparklingFill className="h-4 w-4" />
           <span>{t('nodes.llm.jsonSchema.generate', { ns: 'workflow' })}</span>
         </Button>
       </div>

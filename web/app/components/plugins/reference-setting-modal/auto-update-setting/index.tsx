@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { AutoUpdateConfig } from './types'
 import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
+import { RiTimeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -108,10 +109,10 @@ const AutoUpdateSetting: FC<Props> = ({
         onClick={onClick}
       >
         <div className="flex w-0 grow items-center gap-x-1">
-          <span className={`i-ri-time-line ${cn(
+          <RiTimeLine className={cn(
             'h-4 w-4 shrink-0 text-text-tertiary',
             isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-          )}`}
+          )}
           />
           {inputElem}
         </div>

@@ -1,5 +1,9 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
-
+import {
+  RiAddLine,
+  RiApps2AddLine,
+  RiBookOpenLine,
+} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -69,7 +73,7 @@ const EndpointList = ({ detail }: Props) => {
             popupContent={(
               <div className="flex flex-col gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
-                  <span className="i-ri-apps-2-add-line h-4 w-4 text-text-tertiary" />
+                  <RiApps2AddLine className="h-4 w-4 text-text-tertiary" />
                 </div>
                 <div className="system-xs-regular text-text-tertiary">{t('detailPanel.endpointsTip', { ns: 'plugin' })}</div>
                 <a
@@ -78,7 +82,7 @@ const EndpointList = ({ detail }: Props) => {
                   rel="noopener noreferrer"
                 >
                   <div className="system-xs-regular inline-flex cursor-pointer items-center gap-1 text-text-accent">
-                    <span className="i-ri-book-open-line h-3 w-3" />
+                    <RiBookOpenLine className="h-3 w-3" />
                     {t('detailPanel.endpointsDocLink', { ns: 'plugin' })}
                   </div>
                 </a>
@@ -87,7 +91,7 @@ const EndpointList = ({ detail }: Props) => {
           />
         </div>
         <ActionButton onClick={showEndpointModal}>
-          <span className="i-ri-add-line h-4 w-4" />
+          <RiAddLine className="h-4 w-4" />
         </ActionButton>
       </div>
       {data.endpoints.length === 0 && (

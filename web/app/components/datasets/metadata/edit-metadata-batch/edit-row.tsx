@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { MetadataItemWithEdit } from '../types'
+import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import { UpdateType } from '../types'
@@ -53,7 +54,7 @@ const EditMetadatabatchItem: FC<Props> = ({
         }
         onClick={() => onRemove(payload.id)}
       >
-        <span className="i-ri-delete-bin-line size-4" />
+        <RiDeleteBinLine className="size-4" />
       </div>
     </div>
   )

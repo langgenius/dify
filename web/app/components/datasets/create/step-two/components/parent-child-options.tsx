@@ -3,6 +3,7 @@
 import type { FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
 import type { ParentMode, PreProcessingRule } from '@/models/datasets'
+import { RiSearchEyeLine } from '@remixicon/react'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -88,7 +89,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
       actions={(
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
-            <span className="i-ri-search-eye-line mr-0.5 h-4 w-4" />
+            <RiSearchEyeLine className="mr-0.5 h-4 w-4" />
             {t('stepTwo.previewChunk', { ns: 'datasetCreation' })}
           </Button>
           <Button variant="ghost" onClick={onReset}>

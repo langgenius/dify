@@ -1,5 +1,12 @@
 import type { MouseEvent } from 'react'
-
+import {
+  RiAspectRatioFill,
+  RiAspectRatioLine,
+  RiCursorLine,
+  RiFunctionAddLine,
+  RiHand,
+  RiStickyNoteAddLine,
+} from '@remixicon/react'
 import {
   memo,
 } from 'react'
@@ -53,7 +60,7 @@ const Control = () => {
           )}
           onClick={addNote}
         >
-          <span className="i-ri-sticky-note-add-line h-4 w-4" />
+          <RiStickyNoteAddLine className="h-4 w-4" />
         </div>
       </TipPopup>
       <Divider className="my-1 w-3.5" />
@@ -66,7 +73,7 @@ const Control = () => {
           )}
           onClick={handleModePointer}
         >
-          <span className="i-ri-cursor-line h-4 w-4" />
+          <RiCursorLine className="h-4 w-4" />
         </div>
       </TipPopup>
       <TipPopup title={t('common.handMode', { ns: 'workflow' })} shortcuts={['h']}>
@@ -78,7 +85,7 @@ const Control = () => {
           )}
           onClick={handleModeHand}
         >
-          <span className="i-ri-hand h-4 w-4" />
+          <RiHand className="h-4 w-4" />
         </div>
       </TipPopup>
       <Divider className="my-1 w-3.5" />
@@ -90,7 +97,7 @@ const Control = () => {
           )}
           onClick={handleLayout}
         >
-          <span className="i-ri-function-add-line h-4 w-4" />
+          <RiFunctionAddLine className="h-4 w-4" />
         </div>
       </TipPopup>
       <TipPopup title={maximizeCanvas ? t('panel.minimize', { ns: 'workflow' }) : t('panel.maximize', { ns: 'workflow' })} shortcuts={['f']}>
@@ -102,8 +109,8 @@ const Control = () => {
           )}
           onClick={handleToggleMaximizeCanvas}
         >
-          {maximizeCanvas && <span className="i-ri-aspect-ratio-fill h-4 w-4" />}
-          {!maximizeCanvas && <span className="i-ri-aspect-ratio-line h-4 w-4" />}
+          {maximizeCanvas && <RiAspectRatioFill className="h-4 w-4" />}
+          {!maximizeCanvas && <RiAspectRatioLine className="h-4 w-4" />}
         </div>
       </TipPopup>
       <MoreActions />

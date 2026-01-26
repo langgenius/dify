@@ -3,6 +3,7 @@ import type {
   DefaultModel,
   DefaultModelResponse,
 } from '../declarations'
+import { RiEqualizer2Line, RiLoader2Line } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -138,8 +139,8 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           disabled={isLoading}
         >
           {isLoading
-            ? <span className="i-ri-loader-2-line mr-1 h-3.5 w-3.5 animate-spin" />
-            : <span className="i-ri-equalizer-2-line mr-1 h-3.5 w-3.5" />}
+            ? <RiLoader2Line className="mr-1 h-3.5 w-3.5 animate-spin" />
+            : <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />}
           {t('modelProvider.systemModelSettings', { ns: 'common' })}
         </Button>
       </PortalToFollowElemTrigger>

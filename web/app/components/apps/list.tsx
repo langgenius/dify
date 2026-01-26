@@ -1,7 +1,14 @@
 'use client'
 
 import type { FC } from 'react'
-
+import {
+  RiApps2Line,
+  RiDragDropLine,
+  RiExchange2Line,
+  RiFile4Line,
+  RiMessage3Line,
+  RiRobot3Line,
+} from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import dynamic from 'next/dynamic'
 import {
@@ -118,12 +125,12 @@ const List: FC<Props> = ({
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="i-ri-apps-2-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="i-ri-exchange-2-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="i-ri-message-3-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="i-ri-message-3-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="i-ri-robot-3-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="i-ri-file-4-line mr-1 h-[14px] w-[14px]" /> },
+    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <RiApps2Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <RiExchange2Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <RiRobot3Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <RiFile4Line className="mr-1 h-[14px] w-[14px]" /> },
   ]
 
   useEffect(() => {
@@ -265,7 +272,7 @@ const List: FC<Props> = ({
             role="region"
             aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
           >
-            <span className="i-ri-drag-drop-line h-4 w-4" />
+            <RiDragDropLine className="h-4 w-4" />
             <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
         )}

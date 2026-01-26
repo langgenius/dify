@@ -1,4 +1,5 @@
 import type { SlashCommandHandler } from './types'
+import { RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { getI18n } from 'react-i18next'
 import { defaultDocBaseUrl } from '@/context/i18n'
@@ -34,7 +35,7 @@ export const docsCommand: SlashCommandHandler<DocDeps> = {
       type: 'command' as const,
       icon: (
         <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-          <span className="i-ri-book-open-line h-4 w-4 text-text-tertiary" />
+          <RiBookOpenLine className="h-4 w-4 text-text-tertiary" />
         </div>
       ),
       data: { command: 'navigation.doc', args: {} },

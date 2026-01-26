@@ -1,5 +1,8 @@
 import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
-
+import {
+  RiCalendarLine,
+  RiCloseCircleFill,
+} from '@remixicon/react'
 import dayjs from 'dayjs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -44,11 +47,11 @@ const ConditionDate = ({
         </div>
         {
           !!value && (
-            <span
-              className={`i-ri-close-circle-fill ${cn(
+            <RiCloseCircleFill
+              className={cn(
                 'hidden h-4 w-4 shrink-0 cursor-pointer hover:text-components-input-text-filled group-hover:block',
                 value && 'text-text-quaternary',
-              )}`}
+              )}
               onClick={(e) => {
                 e.stopPropagation()
                 handleDateChange()
@@ -56,11 +59,12 @@ const ConditionDate = ({
             />
           )
         }
-        <span className={`i-ri-calendar-line ${cn(
-          'block h-4 w-4 shrink-0',
-          value ? 'text-text-quaternary' : 'text-text-tertiary',
-          value && 'group-hover:hidden',
-        )}`}
+        <RiCalendarLine
+          className={cn(
+            'block h-4 w-4 shrink-0',
+            value ? 'text-text-quaternary' : 'text-text-tertiary',
+            value && 'group-hover:hidden',
+          )}
         />
       </div>
     )

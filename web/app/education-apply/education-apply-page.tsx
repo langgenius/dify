@@ -1,5 +1,6 @@
 'use client'
 
+import { RiExternalLinkLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import {
   useRouter,
@@ -166,7 +167,7 @@ const EducationApplyAge = () => {
             target="_blank"
           >
             {t('learn', { ns: 'education' })}
-            <span className="i-ri-external-link-line ml-1 h-3 w-3" />
+            <RiExternalLinkLine className="ml-1 h-3 w-3" />
           </a>
         </div>
       </div>

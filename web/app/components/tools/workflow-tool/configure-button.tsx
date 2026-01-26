@@ -2,6 +2,7 @@
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
+import { RiArrowRightUpLine, RiHammerLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -211,7 +212,7 @@ const WorkflowToolConfigureButton = ({
                   className="flex items-center justify-start gap-2 p-2 pl-2.5"
                   onClick={() => !disabled && !published && setShowModal(true)}
                 >
-                  <span className={`i-ri-hammer-line ${cn('relative h-4 w-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')}`} />
+                  <RiHammerLine className={cn('relative h-4 w-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
                   <div
                     title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
                     className={cn('system-sm-medium shrink grow basis-0 truncate text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')}
@@ -229,7 +230,7 @@ const WorkflowToolConfigureButton = ({
                 <div
                   className="flex items-center justify-start gap-2 p-2 pl-2.5"
                 >
-                  <span className="i-ri-hammer-line h-4 w-4 text-text-tertiary" />
+                  <RiHammerLine className="h-4 w-4 text-text-tertiary" />
                   <div
                     title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
                     className="system-sm-medium shrink grow basis-0 truncate text-text-tertiary"
@@ -262,7 +263,7 @@ const WorkflowToolConfigureButton = ({
                   disabled={disabled}
                 >
                   {t('common.manageInTools', { ns: 'workflow' })}
-                  <span className="i-ri-arrow-right-up-line ml-1 h-4 w-4" />
+                  <RiArrowRightUpLine className="ml-1 h-4 w-4" />
                 </Button>
               </div>
               {outdated && (

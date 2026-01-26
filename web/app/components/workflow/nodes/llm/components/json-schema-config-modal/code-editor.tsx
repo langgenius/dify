@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { Editor } from '@monaco-editor/react'
+import { RiClipboardLine, RiIndentIncrease } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -127,7 +128,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
                   className="flex h-6 w-6 items-center justify-center"
                   onClick={formatJsonContent}
                 >
-                  <span className="i-ri-indent-increase h-4 w-4 text-text-tertiary" />
+                  <RiIndentIncrease className="h-4 w-4 text-text-tertiary" />
                 </button>
               </Tooltip>
             )}
@@ -137,7 +138,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
                 className="flex h-6 w-6 items-center justify-center"
                 onClick={() => copy(value)}
               >
-                <span className="i-ri-clipboard-line h-4 w-4 text-text-tertiary" />
+                <RiClipboardLine className="h-4 w-4 text-text-tertiary" />
               </button>
             </Tooltip>
           </div>

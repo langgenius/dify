@@ -1,3 +1,4 @@
+import { RiArrowLeftLine } from '@remixicon/react'
 import Link from 'next/link'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,7 +19,7 @@ const Header = () => {
           variant="secondary-accent"
           className="size-9 rounded-full p-0"
         >
-          <span className="i-ri-arrow-left-line size-5 " />
+          <RiArrowLeftLine className="size-5 " />
         </Button>
       </Link>
     </div>

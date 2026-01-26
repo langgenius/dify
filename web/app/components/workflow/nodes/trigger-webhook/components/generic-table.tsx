@@ -1,5 +1,6 @@
 'use client'
 import type { FC, ReactNode } from 'react'
+import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import Checkbox from '@/app/components/base/checkbox'
@@ -266,7 +267,7 @@ const GenericTable: FC<GenericTableProps> = ({
                       className="p-1"
                       aria-label="Delete row"
                     >
-                      <span className="i-ri-delete-bin-line h-3.5 w-3.5 text-text-destructive" />
+                      <RiDeleteBinLine className="h-3.5 w-3.5 text-text-destructive" />
                     </button>
                   </div>
                 )}

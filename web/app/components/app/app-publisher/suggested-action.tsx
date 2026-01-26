@@ -1,4 +1,5 @@
 import type { HTMLProps, PropsWithChildren } from 'react'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import { cn } from '@/utils/classnames'
 
 export type SuggestedActionProps = PropsWithChildren<HTMLProps<HTMLAnchorElement> & {
@@ -24,7 +25,7 @@ const SuggestedAction = ({ icon, link, disabled, children, className, onClick, .
     >
       <div className="relative h-4 w-4">{icon}</div>
       <div className="system-sm-medium shrink grow basis-0">{children}</div>
-      <span className="i-ri-arrow-right-up-line h-3.5 w-3.5" />
+      <RiArrowRightUpLine className="h-3.5 w-3.5" />
     </a>
   )
 }

@@ -1,4 +1,5 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { RiEqualizer2Line, RiImage2Fill } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -51,7 +52,7 @@ const FileUpload = ({
     <FeatureCard
       icon={(
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
-          <span className="i-ri-image-2-fill h-4 w-4 text-text-primary-on-surface" />
+          <RiImage2Fill className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       )}
       title={(
@@ -99,7 +100,7 @@ const FileUpload = ({
                 onChange={onChange}
               >
                 <Button className="w-full" disabled={disabled}>
-                  <span className="i-ri-equalizer-2-line mr-1 h-4 w-4" />
+                  <RiEqualizer2Line className="mr-1 h-4 w-4" />
                   {t('operation.settings', { ns: 'common' })}
                 </Button>
               </SettingModal>

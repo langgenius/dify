@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { Field as FieldType } from '../../../../../llm/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
+import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
@@ -46,7 +47,7 @@ const Field: FC<Props> = ({
             <TreeIndentLine depth={depth} />
             {depth === MAX_DEPTH + 1
               ? (
-                  <span className="i-ri-more-fill h-3 w-3 text-text-tertiary" />
+                  <RiMoreFill className="h-3 w-3 text-text-tertiary" />
                 )
               : (<div className={cn('system-sm-medium h-6 w-0 grow truncate leading-6 text-text-secondary', isHighlight && 'text-text-accent')}>{name}</div>)}
 

@@ -1,6 +1,11 @@
 import type { IconInfo } from '@/models/datasets'
 import type { PublishWorkflowParams } from '@/types/workflow'
-
+import {
+  RiArrowRightUpLine,
+  RiHammerLine,
+  RiPlayCircleLine,
+  RiTerminalBoxLine,
+} from '@remixicon/react'
 import {
   useBoolean,
   useKeyPress,
@@ -276,10 +281,10 @@ const Popup = () => {
           disabled={!publishedAt}
         >
           <div className="flex grow items-center">
-            <span className="i-ri-play-circle-line mr-2 h-4 w-4" />
+            <RiPlayCircleLine className="mr-2 h-4 w-4" />
             {t('common.goToAddDocuments', { ns: 'pipeline' })}
           </div>
-          <span className="i-ri-arrow-right-up-line ml-2 h-4 w-4 shrink-0" />
+          <RiArrowRightUpLine className="ml-2 h-4 w-4 shrink-0" />
         </Button>
         <Link
           href={apiReferenceUrl}
@@ -292,10 +297,10 @@ const Popup = () => {
             disabled={!publishedAt}
           >
             <div className="flex grow items-center">
-              <span className="i-ri-terminal-box-line mr-2 h-4 w-4" />
+              <RiTerminalBoxLine className="mr-2 h-4 w-4" />
               {t('common.accessAPIReference', { ns: 'workflow' })}
             </div>
-            <span className="i-ri-arrow-right-up-line ml-2 h-4 w-4 shrink-0" />
+            <RiArrowRightUpLine className="ml-2 h-4 w-4 shrink-0" />
           </Button>
         </Link>
         <Divider className="my-2" />
@@ -306,7 +311,7 @@ const Popup = () => {
           disabled={!publishedAt || isPublishingAsCustomizedPipeline}
         >
           <div className="flex grow items-center gap-x-2 overflow-hidden">
-            <span className="i-ri-hammer-line h-4 w-4 shrink-0" />
+            <RiHammerLine className="h-4 w-4 shrink-0" />
             <span className="grow truncate text-left" title={t('common.publishAs', { ns: 'pipeline' })}>
               {t('common.publishAs', { ns: 'pipeline' })}
             </span>

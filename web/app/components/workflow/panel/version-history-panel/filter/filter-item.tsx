@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { WorkflowVersionFilterOptions } from '../../../types'
+import { RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 
 type FilterItemProps = {
@@ -24,7 +25,7 @@ const FilterItem: FC<FilterItemProps> = ({
       }}
     >
       <div className="system-md-regular flex-1 text-text-primary">{item.name}</div>
-      {isSelected && <span className="i-ri-check-line h-4 w-4 shrink-0 text-text-accent" />}
+      {isSelected && <RiCheckLine className="h-4 w-4 shrink-0 text-text-accent" />}
     </div>
   )
 }

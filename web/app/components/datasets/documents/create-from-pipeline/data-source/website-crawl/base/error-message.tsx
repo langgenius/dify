@@ -1,3 +1,4 @@
+import { RiErrorWarningFill } from '@remixicon/react'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
@@ -20,7 +21,7 @@ const ErrorMessage = ({
     )}
     >
       <div className="flex size-6 items-center justify-center">
-        <span className="i-ri-error-warning-fill h-4 w-4 text-text-destructive" />
+        <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
       </div>
       <div className="flex flex-col gap-y-0.5 py-1">
         <div className="system-xs-medium text-text-primary">{title}</div>

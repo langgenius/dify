@@ -2,7 +2,9 @@ import type {
   CustomConfigurationModelFixedFields,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-
+import {
+  RiEqualizer2Line,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -43,7 +45,7 @@ const ConfigProvider = ({
         variant={!authorized ? 'secondary-accent' : 'secondary'}
         title={text}
       >
-        <span className="i-ri-equalizer-2-line mr-1 h-3.5 w-3.5 shrink-0" />
+        <RiEqualizer2Line className="mr-1 h-3.5 w-3.5 shrink-0" />
         <span className="w-0 grow truncate text-left">
           {text}
         </span>

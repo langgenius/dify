@@ -1,6 +1,9 @@
 import type { useMarketplace } from './hooks'
 import { useLocale } from '#i18n'
-
+import {
+  RiArrowRightUpLine,
+  RiArrowUpDoubleLine,
+} from '@remixicon/react'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -36,7 +39,10 @@ const Marketplace = ({
     <>
       <div className="sticky bottom-0 flex shrink-0 flex-col bg-background-default-subtle px-12 pb-[14px] pt-2">
         {isMarketplaceArrowVisible && (
-          <span className="i-ri-arrow-up-double-line absolute left-1/2 top-2 z-10 h-4 w-4 -translate-x-1/2 cursor-pointer text-text-quaternary" onClick={showMarketplacePanel} />
+          <RiArrowUpDoubleLine
+            className="absolute left-1/2 top-2 z-10 h-4 w-4 -translate-x-1/2 cursor-pointer text-text-quaternary"
+            onClick={showMarketplacePanel}
+          />
         )}
         <div className="pb-3 pt-4">
           <div className="title-2xl-semi-bold bg-gradient-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text text-transparent">
@@ -78,7 +84,7 @@ const Marketplace = ({
               target="_blank"
             >
               {t('marketplace.difyMarketplace', { ns: 'plugin' })}
-              <span className="i-ri-arrow-right-up-line h-4 w-4" />
+              <RiArrowRightUpLine className="h-4 w-4" />
             </a>
           </div>
         </div>

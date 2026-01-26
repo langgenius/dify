@@ -1,3 +1,4 @@
+import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -58,7 +59,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
             {value + 1}
             {isLatest && ` · ${t('generate.latest', { ns: 'appDebug' })}`}
           </div>
-          {moreThanOneVersion && <span className="i-ri-arrow-down-sline size-3 " />}
+          {moreThanOneVersion && <RiArrowDownSLine className="size-3 " />}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={cn(
@@ -90,7 +91,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
                   {option.label}
                 </div>
                 {
-                  value === option.value && <span className="i-ri-check-line h-4 w-4 shrink-0 text-text-accent" />
+                  value === option.value && <RiCheckLine className="h-4 w-4 shrink-0 text-text-accent" />
                 }
               </div>
             ))

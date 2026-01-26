@@ -1,7 +1,11 @@
 'use client'
 import type { InputVarType } from '@/app/components/workflow/types'
 import type { InputVar } from '@/models/pipeline'
-
+import {
+  RiDeleteBinLine,
+  RiDraggable,
+  RiEditLine,
+} from '@remixicon/react'
 import { useHover } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
@@ -59,7 +63,7 @@ const FieldItem = ({
       <div className="flex grow basis-0 items-center gap-x-1 overflow-hidden">
         {
           (isHovering && !readonly)
-            ? <span className="i-ri-draggable size-4 shrink-0 text-text-quaternary" />
+            ? <RiDraggable className="size-4 shrink-0 text-text-quaternary" />
             : <InputField className="size-4 shrink-0 text-text-accent" />
         }
         <div
@@ -87,12 +91,12 @@ const FieldItem = ({
                 className="mr-1"
                 onClick={handleOnClickEdit}
               >
-                <span className="i-ri-edit-line size-4 text-text-tertiary" />
+                <RiEditLine className="size-4 text-text-tertiary" />
               </ActionButton>
               <ActionButton
                 onClick={handleRemove}
               >
-                <span className="i-ri-delete-bin-line size-4 text-text-tertiary group-hover:text-text-destructive" />
+                <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
               </ActionButton>
             </div>
           )

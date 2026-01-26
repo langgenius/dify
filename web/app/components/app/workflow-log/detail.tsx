@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/app/store'
@@ -27,7 +28,7 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
   return (
     <div className="relative flex grow flex-col pt-3">
       <span className="absolute right-3 top-4 z-20 cursor-pointer p-1" onClick={onClose}>
-        <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </span>
       <div className="flex items-center bg-components-panel-bg">
         <h1 className="system-xl-semibold shrink-0 px-4 py-1 text-text-primary">{t('runDetail.workflowTitle', { ns: 'appLog' })}</h1>
@@ -42,7 +43,7 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
               aria-label={t('runDetail.testWithParams', { ns: 'appLog' })}
               onClick={handleReplay}
             >
-              <span className="i-ri-play-large-line h-4 w-4 text-text-tertiary" />
+              <RiPlayLargeLine className="h-4 w-4 text-text-tertiary" />
             </button>
           </TooltipPlus>
         )}

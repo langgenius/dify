@@ -1,5 +1,6 @@
 'use client'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
+import { GlobeAltIcon } from '@heroicons/react/24/outline'
 import { Fragment } from 'react'
 
 type ISelectProps = {
@@ -21,7 +22,7 @@ export default function LocaleSigninSelect({
       <Menu as="div" className="relative inline-block text-left">
         <div>
           <MenuButton className="h-[44px]justify-center inline-flex w-full items-center rounded-lg border border-components-button-secondary-border px-[10px] py-[6px] text-[13px] font-medium text-text-primary hover:bg-state-base-hover">
-            <span className="i-heroicons-globe-alt-24-outline mr-1 h-5 w-5" aria-hidden="true" />
+            <GlobeAltIcon className="mr-1 h-5 w-5" aria-hidden="true" />
             {item?.name}
           </MenuButton>
         </div>

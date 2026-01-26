@@ -1,5 +1,7 @@
 import type { ConversationItem } from '@/models/share'
-
+import {
+  RiMenuLine,
+} from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -65,7 +67,7 @@ const HeaderInMobile = () => {
     <>
       <div className="flex shrink-0 items-center gap-1 bg-mask-top2bottom-gray-50-to-transparent px-2 py-3">
         <ActionButton size="l" className="shrink-0" onClick={() => setShowSidebar(true)}>
-          <span className="i-ri-menu-line h-[18px] w-[18px]" />
+          <RiMenuLine className="h-[18px] w-[18px]" />
         </ActionButton>
         <div className="flex grow items-center justify-center">
           {!currentConversationId && (

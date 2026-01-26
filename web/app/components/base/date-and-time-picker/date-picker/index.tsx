@@ -1,5 +1,6 @@
 import type { Dayjs } from 'dayjs'
 import type { DatePickerProps, Period } from '../types'
+import { RiCalendarLine, RiCloseCircleFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -236,17 +237,17 @@ const DatePicker = ({
                   value={isOpen ? '' : displayValue}
                   placeholder={placeholderDate}
                 />
-                <span className={`i-ri-calendar-line ${cn(
+                <RiCalendarLine className={cn(
                   'h-4 w-4 shrink-0 text-text-quaternary',
                   isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
                   (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden',
-                )}`}
+                )}
                 />
-                <span
-                  className={`i-ri-close-circle-fill ${cn(
+                <RiCloseCircleFill
+                  className={cn(
                     'hidden h-4 w-4 shrink-0 text-text-quaternary',
                     (displayValue || (isOpen && selectedDate)) && 'hover:text-text-secondary group-hover:inline-block',
-                  )}`}
+                  )}
                   onClick={handleClear}
                 />
               </div>

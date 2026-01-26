@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { IndexingType } from '../create/step-two'
 import type { RetrievalConfig } from '@/types/app'
+import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -108,7 +109,7 @@ const ModifyRetrievalModal: FC<Props> = ({
             onClick={onHide}
             className="flex h-8 w-8 cursor-pointer items-center justify-center"
           >
-            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
       </div>

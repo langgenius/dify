@@ -1,4 +1,5 @@
 import type { JSX } from 'react'
+import { RiMoreLine } from '@remixicon/react'
 import { cloneElement, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -145,7 +146,7 @@ const AppOperations = ({
           className="gap-[1px]"
           tabIndex={-1}
         >
-          <span className="i-ri-more-line h-3.5 w-3.5 text-components-button-secondary-text" />
+          <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
           <span className="system-xs-medium text-components-button-secondary-text">
             {t('operation.more', { ns: 'common' })}
           </span>
@@ -180,7 +181,7 @@ const AppOperations = ({
                 variant="secondary"
                 className="gap-[1px]"
               >
-                <span className="i-ri-more-line h-3.5 w-3.5 text-components-button-secondary-text" />
+                <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
                 <span className="system-xs-medium text-components-button-secondary-text">
                   {t('operation.more', { ns: 'common' })}
                 </span>

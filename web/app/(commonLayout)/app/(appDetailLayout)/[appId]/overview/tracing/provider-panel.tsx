@@ -1,6 +1,8 @@
 'use client'
 import type { FC } from 'react'
-
+import {
+  RiEqualizer2Line,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -94,7 +96,7 @@ const ProviderPanel: FC<Props> = ({
               className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs"
               onClick={handleConfigBtnClick}
             >
-              <span className="i-ri-equalizer-2-line h-3 w-3" />
+              <RiEqualizer2Line className="h-3 w-3" />
               <div className="text-xs font-medium">{t(`${I18N_PREFIX}.config`, { ns: 'app' })}</div>
             </div>
           </div>

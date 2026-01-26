@@ -1,5 +1,7 @@
 'use client'
-
+import {
+  RiVolumeUpLine,
+} from '@remixicon/react'
 import { t } from 'i18next'
 import { useParams, usePathname } from 'next/navigation'
 import { useState } from 'react'
@@ -88,7 +90,7 @@ const AudioBtn = ({
         onClick={handleToggle}
         disabled={audioState === 'loading'}
       >
-        <span className="i-ri-volume-up-line h-4 w-4" />
+        <RiVolumeUpLine className="h-4 w-4" />
       </ActionButton>
     </Tooltip>
   )

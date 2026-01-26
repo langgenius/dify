@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiAppsFill, RiExpandRightLine, RiLayoutLeft2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import Link from 'next/link'
 import { useSelectedLayoutSegments } from 'next/navigation'
@@ -84,7 +85,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
           className={cn(isDiscoverySelected ? 'bg-state-base-active' : 'hover:bg-state-base-hover', 'flex h-8 items-center gap-2 rounded-lg px-1 mobile:w-fit mobile:justify-center pc:w-full pc:justify-start')}
         >
           <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
-            <span className="i-ri-apps-fill size-3.5 text-components-avatar-shape-fill-stop-100" />
+            <RiAppsFill className="size-3.5 text-components-avatar-shape-fill-stop-100" />
           </div>
           {!isMobile && !isFold && <div className={cn('truncate', isDiscoverySelected ? 'system-sm-semibold text-components-menu-item-text-active' : 'system-sm-regular text-components-menu-item-text')}>{t('sidebar.title', { ns: 'explore' })}</div>}
         </Link>
@@ -135,9 +136,9 @@ const SideBar: FC<IExploreSideBarProps> = ({
       {!isMobile && (
         <div className="absolute bottom-3 left-3 flex size-8 cursor-pointer items-center justify-center text-text-tertiary" onClick={toggleIsFold}>
           {isFold
-            ? <span className="size-4.5 i-ri-expand-right-line" />
+            ? <RiExpandRightLine className="size-4.5" />
             : (
-                <span className="size-4.5 i-ri-layout-left-2-line" />
+                <RiLayoutLeft2Line className="size-4.5" />
               )}
         </div>
       )}

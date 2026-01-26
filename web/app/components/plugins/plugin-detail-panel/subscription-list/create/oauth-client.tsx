@@ -2,7 +2,10 @@
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type { TriggerOAuthClientParams, TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import type { ConfigureTriggerOAuthPayload } from '@/service/use-triggers'
-
+import {
+  RiClipboardLine,
+  RiInformation2Fill,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -237,7 +240,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
       {clientType === ClientTypeEnum.Custom && oauthConfig?.redirect_uri && (
         <div className="mb-4 flex items-start gap-3 rounded-xl bg-background-section-burn p-4">
           <div className="rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg p-2 shadow-xs shadow-shadow-shadow-3">
-            <span className="i-ri-information-2-fill h-5 w-5 shrink-0 text-text-accent" />
+            <RiInformation2Fill className="h-5 w-5 shrink-0 text-text-accent" />
           </div>
           <div className="flex-1 text-text-secondary">
             <div className="system-sm-regular whitespace-pre-wrap leading-4">
@@ -257,7 +260,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
                 })
               }}
             >
-              <span className="i-ri-clipboard-line mr-1 h-[14px] w-[14px]" />
+              <RiClipboardLine className="mr-1 h-[14px] w-[14px]" />
               {t('operation.copy', { ns: 'common' })}
             </Button>
           </div>

@@ -1,3 +1,9 @@
+import {
+  RiAlertFill,
+  RiCheckboxCircleFill,
+  RiErrorWarningLine,
+  RiLoader2Line,
+} from '@remixicon/react'
 import { cn } from '@/utils/classnames'
 
 type NodeStatusIconProps = {
@@ -12,22 +18,22 @@ const NodeStatusIcon = ({
     <>
       {
         status === 'succeeded' && (
-          <span className={`i-ri-checkbox-circle-fill ${cn('h-4 w-4 shrink-0 text-text-success', className)}`} />
+          <RiCheckboxCircleFill className={cn('h-4 w-4 shrink-0 text-text-success', className)} />
         )
       }
       {
         status === 'failed' && (
-          <span className={`i-ri-error-warning-line ${cn('h-4 w-4 shrink-0 text-text-warning', className)}`} />
+          <RiErrorWarningLine className={cn('h-4 w-4 shrink-0 text-text-warning', className)} />
         )
       }
       {
         (status === 'stopped' || status === 'exception') && (
-          <span className={`i-ri-alert-fill ${cn('h-4 w-4 shrink-0 text-text-warning-secondary', className)}`} />
+          <RiAlertFill className={cn('h-4 w-4 shrink-0 text-text-warning-secondary', className)} />
         )
       }
       {
         status === 'running' && (
-          <span className={`i-ri-loader-2-line ${cn('h-4 w-4 shrink-0 animate-spin text-text-accent', className)}`} />
+          <RiLoader2Line className={cn('h-4 w-4 shrink-0 animate-spin text-text-accent', className)} />
         )
       }
     </>

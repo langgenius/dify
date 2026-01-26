@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import Button from '@/app/components/base/button'
@@ -44,7 +45,7 @@ const ContextMenu: FC<ContextMenuProps> = (props: ContextMenuProps) => {
     >
       <PortalToFollowElemTrigger>
         <Button size="small" className="px-1" onClick={handleClickTrigger}>
-          <span className="i-ri-more-fill h-4 w-4" />
+          <RiMoreFill className="h-4 w-4" />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-10">

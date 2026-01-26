@@ -1,4 +1,5 @@
 import type { ConversationVariable } from '@/app/components/workflow/types'
+import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { memo, useState } from 'react'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
@@ -30,14 +31,14 @@ const VariableItem = ({
         </div>
         <div className="flex shrink-0 items-center gap-1 text-text-tertiary">
           <div className="radius-md cursor-pointer p-1 hover:bg-state-base-hover hover:text-text-secondary">
-            <span className="i-ri-edit-line h-4 w-4" onClick={() => onEdit(item)} />
+            <RiEditLine className="h-4 w-4" onClick={() => onEdit(item)} />
           </div>
           <div
             className="radius-md cursor-pointer p-1 hover:bg-state-destructive-hover hover:text-text-destructive"
             onMouseOver={() => setDestructive(true)}
             onMouseOut={() => setDestructive(false)}
           >
-            <span className="i-ri-delete-bin-line h-4 w-4" onClick={() => onDelete(item)} />
+            <RiDeleteBinLine className="h-4 w-4" onClick={() => onDelete(item)} />
           </div>
         </div>
       </div>

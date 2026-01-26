@@ -1,5 +1,6 @@
 'use client'
 import type { Member } from '@/models/common'
+import { CheckIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -98,7 +99,7 @@ const Operation = ({
       <PortalToFollowElemTrigger asChild onClick={() => setOpen(prev => !prev)}>
         <div className={cn('system-sm-regular group flex h-full w-full cursor-pointer items-center justify-between px-3 text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
           {RoleMap[member.role] || RoleMap.normal}
-          <span className={`i-heroicons-chevron-down-24-outline ${cn('h-4 w-4 shrink-0 group-hover:block', open ? 'block' : 'hidden')}`} />
+          <ChevronDownIcon className={cn('h-4 w-4 shrink-0 group-hover:block', open ? 'block' : 'hidden')} />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[999]">
@@ -109,7 +110,7 @@ const Operation = ({
                 <div key={role} className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={() => handleUpdateMemberRole(role)}>
                   {
                     role === member.role
-                      ? <span className="i-heroicons-check-24-outline mr-1 mt-[2px] h-4 w-4 text-text-accent" />
+                      ? <CheckIcon className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
                       : <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
                   }
                   <div>

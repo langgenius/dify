@@ -4,7 +4,12 @@ import type {
 import type {
   NodeProps,
 } from '@/app/components/workflow/types'
-
+import {
+  RiAlertFill,
+  RiCheckboxCircleFill,
+  RiErrorWarningFill,
+  RiLoader2Line,
+} from '@remixicon/react'
 import {
   memo,
   useMemo,
@@ -107,22 +112,22 @@ const SimpleNode: FC<SimpleNodeProps> = ({
           </div>
           {
             (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
-              <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin text-text-accent" />
+              <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Succeeded && (
-              <span className="i-ri-checkbox-circle-fill h-3.5 w-3.5 text-text-success" />
+              <RiCheckboxCircleFill className="h-3.5 w-3.5 text-text-success" />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Failed && (
-              <span className="i-ri-error-warning-fill h-3.5 w-3.5 text-text-destructive" />
+              <RiErrorWarningFill className="h-3.5 w-3.5 text-text-destructive" />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Exception && (
-              <span className="i-ri-alert-fill h-3.5 w-3.5 text-text-warning-secondary" />
+              <RiAlertFill className="h-3.5 w-3.5 text-text-warning-secondary" />
             )
           }
         </div>

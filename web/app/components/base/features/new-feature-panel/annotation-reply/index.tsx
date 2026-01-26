@@ -1,5 +1,6 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { AnnotationReplyConfig } from '@/models/debug'
+import { RiEqualizer2Line, RiExternalLinkLine } from '@remixicon/react'
 import { produce } from 'immer'
 import { usePathname, useRouter } from 'next/navigation'
 import * as React from 'react'
@@ -111,7 +112,7 @@ const AnnotationReply = ({
               {isHovering && (
                 <div className="flex items-center justify-between">
                   <Button className="w-[178px]" onClick={() => setIsShowAnnotationConfigInit(true)} disabled={disabled}>
-                    <span className="i-ri-equalizer-2-line mr-1 h-4 w-4" />
+                    <RiEqualizer2Line className="mr-1 h-4 w-4" />
                     {t('operation.params', { ns: 'common' })}
                   </Button>
                   <Button
@@ -120,7 +121,7 @@ const AnnotationReply = ({
                       router.push(`/app/${appId}/annotations`)
                     }}
                   >
-                    <span className="i-ri-external-link-line mr-1 h-4 w-4" />
+                    <RiExternalLinkLine className="mr-1 h-4 w-4" />
                     {t('feature.annotation.cacheManagement', { ns: 'appDebug' })}
                   </Button>
                 </div>

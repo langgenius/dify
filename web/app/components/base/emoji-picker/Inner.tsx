@@ -2,7 +2,11 @@
 import type { EmojiMartData } from '@emoji-mart/data'
 import type { ChangeEvent, FC } from 'react'
 import data from '@emoji-mart/data'
-
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  MagnifyingGlassIcon,
+} from '@heroicons/react/24/outline'
 import { init } from 'emoji-mart'
 import * as React from 'react'
 import { useState } from 'react'
@@ -67,7 +71,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
       <div className="flex w-full flex-col items-center px-3 pb-2">
         <div className="relative w-full">
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-3">
-            <span className="i-heroicons-magnifying-glass-24-outline h-5 w-5 text-text-quaternary" aria-hidden="true" />
+            <MagnifyingGlassIcon className="h-5 w-5 text-text-quaternary" aria-hidden="true" />
           </div>
           <Input
             className="pl-10"
@@ -146,8 +150,8 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
       <div className={cn('flex items-center justify-between p-3 pb-0')}>
         <p className="system-xs-medium-uppercase mb-2 text-text-primary">Choose Style</p>
         {showStyleColors
-          ? <span className="i-heroicons-chevron-down-24-outline h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} />
-          : <span className="i-heroicons-chevron-up-24-outline h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} />}
+          ? <ChevronDownIcon className="h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} />
+          : <ChevronUpIcon className="h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} />}
       </div>
       {showStyleColors && (
         <div className="grid w-full grid-cols-8 gap-1 px-3">

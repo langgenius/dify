@@ -1,6 +1,9 @@
 'use client'
 import { useTranslation } from '#i18n'
-
+import {
+  RiArrowDownSLine,
+  RiCheckLine,
+} from '@remixicon/react'
 import { useState } from 'react'
 import {
   PortalToFollowElem,
@@ -55,7 +58,7 @@ const SortDropdown = () => {
           <span className="system-sm-medium mr-1 text-text-primary">
             {selectedOption.text}
           </span>
-          <span className="i-ri-arrow-down-sline h-4 w-4 text-text-tertiary" />
+          <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
@@ -70,7 +73,7 @@ const SortDropdown = () => {
                 {option.text}
                 {
                   sort.sortBy === option.value && sort.sortOrder === option.order && (
-                    <span className="i-ri-check-line ml-2 h-4 w-4 text-text-accent" />
+                    <RiCheckLine className="ml-2 h-4 w-4 text-text-accent" />
                   )
                 }
               </div>

@@ -1,4 +1,5 @@
 import type { RAGPipelineVariables } from '@/models/pipeline'
+import { RiPlayLargeLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -100,7 +101,7 @@ const Options = ({
           className="shrink-0 gap-x-0.5"
           spinnerClassName="!ml-0"
         >
-          <span className="i-ri-play-large-line size-4" />
+          <RiPlayLargeLine className="size-4" />
           <span className="px-0.5">{!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.running`, { ns: 'datasetCreation' })}</span>
         </Button>
       </div>

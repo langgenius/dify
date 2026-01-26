@@ -1,5 +1,7 @@
 'use client'
 import type { CreateApiKeyResponse } from '@/models/app'
+import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import { RiDeleteBinLine } from '@remixicon/react'
 import {
   useState,
 } from 'react'
@@ -88,7 +90,7 @@ const SecretKeyModal = ({
   return (
     <Modal isShow={isShow} onClose={onClose} title={`${t('apiKeyModal.apiSecretKey', { ns: 'appApi' })}`} className={`${s.customModal} flex flex-col px-8`}>
       <div className="-mr-2 -mt-6 mb-4 flex justify-end">
-        <span className="i-heroicons-xmark-20-solid h-6 w-6 cursor-pointer text-text-tertiary" onClick={onClose} />
+        <XMarkIcon className="h-6 w-6 cursor-pointer text-text-tertiary" onClick={onClose} />
       </div>
       <p className="mt-1 shrink-0 text-[13px] font-normal leading-5 text-text-tertiary">{t('apiKeyModal.apiSecretKeyTips', { ns: 'appApi' })}</p>
       {isApiKeysLoading && <div className="mt-4"><Loading /></div>}
@@ -116,7 +118,7 @@ const SecretKeyModal = ({
                           setShowConfirmDelete(true)
                         }}
                       >
-                        <span className="i-ri-delete-bin-line h-4 w-4" />
+                        <RiDeleteBinLine className="h-4 w-4" />
                       </ActionButton>
                     )}
                   </div>
@@ -128,7 +130,7 @@ const SecretKeyModal = ({
       }
       <div className="flex">
         <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
-          <span className="i-heroicons-plus-20-solid mr-1 flex h-4 w-4 shrink-0" />
+          <PlusIcon className="mr-1 flex h-4 w-4 shrink-0" />
           <div className="text-xs font-medium text-text-secondary">{t('apiKeyModal.createNewSecretKey', { ns: 'appApi' })}</div>
         </Button>
       </div>

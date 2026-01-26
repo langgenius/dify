@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { Field } from '../../../types'
+import { RiArrowDropDownLine, RiArrowDropRightLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -107,8 +108,8 @@ const SchemaNode: FC<SchemaNodeProps> = ({
             >
               {
                 isExpanded
-                  ? <span className="i-ri-arrow-drop-down-line h-4 w-4" />
-                  : <span className="i-ri-arrow-drop-right-line h-4 w-4" />
+                  ? <RiArrowDropDownLine className="h-4 w-4" />
+                  : <RiArrowDropRightLine className="h-4 w-4" />
               }
             </button>
           </div>

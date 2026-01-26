@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { GenRes } from '@/service/debug'
+import { RiClipboardLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -56,7 +57,7 @@ const Result: FC<Props> = ({
               Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
             }}
           >
-            <span className="i-ri-clipboard-line h-4 w-4 text-text-secondary" />
+            <RiClipboardLine className="h-4 w-4 text-text-secondary" />
           </Button>
           <Button variant="primary" onClick={onApply}>
             {t('generate.apply', { ns: 'appDebug' })}

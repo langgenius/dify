@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { PlusIcon } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import s from '../style.module.css'
@@ -28,7 +29,7 @@ const EmptyElement: FC<EmptyElementProps> = ({ canAdd = true, onClick, type = 'u
         </div>
         {type === 'upload' && canAdd && (
           <Button onClick={onClick} className={s.addFileBtn} variant="secondary-accent">
-            <span className={`i-heroicons-plus-24-solid ${s.plusIcon}`} />
+            <PlusIcon className={s.plusIcon} />
             {t('list.addFile', { ns: 'datasetDocuments' })}
           </Button>
         )}

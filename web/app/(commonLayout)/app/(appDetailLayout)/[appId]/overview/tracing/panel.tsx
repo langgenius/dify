@@ -2,7 +2,10 @@
 import type { FC } from 'react'
 import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import type { TracingStatus } from '@/models/app'
-
+import {
+  RiArrowDownDoubleLine,
+  RiEqualizer2Line,
+} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { usePathname } from 'next/navigation'
 import * as React from 'react'
@@ -253,11 +256,11 @@ const Panel: FC = () => {
             <TracingIcon size="md" />
             <div className="system-sm-semibold mx-2 text-text-secondary">{t(`${I18N_PREFIX}.title`, { ns: 'app' })}</div>
             <div className="rounded-md p-1">
-              <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
+              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
             </div>
             <Divider type="vertical" className="h-3.5" />
             <div className="rounded-md p-1">
-              <span className="i-ri-arrow-down-double-line h-4 w-4 text-text-tertiary" />
+              <RiArrowDownDoubleLine className="h-4 w-4 text-text-tertiary" />
             </div>
           </div>
         </ConfigButton>
@@ -297,7 +300,7 @@ const Panel: FC = () => {
             </div>
             {InUseProviderIcon && <InUseProviderIcon className="ml-1 h-4" />}
             <div className="ml-2 rounded-md p-1">
-              <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
+              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
             </div>
             <Divider type="vertical" className="h-3.5" />
           </div>

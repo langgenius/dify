@@ -1,7 +1,11 @@
 'use client'
 
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
-
+import {
+  RiBookOpenLine,
+  RiDragDropLine,
+  RiEqualizer2Line,
+} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
@@ -177,7 +181,7 @@ const PluginPage = ({
                       className="px-3"
                       variant="secondary-accent"
                     >
-                      <span className="i-ri-book-open-line mr-1 h-4 w-4" />
+                      <RiBookOpenLine className="mr-1 h-4 w-4" />
                       {t('publishPlugins', { ns: 'plugin' })}
                     </Button>
                   </Link>
@@ -206,7 +210,7 @@ const PluginPage = ({
                     className="group h-full w-full p-2 text-components-button-secondary-text"
                     onClick={setShowPluginSettingModal}
                   >
-                    <span className="i-ri-equalizer-2-line h-4 w-4" />
+                    <RiEqualizer2Line className="h-4 w-4" />
                   </Button>
                 </Tooltip>
               )
@@ -225,7 +229,7 @@ const PluginPage = ({
             </div>
           )}
           <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
-            <span className="i-ri-drag-drop-line h-4 w-4" />
+            <RiDragDropLine className="h-4 w-4" />
             <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
           </div>
           {currentFile && (

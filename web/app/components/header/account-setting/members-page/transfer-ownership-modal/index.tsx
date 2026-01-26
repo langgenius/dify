@@ -1,3 +1,4 @@
+import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useState } from 'react'
@@ -129,7 +130,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
       className="!w-[420px] !p-6"
     >
       <div className="absolute right-5 top-5 cursor-pointer p-1.5" onClick={onClose}>
-        <span className="i-ri-close-line h-5 w-5 text-text-tertiary" />
+        <RiCloseLine className="h-5 w-5 text-text-tertiary" />
       </div>
       {step === STEP.start && (
         <>

@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { MetadataItemWithValue } from '../types'
+import { RiDeleteBinLine, RiQuestionLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -64,7 +65,7 @@ const InfoGroup: FC<Props> = ({
             <div className={cn('text-text-secondary', uppercaseTitle ? 'system-xs-semibold-uppercase' : 'system-md-semibold')}>{title}</div>
             {titleTooltip && (
               <Tooltip popupContent={<div className="max-w-[240px]">{titleTooltip}</div>}>
-                <div><span className="i-ri-question-line size-3.5 text-text-tertiary" /></div>
+                <div><RiQuestionLine className="size-3.5 text-text-tertiary" /></div>
               </Tooltip>
             )}
           </div>
@@ -99,7 +100,7 @@ const InfoGroup: FC<Props> = ({
                       onChange={value => onChange?.({ ...item, value })}
                     />
                     <div className="shrink-0 cursor-pointer rounded-md p-1  text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive">
-                      <span className="i-ri-delete-bin-line size-4" onClick={() => onDelete?.(item)} />
+                      <RiDeleteBinLine className="size-4" onClick={() => onDelete?.(item)} />
                     </div>
                   </div>
                 )

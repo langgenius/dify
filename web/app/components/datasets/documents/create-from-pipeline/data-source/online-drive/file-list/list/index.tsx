@@ -1,4 +1,5 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
+import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -95,7 +96,7 @@ const List = ({
                 aria-live="polite"
                 aria-label={t('loading', { ns: 'appApi' })}
               >
-                <span className="animation-spin i-ri-loader-2-line size-4 text-text-tertiary" />
+                <RiLoader2Line className="animation-spin size-4 text-text-tertiary" />
               </div>
             )
           }

@@ -1,6 +1,8 @@
 'use client'
 import type { FC } from 'react'
-
+import {
+  RiEditLine,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import Tooltip from '@/app/components/base/tooltip'
@@ -36,7 +38,7 @@ const FormInputTypeSwitch: FC<Props> = ({
           className={cn('cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover', value === VarType.constant && 'bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg')}
           onClick={() => onChange(VarType.constant)}
         >
-          <span className="i-ri-edit-line h-4 w-4" />
+          <RiEditLine className="h-4 w-4" />
         </div>
       </Tooltip>
     </div>

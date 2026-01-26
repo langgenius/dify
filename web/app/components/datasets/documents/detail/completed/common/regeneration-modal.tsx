@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { RiLoader2Line } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -50,7 +51,7 @@ const RegeneratingContent: FC = React.memo(() => {
       </div>
       <div className="flex justify-end pt-6">
         <Button variant="warning" destructive disabled className="inline-flex items-center gap-x-0.5">
-          <span className="i-ri-loader-2-line h-4 w-4 animate-spin text-components-button-destructive-primary-text-disabled" />
+          <RiLoader2Line className="h-4 w-4 animate-spin text-components-button-destructive-primary-text-disabled" />
           <span>{t('operation.regenerate', { ns: 'common' })}</span>
         </Button>
       </div>

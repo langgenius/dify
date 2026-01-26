@@ -2,6 +2,7 @@
 import type {
   MCPServerDetail,
 } from '@/app/components/tools/types'
+import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -93,7 +94,7 @@ const MCPServerModal = ({
       className={cn('relative !max-w-[520px] !p-0')}
     >
       <div className="absolute right-5 top-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
-        <span className="i-ri-close-line h-5 w-5 text-text-tertiary" />
+        <RiCloseLine className="h-5 w-5 text-text-tertiary" />
       </div>
       <div className="title-2xl-semi-bold relative p-6 pb-3 text-xl text-text-primary">
         {!data ? t('mcp.server.modal.addTitle', { ns: 'tools' }) : t('mcp.server.modal.editTitle', { ns: 'tools' })}

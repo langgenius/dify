@@ -1,3 +1,4 @@
+import { RiApps2AddLine, RiArrowRightLine, RiSparklingFill } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -41,9 +42,9 @@ const FeatureBar = ({
     <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-b border-l border-r border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
       {noFeatureEnabled && (
         <div className="flex cursor-pointer items-end gap-1" onClick={() => onFeatureBarClick?.(true)}>
-          <span className="i-ri-apps-2-add-line h-3.5 w-3.5 text-text-accent" />
+          <RiApps2AddLine className="h-3.5 w-3.5 text-text-accent" />
           <div className="body-xs-medium text-text-accent">{t('feature.bar.empty', { ns: 'appDebug' })}</div>
-          <span className="i-ri-arrow-right-line h-3.5 w-3.5 text-text-accent" />
+          <RiArrowRightLine className="h-3.5 w-3.5 text-text-accent" />
         </div>
       )}
       {!noFeatureEnabled && (
@@ -54,7 +55,7 @@ const FeatureBar = ({
                 popupContent={t('feature.moreLikeThis.title', { ns: 'appDebug' })}
               >
                 <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
-                  <span className="i-ri-sparkling-fill h-3.5 w-3.5 text-text-primary-on-surface" />
+                  <RiSparklingFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
                 </div>
               </Tooltip>
             )}
@@ -138,7 +139,7 @@ const FeatureBar = ({
             !hideEditEntrance && (
               <Button className="shrink-0" variant="ghost-accent" size="small" onClick={() => onFeatureBarClick?.(true)}>
                 <div className="mx-1">{t('feature.bar.manage', { ns: 'appDebug' })}</div>
-                <span className="i-ri-arrow-right-line h-3.5 w-3.5 text-text-accent" />
+                <RiArrowRightLine className="h-3.5 w-3.5 text-text-accent" />
               </Button>
             )
           }

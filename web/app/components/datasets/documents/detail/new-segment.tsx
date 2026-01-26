@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentUpdater } from '@/models/datasets'
+import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useParams } from 'next/navigation'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -180,10 +181,10 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
             </>
           )}
           <div className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={toggleFullScreen}>
-            <span className="i-ri-expand-diagonal-line h-4 w-4 text-text-tertiary" />
+            <RiExpandDiagonalLine className="h-4 w-4 text-text-tertiary" />
           </div>
           <div className="flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={handleCancel.bind(null, 'esc')}>
-            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
       </div>

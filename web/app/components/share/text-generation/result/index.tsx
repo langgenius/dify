@@ -7,6 +7,7 @@ import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { RiLoader2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import { produce } from 'immer'
@@ -539,7 +540,7 @@ const Result: FC<IResultProps> = ({
           >
             {
               isStopping
-                ? <span className="i-ri-loader-2-line mr-[5px] h-3.5 w-3.5 animate-spin" />
+                ? <RiLoader2Line className="mr-[5px] h-3.5 w-3.5 animate-spin" />
                 : <StopCircle className="mr-[5px] h-3.5 w-3.5" />
             }
             <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>

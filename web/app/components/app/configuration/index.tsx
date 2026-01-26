@@ -18,6 +18,7 @@ import type {
   TextToSpeechConfig,
 } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, UserInputFormItem, VisionSettings } from '@/types/app'
+import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
@@ -1008,7 +1009,7 @@ const Configuration: FC = () => {
                     {isMobile && (
                       <Button className="mr-2 !h-8 !text-[13px] font-medium" onClick={showDebugPanel}>
                         <span className="mr-1">{t('operation.debugConfig', { ns: 'appDebug' })}</span>
-                        <span className="i-heroicons-code-bracket-20-solid h-4 w-4 text-text-tertiary" />
+                        <CodeBracketIcon className="h-4 w-4 text-text-tertiary" />
                       </Button>
                     )}
                     <AppPublisher {...{

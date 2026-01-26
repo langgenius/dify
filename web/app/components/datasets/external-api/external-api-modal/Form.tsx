@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
+import { RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -61,7 +62,7 @@ const Form: FC<FormProps> = React.memo(({
               rel="noopener noreferrer"
               className="body-xs-regular flex items-center text-text-accent"
             >
-              <span className="i-ri-book-open-line mr-1 h-3 w-3 text-text-accent" />
+              <RiBookOpenLine className="mr-1 h-3 w-3 text-text-accent" />
               {t('externalAPIPanelDocumentation', { ns: 'dataset' })}
             </a>
           )}

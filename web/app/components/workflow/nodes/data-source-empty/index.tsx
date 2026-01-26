@@ -1,4 +1,5 @@
 import type { NodeProps } from 'reactflow'
+import { RiAddLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -19,7 +20,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
         variant="primary"
         className="w-full"
       >
-        <span className="i-ri-add-line mr-1 h-4 w-4" />
+        <RiAddLine className="mr-1 h-4 w-4" />
         {t('nodes.dataSource.add', { ns: 'workflow' })}
       </Button>
     )

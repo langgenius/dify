@@ -2,7 +2,10 @@
 
 import type { FC } from 'react'
 import type { PreProcessingRule } from '@/models/datasets'
-
+import {
+  RiAlertFill,
+  RiSearchEyeLine,
+} from '@remixicon/react'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -95,7 +98,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
       actions={(
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
-            <span className="i-ri-search-eye-line mr-0.5 h-4 w-4" />
+            <RiSearchEyeLine className="mr-0.5 h-4 w-4" />
             {t('stepTwo.previewChunk', { ns: 'datasetCreation' })}
           </Button>
           <Button variant="ghost" onClick={onReset}>
@@ -180,7 +183,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     }}
                     className="mt-2 flex h-10 items-center gap-2 rounded-xl border border-components-panel-border px-3 text-xs shadow-xs backdrop-blur-[5px]"
                   >
-                    <span className="i-ri-alert-fill size-4 text-text-warning-secondary" />
+                    <RiAlertFill className="size-4 text-text-warning-secondary" />
                     <span className="system-xs-medium text-text-primary">
                       {t('stepTwo.QATip', { ns: 'datasetCreation' })}
                     </span>

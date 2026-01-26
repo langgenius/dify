@@ -1,7 +1,9 @@
 import type { FC } from 'react'
 import type { AssignerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -40,7 +42,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
         <div className="flex items-start gap-2 self-stretch">
           <div className="system-sm-semibold-uppercase flex grow flex-col items-start justify-center text-text-secondary">{t(`${i18nPrefix}.variables`, { ns: 'workflow' })}</div>
           <ActionButton onClick={handleAddOperation}>
-            <span className="i-ri-add-line h-4 w-4 shrink-0 text-text-tertiary" />
+            <RiAddLine className="h-4 w-4 shrink-0 text-text-tertiary" />
           </ActionButton>
         </div>
         <VarList

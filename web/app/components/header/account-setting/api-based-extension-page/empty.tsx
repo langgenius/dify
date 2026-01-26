@@ -1,3 +1,7 @@
+import {
+  RiExternalLinkLine,
+  RiPuzzle2Line,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 
@@ -8,7 +12,7 @@ const Empty = () => {
   return (
     <div className="mb-2 rounded-xl bg-background-section p-6">
       <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg-alt shadow-lg backdrop-blur-sm">
-        <span className="i-ri-puzzle-2-line h-5 w-5 text-text-accent" />
+        <RiPuzzle2Line className="h-5 w-5 text-text-accent" />
       </div>
       <div className="system-sm-medium mb-1 text-text-secondary">{t('apiBasedExtension.title', { ns: 'common' })}</div>
       <a
@@ -18,7 +22,7 @@ const Empty = () => {
         rel="noopener noreferrer"
       >
         {t('apiBasedExtension.link', { ns: 'common' })}
-        <span className="i-ri-external-link-line ml-1 h-3 w-3" />
+        <RiExternalLinkLine className="ml-1 h-3 w-3" />
       </a>
     </div>
   )

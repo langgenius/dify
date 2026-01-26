@@ -1,6 +1,8 @@
 import type { FC } from 'react'
 import type { Node } from '../../../types'
-
+import {
+  RiPlayLargeLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -71,7 +73,7 @@ const NodeControl: FC<NodeControlProps> = ({
                         popupContent={t('panel.runThisStep', { ns: 'workflow' })}
                         asChild={false}
                       >
-                        <span className="i-ri-play-large-line h-3 w-3" />
+                        <RiPlayLargeLine className="h-3 w-3" />
                       </Tooltip>
                     )
               }

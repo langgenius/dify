@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { AgentConfig } from '@/models/debug'
+import { RiSettings2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,7 +27,7 @@ const AgentSettingButton: FC<Props> = ({
   return (
     <>
       <Button onClick={() => setIsShowAgentSetting(true)} className="mr-2 shrink-0">
-        <span className="i-ri-settings-2-line mr-1 h-4 w-4 text-text-tertiary" />
+        <RiSettings2Line className="mr-1 h-4 w-4 text-text-tertiary" />
         {t('agent.setting.name', { ns: 'appDebug' })}
       </Button>
       {isShowAgentSetting && (

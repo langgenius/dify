@@ -4,6 +4,7 @@ import type {
   ModelItem,
   ModelProvider,
 } from '../declarations'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
@@ -103,7 +104,7 @@ const Trigger: FC<TriggerProps> = ({
               <SlidersH className={cn(!isInWorkflow ? 'text-indigo-600' : 'text-text-tertiary', 'h-4 w-4 shrink-0')} />
             )
       }
-      {isInWorkflow && (<span className="i-ri-arrow-down-sline absolute right-2 top-[9px] h-3.5 w-3.5 text-text-tertiary" />)}
+      {isInWorkflow && (<RiArrowDownSLine className="absolute right-2 top-[9px] h-3.5 w-3.5 text-text-tertiary" />)}
     </div>
   )
 }

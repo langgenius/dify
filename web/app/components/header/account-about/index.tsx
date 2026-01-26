@@ -1,5 +1,6 @@
 'use client'
 import type { LangGeniusVersionResponse } from '@/models/common'
+import { RiCloseLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
@@ -31,7 +32,7 @@ export default function AccountAbout({
     >
       <div className="relative">
         <div className="absolute right-0 top-0 flex h-8 w-8 cursor-pointer items-center justify-center" onClick={onCancel}>
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
         <div className="flex flex-col items-center gap-4 py-8">
           {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo

@@ -1,6 +1,21 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
-
+import {
+  RiBrain2Fill,
+  RiBrain2Line,
+  RiCloseLine,
+  RiColorFilterFill,
+  RiColorFilterLine,
+  RiDatabase2Fill,
+  RiDatabase2Line,
+  RiGroup2Fill,
+  RiGroup2Line,
+  RiMoneyDollarCircleFill,
+  RiMoneyDollarCircleLine,
+  RiPuzzle2Fill,
+  RiPuzzle2Line,
+  RiTranslate2,
+} from '@remixicon/react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -61,14 +76,14 @@ export default function AccountSetting({
       {
         key: ACCOUNT_SETTING_TAB.PROVIDER,
         name: t('settings.provider', { ns: 'common' }),
-        icon: <span className={`i-ri-brain-2-line ${iconClassName}`} />,
-        activeIcon: <span className={`i-ri-brain-2-fill ${iconClassName}`} />,
+        icon: <RiBrain2Line className={iconClassName} />,
+        activeIcon: <RiBrain2Fill className={iconClassName} />,
       },
       {
         key: ACCOUNT_SETTING_TAB.MEMBERS,
         name: t('settings.members', { ns: 'common' }),
-        icon: <span className={`i-ri-group-2-line ${iconClassName}`} />,
-        activeIcon: <span className={`i-ri-group-2-fill ${iconClassName}`} />,
+        icon: <RiGroup2Line className={iconClassName} />,
+        activeIcon: <RiGroup2Fill className={iconClassName} />,
       },
     ]
 
@@ -77,8 +92,8 @@ export default function AccountSetting({
         key: ACCOUNT_SETTING_TAB.BILLING,
         name: t('settings.billing', { ns: 'common' }),
         description: t('plansCommon.receiptInfo', { ns: 'billing' }),
-        icon: <span className={`i-ri-money-dollar-circle-line ${iconClassName}`} />,
-        activeIcon: <span className={`i-ri-money-dollar-circle-fill ${iconClassName}`} />,
+        icon: <RiMoneyDollarCircleLine className={iconClassName} />,
+        activeIcon: <RiMoneyDollarCircleFill className={iconClassName} />,
       })
     }
 
@@ -86,14 +101,14 @@ export default function AccountSetting({
       {
         key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
         name: t('settings.dataSource', { ns: 'common' }),
-        icon: <span className={`i-ri-database-2-line ${iconClassName}`} />,
-        activeIcon: <span className={`i-ri-database-2-fill ${iconClassName}`} />,
+        icon: <RiDatabase2Line className={iconClassName} />,
+        activeIcon: <RiDatabase2Fill className={iconClassName} />,
       },
       {
         key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
         name: t('settings.apiBasedExtension', { ns: 'common' }),
-        icon: <span className={`i-ri-puzzle-2-line ${iconClassName}`} />,
-        activeIcon: <span className={`i-ri-puzzle-2-fill ${iconClassName}`} />,
+        icon: <RiPuzzle2Line className={iconClassName} />,
+        activeIcon: <RiPuzzle2Fill className={iconClassName} />,
       },
     )
 
@@ -101,8 +116,8 @@ export default function AccountSetting({
       items.push({
         key: ACCOUNT_SETTING_TAB.CUSTOM,
         name: t('custom', { ns: 'custom' }),
-        icon: <span className={`i-ri-color-filter-line ${iconClassName}`} />,
-        activeIcon: <span className={`i-ri-color-filter-fill ${iconClassName}`} />,
+        icon: <RiColorFilterLine className={iconClassName} />,
+        activeIcon: <RiColorFilterFill className={iconClassName} />,
       })
     }
 
@@ -125,8 +140,8 @@ export default function AccountSetting({
         {
           key: ACCOUNT_SETTING_TAB.LANGUAGE,
           name: t('settings.language', { ns: 'common' }),
-          icon: <span className={`i-ri-translate-2 ${iconClassName}`} />,
-          activeIcon: <span className={`i-ri-translate-2 ${iconClassName}`} />,
+          icon: <RiTranslate2 className={iconClassName} />,
+          activeIcon: <RiTranslate2 className={iconClassName} />,
         },
       ],
     },
@@ -198,7 +213,7 @@ export default function AccountSetting({
               className="px-2"
               onClick={onCancel}
             >
-              <span className="i-ri-close-line h-5 w-5" />
+              <RiCloseLine className="h-5 w-5" />
             </Button>
             <div className="system-2xs-medium-uppercase mt-1 text-text-tertiary">ESC</div>
           </div>

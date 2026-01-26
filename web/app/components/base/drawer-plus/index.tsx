@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useRef } from 'react'
 import Drawer from '@/app/components/base/drawer'
@@ -80,7 +81,7 @@ const DrawerPlus: FC<Props> = ({
                 onClick={onHide}
                 className="flex h-6 w-6 cursor-pointer items-center justify-center"
               >
-                <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+                <RiCloseLine className="h-4 w-4 text-text-tertiary" />
               </div>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -46,7 +47,7 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
     >
       <h1 className="text-md shrink-0 px-4 py-1 font-semibold text-text-primary">{t('runDetail.workflowTitle', { ns: 'appLog' })}</h1>
       <span className="absolute right-3 top-4 z-20 cursor-pointer p-1" onClick={onCancel}>
-        <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </span>
       <AgentLogDetail
         conversationID={currentLogItem.conversationId}

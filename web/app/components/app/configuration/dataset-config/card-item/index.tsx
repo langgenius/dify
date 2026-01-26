@@ -1,7 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
-
+import {
+  RiDeleteBinLine,
+  RiEditLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -76,7 +79,7 @@ const Item: FC<ItemProps> = ({
                 setShowSettingsModal(true)
               }}
             >
-              <span className="i-ri-edit-line h-4 w-4 shrink-0 text-text-tertiary" />
+              <RiEditLine className="h-4 w-4 shrink-0 text-text-tertiary" />
             </ActionButton>
           )
         }
@@ -88,7 +91,7 @@ const Item: FC<ItemProps> = ({
               onMouseEnter={() => setIsDeleting(true)}
               onMouseLeave={() => setIsDeleting(false)}
             >
-              <span className={`i-ri-delete-bin-line ${cn('h-4 w-4 shrink-0 text-text-tertiary', isDeleting && 'text-text-destructive')}`} />
+              <RiDeleteBinLine className={cn('h-4 w-4 shrink-0 text-text-tertiary', isDeleting && 'text-text-destructive')} />
             </ActionButton>
           )
         }

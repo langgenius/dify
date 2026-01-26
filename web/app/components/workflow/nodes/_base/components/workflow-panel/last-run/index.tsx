@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { ResultPanelProps } from '@/app/components/workflow/run/result-panel'
 import type { NodeTracing } from '@/types/workflow'
+import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -111,7 +112,7 @@ const LastRun: FC<Props> = ({
   if (isFetching && !isRunAfterSingleRun) {
     return (
       <div className="flex h-0 grow flex-col items-center justify-center">
-        <span className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary" />
+        <RiLoader2Line className="size-4 animate-spin text-text-tertiary" />
       </div>
     )
   }

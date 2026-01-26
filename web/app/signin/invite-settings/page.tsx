@@ -1,5 +1,6 @@
 'use client'
 import type { Locale } from '@/i18n-config'
+import { RiAccountCircleLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -85,7 +86,7 @@ export default function InviteSettingsPage() {
   return (
     <div className="flex flex-col gap-3">
       <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
-        <span className="i-ri-account-circle-line h-6 w-6 text-2xl text-text-accent-light-mode-only" />
+        <RiAccountCircleLine className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pb-4 pt-2">
         <h2 className="title-4xl-semi-bold text-text-primary">{t('setYourAccount', { ns: 'login' })}</h2>

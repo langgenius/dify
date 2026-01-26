@@ -1,3 +1,4 @@
+import { RiErrorWarningFill } from '@remixicon/react'
 import Link from 'next/link'
 import Tooltip from '@/app/components/base/tooltip'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
@@ -52,7 +53,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
                   asChild={false}
                   needsDelay={false}
                 >
-                  <span className="i-ri-error-warning-fill h-4 w-4 text-text-destructive" />
+                  <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
                 </Tooltip>
               )
             : !pluginInfo
@@ -66,7 +67,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
                       )}
                       asChild={false}
                     >
-                      <span className="i-ri-error-warning-fill h-4 w-4 text-text-destructive" />
+                      <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
                     </Tooltip>
                   )
                 : (
@@ -90,7 +91,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
           )}
           asChild={false}
         >
-          <span className="i-ri-error-warning-fill h-4 w-4 text-text-destructive" />
+          <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
         </Tooltip>
       )}
     </>

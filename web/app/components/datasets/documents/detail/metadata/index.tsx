@@ -3,6 +3,7 @@ import type { FC, ReactNode } from 'react'
 import type { inputType, metadataType } from '@/hooks/use-metadata'
 import type { CommonResponse } from '@/models/common'
 import type { DocType, FullDocumentDetail } from '@/models/datasets'
+import { PencilIcon } from '@heroicons/react/24/outline'
 import { get } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -355,7 +356,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
                 {!editStatus
                   ? (
                       <Button onClick={enabledEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
-                        <span className={`i-heroicons-pencil-24-outline ${s.opIcon}`} />
+                        <PencilIcon className={s.opIcon} />
                         {t('operation.edit', { ns: 'common' })}
                       </Button>
                     )

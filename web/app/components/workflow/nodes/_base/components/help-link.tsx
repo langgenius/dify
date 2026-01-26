@@ -1,4 +1,5 @@
 import type { BlockEnum } from '@/app/components/workflow/types'
+import { RiBookOpenLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import TooltipPlus from '@/app/components/base/tooltip'
@@ -25,7 +26,7 @@ const HelpLink = ({
         target="_blank"
         className="mr-1 flex h-6 w-6 items-center justify-center rounded-md hover:bg-state-base-hover"
       >
-        <span className="i-ri-book-open-line h-4 w-4 text-gray-500" />
+        <RiBookOpenLine className="h-4 w-4 text-gray-500" />
       </a>
     </TooltipPlus>
 

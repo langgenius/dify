@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiAddLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -55,7 +56,7 @@ const PluginsPicker: FC<Props> = ({
       <ToolPicker
         trigger={(
           <Button className="mt-2 w-full" size="small" variant="secondary-accent">
-            <span className="i-ri-add-line size-3.5" />
+            <RiAddLine className="size-3.5" />
             {t(`${i18nPrefix}.operation.select`, { ns: 'plugin' })}
           </Button>
         )}

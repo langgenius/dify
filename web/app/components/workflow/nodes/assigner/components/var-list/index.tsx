@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { AssignerNodeOperation } from '../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { RiDeleteBinLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -227,7 +228,7 @@ const VarList: FC<Props> = ({
               className="group shrink-0 hover:!bg-state-destructive-hover"
               onClick={handleVarRemove(index)}
             >
-              <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
+              <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
             </ActionButton>
           </div>
         )

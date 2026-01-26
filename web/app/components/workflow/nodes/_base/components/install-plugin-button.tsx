@@ -1,4 +1,5 @@
 import type { ComponentProps, MouseEventHandler } from 'react'
+import { RiInstallLine, RiLoader2Line } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -101,7 +102,7 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
       className={cn('flex items-center', className)}
     >
       {!isLoading ? t('nodes.agent.pluginInstaller.install', { ns: 'workflow' }) : t('nodes.agent.pluginInstaller.installing', { ns: 'workflow' })}
-      {!isLoading ? <span className="i-ri-install-line ml-1 size-3.5" /> : <span className="i-ri-loader-2-line ml-1 size-3.5 animate-spin" />}
+      {!isLoading ? <RiInstallLine className="ml-1 size-3.5" /> : <RiLoader2Line className="ml-1 size-3.5 animate-spin" />}
     </Button>
   )
 }

@@ -1,3 +1,4 @@
+import { RiBookOpenLine, RiKey2Line } from '@remixicon/react'
 import Link from 'next/link'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -79,7 +80,7 @@ const Card = ({
           className="gap-x-px text-text-tertiary"
           onClick={handleOpenSecretKeyModal}
         >
-          <span className="i-ri-key-2-line size-3.5 shrink-0" />
+          <RiKey2Line className="size-3.5 shrink-0" />
           <span className="system-xs-medium px-[3px]">
             {t('serviceApi.card.apiKey', { ns: 'dataset' })}
           </span>
@@ -94,7 +95,7 @@ const Card = ({
             size="small"
             className="gap-x-px text-text-tertiary"
           >
-            <span className="i-ri-book-open-line size-3.5 shrink-0" />
+            <RiBookOpenLine className="size-3.5 shrink-0" />
             <span className="system-xs-medium px-[3px]">
               {t('serviceApi.card.apiReference', { ns: 'dataset' })}
             </span>

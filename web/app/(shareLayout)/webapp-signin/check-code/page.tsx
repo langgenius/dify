@@ -1,5 +1,6 @@
 'use client'
 import type { FormEvent } from 'react'
+import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -106,7 +107,7 @@ export default function CheckCode() {
   return (
     <div className="flex w-[400px] flex-col gap-3">
       <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
-        <span className="i-ri-mail-send-fill h-6 w-6 text-2xl text-text-accent-light-mode-only" />
+        <RiMailSendFill className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pb-4 pt-2">
         <h2 className="title-4xl-semi-bold text-text-primary">{t('checkCode.checkYourEmail', { ns: 'login' })}</h2>
@@ -139,7 +140,7 @@ export default function CheckCode() {
       </div>
       <div onClick={() => router.back()} className="flex h-9 cursor-pointer items-center justify-center text-text-tertiary">
         <div className="bg-background-default-dimm inline-block rounded-full p-1">
-          <span className="i-ri-arrow-left-line size-3" />
+          <RiArrowLeftLine size={12} />
         </div>
         <span className="system-xs-regular ml-2">{t('back', { ns: 'login' })}</span>
       </div>

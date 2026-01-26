@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin } from './types'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
@@ -81,7 +82,7 @@ const ProviderCardComponent: FC<Props> = ({
         >
           <a href={getPluginLinkInMarketplace(payload, marketplaceLinkParams)} target="_blank" className="flex items-center gap-0.5">
             {t('detailPanel.operation.detail', { ns: 'plugin' })}
-            <span className="i-ri-arrow-right-up-line h-4 w-4" />
+            <RiArrowRightUpLine className="h-4 w-4" />
           </a>
         </Button>
       </div>

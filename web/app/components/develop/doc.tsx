@@ -1,4 +1,5 @@
 'use client'
+import { RiCloseLine, RiListUnordered } from '@remixicon/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
@@ -172,7 +173,7 @@ const Doc = ({ appDetail }: IDocProps) => {
                     className="group flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-state-base-hover"
                     aria-label="Close"
                   >
-                    <span className="i-ri-close-line h-3 w-3 text-text-quaternary transition-colors group-hover:text-text-secondary" />
+                    <RiCloseLine className="h-3 w-3 text-text-quaternary transition-colors group-hover:text-text-secondary" />
                   </button>
                 </div>
 
@@ -231,7 +232,7 @@ const Doc = ({ appDetail }: IDocProps) => {
                 className="group flex h-11 w-11 items-center justify-center rounded-full border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-all duration-150 hover:bg-background-default-hover hover:shadow-xl"
                 aria-label="Open table of contents"
               >
-                <span className="i-ri-list-unordered h-5 w-5 text-text-tertiary transition-colors group-hover:text-text-secondary" />
+                <RiListUnordered className="h-5 w-5 text-text-tertiary transition-colors group-hover:text-text-secondary" />
               </button>
             )}
       </div>

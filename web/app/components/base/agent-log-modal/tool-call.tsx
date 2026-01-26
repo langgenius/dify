@@ -1,7 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { ToolCall } from '@/models/log'
-
+import {
+  RiCheckboxCircleLine,
+  RiErrorWarningLine,
+} from '@remixicon/react'
 import { useState } from 'react'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -77,10 +80,10 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
             )}
           </div>
           {toolCall.status === 'success' && (
-            <span className="i-ri-checkbox-circle-line ml-2 h-3.5 w-3.5 shrink-0 text-[#12B76A]" />
+            <RiCheckboxCircleLine className="ml-2 h-3.5 w-3.5 shrink-0 text-[#12B76A]" />
           )}
           {toolCall.status === 'error' && (
-            <span className="i-ri-error-warning-line ml-2 h-3.5 w-3.5 shrink-0 text-[#F04438]" />
+            <RiErrorWarningLine className="ml-2 h-3.5 w-3.5 shrink-0 text-[#F04438]" />
           )}
         </div>
         {!collapseState && (

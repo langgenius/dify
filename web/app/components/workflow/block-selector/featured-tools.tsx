@@ -3,6 +3,7 @@ import type { ToolWithProvider } from '../types'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
+import { RiMoreLine } from '@remixicon/react'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -197,7 +198,7 @@ const FeaturedTools = ({
               }}
             >
               <div className="flex items-center px-1 text-text-tertiary transition-colors group-hover:text-text-secondary">
-                <span className="i-ri-more-line size-4 group-hover:hidden" />
+                <RiMoreLine className="size-4 group-hover:hidden" />
                 {isExpanded
                   ? (
                       <ArrowUpDoubleLine className="hidden size-4 group-hover:block" />

@@ -1,5 +1,6 @@
 'use client'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
+import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { Fragment, useMemo } from 'react'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
@@ -50,7 +51,7 @@ const CredentialSelector = ({
               >
                 {currentDisplayName}
               </div>
-              <span className="i-ri-arrow-down-sline h-4 w-4 text-text-secondary" />
+              <RiArrowDownSLine className="h-4 w-4 text-text-secondary" />
             </MenuButton>
             <Transition
               as={Fragment}

@@ -1,5 +1,10 @@
 import type { PluginDetail } from '../types'
-
+import {
+  RiArrowLeftRightLine,
+  RiBugLine,
+  RiCloseLine,
+  RiHardDrive3Line,
+} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -246,7 +251,7 @@ const DetailHeader = ({
                     text={(
                       <>
                         <div>{isFromGitHub ? meta!.version : version}</div>
-                        {isFromMarketplace && !isReadmeView && <span className="i-ri-arrow-left-right-line ml-1 h-3 w-3 text-text-tertiary" />}
+                        {isFromMarketplace && !isReadmeView && <RiArrowLeftRightLine className="ml-1 h-3 w-3 text-text-tertiary" />}
                       </>
                     )}
                     hasRedCornerMark={hasNewVersion}
@@ -307,12 +312,12 @@ const DetailHeader = ({
                   )}
                   {source === PluginSource.local && (
                     <Tooltip popupContent={t('detailPanel.categoryTip.local', { ns: 'plugin' })}>
-                      <div><span className="i-ri-hard-drive-3-line h-3.5 w-3.5 text-text-tertiary" /></div>
+                      <div><RiHardDrive3Line className="h-3.5 w-3.5 text-text-tertiary" /></div>
                     </Tooltip>
                   )}
                   {source === PluginSource.debugging && (
                     <Tooltip popupContent={t('detailPanel.categoryTip.debugging', { ns: 'plugin' })}>
-                      <div><span className="i-ri-bug-line h-3.5 w-3.5 text-text-tertiary hover:text-text-warning" /></div>
+                      <div><RiBugLine className="h-3.5 w-3.5 text-text-tertiary hover:text-text-warning" /></div>
                     </Tooltip>
                   )}
                 </>
@@ -330,7 +335,7 @@ const DetailHeader = ({
               detailUrl={detailUrl}
             />
             <ActionButton onClick={onHide}>
-              <span className="i-ri-close-line h-4 w-4" />
+              <RiCloseLine className="h-4 w-4" />
             </ActionButton>
           </div>
         )}

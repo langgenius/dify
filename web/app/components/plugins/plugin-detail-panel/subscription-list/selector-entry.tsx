@@ -1,5 +1,6 @@
 'use client'
 import type { SimpleSubscription } from './types'
+import { RiArrowDownSLine, RiWebhookLine } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -74,15 +75,16 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
       )}
       onClick={onClick}
     >
-      <span className={`i-ri-webhook-line ${cn('h-3.5 w-3.5 shrink-0 text-text-secondary', statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text')}`} />
+      <RiWebhookLine className={cn('h-3.5 w-3.5 shrink-0 text-text-secondary', statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text')} />
       <span className={cn('system-xs-medium truncate text-components-button-ghost-text', statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text')}>
         {statusConfig.label}
       </span>
-      <span className={`i-ri-arrow-down-sline ${cn(
-        'ml-auto h-4 w-4 shrink-0 text-text-quaternary transition-transform',
-        isOpen && 'rotate-180',
-        statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text',
-      )}`}
+      <RiArrowDownSLine
+        className={cn(
+          'ml-auto h-4 w-4 shrink-0 text-text-quaternary transition-transform',
+          isOpen && 'rotate-180',
+          statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text',
+        )}
       />
     </button>
   )

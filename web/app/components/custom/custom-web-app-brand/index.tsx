@@ -1,5 +1,13 @@
 import type { ChangeEvent } from 'react'
-
+import {
+  RiEditBoxLine,
+  RiEqualizer2Line,
+  RiExchange2Fill,
+  RiImageAddLine,
+  RiLayoutLeft2Line,
+  RiLoader2Line,
+  RiPlayLargeLine,
+} from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -141,7 +149,7 @@ const CustomWebAppBrand = () => {
                 className="relative mr-2"
                 disabled={uploadDisabled}
               >
-                <span className="i-ri-image-add-line mr-1 h-4 w-4" />
+                <RiImageAddLine className="mr-1 h-4 w-4" />
                 {
                   (webappLogo || fileId)
                     ? t('change', { ns: 'custom' })
@@ -164,7 +172,7 @@ const CustomWebAppBrand = () => {
                 className="relative mr-2"
                 disabled={true}
               >
-                <span className="i-ri-loader-2-line mr-1 h-4 w-4 animate-spin" />
+                <RiLoader2Line className="mr-1 h-4 w-4 animate-spin" />
                 {t('uploading', { ns: 'custom' })}
               </Button>
             )
@@ -209,12 +217,12 @@ const CustomWebAppBrand = () => {
               </div>
               <div className="system-md-semibold grow text-text-secondary">Chatflow App</div>
               <div className="p-1.5">
-                <span className="i-ri-layout-left-2-line h-4 w-4 text-text-tertiary" />
+                <RiLayoutLeft2Line className="h-4 w-4 text-text-tertiary" />
               </div>
             </div>
             <div className="shrink-0 px-4 py-3">
               <Button variant="secondary-accent" className="w-full justify-center">
-                <span className="i-ri-edit-box-line mr-1 h-4 w-4" />
+                <RiEditBoxLine className="mr-1 h-4 w-4" />
                 <div className="p-1 opacity-20">
                   <div className="h-2 w-[94px] rounded-sm bg-text-accent-light-mode-only"></div>
                 </div>
@@ -233,7 +241,7 @@ const CustomWebAppBrand = () => {
             </div>
             <div className="flex shrink-0 items-center justify-between p-3">
               <div className="p-1.5">
-                <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
+                <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
               </div>
               <div className="flex items-center gap-1.5">
                 {!webappBrandRemoved && (
@@ -268,11 +276,11 @@ const CustomWebAppBrand = () => {
           <div className="w-full border-b-[0.5px] border-divider-subtle p-4 pb-0">
             <div className="mb-2 flex items-center gap-3">
               <div className={cn('inline-flex h-8 w-8 items-center justify-center rounded-lg border border-divider-regular', 'bg-components-icon-bg-indigo-solid')}>
-                <span className="i-ri-exchange-2-fill h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+                <RiExchange2Fill className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
               </div>
               <div className="system-md-semibold grow text-text-secondary">Workflow App</div>
               <div className="p-1.5">
-                <span className="i-ri-layout-left-2-line h-4 w-4 text-text-tertiary" />
+                <RiLayoutLeft2Line className="h-4 w-4 text-text-tertiary" />
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -292,7 +300,7 @@ const CustomWebAppBrand = () => {
                 <div className="h-2 w-10 rounded-sm bg-text-quaternary opacity-20"></div>
               </Button>
               <Button variant="primary" size="small" disabled>
-                <span className="i-ri-play-large-line mr-1 h-4 w-4" />
+                <RiPlayLargeLine className="mr-1 h-4 w-4" />
                 <span>Execute</span>
               </Button>
             </div>

@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { DatePickerHeaderProps } from '../types'
+import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMonths } from '../hooks'
 
@@ -20,7 +21,7 @@ const Header: FC<DatePickerHeaderProps> = ({
           className="system-md-semibold flex items-center gap-x-0.5 rounded-lg px-2 py-1.5 text-text-primary hover:bg-state-base-hover"
         >
           <span>{`${months[currentDate.month()]} ${currentDate.year()}`}</span>
-          <span className="i-ri-arrow-down-sline h-4 w-4 text-text-tertiary" />
+          <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
         </button>
       </div>
       <button
@@ -28,14 +29,14 @@ const Header: FC<DatePickerHeaderProps> = ({
         onClick={onClickPrevMonth}
         className="rounded-lg p-1.5 hover:bg-state-base-hover"
       >
-        <span className="i-ri-arrow-up-sline h-[18px] w-[18px] text-text-secondary" />
+        <RiArrowUpSLine className="h-[18px] w-[18px] text-text-secondary" />
       </button>
       <button
         type="button"
         onClick={onClickNextMonth}
         className="rounded-lg p-1.5 hover:bg-state-base-hover"
       >
-        <span className="i-ri-arrow-down-sline h-[18px] w-[18px] text-text-secondary" />
+        <RiArrowDownSLine className="h-[18px] w-[18px] text-text-secondary" />
       </button>
     </div>
   )

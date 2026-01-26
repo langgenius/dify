@@ -1,3 +1,4 @@
+import { RiArrowLeftSLine, RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -59,8 +60,8 @@ const ToggleButton = ({
       >
         {
           expand
-            ? <span className="i-ri-arrow-left-sline size-4" />
-            : <span className="i-ri-arrow-right-sline size-4" />
+            ? <RiArrowLeftSLine className="size-4" />
+            : <RiArrowRightSLine className="size-4" />
         }
       </Button>
     </Tooltip>

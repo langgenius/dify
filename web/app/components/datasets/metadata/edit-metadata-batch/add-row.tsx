@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { MetadataItemWithEdit } from '../types'
+import { RiIndeterminateCircleLine } from '@remixicon/react'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import InputCombined from './input-combined'
@@ -35,7 +36,7 @@ const AddRow: FC<Props> = ({
         }
         onClick={onRemove}
       >
-        <span className="i-ri-indeterminate-circle-line size-4" />
+        <RiIndeterminateCircleLine className="size-4" />
       </div>
     </div>
   )

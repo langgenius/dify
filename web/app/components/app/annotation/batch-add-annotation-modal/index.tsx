@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -91,7 +92,7 @@ const BatchModal: FC<IBatchModalProps> = ({
     <Modal isShow={isShow} onClose={noop} className="!max-w-[520px] !rounded-xl px-8 py-6">
       <div className="system-xl-medium relative pb-1 text-text-primary">{t('batchModal.title', { ns: 'appAnnotation' })}</div>
       <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onCancel}>
-        <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>
       <CSVUploader
         file={currentCSV}
