@@ -132,8 +132,10 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
   return (
     <>
       <Divider className="my-1 w-full" />
-      <div className="p-4 pb-1">
-        <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.reasoningConfig', { ns: 'plugin' })}</div>
+      <div className="px-4 pb-1 pt-3">
+        <div className="system-sm-semibold-uppercase mb-1 text-text-primary">{t('detailPanel.toolSelector.reasoningConfig', { ns: 'plugin' })}</div>
+        <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}</div>
+        <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}</div>
       </div>
       {showSettingsSection && (
         <ReasoningConfigForm
