@@ -26,6 +26,7 @@
   "list.action.archive": "Mengarsipkan",
   "list.action.batchAdd": "Tambahkan batch",
   "list.action.delete": "Menghapus",
+  "list.action.download": "Unduh",
   "list.action.enableWarning": "File yang diarsipkan tidak dapat diaktifkan",
   "list.action.pause": "Jeda",
   "list.action.resume": "Melanjutkan",

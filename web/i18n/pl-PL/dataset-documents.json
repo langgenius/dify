@@ -26,6 +26,7 @@
   "list.action.archive": "Archiwum",
   "list.action.batchAdd": "Dodaj partię",
   "list.action.delete": "Usuń",
+  "list.action.download": "Pobierz",
   "list.action.enableWarning": "Zarchiwizowany plik nie może zostać włączony",
   "list.action.pause": "Pauza",
   "list.action.resume": "Wznów",

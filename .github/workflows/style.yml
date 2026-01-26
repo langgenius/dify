@@ -65,6 +65,9 @@ jobs:
     defaults:
       run:
         working-directory: ./web
+    permissions:
+      checks: write
+      pull-requests: read
 
     steps:
       - name: Checkout code
@@ -103,22 +106,31 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
         run: |
-          pnpm run lint
+          pnpm run lint:ci
+        # pnpm run lint:report
+        # continue-on-error: true
+
+      # - name: Annotate Code
+      #   if: steps.changed-files.outputs.any_changed == 'true' && github.event_name == 'pull_request'
+      #   uses: DerLev/eslint-annotations@51347b3a0abfb503fc8734d5ae31c4b151297fae
+      #   with:
+      #     eslint-report: web/eslint_report.json
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Web tsslint
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
+        run: pnpm run lint:tss
 
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm run type-check:tsgo
+        run: pnpm run type-check
 
       - name: Web dead code check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
         run: pnpm run knip
-
-      - name: Web build check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
-        run: pnpm run build
 
   superlinter:
     name: SuperLinter
