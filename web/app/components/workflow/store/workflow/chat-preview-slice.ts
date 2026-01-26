@@ -7,6 +7,10 @@ type ChatPreviewState = {
   suggestedQuestions: string[]
   conversationId: string
   isResponding: boolean
+  activeRunId: number
+  activeTaskId: string
+  hasStopResponded: boolean
+  suggestedQuestionsAbortController: AbortController | null
 }
 
 type ChatPreviewActions = {
@@ -16,6 +20,11 @@ type ChatPreviewActions = {
   setSuggestedQuestions: (questions: string[]) => void
   setConversationId: (conversationId: string) => void
   setIsResponding: (isResponding: boolean) => void
+  setActiveTaskId: (taskId: string) => void
+  setHasStopResponded: (hasStopResponded: boolean) => void
+  setSuggestedQuestionsAbortController: (controller: AbortController | null) => void
+  startRun: () => number
+  invalidateRun: () => number
   resetChatPreview: () => void
 }
 
@@ -27,9 +36,13 @@ const initialState: ChatPreviewState = {
   suggestedQuestions: [],
   conversationId: '',
   isResponding: false,
+  activeRunId: 0,
+  activeTaskId: '',
+  hasStopResponded: false,
+  suggestedQuestionsAbortController: null,
 }
 
-export const createChatPreviewSlice: StateCreator<ChatPreviewSliceShape> = set => ({
+export const createChatPreviewSlice: StateCreator<ChatPreviewSliceShape> = (set, get) => ({
   ...initialState,
 
   setChatTree: chatTree => set({ chatTree }),
@@ -49,5 +62,35 @@ export const createChatPreviewSlice: StateCreator<ChatPreviewSliceShape> = set =
 
   setIsResponding: isResponding => set({ isResponding }),
 
-  resetChatPreview: () => set(initialState),
+  setActiveTaskId: activeTaskId => set({ activeTaskId }),
+
+  setHasStopResponded: hasStopResponded => set({ hasStopResponded }),
+
+  setSuggestedQuestionsAbortController: suggestedQuestionsAbortController => set({ suggestedQuestionsAbortController }),
+
+  startRun: () => {
+    const activeRunId = get().activeRunId + 1
+    set({
+      activeRunId,
+      activeTaskId: '',
+      hasStopResponded: false,
+      suggestedQuestionsAbortController: null,
+    })
+    return activeRunId
+  },
+
+  invalidateRun: () => {
+    const activeRunId = get().activeRunId + 1
+    set({
+      activeRunId,
+      activeTaskId: '',
+      suggestedQuestionsAbortController: null,
+    })
+    return activeRunId
+  },
+
+  resetChatPreview: () => set(state => ({
+    ...initialState,
+    activeRunId: state.activeRunId + 1,
+  })),
 })

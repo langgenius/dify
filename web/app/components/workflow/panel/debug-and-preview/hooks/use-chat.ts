@@ -1,7 +1,6 @@
 import type { ChatConfig } from './types'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatItemInTree, Inputs } from '@/app/components/base/chat/types'
-import { setAutoFreeze } from 'immer'
 import { useEffect, useRef } from 'react'
 import { useStore } from '../../../store'
 import { useChatFlowControl } from './use-chat-flow-control'
@@ -27,8 +26,6 @@ export function useChat(
   const setTargetMessageId = useStore(s => s.setTargetMessageId)
 
   const initialChatTreeRef = useRef(prevChatTree)
-  const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
-
   useEffect(() => {
     const initialChatTree = initialChatTreeRef.current
     if (!initialChatTree || initialChatTree.length === 0)
@@ -36,24 +33,14 @@ export function useChat(
     updateChatTree(currentChatTree => (currentChatTree.length === 0 ? initialChatTree : currentChatTree))
   }, [updateChatTree])
 
-  useEffect(() => {
-    setAutoFreeze(false)
-    return () => {
-      setAutoFreeze(true)
-    }
-  }, [])
-
   const { updateCurrentQAOnTree } = useChatTreeOperations(updateChatTree)
 
   const {
-    hasStopResponded,
-    taskIdRef,
     handleResponding,
     handleStop,
     handleRestart,
   } = useChatFlowControl({
     stopChat,
-    suggestedQuestionsAbortControllerRef,
   })
 
   const {
@@ -70,9 +57,6 @@ export function useChat(
     threadMessages,
     config,
     formSettings,
-    hasStopResponded,
-    taskIdRef,
-    suggestedQuestionsAbortControllerRef,
     handleResponding,
     updateCurrentQAOnTree,
   })

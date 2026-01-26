@@ -1,23 +1,21 @@
-import type { RefObject } from 'react'
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../../constants'
 import { useStore, useWorkflowStore } from '../../../store'
 
 type UseChatFlowControlParams = {
   stopChat?: (taskId: string) => void
-  suggestedQuestionsAbortControllerRef: RefObject<AbortController | null>
 }
 
 export function useChatFlowControl({
   stopChat,
-  suggestedQuestionsAbortControllerRef,
 }: UseChatFlowControlParams) {
   const workflowStore = useWorkflowStore()
   const setIsResponding = useStore(s => s.setIsResponding)
   const resetChatPreview = useStore(s => s.resetChatPreview)
-
-  const hasStopResponded = useRef(false)
-  const taskIdRef = useRef('')
+  const setActiveTaskId = useStore(s => s.setActiveTaskId)
+  const setHasStopResponded = useStore(s => s.setHasStopResponded)
+  const setSuggestedQuestionsAbortController = useStore(s => s.setSuggestedQuestionsAbortController)
+  const invalidateRun = useStore(s => s.invalidateRun)
 
   const { setIterTimes, setLoopTimes } = workflowStore.getState()
 
@@ -26,18 +24,31 @@ export function useChatFlowControl({
   }, [setIsResponding])
 
   const handleStop = useCallback(() => {
-    hasStopResponded.current = true
+    const { activeTaskId, suggestedQuestionsAbortController } = workflowStore.getState()
+    setHasStopResponded(true)
     handleResponding(false)
-    if (stopChat && taskIdRef.current)
-      stopChat(taskIdRef.current)
+    if (stopChat && activeTaskId)
+      stopChat(activeTaskId)
     setIterTimes(DEFAULT_ITER_TIMES)
     setLoopTimes(DEFAULT_LOOP_TIMES)
-    if (suggestedQuestionsAbortControllerRef.current)
-      suggestedQuestionsAbortControllerRef.current.abort()
-  }, [handleResponding, setIterTimes, setLoopTimes, stopChat, suggestedQuestionsAbortControllerRef])
+    if (suggestedQuestionsAbortController)
+      suggestedQuestionsAbortController.abort()
+    setSuggestedQuestionsAbortController(null)
+    setActiveTaskId('')
+    invalidateRun()
+  }, [
+    handleResponding,
+    setIterTimes,
+    setLoopTimes,
+    stopChat,
+    workflowStore,
+    setHasStopResponded,
+    setSuggestedQuestionsAbortController,
+    setActiveTaskId,
+    invalidateRun,
+  ])
 
   const handleRestart = useCallback(() => {
-    taskIdRef.current = ''
     handleStop()
     resetChatPreview()
     setIterTimes(DEFAULT_ITER_TIMES)
@@ -45,8 +56,6 @@ export function useChatFlowControl({
   }, [handleStop, setIterTimes, setLoopTimes, resetChatPreview])
 
   return {
-    hasStopResponded,
-    taskIdRef,
     handleResponding,
     handleStop,
     handleRestart,

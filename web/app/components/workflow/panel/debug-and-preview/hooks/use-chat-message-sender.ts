@@ -1,9 +1,8 @@
-import type { RefObject } from 'react'
 import type { SendCallback, SendParams, UpdateCurrentQAParams } from './types'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree, Inputs } from '@/app/components/base/chat/types'
 import { uniqBy } from 'es-toolkit/compat'
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getProcessedInputs } from '@/app/components/base/chat/chat/utils'
 import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
@@ -26,9 +25,6 @@ type UseChatMessageSenderParams = {
     inputs: Inputs
     inputsForm: InputForm[]
   }
-  hasStopResponded: RefObject<boolean>
-  taskIdRef: RefObject<string>
-  suggestedQuestionsAbortControllerRef: RefObject<AbortController | null>
   handleResponding: (responding: boolean) => void
   updateCurrentQAOnTree: (params: UpdateCurrentQAParams) => void
 }
@@ -37,9 +33,6 @@ export function useChatMessageSender({
   threadMessages,
   config,
   formSettings,
-  hasStopResponded,
-  taskIdRef,
-  suggestedQuestionsAbortControllerRef,
   handleResponding,
   updateCurrentQAOnTree,
 }: UseChatMessageSenderParams) {
@@ -54,8 +47,9 @@ export function useChatMessageSender({
   const setConversationId = useStore(s => s.setConversationId)
   const setTargetMessageId = useStore(s => s.setTargetMessageId)
   const setSuggestedQuestions = useStore(s => s.setSuggestedQuestions)
-
-  const activeRunIdRef = useRef(0)
+  const setActiveTaskId = useStore(s => s.setActiveTaskId)
+  const setSuggestedQuestionsAbortController = useStore(s => s.setSuggestedQuestionsAbortController)
+  const startRun = useStore(s => s.startRun)
 
   const handleSend = useCallback((
     params: SendParams,
@@ -66,8 +60,13 @@ export function useChatMessageSender({
       return false
     }
 
-    const runId = ++activeRunIdRef.current
-    const isCurrentRun = () => runId === activeRunIdRef.current
+    const { suggestedQuestionsAbortController } = workflowStore.getState()
+    if (suggestedQuestionsAbortController)
+      suggestedQuestionsAbortController.abort()
+    setSuggestedQuestionsAbortController(null)
+
+    const runId = startRun()
+    const isCurrentRun = () => runId === workflowStore.getState().activeRunId
 
     const parentMessage = threadMessages.find(item => item.id === params.parent_message_id)
 
@@ -109,7 +108,6 @@ export function useChatMessageSender({
     }
 
     handleResponding(true)
-    hasStopResponded.current = false
 
     const { files, inputs, ...restParams } = params
     const bodyParams = {
@@ -143,6 +141,8 @@ export function useChatMessageSender({
       bodyParams,
       {
         onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }) => {
+          if (!isCurrentRun())
+            return
           responseItem.content = responseItem.content + message
 
           if (messageId && !hasSetResponseId) {
@@ -156,7 +156,7 @@ export function useChatMessageSender({
             setConversationId(newConversationId)
 
           if (taskId)
-            taskIdRef.current = taskId
+            setActiveTaskId(taskId)
           if (messageId)
             responseItem.id = messageId
 
@@ -188,20 +188,25 @@ export function useChatMessageSender({
             return
           }
 
-          if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
+          if (config?.suggested_questions_after_answer?.enabled && !workflowStore.getState().hasStopResponded && onGetSuggestedQuestions) {
             try {
               const result = await onGetSuggestedQuestions(
                 responseItem.id,
-                newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
+                newAbortController => setSuggestedQuestionsAbortController(newAbortController),
               ) as { data: string[] }
               setSuggestedQuestions(result.data)
             }
             catch {
               setSuggestedQuestions([])
             }
+            finally {
+              setSuggestedQuestionsAbortController(null)
+            }
           }
         },
         onMessageEnd: (messageEnd) => {
+          if (!isCurrentRun())
+            return
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
           const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
           responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
@@ -214,6 +219,8 @@ export function useChatMessageSender({
           })
         },
         onMessageReplace: (messageReplace) => {
+          if (!isCurrentRun())
+            return
           responseItem.content = messageReplace.answer
         },
         onError() {
@@ -222,17 +229,57 @@ export function useChatMessageSender({
           handleResponding(false)
         },
         onWorkflowStarted: (event) => {
-          taskIdRef.current = workflowHandlers.onWorkflowStarted(event)
+          if (!isCurrentRun())
+            return
+          const taskId = workflowHandlers.onWorkflowStarted(event)
+          if (taskId)
+            setActiveTaskId(taskId)
         },
-        onWorkflowFinished: workflowHandlers.onWorkflowFinished,
-        onIterationStart: workflowHandlers.onIterationStart,
-        onIterationFinish: workflowHandlers.onIterationFinish,
-        onLoopStart: workflowHandlers.onLoopStart,
-        onLoopFinish: workflowHandlers.onLoopFinish,
-        onNodeStarted: workflowHandlers.onNodeStarted,
-        onNodeRetry: workflowHandlers.onNodeRetry,
-        onNodeFinished: workflowHandlers.onNodeFinished,
-        onAgentLog: workflowHandlers.onAgentLog,
+        onWorkflowFinished: (event) => {
+          if (!isCurrentRun())
+            return
+          workflowHandlers.onWorkflowFinished(event)
+        },
+        onIterationStart: (event) => {
+          if (!isCurrentRun())
+            return
+          workflowHandlers.onIterationStart(event)
+        },
+        onIterationFinish: (event) => {
+          if (!isCurrentRun())
+            return
+          workflowHandlers.onIterationFinish(event)
+        },
+        onLoopStart: (event) => {
+          if (!isCurrentRun())
+            return
+          workflowHandlers.onLoopStart(event)
+        },
+        onLoopFinish: (event) => {
+          if (!isCurrentRun())
+            return
+          workflowHandlers.onLoopFinish(event)
+        },
+        onNodeStarted: (event) => {
+          if (!isCurrentRun())
+            return
+          workflowHandlers.onNodeStarted(event)
+        },
+        onNodeRetry: (event) => {
+          if (!isCurrentRun())
+            return
+          workflowHandlers.onNodeRetry(event)
+        },
+        onNodeFinished: (event) => {
+          if (!isCurrentRun())
+            return
+          workflowHandlers.onNodeFinished(event)
+        },
+        onAgentLog: (event) => {
+          if (!isCurrentRun())
+            return
+          workflowHandlers.onAgentLog(event)
+        },
       },
     )
   }, [
@@ -247,12 +294,12 @@ export function useChatMessageSender({
     setTargetMessageId,
     setConversationId,
     setSuggestedQuestions,
+    setActiveTaskId,
+    setSuggestedQuestionsAbortController,
+    startRun,
     fetchInspectVars,
     invalidAllLastRun,
     workflowStore,
-    hasStopResponded,
-    taskIdRef,
-    suggestedQuestionsAbortControllerRef,
   ])
 
   return { handleSend }
