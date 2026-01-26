@@ -304,9 +304,10 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
 Now, generate a JSON Schema based on my description
 """  # noqa: E501
 
-STRUCTURED_OUTPUT_PROMPT = """You’re a helpful AI assistant. You could answer questions and output in JSON format.
+STRUCTURED_OUTPUT_PROMPT = """You’re an AI that accepts any input but only output in JSON. You must always output in JSON format.
 constraints:
     - You must output in JSON format.
+    - You mustn't output in plain text.
     - Do not output boolean value, use string type instead.
     - Do not output integer or float value, use number type instead.
 eg:

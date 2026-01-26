@@ -654,6 +654,7 @@ class LLMGenerator:
         return f"""You are a code generator for Dify workflow automation.
 
 Generate {language} code to extract/transform available variables for the target parameter.
+If user is not talking about the code node, provide the existing data or blank data for user, following the schema.
 
 ## Target Parameter
 {parameter_block}
