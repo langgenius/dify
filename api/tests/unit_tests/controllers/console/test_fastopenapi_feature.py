@@ -1,12 +1,11 @@
 import builtins
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
 from flask.views import MethodView
 
 from extensions import ext_fastopenapi
-
 from services.feature_service import FeatureModel, SystemFeatureModel
 
 if not hasattr(builtins, "MethodView"):
