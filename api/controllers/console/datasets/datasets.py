@@ -34,10 +34,12 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.app_fields import app_detail_kernel_fields, related_app_list
 from fields.dataset_fields import (
+    content_fields,
     dataset_detail_fields,
     dataset_fields,
     dataset_query_detail_fields,
     dataset_retrieval_model_fields,
+    file_info_fields,
     doc_metadata_fields,
     external_knowledge_info_fields,
     external_retrieval_model_fields,
@@ -100,7 +102,15 @@ dataset_detail_fields_copy["doc_metadata"] = fields.List(fields.Nested(doc_metad
 dataset_detail_fields_copy["icon_info"] = fields.Nested(icon_info_model)
 dataset_detail_model = _get_or_create_model("DatasetDetail", dataset_detail_fields_copy)
 
-dataset_query_detail_model = _get_or_create_model("DatasetQueryDetail", dataset_query_detail_fields)
+file_info_model = _get_or_create_model("DatasetFileInfo", file_info_fields)
+
+content_fields_copy = content_fields.copy()
+content_fields_copy["file_info"] = fields.Nested(file_info_model, allow_null=True)
+content_model = _get_or_create_model("DatasetContent", content_fields_copy)
+
+dataset_query_detail_fields_copy = dataset_query_detail_fields.copy()
+dataset_query_detail_fields_copy["queries"] = fields.Nested(content_model)
+dataset_query_detail_model = _get_or_create_model("DatasetQueryDetail", dataset_query_detail_fields_copy)
 
 app_detail_kernel_model = _get_or_create_model("AppDetailKernel", app_detail_kernel_fields)
 related_app_list_copy = related_app_list.copy()

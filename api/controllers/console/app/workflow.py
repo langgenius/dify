@@ -35,7 +35,7 @@ from extensions.ext_database import db
 from factories import file_factory, variable_factory
 from fields.member_fields import simple_account_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
-from fields.workflow_run_fields import workflow_run_node_execution_fields
+from controllers.console.app.workflow_run import workflow_run_node_execution_model
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, uuid_value
@@ -88,25 +88,6 @@ workflow_pagination_fields_copy = workflow_pagination_fields.copy()
 workflow_pagination_fields_copy["items"] = fields.List(fields.Nested(workflow_model), attribute="items")
 workflow_pagination_model = console_ns.model("WorkflowPagination", workflow_pagination_fields_copy)
 
-# Reuse workflow_run_node_execution_model from workflow_run.py if already registered
-# Otherwise register it here
-from fields.end_user_fields import simple_end_user_fields
-
-simple_end_user_model = None
-try:
-    simple_end_user_model = console_ns.models.get("SimpleEndUser")
-except AttributeError:
-    pass
-if simple_end_user_model is None:
-    simple_end_user_model = console_ns.model("SimpleEndUser", simple_end_user_fields)
-
-workflow_run_node_execution_model = None
-try:
-    workflow_run_node_execution_model = console_ns.models.get("WorkflowRunNodeExecution")
-except AttributeError:
-    pass
-if workflow_run_node_execution_model is None:
-    workflow_run_node_execution_model = console_ns.model("WorkflowRunNodeExecution", workflow_run_node_execution_fields)
 
 
 class SyncDraftWorkflowPayload(BaseModel):

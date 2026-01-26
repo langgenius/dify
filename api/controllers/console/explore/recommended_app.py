@@ -9,6 +9,14 @@ from libs.helper import AppIconUrlField
 from libs.login import current_user, login_required
 from services.recommended_app_service import RecommendedAppService
 
+
+def _get_or_create_model(model_name: str, field_def):
+    existing = console_ns.models.get(model_name)
+    if existing is None:
+        existing = console_ns.model(model_name, field_def)
+    return existing
+
+
 app_fields = {
     "id": fields.String,
     "name": fields.String,
@@ -19,8 +27,10 @@ app_fields = {
     "icon_background": fields.String,
 }
 
+app_model = _get_or_create_model("RecommendedAppInfo", app_fields)
+
 recommended_app_fields = {
-    "app": fields.Nested(app_fields, attribute="app"),
+    "app": fields.Nested(app_model, attribute="app"),
     "app_id": fields.String,
     "description": fields.String(attribute="description"),
     "copyright": fields.String,
@@ -32,10 +42,14 @@ recommended_app_fields = {
     "can_trial": fields.Boolean,
 }
 
+recommended_app_model = _get_or_create_model("RecommendedApp", recommended_app_fields)
+
 recommended_app_list_fields = {
-    "recommended_apps": fields.List(fields.Nested(recommended_app_fields)),
+    "recommended_apps": fields.List(fields.Nested(recommended_app_model)),
     "categories": fields.List(fields.String),
 }
+
+recommended_app_list_model = _get_or_create_model("RecommendedAppList", recommended_app_list_fields)
 
 
 class RecommendedAppsQuery(BaseModel):
@@ -53,7 +67,7 @@ class RecommendedAppListApi(Resource):
     @console_ns.expect(console_ns.models[RecommendedAppsQuery.__name__])
     @login_required
     @account_initialization_required
-    @marshal_with(recommended_app_list_fields)
+    @marshal_with(recommended_app_list_model)
     def get(self):
         # language args
         args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore

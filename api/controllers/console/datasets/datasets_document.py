@@ -1178,7 +1178,7 @@ class DocumentRenameApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(document_fields)
+    @marshal_with(document_model)
     @console_ns.expect(console_ns.models[DocumentRenamePayload.__name__])
     def post(self, dataset_id, document_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
