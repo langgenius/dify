@@ -351,7 +351,7 @@
   "modelProvider.card.quota": "حصة",
   "modelProvider.card.quotaExhausted": "نفدت الحصة",
   "modelProvider.card.removeKey": "إزالة مفتاح API",
-  "modelProvider.card.tip": "تدعم أرصدة الرسائل نماذج من OpenAI. ستعطى الأولوية للحصة المدفوعة. سيتم استخدام الحصة المجانية بعد نفاد الحصة المدفوعة.",
+  "modelProvider.card.tip": "تدعم أرصدة الرسائل نماذج من {{modelNames}}. ستعطى الأولوية للحصة المدفوعة. سيتم استخدام الحصة المجانية بعد نفاد الحصة المدفوعة.",
   "modelProvider.card.tokens": "رموز",
   "modelProvider.collapse": "طي",
   "modelProvider.config": "تكوين",
