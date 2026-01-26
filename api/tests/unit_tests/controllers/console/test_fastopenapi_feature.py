@@ -6,6 +6,7 @@ from flask.views import MethodView
 
 from extensions import ext_fastopenapi
 from models.engine import db
+import controllers.console.files
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
