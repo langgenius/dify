@@ -41,6 +41,7 @@ class IncludeSecretQuery(BaseModel):
 
 register_schema_models(console_ns, RagPipelineImportPayload, IncludeSecretQuery)
 
+
 def _get_or_create_model(model_name: str, field_def):
     existing = console_ns.models.get(model_name)
     if existing is None:

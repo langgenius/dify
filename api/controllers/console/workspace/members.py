@@ -68,6 +68,7 @@ reg(OwnerTransferEmailPayload)
 reg(OwnerTransferCheckPayload)
 reg(OwnerTransferPayload)
 
+
 def _get_or_create_model(model_name: str, field_def):
     existing = console_ns.models.get(model_name)
     if existing is None:

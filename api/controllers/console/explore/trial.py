@@ -8,7 +8,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 import services
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -51,7 +51,12 @@ from fields.app_fields import (
 )
 from fields.dataset_fields import dataset_fields
 from fields.member_fields import build_simple_account_model
-from fields.workflow_fields import conversation_variable_fields, pipeline_variable_fields, workflow_fields, workflow_partial_fields
+from fields.workflow_fields import (
+    conversation_variable_fields,
+    pipeline_variable_fields,
+    workflow_fields,
+    workflow_partial_fields,
+)
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import current_user
@@ -77,9 +82,9 @@ from services.errors.message import (
 )
 from services.message_service import MessageService
 from services.recommended_app_service import RecommendedAppService
-from controllers.console import console_ns
 
 logger = logging.getLogger(__name__)
+
 
 def _get_or_create_model(model_name: str, field_def):
     existing = console_ns.models.get(model_name)
