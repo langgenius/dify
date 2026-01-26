@@ -21,8 +21,11 @@ export function useChatFlowControl({
   const invalidateRun = useStore(s => s.invalidateRun)
 
   const isMountedRef = useRef(true)
-  useEffect(() => () => {
-    isMountedRef.current = false
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
   }, [])
 
   const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync(isMountedRef)
