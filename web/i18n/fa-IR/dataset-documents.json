@@ -26,6 +26,7 @@
   "list.action.archive": "بایگانی",
   "list.action.batchAdd": "افزودن گروهی",
   "list.action.delete": "حذف",
+  "list.action.download": "دانلود",
   "list.action.enableWarning": "فایل بایگانی شده نمی‌تواند فعال شود",
   "list.action.pause": "مکث",
   "list.action.resume": "ادامه",

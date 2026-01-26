@@ -230,7 +230,7 @@ const LocalFile = ({
     if (!e.dataTransfer)
       return
 
-    let files = [...e.dataTransfer.files] as File[]
+    let files = Array.from(e.dataTransfer.files) as File[]
     if (!supportBatchUpload)
       files = files.slice(0, 1)
 
@@ -251,7 +251,7 @@ const LocalFile = ({
     updateFileList([...fileListRef.current])
   }
   const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    let files = [...(e.target.files ?? [])] as File[]
+    let files = Array.from(e.target.files ?? []) as File[]
     files = files.slice(0, fileUploadConfig.batch_count_limit)
     initialUpload(files.filter(isValid))
   }, [isValid, initialUpload, fileUploadConfig.batch_count_limit])

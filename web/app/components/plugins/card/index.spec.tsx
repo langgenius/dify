@@ -82,7 +82,7 @@ vi.mock('@/app/components/base/app-icon', () => ({
       data-size={size}
       data-icon-type={iconType}
     >
-      {innerIcon && <div data-testid="inner-icon">{innerIcon}</div>}
+      {!!innerIcon && <div data-testid="inner-icon">{innerIcon}</div>}
     </div>
   ),
 }))

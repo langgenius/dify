@@ -315,40 +315,48 @@ class App(Base):
         return None
 
 
-class AppModelConfig(Base):
+class AppModelConfig(TypeBase):
     __tablename__ = "app_model_configs"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_model_config_pkey"), sa.Index("app_app_id_idx", "app_id"))
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
-    provider = mapped_column(String(255), nullable=True)
-    model_id = mapped_column(String(255), nullable=True)
-    configs = mapped_column(sa.JSON, nullable=True)
-    created_by = mapped_column(StringUUID, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    provider: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    model_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    configs: Mapped[Any | None] = mapped_column(sa.JSON, nullable=True, default=None)
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
-    opening_statement = mapped_column(LongText)
-    suggested_questions = mapped_column(LongText)
-    suggested_questions_after_answer = mapped_column(LongText)
-    speech_to_text = mapped_column(LongText)
-    text_to_speech = mapped_column(LongText)
-    more_like_this = mapped_column(LongText)
-    model = mapped_column(LongText)
-    user_input_form = mapped_column(LongText)
-    dataset_query_variable = mapped_column(String(255))
-    pre_prompt = mapped_column(LongText)
-    agent_mode = mapped_column(LongText)
-    sensitive_word_avoidance = mapped_column(LongText)
-    retriever_resource = mapped_column(LongText)
-    prompt_type = mapped_column(String(255), nullable=False, server_default=sa.text("'simple'"))
-    chat_prompt_config = mapped_column(LongText)
-    completion_prompt_config = mapped_column(LongText)
-    dataset_configs = mapped_column(LongText)
-    external_data_tools = mapped_column(LongText)
-    file_upload = mapped_column(LongText)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
+    )
+    opening_statement: Mapped[str | None] = mapped_column(LongText, default=None)
+    suggested_questions: Mapped[str | None] = mapped_column(LongText, default=None)
+    suggested_questions_after_answer: Mapped[str | None] = mapped_column(LongText, default=None)
+    speech_to_text: Mapped[str | None] = mapped_column(LongText, default=None)
+    text_to_speech: Mapped[str | None] = mapped_column(LongText, default=None)
+    more_like_this: Mapped[str | None] = mapped_column(LongText, default=None)
+    model: Mapped[str | None] = mapped_column(LongText, default=None)
+    user_input_form: Mapped[str | None] = mapped_column(LongText, default=None)
+    dataset_query_variable: Mapped[str | None] = mapped_column(String(255), default=None)
+    pre_prompt: Mapped[str | None] = mapped_column(LongText, default=None)
+    agent_mode: Mapped[str | None] = mapped_column(LongText, default=None)
+    sensitive_word_avoidance: Mapped[str | None] = mapped_column(LongText, default=None)
+    retriever_resource: Mapped[str | None] = mapped_column(LongText, default=None)
+    prompt_type: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'simple'"), default="simple"
+    )
+    chat_prompt_config: Mapped[str | None] = mapped_column(LongText, default=None)
+    completion_prompt_config: Mapped[str | None] = mapped_column(LongText, default=None)
+    dataset_configs: Mapped[str | None] = mapped_column(LongText, default=None)
+    external_data_tools: Mapped[str | None] = mapped_column(LongText, default=None)
+    file_upload: Mapped[str | None] = mapped_column(LongText, default=None)
 
     @property
     def app(self) -> App | None:
@@ -603,6 +611,64 @@ class InstalledApp(TypeBase):
         return tenant
 
 
+class TrialApp(Base):
+    __tablename__ = "trial_apps"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="trial_app_pkey"),
+        sa.Index("trial_app_app_id_idx", "app_id"),
+        sa.Index("trial_app_tenant_id_idx", "tenant_id"),
+        sa.UniqueConstraint("app_id", name="unique_trail_app_id"),
+    )
+
+    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    app_id = mapped_column(StringUUID, nullable=False)
+    tenant_id = mapped_column(StringUUID, nullable=False)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    trial_limit = mapped_column(sa.Integer, nullable=False, default=3)
+
+    @property
+    def app(self) -> App | None:
+        app = db.session.query(App).where(App.id == self.app_id).first()
+        return app
+
+
+class AccountTrialAppRecord(Base):
+    __tablename__ = "account_trial_app_records"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="user_trial_app_pkey"),
+        sa.Index("account_trial_app_record_account_id_idx", "account_id"),
+        sa.Index("account_trial_app_record_app_id_idx", "app_id"),
+        sa.UniqueConstraint("account_id", "app_id", name="unique_account_trial_app_record"),
+    )
+    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    account_id = mapped_column(StringUUID, nullable=False)
+    app_id = mapped_column(StringUUID, nullable=False)
+    count = mapped_column(sa.Integer, nullable=False, default=0)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    @property
+    def app(self) -> App | None:
+        app = db.session.query(App).where(App.id == self.app_id).first()
+        return app
+
+    @property
+    def user(self) -> Account | None:
+        user = db.session.query(Account).where(Account.id == self.account_id).first()
+        return user
+
+
+class ExporleBanner(Base):
+    __tablename__ = "exporle_banners"
+    __table_args__ = (sa.PrimaryKeyConstraint("id", name="exporler_banner_pkey"),)
+    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    content = mapped_column(sa.JSON, nullable=False)
+    link = mapped_column(String(255), nullable=False)
+    sort = mapped_column(sa.Integer, nullable=False)
+    status = mapped_column(sa.String(255), nullable=False, server_default=sa.text("'enabled'::character varying"))
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    language = mapped_column(String(255), nullable=False, server_default=sa.text("'en-US'::character varying"))
+
+
 class OAuthProviderApp(TypeBase):
     """
     Globally shared OAuth provider app information.
@@ -752,8 +818,8 @@ class Conversation(Base):
                 override_model_configs = json.loads(self.override_model_configs)
 
                 if "model" in override_model_configs:
-                    app_model_config = AppModelConfig()
-                    app_model_config = app_model_config.from_model_config_dict(override_model_configs)
+                    # where is app_id?
+                    app_model_config = AppModelConfig(app_id=self.app_id).from_model_config_dict(override_model_configs)
                     model_config = app_model_config.to_dict()
                 else:
                     model_config["configs"] = override_model_configs
@@ -1423,7 +1489,7 @@ class MessageAnnotation(Base):
     app_id: Mapped[str] = mapped_column(StringUUID)
     conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
     message_id: Mapped[str | None] = mapped_column(StringUUID)
-    question: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    question: Mapped[str] = mapped_column(LongText, nullable=False)
     content: Mapped[str] = mapped_column(LongText, nullable=False)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
