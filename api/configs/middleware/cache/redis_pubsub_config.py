@@ -27,17 +27,33 @@ class RedisPubSubConfig(BaseSettings, RedisConfigDefaultsMixin):
     """
 
     PUBSUB_REDIS_URL: str | None = Field(
-        description="Redis connection URL for pub/sub streaming events.",
+        description=(
+            "Redis connection URL for pub/sub streaming events between API "
+            "and celery worker, defaults to url constructed from "
+            "`REDIS_*` configurations"
+        ),
         default=None,
     )
 
     PUBSUB_REDIS_USE_CLUSTERS: bool = Field(
-        description="Enable Redis Cluster mode for pub/sub streaming.",
+        description=(
+            "Enable Redis Cluster mode for pub/sub streaming. It's highly "
+            "recommended to enable this for large deployments."
+        ),
         default=False,
     )
 
     PUBSUB_REDIS_CHANNEL_TYPE: Literal["pubsub", "sharded"] = Field(
-        description="Pub/sub channel type for streaming events.",
+        description=(
+            "Pub/sub channel type for streaming events. "
+            "Valid options are:\n"
+            "\n"
+            " - pubsub: for normal Pub/Sub\n"
+            " - sharded: for sharded Pub/Sub\n"
+            "\n"
+            "It's highly recommended to use sharded Pub/Sub AND redis cluster "
+            "for large deployments."
+        ),
         default="pubsub",
     )
 
