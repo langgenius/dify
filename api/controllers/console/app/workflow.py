@@ -470,7 +470,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
         current_user, _ = current_account_with_tenant()
-        args = LoopNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
+        args = LoopNodeRunPayload.model_validate(console_ns.payload or {})
 
         try:
             response = AppGenerateService.generate_single_loop(
@@ -508,7 +508,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
         current_user, _ = current_account_with_tenant()
-        args = LoopNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
+        args = LoopNodeRunPayload.model_validate(console_ns.payload or {})
 
         try:
             response = AppGenerateService.generate_single_loop(
@@ -999,6 +999,7 @@ class DraftWorkflowTriggerRunApi(Resource):
             if not event:
                 return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
             workflow_args = dict(event.workflow_args)
+
             workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             return helper.compact_generate_response(
                 AppGenerateService.generate(
@@ -1147,6 +1148,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
 
         try:
             workflow_args = dict(trigger_debug_event.workflow_args)
+
             workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             response = AppGenerateService.generate(
                 app_model=app_model,
