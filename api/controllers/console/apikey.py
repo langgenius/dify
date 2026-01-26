@@ -55,18 +55,17 @@ class DeleteResponse(ResponseModel):
     result: str = Field(description="Operation result", examples=["success"])
 
 
-def _get_resource(resource_id: str, tenant_id: str, resource_model: type[App] | type[Dataset]):
-    resource = None
-    with Session(db.engine) as session:
-        match resource_model:
-            case _ if resource_model is App:
-                resource = session.execute(
-                    select(App).filter_by(id=resource_id, tenant_id=tenant_id)
-                ).scalar_one_or_none()
-            case _ if resource_model is Dataset:
-                resource = session.execute(
-                    select(Dataset).filter_by(id=resource_id, tenant_id=tenant_id)
-                ).scalar_one_or_none()
+def _get_resource(resource_id, tenant_id, resource_model):
+    if resource_model == App:
+        with Session(db.engine) as session:
+            resource = session.execute(
+                select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
+            ).scalar_one_or_none()
+    else:
+        with Session(db.engine) as session:
+            resource = session.execute(
+                select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
+            ).scalar_one_or_none()
 
     if resource is None:
         raise NotFound(description=f"{resource_model.__name__} not found.")
