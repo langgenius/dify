@@ -4,21 +4,13 @@ from unittest.mock import MagicMock, patch
 from flask import Flask
 from extensions import ext_fastopenapi
 
-class MockPydanticModel:
-    def __init__(self, data):
-        self.data = data
-
-    def model_dump(self, **kwargs):
-        return self.data
-
-    def dict(self, **kwargs):  
-        return self.data
+from services.feature_service import FeatureModel, SystemFeatureModel
 
 @pytest.fixture
 def app():
     app = Flask(__name__)
     app.config["TESTING"] = True
-    app.config["SECRET_KEY"] = "test-secret"  
+    app.config["SECRET_KEY"] = "test-secret"
     return app
 
 @pytest.fixture(autouse=True)
@@ -29,19 +21,20 @@ def fix_method_view_issue(monkeypatch):
     if not hasattr(builtins, "MethodView"):
         monkeypatch.setattr(builtins, "MethodView", MethodView, raising=False)
 
-def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_console_features_fastopenapi_get(app: Flask):
+    mock_feature_data = FeatureModel(enabled=True) 
 
     noop_decorator = lambda f: f
 
     if "controllers.console.feature" in sys.modules:
         del sys.modules["controllers.console.feature"]
-    
+
     with patch("controllers.console.feature.setup_required", side_effect=noop_decorator), \
          patch("controllers.console.feature.login_required", side_effect=noop_decorator), \
          patch("controllers.console.feature.account_initialization_required", side_effect=noop_decorator), \
          patch("controllers.console.feature.cloud_utm_record", side_effect=noop_decorator), \
          patch("controllers.console.feature.current_account_with_tenant", return_value=(MagicMock(), "tenant-id")), \
-         patch("controllers.console.feature.FeatureService.get_features", return_value=MockPydanticModel({"enabled": True})):
+         patch("controllers.console.feature.FeatureService.get_features", return_value=mock_feature_data):
         
         ext_fastopenapi.init_app(app)
         
@@ -49,18 +42,25 @@ def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.Monkey
         response = client.get("/console/api/features")
 
     assert response.status_code == 200
-    assert response.get_json() == {"features": {"enabled": True}}
+    
+    expected_json = {"features": mock_feature_data.model_dump(mode='json')}
+    assert response.get_json() == expected_json
 
 
 def test_console_system_features_fastopenapi_get(app: Flask):
+    mock_system_data = SystemFeatureModel(system=True)
+
     if "controllers.console.feature" in sys.modules:
         del sys.modules["controllers.console.feature"]
 
-    with patch("controllers.console.feature.FeatureService.get_system_features", return_value=MockPydanticModel({"system": True})):
+    with patch("controllers.console.feature.FeatureService.get_system_features", return_value=mock_system_data):
+        
         ext_fastopenapi.init_app(app)
 
         client = app.test_client()
         response = client.get("/console/api/system-features")
 
     assert response.status_code == 200
-    assert response.get_json() == {"features": {"system": True}}
+    
+    expected_json = {"features": mock_system_data.model_dump(mode='json')}
+    assert response.get_json() == expected_json
