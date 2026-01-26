@@ -21,6 +21,7 @@ const TYPE_DISPLAY_NAMES: Record<VarType, string> = {
   [VarType.arrayNumber]: 'Array[Number]',
   [VarType.arrayBoolean]: 'Array[Boolean]',
   [VarType.arrayObject]: 'Array[Object]',
+  [VarType.arrayMessage]: 'Array[Message]',
   [VarType.secret]: 'Secret',
   [VarType.array]: 'Array',
   'array[file]': 'Array[File]',
@@ -73,6 +74,8 @@ export const normalizeParameterType = (input: string | undefined | null): VarTyp
     return VarType.arrayBoolean
   else if (trimmed === 'array[object]')
     return VarType.arrayObject
+  else if (trimmed === 'array[message]')
+    return VarType.arrayMessage
   else if (trimmed === 'array')
     // Migrate legacy 'array' type to 'array[string]'
     return VarType.arrayString

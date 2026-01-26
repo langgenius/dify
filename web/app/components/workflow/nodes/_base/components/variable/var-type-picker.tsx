@@ -19,7 +19,7 @@ type Props = {
   onChange: (value: string) => void
 }
 
-const TYPES = [VarType.string, VarType.number, VarType.boolean, VarType.arrayNumber, VarType.arrayString, VarType.arrayBoolean, VarType.arrayObject, VarType.object]
+const TYPES = [VarType.string, VarType.number, VarType.boolean, VarType.arrayNumber, VarType.arrayString, VarType.arrayBoolean, VarType.arrayObject, VarType.arrayMessage, VarType.object]
 const VarReferencePicker: FC<Props> = ({
   readonly,
   className,

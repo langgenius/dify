@@ -224,7 +224,7 @@ const FormInputItem: FC<Props> = ({
     else if (isObject)
       return (varPayload: any) => varPayload.type === VarType.object
     else if (isArray)
-      return (varPayload: any) => [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varPayload.type)
+      return (varPayload: any) => [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject, VarType.arrayMessage].includes(varPayload.type)
     return undefined
   }
 

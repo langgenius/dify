@@ -162,6 +162,7 @@ export const varTypeToStructType = (type: VarType): Type => {
         [VarType.arrayNumber]: Type.array,
         [VarType.arrayObject]: Type.array,
         [VarType.arrayFile]: Type.array,
+        [VarType.arrayMessage]: Type.array,
       } as any
     )[type] || Type.string
   )
@@ -940,6 +941,7 @@ const getIterationItemType = ({
     case VarType.arrayBoolean:
       return VarType.boolean
     case VarType.arrayObject:
+    case VarType.arrayMessage:
       return VarType.object
     case VarType.array:
       return VarType.arrayObject // Use more specific type instead of any
@@ -994,6 +996,7 @@ const getLoopItemType = ({
     case VarType.arrayNumber:
       return VarType.number
     case VarType.arrayObject:
+    case VarType.arrayMessage:
       return VarType.object
     case VarType.arrayBoolean:
       return VarType.boolean

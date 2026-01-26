@@ -46,7 +46,15 @@ const ValueContent = ({
   const showBoolEditor = typeof currentVar.value === 'boolean'
   const showBoolArrayEditor = Array.isArray(currentVar.value) && currentVar.value.every(v => typeof v === 'boolean')
   const isSysFiles = currentVar.type === VarInInspectType.system && currentVar.name === 'files'
-  const showJSONEditor = !isSysFiles && (currentVar.value_type === 'object' || currentVar.value_type === 'array[string]' || currentVar.value_type === 'array[number]' || currentVar.value_type === 'array[object]' || currentVar.value_type === 'array[any]')
+  // FIXME: use enum to instead hardcode string
+  const showJSONEditor = !isSysFiles && (
+    currentVar.value_type === 'object'
+    || currentVar.value_type === 'array[string]'
+    || currentVar.value_type === 'array[number]'
+    || currentVar.value_type === 'array[object]'
+    || currentVar.value_type === 'array[message]'
+    || currentVar.value_type === 'array[any]'
+  )
   const showFileEditor = isSysFiles || currentVar.value_type === 'file' || currentVar.value_type === 'array[file]'
   const textEditorDisabled = currentVar.type === VarInInspectType.environment || (currentVar.type === VarInInspectType.system && currentVar.name !== 'query' && currentVar.name !== 'files')
   const JSONEditorDisabled = currentVar.value_type === 'array[any]'

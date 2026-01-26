@@ -23,11 +23,17 @@ export const validateJSONSchema = (schema: any, type: string) => {
     const result = jsonSchema.safeParse(schema)
     return result
   }
-  else if (type === 'array[object]') {
+  else if (type === 'array[object]' || type === 'array[message]') {
     const result = arrayJsonSchema.safeParse(schema)
     return result
   }
   else {
     return { success: true } as any
   }
+}
+
+export const formatVarTypeLabel = (valueType?: string) => {
+  if (valueType === 'array[message]')
+    return 'List[promptMessage]'
+  return valueType || ''
 }

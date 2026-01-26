@@ -307,6 +307,7 @@ export enum VarType {
   arrayObject = 'array[object]',
   arrayBoolean = 'array[boolean]',
   arrayFile = 'array[file]',
+  arrayMessage = 'array[message]',
   any = 'any',
   arrayAny = 'array[any]',
 }

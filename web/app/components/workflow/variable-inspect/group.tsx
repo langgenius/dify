@@ -17,6 +17,7 @@ import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/com
 import { VarInInspectType } from '@/types/workflow'
 import { cn } from '@/utils/classnames'
 import { useToolIcon } from '../hooks'
+import { formatVarTypeLabel } from './utils'
 
 type Props = {
   nodeData?: NodeWithVar
@@ -161,7 +162,7 @@ const Group = ({
                 className="size-4"
               />
               <div className="system-sm-medium grow truncate text-text-secondary">{varItem.name}</div>
-              <div className="system-xs-regular shrink-0 text-text-tertiary">{varItem.value_type}</div>
+              <div className="system-xs-regular shrink-0 text-text-tertiary">{formatVarTypeLabel(varItem.value_type)}</div>
             </div>
           ))}
         </div>
