@@ -11,7 +11,8 @@ from uuid import UUID, uuid4
 from core.sandbox.entities.files import SandboxFileDownloadTicket, SandboxFileNode
 from core.sandbox.manager import SandboxManager
 from core.sandbox.security.archive_signer import SandboxArchivePath
-from core.sandbox.security.sandbox_file_signer import SandboxFileDownloadPath, SandboxFileSigner
+from core.sandbox.security.sandbox_file_signer import SandboxFileDownloadPath
+from core.sandbox.storage import sandbox_file_storage
 from core.virtual_environment.__base.exec import CommandExecutionError
 from core.virtual_environment.__base.helpers import execute
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
@@ -137,11 +138,7 @@ print(json.dumps(entries))
             filename=filename,
         )
 
-        upload_url = SandboxFileSigner.build_signed_url(
-            export_path=export_path,
-            expires_in=self._EXPORT_EXPIRES_IN_SECONDS,
-            action=SandboxFileSigner.OPERATION_UPLOAD,
-        )
+        upload_url = sandbox_file_storage.get_upload_url(export_path, expires_in=self._EXPORT_EXPIRES_IN_SECONDS)
 
         if kind == "dir":
             archive_path = f"/tmp/{export_id}.tar.gz"
@@ -182,11 +179,7 @@ print(json.dumps(entries))
             except CommandExecutionError as exc:
                 raise RuntimeError(str(exc)) from exc
 
-        download_url = SandboxFileSigner.build_signed_url(
-            export_path=export_path,
-            expires_in=self._EXPORT_EXPIRES_IN_SECONDS,
-            action=SandboxFileSigner.OPERATION_DOWNLOAD,
-        )
+        download_url = sandbox_file_storage.get_download_url(export_path, expires_in=self._EXPORT_EXPIRES_IN_SECONDS)
         return SandboxFileDownloadTicket(
             download_url=download_url,
             expires_in=self._EXPORT_EXPIRES_IN_SECONDS,
@@ -340,12 +333,10 @@ class SandboxFileArchiveSource(SandboxFileSource):
                         extracted = tf.extractfile(member)
                         if extracted is None:
                             raise ValueError("File not found in sandbox archive")
-                        storage.save(export_path.get_storage_key(), extracted.read())
+                        sandbox_file_storage.save(export_path, extracted.read())
 
-                        download_url = SandboxFileSigner.build_signed_url(
-                            export_path=export_path,
-                            expires_in=self._EXPORT_EXPIRES_IN_SECONDS,
-                            action=SandboxFileSigner.OPERATION_DOWNLOAD,
+                        download_url = sandbox_file_storage.get_download_url(
+                            export_path, expires_in=self._EXPORT_EXPIRES_IN_SECONDS
                         )
                         return SandboxFileDownloadTicket(
                             download_url=download_url,
@@ -408,12 +399,10 @@ class SandboxFileArchiveSource(SandboxFileSource):
                             ti.size = int(m.size)
                             out.addfile(ti, fileobj=extracted)
 
-                    storage.save(export_path.get_storage_key(), Path(export_local).read_bytes())
+                    sandbox_file_storage.save(export_path, Path(export_local).read_bytes())
 
-                    download_url = SandboxFileSigner.build_signed_url(
-                        export_path=export_path,
-                        expires_in=self._EXPORT_EXPIRES_IN_SECONDS,
-                        action=SandboxFileSigner.OPERATION_DOWNLOAD,
+                    download_url = sandbox_file_storage.get_download_url(
+                        export_path, expires_in=self._EXPORT_EXPIRES_IN_SECONDS
                     )
                     return SandboxFileDownloadTicket(
                         download_url=download_url,

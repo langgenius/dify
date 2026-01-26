@@ -176,8 +176,9 @@ class CommandPipeline:
 
     _steps: list[_PipelineStep] = field(default_factory=list)  # pyright: ignore[reportUnknownVariableType]
 
-    def add(self, command: list[str], *, error_message: str = "Command failed") -> CommandPipeline:
-        self._steps.append(_PipelineStep(argv=command, error_message=error_message))
+    def add(self, command: list[str], *, error_message: str = "Command failed", on: bool = True) -> CommandPipeline:
+        if on:
+            self._steps.append(_PipelineStep(argv=command, error_message=error_message))
         return self
 
     def execute(self, *, timeout: float | None = 30, raise_on_error: bool = False) -> list[CommandResult]:
