@@ -2,7 +2,7 @@
 
 import type { FC } from 'react'
 import type { SandboxFileTreeNode } from '@/types/sandbox-file'
-import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiArrowRightSLine, RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -44,6 +44,7 @@ const ArtifactsSection: FC<ArtifactsSectionProps> = ({ className }) => {
   }, [downloadMutation])
 
   const showBlueDot = !isExpanded && hasFiles
+  const showSpinner = isLoading
 
   return (
     <div className={cn('shrink-0 border-t border-divider-regular p-1', className)}>
@@ -68,40 +69,40 @@ const ArtifactsSection: FC<ArtifactsSectionProps> = ({ className }) => {
         </div>
 
         <div className="relative flex items-center">
-          {showBlueDot && (
-            <div className="absolute -left-2 size-[7px] rounded-full border border-white bg-state-accent-solid" />
-          )}
-          {isExpanded
-            ? <RiArrowDownSLine className="size-4 text-text-tertiary" aria-hidden="true" />
-            : <RiArrowRightSLine className="size-4 text-text-tertiary" aria-hidden="true" />}
+          {showSpinner
+            ? <RiLoader2Line className="size-3.5 animate-spin text-text-tertiary" aria-hidden="true" />
+            : (
+                <>
+                  {showBlueDot && (
+                    <div className="absolute -left-2 size-[7px] rounded-full border border-white bg-state-accent-solid" />
+                  )}
+                  {isExpanded
+                    ? <RiArrowDownSLine className="size-4 text-text-tertiary" aria-hidden="true" />
+                    : <RiArrowRightSLine className="size-4 text-text-tertiary" aria-hidden="true" />}
+                </>
+              )}
         </div>
       </button>
 
-      {isExpanded && (
+      {isExpanded && !isLoading && (
         <div className="flex flex-col gap-px">
-          {isLoading
+          {hasFiles
             ? (
-                <div className="px-2.5 py-3" aria-hidden="true">
-                  <div className="h-4 w-full animate-pulse rounded bg-components-panel-bg" />
-                </div>
+                <ArtifactsTree
+                  data={treeData}
+                  onDownload={handleDownload}
+                  isDownloading={downloadMutation.isPending}
+                />
               )
-            : hasFiles
-              ? (
-                  <ArtifactsTree
-                    data={treeData}
-                    onDownload={handleDownload}
-                    isDownloading={downloadMutation.isPending}
-                  />
-                )
-              : (
-                  <div className="px-2.5 pb-1.5 pt-0.5">
-                    <div className="rounded-lg bg-background-section p-3">
-                      <p className="system-xs-regular text-text-tertiary">
-                        {t('skillSidebar.artifacts.emptyState')}
-                      </p>
-                    </div>
+            : (
+                <div className="px-2.5 pb-1.5 pt-0.5">
+                  <div className="rounded-lg bg-background-section p-3">
+                    <p className="system-xs-regular text-text-tertiary">
+                      {t('skillSidebar.artifacts.emptyState')}
+                    </p>
                   </div>
-                )}
+                </div>
+              )}
         </div>
       )}
     </div>

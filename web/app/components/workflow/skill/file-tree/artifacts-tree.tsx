@@ -69,7 +69,7 @@ const ArtifactsTreeNode: FC<ArtifactsTreeNodeProps> = ({
         )}
         style={{ paddingLeft: `${8 + depth * INDENT_SIZE}px` }}
       >
-        <TreeGuideLines level={depth} />
+        <TreeGuideLines level={depth} lineOffset={2} />
         <div className="flex size-5 shrink-0 items-center justify-center">
           {isFolder
             ? (
