@@ -226,8 +226,7 @@ class Workflow(Base):  # bug
         #
         # Currently, the following functions / methods would mutate the returned dict:
         #
-        # - `_get_graph_and_variable_pool_of_single_iteration`.
-        # - `_get_graph_and_variable_pool_of_single_loop`.
+        # - `_get_graph_and_variable_pool_for_single_node_run`.
         return json.loads(self.graph) if self.graph else {}
 
     def get_node_config_by_id(self, node_id: str) -> Mapping[str, Any]:
