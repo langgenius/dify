@@ -11,5 +11,11 @@ const config: StorybookConfig = {
   ],
   framework: '@storybook/nextjs-vite',
   staticDirs: ['../public'],
+  core: {
+    disableWhatsNewNotifications: true,
+  },
+  docs: {
+    defaultName: 'Documentation',
+  },
 }
 export default config
