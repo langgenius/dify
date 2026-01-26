@@ -32,6 +32,7 @@ for module_name in RESOURCE_MODULES:
 
 # Ensure resource modules are imported so route decorators are evaluated.
 # Import other controllers
+# Sandbox file browser
 from . import (
     admin,
     apikey,
@@ -39,6 +40,7 @@ from . import (
     feature,
     init_validate,
     ping,
+    sandbox_files,
     setup,
     spec,
     version,
@@ -199,6 +201,7 @@ __all__ = [
     "rag_pipeline_import",
     "rag_pipeline_workflow",
     "recommended_app",
+    "sandbox_files",
     "sandbox_providers",
     "saved_message",
     "setup",
