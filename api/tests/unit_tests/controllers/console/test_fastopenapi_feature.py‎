@@ -1,74 +1,132 @@
 import sys
+import builtins
 import pytest
 from unittest.mock import MagicMock, patch
 from flask import Flask
+from flask.views import MethodView
+
 from extensions import ext_fastopenapi
 from services.feature_service import FeatureModel, SystemFeatureModel
 
+
+
 @pytest.fixture
 def app():
+    """
+    Creates a Flask application instance configured for testing.
+    """
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "test-secret"
     return app
 
+
 @pytest.fixture(autouse=True)
 def fix_method_view_issue(monkeypatch):
-    import builtins
-    from flask.views import MethodView
+    """
+    Automatic fixture to patch 'builtins.MethodView'.
+    
+    Some legacy code or dependencies (like ext_fastopenapi) might incorrectly 
+    assume 'MethodView' is available globally in builtins.
+    
+    This fixture safely injects it if missing and cleans up after the test.
+    """
     if not hasattr(builtins, "MethodView"):
+        # 'raising=False' allows us to set an attribute that doesn't exist yet
         monkeypatch.setattr(builtins, "MethodView", MethodView, raising=False)
+
 
 @pytest.fixture
 def mock_auth_environment():
-    noop = lambda f: f
+    """
+    Sets up a mocked authentication environment.
     
-    if "controllers.console.feature" in sys.modules:
-        del sys.modules["controllers.console.feature"]
+    1. Removes the target controller from sys.modules to force a reload.
+       This is necessary because decorators (like @login_required) run at import time.
+    2. Patches all auth-related decorators with a no-op (no operation) lambda.
+    3. Mocks the current user/account retrieval functions.
+    """
+    noop = lambda f: f
+    target_module = "controllers.console.feature"
 
-    with patch("controllers.console.feature.setup_required", side_effect=noop), \
-         patch("controllers.console.feature.login_required", side_effect=noop), \
-         patch("controllers.console.feature.account_initialization_required", side_effect=noop), \
-         patch("controllers.console.feature.cloud_utm_record", side_effect=noop), \
-         patch("controllers.console.feature.current_account_with_tenant", return_value=(MagicMock(), "tenant-id")):
+    # Force reload of the module to ensure patches apply to decorators
+    if target_module in sys.modules:
+        del sys.modules[target_module]
+
+    # Context manager for patching multiple dependencies
+    with patch(f"{target_module}.setup_required", side_effect=noop), \
+         patch(f"{target_module}.login_required", side_effect=noop), \
+         patch(f"{target_module}.account_initialization_required", side_effect=noop), \
+         patch(f"{target_module}.cloud_utm_record", side_effect=noop), \
+         patch(f"{target_module}.current_account_with_tenant", return_value=(MagicMock(), "tenant-id")):
+        
         yield
 
-@pytest.mark.parametrize("url_path, service_mock_path, mock_data", [
+    # Optional: Clean up sys.modules again after test to avoid side effects
+    if target_module in sys.modules:
+        del sys.modules[target_module]
+
+
+# ------------------------------------------------------------------------------
+# Test Cases
+# ------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("url, service_mock_path, mock_model_instance, json_key", [
     (
         "/console/api/features", 
         "controllers.console.feature.FeatureService.get_features", 
-        FeatureModel(enabled=True)
+        FeatureModel(enabled=True), 
+        "features"
     ),
     (
         "/console/api/system-features", 
         "controllers.console.feature.FeatureService.get_system_features", 
-        SystemFeatureModel(system=True)
+        SystemFeatureModel(system=True), 
+        "features" 
     ),
 ])
 def test_console_features_success(
     app, 
-    mock_auth_environment,  
-    url_path, 
+    mock_auth_environment, 
+    url, 
     service_mock_path, 
-    mock_data
+    mock_model_instance,
+    json_key
 ):
-
-    with patch(service_mock_path, return_value=mock_data):
+    """
+    Tests that the feature APIs return a 200 OK status and correct JSON structure.
+    """
+    # Patch the service layer to return our mock model instance
+    with patch(service_mock_path, return_value=mock_model_instance):
+        # Initialize the API extension
         ext_fastopenapi.init_app(app)
+        
         client = app.test_client()
-        response = client.get(url_path)
+        response = client.get(url)
 
+    # Assertions
     assert response.status_code == 200
     
-    expected_json = {"features": mock_data.model_dump(mode='json')}
-    assert response.get_json() == expected_json
+    # Verify the JSON response matches the Pydantic model dump
+    expected_data = mock_model_instance.model_dump(mode='json')
+    assert response.get_json() == {json_key: expected_data}
+
 
 def test_console_features_service_error(app, mock_auth_environment):
-    with patch("controllers.console.feature.FeatureService.get_features", side_effect=Exception("Database down")):
+    """
+    Tests how the application handles Service layer errors.
+    
+    Note: When app.config['TESTING'] is True, Flask propagates exceptions 
+    instead of handling them generically (unless an error handler is registered).
+    Therefore, we assert that the specific exception is raised.
+    """
+    service_path = "controllers.console.feature.FeatureService.get_features"
+    
+    # Simulate a service failure
+    with patch(service_path, side_effect=ValueError("Service Failure")):
         ext_fastopenapi.init_app(app)
         client = app.test_client()
         
-        with pytest.raises(Exception) as excinfo:
+        # We expect the application to raise the ValueError
+        with pytest.raises(ValueError, match="Service Failure"):
             client.get("/console/api/features")
-        
-        assert str(excinfo.value) == "Database down"
