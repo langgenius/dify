@@ -23,9 +23,7 @@ const ArtifactsSection: FC<ArtifactsSectionProps> = ({ className }) => {
 
   const [isExpanded, setIsExpanded] = useState(false)
 
-  const { data: treeData, hasFiles, isLoading } = useSandboxFilesTree(sandboxId, {
-    enabled: isExpanded,
-  })
+  const { data: treeData, hasFiles, isLoading } = useSandboxFilesTree(sandboxId)
 
   const downloadMutation = useDownloadSandboxFile(sandboxId)
 
