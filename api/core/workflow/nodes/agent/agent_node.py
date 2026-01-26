@@ -494,7 +494,7 @@ class AgentNode(Node[AgentNodeData]):
 
         text = ""
         files: list[File] = []
-        json_list: list[dict] = []
+        json_list: list[dict | list] = []
 
         agent_logs: list[AgentLogEvent] = []
         agent_execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = {}
@@ -568,13 +568,18 @@ class AgentNode(Node[AgentNodeData]):
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
                 if node_type == NodeType.AGENT:
-                    msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
-                    llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
-                    agent_execution_metadata = {
-                        WorkflowNodeExecutionMetadataKey(key): value
-                        for key, value in msg_metadata.items()
-                        if key in WorkflowNodeExecutionMetadataKey.__members__.values()
-                    }
+                    if isinstance(message.message.json_object, dict):
+                        msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
+                        llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
+                        agent_execution_metadata = {
+                            WorkflowNodeExecutionMetadataKey(key): value
+                            for key, value in msg_metadata.items()
+                            if key in WorkflowNodeExecutionMetadataKey.__members__.values()
+                        }
+                    else:
+                        msg_metadata = {}
+                        llm_usage = LLMUsage.empty_usage()
+                        agent_execution_metadata = {}
                 if message.message.json_object:
                     json_list.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
@@ -683,7 +688,7 @@ class AgentNode(Node[AgentNodeData]):
                 yield agent_log
 
         # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
-        json_output: list[dict[str, Any]] = []
+        json_output: list[dict[str, Any] | list[Any]] = []
 
         # Step 1: append each agent log as its own dict.
         if agent_logs:
