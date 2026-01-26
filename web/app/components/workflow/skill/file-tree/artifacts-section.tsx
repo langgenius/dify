@@ -81,7 +81,7 @@ const ArtifactsSection: FC<ArtifactsSectionProps> = ({ className }) => {
         <div className="flex flex-col gap-px">
           {isLoading
             ? (
-                <div className="px-2.5 py-3">
+                <div className="px-2.5 py-3" aria-hidden="true">
                   <div className="h-4 w-full animate-pulse rounded bg-components-panel-bg" />
                 </div>
               )

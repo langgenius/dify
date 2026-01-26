@@ -45,6 +45,8 @@ const ArtifactsTreeNode: FC<ArtifactsTreeNodeProps> = ({
       <div
         role={isFolder ? 'button' : undefined}
         tabIndex={isFolder ? 0 : undefined}
+        aria-label={isFolder ? `${node.name} folder` : undefined}
+        aria-expanded={isFolder ? isExpanded : undefined}
         onClick={handleToggle}
         onKeyDown={isFolder
           ? (e) => {
@@ -54,7 +56,7 @@ const ArtifactsTreeNode: FC<ArtifactsTreeNodeProps> = ({
           : undefined}
         className={cn(
           'group flex items-center gap-0 rounded-md py-0.5 pr-1.5',
-          isFolder && 'cursor-pointer hover:bg-state-base-hover',
+          isFolder && 'cursor-pointer hover:bg-state-base-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-components-input-border-active',
           !isFolder && 'hover:bg-state-base-hover',
         )}
         style={{ paddingLeft: `${8 + depth * 20}px` }}
