@@ -38,7 +38,7 @@ class APIBasedExtensionResponse(BaseModel):
     @field_validator("api_key", mode="before")
     @classmethod
     def mask_api_key(cls, value: str) -> str:
-        if value is None:
+        if not value:
             return ""
         if len(value) <= 8:
             return f"{value[0]}******{value[-1]}"
