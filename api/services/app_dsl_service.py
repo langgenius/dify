@@ -521,12 +521,10 @@ class AppDslService:
                 raise ValueError("Missing model_config for chat/agent-chat/completion app")
             # Initialize or update model config
             if not app.app_model_config:
-                app_model_config = AppModelConfig().from_model_config_dict(model_config)
+                app_model_config = AppModelConfig(
+                    app_id=app.id, created_by=account.id, updated_by=account.id
+                ).from_model_config_dict(model_config)
                 app_model_config.id = str(uuid4())
-                app_model_config.app_id = app.id
-                app_model_config.created_by = account.id
-                app_model_config.updated_by = account.id
-
                 app.app_model_config_id = app_model_config.id
 
                 self._session.add(app_model_config)
@@ -783,15 +781,16 @@ class AppDslService:
         return dependencies
 
     @classmethod
-    def get_leaked_dependencies(cls, tenant_id: str, dsl_dependencies: list[dict]) -> list[PluginDependency]:
+    def get_leaked_dependencies(
+        cls, tenant_id: str, dsl_dependencies: list[PluginDependency]
+    ) -> list[PluginDependency]:
         """
         Returns the leaked dependencies in current workspace
         """
-        dependencies = [PluginDependency.model_validate(dep) for dep in dsl_dependencies]
-        if not dependencies:
+        if not dsl_dependencies:
             return []
 
-        return DependenciesAnalysisService.get_leaked_dependencies(tenant_id=tenant_id, dependencies=dependencies)
+        return DependenciesAnalysisService.get_leaked_dependencies(tenant_id=tenant_id, dependencies=dsl_dependencies)
 
     @staticmethod
     def _generate_aes_key(tenant_id: str) -> bytes:

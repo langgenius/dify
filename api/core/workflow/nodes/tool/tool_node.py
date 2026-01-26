@@ -244,7 +244,7 @@ class ToolNode(Node[ToolNodeData]):
 
         text = ""
         files: list[File] = []
-        json: list[dict] = []
+        json: list[dict | list] = []
 
         variables: dict[str, Any] = {}
 
@@ -400,7 +400,7 @@ class ToolNode(Node[ToolNodeData]):
                         message.message.metadata = dict_metadata
 
         # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
-        json_output: list[dict[str, Any]] = []
+        json_output: list[dict[str, Any] | list[Any]] = []
 
         # Step 2: normalize JSON into {"data": [...]}.change json to list[dict]
         if json:

@@ -3,6 +3,7 @@ Execution Context - Abstracted context management for workflow execution.
 """
 
 import contextvars
+import threading
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import AbstractContextManager, contextmanager
@@ -88,6 +89,7 @@ class ExecutionContext:
         self._app_context = app_context
         self._context_vars = context_vars
         self._user = user
+        self._local = threading.local()
 
     @property
     def app_context(self) -> AppContext | None:
@@ -125,14 +127,16 @@ class ExecutionContext:
 
     def __enter__(self) -> "ExecutionContext":
         """Enter the execution context."""
-        self._cm = self.enter()
-        self._cm.__enter__()
+        cm = self.enter()
+        self._local.cm = cm
+        cm.__enter__()
         return self
 
     def __exit__(self, *args: Any) -> None:
         """Exit the execution context."""
-        if hasattr(self, "_cm"):
-            self._cm.__exit__(*args)
+        cm = getattr(self._local, "cm", None)
+        if cm is not None:
+            cm.__exit__(*args)
 
 
 class NullAppContext(AppContext):
