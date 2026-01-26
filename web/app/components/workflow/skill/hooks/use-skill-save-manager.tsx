@@ -6,6 +6,7 @@ import { useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { extractToolConfigIds } from '@/app/components/workflow/utils'
 import { consoleQuery } from '@/service/client'
 import { useUpdateAppAssetFileContent } from '@/service/use-app-asset'
 import { START_TAB_ID } from '../constants'
@@ -51,22 +52,6 @@ type SkillSaveProviderProps = {
 }
 
 const SkillSaveContext = React.createContext<SkillSaveContextValue | null>(null)
-
-const TOOL_TOKEN_REGEX = /§\[tool\]\.\[[\w-]+(?:\/[\w-]+)*\]\.\[[\w-]+\]\.\[([a-fA-F0-9-]{36})\]§/g
-
-const extractToolConfigIds = (content: string) => {
-  const ids = new Set<string>()
-  if (!content)
-    return ids
-  TOOL_TOKEN_REGEX.lastIndex = 0
-  let match = TOOL_TOKEN_REGEX.exec(content)
-  while (match) {
-    if (match[1])
-      ids.add(match[1])
-    match = TOOL_TOKEN_REGEX.exec(content)
-  }
-  return ids
-}
 
 export const SkillSaveProvider = ({
   appId,

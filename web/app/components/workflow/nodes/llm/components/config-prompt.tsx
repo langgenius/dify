@@ -17,6 +17,7 @@ import {
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
+import { extractToolConfigIds } from '@/app/components/workflow/utils'
 import { cn } from '@/utils/classnames'
 import { useWorkflowStore } from '../../../store'
 import { BlockEnum, EditionType, isPromptMessageContext, PromptRole, VarType } from '../../../types'
@@ -25,6 +26,28 @@ import ConfigContextItem from './config-context-item'
 import ConfigPromptItem from './config-prompt-item'
 
 const i18nPrefix = 'nodes.llm'
+
+const cleanupToolMetadata = (content: string, metadata: Record<string, unknown>) => {
+  if (!metadata || typeof metadata !== 'object' || !('tools' in metadata))
+    return metadata
+  const rawTools = (metadata as Record<string, unknown>).tools
+  if (!rawTools || typeof rawTools !== 'object')
+    return metadata
+  const toolIds = extractToolConfigIds(content)
+  const entries = Object.entries(rawTools as Record<string, unknown>)
+  const nextTools = entries.reduce<Record<string, unknown>>((acc, [id, value]) => {
+    if (toolIds.has(id))
+      acc[id] = value
+    return acc
+  }, {})
+  const nextMetadata = { ...(metadata as Record<string, unknown>) }
+  if (Object.keys(nextTools).length > 0)
+    nextMetadata.tools = nextTools
+  else
+    delete nextMetadata.tools
+  return nextMetadata
+}
+
 type Props = {
   readOnly: boolean
   nodeId: string
@@ -120,8 +143,11 @@ const ConfigPrompt: FC<Props> = ({
     return (metadata: Record<string, unknown>) => {
       const newPrompt = produce(payload as PromptTemplateItem[], (draft) => {
         const item = draft[index]
-        if (!isPromptMessageContext(item))
-          (item as PromptItem).metadata = metadata
+        if (!isPromptMessageContext(item)) {
+          const content = item.text
+          const nextMetadata = cleanupToolMetadata(content, metadata)
+            ; (item as PromptItem).metadata = nextMetadata
+        }
       })
       onChange(newPrompt)
     }
@@ -228,8 +254,12 @@ const ConfigPrompt: FC<Props> = ({
   }, [onChange, payload])
 
   const handleCompletionMetadataChange = useCallback((metadata: Record<string, unknown>) => {
+    const promptItem = payload as PromptItem
+    const contentKey = promptItem.edition_type === EditionType.jinja2 ? 'jinja2_text' : 'text'
+    const content = (promptItem[contentKey] ?? '') as string
+    const nextMetadata = cleanupToolMetadata(content, metadata)
     const newPrompt = produce(payload as PromptItem, (draft) => {
-      draft.metadata = metadata
+      draft.metadata = nextMetadata
     })
     onChange(newPrompt)
   }, [onChange, payload])
@@ -351,7 +381,7 @@ const ConfigPrompt: FC<Props> = ({
                     <div ref={contextMenuTriggerRef}>
                       <AddButton
                         text={t(`${i18nPrefix}.addContext`, { ns: 'workflow' })}
-                        onClick={() => {}}
+                        onClick={() => { }}
                       />
                     </div>
                   </PortalToFollowElemTrigger>
