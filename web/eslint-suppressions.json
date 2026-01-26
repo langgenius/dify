@@ -1085,11 +1085,6 @@
       "count": 2
     }
   },
-  "app/components/base/icons/icon-gallery.stories.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/base/icons/utils.ts": {
     "ts/no-explicit-any": {
       "count": 3

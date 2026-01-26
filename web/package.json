@@ -48,7 +48,7 @@
     "analyze-component": "node ./scripts/analyze-component.js",
     "refactor-component": "node ./scripts/refactor-component.js",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
+    "storybook:build": "storybook build",
     "preinstall": "npx only-allow pnpm",
     "analyze": "ANALYZE=true pnpm build",
     "knip": "knip"
