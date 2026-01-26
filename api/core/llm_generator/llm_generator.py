@@ -588,7 +588,7 @@ class LLMGenerator:
             max_description_chars=120,
         )
 
-        return f"""Suggest exactly 3 short questions that would help generate code for the target parameter.
+        return f"""Suggest exactly 3 short instructions that would help generate code for the target parameter.
 
 ## Target Parameter
 {parameter_block}
@@ -597,10 +597,10 @@ class LLMGenerator:
 {available_vars_block}
 
 ## Constraints
-- Output exactly 3 questions.
+- Output exactly 3 instructions.
 - Use {language}.
-- Keep each question short and practical.
-- Do not include code or variable syntax in the questions.
+- Keep each instruction short and practical.
+- Do not include code or variable syntax in the instructions.
 """
 
     @classmethod
