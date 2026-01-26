@@ -62,9 +62,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
     providers.map(p => [p.provider, p.preferred_provider_type]),
   ), [providers])
   const installedProvidersMap = useMemo(() => new Map(
-    providers.map(p => [p.provider, p.custom_configuration]),
+    providers.map(p => [p.provider, p.custom_configuration.available_credentials]),
   ), [providers])
-  console.warn('installedProvidersMap', installedProvidersMap)
   const { formatTime } = useTimestamp()
   const {
     plugins: allPlugins,
@@ -77,7 +76,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   const selectedPluginIdRef = useRef<string | null>(null)
 
   const handleIconClick = useCallback((key: ModelProviderQuotaGetPaid) => {
-    const isInstalled = installedProvidersMap.get(key)
+    const isInstalled = providerMap.get(key)
     if (!isInstalled && allPlugins) {
       const pluginId = providerKeyToPluginId[key]
       const plugin = allPlugins.find(p => p.plugin_id === pluginId)
@@ -135,12 +134,12 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
         <div className="flex items-center gap-1">
           {allProviders.filter(({ key }) => trial_models.includes(key)).map(({ key, Icon }) => {
             const providerType = providerMap.get(key)
-            const isInstalled = installedProvidersMap.get(key)
-            const usingQuota = providerType === PreferredProviderTypeEnum.system
+            const isConfigured = (installedProvidersMap.get(key)?.length ?? 0) > 0 // means the provider is configured API key
             const getTooltipKey = () => {
-              if (!isInstalled)
+              // if provider type is not set, it means the provider is not installed
+              if (!providerType)
                 return 'modelProvider.card.modelNotSupported'
-              if (isInstalled && providerType === PreferredProviderTypeEnum.custom)
+              if (isConfigured && providerType === PreferredProviderTypeEnum.custom)
                 return 'modelProvider.card.modelAPI'
               return 'modelProvider.card.modelSupported'
             }
@@ -154,7 +153,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
                   onClick={() => handleIconClick(key)}
                 >
                   <Icon className="h-6 w-6 rounded-lg" />
-                  {!usingQuota && (
+                  {!providerType && (
                     <div className="absolute inset-0 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge opacity-30" />
                   )}
                 </div>
