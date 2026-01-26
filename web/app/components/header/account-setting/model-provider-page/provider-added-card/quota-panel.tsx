@@ -61,6 +61,10 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   const providerMap = useMemo(() => new Map(
     providers.map(p => [p.provider, p.preferred_provider_type]),
   ), [providers])
+  const installedProvidersMap = useMemo(() => new Map(
+    providers.map(p => [p.provider, p.custom_configuration]),
+  ), [providers])
+  console.warn('installedProvidersMap', installedProvidersMap)
   const { formatTime } = useTimestamp()
   const {
     plugins: allPlugins,
@@ -73,8 +77,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   const selectedPluginIdRef = useRef<string | null>(null)
 
   const handleIconClick = useCallback((key: ModelProviderQuotaGetPaid) => {
-    const providerType = providerMap.get(key)
-    if (!providerType && allPlugins) {
+    const isInstalled = installedProvidersMap.get(key)
+    if (!isInstalled && allPlugins) {
       const pluginId = providerKeyToPluginId[key]
       const plugin = allPlugins.find(p => p.plugin_id === pluginId)
       if (plugin) {
@@ -83,7 +87,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
         showInstallFromMarketplace()
       }
     }
-  }, [allPlugins, providerMap, showInstallFromMarketplace])
+  }, [allPlugins, installedProvidersMap, showInstallFromMarketplace])
 
   useEffect(() => {
     if (isShowInstallModal && selectedPluginIdRef.current) {
@@ -131,13 +135,14 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
         <div className="flex items-center gap-1">
           {allProviders.filter(({ key }) => trial_models.includes(key)).map(({ key, Icon }) => {
             const providerType = providerMap.get(key)
+            const isInstalled = installedProvidersMap.get(key)
             const usingQuota = providerType === PreferredProviderTypeEnum.system
             const getTooltipKey = () => {
-              if (usingQuota)
-                return 'modelProvider.card.modelSupported'
-              if (providerType === PreferredProviderTypeEnum.custom)
+              if (!isInstalled)
+                return 'modelProvider.card.modelNotSupported'
+              if (isInstalled && providerType === PreferredProviderTypeEnum.custom)
                 return 'modelProvider.card.modelAPI'
-              return 'modelProvider.card.modelNotSupported'
+              return 'modelProvider.card.modelSupported'
             }
             return (
               <Tooltip
