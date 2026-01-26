@@ -79,7 +79,6 @@ export const useGetAppAssetFileDownloadUrl = (appId: string, nodeId: string, opt
 }
 
 export const useUpdateAppAssetFileContent = () => {
-  const queryClient = useQueryClient()
   return useMutation({
     mutationKey: consoleQuery.appAsset.updateFileContent.mutationKey(),
     mutationFn: ({
@@ -94,16 +93,6 @@ export const useUpdateAppAssetFileContent = () => {
       return consoleClient.appAsset.updateFileContent({
         params: { appId, nodeId },
         body: { content: JSON.stringify(payload) },
-      })
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId: variables.appId } } }),
-      })
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.appAsset.getFileContent.queryKey({
-          input: { params: { appId: variables.appId, nodeId: variables.nodeId } },
-        }),
       })
     },
   })
@@ -144,9 +133,6 @@ export const useUpdateAppAssetFileByUpload = () => {
       ) as Promise<AppAssetNode>
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId: variables.appId } } }),
-      })
       queryClient.invalidateQueries({
         queryKey: consoleQuery.appAsset.getFileContent.queryKey({
           input: { params: { appId: variables.appId, nodeId: variables.nodeId } },
