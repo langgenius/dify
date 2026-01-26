@@ -2,13 +2,11 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useCSVDownloader,
-} from 'react-papaparse'
 import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
 
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
+import { downloadCSV } from '@/utils/csv'
 
 const CSV_TEMPLATE_QA_EN = [
   ['question', 'answer'],
@@ -25,10 +23,13 @@ const CSVDownload: FC = () => {
   const { t } = useTranslation()
 
   const locale = useLocale()
-  const { CSVDownloader, Type } = useCSVDownloader()
 
   const getTemplate = () => {
     return locale !== LanguagesSupported[1] ? CSV_TEMPLATE_QA_EN : CSV_TEMPLATE_QA_CN
+  }
+
+  const handleDownload = () => {
+    downloadCSV(getTemplate(), `template-${locale}`, { bom: true })
   }
 
   return (
@@ -70,18 +71,16 @@ const CSVDownload: FC = () => {
           </tbody>
         </table>
       </div>
-      <CSVDownloader
+      <button
+        type="button"
         className="mt-2 block cursor-pointer"
-        type={Type.Link}
-        filename={`template-${locale}`}
-        bom={true}
-        data={getTemplate()}
+        onClick={handleDownload}
       >
         <div className="system-xs-medium flex h-[18px] items-center space-x-1 text-text-accent">
           <DownloadIcon className="mr-1 h-3 w-3" />
           {t('batchModal.template', { ns: 'appAnnotation' })}
         </div>
-      </CSVDownloader>
+      </button>
     </div>
 
   )

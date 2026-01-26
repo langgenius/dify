@@ -1,70 +1,79 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import CSVReader from './index'
 
-let mockAcceptedFile: { name: string } | null = null
-let capturedHandlers: Record<string, (payload: any) => void> = {}
+const mockParseCSV = vi.fn()
 
-vi.mock('react-papaparse', () => ({
-  useCSVReader: () => ({
-    CSVReader: ({ children, ...handlers }: any) => {
-      capturedHandlers = handlers
-      return (
-        <div data-testid="csv-reader-wrapper">
-          {children({
-            getRootProps: () => ({ 'data-testid': 'drop-zone' }),
-            acceptedFile: mockAcceptedFile,
-          })}
-        </div>
-      )
-    },
-  }),
+vi.mock('@/utils/csv', () => ({
+  parseCSV: (file: File, options: { complete?: (results: { data: string[][] }) => void }) => {
+    mockParseCSV(file, options)
+    options.complete?.({ data: [['row1', 'row2']] })
+  },
 }))
 
 describe('CSVReader', () => {
   beforeEach(() => {
-    mockAcceptedFile = null
-    capturedHandlers = {}
     vi.clearAllMocks()
   })
 
-  it('should display upload instructions when no file selected', async () => {
+  it('should display upload instructions when no file selected', () => {
     const onParsed = vi.fn()
     render(<CSVReader onParsed={onParsed} />)
 
     expect(screen.getByText('share.generation.csvUploadTitle')).toBeInTheDocument()
     expect(screen.getByText('share.generation.browse')).toBeInTheDocument()
-
-    await act(async () => {
-      capturedHandlers.onUploadAccepted?.({ data: [['row1']] })
-    })
-    expect(onParsed).toHaveBeenCalledWith([['row1']])
   })
 
-  it('should show accepted file name without extension', () => {
-    mockAcceptedFile = { name: 'batch.csv' }
-    render(<CSVReader onParsed={vi.fn()} />)
+  it('should parse CSV file when file is selected via input', async () => {
+    const onParsed = vi.fn()
+    render(<CSVReader onParsed={onParsed} />)
 
-    expect(screen.getByText('batch')).toBeInTheDocument()
-    expect(screen.getByText('.csv')).toBeInTheDocument()
+    const file = new File(['test,data'], 'batch.csv', { type: 'text/csv' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file] } })
+    })
+
+    await waitFor(() => {
+      expect(mockParseCSV).toHaveBeenCalled()
+      expect(onParsed).toHaveBeenCalledWith([['row1', 'row2']])
+    })
   })
 
-  it('should toggle hover styling on drag events', async () => {
-    render(<CSVReader onParsed={vi.fn()} />)
-    const dragEvent = { preventDefault: vi.fn() } as unknown as DragEvent
+  it('should show accepted file name without extension after upload', async () => {
+    const onParsed = vi.fn()
+    render(<CSVReader onParsed={onParsed} />)
+
+    const file = new File(['test,data'], 'batch.csv', { type: 'text/csv' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
 
     await act(async () => {
-      capturedHandlers.onDragOver?.(dragEvent)
-    })
-    await waitFor(() => {
-      expect(screen.getByTestId('drop-zone')).toHaveClass('border-components-dropzone-border-accent')
+      fireEvent.change(input, { target: { files: [file] } })
     })
 
-    await act(async () => {
-      capturedHandlers.onDragLeave?.(dragEvent)
-    })
     await waitFor(() => {
-      expect(screen.getByTestId('drop-zone')).not.toHaveClass('border-components-dropzone-border-accent')
+      expect(screen.getByText('batch')).toBeInTheDocument()
+      expect(screen.getByText('.csv')).toBeInTheDocument()
+    })
+  })
+
+  it('should handle file drop', async () => {
+    const onParsed = vi.fn()
+    const { container } = render(<CSVReader onParsed={onParsed} />)
+
+    const file = new File(['test,data'], 'dropped.csv', { type: 'text/csv' })
+    const dropZone = container.querySelector('div.flex.h-20') as HTMLDivElement
+
+    await act(async () => {
+      fireEvent.drop(dropZone, {
+        dataTransfer: { files: [file] },
+      })
+    })
+
+    await waitFor(() => {
+      expect(mockParseCSV).toHaveBeenCalled()
+      expect(onParsed).toHaveBeenCalledWith([['row1', 'row2']])
     })
   })
 })

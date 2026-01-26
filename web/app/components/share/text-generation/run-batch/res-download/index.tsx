@@ -3,12 +3,10 @@ import type { FC } from 'react'
 import { RiDownloadLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useCSVDownloader,
-} from 'react-papaparse'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
+import { downloadCSV } from '@/utils/csv'
 
 export type IResDownloadProps = {
   isMobile: boolean
@@ -20,18 +18,16 @@ const ResDownload: FC<IResDownloadProps> = ({
   values,
 }) => {
   const { t } = useTranslation()
-  const { CSVDownloader, Type } = useCSVDownloader()
+
+  const handleDownload = () => {
+    downloadCSV(values, 'result', { bom: true })
+  }
 
   return (
-    <CSVDownloader
+    <button
+      type="button"
       className="block cursor-pointer"
-      type={Type.Link}
-      filename="result"
-      bom={true}
-      config={{
-        // delimiter: ';',
-      }}
-      data={values}
+      onClick={handleDownload}
     >
       {isMobile && (
         <ActionButton>
@@ -44,7 +40,7 @@ const ResDownload: FC<IResDownloadProps> = ({
           <span>{t('operation.download', { ns: 'common' })}</span>
         </Button>
       )}
-    </CSVDownloader>
+    </button>
   )
 }
 export default React.memo(ResDownload)
