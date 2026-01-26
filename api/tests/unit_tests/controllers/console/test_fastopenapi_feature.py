@@ -1,18 +1,17 @@
 import builtins
+
 import pytest
 from flask import Flask
 from flask.views import MethodView
 
+# 3. 【关键】必须显式导入业务 Controller
+# 这会触发 @console_router.get(...)，把路由填入 console_router 中
+# 2. 导入路由容器
+from controllers.fastopenapi import console_router
+
 # 1. 基础依赖
 from extensions import ext_fastopenapi
 from models.engine import db
-
-# 2. 导入路由容器
-from controllers.fastopenapi import console_router 
-
-# 3. 【关键】必须显式导入业务 Controller
-# 这会触发 @console_router.get(...)，把路由填入 console_router 中
-import controllers.console.files 
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -33,14 +32,14 @@ def app() -> Flask:
     # 我们需要访问它的 .blueprint 属性来获取真正的 Flask Blueprint 对象。
     # 注意：这里需要根据你的 fastopenapi 版本确认是 .blueprint 还是其他属性，
     # 但在 Dify 中通常是 console_router.blueprint
-    if hasattr(console_router, 'blueprint'):
+    if hasattr(console_router, "blueprint"):
         bp = console_router.blueprint
     else:
         # 兼容性处理：有些版本可能是直接把 router 当 blueprint 用（但显然这里不是）
         # 或者它可能叫 to_blueprint()
         # 我们先假设是 standard Dify pattern: .blueprint
-        bp = getattr(console_router, 'blueprint', console_router)
-        
+        bp = getattr(console_router, "blueprint", console_router)
+
     app.register_blueprint(bp, url_prefix="/console/api")
 
     with app.app_context():
