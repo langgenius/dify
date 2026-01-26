@@ -101,3 +101,26 @@ def test__normalize_non_stream_plugin_result__empty_iterator_defaults():
     assert result.message.tool_calls == []
     assert result.usage == LLMUsage.empty_usage()
     assert result.system_fingerprint is None
+
+
+def test__normalize_non_stream_plugin_result__closes_chunk_iterator():
+    prompt_messages = [UserPromptMessage(content="hi")]
+
+    chunk = _make_chunk(content="hello", usage=LLMUsage.empty_usage())
+    closed: list[bool] = []
+
+    def _chunk_iter():
+        try:
+            yield chunk
+            yield _make_chunk(content="ignored", usage=LLMUsage.empty_usage())
+        finally:
+            closed.append(True)
+
+    result = _normalize_non_stream_plugin_result(
+        model="test-model",
+        prompt_messages=prompt_messages,
+        result=_chunk_iter(),
+    )
+
+    assert result.message.content == "hello"
+    assert closed == [True]
