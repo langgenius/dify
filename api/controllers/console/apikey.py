@@ -58,9 +58,7 @@ class DeleteResponse(ResponseModel):
 def _get_resource(resource_id: str, tenant_id: str, resource_model: type[App] | type[Dataset]):
     if resource_model == App:
         with Session(db.engine) as session:
-            resource = session.execute(
-                select(App).filter_by(id=resource_id, tenant_id=tenant_id)
-            ).scalar_one_or_none()
+            resource = session.execute(select(App).filter_by(id=resource_id, tenant_id=tenant_id)).scalar_one_or_none()
     else:
         with Session(db.engine) as session:
             resource = session.execute(
