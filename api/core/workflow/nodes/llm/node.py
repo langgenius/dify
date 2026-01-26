@@ -685,6 +685,8 @@ class LLMNode(Node[LLMNodeData]):
                         if "content" not in item:
                             raise InvalidContextStructureError(f"Invalid context structure: {item}")
 
+                        if "summary" in item and item["summary"]:
+                            context_str += item["summary"] + "\n"
                         context_str += item["content"] + "\n"
 
                         retriever_resource = self._convert_to_original_retriever_resource(item)
