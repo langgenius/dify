@@ -26,7 +26,7 @@ from core.model_runtime.entities.message_entities import (
     SystemPromptMessage,
     TextPromptMessageContent,
 )
-from core.model_runtime.entities.model_entities import AIModelEntity, ParameterRule
+from core.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ParameterRule
 
 
 class ResponseFormat(StrEnum):
@@ -43,6 +43,12 @@ class SpecialModelType(StrEnum):
     GEMINI = "gemini"
     OLLAMA = "ollama"
 
+
+# Tool name for structured output via tool call
+STRUCTURED_OUTPUT_TOOL_NAME = "structured_output"
+
+# Features that indicate tool call support
+TOOL_CALL_FEATURES = {ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL, ModelFeature.STREAM_TOOL_CALL}
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -132,20 +138,24 @@ def invoke_llm_with_structured_output(
                       file IDs in the output will be automatically converted to File objects.
     :return: full response or stream response chunk generator result
     """
-    # handle native json schema
     model_parameters_with_json_schema: dict[str, Any] = {
         **(model_parameters or {}),
     }
 
+    # Determine structured output strategy
+
     if model_schema.support_structure_output:
-        model_parameters = _handle_native_json_schema(
+        # Priority 1: Native JSON schema support
+        model_parameters_with_json_schema = _handle_native_json_schema(
             provider, model_schema, json_schema, model_parameters_with_json_schema, model_schema.parameter_rules
         )
+    elif _supports_tool_call(model_schema):
+        # Priority 2: Tool call based structured output
+        structured_output_tool = _create_structured_output_tool(json_schema)
+        tools = [structured_output_tool]
     else:
-        # Set appropriate response format based on model capabilities
+        # Priority 3: Prompt-based fallback
         _set_response_format(model_parameters_with_json_schema, model_schema.parameter_rules)
-
-        # handle prompt based schema
         prompt_messages = _handle_prompt_based_schema(
             prompt_messages=prompt_messages,
             structured_output_schema=json_schema,
@@ -162,12 +172,11 @@ def invoke_llm_with_structured_output(
     )
 
     if isinstance(llm_result, LLMResult):
-        if not isinstance(llm_result.message.content, str):
-            raise OutputParserError(
-                f"Failed to parse structured output, LLM result is not a string: {llm_result.message.content}"
-            )
+        # Non-streaming result
+        structured_output = _extract_structured_output(llm_result)
 
-        structured_output = _parse_structured_output(llm_result.message.content)
+        # Fill missing fields with default values
+        structured_output = fill_defaults_from_schema(structured_output, json_schema)
 
         # Convert file references if tenant_id is provided
         if tenant_id is not None:
@@ -189,19 +198,29 @@ def invoke_llm_with_structured_output(
 
         def generator() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
             result_text: str = ""
+            tool_call_args: dict[str, str] = {}  # tool_call_id -> arguments
             prompt_messages: Sequence[PromptMessage] = []
             system_fingerprint: str | None = None
+
             for event in llm_result:
                 if isinstance(event, LLMResultChunk):
                     prompt_messages = event.prompt_messages
                     system_fingerprint = event.system_fingerprint
 
+                    # Collect text content
                     if isinstance(event.delta.message.content, str):
                         result_text += event.delta.message.content
                     elif isinstance(event.delta.message.content, list):
                         for item in event.delta.message.content:
                             if isinstance(item, TextPromptMessageContent):
                                 result_text += item.data
+
+                    # Collect tool call arguments
+                    if event.delta.message.tool_calls:
+                        for tool_call in event.delta.message.tool_calls:
+                            call_id = tool_call.id or ""
+                            if tool_call.function.arguments:
+                                tool_call_args[call_id] = tool_call_args.get(call_id, "") + tool_call.function.arguments
 
                 yield LLMResultChunkWithStructuredOutput(
                     model=model_schema.model,
@@ -210,7 +229,11 @@ def invoke_llm_with_structured_output(
                     delta=event.delta,
                 )
 
-            structured_output = _parse_structured_output(result_text)
+            # Extract structured output: prefer tool call, fallback to text
+            structured_output = _extract_structured_output_from_stream(result_text, tool_call_args)
+
+            # Fill missing fields with default values
+            structured_output = fill_defaults_from_schema(structured_output, json_schema)
 
             # Convert file references if tenant_id is provided
             if tenant_id is not None:
@@ -297,6 +320,144 @@ def _validate_structured_output(
     except ValidationError as exc:
         raise OutputParserError(f"Structured output validation failed: {exc}") from exc
     return validated_output
+
+
+def _supports_tool_call(model_schema: AIModelEntity) -> bool:
+    """Check if model supports tool call feature."""
+    return bool(set(model_schema.features or []) & TOOL_CALL_FEATURES)
+
+
+def _create_structured_output_tool(json_schema: Mapping[str, Any]) -> PromptMessageTool:
+    """Create a tool definition for structured output."""
+    return PromptMessageTool(
+        name=STRUCTURED_OUTPUT_TOOL_NAME,
+        description="Generate structured output according to the provided schema. "
+        "You MUST call this function to provide your response in the required format.",
+        parameters=dict(json_schema),
+    )
+
+
+def _extract_structured_output(llm_result: LLMResult) -> Mapping[str, Any]:
+    """
+    Extract structured output from LLM result (non-streaming).
+    First tries to extract from tool_calls (if present), then falls back to text content.
+    """
+    # Try to extract from tool call first
+    tool_calls = llm_result.message.tool_calls
+    if tool_calls:
+        for tool_call in tool_calls:
+            if tool_call.function.name == STRUCTURED_OUTPUT_TOOL_NAME:
+                return _parse_tool_call_arguments(tool_call.function.arguments)
+
+    # Fallback to text content parsing
+    content = llm_result.message.content
+    if not isinstance(content, str):
+        raise OutputParserError(f"Failed to parse structured output, LLM result is not a string: {content}")
+    return _parse_structured_output(content)
+
+
+def _extract_structured_output_from_stream(
+    result_text: str,
+    tool_call_args: dict[str, str],
+) -> Mapping[str, Any]:
+    """
+    Extract structured output from streaming collected data.
+    First tries to parse from collected tool call arguments, then falls back to text content.
+    """
+    # Try to parse from tool call arguments first
+    if tool_call_args:
+        # Use the first non-empty tool call arguments
+        for arguments in tool_call_args.values():
+            if arguments.strip():
+                return _parse_tool_call_arguments(arguments)
+
+    # Fallback to text content parsing
+    if not result_text:
+        raise OutputParserError("No tool call arguments and no text content to parse")
+    return _parse_structured_output(result_text)
+
+
+def _parse_tool_call_arguments(arguments: str) -> Mapping[str, Any]:
+    """Parse JSON from tool call arguments."""
+    if not arguments:
+        raise OutputParserError("Tool call arguments is empty")
+
+    try:
+        parsed = json.loads(arguments)
+        if not isinstance(parsed, dict):
+            raise OutputParserError(f"Tool call arguments is not a dict: {arguments}")
+        return parsed
+    except json.JSONDecodeError:
+        # Try to repair malformed JSON
+        repaired = json_repair.loads(arguments)
+        if not isinstance(repaired, dict):
+            raise OutputParserError(f"Failed to parse tool call arguments: {arguments}")
+        return cast(dict, repaired)
+
+
+def _get_default_value_for_type(type_name: str | list[str] | None) -> Any:
+    """Get default empty value for a JSON schema type."""
+    # Handle array of types (e.g., ["string", "null"])
+    if isinstance(type_name, list):
+        # Use the first non-null type
+        type_name = next((t for t in type_name if t != "null"), None)
+
+    if type_name == "string":
+        return ""
+    elif type_name == "object":
+        return {}
+    elif type_name == "array":
+        return []
+    elif type_name in {"number", "integer"}:
+        return 0
+    elif type_name == "boolean":
+        return False
+    elif type_name == "null" or type_name is None:
+        return None
+    else:
+        return None
+
+
+def fill_defaults_from_schema(
+    output: Mapping[str, Any],
+    json_schema: Mapping[str, Any],
+) -> dict[str, Any]:
+    """
+    Fill missing required fields in output with default empty values based on JSON schema.
+
+    Only fills default values for fields that are marked as required in the schema.
+    Recursively processes nested objects to fill their required fields as well.
+
+    Default values by type:
+    - string → ""
+    - object → {} (with nested required fields filled)
+    - array → []
+    - number/integer → 0
+    - boolean → False
+    - null → None
+    """
+    result = dict(output)
+    properties = json_schema.get("properties", {})
+    required_fields = set(json_schema.get("required", []))
+
+    for prop_name, prop_schema in properties.items():
+        prop_type = prop_schema.get("type")
+        is_required = prop_name in required_fields
+
+        if prop_name not in result:
+            # Field is missing from output
+            if is_required:
+                # Only fill default value for required fields
+                if prop_type == "object" and "properties" in prop_schema:
+                    # Create empty object and recursively fill its required fields
+                    result[prop_name] = fill_defaults_from_schema({}, prop_schema)
+                else:
+                    result[prop_name] = _get_default_value_for_type(prop_type)
+        elif isinstance(result[prop_name], dict) and prop_type == "object" and "properties" in prop_schema:
+            # Field exists and is an object, recursively fill nested required fields
+            result[prop_name] = fill_defaults_from_schema(result[prop_name], prop_schema)
+
+    return result
 
 
 def _handle_native_json_schema(

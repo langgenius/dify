@@ -217,6 +217,8 @@
   "structOutput.required": "Required",
   "structOutput.structured": "Structured",
   "structOutput.structuredTip": "Structured Outputs is a feature that ensures the model will always generate responses that adhere to your supplied JSON Schema",
+  "structOutput.toolCallFallback": "Using Tool Call mode",
+  "structOutput.toolCallFallbackTip": "The current model does not support native structured output, but supports tool calling. Structured output will be achieved via tool call.",
   "switch": "Switch to Workflow Orchestrate",
   "switchLabel": "The app copy to be created",
   "switchStart": "Start switch",

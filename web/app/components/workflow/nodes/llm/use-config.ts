@@ -313,12 +313,17 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   // structure output
   const { data: modelList } = useModelList(ModelTypeEnum.textGeneration)
-  const isModelSupportStructuredOutput = modelList
+  const currentModelFeatures = modelList
     ?.find(provideItem => provideItem.provider === model?.provider)
     ?.models
     .find(modelItem => modelItem.model === model?.name)
     ?.features
-    ?.includes(ModelFeatureEnum.StructuredOutput)
+
+  const isModelSupportStructuredOutput = currentModelFeatures?.includes(ModelFeatureEnum.StructuredOutput)
+
+  const isModelSupportToolCall = currentModelFeatures?.some(
+    feature => [ModelFeatureEnum.toolCall, ModelFeatureEnum.multiToolCall, ModelFeatureEnum.streamToolCall].includes(feature),
+  )
 
   const [structuredOutputCollapsed, setStructuredOutputCollapsed] = useState(true)
   const handleStructureOutputEnableChange = useCallback((enabled: boolean) => {
@@ -394,6 +399,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
     isModelSupportStructuredOutput,
+    isModelSupportToolCall,
     handleStructureOutputChange,
     structuredOutputCollapsed,
     setStructuredOutputCollapsed,

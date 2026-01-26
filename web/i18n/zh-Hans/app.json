@@ -215,6 +215,8 @@
   "structOutput.required": "必填",
   "structOutput.structured": "结构化输出",
   "structOutput.structuredTip": "结构化输出是一项功能，可确保模型始终生成符合您提供的 JSON 模式的响应",
+  "structOutput.toolCallFallback": "使用工具调用模式",
+  "structOutput.toolCallFallbackTip": "当前模型不支持原生结构化输出，但支持工具调用。将通过工具调用实现结构化输出。",
   "switch": "迁移为工作流编排",
   "switchLabel": "新应用创建为",
   "switchStart": "开始迁移",

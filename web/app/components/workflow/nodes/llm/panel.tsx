@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { LLMNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
+import { RiAlertFill, RiInformationLine, RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -63,6 +63,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
     isModelSupportStructuredOutput,
+    isModelSupportToolCall,
     structuredOutputCollapsed,
     setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
@@ -299,19 +300,37 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         operations={(
           <div className="mr-4 flex shrink-0 items-center">
             {(!isModelSupportStructuredOutput && !!inputs.structured_output_enabled) && (
-              <Tooltip
-                noDecoration
-                popupContent={(
-                  <div className="w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
-                    <div className="title-xs-semi-bold text-text-primary">{t('structOutput.modelNotSupported', { ns: 'app' })}</div>
-                    <div className="body-xs-regular mt-1 text-text-secondary">{t('structOutput.modelNotSupportedTip', { ns: 'app' })}</div>
-                  </div>
-                )}
-              >
-                <div>
-                  <RiAlertFill className="mr-1 size-4 text-text-warning-secondary" />
-                </div>
-              </Tooltip>
+              isModelSupportToolCall
+                ? (
+                    <Tooltip
+                      noDecoration
+                      popupContent={(
+                        <div className="w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
+                          <div className="title-xs-semi-bold text-text-primary">{t('structOutput.toolCallFallback', { ns: 'app' })}</div>
+                          <div className="body-xs-regular mt-1 text-text-secondary">{t('structOutput.toolCallFallbackTip', { ns: 'app' })}</div>
+                        </div>
+                      )}
+                    >
+                      <div>
+                        <RiInformationLine className="mr-1 size-4 text-text-tertiary" />
+                      </div>
+                    </Tooltip>
+                  )
+                : (
+                    <Tooltip
+                      noDecoration
+                      popupContent={(
+                        <div className="w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
+                          <div className="title-xs-semi-bold text-text-primary">{t('structOutput.modelNotSupported', { ns: 'app' })}</div>
+                          <div className="body-xs-regular mt-1 text-text-secondary">{t('structOutput.modelNotSupportedTip', { ns: 'app' })}</div>
+                        </div>
+                      )}
+                    >
+                      <div>
+                        <RiAlertFill className="mr-1 size-4 text-text-warning-secondary" />
+                      </div>
+                    </Tooltip>
+                  )
             )}
             <div className="system-xs-medium-uppercase mr-0.5 text-text-tertiary">{t('structOutput.structured', { ns: 'app' })}</div>
             <Tooltip popupContent={
