@@ -143,6 +143,7 @@ class HumanInputFormRecord:
     form_kind: HumanInputFormKind
     definition: FormDefinition
     rendered_content: str
+    created_at: datetime
     expiration_time: datetime
     status: HumanInputFormStatus
     selected_action_id: str | None
@@ -172,6 +173,7 @@ class HumanInputFormRecord:
             form_kind=form_model.form_kind,
             definition=FormDefinition.model_validate_json(form_model.form_definition),
             rendered_content=form_model.rendered_content,
+            created_at=form_model.created_at,
             expiration_time=form_model.expiration_time,
             status=form_model.status,
             selected_action_id=form_model.selected_action_id,

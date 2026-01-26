@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+import services.human_input_service as human_input_service_module
 from core.repositories.human_input_reposotiry import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
@@ -20,7 +21,7 @@ from core.workflow.nodes.human_input.enums import (
     TimeoutUnit,
 )
 from models.human_input import RecipientType
-from services.human_input_service import HumanInputService, InvalidFormDataError
+from services.human_input_service import Form, FormExpiredError, HumanInputService, InvalidFormDataError
 
 
 @pytest.fixture
@@ -53,6 +54,7 @@ def sample_form_record():
             timeout_unit=TimeoutUnit.HOUR,
         ),
         rendered_content="<p>hello</p>",
+        created_at=datetime.utcnow(),
         expiration_time=datetime.utcnow() + timedelta(hours=1),
         status=HumanInputFormStatus.WAITING,
         selected_action_id=None,
@@ -93,6 +95,20 @@ def test_enqueue_resume_dispatches_task_for_workflow(mocker, mock_session_factor
     call_kwargs = resume_task.apply_async.call_args.kwargs
     assert call_kwargs["queue"] == "chatflow_execute"
     assert call_kwargs["kwargs"]["payload"]["workflow_run_id"] == "workflow-run-id"
+
+
+def test_ensure_form_active_respects_global_timeout(monkeypatch, sample_form_record, mock_session_factory):
+    session_factory, _ = mock_session_factory
+    service = HumanInputService(session_factory)
+    expired_record = dataclasses.replace(
+        sample_form_record,
+        created_at=datetime.utcnow() - timedelta(hours=2),
+        expiration_time=datetime.utcnow() + timedelta(hours=2),
+    )
+    monkeypatch.setattr(human_input_service_module.dify_config, "HITL_GLOBAL_TIMEOUT_SECONDS", 3600)
+
+    with pytest.raises(FormExpiredError):
+        service.ensure_form_active(Form(expired_record))
 
 
 def test_enqueue_resume_dispatches_task_for_advanced_chat(mocker, mock_session_factory):

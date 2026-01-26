@@ -76,7 +76,7 @@ class HumanInputFormApi(Resource):
         if form is None:
             raise NotFoundError("Form not found")
 
-        service._ensure_not_submitted(form)
+        service.ensure_form_active(form)
         app_model, site = _get_app_site_from_form(form)
 
         return _jsonify_form_definition(form, site_payload=serialize_app_site_payload(app_model, site, None))

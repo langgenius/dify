@@ -1,10 +1,12 @@
 import logging
 from collections.abc import Mapping
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.repositories.human_input_reposotiry import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
@@ -15,7 +17,7 @@ from core.workflow.nodes.human_input.entities import (
     validate_human_input_submission,
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.exception import BaseHTTPException
 from models.human_input import RecipientType
 from models.model import App, AppMode
@@ -68,7 +70,11 @@ class Form:
         return self._record.form_kind
 
     @property
-    def expiration_time(self):
+    def created_at(self) -> "datetime":
+        return self._record.created_at
+
+    @property
+    def expiration_time(self) -> "datetime":
         return self._record.expiration_time
 
 
@@ -159,7 +165,7 @@ class HumanInputService:
         if form is None or form.recipient_type != recipient_type:
             raise WebAppDeliveryNotEnabledError()
 
-        self._ensure_form_active(form)
+        self.ensure_form_active(form)
         self._validate_submission(form=form, selected_action_id=selected_action_id, form_data=form_data)
 
         result = self._form_repository.mark_submitted(
@@ -177,13 +183,15 @@ class HumanInputService:
             return
         self._enqueue_resume(result.workflow_run_id)
 
-    def _ensure_form_active(self, form: Form) -> None:
+    def ensure_form_active(self, form: Form) -> None:
         if form.submitted:
             raise FormSubmittedError(form.id)
         if form.status == HumanInputFormStatus.TIMEOUT:
             raise FormExpiredError(form.id)
         now = naive_utc_now()
-        if form.expiration_time <= now:
+        if ensure_naive_utc(form.expiration_time) <= now:
+            raise FormExpiredError(form.id)
+        if self._is_globally_expired(form, now=now):
             raise FormExpiredError(form.id)
 
     def _ensure_not_submitted(self, form: Form) -> None:
@@ -229,3 +237,14 @@ class HumanInputService:
             return
 
         logger.warning("App mode %s does not support resume for workflow run %s", app.mode, workflow_run_id)
+
+    def _is_globally_expired(self, form: Form, *, now: datetime | None = None) -> bool:
+        global_timeout_seconds = dify_config.HITL_GLOBAL_TIMEOUT_SECONDS
+        if global_timeout_seconds <= 0:
+            return False
+        if form.workflow_run_id is None:
+            return False
+        current = now or naive_utc_now()
+        created_at = ensure_naive_utc(form.created_at)
+        global_deadline = created_at + timedelta(seconds=global_timeout_seconds)
+        return global_deadline <= current

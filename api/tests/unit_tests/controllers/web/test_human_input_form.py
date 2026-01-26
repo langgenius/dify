@@ -15,6 +15,7 @@ from werkzeug.exceptions import Forbidden
 import controllers.web.human_input_form as human_input_module
 import controllers.web.site as site_module
 from models.human_input import RecipientType
+from services.human_input_service import FormExpiredError
 
 HumanInputFormApi = human_input_module.HumanInputFormApi
 TenantStatus = human_input_module.TenantStatus
@@ -59,7 +60,7 @@ class _FakeDB:
 def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     """GET returns form definition merged with site payload."""
 
-    expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
+    expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
 
     class _FakeDefinition:
         def model_dump(self):
@@ -176,7 +177,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
 def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: Flask):
     """GET returns form payload for backstage token."""
 
-    expiration_time = datetime(2024, 1, 2, tzinfo=UTC)
+    expiration_time = datetime(2099, 1, 2, tzinfo=UTC)
 
     class _FakeDefinition:
         def model_dump(self):
@@ -289,7 +290,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
 def test_get_form_raises_forbidden_when_site_missing(monkeypatch: pytest.MonkeyPatch, app: Flask):
     """GET raises Forbidden if site cannot be resolved."""
 
-    expiration_time = datetime(2024, 1, 3, tzinfo=UTC)
+    expiration_time = datetime(2099, 1, 3, tzinfo=UTC)
 
     class _FakeDefinition:
         def model_dump(self):
@@ -356,3 +357,21 @@ def test_submit_form_accepts_backstage_token(monkeypatch: pytest.MonkeyPatch, ap
         form_data={"content": "ok"},
         submission_end_user_id=None,
     )
+
+
+def test_get_form_raises_expired(monkeypatch: pytest.MonkeyPatch, app: Flask):
+    class _FakeForm:
+        pass
+
+    form = _FakeForm()
+    service_mock = MagicMock()
+    service_mock.get_form_by_token.return_value = form
+    service_mock.ensure_form_active.side_effect = FormExpiredError("form-id")
+    monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
+    monkeypatch.setattr(human_input_module, "db", _FakeDB(_FakeSession({})))
+
+    with app.test_request_context("/api/form/human_input/token-1", method="GET"):
+        with pytest.raises(FormExpiredError):
+            HumanInputFormApi().get("token-1")
+
+    service_mock.ensure_form_active.assert_called_once_with(form)
