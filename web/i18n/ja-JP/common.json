@@ -351,7 +351,7 @@
   "modelProvider.card.quota": "クォータ",
   "modelProvider.card.quotaExhausted": "クォータが使い果たされました",
   "modelProvider.card.removeKey": "API キーを削除",
-  "modelProvider.card.tip": "メッセージ枠はOpenAIのモデルを使用することをサポートしています。無料枠は有料枠が使い果たされた後に消費されます。",
+  "modelProvider.card.tip": "メッセージ枠は{{modelNames}}のモデルを使用することをサポートしています。無料枠は有料枠が使い果たされた後に消費されます。",
   "modelProvider.card.tokens": "トークン",
   "modelProvider.collapse": "折り畳み",
   "modelProvider.config": "設定",

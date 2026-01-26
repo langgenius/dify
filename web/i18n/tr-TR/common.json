@@ -351,7 +351,7 @@
   "modelProvider.card.quota": "KOTA",
   "modelProvider.card.quotaExhausted": "Kota Tükendi",
   "modelProvider.card.removeKey": "API Anahtarını Kaldır",
-  "modelProvider.card.tip": "Mesaj kredileri OpenAI'den modelleri destekler. Öncelik ücretli kotaya verilecektir. Ücretsiz kota, ücretli kota tükendiğinde kullanılacaktır.",
+  "modelProvider.card.tip": "Mesaj kredileri {{modelNames}}'den modelleri destekler. Öncelik ücretli kotaya verilecektir. Ücretsiz kota, ücretli kota tükendiğinde kullanılacaktır.",
   "modelProvider.card.tokens": "Tokenler",
   "modelProvider.collapse": "Daralt",
   "modelProvider.config": "Yapılandır",

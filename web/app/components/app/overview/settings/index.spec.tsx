@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import type { ReactNode } from 'react'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
