@@ -351,7 +351,7 @@
   "modelProvider.card.quota": "KVOTE",
   "modelProvider.card.quotaExhausted": "Kvote porabljene",
   "modelProvider.card.removeKey": "Odstrani API ključ",
-  "modelProvider.card.tip": "Krediti za sporočila podpirajo modele od OpenAI. Prednostno se bo uporabila plačana kvota. Brezplačna kvota se bo uporabila, ko bo plačana kvota porabljena.",
+  "modelProvider.card.tip": "Krediti za sporočila podpirajo modele od {{modelNames}}. Prednostno se bo uporabila plačana kvota. Brezplačna kvota se bo uporabila, ko bo plačana kvota porabljena.",
   "modelProvider.card.tokens": "Žetoni",
   "modelProvider.collapse": "Strni",
   "modelProvider.config": "Konfiguracija",
