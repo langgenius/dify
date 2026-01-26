@@ -2156,11 +2156,6 @@
       "count": 3
     }
   },
-  "app/components/header/account-setting/model-provider-page/utils.ts": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "app/components/header/account-setting/plugin-page/utils.ts": {
     "ts/no-explicit-any": {
       "count": 4
