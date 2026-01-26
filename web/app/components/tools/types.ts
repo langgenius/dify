@@ -52,7 +52,7 @@ export type Collection = {
   icon_dark?: string | Emoji
   label: TypeWithI18N
   type: CollectionType | string
-  team_credentials: Record<string, any>
+  team_credentials: Record<string, unknown>
   is_team_authorization: boolean
   allow_delete: boolean
   labels: string[]
@@ -124,6 +124,7 @@ export type Event = {
   description: TypeWithI18N
   parameters: TriggerParameter[]
   labels: string[]
+  // eslint-disable-next-line ts/no-explicit-any
   output_schema: Record<string, any>
 }
 
@@ -131,9 +132,10 @@ export type Tool = {
   name: string
   author: string
   label: TypeWithI18N
-  description: any
+  description: TypeWithI18N
   parameters: ToolParameter[]
   labels: string[]
+  // eslint-disable-next-line ts/no-explicit-any
   output_schema: Record<string, any>
 }
 
@@ -215,6 +217,7 @@ export type WorkflowToolProviderOutputSchema = {
 
 export type WorkflowToolProviderRequest = {
   name: string
+  label: string
   icon: Emoji
   description: string
   parameters: WorkflowToolProviderParameter[]

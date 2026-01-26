@@ -2683,11 +2683,6 @@
       "count": 3
     }
   },
-  "app/components/tools/types.ts": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "app/components/tools/utils/to-form-schema.ts": {
     "ts/no-explicit-any": {
       "count": 15
