@@ -1,6 +1,7 @@
 import type {
   StateCreator,
 } from 'zustand'
+import type { ChatPreviewSliceShape } from './chat-preview-slice'
 import type { ChatVariableSliceShape } from './chat-variable-slice'
 import type { CommentSliceShape } from './comment-slice'
 import type { InspectVarsSliceShape } from './debug/inspect-vars-slice'
@@ -25,6 +26,7 @@ import {
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { createChatPreviewSlice } from './chat-preview-slice'
 import { createChatVariableSlice } from './chat-variable-slice'
 import { createCommentSlice } from './comment-slice'
 import { createInspectVarsSlice } from './debug/inspect-vars-slice'
@@ -47,7 +49,8 @@ export type SliceFromInjection
     & Partial<SubGraphSliceShape>
 
 export type Shape
-  = ChatVariableSliceShape
+  = ChatPreviewSliceShape
+    & ChatVariableSliceShape
     & EnvVariableSliceShape
     & FormSliceShape
     & HelpLineSliceShape
@@ -74,6 +77,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
   const { injectWorkflowStoreSliceFn } = params || {}
 
   return createStore<Shape>((...args) => ({
+    ...createChatPreviewSlice(...args),
     ...createChatVariableSlice(...args),
     ...createEnvVariableSlice(...args),
     ...createFormSlice(...args),

@@ -3748,11 +3748,6 @@
       "count": 2
     }
   },
-  "app/components/workflow/panel/debug-and-preview/hooks.ts": {
-    "ts/no-explicit-any": {
-      "count": 7
-    }
-  },
   "app/components/workflow/panel/env-panel/variable-modal.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
