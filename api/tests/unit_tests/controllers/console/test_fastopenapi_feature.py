@@ -14,7 +14,8 @@ if not hasattr(builtins, "MethodView"):
 
 
 # 确保导入了 db
-from models.engine import db 
+from models.engine import db
+
 
 @pytest.fixture
 def app() -> Flask:
@@ -22,19 +23,19 @@ def app() -> Flask:
     app.config["TESTING"] = True
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    
+
     db.init_app(app)
-    
-    with app.app_context():       
+
+    with app.app_context():
         try:
             import models  # noqa: F401
         except ImportError:
             pass
-            
-        db.create_all() 
-        
+
+        db.create_all()
+
         yield app
-        
+
         db.drop_all()
 
 
