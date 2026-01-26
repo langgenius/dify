@@ -63,4 +63,30 @@ def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.Monkey
         patch("controllers.console.feature.current_account_with_tenant", return_value=(object(), "tenant-id")),
         patch(
             "controllers.console.feature.FeatureService.get_features",
-            # 保
+            # 保留你原本的 Mock 写法，这可以有效避开 Pydantic 序列化问题
+            return_value=Mock(model_dump=lambda: {"enabled": True}),
+        ),
+    ):
+        client = app.test_client()
+        response = client.get("/console/api/features")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"features": {"enabled": True}}
+
+
+def test_console_system_features_fastopenapi_get(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    # 同样需要 Mock Config
+    monkeypatch.setattr("controllers.console.wraps.dify_config.EDITION", "CLOUD")
+    
+    ext_fastopenapi.init_app(app)
+
+    with patch(
+        "controllers.console.feature.FeatureService.get_system_features",
+        # 保留你原本的 Mock 写法
+        return_value=Mock(model_dump=lambda: {"system": True}),
+    ):
+        client = app.test_client()
+        response = client.get("/console/api/system-features")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"features": {"system": True}}
