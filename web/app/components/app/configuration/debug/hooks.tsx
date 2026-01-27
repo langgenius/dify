@@ -6,18 +6,26 @@ import type {
   ChatConfig,
   ChatItem,
 } from '@/app/components/base/chat/types'
+import type { VisionFile } from '@/types/app'
 import { cloneDeep } from 'es-toolkit/object'
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import { ToastContext } from '@/app/components/base/toast'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
   AgentStrategy,
+  AppModeEnum,
+  ModelModeType,
+  TransferMethod,
 } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import { ORCHESTRATE_CHANGED } from './types'
@@ -161,4 +169,112 @@ export const useFormattingChangedSubscription = (chatList: ChatItem[]) => {
         setFormattingChanged(true)
     }
   })
+}
+
+export const useInputValidation = () => {
+  const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
+  const {
+    isAdvancedMode,
+    mode,
+    modelModeType,
+    hasSetBlockStatus,
+    modelConfig,
+  } = useDebugConfigurationContext()
+
+  const logError = useCallback((message: string) => {
+    notify({ type: 'error', message })
+  }, [notify])
+
+  const checkCanSend = useCallback((inputs: Record<string, unknown>, completionFiles: VisionFile[]) => {
+    if (isAdvancedMode && mode !== AppModeEnum.COMPLETION) {
+      if (modelModeType === ModelModeType.completion) {
+        if (!hasSetBlockStatus.history) {
+          notify({ type: 'error', message: t('otherError.historyNoBeEmpty', { ns: 'appDebug' }) })
+          return false
+        }
+        if (!hasSetBlockStatus.query) {
+          notify({ type: 'error', message: t('otherError.queryNoBeEmpty', { ns: 'appDebug' }) })
+          return false
+        }
+      }
+    }
+    let hasEmptyInput = ''
+    const requiredVars = modelConfig.configs.prompt_variables.filter(({ key, name, required, type }) => {
+      if (type !== 'string' && type !== 'paragraph' && type !== 'select' && type !== 'number')
+        return false
+      const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
+      return res
+    })
+    requiredVars.forEach(({ key, name }) => {
+      if (hasEmptyInput)
+        return
+
+      if (!inputs[key])
+        hasEmptyInput = name
+    })
+
+    if (hasEmptyInput) {
+      logError(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }))
+      return false
+    }
+
+    if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
+      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
+      return false
+    }
+    return !hasEmptyInput
+  }, [
+    hasSetBlockStatus.history,
+    hasSetBlockStatus.query,
+    isAdvancedMode,
+    mode,
+    modelConfig.configs.prompt_variables,
+    t,
+    logError,
+    notify,
+    modelModeType,
+  ])
+
+  return { checkCanSend, logError }
+}
+
+export const useFormattingChangeConfirm = () => {
+  const [isShowFormattingChangeConfirm, setIsShowFormattingChangeConfirm] = useState(false)
+  const { formattingChanged, setFormattingChanged } = useDebugConfigurationContext()
+
+  useEffect(() => {
+    if (formattingChanged)
+      setIsShowFormattingChangeConfirm(true) // eslint-disable-line react-hooks-extra/no-direct-set-state-in-use-effect
+  }, [formattingChanged])
+
+  const handleConfirm = useCallback((onClear: () => void) => {
+    onClear()
+    setIsShowFormattingChangeConfirm(false)
+    setFormattingChanged(false)
+  }, [setFormattingChanged])
+
+  const handleCancel = useCallback(() => {
+    setIsShowFormattingChangeConfirm(false)
+    setFormattingChanged(false)
+  }, [setFormattingChanged])
+
+  return {
+    isShowFormattingChangeConfirm,
+    handleConfirm,
+    handleCancel,
+  }
+}
+
+export const useModalWidth = (containerRef: React.RefObject<HTMLDivElement | null>) => {
+  const [width, setWidth] = useState(0)
+
+  useEffect(() => {
+    if (containerRef.current) {
+      const calculatedWidth = document.body.clientWidth - (containerRef.current.clientWidth + 16) - 8
+      setWidth(calculatedWidth) // eslint-disable-line react-hooks-extra/no-direct-set-state-in-use-effect
+    }
+  }, [containerRef])
+
+  return width
 }

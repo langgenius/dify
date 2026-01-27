@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { DebugWithMultipleModelContextType } from './context'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
+import type { EnableType } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import {
   memo,
@@ -40,13 +41,7 @@ const DebugWithMultipleModel = () => {
     if (checkCanSend && !checkCanSend())
       return
 
-    eventEmitter?.emit({
-      type: APP_CHAT_WITH_MULTIPLE_MODEL,
-      payload: {
-        message,
-        files,
-      },
-    } as any)
+    eventEmitter?.emit({ type: APP_CHAT_WITH_MULTIPLE_MODEL, payload: { message, files } } as any) // eslint-disable-line ts/no-explicit-any
   }, [eventEmitter, checkCanSend])
 
   const twoLine = multipleModelConfigs.length === 2
@@ -147,7 +142,7 @@ const DebugWithMultipleModel = () => {
             showFileUpload={false}
             onFeatureBarClick={setShowAppConfigureFeaturesModal}
             onSend={handleSend}
-            speechToTextConfig={speech2text as any}
+            speechToTextConfig={speech2text as EnableType}
             visionConfig={file}
             inputs={inputs}
             inputsForm={inputsForm}

@@ -422,16 +422,6 @@
       "count": 6
     }
   },
-  "app/components/app/configuration/debug/debug-with-multiple-model/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
-  "app/components/app/configuration/debug/debug-with-multiple-model/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/app/configuration/debug/debug-with-multiple-model/text-generation-item.tsx": {
     "ts/no-explicit-any": {
       "count": 8
@@ -453,14 +443,6 @@
   "app/components/app/configuration/debug/hooks.tsx": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/app/configuration/debug/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 11
     }
   },
   "app/components/app/configuration/debug/types.ts": {
