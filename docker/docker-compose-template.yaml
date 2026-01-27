@@ -1,4 +1,18 @@
-x-shared-env: &shared-api-worker-env
+# Shared configuration using YAML anchors and env_file
+x-shared-config: &shared-api-worker-config
+  env_file:
+    - ./envs/global.env
+    - ./envs/server.env
+    - ./envs/security.env
+    - ./envs/database.env
+    - ./envs/redis.env
+    - ./envs/storage.env
+    - ./envs/vectorstore.env
+  networks:
+    - ssrf_proxy_network
+    - default
+  restart: always
+
 services:
   # Init container to fix permissions
   init_permissions:
@@ -21,11 +35,9 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.14.0
-    restart: always
+    <<: *shared-api-worker-config
+    image: langgenius/dify-api:1.11.4
     environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
       # Startup mode, 'api' starts the API server.
       MODE: api
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -69,11 +81,9 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.14.0
-    restart: always
+    <<: *shared-api-worker-config
+    image: langgenius/dify-api:1.11.4
     environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
       # Startup mode, 'worker' starts the Celery worker for processing all queues.
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -115,11 +125,9 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.14.0
-    restart: always
+    <<: *shared-api-worker-config
+    image: langgenius/dify-api:1.11.4
     environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
       # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
       MODE: beat
     depends_on:
@@ -292,11 +300,9 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.6.0-local
-    restart: always
+    <<: *shared-api-worker-config
+    image: langgenius/dify-plugin-daemon:0.5.2-local
     environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
       DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
       DB_SSL_MODE: ${DB_SSL_MODE:-disable}
       SERVER_PORT: ${PLUGIN_DAEMON_PORT:-5002}
