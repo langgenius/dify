@@ -115,6 +115,7 @@ def main():
 
     # Create env files from categorized .env.example files
     # These files are used by docker-compose's env_file directive
+    # This ensures .env files exist even in CI/CD environments
     create_env_files_from_example(env_example_path)
 
     # Copy template to output with header comments
