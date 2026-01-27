@@ -3,19 +3,12 @@ from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 
 from constants.languages import languages
+from controllers.common.schema import get_or_create_model
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required
 from libs.helper import AppIconUrlField
 from libs.login import current_user, login_required
 from services.recommended_app_service import RecommendedAppService
-
-
-def _get_or_create_model(model_name: str, field_def):
-    existing = console_ns.models.get(model_name)
-    if existing is None:
-        existing = console_ns.model(model_name, field_def)
-    return existing
-
 
 app_fields = {
     "id": fields.String,
@@ -27,7 +20,7 @@ app_fields = {
     "icon_background": fields.String,
 }
 
-app_model = _get_or_create_model("RecommendedAppInfo", app_fields)
+app_model = get_or_create_model("RecommendedAppInfo", app_fields)
 
 recommended_app_fields = {
     "app": fields.Nested(app_model, attribute="app"),
@@ -42,14 +35,14 @@ recommended_app_fields = {
     "can_trial": fields.Boolean,
 }
 
-recommended_app_model = _get_or_create_model("RecommendedApp", recommended_app_fields)
+recommended_app_model = get_or_create_model("RecommendedApp", recommended_app_fields)
 
 recommended_app_list_fields = {
     "recommended_apps": fields.List(fields.Nested(recommended_app_model)),
     "categories": fields.List(fields.String),
 }
 
-recommended_app_list_model = _get_or_create_model("RecommendedAppList", recommended_app_list_fields)
+recommended_app_list_model = get_or_create_model("RecommendedAppList", recommended_app_list_fields)
 
 
 class RecommendedAppsQuery(BaseModel):

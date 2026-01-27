@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from controllers.common.schema import get_or_create_model
 from extensions.ext_database import db
 from fields.workflow_trigger_fields import trigger_fields, triggers_list_fields, webhook_trigger_fields
 from libs.login import current_user, login_required
@@ -22,21 +23,13 @@ from ..wraps import account_initialization_required, edit_permission_required, s
 logger = logging.getLogger(__name__)
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
-
-def _get_or_create_model(model_name: str, field_def):
-    existing = console_ns.models.get(model_name)
-    if existing is None:
-        existing = console_ns.model(model_name, field_def)
-    return existing
-
-
-trigger_model = _get_or_create_model("WorkflowTrigger", trigger_fields)
+trigger_model = get_or_create_model("WorkflowTrigger", trigger_fields)
 
 triggers_list_fields_copy = triggers_list_fields.copy()
 triggers_list_fields_copy["data"] = fields.List(fields.Nested(trigger_model))
-triggers_list_model = _get_or_create_model("WorkflowTriggerList", triggers_list_fields_copy)
+triggers_list_model = get_or_create_model("WorkflowTriggerList", triggers_list_fields_copy)
 
-webhook_trigger_model = _get_or_create_model("WebhookTrigger", webhook_trigger_fields)
+webhook_trigger_model = get_or_create_model("WebhookTrigger", webhook_trigger_fields)
 
 
 class Parser(BaseModel):

@@ -8,6 +8,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 import services
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
+from controllers.common.schema import get_or_create_model
 from controllers.console import api, console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -86,18 +87,11 @@ from services.recommended_app_service import RecommendedAppService
 logger = logging.getLogger(__name__)
 
 
-def _get_or_create_model(model_name: str, field_def):
-    existing = console_ns.models.get(model_name)
-    if existing is None:
-        existing = console_ns.model(model_name, field_def)
-    return existing
-
-
-model_config_model = _get_or_create_model("TrialAppModelConfig", model_config_fields)
-workflow_partial_model = _get_or_create_model("TrialWorkflowPartial", workflow_partial_fields)
-deleted_tool_model = _get_or_create_model("TrialDeletedTool", deleted_tool_fields)
-tag_model = _get_or_create_model("TrialTag", tag_fields)
-site_model = _get_or_create_model("TrialSite", site_fields)
+model_config_model = get_or_create_model("TrialAppModelConfig", model_config_fields)
+workflow_partial_model = get_or_create_model("TrialWorkflowPartial", workflow_partial_fields)
+deleted_tool_model = get_or_create_model("TrialDeletedTool", deleted_tool_fields)
+tag_model = get_or_create_model("TrialTag", tag_fields)
+site_model = get_or_create_model("TrialSite", site_fields)
 
 app_detail_fields_with_site_copy = app_detail_fields_with_site.copy()
 app_detail_fields_with_site_copy["model_config"] = fields.Nested(
@@ -107,11 +101,11 @@ app_detail_fields_with_site_copy["workflow"] = fields.Nested(workflow_partial_mo
 app_detail_fields_with_site_copy["deleted_tools"] = fields.List(fields.Nested(deleted_tool_model))
 app_detail_fields_with_site_copy["tags"] = fields.List(fields.Nested(tag_model))
 app_detail_fields_with_site_copy["site"] = fields.Nested(site_model)
-app_detail_with_site_model = _get_or_create_model("TrialAppDetailWithSite", app_detail_fields_with_site_copy)
+app_detail_with_site_model = get_or_create_model("TrialAppDetailWithSite", app_detail_fields_with_site_copy)
 
 simple_account_model = build_simple_account_model(console_ns)
-conversation_variable_model = _get_or_create_model("TrialConversationVariable", conversation_variable_fields)
-pipeline_variable_model = _get_or_create_model("TrialPipelineVariable", pipeline_variable_fields)
+conversation_variable_model = get_or_create_model("TrialConversationVariable", conversation_variable_fields)
+pipeline_variable_model = get_or_create_model("TrialPipelineVariable", pipeline_variable_fields)
 
 workflow_fields_copy = workflow_fields.copy()
 workflow_fields_copy["created_by"] = fields.Nested(simple_account_model, attribute="created_by_account")
@@ -120,7 +114,7 @@ workflow_fields_copy["updated_by"] = fields.Nested(
 )
 workflow_fields_copy["conversation_variables"] = fields.List(fields.Nested(conversation_variable_model))
 workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipeline_variable_model))
-workflow_model = _get_or_create_model("TrialWorkflow", workflow_fields_copy)
+workflow_model = get_or_create_model("TrialWorkflow", workflow_fields_copy)
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):

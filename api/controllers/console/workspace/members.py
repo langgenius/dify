@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 import services
 from configs import dify_config
+from controllers.common.schema import get_or_create_model
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -69,18 +70,11 @@ reg(OwnerTransferCheckPayload)
 reg(OwnerTransferPayload)
 
 
-def _get_or_create_model(model_name: str, field_def):
-    existing = console_ns.models.get(model_name)
-    if existing is None:
-        existing = console_ns.model(model_name, field_def)
-    return existing
-
-
-account_with_role_model = _get_or_create_model("AccountWithRole", account_with_role_fields)
+account_with_role_model = get_or_create_model("AccountWithRole", account_with_role_fields)
 
 account_with_role_list_fields_copy = account_with_role_list_fields.copy()
 account_with_role_list_fields_copy["accounts"] = fields.List(fields.Nested(account_with_role_model))
-account_with_role_list_model = _get_or_create_model("AccountWithRoleList", account_with_role_list_fields_copy)
+account_with_role_list_model = get_or_create_model("AccountWithRoleList", account_with_role_list_fields_copy)
 
 
 @console_ns.route("/workspaces/current/members")

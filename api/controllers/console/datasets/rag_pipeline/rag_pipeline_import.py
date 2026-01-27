@@ -3,7 +3,7 @@ from flask_restx import Resource, fields, marshal_with  # type: ignore
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
@@ -42,21 +42,14 @@ class IncludeSecretQuery(BaseModel):
 register_schema_models(console_ns, RagPipelineImportPayload, IncludeSecretQuery)
 
 
-def _get_or_create_model(model_name: str, field_def):
-    existing = console_ns.models.get(model_name)
-    if existing is None:
-        existing = console_ns.model(model_name, field_def)
-    return existing
+pipeline_import_model = get_or_create_model("RagPipelineImport", pipeline_import_fields)
 
-
-pipeline_import_model = _get_or_create_model("RagPipelineImport", pipeline_import_fields)
-
-leaked_dependency_model = _get_or_create_model("RagPipelineLeakedDependency", leaked_dependency_fields)
+leaked_dependency_model = get_or_create_model("RagPipelineLeakedDependency", leaked_dependency_fields)
 pipeline_import_check_dependencies_fields_copy = pipeline_import_check_dependencies_fields.copy()
 pipeline_import_check_dependencies_fields_copy["leaked_dependencies"] = fields.List(
     fields.Nested(leaked_dependency_model)
 )
-pipeline_import_check_dependencies_model = _get_or_create_model(
+pipeline_import_check_dependencies_model = get_or_create_model(
     "RagPipelineImportCheckDependencies", pipeline_import_check_dependencies_fields_copy
 )
 

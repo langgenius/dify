@@ -3,6 +3,8 @@
 from flask_restx import Namespace
 from pydantic import BaseModel
 
+from controllers.console import console_ns
+
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
@@ -19,8 +21,11 @@ def register_schema_models(namespace: Namespace, *models: type[BaseModel]) -> No
         register_schema_model(namespace, model)
 
 
-__all__ = [
-    "DEFAULT_REF_TEMPLATE_SWAGGER_2_0",
-    "register_schema_model",
-    "register_schema_models",
-]
+def get_or_create_model(model_name: str, field_def):
+    existing = console_ns.models.get(model_name)
+    if existing is None:
+        existing = console_ns.model(model_name, field_def)
+    return existing
+
+
+__all__ = ["DEFAULT_REF_TEMPLATE_SWAGGER_2_0", "get_or_create_model", "register_schema_model", "register_schema_models"]

@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import register_schema_model
+from controllers.common.schema import get_or_create_model, register_schema_model
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
@@ -56,30 +56,23 @@ class DataSourceNotionPreviewQuery(BaseModel):
 register_schema_model(console_ns, NotionEstimatePayload)
 
 
-def _get_or_create_model(model_name: str, field_def):
-    existing = console_ns.models.get(model_name)
-    if existing is None:
-        existing = console_ns.model(model_name, field_def)
-    return existing
-
-
-integrate_icon_model = _get_or_create_model("DataSourceIntegrateIcon", integrate_icon_fields)
+integrate_icon_model = get_or_create_model("DataSourceIntegrateIcon", integrate_icon_fields)
 
 integrate_page_fields_copy = integrate_page_fields.copy()
 integrate_page_fields_copy["page_icon"] = fields.Nested(integrate_icon_model, allow_null=True)
-integrate_page_model = _get_or_create_model("DataSourceIntegratePage", integrate_page_fields_copy)
+integrate_page_model = get_or_create_model("DataSourceIntegratePage", integrate_page_fields_copy)
 
 integrate_workspace_fields_copy = integrate_workspace_fields.copy()
 integrate_workspace_fields_copy["pages"] = fields.List(fields.Nested(integrate_page_model))
-integrate_workspace_model = _get_or_create_model("DataSourceIntegrateWorkspace", integrate_workspace_fields_copy)
+integrate_workspace_model = get_or_create_model("DataSourceIntegrateWorkspace", integrate_workspace_fields_copy)
 
 integrate_fields_copy = integrate_fields.copy()
 integrate_fields_copy["source_info"] = fields.Nested(integrate_workspace_model)
-integrate_model = _get_or_create_model("DataSourceIntegrate", integrate_fields_copy)
+integrate_model = get_or_create_model("DataSourceIntegrate", integrate_fields_copy)
 
 integrate_list_fields_copy = integrate_list_fields.copy()
 integrate_list_fields_copy["data"] = fields.List(fields.Nested(integrate_model))
-integrate_list_model = _get_or_create_model("DataSourceIntegrateList", integrate_list_fields_copy)
+integrate_list_model = get_or_create_model("DataSourceIntegrateList", integrate_list_fields_copy)
 
 notion_page_fields = {
     "page_name": fields.String,
@@ -89,7 +82,7 @@ notion_page_fields = {
     "parent_id": fields.String,
     "type": fields.String,
 }
-notion_page_model = _get_or_create_model("NotionIntegratePage", notion_page_fields)
+notion_page_model = get_or_create_model("NotionIntegratePage", notion_page_fields)
 
 notion_workspace_fields = {
     "workspace_name": fields.String,
@@ -97,11 +90,11 @@ notion_workspace_fields = {
     "workspace_icon": fields.String,
     "pages": fields.List(fields.Nested(notion_page_model)),
 }
-notion_workspace_model = _get_or_create_model("NotionIntegrateWorkspace", notion_workspace_fields)
+notion_workspace_model = get_or_create_model("NotionIntegrateWorkspace", notion_workspace_fields)
 
 integrate_notion_info_list_fields_copy = integrate_notion_info_list_fields.copy()
 integrate_notion_info_list_fields_copy["notion_info"] = fields.List(fields.Nested(notion_workspace_model))
-integrate_notion_info_list_model = _get_or_create_model(
+integrate_notion_info_list_model = get_or_create_model(
     "NotionIntegrateInfoList", integrate_notion_info_list_fields_copy
 )
 

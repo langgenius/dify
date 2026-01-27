@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
+from controllers.common.schema import get_or_create_model
 from controllers.console import console_ns
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
@@ -35,22 +36,15 @@ class InstalledAppsListQuery(BaseModel):
 logger = logging.getLogger(__name__)
 
 
-def _get_or_create_model(model_name: str, field_def):
-    existing = console_ns.models.get(model_name)
-    if existing is None:
-        existing = console_ns.model(model_name, field_def)
-    return existing
-
-
-app_model = _get_or_create_model("InstalledAppInfo", app_fields)
+app_model = get_or_create_model("InstalledAppInfo", app_fields)
 
 installed_app_fields_copy = installed_app_fields.copy()
 installed_app_fields_copy["app"] = fields.Nested(app_model)
-installed_app_model = _get_or_create_model("InstalledApp", installed_app_fields_copy)
+installed_app_model = get_or_create_model("InstalledApp", installed_app_fields_copy)
 
 installed_app_list_fields_copy = installed_app_list_fields.copy()
 installed_app_list_fields_copy["installed_apps"] = fields.List(fields.Nested(installed_app_model))
-installed_app_list_model = _get_or_create_model("InstalledAppList", installed_app_list_fields_copy)
+installed_app_list_model = get_or_create_model("InstalledAppList", installed_app_list_fields_copy)
 
 
 @console_ns.route("/installed-apps")
