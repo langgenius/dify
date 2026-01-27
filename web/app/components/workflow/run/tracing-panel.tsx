@@ -75,6 +75,11 @@ const TracingPanel: FC<TracingPanelProps> = ({
     retryResultList,
     handleShowRetryResultList,
 
+    showFallbackDetail,
+    setShowFallbackDetailFalse,
+    fallbackResultList,
+    handleShowFallbackResultList,
+
     showIteratingDetail,
     setShowIteratingDetailFalse,
     iterationResultList,
@@ -152,6 +157,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
             onShowIterationDetail={handleShowIterationResultList}
             onShowLoopDetail={handleShowLoopResultList}
             onShowRetryDetail={handleShowRetryResultList}
+            onShowFallbackDetail={handleShowFallbackResultList}
             onShowAgentOrToolLog={handleShowAgentOrToolLog}
             hideInfo={hideNodeInfo}
             hideProcessDetail={hideNodeProcessDetail}
@@ -167,6 +173,10 @@ const TracingPanel: FC<TracingPanelProps> = ({
         showRetryDetail={showRetryDetail}
         setShowRetryDetailFalse={setShowRetryDetailFalse}
         retryResultList={retryResultList}
+
+        showFallbackDetail={showFallbackDetail}
+        setShowFallbackDetailFalse={setShowFallbackDetailFalse}
+        fallbackResultList={fallbackResultList}
 
         showIteratingDetail={showIteratingDetail}
         setShowIteratingDetailFalse={setShowIteratingDetailFalse}

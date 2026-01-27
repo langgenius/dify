@@ -5,6 +5,7 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 
@@ -33,11 +34,18 @@ export const useWorkflowNodeStarted = () => {
       transform,
     } = store.getState()
     const nodes = getNodes()
+
+    // Check if a record with the same id already exists (fallback model re-execution)
+    const existingRecord = workflowRunningData?.tracing?.find(item => item.id === data.id)
+    const isFallbackRestart = existingRecord?.execution_metadata?.error_strategy === ErrorHandleTypeEnum.fallbackModel
+
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-      draft.tracing!.push({
-        ...data,
-        status: NodeRunningStatus.Running,
-      })
+      if (!isFallbackRestart) {
+        draft.tracing!.push({
+          ...data,
+          status: NodeRunningStatus.Running,
+        })
+      }
     }))
 
     const {

@@ -424,6 +424,8 @@
   "nodes.common.errorHandle.partialSucceeded.tip": "There are {{num}} nodes in the process running abnormally, please go to tracing to check the logs.",
   "nodes.common.errorHandle.tip": "Exception handling strategy, triggered when a node encounters an exception.",
   "nodes.common.errorHandle.title": "Error Handling",
+  "nodes.common.fallback.attempt": "Model Attempt",
+  "nodes.common.fallback.attempts": "{{num}} Model Attempts",
   "nodes.common.inputVars": "Input Variables",
   "nodes.common.insertVarTip": "Insert Variable",
   "nodes.common.memories.builtIn": "Built-in",

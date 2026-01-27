@@ -83,6 +83,7 @@ export type CommonNodeType<T = {}> = {
   _iterationIndex?: number
   _waitingRun?: boolean
   _retryIndex?: number
+  _fallbackIndex?: number
   _dataSourceStartToAdd?: boolean
   _isTempNode?: boolean
   isInIteration?: boolean
