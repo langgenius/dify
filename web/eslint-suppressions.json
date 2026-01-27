@@ -1792,11 +1792,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/detail/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/detail/metadata/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
