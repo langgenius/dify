@@ -33,6 +33,7 @@ from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.knowledge_entities.knowledge_entities import (
     PreProcessingRule,
+    RerankingModel,
     Rule,
     Segmentation,
     WeightKeywordSetting,
@@ -433,6 +434,7 @@ register_schema_models(
     WeightVectorSetting,
     WeightKeywordSetting,
     WeightModel,
+    RerankingModel,
 )
 
 
