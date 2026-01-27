@@ -1,6 +1,8 @@
+from datetime import datetime
+
 import pytest
 
-from libs.helper import extract_tenant_id
+from libs.helper import OptionalTimestampField, extract_tenant_id
 from models.account import Account
 from models.model import EndUser
 
@@ -63,3 +65,16 @@ class TestExtractTenantId:
 
         with pytest.raises(ValueError, match="Invalid user type.*Expected Account or EndUser"):
             extract_tenant_id(dict_user)
+
+
+class TestOptionalTimestampField:
+    def test_format_returns_none_for_none(self):
+        field = OptionalTimestampField()
+
+        assert field.format(None) is None
+
+    def test_format_returns_unix_timestamp_for_datetime(self):
+        field = OptionalTimestampField()
+        value = datetime(2024, 1, 2, 3, 4, 5)
+
+        assert field.format(value) == int(value.timestamp())

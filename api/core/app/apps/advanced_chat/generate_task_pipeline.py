@@ -546,9 +546,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow paused events."""
+        validated_state = self._ensure_graph_runtime_initialized()
         responses = self._workflow_response_converter.workflow_pause_to_stream_response(
             event=event,
             task_id=self._application_generate_entity.task_id,
+            graph_runtime_state=validated_state,
         )
         for reason in event.reasons:
             if isinstance(reason, HumanInputRequired):

@@ -138,13 +138,18 @@ def test_queue_workflow_paused_event_to_stream_responses():
         paused_nodes=["node-id"],
     )
 
-    responses = converter.workflow_pause_to_stream_response(event=queue_event, task_id="task")
+    runtime_state = SimpleNamespace(total_tokens=0, node_run_steps=0)
+    responses = converter.workflow_pause_to_stream_response(
+        event=queue_event,
+        task_id="task",
+        graph_runtime_state=runtime_state,
+    )
 
     assert isinstance(responses[-1], WorkflowPauseStreamResponse)
     pause_resp = responses[-1]
     assert pause_resp.workflow_run_id == "run-id"
     assert pause_resp.data.paused_nodes == ["node-id"]
-    assert pause_resp.data.outputs == {"answer": "value"}
+    assert pause_resp.data.outputs == {}
     assert pause_resp.data.reasons[0]["form_id"] == "form-1"
     assert pause_resp.data.reasons[0]["display_in_ui"] is True
 

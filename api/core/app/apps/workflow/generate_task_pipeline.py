@@ -10,7 +10,6 @@ from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.app.apps.workflow.errors import WorkflowPausedInBlockingModeError
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -138,7 +137,24 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             if isinstance(stream_response, ErrorStreamResponse):
                 raise stream_response.err
             elif isinstance(stream_response, WorkflowPauseStreamResponse):
-                raise WorkflowPausedInBlockingModeError()
+                response = WorkflowAppBlockingResponse(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_run_id=stream_response.data.workflow_run_id,
+                    data=WorkflowAppBlockingResponse.Data(
+                        id=stream_response.data.workflow_run_id,
+                        workflow_id=self._workflow.id,
+                        status=stream_response.data.status,
+                        outputs=stream_response.data.outputs or {},
+                        error=None,
+                        elapsed_time=stream_response.data.elapsed_time,
+                        total_tokens=stream_response.data.total_tokens,
+                        total_steps=stream_response.data.total_steps,
+                        created_at=stream_response.data.created_at,
+                        finished_at=None,
+                    ),
+                )
+
+                return response
             elif isinstance(stream_response, WorkflowFinishStreamResponse):
                 response = WorkflowAppBlockingResponse(
                     task_id=self._application_generate_entity.task_id,
@@ -455,9 +471,11 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow paused events."""
         self._ensure_workflow_initialized()
+        validated_state = self._ensure_graph_runtime_initialized()
         responses = self._workflow_response_converter.workflow_pause_to_stream_response(
             event=event,
             task_id=self._application_generate_entity.task_id,
+            graph_runtime_state=validated_state,
         )
         yield from responses
 

@@ -101,7 +101,12 @@ def test_handle_workflow_paused_event_persists_human_input_extra_content() -> No
     pipeline._application_generate_entity = SimpleNamespace(task_id="task-1")
     pipeline._workflow_response_converter = mock.Mock()
     pipeline._workflow_response_converter.workflow_pause_to_stream_response.return_value = []
-    pipeline._ensure_graph_runtime_initialized = mock.Mock(side_effect=ValueError())
+    pipeline._ensure_graph_runtime_initialized = mock.Mock(
+        return_value=SimpleNamespace(
+            total_tokens=0,
+            node_run_steps=0,
+        ),
+    )
     pipeline._save_message = mock.Mock()
     message = SimpleNamespace(status=MessageStatus.NORMAL)
     pipeline._get_message = mock.Mock(return_value=message)
@@ -155,7 +160,7 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
         answer="before",
         status=MessageStatus.PAUSED,
     )
-    user = EndUser.__new__(EndUser)
+    user = EndUser()
     user.id = "user-1"
     user.session_id = "session-1"
     workflow = SimpleNamespace(id="workflow-1", tenant_id="tenant-1", features_dict={})

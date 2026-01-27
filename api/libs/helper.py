@@ -94,6 +94,13 @@ class TimestampField(fields.Raw):
         return int(value.timestamp())
 
 
+class OptionalTimestampField(fields.Raw):
+    def format(self, value) -> int | None:
+        if value is None:
+            return None
+        return int(value.timestamp())
+
+
 def email(email):
     # Define a regex pattern for email addresses
     pattern = r"^[\w\.!#$%&'*+\-/=?^_`{|}~]+@([\w-]+\.)+[\w-]{2,}$"

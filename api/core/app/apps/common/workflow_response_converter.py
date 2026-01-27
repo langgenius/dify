@@ -282,9 +282,19 @@ class WorkflowResponseConverter:
         *,
         event: QueueWorkflowPausedEvent,
         task_id: str,
+        graph_runtime_state: GraphRuntimeState,
     ) -> list[StreamResponse]:
         run_id = self._ensure_workflow_run_id()
+        started_at = self._workflow_started_at
+        if started_at is None:
+            raise ValueError(
+                "workflow_pause_to_stream_response called before workflow_start_to_stream_response",
+            )
+        paused_at = naive_utc_now()
+        elapsed_time = (paused_at - started_at).total_seconds()
         encoded_outputs = self._encode_outputs(event.outputs) or {}
+        if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
+            encoded_outputs = {}
         pause_reasons = [reason.model_dump(mode="json") for reason in event.reasons]
 
         responses: list[StreamResponse] = []
@@ -318,6 +328,11 @@ class WorkflowResponseConverter:
                     paused_nodes=list(event.paused_nodes),
                     outputs=encoded_outputs,
                     reasons=pause_reasons,
+                    status=WorkflowExecutionStatus.PAUSED.value,
+                    created_at=int(started_at.timestamp()),
+                    elapsed_time=elapsed_time,
+                    total_tokens=graph_runtime_state.total_tokens,
+                    total_steps=graph_runtime_state.node_run_steps,
                 ),
             )
         )

@@ -33,7 +33,7 @@ from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
 from libs import helper
-from libs.helper import TimestampField
+from libs.helper import OptionalTimestampField, TimestampField
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
@@ -63,17 +63,49 @@ class WorkflowLogQuery(BaseModel):
 
 register_schema_models(service_api_ns, WorkflowRunPayload, WorkflowLogQuery)
 
+
+class WorkflowRunStatusField(fields.Raw):
+    def output(self, key, obj, **kwargs):
+        status = getattr(obj, "status", None)
+        if hasattr(status, "value"):
+            return status.value
+        if isinstance(obj, dict):
+            value = obj.get(key) or obj.get("status")
+            if hasattr(value, "value"):
+                return value.value
+            return value
+        return status
+
+
+class WorkflowRunOutputsField(fields.Raw):
+    def output(self, key, obj, **kwargs):
+        status = getattr(obj, "status", None)
+        status_value = status.value if hasattr(status, "value") else status
+        if status_value == WorkflowExecutionStatus.PAUSED.value:
+            return {}
+
+        outputs = getattr(obj, "outputs_dict", None)
+        if outputs is not None:
+            return outputs or {}
+
+        if isinstance(obj, dict):
+            value = obj.get(key) or obj.get("outputs")
+            return value or {}
+
+        return {}
+
+
 workflow_run_fields = {
     "id": fields.String,
     "workflow_id": fields.String,
-    "status": fields.String,
+    "status": WorkflowRunStatusField,
     "inputs": fields.Raw,
-    "outputs": fields.Raw,
+    "outputs": WorkflowRunOutputsField,
     "error": fields.String,
     "total_steps": fields.Integer,
     "total_tokens": fields.Integer,
     "created_at": TimestampField,
-    "finished_at": TimestampField,
+    "finished_at": OptionalTimestampField,
     "elapsed_time": fields.Float,
 }
 

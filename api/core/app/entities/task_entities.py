@@ -239,7 +239,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         total_steps: int
         created_by: Mapping[str, object] = Field(default_factory=dict)
         created_at: int
-        finished_at: int
+        finished_at: int | None
         exceptions_count: int | None = 0
         files: Sequence[Mapping[str, Any]] | None = []
 
@@ -262,6 +262,11 @@ class WorkflowPauseStreamResponse(StreamResponse):
         paused_nodes: Sequence[str] = Field(default_factory=list)
         outputs: Mapping[str, Any] = Field(default_factory=dict)
         reasons: Sequence[Mapping[str, Any]] = Field(default_factory=list)
+        status: str
+        created_at: int
+        elapsed_time: float
+        total_tokens: int
+        total_steps: int
 
     event: StreamEvent = StreamEvent.WORKFLOW_PAUSED
     workflow_run_id: str
