@@ -2,14 +2,13 @@ import logging
 from datetime import timedelta
 
 from celery import shared_task
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.repositories.human_input_reposotiry import HumanInputFormSubmissionRepository
 from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.nodes.human_input.entities import FormDefinition
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, TimeoutUnit
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
@@ -20,26 +19,14 @@ from services.human_input_service import HumanInputService
 logger = logging.getLogger(__name__)
 
 
-def _calculate_node_deadline(definition: FormDefinition, created_at, *, start_time=None):
-    start = start_time or created_at
-    if definition.timeout_unit == TimeoutUnit.HOUR:
-        return start + timedelta(hours=definition.timeout)
-    if definition.timeout_unit == TimeoutUnit.DAY:
-        return start + timedelta(days=definition.timeout)
-    raise AssertionError("unknown timeout unit.")
-
-
-def _is_global_timeout(form_model: HumanInputForm, global_timeout_seconds: int) -> bool:
+def _is_global_timeout(form_model: HumanInputForm, global_timeout_seconds: int, *, now) -> bool:
     if global_timeout_seconds <= 0:
         return False
-
-    form_definition = FormDefinition.model_validate_json(form_model.form_definition)
-
+    if form_model.workflow_run_id is None:
+        return False
     created_at = ensure_naive_utc(form_model.created_at)
-    expiration_time = ensure_naive_utc(form_model.expiration_time)
-    node_deadline = _calculate_node_deadline(form_definition, created_at)
     global_deadline = created_at + timedelta(seconds=global_timeout_seconds)
-    return global_deadline <= node_deadline and expiration_time <= global_deadline
+    return global_deadline <= now
 
 
 def _handle_global_timeout(*, form_id: str, workflow_run_id: str, node_id: str, session_factory: sessionmaker) -> None:
@@ -77,11 +64,15 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
     global_timeout_seconds = dify_config.HITL_GLOBAL_TIMEOUT_SECONDS
 
     with session_factory() as session:
+        global_deadline = now - timedelta(seconds=global_timeout_seconds) if global_timeout_seconds > 0 else None
+        timeout_filter = HumanInputForm.expiration_time <= now
+        if global_deadline is not None:
+            timeout_filter = or_(timeout_filter, HumanInputForm.created_at <= global_deadline)
         stmt = (
             select(HumanInputForm)
             .where(
                 HumanInputForm.status == HumanInputFormStatus.WAITING,
-                HumanInputForm.expiration_time <= now,
+                timeout_filter,
             )
             .order_by(HumanInputForm.id.asc())
             .limit(limit)
@@ -97,7 +88,7 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
                     reason="delivery_test_timeout",
                 )
                 continue
-            is_global = _is_global_timeout(form_model, global_timeout_seconds)
+            is_global = _is_global_timeout(form_model, global_timeout_seconds, now=now)
             record = form_repo.mark_timeout(
                 form_id=form_model.id,
                 timeout_status=HumanInputFormStatus.EXPIRED if is_global else HumanInputFormStatus.TIMEOUT,
