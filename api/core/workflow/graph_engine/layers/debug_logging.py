@@ -11,6 +11,7 @@ from typing import Any, final
 
 from typing_extensions import override
 
+from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey
 from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphRunAbortedEvent,
@@ -176,8 +177,21 @@ class DebugLoggingLayer(GraphEngineLayer):
                 self.logger.error("  Details: %s", event.node_run_result.error)
 
         elif isinstance(event, NodeRunExceptionEvent):
-            self.logger.warning("⚠️ Node exception handled: %s", event.node_id)
-            self.logger.warning("  Error: %s", event.error)
+            error_strategy = event.node_run_result.metadata.get(
+                WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY
+            )
+            if error_strategy == ErrorStrategy.FALLBACK_MODEL:
+                fallback_index = event.node_run_result.metadata.get(
+                    WorkflowNodeExecutionMetadataKey.FALLBACK_MODEL_INDEX, 0
+                )
+                self.logger.info(
+                    "🔄 Fallback model triggered: %s (switching to model %d)",
+                    event.node_id,
+                    fallback_index,
+                )
+            else:
+                self.logger.warning("⚠️ Node exception handled: %s", event.node_id)
+                self.logger.warning("  Error: %s", event.error)
 
         elif isinstance(event, NodeRunStreamChunkEvent):
             # Log stream chunks at debug level to avoid spam

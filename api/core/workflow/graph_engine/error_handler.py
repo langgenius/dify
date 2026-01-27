@@ -233,7 +233,7 @@ class ErrorHandler:
             event: The failure event
 
         Returns:
-            NodeRunRetryEvent if a fallback model is available, None otherwise
+            NodeRunExceptionEvent if a fallback model is available, None otherwise
         """
         node = self._graph.nodes[event.node_id]
 
@@ -324,18 +324,19 @@ class ErrorHandler:
                 event.node_id,
             )
 
-        # Create retry event with metadata indicating which fallback model to use
+        # Create exception event with metadata indicating which fallback model to use
+        # Using NodeRunExceptionEvent for consistency with other error strategies
         metadata = event.node_run_result.metadata.copy() if event.node_run_result.metadata else {}
         metadata[WorkflowNodeExecutionMetadataKey.FALLBACK_MODEL_INDEX] = next_model_index
         metadata[WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY] = ErrorStrategyEnum.FALLBACK_MODEL
 
-        return NodeRunRetryEvent(
+        return NodeRunExceptionEvent(
             id=event.id,
-            node_title=node.title,
             node_id=event.node_id,
             node_type=event.node_type,
+            start_at=event.start_at,
             node_run_result=NodeRunResult(
-                status=event.node_run_result.status,
+                status=WorkflowNodeExecutionStatus.EXCEPTION,
                 inputs=event.node_run_result.inputs,
                 process_data=event.node_run_result.process_data,
                 outputs=event.node_run_result.outputs,
@@ -344,7 +345,5 @@ class ErrorHandler:
                 error_type=event.node_run_result.error_type,
                 llm_usage=event.node_run_result.llm_usage,
             ),
-            start_at=event.start_at,
             error=event.error,
-            retry_index=0,  # This is not a regular retry, so we use 0
         )

@@ -247,11 +247,31 @@ class EventHandler:
     @_dispatch.register
     def _(self, event: NodeRunExceptionEvent) -> None:
         """
-        Handle node exception event (fail-branch strategy).
+        Handle node exception event (fail-branch/default-value/fallback-model strategy).
 
         Args:
             event: The node exception event
         """
+        node = self._graph.nodes[event.node_id]
+
+        # FALLBACK_MODEL strategy requires re-executing the node, not continuing downstream
+        if node.error_strategy == ErrorStrategy.FALLBACK_MODEL:
+            # Don't call mark_taken() - node will be re-executed
+            # Don't call increment_retry() - let frontend handle the duplicate node_started event
+            self._accumulate_node_usage(event.node_run_result.llm_usage)
+
+            # Finish current execution state
+            self._state_manager.finish_execution(event.node_id)
+
+            # Collect the event for observers (triggers SSE node_finished with exception status)
+            self._event_collector.collect(event)
+
+            # Re-queue node for execution with fallback model
+            # Uses the same execution ID so frontend can merge into one tracing record
+            self._state_manager.enqueue_node(event.node_id)
+            self._state_manager.start_execution(event.node_id)
+            return
+
         # Node continues via fail-branch/default-value, treat as completion
         node_execution = self._graph_execution.get_or_create_node_execution(event.node_id)
         node_execution.mark_taken()
@@ -260,8 +280,6 @@ class EventHandler:
 
         # Persist outputs produced by the exception strategy (e.g. default values)
         self._store_node_outputs(event.node_id, event.node_run_result.outputs)
-
-        node = self._graph.nodes[event.node_id]
 
         if node.error_strategy == ErrorStrategy.DEFAULT_VALUE:
             ready_nodes, edge_streaming_events = self._edge_processor.process_node_success(event.node_id)
