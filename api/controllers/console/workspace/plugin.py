@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
@@ -180,23 +181,28 @@ class ParserReadme(BaseModel):
     language: str = Field(default="en-US")
 
 
-reg(ParserLatest)
-reg(ParserIcon)
-reg(ParserAsset)
-reg(ParserGithubUpload)
-reg(ParserPluginIdentifiers)
-reg(ParserGithubInstall)
-reg(ParserPluginIdentifierQuery)
-reg(ParserTasks)
-reg(ParserMarketplaceUpgrade)
-reg(ParserGithubUpgrade)
-reg(ParserUninstall)
-reg(ParserPermissionChange)
-reg(ParserDynamicOptions)
-reg(ParserDynamicOptionsWithCredentials)
-reg(ParserPreferencesChange)
-reg(ParserExcludePlugin)
-reg(ParserReadme)
+register_schema_models(
+    console_ns,
+    PluginAutoUpgradeSettingsPayload,
+    PluginPermissionSettingsPayload,
+    ParserLatest,
+    ParserIcon,
+    ParserAsset,
+    ParserGithubUpload,
+    ParserPluginIdentifiers,
+    ParserGithubInstall,
+    ParserPluginIdentifierQuery,
+    ParserTasks,
+    ParserMarketplaceUpgrade,
+    ParserGithubUpgrade,
+    ParserUninstall,
+    ParserPermissionChange,
+    ParserDynamicOptions,
+    ParserDynamicOptionsWithCredentials,
+    ParserPreferencesChange,
+    ParserExcludePlugin,
+    ParserReadme,
+)
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
