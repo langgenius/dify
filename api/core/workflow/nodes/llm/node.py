@@ -298,17 +298,18 @@ class LLMNode(Node[LLMNodeData]):
             structured_output: LLMStructuredOutput | None = None
 
             sandbox = self.graph_runtime_state.sandbox
-            if self.tool_call_enabled:
-                if sandbox:
-                    tool_dependencies = self._extract_tool_dependencies()
-                    generator = self._invoke_llm_with_sandbox(
-                        sandbox=sandbox,
-                        model_instance=model_instance,
-                        prompt_messages=prompt_messages,
-                        stop=stop,
-                        variable_pool=variable_pool,
-                        tool_dependencies=tool_dependencies,
-                    )
+            has_skill_prompt = self._has_skill_prompt()
+            if sandbox and has_skill_prompt:
+                tool_dependencies = self._extract_tool_dependencies()
+                generator = self._invoke_llm_with_sandbox(
+                    sandbox=sandbox,
+                    model_instance=model_instance,
+                    prompt_messages=prompt_messages,
+                    stop=stop,
+                    variable_pool=variable_pool,
+                    tool_dependencies=tool_dependencies,
+                )
+            elif self.tool_call_enabled:
                 generator = self._invoke_llm_with_tools(
                     model_instance=model_instance,
                     prompt_messages=prompt_messages,
@@ -1810,6 +1811,12 @@ class LLMNode(Node[LLMNodeData]):
             structured_output,
             generation_data,
         )
+
+    def _has_skill_prompt(self) -> bool:
+        for prompt in self.node_data.prompt_template:
+            if isinstance(prompt, LLMNodeChatModelMessage) and prompt.skill:
+                return True
+        return False
 
     def _extract_tool_dependencies(self) -> ToolDependencies | None:
         """Extract tool artifact from prompt template."""

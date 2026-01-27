@@ -7,7 +7,6 @@ from core.sandbox.sandbox import Sandbox
 from core.sandbox.services import AssetDownloadService
 from core.sandbox.services.asset_download_service import AssetDownloadItem
 from core.virtual_environment.__base.helpers import pipeline
-from services.app_asset_package_service import AppAssetPackageService
 from services.app_asset_service import AppAssetService
 
 from .base import AsyncSandboxInitializer
@@ -26,13 +25,9 @@ class DraftAppAssetsInitializer(AsyncSandboxInitializer):
 
     def initialize(self, sandbox: Sandbox) -> None:
         # Load published app assets and unzip the artifact bundle.
-        app_assets = AppAssetPackageService.get_tenant_app_assets(self._tenant_id, self._assets_id)
-        sandbox.attrs.set(AppAssetsAttrs.FILE_TREE, app_assets.asset_tree)
-        sandbox.attrs.set(AppAssetsAttrs.APP_ASSETS_ID, self._assets_id)
-
         vm = sandbox.vm
         build_id = self._assets_id
-        tree = app_assets.asset_tree
+        tree = sandbox.attrs.get(AppAssetsAttrs.FILE_TREE)
         asset_storage = AppAssetService.get_storage()
         nodes = list(tree.walk_files())
         if not nodes:

@@ -78,6 +78,7 @@ class AppAssetPackageService:
         assets: list[AssetItem],
         upload_url: str,
         tenant_id: str,
+        app_id: str,
         user_id: str,
     ) -> None:
         """Package assets into a ZIP and upload directly to the given URL."""
@@ -97,13 +98,11 @@ class AppAssetPackageService:
             return
 
         asset_storage = AppAssetService.get_storage()
-        storage_keys = [a.get_storage_key() for a in assets]
-        download_urls = asset_storage.storage.get_download_urls(storage_keys, 10 * 60)
-
+        asset_paths = [AssetPath.draft(tenant_id, app_id, asset.asset_id) for asset in assets]
+        download_urls = asset_storage.get_download_urls(asset_paths)
         download_items = [
-            SandboxDownloadItem(url=url, path=a.path) for a, url in zip(assets, download_urls, strict=True)
+            SandboxDownloadItem(url=url, path=asset.path) for asset, url in zip(assets, download_urls, strict=True)
         ]
-
         with ZipSandbox(tenant_id=tenant_id, user_id=user_id, app_id="asset-packager") as zs:
             zs.download_items(download_items)
             archive = zs.zip()
@@ -146,6 +145,7 @@ class AppAssetPackageService:
             assets=built_assets,
             upload_url=runtime_upload_url,
             tenant_id=tenant_id,
+            app_id=app_id,
             user_id=account_id,
         )
 
@@ -156,6 +156,7 @@ class AppAssetPackageService:
             assets=source_items,
             upload_url=source_upload_url,
             tenant_id=tenant_id,
+            app_id=app_id,
             user_id=account_id,
         )
 
@@ -181,5 +182,6 @@ class AppAssetPackageService:
             assets=built_assets,
             upload_url=upload_url,
             tenant_id=tenant_id,
+            app_id=app_id,
             user_id=user_id,
         )
