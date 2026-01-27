@@ -601,6 +601,11 @@ class LLMGenerator:
 - Use {language}.
 - Keep each instruction short and practical.
 - Do not include code or variable syntax in the instructions.
+
+## Instruction Example
+
+- Count the output length of the `LLM` node.
+- Get the `account_list` from the `QueryAccounts` tool node's output
 """
 
     @classmethod
