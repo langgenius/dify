@@ -1750,7 +1750,7 @@
             }
           },
           {
-            "name": "segment_id",
+            "name": "document_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1758,7 +1758,7 @@
             }
           },
           {
-            "name": "document_id",
+            "name": "segment_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -2361,16 +2361,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HitTestingPayload"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "description": "Hit testing results",
@@ -2384,8 +2374,7 @@
             "description": "Dataset not found",
             "content": {}
           }
-        },
-        "x-codegen-request-body-name": "payload"
+        }
       }
     },
     "/datasets/{dataset_id}/metadata": {
@@ -2657,16 +2646,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HitTestingPayload"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "description": "Hit testing results",
@@ -2680,8 +2659,7 @@
             "description": "Dataset not found",
             "content": {}
           }
-        },
-        "x-codegen-request-body-name": "payload"
+        }
       }
     },
     "/datasets/{dataset_id}/tags": {
@@ -3747,7 +3725,8 @@
         "properties": {
           "conversation_id": {
             "title": "Conversation Id",
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "first_id": {
             "title": "First Id",
@@ -4130,10 +4109,11 @@
           }
         }
       },
-      "TagCreatePayload": {
-        "title": "TagCreatePayload",
+      "TagUpdatePayload": {
+        "title": "TagUpdatePayload",
         "required": [
-          "name"
+          "name",
+          "tag_id"
         ],
         "type": "object",
         "properties": {
@@ -4141,6 +4121,10 @@
             "title": "Name",
             "maxLength": 50,
             "minLength": 1,
+            "type": "string"
+          },
+          "tag_id": {
+            "title": "Tag Id",
             "type": "string"
           }
         }
@@ -4158,11 +4142,10 @@
           }
         }
       },
-      "TagUpdatePayload": {
-        "title": "TagUpdatePayload",
+      "TagCreatePayload": {
+        "title": "TagCreatePayload",
         "required": [
-          "name",
-          "tag_id"
+          "name"
         ],
         "type": "object",
         "properties": {
@@ -4170,10 +4153,6 @@
             "title": "Name",
             "maxLength": 50,
             "minLength": 1,
-            "type": "string"
-          },
-          "tag_id": {
-            "title": "Tag Id",
             "type": "string"
           }
         }
@@ -4310,32 +4289,6 @@
             "default": "English"
           },
           "retrieval_model": {
-            "type": "object"
-          }
-        }
-      },
-      "HitTestingPayload": {
-        "title": "HitTestingPayload",
-        "required": [
-          "query"
-        ],
-        "type": "object",
-        "properties": {
-          "query": {
-            "title": "Query",
-            "maxLength": 250,
-            "type": "string"
-          },
-          "retrieval_model": {
-            "title": "Retrieval Model",
-            "type": "object"
-          },
-          "external_retrieval_model": {
-            "title": "External Retrieval Model",
-            "type": "object"
-          },
-          "attachment_ids": {
-            "title": "Attachment Ids",
             "type": "object"
           }
         }
@@ -4478,6 +4431,41 @@
           }
         }
       },
+      "DatasetListQuery": {
+        "title": "DatasetListQuery",
+        "type": "object",
+        "properties": {
+          "page": {
+            "title": "Page",
+            "type": "integer",
+            "description": "Page number"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer",
+            "description": "Number of items per page"
+          },
+          "keyword": {
+            "title": "Keyword",
+            "type": "object",
+            "description": "Search keyword"
+          },
+          "include_all": {
+            "title": "Include All",
+            "type": "boolean",
+            "description": "Include all datasets",
+            "default": false
+          },
+          "tag_ids": {
+            "title": "Tag Ids",
+            "type": "array",
+            "description": "Filter by tag IDs",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "ProcessRule": {
         "title": "ProcessRule",
         "required": [
@@ -4537,6 +4525,80 @@
           },
           "weights": {
             "type": "object"
+          }
+        }
+      },
+      "DocumentListQuery": {
+        "title": "DocumentListQuery",
+        "type": "object",
+        "properties": {
+          "page": {
+            "title": "Page",
+            "type": "integer",
+            "description": "Page number"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer",
+            "description": "Number of items per page"
+          },
+          "keyword": {
+            "title": "Keyword",
+            "type": "object",
+            "description": "Search keyword"
+          },
+          "status": {
+            "title": "Status",
+            "type": "object",
+            "description": "Document status filter"
+          }
+        }
+      },
+      "MetadataDetail": {
+        "title": "MetadataDetail",
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "object"
+          }
+        }
+      },
+      "DocumentMetadataOperation": {
+        "title": "DocumentMetadataOperation",
+        "required": [
+          "document_id",
+          "metadata_list"
+        ],
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "metadata_list": {
+            "title": "Metadata List",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetadataDetail"
+            }
+          },
+          "partial_update": {
+            "title": "Partial Update",
+            "type": "boolean",
+            "default": false
           }
         }
       }
