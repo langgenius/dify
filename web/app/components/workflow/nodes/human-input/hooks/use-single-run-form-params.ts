@@ -34,13 +34,12 @@ const useSingleRunFormParams = ({
   const generatedInputs = useMemo(() => {
     const defaultInputs = inputs.inputs.reduce((acc, input) => {
       if (input.default.type === 'variable') {
-        acc.push(...getInputVars([`{{#${input.default.selector.join('.')}#}}`]))
+        acc.push(`{{#${input.default.selector.join('.')}#}}`)
       }
       return acc
-    }, [] as InputVar[])
-    if (!inputs.form_content)
-      return defaultInputs
-    return [...defaultInputs, ...getInputVars([inputs.form_content]).filter(item => !isOutput(item.value_selector || []))]
+    }, [] as string[])
+    const allInputs = getInputVars([...defaultInputs, inputs.form_content || '']).filter(item => !isOutput(item.value_selector || []))
+    return allInputs
   }, [getInputVars, inputs.form_content, inputs.inputs])
 
   const forms = useMemo(() => {
