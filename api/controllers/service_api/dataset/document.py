@@ -16,6 +16,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
@@ -29,12 +30,20 @@ from controllers.service_api.wraps import (
     cloud_edition_billing_resource_check,
 )
 from core.errors.error import ProviderTokenNotInitError
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService
-from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
+from services.entities.knowledge_entities.knowledge_entities import (
+    KnowledgeConfig,
+    PreProcessingRule,
+    ProcessRule,
+    RetrievalModel,
+    Rule,
+    Segmentation,
+)
 from services.file_service import FileService
 
 
@@ -76,8 +85,19 @@ class DocumentListQuery(BaseModel):
     status: str | None = Field(default=None, description="Document status filter")
 
 
-for m in [ProcessRule, RetrievalModel, DocumentTextCreatePayload, DocumentTextUpdate, DocumentListQuery]:
-    service_api_ns.schema_model(m.__name__, m.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))  # type: ignore
+register_enum_models(service_api_ns, RetrievalMethod)
+
+register_schema_models(
+    service_api_ns,
+    ProcessRule,
+    RetrievalModel,
+    DocumentTextCreatePayload,
+    DocumentTextUpdate,
+    DocumentListQuery,
+    Rule,
+    PreProcessingRule,
+    Segmentation,
+)
 
 
 @service_api_ns.route(
