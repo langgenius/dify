@@ -169,20 +169,24 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                 if records:
                     for record in records:
                         segment = record.segment
+                        # Build content: if summary exists, add it before the segment content
                         if segment.answer:
-                            document_context_list.append(
-                                DocumentContext(
-                                    content=f"question:{segment.get_sign_content()} answer:{segment.answer}",
-                                    score=record.score,
-                                )
-                            )
+                            segment_content = f"question:{segment.get_sign_content()} answer:{segment.answer}"
                         else:
-                            document_context_list.append(
-                                DocumentContext(
-                                    content=segment.get_sign_content(),
-                                    score=record.score,
-                                )
+                            segment_content = segment.get_sign_content()
+                        
+                        # If summary exists, prepend it to the content
+                        if record.summary:
+                            final_content = f"{record.summary}\n{segment_content}"
+                        else:
+                            final_content = segment_content
+                        
+                        document_context_list.append(
+                            DocumentContext(
+                                content=final_content,
+                                score=record.score,
                             )
+                        )
 
                     if self.return_resource:
                         for record in records:
