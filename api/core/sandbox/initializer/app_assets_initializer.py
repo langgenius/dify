@@ -30,7 +30,7 @@ class AppAssetsInitializer(AsyncSandboxInitializer):
         (
             pipeline(vm)
             .add(
-                ["wget", "-q", download_url, "-O", AppAssets.ZIP_PATH],
+                ["curl", "-fsSL", download_url, "-o", AppAssets.ZIP_PATH],
                 error_message="Failed to download assets zip",
             )
             # Create the assets directory first to ensure it exists even if zip is empty

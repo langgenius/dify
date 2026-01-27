@@ -51,7 +51,7 @@ class ArchiveSandboxStorage(SandboxStorage):
         try:
             (
                 pipeline(sandbox)
-                .add(["wget", "-q", download_url, "-O", ARCHIVE_NAME], error_message="Failed to download archive")
+                .add(["curl", "-fsSL", download_url, "-o", ARCHIVE_NAME], error_message="Failed to download archive")
                 .add(["tar", "-xzf", ARCHIVE_NAME], error_message="Failed to extract archive")
                 .add(["rm", ARCHIVE_NAME], error_message="Failed to cleanup archive")
                 .execute(timeout=ARCHIVE_DOWNLOAD_TIMEOUT, raise_on_error=True)
