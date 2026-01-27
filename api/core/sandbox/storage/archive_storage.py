@@ -11,9 +11,7 @@ from .sandbox_storage import SandboxStorage
 
 logger = logging.getLogger(__name__)
 
-ARCHIVE_NAME = "workspace.tar.gz"
 WORKSPACE_DIR = "."
-ARCHIVE_PATH = f"/tmp/{ARCHIVE_NAME}"
 
 ARCHIVE_DOWNLOAD_TIMEOUT = 60 * 5
 ARCHIVE_UPLOAD_TIMEOUT = 60 * 5
@@ -37,6 +35,14 @@ class ArchiveSandboxStorage(SandboxStorage):
     def _storage_key(self) -> str:
         return SandboxArchivePath(UUID(self._tenant_id), UUID(self._sandbox_id)).get_storage_key()
 
+    @property
+    def _archive_name(self) -> str:
+        return f"{self._sandbox_id}.tar.gz"
+
+    @property
+    def _archive_path(self) -> str:
+        return f"/tmp/{self._archive_name}"
+
     def mount(self, sandbox: VirtualEnvironment) -> bool:
         if not self.exists():
             logger.debug("No archive found for sandbox %s, skipping mount", self._sandbox_id)
@@ -48,12 +54,13 @@ class ArchiveSandboxStorage(SandboxStorage):
             expires_in=ARCHIVE_DOWNLOAD_TIMEOUT,
             action=SandboxArchiveSigner.OPERATION_DOWNLOAD,
         )
+        archive_name = self._archive_name
         try:
             (
                 pipeline(sandbox)
-                .add(["curl", "-fsSL", download_url, "-o", ARCHIVE_NAME], error_message="Failed to download archive")
-                .add(["tar", "-xzf", ARCHIVE_NAME], error_message="Failed to extract archive")
-                .add(["rm", ARCHIVE_NAME], error_message="Failed to cleanup archive")
+                .add(["curl", "-fsSL", download_url, "-o", archive_name], error_message="Failed to download archive")
+                .add(["tar", "-xzf", archive_name], error_message="Failed to extract archive")
+                .add(["rm", archive_name], error_message="Failed to cleanup archive")
                 .execute(timeout=ARCHIVE_DOWNLOAD_TIMEOUT, raise_on_error=True)
             )
         except PipelineExecutionError:
@@ -70,14 +77,14 @@ class ArchiveSandboxStorage(SandboxStorage):
             expires_in=ARCHIVE_UPLOAD_TIMEOUT,
             action=SandboxArchiveSigner.OPERATION_UPLOAD,
         )
+        archive_path = self._archive_path
         (
             pipeline(sandbox)
             .add(
                 [
                     "tar",
                     "-czf",
-                    ARCHIVE_PATH,
-                    "--warning=no-file-changed",
+                    archive_path,
                     *build_tar_exclude_args(self._exclude_patterns),
                     "-C",
                     WORKSPACE_DIR,
@@ -86,7 +93,7 @@ class ArchiveSandboxStorage(SandboxStorage):
                 error_message="Failed to create archive",
             )
             .add(
-                ["curl", "-s", "-f", "-X", "PUT", "-T", ARCHIVE_PATH, upload_url],
+                ["curl", "-s", "-f", "-X", "PUT", "-T", archive_path, upload_url],
                 error_message="Failed to upload archive",
             )
             .execute(timeout=ARCHIVE_UPLOAD_TIMEOUT, raise_on_error=True)
