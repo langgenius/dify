@@ -214,7 +214,34 @@ class TestAppParameterApi:
         """Test that get_parameters_from_feature_dict is called with workflow_output_form."""
         # Arrange
         mock_app_model.workflow = mock_workflow
-        mock_get_params.return_value = {"parameters": "test"}
+        mock_get_params.return_value = {
+            "opening_statement": None,
+            "suggested_questions": [],
+            "suggested_questions_after_answer": {"enabled": False},
+            "speech_to_text": {"enabled": False},
+            "text_to_speech": {"enabled": False},
+            "retriever_resource": {"enabled": False},
+            "annotation_reply": {"enabled": False},
+            "more_like_this": {"enabled": False},
+            "user_input_form": [],
+            "workflow_output_form": [],
+            "sensitive_word_avoidance": {"enabled": False, "type": "", "configs": []},
+            "file_upload": {
+                "image": {
+                    "enabled": False,
+                    "number_limits": 3,
+                    "detail": "high",
+                    "transfer_methods": ["remote_url", "local_file"],
+                }
+            },
+            "system_parameters": {
+                "image_file_size_limit": "10",
+                "video_file_size_limit": "100",
+                "audio_file_size_limit": "50",
+                "file_size_limit": "15",
+                "workflow_file_upload_limit": "10",
+            },
+        }
 
         # Act
         with app.app_context():
@@ -241,7 +268,34 @@ class TestAppParameterApi:
         mock_app_model_config = MagicMock()
         mock_app_model_config.to_dict.return_value = {"feature1": "value1", "user_input_form": []}
         mock_app_model.app_model_config = mock_app_model_config
-        mock_get_params.return_value = {"parameters": "test"}
+        mock_get_params.return_value = {
+            "opening_statement": None,
+            "suggested_questions": [],
+            "suggested_questions_after_answer": {"enabled": False},
+            "speech_to_text": {"enabled": False},
+            "text_to_speech": {"enabled": False},
+            "retriever_resource": {"enabled": False},
+            "annotation_reply": {"enabled": False},
+            "more_like_this": {"enabled": False},
+            "user_input_form": [],
+            "workflow_output_form": [],
+            "sensitive_word_avoidance": {"enabled": False, "type": "", "configs": []},
+            "file_upload": {
+                "image": {
+                    "enabled": False,
+                    "number_limits": 3,
+                    "detail": "high",
+                    "transfer_methods": ["remote_url", "local_file"],
+                }
+            },
+            "system_parameters": {
+                "image_file_size_limit": "10",
+                "video_file_size_limit": "100",
+                "audio_file_size_limit": "50",
+                "file_size_limit": "15",
+                "workflow_file_upload_limit": "10",
+            },
+        }
 
         # Act
         with app.app_context():
