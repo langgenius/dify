@@ -1312,7 +1312,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 15
+      "count": 14
     }
   },
   "app/components/base/chat/chat/index.tsx": {
@@ -1791,11 +1791,6 @@
   },
   "app/components/base/fullscreen-modal/index.tsx": {
     "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/icons/icon-gallery.stories.tsx": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
