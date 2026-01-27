@@ -166,6 +166,8 @@
     "@eslint-react/eslint-plugin": "2.7.0",
     "@iconify-json/heroicons": "1.2.3",
     "@iconify-json/ri": "1.2.7",
+    "@iconify/tools": "5.0.2",
+    "@iconify/utils": "3.1.0",
     "@mdx-js/loader": "3.1.1",
     "@mdx-js/react": "3.1.1",
     "@next/bundle-analyzer": "16.1.5",
@@ -234,7 +236,8 @@
     "uglify-js": "3.19.3",
     "vite": "7.3.1",
     "vite-tsconfig-paths": "6.0.4",
-    "vitest": "4.0.17"
+    "vitest": "4.0.17",
+    "workspace-root": "3.3.1"
   },
   "pnpm": {
     "overrides": {

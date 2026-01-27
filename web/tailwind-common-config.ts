@@ -1,8 +1,88 @@
-import { iconsPlugin } from '@egoist/tailwindcss-icons'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
+import { cleanupSVG, importDirectorySync, isEmptyColor, parseColors, runSVGO } from '@iconify/tools'
+import { compareColors, stringToColor } from '@iconify/utils/lib/colors'
 import tailwindTypography from '@tailwindcss/typography'
 // @ts-expect-error workaround for turbopack issue
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define.ts'
 import typography from './typography.js'
+
+const _dirname = typeof __dirname !== 'undefined'
+  ? __dirname
+  : path.dirname(fileURLToPath(import.meta.url))
+
+function getCollections(dir: string) {
+  // Import icons
+  const iconSet = importDirectorySync(dir, {
+    includeSubDirs: true,
+    ignoreImportErrors: 'warn',
+  })
+
+  // Validate, clean up, fix palette and optimise
+  iconSet.forEachSync((name, type) => {
+    if (type !== 'icon')
+      return
+
+    const svg = iconSet.toSVG(name)
+    if (!svg) {
+      // Invalid icon
+      iconSet.remove(name)
+      return
+    }
+
+    // Clean up and optimise icons
+    try {
+      // Clean up icon code
+      cleanupSVG(svg)
+
+      // Change color to `currentColor`
+      // Skip this step if icon has hardcoded palette
+      const blackColor = stringToColor('black')!
+      const whiteColor = stringToColor('white')!
+      parseColors(svg, {
+        defaultColor: 'currentColor',
+        callback: (attr, colorStr, color) => {
+          if (!color) {
+            // Color cannot be parsed!
+            throw new Error(`Invalid color: "${colorStr}" in attribute ${attr}`)
+          }
+
+          if (isEmptyColor(color)) {
+            // Color is empty: 'none' or 'transparent'. Return as is
+            return color
+          }
+
+          // Change black to 'currentColor'
+          if (compareColors(color, blackColor))
+            return 'currentColor'
+
+          // Remove shapes with white color
+          if (compareColors(color, whiteColor))
+            return 'remove'
+
+          // Icon is not monotone
+          return color
+        },
+      })
+
+      // Optimise
+      runSVGO(svg)
+    }
+    catch (err) {
+      // Invalid icon
+      console.error(`Error parsing ${name}:`, err)
+      iconSet.remove(name)
+      return
+    }
+
+    // Update icon
+    iconSet.fromSVG(name, svg)
+  })
+
+  // Export
+  return iconSet.export()
+}
 
 const config = {
   theme: {
@@ -147,7 +227,15 @@ const config = {
       },
     },
   },
-  plugins: [tailwindTypography, iconsPlugin()],
+  plugins: [
+    tailwindTypography,
+    iconsPlugin({
+      collections: {
+        'custom-public': getCollections(path.resolve(_dirname, 'app/components/base/icons/assets/public')),
+        ...getIconCollections(['heroicons', 'ri']),
+      },
+    }),
+  ],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
   corePlugins: {
     preflight: false,
