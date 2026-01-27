@@ -58,8 +58,8 @@ def create_env_files_from_example(env_example_path):
     envs_dir = "envs"
     os.makedirs(envs_dir, exist_ok=True)
     
-    # List of env file categories
-    categories = ['global', 'server', 'security', 'database', 'redis', 'storage', 'vectorstore']
+    # List of env file categories (organized by service type)
+    categories = ['core-services', 'security', 'databases', 'vectorstores', 'infrastructure']
     
     created_files = []
     for category in categories:

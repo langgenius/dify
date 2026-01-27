@@ -1,13 +1,11 @@
 # Shared configuration using YAML anchors and env_file
 x-shared-config: &shared-api-worker-config
   env_file:
-    - ./envs/global.env
-    - ./envs/server.env
+    - ./envs/core-services.env
     - ./envs/security.env
-    - ./envs/database.env
-    - ./envs/redis.env
-    - ./envs/storage.env
-    - ./envs/vectorstore.env
+    - ./envs/databases.env
+    - ./envs/vectorstores.env
+    - ./envs/infrastructure.env
   networks:
     - ssrf_proxy_network
     - default

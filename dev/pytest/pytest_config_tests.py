@@ -94,7 +94,7 @@ DOCKER_CONFIG_SET = set(dotenv_values(Path("docker") / Path(".env.example")).key
 DOCKER_COMPOSE_CONFIG_SET = set()
 
 # Read environment variables from the split env files used by docker-compose
-env_file_categories = ["global", "server", "security", "database", "redis", "storage", "vectorstore"]
+env_file_categories = ["core-services", "security", "databases", "vectorstores", "infrastructure"]
 for category in env_file_categories:
     env_file_path = Path("docker") / Path("envs") / Path(f"{category}.env.example")
     if env_file_path.exists():
