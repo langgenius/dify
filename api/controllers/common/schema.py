@@ -1,7 +1,9 @@
 """Helpers for registering Pydantic models with Flask-RESTX namespaces."""
 
+from enum import StrEnum
+
 from flask_restx import Namespace
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 
 from controllers.console import console_ns
 
@@ -28,4 +30,18 @@ def get_or_create_model(model_name: str, field_def):
     return existing
 
 
-__all__ = ["DEFAULT_REF_TEMPLATE_SWAGGER_2_0", "get_or_create_model", "register_schema_model", "register_schema_models"]
+def register_enum_models(namespace: Namespace, *models: type[StrEnum]) -> None:
+    """Register multiple StrEnum with a namespace."""
+    for model in models:
+        namespace.schema_model(
+            model.__name__, TypeAdapter(model).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+        )
+
+
+__all__ = [
+    "DEFAULT_REF_TEMPLATE_SWAGGER_2_0",
+    "get_or_create_model",
+    "register_enum_models",
+    "register_schema_model",
+    "register_schema_models",
+]
