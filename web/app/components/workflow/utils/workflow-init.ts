@@ -2,6 +2,7 @@ import type { CustomGroupNodeData } from '../custom-group-node'
 import type { GroupNodeData } from '../nodes/group/types'
 import type { IfElseNodeType } from '../nodes/if-else/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LLMNodeType } from '../nodes/llm/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type { QuestionClassifierNodeType } from '../nodes/question-classifier/types'
 import type { ToolNodeType } from '../nodes/tool/types'
@@ -477,6 +478,12 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
 
     // legacy provider handle
     if (node.data.type === BlockEnum.LLM) {
+      const llmData = node.data as LLMNodeType
+      if (!Array.isArray(llmData.context?.variable_selector)) {
+        const context = llmData.context || { enabled: false, variable_selector: [] }
+        context.variable_selector = []
+        llmData.context = context
+      }
       (node as any).data.model.provider = correctModelProvider(
         (node as any).data.model.provider,
       )
