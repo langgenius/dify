@@ -22,6 +22,7 @@ from controllers.console.wraps import (
 )
 from core.file import helpers as file_helpers
 from core.ops.ops_trace_manager import OpsTraceManager
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.enums import NodeType
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
@@ -30,6 +31,7 @@ from models.model import IconType
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.knowledge_entities.knowledge_entities import Segmentation
 from services.feature_service import FeatureService
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
@@ -393,6 +395,8 @@ class AppExportResponse(ResponseModel):
     data: str
 
 
+register_enum_models(console_ns, RetrievalMethod)
+
 register_schema_models(
     console_ns,
     AppListQuery,
@@ -416,6 +420,7 @@ register_schema_models(
     AppDetailWithSite,
     AppPagination,
     AppExportResponse,
+    Segmentation,
 )
 
 
