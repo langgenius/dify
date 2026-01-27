@@ -487,7 +487,7 @@ def test_executor_with_json_body_and_unquoted_uuid_variable():
     test_uuid = "57eeeeb1-450b-482c-81b9-4be77e95dee2"
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "uuid"], test_uuid)
@@ -531,7 +531,7 @@ def test_executor_with_json_body_and_unquoted_uuid_with_newlines():
     test_uuid = "57eeeeb1-450b-482c-81b9-4be77e95dee2"
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "uuid"], test_uuid)
@@ -569,7 +569,7 @@ def test_executor_with_json_body_and_unquoted_uuid_with_newlines():
 def test_executor_with_json_body_preserves_numbers_and_strings():
     """Test that numbers are preserved and string values are properly quoted."""
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},
     )
     variable_pool.add(["node", "count"], 42)
