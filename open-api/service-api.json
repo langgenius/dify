@@ -1742,7 +1742,7 @@
         "operationId": "get_segment",
         "parameters": [
           {
-            "name": "dataset_id",
+            "name": "segment_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1758,7 +1758,7 @@
             }
           },
           {
-            "name": "segment_id",
+            "name": "dataset_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -4109,26 +4109,6 @@
           }
         }
       },
-      "TagUpdatePayload": {
-        "title": "TagUpdatePayload",
-        "required": [
-          "name",
-          "tag_id"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "title": "Name",
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "tag_id": {
-            "title": "Tag Id",
-            "type": "string"
-          }
-        }
-      },
       "TagDeletePayload": {
         "title": "TagDeletePayload",
         "required": [
@@ -4153,6 +4133,26 @@
             "title": "Name",
             "maxLength": 50,
             "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "TagUpdatePayload": {
+        "title": "TagUpdatePayload",
+        "required": [
+          "name",
+          "tag_id"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tag_id": {
+            "title": "Tag Id",
             "type": "string"
           }
         }
@@ -4466,6 +4466,16 @@
           }
         }
       },
+      "RetrievalMethod": {
+        "title": "RetrievalMethod",
+        "type": "string",
+        "enum": [
+          "semantic_search",
+          "full_text_search",
+          "hybrid_search",
+          "keyword_search"
+        ]
+      },
       "ProcessRule": {
         "title": "ProcessRule",
         "required": [
@@ -4599,6 +4609,37 @@
             "title": "Partial Update",
             "type": "boolean",
             "default": false
+          }
+        }
+      },
+      "SegmentUpdateArgs": {
+        "title": "SegmentUpdateArgs",
+        "type": "object",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "object"
+          },
+          "answer": {
+            "title": "Answer",
+            "type": "object"
+          },
+          "keywords": {
+            "title": "Keywords",
+            "type": "object"
+          },
+          "regenerate_child_chunks": {
+            "title": "Regenerate Child Chunks",
+            "type": "boolean",
+            "default": false
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "object"
+          },
+          "attachment_ids": {
+            "title": "Attachment Ids",
+            "type": "object"
           }
         }
       }
