@@ -50,7 +50,7 @@ const WorkflowPreview = () => {
 
   useEffect(() => {
     if (showDebugAndPreviewPanel && showInputsPanel)
-      setCurrentTab('INPUT')
+      switchTab('INPUT')
   }, [showDebugAndPreviewPanel, showInputsPanel])
 
   useEffect(() => {
@@ -65,6 +65,8 @@ const WorkflowPreview = () => {
 
     if ((status === WorkflowRunningStatus.Succeeded || status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText && !workflowRunningData.result.files?.length)
       switchTab('DETAIL')
+    if (status === WorkflowRunningStatus.Paused)
+      switchTab('RESULT')
   }, [workflowRunningData])
 
   const [isResizing, setIsResizing] = useState(false)

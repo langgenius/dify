@@ -3887,9 +3887,6 @@
     }
   },
   "app/components/workflow/panel/workflow-preview.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
