@@ -90,7 +90,10 @@ class DifyConfig(
             "Defaults to api/bin when unset."
         ),
     )
-
+    DIFY_PORT: int = Field(
+        default=5001,
+        description="Port used by Dify to communicate with the host machine.",
+    )
     # Before adding any config,
     # please consider to arrange it in the proper config group of existed or added
     # for better readability and maintainability.

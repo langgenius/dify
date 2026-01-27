@@ -77,7 +77,9 @@ class ToolMetadata(BaseModel):
 
     # Core fields
     enabled: bool = True
-    type: ToolProviderType = Field(..., description="Tool provider type: builtin, api, mcp, workflow")
+    type: ToolProviderType = Field(
+        default=ToolProviderType.BUILT_IN, description="Tool provider type: builtin, api, mcp, workflow"
+    )
     provider_name: str = Field(..., description="Tool provider name/identifier")
     tool_name: str = Field(..., description="Tool name")
 
