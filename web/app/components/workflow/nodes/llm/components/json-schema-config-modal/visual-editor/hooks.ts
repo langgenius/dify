@@ -4,7 +4,7 @@ import type { EditData } from './edit-card'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import Toast from '@/app/components/base/toast'
-import { ArrayType, Type } from '../../../types'
+import { ArrayType, FILE_REF_FORMAT, Type } from '../../../types'
 import { findPropertyWithPath } from '../../../utils'
 import { useMittContext } from './context'
 import { useVisualEditorStore } from './store'
@@ -133,12 +133,17 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       }
       if (schema.type === Type.array)
         delete schema.items
+      delete schema.format
       switch (newType) {
         case Type.object:
           schema.type = Type.object
           schema.properties = {}
           schema.required = []
           schema.additionalProperties = false
+          break
+        case Type.file:
+          schema.type = Type.string
+          schema.format = FILE_REF_FORMAT
           break
         case ArrayType.string:
           schema.type = Type.array
@@ -165,6 +170,13 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
             properties: {},
             required: [],
             additionalProperties: false,
+          }
+          break
+        case ArrayType.file:
+          schema.type = Type.array
+          schema.items = {
+            type: Type.string,
+            format: FILE_REF_FORMAT,
           }
           break
         default:
@@ -309,12 +321,17 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
           }
           if (schema.type === Type.array)
             delete schema.items
+          delete schema.format
           switch (newType) {
             case Type.object:
               schema.type = Type.object
               schema.properties = {}
               schema.required = []
               schema.additionalProperties = false
+              break
+            case Type.file:
+              schema.type = Type.string
+              schema.format = FILE_REF_FORMAT
               break
             case ArrayType.string:
               schema.type = Type.array
@@ -341,6 +358,13 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
                 properties: {},
                 required: [],
                 additionalProperties: false,
+              }
+              break
+            case ArrayType.file:
+              schema.type = Type.array
+              schema.items = {
+                type: Type.string,
+                format: FILE_REF_FORMAT,
               }
               break
             default:
@@ -398,12 +422,17 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
           }
           if (schema.type === Type.array)
             delete schema.items
+          delete schema.format
           switch (newType) {
             case Type.object:
               schema.type = Type.object
               schema.properties = {}
               schema.required = []
               schema.additionalProperties = false
+              break
+            case Type.file:
+              schema.type = Type.string
+              schema.format = FILE_REF_FORMAT
               break
             case ArrayType.string:
               schema.type = Type.array
@@ -430,6 +459,13 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
                 properties: {},
                 required: [],
                 additionalProperties: false,
+              }
+              break
+            case ArrayType.file:
+              schema.type = Type.array
+              schema.items = {
+                type: Type.string,
+                format: FILE_REF_FORMAT,
               }
               break
             default:

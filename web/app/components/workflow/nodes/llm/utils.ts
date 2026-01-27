@@ -2,21 +2,24 @@ import type { ValidationError } from 'jsonschema'
 import type { ArrayItems, Field, LLMNodeType } from './types'
 import { z } from 'zod'
 import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
-import { ArrayType, Type } from './types'
+import { ArrayType, FILE_REF_FORMAT, Type } from './types'
 
 export const checkNodeValid = (_payload: LLMNodeType) => {
   return true
 }
 
 export const getFieldType = (field: Field) => {
-  const { type, items, enum: enums } = field
+  const { type, items, enum: enums, format } = field
+  if (format === FILE_REF_FORMAT)
+    return Type.file
   if (field.schemaType === 'file')
     return Type.file
   if (enums && enums.length > 0)
     return Type.enumType
   if (type !== Type.array || !items)
     return type
-
+  if (items.format === FILE_REF_FORMAT || items.type === Type.file)
+    return ArrayType.file
   return ArrayType[items.type as keyof typeof ArrayType]
 }
 

@@ -60,10 +60,7 @@ import {
 import { VAR_REGEX } from '@/config'
 import { AppModeEnum } from '@/types/app'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
-import {
-
-  Type,
-} from '../../../llm/types'
+import { FILE_REF_FORMAT, Type } from '../../../llm/types'
 import { VarType as ToolVarType } from '../../../tool/types'
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
@@ -122,7 +119,16 @@ export const inputVarTypeToVarType = (type: InputVarType): VarType => {
   )
 }
 
-const structTypeToVarType = (type: Type, isArray?: boolean): VarType => {
+const structTypeToVarType = (
+  type: Type,
+  isArray?: boolean,
+  format?: string,
+  itemsFormat?: string,
+): VarType => {
+  if (isArray && itemsFormat === FILE_REF_FORMAT)
+    return VarType.arrayFile
+  if (!isArray && format === FILE_REF_FORMAT)
+    return VarType.file
   if (isArray) {
     return (
       (
@@ -175,6 +181,7 @@ const findExceptVarInStructuredProperties = (
       const isObj = item.type === Type.object
       const isArray = item.type === Type.array
       const arrayType = item.items?.type
+      const arrayFormat = item.items?.format
 
       if (
         !isObj
@@ -184,6 +191,8 @@ const findExceptVarInStructuredProperties = (
             type: structTypeToVarType(
               isArray ? arrayType! : item.type,
               isArray,
+              item.format,
+              arrayFormat,
             ),
           },
           [key],
@@ -215,6 +224,7 @@ const findExceptVarInStructuredOutput = (
       const isObj = item.type === Type.object
       const isArray = item.type === Type.array
       const arrayType = item.items?.type
+      const arrayFormat = item.items?.format
       if (
         !isObj
         && !filterVar(
@@ -223,6 +233,8 @@ const findExceptVarInStructuredOutput = (
             type: structTypeToVarType(
               isArray ? arrayType! : item.type,
               isArray,
+              item.format,
+              arrayFormat,
             ),
           },
           [key],
@@ -1144,8 +1156,14 @@ export const getVarType = ({
           return
 
         currProperties = currProperties.properties[key]
-        if (isLast)
-          type = structTypeToVarType(currProperties?.type)
+        if (isLast) {
+          if (currProperties?.format === FILE_REF_FORMAT)
+            type = VarType.file
+          else if (currProperties?.type === Type.array && currProperties?.items?.format === FILE_REF_FORMAT)
+            type = VarType.arrayFile
+          else
+            type = structTypeToVarType(currProperties?.type)
+        }
       })
       return type
     }
@@ -1946,15 +1964,20 @@ const varToValueSelectorList = (
     Object.keys(
       (v.children as StructuredOutput)?.schema?.properties || {},
     ).forEach((key) => {
-      const type = (v.children as StructuredOutput)?.schema?.properties[key].type
+      const schemaProperty = (v.children as StructuredOutput)?.schema?.properties[key]
+      const type = schemaProperty?.type
       const isArray = type === Type.array
-      const arrayType = (v.children as StructuredOutput)?.schema?.properties[
-        key
-      ].items?.type
+      const arrayType = schemaProperty?.items?.type
+      const arrayFormat = schemaProperty?.items?.format
       varToValueSelectorList(
         {
           variable: key,
-          type: structTypeToVarType(isArray ? arrayType! : type, isArray),
+          type: structTypeToVarType(
+            isArray ? arrayType! : type,
+            isArray,
+            schemaProperty?.format,
+            arrayFormat,
+          ),
         },
         [...parentValueSelector, v.variable],
         res,
