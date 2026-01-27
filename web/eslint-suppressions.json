@@ -3105,9 +3105,6 @@
   "app/components/datasets/documents/detail/index.tsx": {
     "dify-i18n/prefer-tailwind-icon": {
       "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/datasets/documents/detail/metadata/index.tsx": {
@@ -4975,20 +4972,11 @@
   "app/components/tools/mcp/mcp-service-card.tsx": {
     "dify-i18n/prefer-tailwind-icon": {
       "count": 2
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "app/components/tools/mcp/modal.tsx": {
     "dify-i18n/prefer-tailwind-icon": {
       "count": 2
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 20
     }
   },
   "app/components/tools/mcp/provider-card.tsx": {
