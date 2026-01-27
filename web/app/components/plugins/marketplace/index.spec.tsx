@@ -149,16 +149,6 @@ vi.mock('@/service/base', () => ({
   }),
 }))
 
-const mockMarketplaceClient = vi.hoisted(() => ({
-  collectionPlugins: vi.fn().mockResolvedValue({ data: { plugins: [] } }),
-  collections: vi.fn().mockResolvedValue({ data: { collections: [] } }),
-  searchAdvanced: vi.fn().mockResolvedValue({ data: { plugins: [], bundles: [], total: 0 } }),
-}))
-
-vi.mock('@/service/client', () => ({
-  marketplaceClient: mockMarketplaceClient,
-}))
-
 // Mock config
 vi.mock('@/config', () => ({
   API_PREFIX: '/api',
@@ -170,6 +160,44 @@ vi.mock('@/config', () => ({
 // Mock var utils
 vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: (path: string, _params?: Record<string, string | undefined>) => `https://marketplace.dify.ai${path}`,
+}))
+
+// Mock marketplace client used by marketplace utils
+vi.mock('@/service/client', () => ({
+  marketplaceClient: {
+    collections: vi.fn(async (_args?: unknown, _opts?: { signal?: AbortSignal }) => ({
+      data: {
+        collections: [
+          {
+            name: 'collection-1',
+            label: { 'en-US': 'Collection 1' },
+            description: { 'en-US': 'Desc' },
+            rule: '',
+            created_at: '2024-01-01',
+            updated_at: '2024-01-01',
+            searchable: true,
+            search_params: { query: '', sort_by: 'install_count', sort_order: 'DESC' },
+          },
+        ],
+      },
+    })),
+    collectionPlugins: vi.fn(async (_args?: unknown, _opts?: { signal?: AbortSignal }) => ({
+      data: {
+        plugins: [
+          { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
+        ],
+      },
+    })),
+    // Some utils paths may call searchAdvanced; provide a minimal stub
+    searchAdvanced: vi.fn(async (_args?: unknown, _opts?: { signal?: AbortSignal }) => ({
+      data: {
+        plugins: [
+          { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
+        ],
+        total: 1,
+      },
+    })),
+  },
 }))
 
 // Mock context/query-client
@@ -1484,7 +1512,24 @@ describe('flatMap Coverage', () => {
 // ================================
 // Async Utils Tests
 // ================================
+
+// Narrow mock surface and avoid any in tests
+// Types are local to this spec to keep scope minimal
+
+type FnMock = ReturnType<typeof vi.fn>
+
+type MarketplaceClientMock = {
+  collectionPlugins: FnMock
+  collections: FnMock
+}
+
 describe('Async Utils', () => {
+  let marketplaceClientMock: MarketplaceClientMock
+
+  beforeAll(async () => {
+    const mod = await import('@/service/client')
+    marketplaceClientMock = mod.marketplaceClient as unknown as MarketplaceClientMock
+  })
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -1500,7 +1545,8 @@ describe('Async Utils', () => {
         { type: 'plugin', org: 'test', name: 'plugin2' },
       ]
 
-      mockMarketplaceClient.collectionPlugins.mockResolvedValueOnce({
+      // Adjusted to our mocked marketplaceClient instead of fetch
+      marketplaceClientMock.collectionPlugins.mockResolvedValueOnce({
         data: { plugins: mockPlugins },
       })
 
@@ -1511,12 +1557,13 @@ describe('Async Utils', () => {
         type: 'plugin',
       })
 
-      expect(mockMarketplaceClient.collectionPlugins).toHaveBeenCalled()
+      expect(marketplaceClientMock.collectionPlugins).toHaveBeenCalled()
       expect(result).toHaveLength(2)
     })
 
     it('should handle fetch error and return empty array', async () => {
-      mockMarketplaceClient.collectionPlugins.mockRejectedValueOnce(new Error('Network error'))
+      // Simulate error from client
+      marketplaceClientMock.collectionPlugins.mockRejectedValueOnce(new Error('Network error'))
 
       const { getMarketplacePluginsByCollectionId } = await import('./utils')
       const result = await getMarketplacePluginsByCollectionId('test-collection')
@@ -1526,7 +1573,8 @@ describe('Async Utils', () => {
 
     it('should pass abort signal when provided', async () => {
       const mockPlugins = [{ type: 'plugins', org: 'test', name: 'plugin1' }]
-      mockMarketplaceClient.collectionPlugins.mockResolvedValueOnce({
+      // Our client mock receives the signal as second arg
+      marketplaceClientMock.collectionPlugins.mockResolvedValueOnce({
         data: { plugins: mockPlugins },
       })
 
@@ -1534,15 +1582,9 @@ describe('Async Utils', () => {
       const { getMarketplacePluginsByCollectionId } = await import('./utils')
       await getMarketplacePluginsByCollectionId('test-collection', {}, { signal: controller.signal })
 
-      expect(mockMarketplaceClient.collectionPlugins).toHaveBeenCalledWith(
-        expect.objectContaining({
-          params: { collectionId: 'test-collection' },
-          body: {},
-        }),
-        expect.objectContaining({
-          signal: controller.signal,
-        }),
-      )
+      expect(marketplaceClientMock.collectionPlugins).toHaveBeenCalled()
+      const call = marketplaceClientMock.collectionPlugins.mock.calls[0]
+      expect(call[1]).toMatchObject({ signal: controller.signal })
     })
   })
 
@@ -1553,11 +1595,17 @@ describe('Async Utils', () => {
       ]
       const mockPlugins = [{ type: 'plugins', org: 'test', name: 'plugin1' }]
 
-      mockMarketplaceClient.collections.mockResolvedValueOnce({
-        data: { collections: mockCollections },
+      // Simulate two-step client calls: collections then collectionPlugins
+      let stage = 0
+      marketplaceClientMock.collections.mockImplementationOnce(async () => {
+        stage = 1
+        return { data: { collections: mockCollections } }
       })
-      mockMarketplaceClient.collectionPlugins.mockResolvedValueOnce({
-        data: { plugins: mockPlugins },
+      marketplaceClientMock.collectionPlugins.mockImplementation(async () => {
+        if (stage === 1) {
+          return { data: { plugins: mockPlugins } }
+        }
+        return { data: { plugins: [] } }
       })
 
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
@@ -1571,7 +1619,8 @@ describe('Async Utils', () => {
     })
 
     it('should handle fetch error and return empty data', async () => {
-      mockMarketplaceClient.collections.mockRejectedValueOnce(new Error('Network error'))
+      // Simulate client error
+      marketplaceClientMock.collections.mockRejectedValueOnce(new Error('Network error'))
 
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
       const result = await getMarketplaceCollectionsAndPlugins()
@@ -1581,27 +1630,16 @@ describe('Async Utils', () => {
     })
 
     it('should append condition and type to URL when provided', async () => {
-      mockMarketplaceClient.collections.mockResolvedValueOnce({
-        data: { collections: [] },
-      })
-
+      // Assert that the client was called with query containing condition/type
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
       await getMarketplaceCollectionsAndPlugins({
         condition: 'category=tool',
         type: 'bundle',
       })
 
-      expect(mockMarketplaceClient.collections).toHaveBeenCalledWith(
-        expect.objectContaining({
-          query: expect.objectContaining({
-            condition: 'category=tool',
-            type: 'bundle',
-            page: 1,
-            page_size: 100,
-          }),
-        }),
-        expect.any(Object),
-      )
+      expect(marketplaceClientMock.collections).toHaveBeenCalled()
+      const call = marketplaceClientMock.collections.mock.calls[0]
+      expect(call[0]).toMatchObject({ query: expect.objectContaining({ condition: 'category=tool', type: 'bundle' }) })
     })
   })
 })

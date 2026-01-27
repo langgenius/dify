@@ -819,7 +819,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 15
+      "count": 14
     }
   },
   "app/components/base/chat/chat/index.tsx": {
@@ -2345,6 +2345,11 @@
       "count": 2
     }
   },
+  "app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-authorization-section.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
   "app/components/plugins/plugin-detail-panel/trigger/event-detail-drawer.tsx": {
     "ts/no-explicit-any": {
       "count": 5
@@ -2640,16 +2645,6 @@
   "app/components/tools/mcp/mcp-server-param-item.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/tools/mcp/mcp-service-card.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/components/tools/mcp/modal.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 20
     }
   },
   "app/components/tools/mcp/provider-card.tsx": {

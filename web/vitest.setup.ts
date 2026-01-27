@@ -1,4 +1,4 @@
-import { cleanup } from '@testing-library/react'
+import { act, cleanup } from '@testing-library/react'
 import { mockAnimationsApi, mockResizeObserver } from 'jsdom-testing-mocks'
 import '@testing-library/jest-dom/vitest'
 
@@ -78,8 +78,13 @@ if (typeof globalThis.IntersectionObserver === 'undefined') {
 if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView)
   Element.prototype.scrollIntoView = function () { /* noop */ }
 
-afterEach(() => {
-  cleanup()
+afterEach(async () => {
+  // Wrap cleanup in act() to flush pending React scheduler work
+  // This prevents "window is not defined" errors from React 19's scheduler
+  // which uses setImmediate/MessageChannel that can fire after jsdom cleanup
+  await act(async () => {
+    cleanup()
+  })
 })
 
 // mock next/image to avoid width/height requirements for data URLs
