@@ -44,17 +44,21 @@ const TYPE_OPTIONS = [
   { value: Type.number, text: 'number' },
   { value: Type.boolean, text: 'boolean' },
   { value: Type.object, text: 'object' },
+  { value: Type.file, text: 'file' },
   { value: ArrayType.string, text: 'array[string]' },
   { value: ArrayType.number, text: 'array[number]' },
   { value: ArrayType.object, text: 'array[object]' },
+  { value: ArrayType.file, text: 'array[file]' },
 ]
 
 const MAXIMUM_DEPTH_TYPE_OPTIONS = [
   { value: Type.string, text: 'string' },
   { value: Type.number, text: 'number' },
   { value: Type.boolean, text: 'boolean' },
+  { value: Type.file, text: 'file' },
   { value: ArrayType.string, text: 'array[string]' },
   { value: ArrayType.number, text: 'array[number]' },
+  { value: ArrayType.file, text: 'array[file]' },
 ]
 
 const EditCard: FC<EditCardProps> = ({

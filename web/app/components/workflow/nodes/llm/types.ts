@@ -36,6 +36,8 @@ export type LLMNodeType = CommonNodeType & {
   max_iterations?: number
 }
 
+export const FILE_REF_FORMAT = 'dify-file-ref'
+
 export enum Type {
   string = 'string',
   number = 'number',
@@ -54,12 +56,13 @@ export enum ArrayType {
   number = 'array[number]',
   boolean = 'array[boolean]',
   object = 'array[object]',
+  file = 'array[file]',
 }
 
 export type TypeWithArray = Type | ArrayType
 
 type ArrayItemType = Exclude<Type, Type.array>
-export type ArrayItems = Omit<Field, 'type'> & { type: ArrayItemType }
+export type ArrayItems = Omit<Field, 'type' | 'format'> & { type: ArrayItemType, format?: string }
 
 export type SchemaEnumType = string[] | number[]
 
@@ -70,6 +73,7 @@ export type Field = {
   }
   required?: string[] // Key of required properties in object
   description?: string
+  format?: string
   items?: ArrayItems // Array has items. Define the item type
   enum?: SchemaEnumType // Enum values
   additionalProperties?: false // Required in object by api. Just set false
