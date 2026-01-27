@@ -246,14 +246,18 @@ const buildLLMGenerationItemsFromHistorySequence = (message: ChatMessageRes): {
 
   const { reasoning_content = [], tool_calls = [], sequence = [] } = generation_detail
   const llmGenerationItems: LLMGenerationItem[] = []
-  let answerMessage = ''
 
   sequence.forEach((segment) => {
     switch (segment.type) {
       case 'content': {
         const text = answer?.substring(segment.start, segment.end)
         if (text?.trim()) {
-          answerMessage += text
+          llmGenerationItems.push({
+            id: uuidV4(),
+            type: 'text',
+            text,
+            textCompleted: true,
+          })
         }
         break
       }
@@ -288,7 +292,7 @@ const buildLLMGenerationItemsFromHistorySequence = (message: ChatMessageRes): {
     }
   })
 
-  return { llmGenerationItems, message: answerMessage || '' }
+  return { llmGenerationItems, message: '' }
 }
 
 export {
