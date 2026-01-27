@@ -4,7 +4,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import marshal
-from pydantic import BaseModel, Field, TypeAdapter, model_validator
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -16,7 +16,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
@@ -85,10 +85,7 @@ class DocumentListQuery(BaseModel):
     status: str | None = Field(default=None, description="Document status filter")
 
 
-service_api_ns.schema_model(
-    RetrievalMethod.__name__,
-    TypeAdapter(RetrievalMethod).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+register_enum_models(service_api_ns, RetrievalMethod)
 
 register_schema_models(
     service_api_ns,
