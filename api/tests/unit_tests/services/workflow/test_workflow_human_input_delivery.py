@@ -65,24 +65,40 @@ def test_human_input_delivery_requires_draft_workflow():
         )
 
 
-def test_human_input_delivery_rejects_disabled_method():
+def test_human_input_delivery_allows_disabled_method(monkeypatch: pytest.MonkeyPatch):
     service = _make_service()
     delivery_method = _make_email_method(enabled=False)
     node_config = _build_node_config([delivery_method])
     workflow = MagicMock()
     workflow.get_node_config_by_id.return_value = node_config
     service.get_draft_workflow = MagicMock(return_value=workflow)  # type: ignore[method-assign]
+    service._build_human_input_variable_pool = MagicMock(return_value=MagicMock())  # type: ignore[attr-defined]
+    node_stub = MagicMock()
+    node_stub._render_form_content_before_submission.return_value = "rendered"
+    node_stub._resolve_default_values.return_value = {}
+    service._build_human_input_node = MagicMock(return_value=node_stub)  # type: ignore[attr-defined]
+    service._create_human_input_delivery_test_form = MagicMock(  # type: ignore[attr-defined]
+        return_value=("form-1", {})
+    )
+
+    test_service_instance = MagicMock()
+    monkeypatch.setattr(
+        workflow_service_module,
+        "HumanInputDeliveryTestService",
+        MagicMock(return_value=test_service_instance),
+    )
 
     app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
     account = SimpleNamespace(id="account-1")
 
-    with pytest.raises(ValueError, match="Delivery method is disabled"):
-        service.test_human_input_delivery(
-            app_model=app_model,
-            account=account,
-            node_id="node-1",
-            delivery_method_id=str(delivery_method.id),
-        )
+    service.test_human_input_delivery(
+        app_model=app_model,
+        account=account,
+        node_id="node-1",
+        delivery_method_id=str(delivery_method.id),
+    )
+
+    test_service_instance.send_test.assert_called_once()
 
 
 def test_human_input_delivery_dispatches_to_test_service(monkeypatch: pytest.MonkeyPatch):

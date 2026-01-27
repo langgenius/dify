@@ -923,8 +923,6 @@ class WorkflowService:
         )
         if delivery_method is None:
             raise ValueError("Delivery method not found.")
-        if not delivery_method.enabled:
-            raise ValueError("Delivery method is disabled.")
         delivery_method = apply_debug_email_recipient(
             delivery_method,
             enabled=True,
