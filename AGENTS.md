@@ -25,6 +25,30 @@ pnpm type-check:tsgo
 pnpm test
 ```
 
+### Frontend Linting
+
+ESLint is used for frontend code quality. Available commands:
+
+```bash
+# Lint all files (report only)
+pnpm lint
+
+# Lint and auto-fix issues
+pnpm lint:fix
+
+# Lint specific files or directories
+pnpm lint:fix app/components/base/button/
+pnpm lint:fix app/components/base/button/index.tsx
+
+# Lint quietly (errors only, no warnings)
+pnpm lint:quiet
+
+# Check code complexity
+pnpm lint:complexity
+```
+
+**Important**: Always run `pnpm lint:fix` before committing. The pre-commit hook runs `lint-staged` which only lints staged files.
+
 ## Testing & Quality Practices
 
 - Follow TDD: red → green → refactor.
