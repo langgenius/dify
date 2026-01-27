@@ -825,7 +825,11 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
         args = parser_default_cred.parse_args()
         return BuiltinToolManageService.set_default_provider(
-            tenant_id=current_tenant_id, user_id=current_user.id, provider=provider, id=args["id"]
+            tenant_id=current_tenant_id,
+            user_id=current_user.id,
+            provider=provider,
+            id=args["id"],
+            account=current_user,
         )
 
 

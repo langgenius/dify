@@ -406,18 +406,23 @@ class BuiltinToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def set_default_provider(tenant_id: str, user_id: str, provider: str, id: str):
+    def set_default_provider(tenant_id: str, user_id: str, provider: str, id: str, account: "Account | None" = None):
         """
         set default provider
         """
         with Session(db.engine) as session:
-            # get provider
-            target_provider = session.query(BuiltinToolProvider).filter_by(id=id).first()
+            # get provider (verify tenant ownership to prevent IDOR)
+            target_provider = session.query(BuiltinToolProvider).filter_by(id=id, tenant_id=tenant_id).first()
             if target_provider is None:
                 raise ValueError("provider not found")
 
             # clear default provider
             if dify_config.ENTERPRISE_ENABLED:
+                # Enterprise: verify admin permission for tenant-wide operation
+                from models.account import TenantAccountRole
+
+                if account and not TenantAccountRole.is_privileged_role(account.current_role):
+                    raise ValueError("Only workspace admins/owners can set default credentials in enterprise mode")
                 # Enterprise: clear ALL defaults for this provider in the tenant
                 # (regardless of user_id, since enterprise credentials may have different user_id)
                 session.query(BuiltinToolProvider).filter_by(
