@@ -41,12 +41,12 @@ const FormContent = () => {
 
   const [inputs, setInputs] = useState<Record<string, string>>({})
   const [success, setSuccess] = useState(false)
-  const [expired, setExpired] = useState(false)
 
   const { mutate: submitForm, isPending: isSubmitting } = useSubmitHumanInputForm()
 
   const { data: formData, isLoading, error } = useGetHumanInputForm(token)
 
+  const expired = (error as HumanInputFormError | null)?.code === 'human_input_form_expired'
   const submitted = (error as HumanInputFormError | null)?.code === 'human_input_form_submitted'
 
   const splitByOutputVar = (content: string): string[] => {
@@ -85,14 +85,6 @@ const FormContent = () => {
       {
         onSuccess: () => {
           setSuccess(true)
-        },
-        onError: async (error) => {
-          if (error instanceof Response && error.status && error.json) {
-            const errorData = await error.json() as { code: string, message: string }
-            if (errorData.code === 'human_input_form_expired') {
-              setExpired(true)
-            }
-          }
         },
       },
     )
