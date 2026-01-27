@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next'
 import SkillEditor from './skill-editor'
 
 type MarkdownFileEditorProps = {
+  instanceId?: string
   value: string
   onChange: (value: string) => void
 }
 
-const MarkdownFileEditor: FC<MarkdownFileEditorProps> = ({ value, onChange }) => {
+const MarkdownFileEditor: FC<MarkdownFileEditorProps> = ({ instanceId, value, onChange }) => {
   const { t } = useTranslation()
   const handleChange = React.useCallback((val: string) => {
     if (val !== value) {
@@ -19,6 +20,7 @@ const MarkdownFileEditor: FC<MarkdownFileEditorProps> = ({ value, onChange }) =>
   return (
     <div className="h-full w-full bg-components-panel-bg">
       <SkillEditor
+        instanceId={instanceId}
         value={value}
         onChange={handleChange}
         showLineNumbers

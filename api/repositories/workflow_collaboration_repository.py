@@ -8,6 +8,7 @@ from extensions.ext_redis import redis_client
 SESSION_STATE_TTL_SECONDS = 3600
 WORKFLOW_ONLINE_USERS_PREFIX = "workflow_online_users:"
 WORKFLOW_LEADER_PREFIX = "workflow_leader:"
+WORKFLOW_SKILL_LEADER_PREFIX = "workflow_skill_leader:"
 WS_SID_MAP_PREFIX = "ws_sid_map:"
 
 
@@ -18,6 +19,7 @@ class WorkflowSessionInfo(TypedDict):
     sid: str
     connected_at: int
     graph_active: bool
+    active_skill_file_id: str | None
 
 
 class SidMapping(TypedDict):
@@ -39,6 +41,10 @@ class WorkflowCollaborationRepository:
     @staticmethod
     def leader_key(workflow_id: str) -> str:
         return f"{WORKFLOW_LEADER_PREFIX}{workflow_id}"
+
+    @staticmethod
+    def skill_leader_key(workflow_id: str, file_id: str) -> str:
+        return f"{WORKFLOW_SKILL_LEADER_PREFIX}{workflow_id}:{file_id}"
 
     @staticmethod
     def sid_key(sid: str) -> str:
@@ -92,6 +98,7 @@ class WorkflowCollaborationRepository:
             "sid": str(session_info["sid"]),
             "connected_at": int(session_info.get("connected_at") or 0),
             "graph_active": bool(session_info.get("graph_active")),
+            "active_skill_file_id": session_info.get("active_skill_file_id"),
         }
 
     def set_graph_active(self, workflow_id: str, sid: str, active: bool) -> None:
@@ -107,6 +114,20 @@ class WorkflowCollaborationRepository:
         if not session_info:
             return False
         return bool(session_info.get("graph_active") or False)
+
+    def set_active_skill_file(self, workflow_id: str, sid: str, file_id: str | None) -> None:
+        session_info = self.get_session_info(workflow_id, sid)
+        if not session_info:
+            return
+        session_info["active_skill_file_id"] = file_id
+        self._redis.hset(self.workflow_key(workflow_id), sid, json.dumps(session_info))
+        self.refresh_session_state(workflow_id, sid)
+
+    def get_active_skill_file_id(self, workflow_id: str, sid: str) -> str | None:
+        session_info = self.get_session_info(workflow_id, sid)
+        if not session_info:
+            return None
+        return session_info.get("active_skill_file_id")
 
     def get_sid_mapping(self, sid: str) -> SidMapping | None:
         raw = self._redis.get(self.sid_key(sid))
@@ -165,6 +186,7 @@ class WorkflowCollaborationRepository:
                     "sid": str(session_info["sid"]),
                     "connected_at": int(session_info.get("connected_at") or 0),
                     "graph_active": bool(session_info.get("graph_active")),
+                    "active_skill_file_id": session_info.get("active_skill_file_id"),
                 }
             )
 
@@ -174,14 +196,31 @@ class WorkflowCollaborationRepository:
         raw = self._redis.get(self.leader_key(workflow_id))
         return self._decode(raw)
 
+    def get_skill_leader(self, workflow_id: str, file_id: str) -> str | None:
+        raw = self._redis.get(self.skill_leader_key(workflow_id, file_id))
+        return self._decode(raw)
+
     def set_leader_if_absent(self, workflow_id: str, sid: str) -> bool:
         return bool(self._redis.set(self.leader_key(workflow_id), sid, nx=True, ex=SESSION_STATE_TTL_SECONDS))
 
     def set_leader(self, workflow_id: str, sid: str) -> None:
         self._redis.set(self.leader_key(workflow_id), sid, ex=SESSION_STATE_TTL_SECONDS)
 
+    def set_skill_leader(self, workflow_id: str, file_id: str, sid: str) -> None:
+        self._redis.set(self.skill_leader_key(workflow_id, file_id), sid, ex=SESSION_STATE_TTL_SECONDS)
+
     def delete_leader(self, workflow_id: str) -> None:
         self._redis.delete(self.leader_key(workflow_id))
 
+    def delete_skill_leader(self, workflow_id: str, file_id: str) -> None:
+        self._redis.delete(self.skill_leader_key(workflow_id, file_id))
+
     def expire_leader(self, workflow_id: str) -> None:
         self._redis.expire(self.leader_key(workflow_id), SESSION_STATE_TTL_SECONDS)
+
+    def expire_skill_leader(self, workflow_id: str, file_id: str) -> None:
+        self._redis.expire(self.skill_leader_key(workflow_id, file_id), SESSION_STATE_TTL_SECONDS)
+
+    def get_active_skill_session_sids(self, workflow_id: str, file_id: str) -> list[str]:
+        sessions = self.list_sessions(workflow_id)
+        return [session["sid"] for session in sessions if session.get("active_skill_file_id") == file_id]

@@ -96,6 +96,9 @@ def handle_collaboration_event(sid, data):
     6. workflow_update
     7. comments_update
     8. node_panel_presence
+    9. skill_file_active
+    10. skill_sync_request
+    11. skill_resync_request
     """
     return collaboration_service.relay_collaboration_event(sid, data)
 
@@ -106,3 +109,11 @@ def handle_graph_event(sid, data):
     Handle graph events - simple broadcast relay.
     """
     return collaboration_service.relay_graph_event(sid, data)
+
+
+@_sio_on("skill_event")
+def handle_skill_event(sid, data):
+    """
+    Handle skill events - simple broadcast relay.
+    """
+    return collaboration_service.relay_skill_event(sid, data)

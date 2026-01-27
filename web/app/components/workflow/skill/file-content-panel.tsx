@@ -13,6 +13,7 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
+import { useSkillMarkdownCollaboration } from '../collaboration/skills/use-skill-markdown-collaboration'
 import { START_TAB_ID } from './constants'
 import CodeFileEditor from './editor/code-file-editor'
 import MarkdownFileEditor from './editor/markdown-file-editor'
@@ -61,6 +62,15 @@ const FileContentPanel: FC = () => {
 
   const originalContent = fileContent?.content ?? ''
   const currentContent = draftContent !== undefined ? draftContent : originalContent
+  const initialContentRegistryRef = useRef<Map<string, string>>(new Map())
+  const canInitCollaboration = Boolean(appId && fileTabId && isMarkdown && isEditable && !isLoading && !error)
+
+  if (canInitCollaboration && fileTabId && !initialContentRegistryRef.current.has(fileTabId))
+    initialContentRegistryRef.current.set(fileTabId, currentContent)
+
+  const initialCollaborativeContent = fileTabId
+    ? (initialContentRegistryRef.current.get(fileTabId) ?? currentContent)
+    : ''
 
   useEffect(() => {
     if (!fileTabId || !fileContent)
@@ -100,6 +110,11 @@ const FileContentPanel: FC = () => {
   }, [fileTabId, isEditable, originalContent, storeApi])
 
   const { saveFile, registerFallback, unregisterFallback } = useSkillSaveManager()
+  const handleLeaderSync = useCallback(() => {
+    if (!fileTabId || !isEditable)
+      return
+    void saveFile(fileTabId)
+  }, [fileTabId, isEditable, saveFile])
 
   const saveFileRef = useRef(saveFile)
   saveFileRef.current = saveFile
@@ -140,6 +155,15 @@ const FileContentPanel: FC = () => {
 
   const language = currentFileNode ? getFileLanguage(currentFileNode.name) : 'plaintext'
   const theme = appTheme === Theme.light ? 'light' : 'vs-dark'
+
+  const { handleCollaborativeChange } = useSkillMarkdownCollaboration({
+    appId,
+    fileId: fileTabId,
+    enabled: canInitCollaboration,
+    initialContent: initialCollaborativeContent,
+    onLocalChange: handleEditorChange,
+    onLeaderSync: handleLeaderSync,
+  })
 
   if (isStartTab)
     return <StartTabContent />
@@ -184,8 +208,9 @@ const FileContentPanel: FC = () => {
         ? (
             <MarkdownFileEditor
               key={fileTabId}
+              instanceId={fileTabId || undefined}
               value={currentContent}
-              onChange={handleEditorChange}
+              onChange={handleCollaborativeChange}
             />
           )
         : null}

@@ -7,8 +7,10 @@ import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { extractToolConfigIds } from '@/app/components/workflow/utils'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { consoleQuery } from '@/service/client'
 import { useUpdateAppAssetFileContent } from '@/service/use-app-asset'
+import { skillCollaborationManager } from '../../collaboration/skills/skill-collaboration-manager'
 import { START_TAB_ID } from '../constants'
 
 type SaveSnapshot = {
@@ -87,6 +89,7 @@ export const SkillSaveProvider = ({
   const storeApi = useWorkflowStore()
   const queryClient = useQueryClient()
   const updateContent = useUpdateAppAssetFileContent()
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
   const queueRef = useRef<Map<string, Promise<SaveResult>>>(new Map())
   const fallbackRegistryRef = useRef<Map<string, FallbackEntry>>(new Map())
 
@@ -172,6 +175,11 @@ export const SkillSaveProvider = ({
     if (!appId || !fileId || fileId === START_TAB_ID)
       return { saved: false }
 
+    if (isCollaborationEnabled && skillCollaborationManager.isFileCollaborative(fileId) && !skillCollaborationManager.isLeader(fileId)) {
+      skillCollaborationManager.requestSync(fileId)
+      return { saved: false }
+    }
+
     const snapshot = buildSnapshot(fileId, options?.fallbackContent, options?.fallbackMetadata)
     if (!snapshot)
       return { saved: false }
@@ -207,7 +215,7 @@ export const SkillSaveProvider = ({
     catch (error) {
       return { saved: false, error }
     }
-  }, [appId, buildSnapshot, storeApi, updateCachedContent, updateContent])
+  }, [appId, buildSnapshot, isCollaborationEnabled, storeApi, updateCachedContent, updateContent])
 
   const saveFile = useCallback(async (
     fileId: string,
