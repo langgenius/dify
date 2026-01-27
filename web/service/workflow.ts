@@ -108,7 +108,7 @@ export const submitHumanInputForm = (token: string, data: {
 export const fetchHumanInputNodeStepRunForm = (
   url: string,
   data: {
-    inputs: Record<string, any>
+    inputs: Record<string, string>
   },
 ) => {
   return post<HumanInputFormData>(`${url}/preview`, { body: data })
@@ -117,8 +117,8 @@ export const fetchHumanInputNodeStepRunForm = (
 export const submitHumanInputNodeStepRunForm = (
   url: string,
   data: {
-    inputs: Record<string, any> | undefined
-    form_inputs: Record<string, any> | undefined
+    inputs: Record<string, string> | undefined
+    form_inputs: Record<string, string> | undefined
     action: string
   },
 ) => {

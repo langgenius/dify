@@ -15,9 +15,9 @@ const i18nPrefix = 'nodes.humanInput'
 type Params = {
   id: string
   payload: HumanInputNodeType
-  runInputData: Record<string, any>
+  runInputData: Record<string, string>
   getInputVars: (textList: string[]) => InputVar[]
-  setRunInputData: (data: Record<string, any>) => void
+  setRunInputData: (data: Record<string, string>) => void
 }
 const useSingleRunFormParams = ({
   id,
@@ -30,7 +30,7 @@ const useSingleRunFormParams = ({
   const { inputs } = useNodeCrud<HumanInputNodeType>(id, payload)
   const [showGeneratedForm, setShowGeneratedForm] = useState(false)
   const [formData, setFormData] = useState<HumanInputFormData | null>(null)
-  const [requiredInputs, setRequiredInputs] = useState<Record<string, any>>({})
+  const [requiredInputs, setRequiredInputs] = useState<Record<string, string>>({})
   const generatedInputs = useMemo(() => {
     const defaultInputs = inputs.inputs.reduce((acc, input) => {
       if (input.default.type === 'variable') {
@@ -76,10 +76,10 @@ const useSingleRunFormParams = ({
     }
   }, [appId, id, isWorkflowMode])
 
-  const handleFetchFormContent = useCallback(async (inputs: Record<string, any>) => {
+  const handleFetchFormContent = useCallback(async (inputs: Record<string, string>) => {
     if (!fetchURL)
       return null
-    let requestParamsObj: Record<string, any> = {}
+    let requestParamsObj: Record<string, string> = {}
     Object.keys(inputs).forEach((key) => {
       if (inputs[key] === undefined) {
         delete inputs[key]
@@ -92,7 +92,11 @@ const useSingleRunFormParams = ({
     return data
   }, [fetchURL])
 
-  const handleSubmitHumanInputForm = useCallback(async (formData: any) => {
+  const handleSubmitHumanInputForm = useCallback(async (formData: {
+    inputs: Record<string, string> | undefined
+    form_inputs: Record<string, string> | undefined
+    action: string
+  }) => {
     await submitHumanInputNodeStepRunForm(fetchURL, {
       inputs: requiredInputs,
       form_inputs: formData.inputs,
@@ -100,7 +104,7 @@ const useSingleRunFormParams = ({
     })
   }, [fetchURL, requiredInputs])
 
-  const handleShowGeneratedForm = async (formValue: Record<string, any>) => {
+  const handleShowGeneratedForm = async (formValue: Record<string, string>) => {
     setShowGeneratedForm(true)
     await handleFetchFormContent(formValue)
   }

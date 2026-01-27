@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
+import type { Recipient } from '@/app/components/workflow/nodes/human-input/types'
 import type { Member } from '@/models/common'
 import {
   RiContactsBookLine,
 } from '@remixicon/react'
-import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -15,9 +15,9 @@ import MemberList from './member-list'
 const i18nPrefix = 'nodes.humanInput'
 
 type Props = {
-  value: any[]
+  value: Recipient[]
   email: string
-  onSelect: (value: any) => void
+  onSelect: (value: string) => void
   list: Member[]
 }
 

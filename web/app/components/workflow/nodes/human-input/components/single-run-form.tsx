@@ -1,4 +1,6 @@
 'use client'
+import type { ButtonProps } from '@/app/components/base/button'
+import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { RiArrowLeftLine } from '@remixicon/react'
 import * as React from 'react'
@@ -14,7 +16,7 @@ type Props = {
   data: HumanInputFormData
   showBackButton?: boolean
   handleBack?: () => void
-  onSubmit?: (data: any) => Promise<void>
+  onSubmit?: ({ inputs, action }: { inputs: Record<string, string>, action: string }) => Promise<void>
 }
 
 const FormContent = ({
@@ -30,7 +32,7 @@ const FormContent = ({
   const [inputs, setInputs] = useState(defaultInputs)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleInputsChange = (name: string, value: any) => {
+  const handleInputsChange = (name: string, value: string) => {
     setInputs(prev => ({
       ...prev,
       [name]: value,
@@ -66,11 +68,11 @@ const FormContent = ({
           />
         ))}
         <div className="flex flex-wrap gap-1 py-1">
-          {data.actions.map((action: any) => (
+          {data.actions.map((action: UserAction) => (
             <Button
               key={action.id}
               disabled={isSubmitting}
-              variant={getButtonStyle(action.button_style) as any}
+              variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
               onClick={() => submit(action.id)}
             >
               {action.title}

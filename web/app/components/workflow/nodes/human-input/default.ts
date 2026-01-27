@@ -31,7 +31,7 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
     timeout: 3,
     timeout_unit: 'day',
   },
-  checkValid(payload: HumanInputNodeType, t: any) {
+  checkValid(payload: HumanInputNodeType, t: (str: string, options: Record<string, unknown>) => string) {
     let errorMessages = ''
     if (!errorMessages && !payload.delivery_methods.length)
       errorMessages = t(`${i18nPrefix}.noDeliveryMethod`, { ns: 'workflow' })
