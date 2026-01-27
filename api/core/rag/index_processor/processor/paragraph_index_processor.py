@@ -12,13 +12,13 @@ from core.entities.knowledge_entities import PreviewDetail
 from core.file import File, FileTransferMethod, FileType, file_manager
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
     PromptMessageContentUnionTypes,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.provider_manager import ProviderManager
 from core.rag.cleaner.clean_processor import CleanProcessor
