@@ -35,7 +35,7 @@ export type IconObject = {
 
 export type ToolCallItem = {
   id: string
-  type: 'model' | 'tool' | 'thought'
+  type: 'model' | 'tool' | 'thought' | 'text'
   thoughtCompleted?: boolean
   thoughtOutput?: string
 
@@ -55,6 +55,9 @@ export type ToolCallItem = {
   modelDuration?: number
   modelIcon?: string | IconObject
   modelIconDark?: string | IconObject
+
+  // text type fields
+  textContent?: string
 }
 
 export type ToolCallDetail = {

@@ -253,6 +253,12 @@ const buildToolCallsFromHistorySequence = (message: ChatMessageRes): {
       case 'content': {
         const text = answer?.substring(segment.start, segment.end)
         if (text?.trim()) {
+          // Add text as a toolCall item to preserve order
+          toolCalls.push({
+            id: uuidV4(),
+            type: 'text',
+            textContent: text,
+          })
           answerMessage += text
         }
         break

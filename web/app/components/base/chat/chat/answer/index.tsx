@@ -162,14 +162,14 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              responding && contentIsEmpty && !hasAgentThoughts && (
+              responding && contentIsEmpty && !hasAgentThoughts && !toolCalls?.length && (
                 <div className="flex h-5 w-6 items-center justify-center">
                   <LoadingAnim type="text" />
                 </div>
               )
             }
             {
-              !contentIsEmpty && !hasAgentThoughts && (
+              !contentIsEmpty && !hasAgentThoughts && !toolCalls?.length && (
                 <BasicContent item={item} />
               )
             }

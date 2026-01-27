@@ -343,8 +343,27 @@ export const useChat = (
           tool_elapsed_time,
         }: any) => {
           if (!isAgentMode) {
-            if (chunk_type === 'text')
+            if (chunk_type === 'text') {
+              // Append text to toolCalls array to preserve order with tool calls
+              if (!responseItem.toolCalls)
+                responseItem.toolCalls = []
+
+              const lastItem = responseItem.toolCalls.at(-1)
+              if (lastItem?.type === 'text') {
+                // Merge consecutive text chunks into the same text item
+                lastItem.textContent = (lastItem.textContent || '') + message
+              }
+              else {
+                // Create a new text item
+                responseItem.toolCalls.push({
+                  id: uuidV4(),
+                  type: 'text',
+                  textContent: message,
+                })
+              }
+              // Also update content for compatibility
               responseItem.content = responseItem.content + message
+            }
           }
           else {
             const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
