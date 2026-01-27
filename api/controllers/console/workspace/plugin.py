@@ -22,45 +22,9 @@ from services.plugin.plugin_permission_service import PluginPermissionService
 from services.plugin.plugin_service import PluginService
 
 
-@console_ns.route("/workspaces/current/plugin/debugging-key")
-class PluginDebuggingKeyApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @plugin_permission_required(debug_required=True)
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-
-        try:
-            return {
-                "key": PluginService.get_debugging_key(tenant_id),
-                "host": dify_config.PLUGIN_REMOTE_INSTALL_HOST,
-                "port": dify_config.PLUGIN_REMOTE_INSTALL_PORT,
-            }
-        except PluginDaemonClientSideError as e:
-            raise ValueError(e)
-
-
 class ParserList(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number")
     page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
-
-
-@console_ns.route("/workspaces/current/plugin/list")
-class PluginListApi(Resource):
-    @console_ns.expect(console_ns.models[ParserList.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-        args = ParserList.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        try:
-            plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
-        except PluginDaemonClientSideError as e:
-            raise ValueError(e)
-
-        return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
 class ParserLatest(BaseModel):
@@ -203,6 +167,42 @@ register_enum_models(
     TenantPluginAutoUpgradeStrategy.StrategySetting,
     TenantPluginPermission.InstallPermission,
 )
+
+
+@console_ns.route("/workspaces/current/plugin/debugging-key")
+class PluginDebuggingKeyApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @plugin_permission_required(debug_required=True)
+    def get(self):
+        _, tenant_id = current_account_with_tenant()
+
+        try:
+            return {
+                "key": PluginService.get_debugging_key(tenant_id),
+                "host": dify_config.PLUGIN_REMOTE_INSTALL_HOST,
+                "port": dify_config.PLUGIN_REMOTE_INSTALL_PORT,
+            }
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+
+@console_ns.route("/workspaces/current/plugin/list")
+class PluginListApi(Resource):
+    @console_ns.expect(console_ns.models[ParserList.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        _, tenant_id = current_account_with_tenant()
+        args = ParserList.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        try:
+            plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+        return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
