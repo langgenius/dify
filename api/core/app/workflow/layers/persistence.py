@@ -45,7 +45,6 @@ from core.workflow.graph_events import (
 from core.workflow.node_events import NodeRunResult
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.workflow_entry import WorkflowEntry
 from libs.datetime_utils import naive_utc_now
 
 
@@ -316,6 +315,9 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
                 # workflow inputs stay reusable without binding future runs to this conversation.
                 continue
             inputs[f"sys.{field_name}"] = value
+        # Local import to avoid circular dependency during app bootstrapping.
+        from core.workflow.workflow_entry import WorkflowEntry
+
         handled = WorkflowEntry.handle_special_values(inputs)
         return handled or {}
 
