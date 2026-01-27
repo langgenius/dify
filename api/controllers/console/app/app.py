@@ -9,9 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.helpers import FileInfo
 from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
+from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -22,16 +24,21 @@ from controllers.console.wraps import (
 )
 from core.file import helpers as file_helpers
 from core.ops.ops_trace_manager import OpsTraceManager
+from core.rag.extractor.entity.extract_setting import NotionInfo, WebsiteInfo
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.enums import NodeType
+from core.workflow.enums import NodeType, WorkflowExecutionStatus
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
-from models import App, Workflow
+from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.knowledge_entities.knowledge_entities import (
+    DataSource,
+    InfoList,
+    NotionIcon,
+    NotionPage,
     PreProcessingRule,
     RerankingModel,
     Rule,
@@ -403,7 +410,7 @@ class AppExportResponse(ResponseModel):
     data: str
 
 
-register_enum_models(console_ns, RetrievalMethod)
+register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
 
 register_schema_models(
     console_ns,
@@ -435,6 +442,15 @@ register_schema_models(
     WeightKeywordSetting,
     WeightModel,
     RerankingModel,
+    InfoList,
+    NotionInfo,
+    FileInfo,
+    WebsiteInfo,
+    NotionPage,
+    NotionIcon,
+    RerankingModel,
+    DataSource,
+    LoadBalancingPayload,
 )
 
 
