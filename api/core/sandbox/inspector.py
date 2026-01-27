@@ -115,12 +115,19 @@ print(json.dumps(entries))
 
         entries: list[SandboxFileNode] = []
         for item in raw:
+            item_path = str(item.get("path"))
+            item_is_dir = bool(item.get("is_dir"))
+            extension = None
+            if not item_is_dir:
+                ext = os.path.splitext(item_path)[1]
+                extension = ext or None
             entries.append(
                 SandboxFileNode(
-                    path=str(item.get("path")),
-                    is_dir=bool(item.get("is_dir")),
+                    path=item_path,
+                    is_dir=item_is_dir,
                     size=item.get("size"),
                     mtime=item.get("mtime"),
+                    extension=extension,
                 )
             )
         return entries
@@ -243,7 +250,9 @@ class SandboxFileArchiveSource(SandboxFileSource):
                 if dir_path in ("", "."):
                     return
                 if dir_path not in entries_by_path:
-                    entries_by_path[dir_path] = SandboxFileNode(path=dir_path, is_dir=True, size=None, mtime=None)
+                    entries_by_path[dir_path] = SandboxFileNode(
+                        path=dir_path, is_dir=True, size=None, mtime=None, extension=None
+                    )
 
             def clean(member_name: str) -> str:
                 name = member_name.lstrip("./")
@@ -283,11 +292,16 @@ class SandboxFileArchiveSource(SandboxFileSource):
                         parent = os.path.dirname(parent)
 
                     is_dir = m.isdir()
+                    extension = None
+                    if not is_dir:
+                        ext = os.path.splitext(mp)[1]
+                        extension = ext or None
                     entries_by_path[mp] = SandboxFileNode(
                         path=mp,
                         is_dir=is_dir,
                         size=None if is_dir else int(m.size),
                         mtime=int(m.mtime) if m.mtime else None,
+                        extension=extension,
                     )
 
             return sorted(entries_by_path.values(), key=lambda e: e.path)

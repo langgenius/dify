@@ -9,6 +9,7 @@ class SandboxFileNode:
     is_dir: bool
     size: int | None
     mtime: int | None
+    extension: str | None
 
 
 @dataclass(frozen=True)

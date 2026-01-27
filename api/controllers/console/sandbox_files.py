@@ -36,6 +36,7 @@ SANDBOX_FILE_NODE_FIELDS = {
     "is_dir": fields.Boolean,
     "size": fields.Raw,
     "mtime": fields.Raw,
+    "extension": fields.String,
 }
 
 
@@ -47,9 +48,7 @@ SANDBOX_FILE_DOWNLOAD_TICKET_FIELDS = {
 
 
 sandbox_file_node_model = console_ns.model("SandboxFileNode", SANDBOX_FILE_NODE_FIELDS)
-sandbox_file_download_ticket_model = console_ns.model(
-    "SandboxFileDownloadTicket", SANDBOX_FILE_DOWNLOAD_TICKET_FIELDS
-)
+sandbox_file_download_ticket_model = console_ns.model("SandboxFileDownloadTicket", SANDBOX_FILE_DOWNLOAD_TICKET_FIELDS)
 
 
 @console_ns.route("/sandboxes/<string:sandbox_id>/files")
