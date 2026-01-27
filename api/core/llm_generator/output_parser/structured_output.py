@@ -156,10 +156,10 @@ def invoke_llm_with_structured_output(
     else:
         # Priority 3: Prompt-based fallback
         _set_response_format(model_parameters_with_json_schema, model_schema.parameter_rules)
-        prompt_messages = _handle_prompt_based_schema(
-            prompt_messages=prompt_messages,
-            structured_output_schema=json_schema,
-        )
+    prompt_messages = _handle_prompt_based_schema(
+        prompt_messages=prompt_messages,
+        structured_output_schema=json_schema,
+    )
 
     llm_result = model_instance.invoke_llm(
         prompt_messages=list(prompt_messages),
