@@ -139,11 +139,38 @@ class TestSMSSendVerificationCode:
 
         assert result["session_uuid"] == "test-session-uuid-123"
         assert result["status"] == "sent"
+        assert result["channel"] == "sms"
         sms._client.verify_session.create.assert_called_once_with(
             recipient="+14155551234",
             channel="sms",
             app_uuid=None,
         )
+
+    def test_send_verification_code_voice_channel(self):
+        """Test successful verification code sending via voice channel."""
+        sms = self._create_initialized_sms()
+
+        mock_response = MagicMock()
+        mock_response.session_uuid = "test-session-uuid-voice"
+        sms._client.verify_session.create.return_value = mock_response
+
+        result = sms.send_verification_code("+14155551234", channel="voice")
+
+        assert result["session_uuid"] == "test-session-uuid-voice"
+        assert result["status"] == "sent"
+        assert result["channel"] == "voice"
+        sms._client.verify_session.create.assert_called_once_with(
+            recipient="+14155551234",
+            channel="voice",
+            app_uuid=None,
+        )
+
+    def test_send_verification_code_invalid_channel(self):
+        """Test sending verification raises error for invalid channel."""
+        sms = self._create_initialized_sms()
+
+        with pytest.raises(ValueError, match="Invalid channel"):
+            sms.send_verification_code("+14155551234", channel="email")
 
     def test_send_verification_code_raises_plivo_error(self):
         """Test sending verification raises PlivoVerifyError on API failure."""

@@ -989,12 +989,15 @@ class AccountService:
 
     # Phone verification methods for Plivo Verify integration
     @classmethod
-    def send_phone_verification_code(cls, phone_number: str) -> str | None:
+    def send_phone_verification_code(
+        cls, phone_number: str, channel: str = "sms"
+    ) -> str | None:
         """
         Send phone verification code using Plivo Verify API.
 
         Args:
             phone_number: The phone number to send verification code to (E.164 format)
+            channel: The delivery channel - "sms" (default) or "voice" for automated call
 
         Returns:
             token (session reference) if successful, None otherwise
@@ -1016,15 +1019,19 @@ class AccountService:
             raise ValueError("Plivo SMS client is not initialized or verify is not enabled")
 
         try:
-            result = sms.send_verification_code(phone_number)
+            result = sms.send_verification_code(phone_number, channel=channel)
             session_uuid = result.get("session_uuid")
 
             if session_uuid:
-                # Store the session_uuid with phone number for later verification
+                # Store the session_uuid with phone number and channel for later verification
                 token = TokenManager.generate_token(
                     email=phone_number,  # Using phone_number in place of email for token generation
                     token_type="phone_code_login",
-                    additional_data={"session_uuid": session_uuid, "phone_number": phone_number},
+                    additional_data={
+                        "session_uuid": session_uuid,
+                        "phone_number": phone_number,
+                        "channel": channel,
+                    },
                 )
                 cls.phone_code_login_rate_limiter.increment_rate_limit(phone_number)
                 return token

@@ -1,7 +1,10 @@
 import logging
-from typing import Any
+from typing import Any, Literal
 
 from flask import Flask
+
+# Supported verification channels
+VerifyChannel = Literal["sms", "voice"]
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -51,19 +54,22 @@ class SMS:
             logger.exception("Failed to initialize Plivo client: %s", str(e))
             raise ValueError(f"Failed to initialize Plivo client: {e}")
 
-    def send_verification_code(self, phone_number: str) -> dict[str, Any]:
+    def send_verification_code(
+        self, phone_number: str, channel: VerifyChannel = "sms"
+    ) -> dict[str, Any]:
         """
         Send a verification code to the specified phone number using Plivo Verify API.
 
         Args:
             phone_number: The phone number to send the verification code to (E.164 format)
+            channel: The delivery channel - "sms" (default) or "voice" for automated call
 
         Returns:
-            dict containing session_uuid and other verification details
+            dict containing session_uuid, channel, and other verification details
 
         Raises:
             PlivoVerifyError: If the verification request fails
-            ValueError: If the client is not initialized
+            ValueError: If the client is not initialized or channel is invalid
         """
         if not self._client:
             raise ValueError("SMS client is not initialized")
@@ -71,18 +77,27 @@ class SMS:
         if not self._verify_enabled:
             raise ValueError("Plivo Verify is not enabled")
 
+        if channel not in ("sms", "voice"):
+            raise ValueError(f"Invalid channel '{channel}'. Must be 'sms' or 'voice'.")
+
         try:
             # Use Plivo Verify API to send OTP
             response = self._client.verify_session.create(
                 recipient=phone_number,
-                channel="sms",
+                channel=channel,
                 app_uuid=None,  # Uses default app
             )
 
-            logger.info("Verification code sent to %s, session_uuid: %s", phone_number, response.session_uuid)
+            logger.info(
+                "Verification code sent to %s via %s, session_uuid: %s",
+                phone_number,
+                channel,
+                response.session_uuid,
+            )
 
             return {
                 "session_uuid": response.session_uuid,
+                "channel": channel,
                 "status": "sent",
             }
         except Exception as e:
