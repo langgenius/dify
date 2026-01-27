@@ -1,8 +1,10 @@
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { Params as OneStepRunParams } from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 // import
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import {
   useNodesSyncDraft,
@@ -127,6 +129,7 @@ const useLastRun = <T>({
   ...oneStepRunParams
 }: Params<T>) => {
   const { conversationVars, systemVars, hasSetInspectVar } = useInspectVarsCrud()
+  const { t } = useTranslation()
   const blockType = oneStepRunParams.data.type
   const isStartNode = blockType === BlockEnum.Start
   const isIterationNode = blockType === BlockEnum.Iteration
@@ -234,11 +237,25 @@ const useLastRun = <T>({
   }, [initShowLastRunTab])
   const invalidLastRun = useInvalidLastRun(flowType, flowId, id)
 
+  const ensureLLMContextReady = useCallback(() => {
+    if (blockType !== BlockEnum.LLM)
+      return true
+    const llmData = data as unknown as LLMNodeType
+    const contextSelector = llmData.context?.variable_selector
+    if (!Array.isArray(contextSelector) || contextSelector.length === 0) {
+      Toast.notify({ type: 'error', message: t('nodes.llm.contextMissing', { ns: 'workflow' }) })
+      return false
+    }
+    return true
+  }, [blockType, data, t])
+
   const handleRunWithParams = async (data: Record<string, any>) => {
     if (blockIfChecklistFailed())
       return
     const { isValid } = checkValid()
     if (!isValid)
+      return
+    if (!ensureLLMContextReady())
       return
     setNodeRunning()
     setIsRunAfterSingleRun(true)
@@ -339,6 +356,8 @@ const useLastRun = <T>({
       return
     const { isValid } = checkValid()
     if (!isValid)
+      return
+    if (!ensureLLMContextReady())
       return
     if (blockType === BlockEnum.TriggerWebhook || blockType === BlockEnum.TriggerPlugin || blockType === BlockEnum.TriggerSchedule)
       setShowVariableInspectPanel(true)

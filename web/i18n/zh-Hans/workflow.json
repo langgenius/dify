@@ -665,6 +665,7 @@
   "nodes.llm.computerUse.tooltip": "管理代理的运行时文件系统与工具访问权限。",
   "nodes.llm.context": "上下文",
   "nodes.llm.contextBlock": "上下文块",
+  "nodes.llm.contextMissing": "缺少前序节点的上下文，请先选择上下文变量。",
   "nodes.llm.contextTooltip": "您可以导入知识库作为上下文",
   "nodes.llm.files": "文件",
   "nodes.llm.jsonSchema.addChildField": "添加子字段",

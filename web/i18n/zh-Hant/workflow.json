@@ -648,6 +648,7 @@
   "nodes.llm.addMessage": "新增消息",
   "nodes.llm.context": "上下文",
   "nodes.llm.contextBlock": "上下文區塊",
+  "nodes.llm.contextMissing": "缺少前序節點的上下文，請先選擇上下文變數。",
   "nodes.llm.contextTooltip": "您可以導入知識庫作為上下文",
   "nodes.llm.files": "文件",
   "nodes.llm.jsonSchema.addChildField": "新增子欄位",

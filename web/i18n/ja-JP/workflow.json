@@ -648,6 +648,7 @@
   "nodes.llm.addMessage": "メッセージ追加",
   "nodes.llm.context": "コンテキスト",
   "nodes.llm.contextBlock": "コンテキストブロック",
+  "nodes.llm.contextMissing": "前のノードのコンテキストがありません。コンテキスト変数を選択してください。",
   "nodes.llm.contextTooltip": "ナレッジベースをコンテキストとして利用",
   "nodes.llm.files": "ファイル",
   "nodes.llm.jsonSchema.addChildField": "サブフィールドを追加",
