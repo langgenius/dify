@@ -11,9 +11,7 @@ export type UnsubmittedHumanInputContentProps = {
   showEmailTip?: boolean
   isEmailDebugMode?: boolean
   showDebugModeTip?: boolean
-  showTimeout?: boolean
-  expirationTime?: number
-  onSubmit?: (formToken: string, data: any) => Promise<void>
+  onSubmit?: (formToken: string, data: { inputs: Record<string, string>, action: string }) => Promise<void>
 }
 
 export type SubmittedHumanInputContentProps = {
@@ -22,12 +20,12 @@ export type SubmittedHumanInputContentProps = {
 
 export type HumanInputFormProps = {
   formData: HumanInputFormData
-  onSubmit?: (formToken: string, data: any) => Promise<void>
+  onSubmit?: (formToken: string, data: { inputs: Record<string, string>, action: string }) => Promise<void>
 }
 
 export type ContentItemProps = {
   content: string
   formInputFields: FormInputItem[]
   inputs: Record<string, string>
-  onInputChange: (name: string, value: any) => void
+  onInputChange: (name: string, value: string) => void
 }

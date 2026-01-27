@@ -323,6 +323,7 @@ export type HumanInputFormData = {
   form_token: string
   resolved_default_values: Record<string, string>
   display_in_ui: boolean
+  expiration_time: number
 }
 
 export type HumanInputRequiredResponse = {
@@ -345,6 +346,19 @@ export type HumanInputFormFilledResponse = {
   workflow_run_id: string
   event: string
   data: HumanInputFilledFormData
+}
+
+export type HumanInputFormTimeoutData = {
+  node_id: string
+  node_title: string
+  expiration_time: number
+}
+
+export type HumanInputFormTimeoutResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: HumanInputFormTimeoutData
 }
 
 export type WorkflowRunHistory = {

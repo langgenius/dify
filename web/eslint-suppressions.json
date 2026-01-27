@@ -594,7 +594,7 @@
       "count": 3
     },
     "ts/no-explicit-any": {
-      "count": 5
+      "count": 4
     }
   },
   "app/components/app/text-generate/item/result-tab.tsx": {
@@ -794,24 +794,9 @@
       "count": 1
     }
   },
-  "app/components/base/chat/chat/answer/human-input-content/human-input-form.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/base/chat/chat/answer/human-input-content/type.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/base/chat/chat/answer/human-input-content/utils.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/base/chat/chat/answer/human-input-form-list.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/base/chat/chat/answer/index.tsx": {
@@ -4439,7 +4424,7 @@
   },
   "service/workflow.ts": {
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "testing/testing.md": {

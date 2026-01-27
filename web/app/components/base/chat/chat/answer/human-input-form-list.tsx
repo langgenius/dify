@@ -1,4 +1,5 @@
-import type { DeliveryMethod } from '@/app/components/workflow/nodes/human-input/types'
+import type { DeliveryMethod, HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
+import type { Node } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { useMemo } from 'react'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
@@ -7,8 +8,8 @@ import { UnsubmittedHumanInputContent } from './human-input-content/unsubmitted'
 
 type HumanInputFormListProps = {
   humanInputFormDataList: HumanInputFormData[]
-  onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
-  getHumanInputNodeData?: (nodeID: string) => any
+  onHumanInputFormSubmit?: (formToken: string, formData: { inputs: Record<string, string>, action: string }) => Promise<void>
+  getHumanInputNodeData?: (nodeID: string) => Node<HumanInputNodeType> | undefined
 }
 
 const HumanInputFormList = ({

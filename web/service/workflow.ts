@@ -99,7 +99,7 @@ export const fetchNodeInspectVars = async (flowType: FlowType, flowId: string, n
 }
 
 export const submitHumanInputForm = (token: string, data: {
-  inputs: Record<string, any>
+  inputs: Record<string, string>
   action: string
 }) => {
   return post(`/form/human_input/${token}`, { body: data })

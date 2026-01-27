@@ -81,6 +81,7 @@ export const useWorkflowRun = () => {
     handleWorkflowNodeFinished,
     handleWorkflowNodeHumanInputRequired,
     handleWorkflowNodeHumanInputFormFilled,
+    handleWorkflowNodeHumanInputFormTimeout,
     handleWorkflowNodeIterationStarted,
     handleWorkflowNodeIterationNext,
     handleWorkflowNodeIterationFinished,
@@ -182,6 +183,7 @@ export const useWorkflowRun = () => {
       onWorkflowPaused,
       onHumanInputRequired,
       onHumanInputFormFilled,
+      onHumanInputFormTimeout,
       onCompleted,
       ...restCallback
     } = callback || {}
@@ -513,6 +515,11 @@ export const useWorkflowRun = () => {
         if (onHumanInputFormFilled)
           onHumanInputFormFilled(params)
       },
+      onHumanInputFormTimeout: (params) => {
+        handleWorkflowNodeHumanInputFormTimeout(params)
+        if (onHumanInputFormTimeout)
+          onHumanInputFormTimeout(params)
+      },
       onError: wrappedOnError,
       onCompleted: wrappedOnCompleted,
     }
@@ -627,6 +634,7 @@ export const useWorkflowRun = () => {
             baseSseOptions.onAgentLog,
             baseSseOptions.onHumanInputRequired,
             baseSseOptions.onHumanInputFormFilled,
+            baseSseOptions.onHumanInputFormTimeout,
             baseSseOptions.onWorkflowPaused,
             baseSseOptions.onDataSourceNodeProcessing,
             baseSseOptions.onDataSourceNodeCompleted,
@@ -814,6 +822,11 @@ export const useWorkflowRun = () => {
         if (onHumanInputFormFilled)
           onHumanInputFormFilled(params)
       },
+      onHumanInputFormTimeout: (params) => {
+        handleWorkflowNodeHumanInputFormTimeout(params)
+        if (onHumanInputFormTimeout)
+          onHumanInputFormTimeout(params)
+      },
       ...restCallback,
     }
 
@@ -824,7 +837,7 @@ export const useWorkflowRun = () => {
       },
       finalCallbacks,
     )
-  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired, handleWorkflowNodeHumanInputFormFilled])
+  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired, handleWorkflowNodeHumanInputFormFilled, handleWorkflowNodeHumanInputFormTimeout])
 
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {

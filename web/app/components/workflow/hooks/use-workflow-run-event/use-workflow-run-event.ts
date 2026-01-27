@@ -4,6 +4,7 @@ import {
   useWorkflowFinished,
   useWorkflowNodeFinished,
   useWorkflowNodeHumanInputFormFilled,
+  useWorkflowNodeHumanInputFormTimeout,
   useWorkflowNodeHumanInputRequired,
   useWorkflowNodeIterationFinished,
   useWorkflowNodeIterationNext,
@@ -38,6 +39,7 @@ export const useWorkflowRunEvent = () => {
   const { handleWorkflowPaused } = useWorkflowPaused()
   const { handleWorkflowNodeHumanInputRequired } = useWorkflowNodeHumanInputRequired()
   const { handleWorkflowNodeHumanInputFormFilled } = useWorkflowNodeHumanInputFormFilled()
+  const { handleWorkflowNodeHumanInputFormTimeout } = useWorkflowNodeHumanInputFormTimeout()
 
   return {
     handleWorkflowStarted,
@@ -58,5 +60,6 @@ export const useWorkflowRunEvent = () => {
     handleWorkflowPaused,
     handleWorkflowNodeHumanInputFormFilled,
     handleWorkflowNodeHumanInputRequired,
+    handleWorkflowNodeHumanInputFormTimeout,
   }
 }

@@ -215,7 +215,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     else
       switchTab('DETAIL')
   }, [workflowProcessData?.files?.length, workflowProcessData?.resultText, workflowProcessData?.humanInputFormDataList, workflowProcessData?.humanInputFilledFormDataList])
-  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: any) => {
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: { inputs: Record<string, string>, action: string }) => {
     if (appSourceType === AppSourceType.installedApp)
       await submitHumanInputFormService(formToken, formData)
     else

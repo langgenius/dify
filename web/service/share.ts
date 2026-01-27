@@ -279,7 +279,7 @@ export const getHumanInputForm = (token: string) => {
 }
 
 export const submitHumanInputForm = (token: string, data: {
-  inputs: Record<string, any>
+  inputs: Record<string, string>
   action: string
 }) => {
   return post(`/form/human_input/${token}`, { body: data })

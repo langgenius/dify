@@ -613,6 +613,18 @@ export const useChat = (
             parentId: params.parent_message_id,
           })
         },
+        onHumanInputFormTimeout: ({ data }) => {
+          if (responseItem.humanInputFormDataList?.length) {
+            const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
+            responseItem.humanInputFormDataList[currentFormIndex].expiration_time = data.expiration_time
+          }
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
+        },
         onWorkflowPaused: ({ data: _data }) => {
           responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
           updateCurrentQAOnTree({
@@ -861,6 +873,14 @@ export const useChat = (
           }
           else {
             responseItem.humanInputFilledFormDataList.push(humanInputFilledFormData)
+          }
+        })
+      },
+      onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (responseItem.humanInputFormDataList?.length) {
+            const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
+            responseItem.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
           }
         })
       },

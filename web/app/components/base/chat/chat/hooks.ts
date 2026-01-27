@@ -527,6 +527,14 @@ export const useChat = (
           }
         })
       },
+      onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (responseItem.humanInputFormDataList?.length) {
+            const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
+            responseItem.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
+          }
+        })
+      },
       onWorkflowPaused: ({ data: workflowPausedData }) => {
         const resumeUrl = `/workflow/${workflowPausedData.workflow_run_id}/events`
         sseGet(
@@ -1081,6 +1089,18 @@ export const useChat = (
         }
         else {
           responseItem.humanInputFilledFormDataList.push(humanInputFilledFormData)
+        }
+        updateCurrentQAOnTree({
+          placeholderQuestionId,
+          questionItem,
+          responseItem,
+          parentId: data.parent_message_id,
+        })
+      },
+      onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
+        if (responseItem.humanInputFormDataList?.length) {
+          const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
+          responseItem.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
         }
         updateCurrentQAOnTree({
           placeholderQuestionId,

@@ -8,10 +8,10 @@ export const UnsubmittedHumanInputContent = ({
   showEmailTip = false,
   isEmailDebugMode = false,
   showDebugModeTip = false,
-  showTimeout = false,
-  expirationTime,
   onSubmit,
 }: UnsubmittedHumanInputContentProps) => {
+  const { expiration_time } = formData
+
   return (
     <>
       {/* Form */}
@@ -27,9 +27,9 @@ export const UnsubmittedHumanInputContent = ({
           showDebugModeTip={showDebugModeTip}
         />
       )}
-      {/* Timeout */}
-      {showTimeout && typeof expirationTime === 'number' && (
-        <ExpirationTime expirationTime={expirationTime} />
+      {/* Expiration Time */}
+      {typeof expiration_time === 'number' && (
+        <ExpirationTime expirationTime={expiration_time} />
       )}
     </>
   )

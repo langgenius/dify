@@ -9,6 +9,7 @@ import type {
 import type {
   AgentLogResponse,
   HumanInputFormFilledResponse,
+  HumanInputFormTimeoutResponse,
   HumanInputRequiredResponse,
   IterationFinishedResponse,
   IterationNextResponse,
@@ -75,6 +76,7 @@ export type IOnAgentLog = (agentLog: AgentLogResponse) => void
 
 export type IOHumanInputRequired = (humanInputRequired: HumanInputRequiredResponse) => void
 export type IOnHumanInputFormFilled = (humanInputFormFilled: HumanInputFormFilledResponse) => void
+export type IOnHumanInputFormTimeout = (humanInputFormTimeout: HumanInputFormTimeoutResponse) => void
 export type IOWorkflowPaused = (workflowPaused: WorkflowPausedResponse) => void
 export type IOnDataSourceNodeProcessing = (dataSourceNodeProcessing: DataSourceNodeProcessingResponse) => void
 export type IOnDataSourceNodeCompleted = (dataSourceNodeCompleted: DataSourceNodeCompletedResponse) => void
@@ -121,6 +123,7 @@ export type IOtherOptions = {
   onAgentLog?: IOnAgentLog
   onHumanInputRequired?: IOHumanInputRequired
   onHumanInputFormFilled?: IOnHumanInputFormFilled
+  onHumanInputFormTimeout?: IOnHumanInputFormTimeout
   onWorkflowPaused?: IOWorkflowPaused
 
   // Pipeline data source node run
@@ -206,6 +209,7 @@ export const handleStream = (
   onAgentLog?: IOnAgentLog,
   onHumanInputRequired?: IOHumanInputRequired,
   onHumanInputFormFilled?: IOnHumanInputFormFilled,
+  onHumanInputFormTimeout?: IOnHumanInputFormTimeout,
   onWorkflowPaused?: IOWorkflowPaused,
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing,
   onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted,
@@ -345,6 +349,9 @@ export const handleStream = (
             else if (bufferObj.event === 'human_input_form_filled') {
               onHumanInputFormFilled?.(bufferObj as HumanInputFormFilledResponse)
             }
+            else if (bufferObj.event === 'human_input_form_timeout') {
+              onHumanInputFormTimeout?.(bufferObj as HumanInputFormTimeoutResponse)
+            }
             else if (bufferObj.event === 'workflow_paused') {
               onWorkflowPaused?.(bufferObj as WorkflowPausedResponse)
             }
@@ -472,6 +479,7 @@ export const ssePost = async (
     onLoopFinish,
     onHumanInputRequired,
     onHumanInputFormFilled,
+    onHumanInputFormTimeout,
     onWorkflowPaused,
     onDataSourceNodeProcessing,
     onDataSourceNodeCompleted,
@@ -576,6 +584,7 @@ export const ssePost = async (
         onAgentLog,
         onHumanInputRequired,
         onHumanInputFormFilled,
+        onHumanInputFormTimeout,
         onWorkflowPaused,
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,
@@ -624,6 +633,7 @@ export const sseGet = async (
     onLoopFinish,
     onHumanInputRequired,
     onHumanInputFormFilled,
+    onHumanInputFormTimeout,
     onWorkflowPaused,
     onDataSourceNodeProcessing,
     onDataSourceNodeCompleted,
@@ -721,6 +731,7 @@ export const sseGet = async (
         onAgentLog,
         onHumanInputRequired,
         onHumanInputFormFilled,
+        onHumanInputFormTimeout,
         onWorkflowPaused,
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,

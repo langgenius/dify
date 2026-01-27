@@ -18,14 +18,14 @@ const HumanInputForm = ({
   const [inputs, setInputs] = useState(defaultInputs)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleInputsChange = useCallback((name: string, value: any) => {
+  const handleInputsChange = useCallback((name: string, value: string) => {
     setInputs(prev => ({
       ...prev,
       [name]: value,
     }))
   }, [])
 
-  const submit = async (formToken: string, actionID: string, inputs: Record<string, any>) => {
+  const submit = async (formToken: string, actionID: string, inputs: Record<string, string>) => {
     setIsSubmitting(true)
     await onSubmit?.(formToken, { inputs, action: actionID })
     setIsSubmitting(false)
