@@ -92,7 +92,12 @@ message_detail_fields = {
 }
 
 feedback_stat_fields = {"like": fields.Integer, "dislike": fields.Integer}
-status_count_fields = {"success": fields.Integer, "failed": fields.Integer, "partial_success": fields.Integer}
+status_count_fields = {
+    "success": fields.Integer,
+    "failed": fields.Integer,
+    "partial_success": fields.Integer,
+    "paused": fields.Integer,
+}
 model_config_fields = {
     "opening_statement": fields.String,
     "suggested_questions": fields.Raw,
