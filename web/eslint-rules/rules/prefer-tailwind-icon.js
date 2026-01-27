@@ -119,7 +119,7 @@ export default {
     docs: {
       description: 'Prefer Tailwind CSS icon classes over icon library components',
     },
-    fixable: 'code',
+    hasSuggestions: true,
     schema: [
       {
         type: 'object',
@@ -268,35 +268,45 @@ export default {
             componentName,
             source: iconInfo.source,
           },
-          fix(fixer) {
-            const fixes = []
+          suggest: [
+            {
+              messageId: 'preferTailwindIcon',
+              data: {
+                iconClass,
+                componentName,
+                source: iconInfo.source,
+              },
+              fix(fixer) {
+                const fixes = []
 
-            const classValue = newClassName.startsWith('`')
-              ? `{${newClassName}}`
-              : `"${newClassName}"`
+                const classValue = newClassName.startsWith('`')
+                  ? `{${newClassName}}`
+                  : `"${newClassName}"`
 
-            const otherAttrs = node.attributes
-              .filter(attr => !(attr.type === 'JSXAttribute' && excludedAttrs.includes(attr.name.name)))
-              .map(attr => sourceCode.getText(attr))
-              .join(' ')
+                const otherAttrs = node.attributes
+                  .filter(attr => !(attr.type === 'JSXAttribute' && excludedAttrs.includes(attr.name.name)))
+                  .map(attr => sourceCode.getText(attr))
+                  .join(' ')
 
-            const attrsStr = otherAttrs
-              ? `className=${classValue} ${otherAttrs}`
-              : `className=${classValue}`
+                const attrsStr = otherAttrs
+                  ? `className=${classValue} ${otherAttrs}`
+                  : `className=${classValue}`
 
-            if (isSelfClosing) {
-              fixes.push(fixer.replaceText(parent, `<span ${attrsStr} />`))
-            }
-            else {
-              const closingElement = parent.closingElement
-              fixes.push(fixer.replaceText(node, `<span ${attrsStr}>`))
-              if (closingElement) {
-                fixes.push(fixer.replaceText(closingElement, '</span>'))
-              }
-            }
+                if (isSelfClosing) {
+                  fixes.push(fixer.replaceText(parent, `<span ${attrsStr} />`))
+                }
+                else {
+                  const closingElement = parent.closingElement
+                  fixes.push(fixer.replaceText(node, `<span ${attrsStr}>`))
+                  if (closingElement) {
+                    fixes.push(fixer.replaceText(closingElement, '</span>'))
+                  }
+                }
 
-            return fixes
-          },
+                return fixes
+              },
+            },
+          ],
         })
       },
 
