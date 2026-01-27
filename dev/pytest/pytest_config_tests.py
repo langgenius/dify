@@ -93,8 +93,12 @@ API_CONFIG_SET = set(dotenv_values(Path("api") / Path(".env.example")).keys())
 DOCKER_CONFIG_SET = set(dotenv_values(Path("docker") / Path(".env.example")).keys())
 DOCKER_COMPOSE_CONFIG_SET = set()
 
-with open(Path("docker") / Path("docker-compose.yaml")) as f:
-    DOCKER_COMPOSE_CONFIG_SET = set(yaml.safe_load(f.read())["x-shared-env"].keys())
+# Read environment variables from the split env files used by docker-compose
+env_file_categories = ["global", "server", "security", "database", "redis", "storage", "vectorstore"]
+for category in env_file_categories:
+    env_file_path = Path("docker") / Path("envs") / Path(f"{category}.env.example")
+    if env_file_path.exists():
+        DOCKER_COMPOSE_CONFIG_SET.update(set(dotenv_values(env_file_path).keys()))
 
 
 def test_yaml_config():
