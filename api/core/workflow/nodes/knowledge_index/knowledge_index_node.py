@@ -364,7 +364,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                     # Set Flask application context in worker thread
                     if flask_app:
                         with flask_app.app_context():
-                            summary = ParagraphIndexProcessor.generate_summary(
+                            summary, _ = ParagraphIndexProcessor.generate_summary(
                                 tenant_id=dataset.tenant_id,
                                 text=preview_item["content"],
                                 summary_index_setting=summary_index_setting,
@@ -373,7 +373,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                                 preview_item["summary"] = summary
                     else:
                         # Fallback: try without app context (may fail)
-                        summary = ParagraphIndexProcessor.generate_summary(
+                        summary, _ = ParagraphIndexProcessor.generate_summary(
                             tenant_id=dataset.tenant_id,
                             text=preview_item["content"],
                             summary_index_setting=summary_index_setting,

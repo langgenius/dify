@@ -18,6 +18,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.provider_manager import ProviderManager
 from core.rag.cleaner.clean_processor import CleanProcessor
@@ -295,11 +296,11 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             if flask_app:
                 # Ensure Flask app context in worker thread
                 with flask_app.app_context():
-                    summary = self.generate_summary(tenant_id, preview.content, summary_index_setting)
+                    summary, _ = self.generate_summary(tenant_id, preview.content, summary_index_setting)
                     preview.summary = summary
             else:
                 # Fallback: try without app context (may fail)
-                summary = self.generate_summary(tenant_id, preview.content, summary_index_setting)
+                summary, _ = self.generate_summary(tenant_id, preview.content, summary_index_setting)
                 preview.summary = summary
 
         # Generate summaries concurrently using ThreadPoolExecutor
@@ -356,7 +357,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         text: str,
         summary_index_setting: dict | None = None,
         segment_id: str | None = None,
-    ) -> str:
+    ) -> tuple[str, LLMUsage]:
         """
         Generate summary for the given text using ModelInstance.invoke_llm and the default or custom summary prompt,
         and supports vision models by including images from the segment attachments or text content.
@@ -366,6 +367,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             text: Text content to summarize
             summary_index_setting: Summary index configuration
             segment_id: Optional segment ID to fetch attachments from SegmentAttachmentBinding table
+
+        Returns:
+            Tuple of (summary_content, llm_usage) where llm_usage is LLMUsage object
         """
         if not summary_index_setting or not summary_index_setting.get("enable"):
             raise ValueError("summary_index_setting is required and must be enabled to generate summary.")
@@ -432,7 +436,19 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         result = model_instance.invoke_llm(prompt_messages=prompt_messages, model_parameters={}, stream=False)
 
-        return getattr(result.message, "content", "")
+        summary_content = getattr(result.message, "content", "")
+        usage = result.usage
+
+        # Deduct quota for summary generation (same as workflow nodes)
+        from core.workflow.nodes.llm import llm_utils
+
+        try:
+            llm_utils.deduct_llm_quota(tenant_id=tenant_id, model_instance=model_instance, usage=usage)
+        except Exception as e:
+            # Log but don't fail summary generation if quota deduction fails
+            logger.warning("Failed to deduct quota for summary generation: %s", str(e))
+
+        return summary_content, usage
 
     @staticmethod
     def _extract_images_from_text(tenant_id: str, text: str) -> list[File]:
