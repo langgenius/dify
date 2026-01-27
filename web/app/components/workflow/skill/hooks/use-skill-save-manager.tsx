@@ -157,7 +157,7 @@ export const SkillSaveProvider = ({
       content: snapshot.content,
       ...(snapshot.metadata ? { metadata: snapshot.metadata } : {}),
     })
-    const nextData: CachedFileContent = {
+    const nextData: CachedFileContent & { content: string } = {
       ...(existing && typeof existing === 'object' ? existing : {}),
       content: serialized,
     }
