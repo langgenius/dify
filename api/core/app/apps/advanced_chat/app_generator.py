@@ -35,7 +35,7 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
-from core.sandbox import Sandbox, SandboxManager
+from core.sandbox import Sandbox
 from core.workflow.repositories.draft_variable_repository import (
     DraftVariableSaverFactory,
 )
@@ -50,6 +50,7 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.workflow_features import WorkflowFeatures
 from services.conversation_service import ConversationService
 from services.sandbox.sandbox_provider_service import SandboxProviderService
+from services.sandbox.sandbox_service import SandboxService
 from services.workflow_draft_variable_service import (
     DraftVarLoader,
     WorkflowDraftVariableService,
@@ -528,7 +529,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                         application_generate_entity.app_config.tenant_id
                     )
                     if workflow.version == Workflow.VERSION_DRAFT:
-                        sandbox = SandboxManager.create_draft(
+                        sandbox = SandboxService.create_draft(
                             tenant_id=application_generate_entity.app_config.tenant_id,
                             app_id=application_generate_entity.app_config.app_id,
                             user_id=application_generate_entity.user_id,
@@ -537,7 +538,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     else:
                         if application_generate_entity.workflow_run_id is None:
                             raise ValueError("workflow_run_id is required when sandbox is enabled")
-                        sandbox = SandboxManager.create(
+                        sandbox = SandboxService.create(
                             tenant_id=application_generate_entity.app_config.tenant_id,
                             app_id=application_generate_entity.app_config.app_id,
                             user_id=application_generate_entity.user_id,

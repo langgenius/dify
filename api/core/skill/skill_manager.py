@@ -1,9 +1,8 @@
 import logging
 
-from core.app_assets.storage import AppAssetStorage, AssetPath
+from core.app_assets.storage import AssetPath
 from core.skill.entities.skill_bundle import SkillBundle
-from extensions.ext_redis import redis_client
-from extensions.ext_storage import storage
+from services.app_asset_service import AppAssetService
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +15,7 @@ class SkillManager:
         assets_id: str,
     ) -> SkillBundle:
         asset_path = AssetPath.skill_bundle(tenant_id, app_id, assets_id)
-        data = AppAssetStorage(storage.storage_runner, redis_client=redis_client).load(asset_path)
+        data = AppAssetService.get_storage().load(asset_path)
         return SkillBundle.model_validate_json(data)
 
     @staticmethod
@@ -27,7 +26,7 @@ class SkillManager:
         bundle: SkillBundle,
     ) -> None:
         asset_path = AssetPath.skill_bundle(tenant_id, app_id, assets_id)
-        AppAssetStorage(storage.storage_runner, redis_client=redis_client).save(
+        AppAssetService.get_storage().save(
             asset_path,
             bundle.model_dump_json(indent=2).encode("utf-8"),
         )

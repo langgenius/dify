@@ -4,6 +4,7 @@ import io
 import logging
 import re
 import zipfile
+from uuid import uuid4
 
 import yaml
 from sqlalchemy.orm import Session
@@ -15,13 +16,13 @@ from core.app.entities.app_bundle_entities import (
     BundleFormatError,
     ZipSecurityError,
 )
-from core.app_assets.converters import tree_to_asset_items
-from core.app_assets.packager import AssetZipPackager
-from core.app_assets.storage import app_asset_storage
+from core.app_assets.storage import AssetPath
 from core.app_bundle import SourceZipExtractor
+from core.zip_sandbox import SandboxDownloadItem, ZipSandbox
 from extensions.ext_database import db
 from models import Account, App
 
+from .app_asset_package_service import AppAssetPackageService
 from .app_asset_service import AppAssetService
 from .app_dsl_service import AppDslService, Import
 
@@ -54,7 +55,7 @@ class AppBundleService:
         )
 
         # 2. Publish assets (bound to workflow_id)
-        AppAssetService.publish(
+        AppAssetPackageService.publish(
             session=session,
             app_model=app_model,
             account_id=account.id,
@@ -65,31 +66,61 @@ class AppBundleService:
 
     @staticmethod
     def export_bundle(
+        *,
         app_model: App,
+        account_id: str,
         include_secret: bool = False,
         workflow_id: str | None = None,
+        expires_in: int = 10 * 60,
     ) -> BundleExportResult:
+        """Export bundle and return a temporary download URL.
+
+        Uses sandbox VM to build the ZIP, avoiding memory pressure in API process.
+        """
+        tenant_id = app_model.tenant_id
+        app_id = app_model.id
+        safe_name = AppBundleService._sanitize_filename(app_model.name)
+        filename = f"{safe_name}.zip"
+
+        export_id = uuid4().hex
+        export_path = AssetPath.bundle_export_zip(tenant_id, app_id, export_id)
+        asset_storage = AppAssetService.get_storage()
+        upload_url = asset_storage.get_upload_url(export_path, expires_in)
+
         dsl_content = AppDslService.export_dsl(
             app_model=app_model,
             include_secret=include_secret,
             workflow_id=workflow_id,
         )
 
-        safe_name = AppBundleService._sanitize_filename(app_model.name)
-        assets_prefix = safe_name
+        with ZipSandbox(tenant_id=tenant_id, user_id=account_id, app_id="app-bundle-export") as zs:
+            zs.write_file(f"bundle_root/{safe_name}.yml", dsl_content.encode("utf-8"))
 
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr(f"{safe_name}.yml", dsl_content.encode("utf-8"))
+            # Published assets: use stored source zip and unzip into <safe_name>/...
+            if workflow_id is not None:
+                source_zip_path = AssetPath.source_zip(tenant_id, app_id, workflow_id)
+                source_url = asset_storage.get_download_url(source_zip_path, expires_in)
+                zs.download_archive(source_url, path="tmp/source_assets.zip")
+                zs.unzip(archive_path="tmp/source_assets.zip", dest_dir=f"bundle_root/{safe_name}")
+            else:
+                # Draft assets: download individual files and place under <safe_name>/...
+                asset_items = AppAssetService.get_draft_assets(tenant_id, app_id)
+                asset_urls = asset_storage.get_download_urls(
+                    [AssetPath.draft(tenant_id, app_id, a.asset_id) for a in asset_items], expires_in
+                )
+                zs.download_items(
+                    [
+                        SandboxDownloadItem(url=url, path=f"{safe_name}/{a.path}")
+                        for a, url in zip(asset_items, asset_urls, strict=True)
+                    ],
+                    dest_dir="bundle_root",
+                )
 
-            assets_zip_bytes = AppBundleService._get_assets_zip_bytes(app_model, workflow_id)
-            if assets_zip_bytes:
-                AppBundleService._merge_assets_into_bundle(zf, assets_zip_bytes, assets_prefix)
+            archive = zs.zip(src="bundle_root", include_base=False)
+            zs.upload(archive, upload_url)
 
-        return BundleExportResult(
-            zip_bytes=zip_buffer.getvalue(),
-            filename=f"{safe_name}.zip",
-        )
+        download_url = asset_storage.get_download_url(export_path, expires_in)
+        return BundleExportResult(download_url=download_url, filename=filename)
 
     @staticmethod
     def import_bundle(
@@ -130,51 +161,6 @@ class AppBundleService:
             )
 
         return import_result
-
-    @staticmethod
-    def _get_assets_zip_bytes(app_model: App, workflow_id: str | None) -> bytes | None:
-        tenant_id = app_model.tenant_id
-        app_id = app_model.id
-
-        if workflow_id is None:
-            return AppBundleService._package_draft_assets(app_model)
-        else:
-            return AppAssetService.get_source_zip_bytes(tenant_id, app_id, workflow_id)
-
-    @staticmethod
-    def _package_draft_assets(app_model: App) -> bytes | None:
-        assets = AppAssetService.get_assets(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            user_id="",
-            is_draft=True,
-        )
-        if not assets:
-            return None
-
-        tree = assets.asset_tree
-        if not tree.nodes:
-            return None
-
-        asset_storage = app_asset_storage
-        items = tree_to_asset_items(tree, app_model.tenant_id, app_model.id, asset_storage)
-        packager = AssetZipPackager(asset_storage.storage)
-        return packager.package(items)
-
-    @staticmethod
-    def _merge_assets_into_bundle(
-        bundle_zf: zipfile.ZipFile,
-        assets_zip_bytes: bytes,
-        prefix: str,
-    ) -> None:
-        with zipfile.ZipFile(io.BytesIO(assets_zip_bytes), "r") as assets_zf:
-            for info in assets_zf.infolist():
-                content = assets_zf.read(info)
-                new_path = f"{prefix}/{info.filename}"
-                if info.is_dir():
-                    bundle_zf.writestr(zipfile.ZipInfo(new_path), "")
-                else:
-                    bundle_zf.writestr(new_path, content)
 
     @staticmethod
     def _extract_dsl_from_bundle(zip_bytes: bytes) -> tuple[str, str | None]:
@@ -221,7 +207,7 @@ class AppBundleService:
             logger.warning("App not found for asset import: %s", app_id)
             return
 
-        asset_storage = app_asset_storage
+        asset_storage = AppAssetService.get_storage()
         extractor = SourceZipExtractor(asset_storage)
         try:
             folders, files = extractor.extract_entries(

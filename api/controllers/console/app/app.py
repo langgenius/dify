@@ -677,26 +677,19 @@ class AppExportBundleApi(Resource):
     @account_initialization_required
     @edit_permission_required
     def get(self, app_model):
-        from io import BytesIO
-
-        from flask import send_file
-
         from services.app_bundle_service import AppBundleService
 
         args = AppExportBundleQuery.model_validate(request.args.to_dict(flat=True))
+        current_user, _ = current_account_with_tenant()
 
         result = AppBundleService.export_bundle(
             app_model=app_model,
+            account_id=str(current_user.id),
             include_secret=args.include_secret,
             workflow_id=args.workflow_id,
         )
 
-        return send_file(
-            BytesIO(result.zip_bytes),
-            mimetype="application/zip",
-            as_attachment=True,
-            download_name=result.filename,
-        )
+        return result.model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/name")

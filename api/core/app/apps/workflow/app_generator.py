@@ -31,7 +31,7 @@ from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
-from core.sandbox import Sandbox, SandboxManager
+from core.sandbox import Sandbox
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -44,6 +44,7 @@ from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTrigger
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow_features import WorkflowFeatures
 from services.sandbox.sandbox_provider_service import SandboxProviderService
+from services.sandbox.sandbox_service import SandboxService
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
@@ -503,14 +504,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         application_generate_entity.app_config.tenant_id
                     )
                     if workflow.version == Workflow.VERSION_DRAFT:
-                        sandbox = SandboxManager.create_draft(
+                        sandbox = SandboxService.create_draft(
                             tenant_id=application_generate_entity.app_config.tenant_id,
                             app_id=application_generate_entity.app_config.app_id,
                             user_id=application_generate_entity.user_id,
                             sandbox_provider=sandbox_provider,
                         )
                     else:
-                        sandbox = SandboxManager.create(
+                        sandbox = SandboxService.create(
                             tenant_id=application_generate_entity.app_config.tenant_id,
                             app_id=application_generate_entity.app_config.app_id,
                             user_id=application_generate_entity.user_id,

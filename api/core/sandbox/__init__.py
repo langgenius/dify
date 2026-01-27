@@ -15,13 +15,13 @@ if TYPE_CHECKING:
     from .builder import SandboxBuilder, VMConfig
     from .entities import AppAssets, DifyCli, SandboxProviderApiEntity, SandboxType
     from .initializer import (
-        AppAssetsInitializer,
         AsyncSandboxInitializer,
-        DifyCliInitializer,
-        DraftAppAssetsInitializer,
         SandboxInitializer,
         SyncSandboxInitializer,
     )
+    from .initializer.app_assets_initializer import AppAssetsInitializer
+    from .initializer.dify_cli_initializer import DifyCliInitializer
+    from .initializer.draft_app_assets_initializer import DraftAppAssetsInitializer
     from .manager import SandboxManager
     from .sandbox import Sandbox
     from .storage import ArchiveSandboxStorage, SandboxStorage
@@ -58,17 +58,17 @@ __all__ = [
 
 _LAZY_IMPORTS = {
     "AppAssets": ("core.sandbox.entities", "AppAssets"),
-    "AppAssetsInitializer": ("core.sandbox.initializer", "AppAssetsInitializer"),
+    "AppAssetsInitializer": ("core.sandbox.initializer.app_assets_initializer", "AppAssetsInitializer"),
     "AsyncSandboxInitializer": ("core.sandbox.initializer", "AsyncSandboxInitializer"),
     "ArchiveSandboxStorage": ("core.sandbox.storage", "ArchiveSandboxStorage"),
     "DifyCli": ("core.sandbox.entities", "DifyCli"),
     "DifyCliBinary": ("core.sandbox.bash.dify_cli", "DifyCliBinary"),
     "DifyCliConfig": ("core.sandbox.bash.dify_cli", "DifyCliConfig"),
     "DifyCliEnvConfig": ("core.sandbox.bash.dify_cli", "DifyCliEnvConfig"),
-    "DifyCliInitializer": ("core.sandbox.initializer", "DifyCliInitializer"),
+    "DifyCliInitializer": ("core.sandbox.initializer.dify_cli_initializer", "DifyCliInitializer"),
     "DifyCliLocator": ("core.sandbox.bash.dify_cli", "DifyCliLocator"),
     "DifyCliToolConfig": ("core.sandbox.bash.dify_cli", "DifyCliToolConfig"),
-    "DraftAppAssetsInitializer": ("core.sandbox.initializer", "DraftAppAssetsInitializer"),
+    "DraftAppAssetsInitializer": ("core.sandbox.initializer.draft_app_assets_initializer", "DraftAppAssetsInitializer"),
     "Sandbox": ("core.sandbox.sandbox", "Sandbox"),
     "SandboxBashSession": ("core.sandbox.bash.session", "SandboxBashSession"),
     "SandboxBuilder": ("core.sandbox.builder", "SandboxBuilder"),

@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.files import files_ns
-from core.app_assets.storage import AppAssetSigner, AssetPath, app_asset_storage
+from core.app_assets.storage import AppAssetSigner, AssetPath
 from extensions.ext_storage import storage
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
@@ -58,7 +58,7 @@ class AppAssetDownloadApi(Resource):
         ):
             raise Forbidden("Invalid or expired download link")
 
-        storage_key = app_asset_storage.get_storage_key(asset_path)
+        storage_key = asset_path.get_storage_key()
 
         try:
             generator = storage.load_stream(storage_key)

@@ -9,7 +9,6 @@ from core.app_assets.storage import AppAssetStorage, AssetPath, AssetPathBase
 from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
 from core.skill.skill_compiler import SkillCompiler
-from core.skill.skill_manager import SkillManager
 
 from .base import BuildContext
 
@@ -48,6 +47,8 @@ class SkillBuilder:
         self._nodes.append((node, path))
 
     def build(self, tree: AppAssetFileTree, ctx: BuildContext) -> list[AssetItem]:
+        from core.skill.skill_manager import SkillManager
+
         if not self._nodes:
             bundle = SkillBundle(assets_id=ctx.build_id)
             SkillManager.save_bundle(ctx.tenant_id, ctx.app_id, ctx.build_id, bundle)
@@ -74,7 +75,7 @@ class SkillBuilder:
                     node=skill.node,
                     path=skill.path,
                     ref=resolved_ref,
-                    storage_key=self._storage.get_storage_key(resolved_ref),
+                    storage_key=resolved_ref.get_storage_key(),
                     content_bytes=artifact.content.encode("utf-8"),
                 )
             )

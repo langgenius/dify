@@ -6,29 +6,20 @@ import hmac
 import os
 import time
 import urllib.parse
+from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Any, ClassVar
 from uuid import UUID
 
 from configs import dify_config
-from extensions.ext_redis import redis_client
-from extensions.ext_storage import storage
 from extensions.storage.base_storage import BaseStorage
 from extensions.storage.cached_presign_storage import CachedPresignStorage
-from extensions.storage.silent_storage import SilentStorage
 from libs import rsa
 
 _ASSET_BASE = "app_assets"
 _SILENT_STORAGE_NOT_FOUND = b"File Not Found"
-_PATH_TEMPLATES: dict[str, str] = {
-    "draft": f"{_ASSET_BASE}/{{t}}/{{a}}/draft/{{r}}",
-    "build-zip": f"{_ASSET_BASE}/{{t}}/{{a}}/artifacts/{{r}}.zip",
-    "resolved": f"{_ASSET_BASE}/{{t}}/{{a}}/artifacts/{{r}}/resolved/{{s}}",
-    "skill-bundle": f"{_ASSET_BASE}/{{t}}/{{a}}/artifacts/{{r}}/skill_artifact_set.json",
-    "source-zip": f"{_ASSET_BASE}/{{t}}/{{a}}/sources/{{r}}.zip",
-}
-_ASSET_PATH_REGISTRY: dict[str, tuple[bool, Callable[..., AssetPathBase]]] = {}
+_ASSET_PATH_REGISTRY: dict[str, tuple[bool, Callable[..., SignedAssetPath]]] = {}
 
 
 def _require_uuid(value: str, field_name: str) -> None:
@@ -38,12 +29,12 @@ def _require_uuid(value: str, field_name: str) -> None:
         raise ValueError(f"{field_name} must be a UUID") from exc
 
 
-def register_asset_path(asset_type: str, *, requires_node: bool, factory: Callable[..., AssetPathBase]) -> None:
+def register_asset_path(asset_type: str, *, requires_node: bool, factory: Callable[..., SignedAssetPath]) -> None:
     _ASSET_PATH_REGISTRY[asset_type] = (requires_node, factory)
 
 
 @dataclass(frozen=True)
-class AssetPathBase:
+class AssetPathBase(ABC):
     asset_type: ClassVar[str]
     tenant_id: str
     app_id: str
@@ -54,40 +45,54 @@ class AssetPathBase:
         _require_uuid(self.app_id, "app_id")
         _require_uuid(self.resource_id, "resource_id")
 
+    @abstractmethod
     def get_storage_key(self) -> str:
-        return _PATH_TEMPLATES[self.asset_type].format(
-            t=self.tenant_id,
-            a=self.app_id,
-            r=self.resource_id,
-            s=self.signature_sub_resource_id() or "",
-        )
+        raise NotImplementedError
 
-    def signature_resource_id(self) -> str:
-        return self.resource_id
 
-    def signature_sub_resource_id(self) -> str:
-        return ""
+class SignedAssetPath(AssetPathBase, ABC):
+    @abstractmethod
+    def signature_parts(self) -> tuple[str, str | None]:
+        """Return (resource_id, sub_resource_id) used for signing.
 
+        sub_resource_id should be None when not applicable.
+        """
+
+    @abstractmethod
     def proxy_path_parts(self) -> list[str]:
-        parts = [self.asset_type, self.tenant_id, self.app_id, self.signature_resource_id()]
-        sub_resource_id = self.signature_sub_resource_id()
-        if sub_resource_id:
-            parts.append(sub_resource_id)
-        return parts
+        raise NotImplementedError
 
 
 @dataclass(frozen=True)
-class _DraftAssetPath(AssetPathBase):
+class _DraftAssetPath(SignedAssetPath):
     asset_type: ClassVar[str] = "draft"
 
+    def get_storage_key(self) -> str:
+        return f"{_ASSET_BASE}/{self.tenant_id}/{self.app_id}/draft/{self.resource_id}"
+
+    def signature_parts(self) -> tuple[str, str | None]:
+        return (self.resource_id, None)
+
+    def proxy_path_parts(self) -> list[str]:
+        return [self.asset_type, self.tenant_id, self.app_id, self.resource_id]
+
 
 @dataclass(frozen=True)
-class _BuildZipAssetPath(AssetPathBase):
+class _BuildZipAssetPath(SignedAssetPath):
     asset_type: ClassVar[str] = "build-zip"
 
+    def get_storage_key(self) -> str:
+        return f"{_ASSET_BASE}/{self.tenant_id}/{self.app_id}/artifacts/{self.resource_id}.zip"
+
+    def signature_parts(self) -> tuple[str, str | None]:
+        return (self.resource_id, None)
+
+    def proxy_path_parts(self) -> list[str]:
+        return [self.asset_type, self.tenant_id, self.app_id, self.resource_id]
+
 
 @dataclass(frozen=True)
-class _ResolvedAssetPath(AssetPathBase):
+class _ResolvedAssetPath(SignedAssetPath):
     asset_type: ClassVar[str] = "resolved"
     node_id: str
 
@@ -95,40 +100,85 @@ class _ResolvedAssetPath(AssetPathBase):
         super().__post_init__()
         _require_uuid(self.node_id, "node_id")
 
-    def signature_sub_resource_id(self) -> str:
-        return self.node_id
+    def get_storage_key(self) -> str:
+        return (
+            f"{_ASSET_BASE}/{self.tenant_id}/{self.app_id}/artifacts/"
+            f"{self.resource_id}/resolved/{self.node_id}"
+        )
+
+    def signature_parts(self) -> tuple[str, str | None]:
+        return (self.resource_id, self.node_id)
+
+    def proxy_path_parts(self) -> list[str]:
+        return [self.asset_type, self.tenant_id, self.app_id, self.resource_id, self.node_id]
 
 
 @dataclass(frozen=True)
-class _SkillBundleAssetPath(AssetPathBase):
+class _SkillBundleAssetPath(SignedAssetPath):
     asset_type: ClassVar[str] = "skill-bundle"
 
+    def get_storage_key(self) -> str:
+        return f"{_ASSET_BASE}/{self.tenant_id}/{self.app_id}/artifacts/{self.resource_id}/skill_artifact_set.json"
+
+    def signature_parts(self) -> tuple[str, str | None]:
+        return (self.resource_id, None)
+
+    def proxy_path_parts(self) -> list[str]:
+        return [self.asset_type, self.tenant_id, self.app_id, self.resource_id]
+
 
 @dataclass(frozen=True)
-class _SourceZipAssetPath(AssetPathBase):
+class _SourceZipAssetPath(SignedAssetPath):
     asset_type: ClassVar[str] = "source-zip"
+
+    def get_storage_key(self) -> str:
+        return f"{_ASSET_BASE}/{self.tenant_id}/{self.app_id}/sources/{self.resource_id}.zip"
+
+    def signature_parts(self) -> tuple[str, str | None]:
+        return (self.resource_id, None)
+
+    def proxy_path_parts(self) -> list[str]:
+        return [self.asset_type, self.tenant_id, self.app_id, self.resource_id]
+
+
+@dataclass(frozen=True)
+class _BundleExportZipAssetPath(SignedAssetPath):
+    asset_type: ClassVar[str] = "bundle-export-zip"
+
+    def get_storage_key(self) -> str:
+        return f"{_ASSET_BASE}/{self.tenant_id}/{self.app_id}/bundle_exports/{self.resource_id}.zip"
+
+    def signature_parts(self) -> tuple[str, str | None]:
+        return (self.resource_id, None)
+
+    def proxy_path_parts(self) -> list[str]:
+        return [self.asset_type, self.tenant_id, self.app_id, self.resource_id]
 
 
 class AssetPath:
     @staticmethod
-    def draft(tenant_id: str, app_id: str, node_id: str) -> AssetPathBase:
+    def draft(tenant_id: str, app_id: str, node_id: str) -> SignedAssetPath:
         return _DraftAssetPath(tenant_id=tenant_id, app_id=app_id, resource_id=node_id)
 
     @staticmethod
-    def build_zip(tenant_id: str, app_id: str, assets_id: str) -> AssetPathBase:
+    def build_zip(tenant_id: str, app_id: str, assets_id: str) -> SignedAssetPath:
         return _BuildZipAssetPath(tenant_id=tenant_id, app_id=app_id, resource_id=assets_id)
 
     @staticmethod
-    def resolved(tenant_id: str, app_id: str, assets_id: str, node_id: str) -> AssetPathBase:
+    def resolved(tenant_id: str, app_id: str, assets_id: str, node_id: str) -> SignedAssetPath:
         return _ResolvedAssetPath(tenant_id=tenant_id, app_id=app_id, resource_id=assets_id, node_id=node_id)
 
     @staticmethod
-    def skill_bundle(tenant_id: str, app_id: str, assets_id: str) -> AssetPathBase:
+    def skill_bundle(tenant_id: str, app_id: str, assets_id: str) -> SignedAssetPath:
         return _SkillBundleAssetPath(tenant_id=tenant_id, app_id=app_id, resource_id=assets_id)
 
     @staticmethod
-    def source_zip(tenant_id: str, app_id: str, workflow_id: str) -> AssetPathBase:
+    def source_zip(tenant_id: str, app_id: str, workflow_id: str) -> SignedAssetPath:
         return _SourceZipAssetPath(tenant_id=tenant_id, app_id=app_id, resource_id=workflow_id)
+
+    @staticmethod
+    def bundle_export_zip(tenant_id: str, app_id: str, export_id: str) -> SignedAssetPath:
+        return _BundleExportZipAssetPath(tenant_id=tenant_id, app_id=app_id, resource_id=export_id)
 
     @staticmethod
     def from_components(
@@ -137,7 +187,7 @@ class AssetPath:
         app_id: str,
         resource_id: str,
         sub_resource_id: str | None = None,
-    ) -> AssetPathBase:
+    ) -> SignedAssetPath:
         entry = _ASSET_PATH_REGISTRY.get(asset_type)
         if not entry:
             raise ValueError(f"Unsupported asset type: {asset_type}")
@@ -156,6 +206,7 @@ register_asset_path("build-zip", requires_node=False, factory=AssetPath.build_zi
 register_asset_path("resolved", requires_node=True, factory=AssetPath.resolved)
 register_asset_path("skill-bundle", requires_node=False, factory=AssetPath.skill_bundle)
 register_asset_path("source-zip", requires_node=False, factory=AssetPath.source_zip)
+register_asset_path("bundle-export-zip", requires_node=False, factory=AssetPath.bundle_export_zip)
 
 
 class AppAssetSigner:
@@ -165,7 +216,7 @@ class AppAssetSigner:
     OPERATION_UPLOAD = "upload"
 
     @classmethod
-    def create_download_signature(cls, asset_path: AssetPathBase, expires_at: int, nonce: str) -> str:
+    def create_download_signature(cls, asset_path: SignedAssetPath, expires_at: int, nonce: str) -> str:
         return cls._create_signature(
             asset_path=asset_path,
             operation=cls.OPERATION_DOWNLOAD,
@@ -174,7 +225,7 @@ class AppAssetSigner:
         )
 
     @classmethod
-    def create_upload_signature(cls, asset_path: AssetPathBase, expires_at: int, nonce: str) -> str:
+    def create_upload_signature(cls, asset_path: SignedAssetPath, expires_at: int, nonce: str) -> str:
         return cls._create_signature(
             asset_path=asset_path,
             operation=cls.OPERATION_UPLOAD,
@@ -183,7 +234,7 @@ class AppAssetSigner:
         )
 
     @classmethod
-    def verify_download_signature(cls, asset_path: AssetPathBase, expires_at: int, nonce: str, sign: str) -> bool:
+    def verify_download_signature(cls, asset_path: SignedAssetPath, expires_at: int, nonce: str, sign: str) -> bool:
         return cls._verify_signature(
             asset_path=asset_path,
             operation=cls.OPERATION_DOWNLOAD,
@@ -193,7 +244,7 @@ class AppAssetSigner:
         )
 
     @classmethod
-    def verify_upload_signature(cls, asset_path: AssetPathBase, expires_at: int, nonce: str, sign: str) -> bool:
+    def verify_upload_signature(cls, asset_path: SignedAssetPath, expires_at: int, nonce: str, sign: str) -> bool:
         return cls._verify_signature(
             asset_path=asset_path,
             operation=cls.OPERATION_UPLOAD,
@@ -206,7 +257,7 @@ class AppAssetSigner:
     def _verify_signature(
         cls,
         *,
-        asset_path: AssetPathBase,
+        asset_path: SignedAssetPath,
         operation: str,
         expires_at: int,
         nonce: str,
@@ -234,7 +285,7 @@ class AppAssetSigner:
         return True
 
     @classmethod
-    def _create_signature(cls, *, asset_path: AssetPathBase, operation: str, expires_at: int, nonce: str) -> str:
+    def _create_signature(cls, *, asset_path: SignedAssetPath, operation: str, expires_at: int, nonce: str) -> str:
         key = cls._tenant_key(asset_path.tenant_id)
         message = cls._signature_message(
             asset_path=asset_path,
@@ -246,12 +297,12 @@ class AppAssetSigner:
         return base64.urlsafe_b64encode(sign).decode()
 
     @classmethod
-    def _signature_message(cls, *, asset_path: AssetPathBase, operation: str, expires_at: int, nonce: str) -> str:
-        sub_resource_id = asset_path.signature_sub_resource_id()
+    def _signature_message(cls, *, asset_path: SignedAssetPath, operation: str, expires_at: int, nonce: str) -> str:
+        resource_id, sub_resource_id = asset_path.signature_parts()
         return (
             f"{cls.SIGNATURE_PREFIX}|{cls.SIGNATURE_VERSION}|{operation}|"
             f"{asset_path.asset_type}|{asset_path.tenant_id}|{asset_path.app_id}|"
-            f"{asset_path.signature_resource_id()}|{sub_resource_id}|{expires_at}|{nonce}"
+            f"{resource_id}|{sub_resource_id or ''}|{expires_at}|{nonce}"
         )
 
     @classmethod
@@ -301,7 +352,7 @@ class AppAssetStorage:
     def get_storage_key(self, asset_path: AssetPathBase) -> str:
         return asset_path.get_storage_key()
 
-    def get_download_url(self, asset_path: AssetPathBase, expires_in: int = 3600) -> str:
+    def get_download_url(self, asset_path: SignedAssetPath, expires_in: int = 3600) -> str:
         storage_key = self.get_storage_key(asset_path)
         try:
             return self._storage.get_download_url(storage_key, expires_in)
@@ -312,7 +363,7 @@ class AppAssetStorage:
 
     def get_download_urls(
         self,
-        asset_paths: Iterable[AssetPathBase],
+        asset_paths: Iterable[SignedAssetPath],
         expires_in: int = 3600,
     ) -> list[str]:
         asset_paths_list = list(asset_paths)
@@ -327,7 +378,7 @@ class AppAssetStorage:
 
     def get_upload_url(
         self,
-        asset_path: AssetPathBase,
+        asset_path: SignedAssetPath,
         expires_in: int = 3600,
     ) -> str:
         storage_key = self.get_storage_key(asset_path)
@@ -338,7 +389,7 @@ class AppAssetStorage:
 
         return self._generate_signed_proxy_upload_url(asset_path, expires_in)
 
-    def _generate_signed_proxy_download_url(self, asset_path: AssetPathBase, expires_in: int) -> str:
+    def _generate_signed_proxy_download_url(self, asset_path: SignedAssetPath, expires_in: int) -> str:
         expires_in = min(expires_in, dify_config.FILES_ACCESS_TIMEOUT)
         expires_at = int(time.time()) + max(expires_in, 1)
         nonce = os.urandom(16).hex()
@@ -349,7 +400,7 @@ class AppAssetStorage:
         query = urllib.parse.urlencode({"expires_at": expires_at, "nonce": nonce, "sign": sign})
         return f"{url}?{query}"
 
-    def _generate_signed_proxy_upload_url(self, asset_path: AssetPathBase, expires_in: int) -> str:
+    def _generate_signed_proxy_upload_url(self, asset_path: SignedAssetPath, expires_in: int) -> str:
         expires_in = min(expires_in, dify_config.FILES_ACCESS_TIMEOUT)
         expires_at = int(time.time()) + max(expires_in, 1)
         nonce = os.urandom(16).hex()
@@ -361,33 +412,7 @@ class AppAssetStorage:
         return f"{url}?{query}"
 
     @staticmethod
-    def _build_proxy_url(*, base_url: str, asset_path: AssetPathBase, action: str) -> str:
+    def _build_proxy_url(*, base_url: str, asset_path: SignedAssetPath, action: str) -> str:
         encoded_parts = [urllib.parse.quote(part, safe="") for part in asset_path.proxy_path_parts()]
         path = "/".join(encoded_parts)
         return f"{base_url}/files/app-assets/{path}/{action}"
-
-
-class _LazyAppAssetStorage:
-    _instance: AppAssetStorage | None
-    _cache_key_prefix: str
-
-    def __init__(self, *, cache_key_prefix: str) -> None:
-        self._instance = None
-        self._cache_key_prefix = cache_key_prefix
-
-    def _get_instance(self) -> AppAssetStorage:
-        if self._instance is None:
-            if not hasattr(storage, "storage_runner"):
-                raise RuntimeError("Storage is not initialized; call storage.init_app before using app_asset_storage")
-            self._instance = AppAssetStorage(
-                storage=SilentStorage(storage.storage_runner),
-                redis_client=redis_client,
-                cache_key_prefix=self._cache_key_prefix,
-            )
-        return self._instance
-
-    def __getattr__(self, name: str):
-        return getattr(self._get_instance(), name)
-
-
-app_asset_storage = _LazyAppAssetStorage(cache_key_prefix="app_assets")

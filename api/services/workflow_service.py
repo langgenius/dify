@@ -14,7 +14,6 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
-from core.sandbox.manager import SandboxManager
 from core.variables import Variable, VariableBase
 from core.workflow.entities import WorkflowNodeExecution
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -44,6 +43,7 @@ from services.billing_service import BillingService
 from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.sandbox.sandbox_provider_service import SandboxProviderService
+from services.sandbox.sandbox_service import SandboxService
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -773,7 +773,7 @@ class WorkflowService:
         sandbox = None
         if draft_workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
             sandbox_provider = SandboxProviderService.get_sandbox_provider(draft_workflow.tenant_id)
-            sandbox = SandboxManager.create_for_single_step(
+            sandbox = SandboxService.create_for_single_step(
                 tenant_id=draft_workflow.tenant_id,
                 app_id=app_model.id,
                 user_id=account.id,

@@ -24,7 +24,7 @@ class ZipSecurityError(Exception):
 
 # Entities
 class BundleExportResult(BaseModel):
-    zip_bytes: bytes = Field(description="ZIP file content as bytes")
+    download_url: str = Field(description="Temporary download URL for the ZIP")
     filename: str = Field(description="Suggested filename for the ZIP")
 
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import posixpath
 from dataclasses import dataclass
 from io import BytesIO
@@ -20,26 +19,38 @@ from core.virtual_environment.__base.helpers import execute, pipeline
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from services.sandbox.sandbox_provider_service import SandboxProviderService
 
+from .cli_strategy import CliZipStrategy
+from .node_strategy import NodeZipStrategy
+from .python_strategy import PythonZipStrategy
+from .strategy import ZipStrategy
+
 
 @dataclass(frozen=True)
-class SandboxArchiveFile:
-    file_path: str
-    size_bytes: int
-    sha256: str
+class SandboxDownloadItem:
+    url: str
+    path: str
+
+
+@dataclass(frozen=True)
+class SandboxFile:
+    """A handle to a file in the sandbox."""
+
+    path: str
 
 
 class ZipSandbox:
-    """A sandbox specifically for archive (tar) operations.
+    """A sandbox for archive (zip) operations.
 
     Usage:
         with ZipSandbox(tenant_id=..., user_id=...) as zs:
-            zs.write_file("a.txt", b"hello")
-            archive = zs.tar()
-            zs.upload(path=archive.file_path, target_url=url)
+            zs.download_items(items)
+            archive = zs.zip()
+            zs.upload(archive, upload_url)
         # VM automatically released on exit
     """
 
     _DEFAULT_TIMEOUT_SECONDS = 60 * 5
+    _STRATEGIES: list[ZipStrategy] = [CliZipStrategy(), PythonZipStrategy(), NodeZipStrategy()]
 
     def __init__(
         self,
@@ -49,7 +60,6 @@ class ZipSandbox:
         app_id: str = "zip-sandbox",
         sandbox_provider_type: str | None = None,
         sandbox_provider_options: dict[str, Any] | None = None,
-        # For testing: allow injecting a VM directly
         _vm: VirtualEnvironment | None = None,
     ) -> None:
         self._tenant_id = tenant_id
@@ -62,6 +72,7 @@ class ZipSandbox:
         self._sandbox: Sandbox | None = None
         self._sandbox_id: str | None = None
         self._vm: VirtualEnvironment | None = None
+        self._strategy: ZipStrategy | None = None
 
     def __enter__(self) -> ZipSandbox:
         self._start()
@@ -79,7 +90,6 @@ class ZipSandbox:
         if self._vm is not None:
             raise RuntimeError("ZipSandbox already started")
 
-        # If VM is injected (for testing), use it directly
         if self._injected_vm is not None:
             self._vm = self._injected_vm
             self._sandbox_id = uuid4().hex
@@ -127,6 +137,7 @@ class ZipSandbox:
         self._vm = None
         self._sandbox = None
         self._sandbox_id = None
+        self._strategy = None
 
     @property
     def vm(self) -> VirtualEnvironment:
@@ -134,10 +145,21 @@ class ZipSandbox:
             raise RuntimeError("ZipSandbox not started. Use 'with ZipSandbox(...) as zs:'")
         return self._vm
 
+    def _get_strategy(self) -> ZipStrategy:
+        if self._strategy is not None:
+            return self._strategy
+
+        for strategy in self._STRATEGIES:
+            if strategy.is_available(self.vm):
+                self._strategy = strategy
+                return strategy
+
+        raise RuntimeError("No available zip backend (zip/python/node+adm-zip)")
+
     # ========== Path utilities ==========
 
     @staticmethod
-    def _normalize_workspace_path(path: str | None) -> str:
+    def _normalize_path(path: str | None) -> str:
         raw = (path or ".").strip()
         if raw == "":
             raw = "."
@@ -163,7 +185,7 @@ class ZipSandbox:
     # ========== File operations ==========
 
     def write_file(self, path: str, data: bytes) -> None:
-        path = self._normalize_workspace_path(path)
+        path = self._normalize_path(path)
         if path in ("", "."):
             raise ValueError("path must point to a file")
 
@@ -173,7 +195,7 @@ class ZipSandbox:
             raise RuntimeError(f"Failed to write file to sandbox: {exc}") from exc
 
     def read_file(self, path: str, *, max_bytes: int = 10 * 1024 * 1024) -> bytes:
-        path = self._normalize_workspace_path(path)
+        path = self._normalize_path(path)
         if max_bytes <= 0:
             raise ValueError("max_bytes must be positive")
 
@@ -192,9 +214,9 @@ class ZipSandbox:
         if not urls:
             return []
 
-        dest_dir = self._normalize_workspace_path(dest_dir)
-
+        dest_dir = self._normalize_path(dest_dir)
         paths = [self._dest_path_for_url(dest_dir, u) for u in urls]
+
         p = pipeline(self.vm)
         p.add(["mkdir", "-p", dest_dir], error_message="Failed to create download directory")
         for url, out_path in zip(urls, paths, strict=True):
@@ -207,14 +229,42 @@ class ZipSandbox:
 
         return paths
 
+    def download_items(self, items: list[SandboxDownloadItem], *, dest_dir: str = ".") -> list[str]:
+        if not items:
+            return []
+
+        dest_dir = self._normalize_path(dest_dir)
+        p = pipeline(self.vm)
+        p.add(["mkdir", "-p", dest_dir], error_message="Failed to create download directory")
+
+        out_paths: list[str] = []
+        for item in items:
+            rel = self._normalize_path(item.path)
+            if rel in ("", "."):
+                raise ValueError("Download item path must point to a file")
+            out_path = posixpath.join(dest_dir, rel)
+            out_paths.append(out_path)
+            out_dir = posixpath.dirname(out_path)
+            if out_dir not in ("", "."):
+                p.add(["mkdir", "-p", out_dir], error_message="Failed to create download directory")
+            p.add(["curl", "-fsSL", item.url, "-o", out_path], error_message="Failed to download file")
+
+        try:
+            p.execute(timeout=self._DEFAULT_TIMEOUT_SECONDS, raise_on_error=True)
+        except Exception as exc:
+            raise RuntimeError(str(exc)) from exc
+
+        return out_paths
+
     def download_archive(self, archive_url: str, *, path: str = "input.tar.gz") -> str:
-        path = self._normalize_workspace_path(path)
+        path = self._normalize_path(path)
 
         dir_path = posixpath.dirname(path)
         p = pipeline(self.vm)
         if dir_path not in ("", "."):
-            p.add(["mkdir", "-p", dir_path], error_message=f"Failed to create archive download directory {dir_path}")
+            p.add(["mkdir", "-p", dir_path], error_message=f"Failed to create directory {dir_path}")
         p.add(["curl", "-fsSL", archive_url, "-o", path], error_message=f"Failed to download archive to {path}")
+
         try:
             p.execute(timeout=self._DEFAULT_TIMEOUT_SECONDS, raise_on_error=True)
         except Exception as exc:
@@ -224,15 +274,12 @@ class ZipSandbox:
 
     # ========== Upload operations ==========
 
-    def upload(self, *, path: str, target_url: str) -> None:
-        path = self._normalize_workspace_path(path)
-        if path in ("", "."):
-            raise ValueError("path must point to a file")
-
+    def upload(self, file: SandboxFile, target_url: str) -> None:
+        """Upload a sandbox file to the given URL."""
         try:
             execute(
                 self.vm,
-                ["curl", "-fsSL", "-X", "PUT", "-T", path, target_url],
+                ["curl", "-fsSL", "-X", "PUT", "-T", file.path, target_url],
                 timeout=self._DEFAULT_TIMEOUT_SECONDS,
                 error_message="Failed to upload file from sandbox",
             )
@@ -241,55 +288,58 @@ class ZipSandbox:
 
     # ========== Archive operations ==========
 
-    def tar(self, src: str = ".", *, out_path: str | None = None) -> SandboxArchiveFile:
-        src = self._normalize_workspace_path(src)
-        if out_path is None:
-            out_path = f"{uuid4().hex}.tar"
-        out_path = self._normalize_workspace_path(out_path)
-        lower_out = out_path.lower()
-        if not (lower_out.endswith(".tar") or lower_out.endswith(".tar.gz") or lower_out.endswith(".tgz")):
-            raise ValueError("out_path must end with .tar/.tar.gz/.tgz")
+    def zip(self, src: str = ".", *, include_base: bool = True) -> SandboxFile:
+        """Create a zip archive and return a handle to it."""
+        src = self._normalize_path(src)
+        out_path = f"/tmp/{uuid4().hex}.zip"
 
-        out_dir = posixpath.dirname(out_path)
-        is_gz = lower_out.endswith(".tar.gz") or lower_out.endswith(".tgz")
-        tar_flag = "-czf" if is_gz else "-cf"
-        is_cwd = src in (".", "")
-
-        # Avoid "archive cannot contain itself" when archiving the current directory.
-        # Create the archive outside the workspace tree and move it into place.
-        tmp_archive = f"/tmp/{uuid4().hex}{'.tar.gz' if is_gz else '.tar'}"
+        cwd = None
+        src_for_strategy = src
+        if src not in (".", "") and not include_base:
+            cwd = src
+            src_for_strategy = "."
 
         try:
-            (
-                pipeline(self.vm)
-                .add(
-                    ["mkdir", "-p", out_dir],
-                    error_message="Failed to create archive output directory",
-                    on=out_dir not in ("", "."),
-                )
-                .add(
-                    ["tar", tar_flag, tmp_archive, "-C", ".", "."],
-                    error_message="Failed to create tar archive",
-                    on=is_cwd,
-                )
-                .add(["tar", tar_flag, tmp_archive, src], error_message="Failed to create tar archive", on=not is_cwd)
-                .add(["mv", "-f", tmp_archive, out_path], error_message="Failed to move tar archive into place")
-                .execute(timeout=self._DEFAULT_TIMEOUT_SECONDS, raise_on_error=True)
+            self._get_strategy().zip(
+                self.vm,
+                src=src_for_strategy,
+                out_path=out_path,
+                cwd=cwd,
+                timeout=self._DEFAULT_TIMEOUT_SECONDS,
             )
-        except PipelineExecutionError as exc:
+        except (PipelineExecutionError, CommandExecutionError) as exc:
             raise RuntimeError(str(exc)) from exc
 
-        # Compute size + sha256 on host side (avoid requiring sha256sum in sandbox).
-        try:
-            data = self.vm.download_file(out_path).getvalue()
-        except Exception as exc:
-            raise RuntimeError(f"Failed to read tar result from sandbox: {exc}") from exc
+        return SandboxFile(path=out_path)
 
-        return SandboxArchiveFile(file_path=out_path, size_bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
+    def unzip(self, *, archive_path: str, dest_dir: str = "unpacked") -> str:
+        """Extract a zip archive to the destination directory."""
+        archive_path = self._normalize_path(archive_path)
+        dest_dir = self._normalize_path(dest_dir)
+
+        if not archive_path.lower().endswith(".zip"):
+            raise ValueError("archive_path must end with .zip")
+
+        try:
+            pipeline(self.vm).add(
+                ["mkdir", "-p", dest_dir], error_message="Failed to create destination directory"
+            ).execute(timeout=self._DEFAULT_TIMEOUT_SECONDS, raise_on_error=True)
+
+            self._get_strategy().unzip(
+                self.vm,
+                archive_path=archive_path,
+                dest_dir=dest_dir,
+                timeout=self._DEFAULT_TIMEOUT_SECONDS,
+            )
+        except (PipelineExecutionError, CommandExecutionError) as exc:
+            raise RuntimeError(str(exc)) from exc
+
+        return dest_dir
 
     def untar(self, *, archive_path: str, dest_dir: str = "unpacked") -> str:
-        archive_path = self._normalize_workspace_path(archive_path)
-        dest_dir = self._normalize_workspace_path(dest_dir)
+        """Extract a tar archive to the destination directory."""
+        archive_path = self._normalize_path(archive_path)
+        dest_dir = self._normalize_path(dest_dir)
 
         lower = archive_path.lower()
         is_gz = lower.endswith(".tar.gz") or lower.endswith(".tgz")
@@ -298,7 +348,7 @@ class ZipSandbox:
         try:
             (
                 pipeline(self.vm)
-                .add(["mkdir", "-p", dest_dir], error_message="Failed to create untar destination directory")
+                .add(["mkdir", "-p", dest_dir], error_message="Failed to create destination directory")
                 .add(["tar", extract_flag, archive_path, "-C", dest_dir], error_message="Failed to extract tar archive")
                 .execute(timeout=self._DEFAULT_TIMEOUT_SECONDS, raise_on_error=True)
             )

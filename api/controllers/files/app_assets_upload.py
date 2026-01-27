@@ -4,7 +4,8 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
 from controllers.files import files_ns
-from core.app_assets.storage import AppAssetSigner, AssetPath, app_asset_storage
+from core.app_assets.storage import AppAssetSigner, AssetPath
+from services.app_asset_service import AppAssetService
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -56,5 +57,5 @@ class AppAssetUploadApi(Resource):
             raise Forbidden("Invalid or expired upload link")
 
         content = request.get_data()
-        app_asset_storage.save(asset_path, content)
+        AppAssetService.get_storage().save(asset_path, content)
         return Response(status=204)

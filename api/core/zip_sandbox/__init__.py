@@ -1,6 +1,7 @@
-from .session import SandboxArchiveFile, ZipSandbox
+from .zip_sandbox import SandboxDownloadItem, SandboxFile, ZipSandbox
 
 __all__ = [
-    "SandboxArchiveFile",
+    "SandboxDownloadItem",
+    "SandboxFile",
     "ZipSandbox",
 ]

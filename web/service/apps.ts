@@ -141,21 +141,12 @@ export const exportAppBundle = async ({ appID, include = false, workflowID }: { 
   if (!response.ok)
     throw new Error('Export bundle failed')
 
-  const blob = await response.blob()
-  const contentDisposition = response.headers.get('content-disposition')
-  let filename = `app-${appID}.zip`
-  if (contentDisposition) {
-    const filenameMatch = contentDisposition.match(/filename="?([^";\n]+)"?/)
-    if (filenameMatch)
-      filename = filenameMatch[1]
-  }
+  const result: { download_url: string, filename: string } = await response.json()
 
-  const downloadUrl = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = downloadUrl
-  a.download = filename
+  a.href = result.download_url
+  a.download = result.filename
   a.click()
-  URL.revokeObjectURL(downloadUrl)
 }
 
 export const importDSL = ({ mode, yaml_content, yaml_url, app_id, name, description, icon_type, icon, icon_background }: { mode: DSLImportMode, yaml_content?: string, yaml_url?: string, app_id?: string, name?: string, description?: string, icon_type?: AppIconType, icon?: string, icon_background?: string }): Promise<DSLImportResponse> => {
