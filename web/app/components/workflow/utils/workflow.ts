@@ -183,5 +183,5 @@ export const changeNodesAndEdgesId = (nodes: Node[], edges: Edge[]) => {
 }
 
 export const hasErrorHandleNode = (nodeType?: BlockEnum) => {
-  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
+  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code || nodeType === BlockEnum.Agent
 }
