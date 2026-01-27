@@ -17,5 +17,5 @@ html[data-theme="dark"] .sticky, html[data-theme="dark"] .is-sticky {
 /* Remove border-bottom from AccountSetting and Apps List sticky headers */
 html[data-theme="dark"] .mx-8.sticky.top-0.z-20,
 html[data-theme="dark"] .sticky.top-0.z-10.flex.flex-wrap {
-  border-bottom: none !important;
+  border-bottom: none;
 }
