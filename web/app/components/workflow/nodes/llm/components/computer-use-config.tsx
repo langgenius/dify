@@ -28,7 +28,7 @@ const ComputerUseConfig: FC<Props> = ({
       <Split />
       <FieldCollapse
         title={(
-          <div>
+          <div className="flex items-center gap-1">
             {t(`${i18nPrefix}.title`, { ns: 'workflow' })}
             <Tooltip
               popupContent={t(`${i18nPrefix}.tooltip`, { ns: 'workflow' })}
