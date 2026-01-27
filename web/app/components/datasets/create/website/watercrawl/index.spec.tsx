@@ -73,6 +73,12 @@ const createDefaultProps = (overrides: Partial<Parameters<typeof WaterCrawl>[0]>
 describe('WaterCrawl', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
   })
 
   // Tests for initial component rendering
