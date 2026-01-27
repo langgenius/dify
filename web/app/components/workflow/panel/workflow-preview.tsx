@@ -199,6 +199,7 @@ const WorkflowPreview = () => {
               )}
               <ResultText
                 isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
+                isPaused={workflowRunningData?.result?.status === WorkflowRunningStatus.Paused}
                 outputs={workflowRunningData?.resultText}
                 allFiles={workflowRunningData?.result?.files}
                 error={workflowRunningData?.result?.error}
