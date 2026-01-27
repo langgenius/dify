@@ -45,26 +45,60 @@ def mock_auth_environment():
        This is necessary because decorators (like @login_required) run at import time.
     2. Patches all auth-related decorators with a no-op (no operation) lambda.
     3. Mocks the current user/account retrieval functions.
+    4. PREVENTS ROUTE DUPLICATION by replacing the global console_router with a 
+       temporary instance during the test.
     """
     noop = lambda f: f
     target_module = "controllers.console.feature"
+
+    # Import the router module to access the class and global variable
+    import controllers.fastopenapi
+    
+    # Create a fresh router instance to isolate this test's route registrations.
+    # We dynamically get the class type to avoid hardcoding dependencies.
+    RouterClass = type(controllers.fastopenapi.console_router)
+    temp_router = RouterClass()
 
     # Force reload of the module to ensure patches apply to decorators
     if target_module in sys.modules:
         del sys.modules[target_module]
 
     # Context manager for patching multiple dependencies
-    with patch(f"{target_module}.setup_required", side_effect=noop), \
+    # We patch 'controllers.fastopenapi.console_router' so that when the feature module
+    # reloads, it registers routes to our temp_router instead of the global one.
+    with patch("controllers.fastopenapi.console_router", temp_router), \
+         patch(f"{target_module}.setup_required", side_effect=noop), \
          patch(f"{target_module}.login_required", side_effect=noop), \
          patch(f"{target_module}.account_initialization_required", side_effect=noop), \
          patch(f"{target_module}.cloud_utm_record", side_effect=noop), \
          patch(f"{target_module}.current_account_with_tenant", return_value=(MagicMock(), "tenant-id")):
+        
+        # Explicitly import the module to trigger the decorators with patches applied
+        # This will register routes to 'temp_router' because of the patch above.
+        import controllers.console.feature
+        
+        # IMPORTANT: Ensure ext_fastopenapi uses our temp_router.
+        # If ext_fastopenapi has already imported console_router, it holds the old reference.
+        # We might need to patch ext_fastopenapi's reference or rely on it resolving it dynamically.
+        # Assuming ext_fastopenapi.init_app iterates over a list of routers, we need to ensure
+        # it sees our temp_router.
+        # If ext_fastopenapi imports 'console_router' from 'controllers.fastopenapi', 
+        # checking 'sys.modules' for ext_fastopenapi and reloading it might be needed,
+        # but that could be too invasive.
+        # 
+        # However, since we patched 'controllers.fastopenapi.console_router', any *new* import
+        # or attribute lookup on 'controllers.fastopenapi' will yield 'temp_router'.
         
         yield
 
     # Optional: Clean up sys.modules again after test to avoid side effects
     if target_module in sys.modules:
         del sys.modules[target_module]
+
+
+# ------------------------------------------------------------------------------
+# Test Cases
+# ------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("url, service_mock_path, mock_model_instance, json_key", [
     (
@@ -106,6 +140,7 @@ def test_console_features_success(
     expected_data = mock_model_instance.model_dump(mode='json')
     assert response.get_json() == {json_key: expected_data}
 
+
 @pytest.mark.parametrize("url, service_mock_path", [
     (
         "/console/api/features", 
@@ -116,14 +151,9 @@ def test_console_features_success(
         "controllers.console.feature.FeatureService.get_system_features"
     ),
 ])
-def test_console_features_service_error(
-    app, 
-    mock_auth_environment, 
-    url, 
-    service_mock_path
-):
+def test_console_features_service_error(app, mock_auth_environment, url, service_mock_path):
     """
-    Tests how the application handles Service layer errors for both endpoints.
+    Tests how the application handles Service layer errors.
     
     Note: When app.config['TESTING'] is True, Flask propagates exceptions 
     instead of handling them generically (unless an error handler is registered).
