@@ -68,6 +68,7 @@ type IDrawerContext = {
 }
 
 type StatusCount = {
+  paused: number
   success: number
   failed: number
   partial_success: number
@@ -89,8 +90,11 @@ const HandThumbIconWithCount: FC<{ count: number, iconType: 'up' | 'down' }> = (
   )
 }
 
-const statusTdRender = (status: 'normal' | 'finished' | 'paused', statusCount: StatusCount) => {
-  if (status === 'paused') {
+const statusTdRender = (statusCount: StatusCount) => {
+  if (!statusCount)
+    return null
+
+  if (statusCount.paused > 0) {
     return (
       <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
         <Indicator color="yellow" />
@@ -98,11 +102,7 @@ const statusTdRender = (status: 'normal' | 'finished' | 'paused', statusCount: S
       </div>
     )
   }
-
-  if (!statusCount)
-    return null
-
-  if (statusCount.partial_success + statusCount.failed === 0) {
+  else if (statusCount.partial_success + statusCount.failed === 0) {
     return (
       <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
         <Indicator color="green" />
@@ -1039,7 +1039,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                 <td className="p-3 pr-2">{renderTdValue(endUser || defaultValue, !endUser)}</td>
                 {isChatflow && (
                   <td className="w-[160px] p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
-                    {statusTdRender(log.status, log.status_count)}
+                    {statusTdRender(log.status_count)}
                   </td>
                 )}
                 <td className="p-3 pr-2" style={{ maxWidth: isChatMode ? 100 : 200 }}>

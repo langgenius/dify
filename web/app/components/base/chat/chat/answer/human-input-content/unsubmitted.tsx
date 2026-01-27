@@ -29,7 +29,7 @@ export const UnsubmittedHumanInputContent = ({
       )}
       {/* Expiration Time */}
       {typeof expiration_time === 'number' && (
-        <ExpirationTime expirationTime={expiration_time} />
+        <ExpirationTime expirationTime={expiration_time * 1000} />
       )}
     </>
   )
