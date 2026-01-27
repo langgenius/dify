@@ -273,6 +273,11 @@ const VibePanel: FC = () => {
           </div>
         </div>
 
+        {isVibeGenerating && (
+          <div className="h-full w-0 grow bg-background-default-subtle">
+            {renderLoading}
+          </div>
+        )}
         {!isVibeGenerating && vibePanelIntent === 'off_topic' && renderOffTopic}
         {!isVibeGenerating && vibePanelIntent !== 'off_topic' && (vibePanelPreviewNodes.length > 0 || vibePanelMermaidCode) && (
           <div className="relative h-full w-0 grow bg-background-default-subtle p-6 pb-0">
@@ -316,13 +321,6 @@ const VibePanel: FC = () => {
                 />
               </div>
             </div>
-
-            {isVibeGenerating && (
-              <div className="absolute bottom-0 left-0 right-0 top-0 z-[10] bg-background-default-subtle">
-                {renderLoading}
-              </div>
-            )}
-
           </div>
         )}
         {!isVibeGenerating && vibePanelIntent !== 'off_topic' && vibePanelPreviewNodes.length === 0 && !vibePanelMermaidCode && <ResPlaceholder />}
