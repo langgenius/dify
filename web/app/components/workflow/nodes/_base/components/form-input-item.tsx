@@ -110,6 +110,8 @@ const FormInputItem: FC<Props> = ({
       return VarType.arrayFile
     else if (type === FormTypeEnum.file)
       return VarType.file
+    else if (isMultipleSelect)
+      return VarType.array
     else if (isSelect)
       return VarType.string
     // else if (isAppSelector)
@@ -129,6 +131,8 @@ const FormInputItem: FC<Props> = ({
   const getFilterVar = () => {
     if (isNumber)
       return (varPayload: any) => varPayload.type === VarType.number
+    else if (isMultipleSelect)
+      return (varPayload: any) => [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varPayload.type)
     else if (isString)
       return (varPayload: any) => [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
     else if (isFile)
