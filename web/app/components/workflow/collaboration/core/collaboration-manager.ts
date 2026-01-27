@@ -71,16 +71,22 @@ export class CollaborationManager {
   private leaderId: string | null = null
   private cursors: Record<string, CursorPosition> = {}
   private nodePanelPresence: NodePanelPresenceMap = {}
+  private onlineUsers: OnlineUser[] = []
   private activeConnections = new Set<string>()
   private isUndoRedoInProgress = false
   private pendingInitialSync = false
   private rejoinInProgress = false
   private pendingGraphImportEmit = false
+  private graphViewActive: boolean | null = null
 
   private getActiveSocket(): Socket | null {
     if (!this.currentAppId)
       return null
     return webSocketClient.getSocket(this.currentAppId)
+  }
+
+  setReactFlowStore(store: ReactFlowStore | null): void {
+    this.reactFlowStore = store
   }
 
   private handleSessionUnauthorized = (): void => {
@@ -495,6 +501,7 @@ export class CollaborationManager {
     this.reactFlowStore = null
     this.cursors = {}
     this.nodePanelPresence = {}
+    this.onlineUsers = []
     this.isUndoRedoInProgress = false
     this.rejoinInProgress = false
 
@@ -600,11 +607,15 @@ export class CollaborationManager {
   }
 
   onCursorUpdate(callback: (cursors: Record<string, CursorPosition>) => void): () => void {
-    return this.eventEmitter.on('cursors', callback)
+    const off = this.eventEmitter.on('cursors', callback)
+    callback({ ...this.cursors })
+    return off
   }
 
   onOnlineUsersUpdate(callback: (users: OnlineUser[]) => void): () => void {
-    return this.eventEmitter.on('onlineUsers', callback)
+    const off = this.eventEmitter.on('onlineUsers', callback)
+    callback([...this.onlineUsers])
+    return off
   }
 
   onWorkflowUpdate(callback: (update: { appId: string, timestamp: number }) => void): () => void {
@@ -652,6 +663,18 @@ export class CollaborationManager {
     this.sendCollaborationEvent({
       type: 'comments_update',
       data: { appId, timestamp: Date.now() },
+      timestamp: Date.now(),
+    })
+  }
+
+  emitGraphViewActive(isActive: boolean): void {
+    this.graphViewActive = isActive
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
+      return
+
+    this.sendCollaborationEvent({
+      type: 'graph_view_active',
+      data: { active: isActive },
       timestamp: Date.now(),
     })
   }
@@ -1081,6 +1104,7 @@ export class CollaborationManager {
         if (data.leader && typeof data.leader === 'string')
           this.leaderId = data.leader
 
+        this.onlineUsers = data.users
         this.eventEmitter.emit('onlineUsers', data.users)
         this.eventEmitter.emit('cursors', { ...this.cursors })
       }
@@ -1115,6 +1139,8 @@ export class CollaborationManager {
     socket.on('connect', () => {
       this.eventEmitter.emit('stateChange', { isConnected: true })
       this.pendingInitialSync = true
+      if (this.graphViewActive !== null)
+        this.emitGraphViewActive(this.graphViewActive)
     })
 
     socket.on('disconnect', () => {

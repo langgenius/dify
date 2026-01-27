@@ -18,6 +18,7 @@ import { FeaturesProvider } from '@/app/components/base/features'
 import Loading from '@/app/components/base/loading'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
+import { useCollaboration } from '@/app/components/workflow/collaboration'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import {
   WorkflowContextProvider,
@@ -51,6 +52,12 @@ import { createWorkflowSlice } from './store/workflow/workflow-slice'
 const SkillMain = dynamic(() => import('@/app/components/workflow/skill/main'), {
   ssr: false,
 })
+
+const CollaborationSession = () => {
+  const appId = useStore(s => s.appId)
+  useCollaboration(appId || '')
+  return null
+}
 
 type WorkflowViewContentProps = {
   renderGraph: (headerLeftSlot: ReactNode) => ReactNode
@@ -94,6 +101,20 @@ const WorkflowViewContent = ({
       }
     }
   }, [doSetViewType, refreshGraph, syncWorkflowDraftImmediately, viewType])
+
+  useEffect(() => {
+    if (!isSupportSandbox) {
+      collaborationManager.emitGraphViewActive(true)
+      return () => {
+        collaborationManager.emitGraphViewActive(false)
+      }
+    }
+
+    collaborationManager.emitGraphViewActive(viewType === ViewType.graph)
+    return () => {
+      collaborationManager.emitGraphViewActive(false)
+    }
+  }, [isSupportSandbox, viewType])
 
   if (!isSupportSandbox)
     return renderGraph(null)
@@ -321,17 +342,20 @@ const WorkflowAppWithAdditionalContext = () => {
   }
 
   return (
-    <WorkflowWithDefaultContext
-      edges={edgesData}
-      nodes={nodesData}
-    >
-      <FeaturesProvider features={initialFeatures}>
-        <WorkflowViewContent
-          renderGraph={renderGraph}
-          reload={reload}
-        />
-      </FeaturesProvider>
-    </WorkflowWithDefaultContext>
+    <>
+      <CollaborationSession />
+      <WorkflowWithDefaultContext
+        edges={edgesData}
+        nodes={nodesData}
+      >
+        <FeaturesProvider features={initialFeatures}>
+          <WorkflowViewContent
+            renderGraph={renderGraph}
+            reload={reload}
+          />
+        </FeaturesProvider>
+      </WorkflowWithDefaultContext>
+    </>
   )
 }
 

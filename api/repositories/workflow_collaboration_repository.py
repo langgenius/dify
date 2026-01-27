@@ -17,6 +17,7 @@ class WorkflowSessionInfo(TypedDict):
     avatar: str | None
     sid: str
     connected_at: int
+    graph_active: bool
 
 
 class SidMapping(TypedDict):
@@ -68,6 +69,44 @@ class WorkflowCollaborationRepository:
             ex=SESSION_STATE_TTL_SECONDS,
         )
         self.refresh_session_state(workflow_id, session_info["sid"])
+
+    def get_session_info(self, workflow_id: str, sid: str) -> WorkflowSessionInfo | None:
+        raw = self._redis.hget(self.workflow_key(workflow_id), sid)
+        value = self._decode(raw)
+        if not value:
+            return None
+        try:
+            session_info = json.loads(value)
+        except (TypeError, json.JSONDecodeError):
+            return None
+
+        if not isinstance(session_info, dict):
+            return None
+        if "user_id" not in session_info or "username" not in session_info or "sid" not in session_info:
+            return None
+
+        return {
+            "user_id": str(session_info["user_id"]),
+            "username": str(session_info["username"]),
+            "avatar": session_info.get("avatar"),
+            "sid": str(session_info["sid"]),
+            "connected_at": int(session_info.get("connected_at") or 0),
+            "graph_active": bool(session_info.get("graph_active")),
+        }
+
+    def set_graph_active(self, workflow_id: str, sid: str, active: bool) -> None:
+        session_info = self.get_session_info(workflow_id, sid)
+        if not session_info:
+            return
+        session_info["graph_active"] = bool(active)
+        self._redis.hset(self.workflow_key(workflow_id), sid, json.dumps(session_info))
+        self.refresh_session_state(workflow_id, sid)
+
+    def is_graph_active(self, workflow_id: str, sid: str) -> bool:
+        session_info = self.get_session_info(workflow_id, sid)
+        if not session_info:
+            return False
+        return bool(session_info.get("graph_active") or False)
 
     def get_sid_mapping(self, sid: str) -> SidMapping | None:
         raw = self._redis.get(self.sid_key(sid))
@@ -125,6 +164,7 @@ class WorkflowCollaborationRepository:
                     "avatar": session_info.get("avatar"),
                     "sid": str(session_info["sid"]),
                     "connected_at": int(session_info.get("connected_at") or 0),
+                    "graph_active": bool(session_info.get("graph_active")),
                 }
             )
 

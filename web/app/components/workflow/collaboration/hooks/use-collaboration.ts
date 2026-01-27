@@ -51,7 +51,7 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
 
     const initCollaboration = async () => {
       try {
-        const id = await collaborationManager.connect(appId, reactFlowStore)
+        const id = await collaborationManager.connect(appId)
         if (isUnmounted) {
           collaborationManager.disconnect(id)
           return
@@ -100,7 +100,17 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
       if (connectionId)
         collaborationManager.disconnect(connectionId)
     }
-  }, [appId, reactFlowStore, isCollaborationEnabled])
+  }, [appId, isCollaborationEnabled])
+
+  useEffect(() => {
+    if (!reactFlowStore)
+      return
+
+    collaborationManager.setReactFlowStore(reactFlowStore)
+    return () => {
+      collaborationManager.setReactFlowStore(null)
+    }
+  }, [reactFlowStore])
 
   const prevIsConnected = useRef(false)
   useEffect(() => {

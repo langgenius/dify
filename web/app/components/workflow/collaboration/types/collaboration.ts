@@ -62,6 +62,7 @@ export type CollaborationEventType
     | 'comments_update'
     | 'node_panel_presence'
     | 'app_publish_update'
+    | 'graph_view_active'
     | 'graph_resync_request'
     | 'workflow_restore_request'
     | 'workflow_restore_intent'
