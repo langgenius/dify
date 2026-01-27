@@ -54,26 +54,24 @@ def create_env_files_from_example(env_example_path):
     """
     Creates actual env files from .env.example by copying the categorized .env.example files.
     This allows docker-compose to use env_file references.
+    Supports per-module structure with subdirectories.
     """
     envs_dir = "envs"
     os.makedirs(envs_dir, exist_ok=True)
     
-    # List of env file categories (organized by service type)
-    categories = ['core-services', 'security', 'databases', 'vectorstores', 'infrastructure']
-    
     created_files = []
-    for category in categories:
-        example_file = os.path.join(envs_dir, f"{category}.env.example")
-        env_file = os.path.join(envs_dir, f"{category}.env")
-        
-        if os.path.exists(example_file):
-            # Copy .example to actual file
-            with open(example_file, 'r') as src, open(env_file, 'w') as dst:
-                dst.write(src.read())
-            created_files.append(env_file)
-            print(f"Created {env_file}")
-        else:
-            print(f"Warning: {example_file} not found, skipping {category}.env")
+    # Walk through all .env.example files in subdirectories
+    for root, dirs, files in os.walk(envs_dir):
+        for file in files:
+            if file.endswith('.env.example'):
+                example_file = os.path.join(root, file)
+                env_file = example_file.replace('.env.example', '.env')
+                
+                # Copy .example to actual file
+                with open(example_file, 'r') as src, open(env_file, 'w') as dst:
+                    dst.write(src.read())
+                created_files.append(env_file)
+                print(f"Created {env_file}")
     
     return created_files
 
