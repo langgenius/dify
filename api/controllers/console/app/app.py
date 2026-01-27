@@ -31,7 +31,7 @@ from models.model import IconType
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.knowledge_entities.knowledge_entities import Segmentation
+from services.entities.knowledge_entities.knowledge_entities import PreProcessingRule, Segmentation
 from services.feature_service import FeatureService
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
@@ -421,6 +421,7 @@ register_schema_models(
     AppPagination,
     AppExportResponse,
     Segmentation,
+    PreProcessingRule,
 )
 
 
