@@ -201,6 +201,33 @@ describe('useSkillSaveManager', () => {
       })
     })
 
+    it('should clear dirty metadata when filtered tools match saved snapshot', async () => {
+      // Arrange
+      const appId = 'app-1'
+      const fileId = 'file-1'
+      const toolId1 = '00000000-0000-0000-0000-000000000001'
+      const toolId2 = '00000000-0000-0000-0000-000000000002'
+      const content = `Hello §[tool].[provider].[tool-name].[${toolId1}]§`
+      const store = createWorkflowStore({})
+      const queryClient = createQueryClient()
+      const wrapper = createWrapper({ appId, store, queryClient })
+      store.getState().setDraftMetadata(fileId, {
+        tools: {
+          [toolId1]: { type: 'builtin' },
+          [toolId2]: { type: 'builtin' },
+        },
+      })
+      setCachedContent(queryClient, appId, fileId, JSON.stringify({ content }))
+      const { result } = renderHook(() => useSkillSaveManager(), { wrapper })
+
+      // Act
+      const response = await result.current.saveFile(fileId)
+
+      // Assert
+      expect(response.saved).toBe(true)
+      expect(store.getState().dirtyMetadataIds.has(fileId)).toBe(false)
+    })
+
     it('should return unsaved when metadata is dirty but no content is available', async () => {
       // Arrange
       const appId = 'app-1'

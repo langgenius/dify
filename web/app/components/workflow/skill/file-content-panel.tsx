@@ -101,6 +101,9 @@ const FileContentPanel: FC = () => {
 
   const { saveFile, registerFallback, unregisterFallback } = useSkillSaveManager()
 
+  const saveFileRef = useRef(saveFile)
+  saveFileRef.current = saveFile
+
   const fallbackRef = useRef({ content: originalContent, metadata: currentMetadata })
 
   useEffect(() => {
@@ -122,12 +125,12 @@ const FileContentPanel: FC = () => {
 
     return () => {
       const { content: fallbackContent, metadata: fallbackMetadata } = fallbackRef.current
-      void saveFile(fileTabId, {
+      void saveFileRef.current(fileTabId, {
         fallbackContent,
         fallbackMetadata,
       })
     }
-  }, [fileTabId, isEditable, saveFile])
+  }, [fileTabId, isEditable])
 
   const handleEditorDidMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor

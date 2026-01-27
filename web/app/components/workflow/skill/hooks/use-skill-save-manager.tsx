@@ -51,6 +51,32 @@ type SkillSaveProviderProps = {
   children: React.ReactNode
 }
 
+const normalizeMetadata = (
+  rawMetadata: Record<string, unknown> | undefined,
+  content: string,
+): Record<string, unknown> | undefined => {
+  if (!rawMetadata || typeof rawMetadata !== 'object' || !('tools' in rawMetadata))
+    return rawMetadata
+
+  const toolIds = extractToolConfigIds(content)
+  const rawTools = (rawMetadata as Record<string, unknown>).tools
+  if (!rawTools || typeof rawTools !== 'object')
+    return rawMetadata
+
+  const entries = Object.entries(rawTools as Record<string, unknown>)
+  const nextTools = entries.reduce<Record<string, unknown>>((acc, [id, value]) => {
+    if (toolIds.has(id))
+      acc[id] = value
+    return acc
+  }, {})
+  const nextMetadata = { ...(rawMetadata as Record<string, unknown>) }
+  if (Object.keys(nextTools).length > 0)
+    nextMetadata.tools = nextTools
+  else
+    delete nextMetadata.tools
+  return nextMetadata
+}
+
 const SkillSaveContext = React.createContext<SkillSaveContextValue | null>(null)
 
 export const SkillSaveProvider = ({
@@ -109,25 +135,7 @@ export const SkillSaveProvider = ({
     if (content === undefined)
       return null
 
-    let metadata = rawMetadata
-    if (rawMetadata && typeof rawMetadata === 'object' && 'tools' in rawMetadata) {
-      const toolIds = extractToolConfigIds(content)
-      const rawTools = (rawMetadata as Record<string, unknown>).tools
-      if (rawTools && typeof rawTools === 'object') {
-        const entries = Object.entries(rawTools as Record<string, unknown>)
-        const nextTools = entries.reduce<Record<string, unknown>>((acc, [id, value]) => {
-          if (toolIds.has(id))
-            acc[id] = value
-          return acc
-        }, {})
-        const nextMetadata = { ...(rawMetadata as Record<string, unknown>) }
-        if (Object.keys(nextTools).length > 0)
-          nextMetadata.tools = nextTools
-        else
-          delete nextMetadata.tools
-        metadata = nextMetadata
-      }
-    }
+    const metadata = normalizeMetadata(rawMetadata, content)
 
     return {
       content,
@@ -189,7 +197,8 @@ export const SkillSaveProvider = ({
 
       if (snapshot.hasMetadataDirty) {
         const latestMetadata = latestState.fileMetadata.get(fileId)
-        if (isDeepEqual(latestMetadata, snapshot.metadata))
+        const normalizedLatest = normalizeMetadata(latestMetadata, snapshot.content)
+        if (isDeepEqual(normalizedLatest, snapshot.metadata))
           latestState.clearDraftMetadata(fileId)
       }
 
