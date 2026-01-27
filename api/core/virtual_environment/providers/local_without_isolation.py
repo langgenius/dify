@@ -1,5 +1,6 @@
 import os
 import pathlib
+import shutil
 import subprocess
 from collections.abc import Mapping, Sequence
 from functools import cached_property
@@ -106,7 +107,7 @@ class LocalVirtualEnvironment(VirtualEnvironment):
         """
         working_path = self.get_working_path()
         if os.path.exists(working_path):
-            os.rmdir(working_path)
+            shutil.rmtree(working_path)
 
     def upload_file(self, path: str, content: BytesIO) -> None:
         """
