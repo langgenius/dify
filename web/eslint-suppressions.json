@@ -74,24 +74,11 @@
     }
   },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 8
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/time-range-picker/date-picker.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/time-range-picker/range-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/svg-attribute-error-reproduction.spec.tsx": {
@@ -102,23 +89,12 @@
       "count": 3
     }
   },
-  "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/(commonLayout)/datasets/(datasetDetailLayout)/[datasetId]/layout-main.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 6
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -128,29 +104,9 @@
       "count": 1
     }
   },
-  "app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/(shareLayout)/webapp-reset-password/layout.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/(shareLayout)/webapp-reset-password/page.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/(shareLayout)/webapp-reset-password/set-password/page.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/(shareLayout)/webapp-signin/check-code/page.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/(shareLayout)/webapp-signin/components/mail-and-password-auth.tsx": {
@@ -158,34 +114,13 @@
       "count": 2
     }
   },
-  "app/(shareLayout)/webapp-signin/normalForm.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 7
-    }
-  },
-  "app/account/(commonLayout)/account-page/AvatarWithEdit.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/account/(commonLayout)/account-page/email-change-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
   },
   "app/account/(commonLayout)/account-page/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/account/(commonLayout)/avatar.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -194,65 +129,28 @@
       "count": 1
     }
   },
-  "app/account/(commonLayout)/header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/account/oauth/authorize/layout.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/account/oauth/authorize/page.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/app-sidebar/app-info.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 8
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/app-sidebar/app-operations.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     }
   },
-  "app/components/app-sidebar/app-sidebar-dropdown.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/app-sidebar/dataset-info/dropdown.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/app-sidebar/dataset-info/index.spec.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/app-sidebar/dataset-info/menu.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/app-sidebar/dataset-sidebar-dropdown.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -279,30 +177,12 @@
       "count": 1
     }
   },
-  "app/components/app-sidebar/toggle-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/app/annotation/batch-action.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/app/annotation/batch-add-annotation-modal/csv-downloader.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 2
     }
   },
-  "app/components/app/annotation/batch-add-annotation-modal/csv-uploader.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/app/annotation/batch-add-annotation-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -311,9 +191,6 @@
     }
   },
   "app/components/app/annotation/edit-annotation-modal/edit-item/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
@@ -329,9 +206,6 @@
     }
   },
   "app/components/app/annotation/header-opts/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "react/no-nested-component-definitions": {
       "count": 1
     },
@@ -345,19 +219,11 @@
     }
   },
   "app/components/app/annotation/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
       "count": 5
-    }
-  },
-  "app/components/app/annotation/list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/app/annotation/view-annotation-modal/index.tsx": {
@@ -368,29 +234,9 @@
       "count": 1
     }
   },
-  "app/components/app/app-access-control/access-control-dialog.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/app/app-access-control/access-control.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 7
-    }
-  },
-  "app/components/app/app-access-control/add-member-or-group-pop.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/app/app-access-control/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/app/app-access-control/specific-groups-or-members.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
     }
   },
   "app/components/app/app-publisher/features-wrapper.tsx": {
@@ -399,9 +245,6 @@
     }
   },
   "app/components/app/app-publisher/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 10
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     },
@@ -409,30 +252,7 @@
       "count": 6
     }
   },
-  "app/components/app/app-publisher/publish-with-multiple-model.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/app/app-publisher/suggested-action.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/app/app-publisher/version-info-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/app/configuration/base/operation-btn/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/app/configuration/config-prompt/advanced-prompt-input.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -447,11 +267,6 @@
       "count": 1
     }
   },
-  "app/components/app/configuration/config-prompt/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/app/configuration/config-prompt/simple-prompt-input.tsx": {
     "ts/no-explicit-any": {
       "count": 3
@@ -462,33 +277,13 @@
       "count": 6
     }
   },
-  "app/components/app/configuration/config-var/config-modal/type-select.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/app/configuration/config-var/config-select/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/app/configuration/config-var/select-var-type.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/app/configuration/config-var/var-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/app/configuration/config-vision/index.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/app/configuration/config-vision/param-config.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -497,15 +292,7 @@
       "count": 2
     }
   },
-  "app/components/app/configuration/config/agent-setting-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/app/configuration/config/agent/agent-setting/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -519,9 +306,6 @@
     }
   },
   "app/components/app/configuration/config/agent/agent-tools/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 9
     }
@@ -532,9 +316,6 @@
     }
   },
   "app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -543,22 +324,11 @@
     }
   },
   "app/components/app/configuration/config/assistant-type-picker/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/app/configuration/config/automatic/automatic-btn.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/app/configuration/config/automatic/get-automatic-res.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 9
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     },
@@ -579,21 +349,6 @@
   "app/components/app/configuration/config/automatic/prompt-res.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/app/configuration/config/automatic/prompt-toast.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/app/configuration/config/automatic/result.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/app/configuration/config/automatic/version-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/app/configuration/config/code-generator/get-code-generator-res.tsx": {
@@ -624,16 +379,6 @@
       "count": 1
     }
   },
-  "app/components/app/configuration/dataset-config/card-item/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/app/configuration/dataset-config/context-var/var-picker.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/app/configuration/dataset-config/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 37
@@ -645,9 +390,6 @@
     }
   },
   "app/components/app/configuration/dataset-config/params-config/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
@@ -663,9 +405,6 @@
     }
   },
   "app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -674,9 +413,6 @@
     }
   },
   "app/components/app/configuration/dataset-config/settings-modal/retrieval-section.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -694,11 +430,6 @@
   "app/components/app/configuration/debug/debug-with-multiple-model/index.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/app/configuration/debug/debug-with-multiple-model/model-parameter-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/app/configuration/debug/debug-with-multiple-model/text-generation-item.tsx": {
@@ -725,9 +456,6 @@
     }
   },
   "app/components/app/configuration/debug/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -741,9 +469,6 @@
     }
   },
   "app/components/app/configuration/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -759,11 +484,6 @@
       "count": 2
     }
   },
-  "app/components/app/configuration/prompt-value-panel/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    }
-  },
   "app/components/app/configuration/prompt-value-panel/utils.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -774,34 +494,14 @@
       "count": 2
     }
   },
-  "app/components/app/configuration/tools/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/app/create-app-dialog/app-card/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/app/create-app-dialog/app-card/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/app/create-app-dialog/app-list/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/app/create-app-dialog/app-list/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/app/create-app-dialog/app-list/sidebar.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/app/create-app-modal/index.spec.tsx": {
@@ -810,9 +510,6 @@
     }
   },
   "app/components/app/create-app-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -821,26 +518,8 @@
     }
   },
   "app/components/app/create-from-dsl-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
-    }
-  },
-  "app/components/app/create-from-dsl-modal/uploader.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/app/duplicate-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/app/log/filter.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/app/log/index.tsx": {
@@ -849,9 +528,6 @@
     }
   },
   "app/components/app/log/list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 6
     },
@@ -863,15 +539,7 @@
     }
   },
   "app/components/app/log/model-info.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/app/log/var-panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 2
     }
   },
@@ -880,15 +548,7 @@
       "count": 1
     }
   },
-  "app/components/app/overview/apikey-info-panel/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/app/overview/app-card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 10
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     },
@@ -901,23 +561,12 @@
       "count": 13
     }
   },
-  "app/components/app/overview/customize/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/app/overview/embedded/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
   "app/components/app/overview/settings/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     },
@@ -931,17 +580,11 @@
     }
   },
   "app/components/app/switch-app-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
   "app/components/app/text-generate/item/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 12
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     },
@@ -954,40 +597,12 @@
       "count": 2
     }
   },
-  "app/components/app/text-generate/saved-items/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/app/text-generate/saved-items/no-data/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/app/type-selector/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    }
-  },
-  "app/components/app/workflow-log/detail.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/app/workflow-log/filter.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/app/workflow-log/list.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/app/workflow-log/list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     }
@@ -1003,9 +618,6 @@
     }
   },
   "app/components/apps/app-card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -1016,20 +628,12 @@
       "count": 4
     }
   },
-  "app/components/apps/footer.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/apps/list.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 5
     }
   },
   "app/components/apps/list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 7
-    },
     "unused-imports/no-unused-vars": {
       "count": 1
     }
@@ -1042,11 +646,6 @@
   "app/components/apps/new-app-card.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/base/action-button/index.stories.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 28
     }
   },
   "app/components/base/agent-log-modal/detail.tsx": {
@@ -1063,9 +662,6 @@
     }
   },
   "app/components/base/agent-log-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
@@ -1076,15 +672,7 @@
     }
   },
   "app/components/base/agent-log-modal/tool-call.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/base/alert.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 2
     }
   },
@@ -1098,16 +686,6 @@
       "count": 1
     }
   },
-  "app/components/base/app-icon-picker/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/app-icon/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/audio-btn/audio.ts": {
     "node/prefer-global/buffer": {
       "count": 1
@@ -1117,9 +695,6 @@
     }
   },
   "app/components/base/audio-gallery/AudioPlayer.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -1158,23 +733,8 @@
       "count": 1
     }
   },
-  "app/components/base/button/add-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/button/index.stories.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/button/sync-button.stories.tsx": {
     "no-console": {
-      "count": 1
-    }
-  },
-  "app/components/base/button/sync-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -1189,29 +749,13 @@
     }
   },
   "app/components/base/chat/chat-with-history/header-in-mobile.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/base/chat/chat-with-history/header/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/base/chat/chat-with-history/header/mobile-operation-dropdown.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/chat/chat-with-history/header/operation.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/base/chat/chat-with-history/hooks.tsx": {
@@ -1232,20 +776,7 @@
       "count": 3
     }
   },
-  "app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/chat/chat-with-history/sidebar/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/base/chat/chat-with-history/sidebar/operation.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
@@ -1263,20 +794,7 @@
       "count": 2
     }
   },
-  "app/components/base/chat/chat/answer/operation.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 12
-    }
-  },
-  "app/components/base/chat/chat/answer/tool-detail.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    }
-  },
   "app/components/base/chat/chat/answer/workflow-process.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
@@ -1286,20 +804,12 @@
       "count": 3
     }
   },
-  "app/components/base/chat/chat/chat-input-area/operation.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/base/chat/chat/check-input-forms-hooks.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/base/chat/chat/citation/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     },
@@ -1323,16 +833,6 @@
       "count": 1
     }
   },
-  "app/components/base/chat/chat/log/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/chat/chat/question.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/base/chat/chat/type.ts": {
     "ts/no-explicit-any": {
       "count": 5
@@ -1353,11 +853,6 @@
       "count": 7
     }
   },
-  "app/components/base/chat/embedded-chatbot/header/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 6
-    }
-  },
   "app/components/base/chat/embedded-chatbot/hooks.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
@@ -1366,11 +861,6 @@
   "app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/base/chat/utils.ts": {
@@ -1386,15 +876,7 @@
       "count": 1
     }
   },
-  "app/components/base/checkbox/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/chip/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -1417,40 +899,14 @@
       "count": 1
     }
   },
-  "app/components/base/copy-feedback/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/base/date-and-time-picker/date-picker/footer.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/date-and-time-picker/date-picker/header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/base/date-and-time-picker/date-picker/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     }
   },
   "app/components/base/date-and-time-picker/time-picker/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
-    }
-  },
-  "app/components/base/date-and-time-picker/year-and-month-picker/header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/base/dialog/index.stories.tsx": {
@@ -1458,51 +914,17 @@
       "count": 1
     }
   },
-  "app/components/base/drawer-plus/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/drawer/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/dropdown/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/emoji-picker/Inner.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
-  "app/components/base/encrypted-bottom/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/error-boundary/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
-  "app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/base/features/new-feature-panel/annotation-reply/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -1517,40 +939,14 @@
       "count": 2
     }
   },
-  "app/components/base/features/new-feature-panel/conversation-opener/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/features/new-feature-panel/conversation-opener/modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
-  "app/components/base/features/new-feature-panel/feature-bar.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    }
-  },
   "app/components/base/features/new-feature-panel/feature-card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 5
-    }
-  },
-  "app/components/base/features/new-feature-panel/file-upload/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/features/new-feature-panel/file-upload/setting-content.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/base/features/new-feature-panel/file-upload/setting-modal.tsx": {
@@ -1558,45 +954,14 @@
       "count": 1
     }
   },
-  "app/components/base/features/new-feature-panel/image-upload/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/base/features/new-feature-panel/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/base/features/new-feature-panel/moderation/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/base/features/new-feature-panel/moderation/moderation-setting-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/base/features/new-feature-panel/more-like-this.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/features/new-feature-panel/text-to-speech/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/features/new-feature-panel/text-to-speech/param-config-content.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
     }
   },
   "app/components/base/features/new-feature-panel/text-to-speech/voice-settings.tsx": {
@@ -1609,66 +974,18 @@
       "count": 1
     }
   },
-  "app/components/base/file-uploader/audio-preview.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/file-uploader/dynamic-pdf-preview.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/base/file-uploader/file-from-link-or-local/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/file-uploader/file-list-in-log.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react/no-missing-key": {
-      "count": 1
-    }
-  },
-  "app/components/base/file-uploader/file-type-icon.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 12
-    }
-  },
-  "app/components/base/file-uploader/file-uploader-in-attachment/file-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/base/file-uploader/file-uploader-in-attachment/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/base/file-uploader/file-uploader-in-chat-input/file-image-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/base/file-uploader/file-uploader-in-chat-input/file-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/base/file-uploader/file-uploader-in-chat-input/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
   "app/components/base/file-uploader/hooks.ts": {
     "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "app/components/base/file-uploader/pdf-preview.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 3
     }
   },
@@ -1685,15 +1002,7 @@
       "count": 3
     }
   },
-  "app/components/base/file-uploader/video-preview.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/form/components/base/base-field.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -1703,25 +1012,12 @@
       "count": 6
     }
   },
-  "app/components/base/form/components/field/input-type-select/hooks.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 7
-    }
-  },
-  "app/components/base/form/components/field/input-type-select/trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/form/components/field/mixed-variable-text-input/placeholder.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/base/form/components/field/variable-or-constant-input.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "no-console": {
       "count": 2
     },
@@ -1789,19 +1085,9 @@
       "count": 2
     }
   },
-  "app/components/base/fullscreen-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/icons/utils.ts": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/base/image-uploader/audio-preview.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/base/image-uploader/hooks.ts": {
@@ -1814,15 +1100,7 @@
       "count": 1
     }
   },
-  "app/components/base/image-uploader/image-list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/base/image-uploader/image-preview.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 7
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1830,11 +1108,6 @@
   "app/components/base/image-uploader/utils.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/base/image-uploader/video-preview.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/base/inline-delete-confirm/index.stories.tsx": {
@@ -1850,16 +1123,6 @@
       "count": 1
     }
   },
-  "app/components/base/input-number/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/base/input-with-copy/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/base/input/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -1870,16 +1133,6 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/input/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/base/linked-apps-panel/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -1976,9 +1229,6 @@
     }
   },
   "app/components/base/mermaid/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 7
     },
@@ -2006,9 +1256,6 @@
     }
   },
   "app/components/base/message-log-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -2021,18 +1268,8 @@
       "count": 3
     }
   },
-  "app/components/base/modal-like-wrap/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/modal/index.stories.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/components/base/modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -2044,21 +1281,8 @@
       "count": 1
     }
   },
-  "app/components/base/modal/modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/new-audio-button/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/node-status/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -2067,38 +1291,17 @@
       "count": 1
     }
   },
-  "app/components/base/notion-icon/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/notion-page-selector/base.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     }
   },
-  "app/components/base/notion-page-selector/credential-selector/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/notion-page-selector/page-selector/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
-  "app/components/base/notion-page-selector/search-input/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/base/pagination/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "unicorn/prefer-number-properties": {
       "count": 1
     }
@@ -2137,17 +1340,11 @@
     }
   },
   "app/components/base/prompt-editor/plugins/context-block/component.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/base/prompt-editor/plugins/history-block/component.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2178,22 +1375,11 @@
     }
   },
   "app/components/base/prompt-log-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
-  "app/components/base/qrcode/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/radio-card/index.stories.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 22
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2221,21 +1407,6 @@
       "count": 1
     }
   },
-  "app/components/base/search-input/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/base/segmented-control/index.stories.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/base/select/custom.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/base/select/index.stories.tsx": {
     "no-console": {
       "count": 4
@@ -2245,9 +1416,6 @@
     }
   },
   "app/components/base/select/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 10
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -2256,21 +1424,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/base/select/locale-signin.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/select/locale.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/select/pure.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/base/slider/index.stories.tsx": {
@@ -2282,9 +1435,6 @@
     }
   },
   "app/components/base/sort/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -2307,11 +1457,6 @@
       "count": 1
     }
   },
-  "app/components/base/tab-slider-new/index.stories.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/base/tab-slider/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
@@ -2323,41 +1468,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/base/tag-input/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/base/tag-management/filter.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/tag-management/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/tag-management/panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/base/tag-management/tag-item-editor.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/base/tag-management/tag-remove-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/base/tag-management/trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/base/text-generation/hooks.ts": {
@@ -2373,26 +1483,6 @@
       "count": 1
     }
   },
-  "app/components/base/theme-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 9
-    }
-  },
-  "app/components/base/theme-switcher.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/base/toast/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
-    }
-  },
-  "app/components/base/tooltip/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/base/video-gallery/VideoPlayer.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -2404,11 +1494,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/base/voice-input/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/base/voice-input/utils.ts": {
@@ -2436,32 +1521,9 @@
       "count": 4
     }
   },
-  "app/components/billing/billing-page/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/billing/plan/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/billing/pricing/footer.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/billing/pricing/header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/billing/pricing/plans/cloud-plan-item/button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/billing/pricing/plans/cloud-plan-item/index.spec.tsx": {
@@ -2469,28 +1531,8 @@
       "count": 1
     }
   },
-  "app/components/billing/pricing/plans/cloud-plan-item/list/item/tooltip.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/billing/pricing/plans/self-hosted-plan-item/button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/billing/pricing/plans/self-hosted-plan-item/index.spec.tsx": {
     "test/prefer-hooks-in-order": {
-      "count": 1
-    }
-  },
-  "app/components/billing/pricing/plans/self-hosted-plan-item/list/item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/billing/priority-label/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -2504,25 +1546,12 @@
       "count": 3
     }
   },
-  "app/components/billing/usage-info/apps-info.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/billing/usage-info/vector-space-info.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/custom/custom-web-app-brand/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 7
     }
   },
   "app/components/custom/custom-web-app-brand/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 8
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -2532,30 +1561,12 @@
       "count": 1
     }
   },
-  "app/components/datasets/common/document-picker/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/common/document-picker/preview-document-picker.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/datasets/common/document-picker/preview-document-picker.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/common/document-status-with-action/status-with-action.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    }
-  },
   "app/components/datasets/common/image-previewer/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "no-irregular-whitespace": {
       "count": 1
     }
@@ -2563,26 +1574,6 @@
   "app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/datasets/common/image-uploader/image-uploader-in-chunk/image-input.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/common/image-uploader/image-uploader-in-chunk/image-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing/image-input.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing/image-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/datasets/common/image-uploader/utils.ts": {
@@ -2595,68 +1586,12 @@
       "count": 1
     }
   },
-  "app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/uploader.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/create-from-pipeline/footer.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create-from-pipeline/header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create-from-pipeline/list/create-card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create-from-pipeline/list/template-card/actions.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/create-from-pipeline/list/template-card/details/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/create-from-pipeline/list/template-card/edit-pipeline-info.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create/embedding-process/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/create/embedding-process/indexing-progress-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/datasets/create/file-preview/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
   "app/components/datasets/create/file-uploader/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -2667,20 +1602,7 @@
     }
   },
   "app/components/datasets/create/notion-page-preview/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create/step-one/components/next-step-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create/step-one/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -2689,58 +1611,13 @@
       "count": 7
     }
   },
-  "app/components/datasets/create/step-three/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create/step-two/components/general-chunking-options.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/create/step-two/components/parent-child-options.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create/step-two/components/preview-panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create/step-two/components/step-two-footer.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/create/step-two/hooks/use-indexing-config.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     }
   },
-  "app/components/datasets/create/step-two/language-select/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/datasets/create/stop-embedding-modal/index.spec.tsx": {
     "test/prefer-hooks-in-order": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create/top-bar/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create/website/base/header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/create/website/base/options-wrap.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -2776,11 +1653,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/create/website/preview.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/create/website/watercrawl/index.tsx": {
     "no-console": {
       "count": 1
@@ -2797,20 +1669,7 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/components/documents-header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/documents/components/empty-element.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/components/list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -2818,44 +1677,14 @@
       "count": 2
     }
   },
-  "app/components/datasets/documents/components/operations.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 11
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/actions/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 4
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/base/header.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/base/header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/local-file/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.spec.tsx": {
@@ -2878,18 +1707,8 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/connect/index.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/header/breadcrumbs/dropdown/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -2901,16 +1720,6 @@
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.spec.tsx": {
@@ -2933,20 +1742,12 @@
       "count": 4
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/error-message.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 9
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2961,44 +1762,9 @@
       "count": 2
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/left-header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/preview/chunk-preview.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/preview/file-preview.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/preview/online-document-preview.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/preview/web-preview.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/process-documents/actions.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/process-documents/form.tsx": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/process-documents/header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/datasets/documents/create-from-pipeline/process-documents/index.tsx": {
@@ -3006,42 +1772,9 @@
       "count": 2
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/processing/embedding-process/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 6
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/processing/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/batch-modal/csv-uploader.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/detail/batch-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/completed/child-segment-detail.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/documents/detail/completed/child-segment-list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/documents/detail/completed/common/batch-action.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 7
     }
   },
   "app/components/datasets/documents/detail/completed/common/chunk-content.tsx": {
@@ -3049,46 +1782,8 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/detail/completed/common/empty.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/completed/common/regeneration-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/completed/display-toggle.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/detail/completed/new-child-segment.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/completed/segment-card/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/documents/detail/completed/segment-detail.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/documents/detail/completed/skeleton/paragraph-list-skeleton.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/completed/status-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -3097,20 +1792,7 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/detail/embedding/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/documents/detail/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/datasets/documents/detail/metadata/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     },
@@ -3119,26 +1801,13 @@
     }
   },
   "app/components/datasets/documents/detail/new-segment.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/segment-add/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
     }
   },
   "app/components/datasets/documents/detail/settings/pipeline-settings/index.tsx": {
     "ts/no-explicit-any": {
       "count": 6
-    }
-  },
-  "app/components/datasets/documents/detail/settings/pipeline-settings/left-header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/datasets/documents/detail/settings/pipeline-settings/process-documents/index.tsx": {
@@ -3156,72 +1825,18 @@
       "count": 2
     }
   },
-  "app/components/datasets/external-api/external-api-modal/Form.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/external-api/external-api-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
-  "app/components/datasets/external-api/external-api-panel/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/external-api/external-knowledge-api-card/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
   "app/components/datasets/external-knowledge-base/create/ExternalApiSelection.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/external-knowledge-base/create/InfoPanel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/external-knowledge-base/create/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/extra-info/api-access/card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/extra-info/service-api/card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/extra-info/statistics.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/formatted-text/flavours/edit-slice.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -3230,53 +1845,8 @@
       "count": 1
     }
   },
-  "app/components/datasets/hit-testing/components/empty-records.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/hit-testing/components/query-input/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/hit-testing/components/records.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/hit-testing/components/result-item-footer.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/hit-testing/components/result-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/datasets/hit-testing/components/score.tsx": {
     "unicorn/prefer-number-properties": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/hit-testing/modify-external-retrieval-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/hit-testing/modify-retrieval-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/list/dataset-card/components/dataset-card-footer.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/list/dataset-card/components/operations-popover.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -3285,64 +1855,9 @@
       "count": 1
     }
   },
-  "app/components/datasets/list/dataset-card/operation-item.spec.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/list/dataset-card/operations.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/list/new-dataset-card/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/list/new-dataset-card/option.spec.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/metadata/add-metadata-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/metadata/base/date-picker.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/metadata/edit-metadata-batch/add-row.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/metadata/edit-metadata-batch/edit-row.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/metadata/edit-metadata-batch/edited-beacon.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/metadata/edit-metadata-batch/input-combined.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/datasets/metadata/edit-metadata-batch/input-has-set-multiple-value.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/metadata/edit-metadata-batch/modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/datasets/metadata/hooks/use-edit-dataset-metadata.ts": {
@@ -3356,9 +1871,6 @@
     }
   },
   "app/components/datasets/metadata/metadata-dataset/create-content.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3368,45 +1880,7 @@
       "count": 1
     }
   },
-  "app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/metadata/metadata-dataset/select-metadata.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/metadata/metadata-document/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/metadata/metadata-document/info-group.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/metadata/metadata-document/no-data.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/no-linked-apps-panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/rename-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/settings/form/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -3414,26 +1888,8 @@
       "count": 1
     }
   },
-  "app/components/datasets/settings/index-method/keyword-number.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/datasets/settings/permission-selector/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "react/no-missing-key": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/settings/permission-selector/member-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/settings/permission-selector/permission-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -3446,9 +1902,6 @@
     }
   },
   "app/components/develop/doc.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -3464,40 +1917,12 @@
       "count": 2
     }
   },
-  "app/components/develop/secret-key/secret-key-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/develop/secret-key/secret-key-generate.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/develop/secret-key/secret-key-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/explore/app-card/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/explore/app-card/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/explore/banner/banner-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/explore/create-app-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 1
     },
@@ -3511,59 +1936,18 @@
     }
   },
   "app/components/explore/item-operation/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
   "app/components/explore/sidebar/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/explore/try-app/app-info/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/explore/try-app/app/chat.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/explore/try-app/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/goto-anything/actions/commands/account.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
   "app/components/goto-anything/actions/commands/command-bus.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/goto-anything/actions/commands/community.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/goto-anything/actions/commands/docs.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/goto-anything/actions/commands/forum.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/goto-anything/actions/commands/registry.ts": {
@@ -3576,18 +1960,8 @@
       "count": 1
     }
   },
-  "app/components/goto-anything/actions/commands/theme.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/goto-anything/actions/commands/types.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/goto-anything/actions/commands/zen.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -3607,71 +1981,13 @@
     }
   },
   "app/components/goto-anything/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/header/account-about/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-dropdown/compliance.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/header/account-dropdown/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 13
-    }
-  },
-  "app/components/header/account-dropdown/support.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 9
-    }
-  },
-  "app/components/header/account-dropdown/workplace-selector/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/api-based-extension-page/empty.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/api-based-extension-page/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/api-based-extension-page/item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/api-based-extension-page/selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/header/account-setting/collapse/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/data-source-page-new/card.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/header/account-setting/data-source-page-new/configure.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/data-source-page-new/hooks/use-marketplace-all-plugins.ts": {
@@ -3680,9 +1996,6 @@
     }
   },
   "app/components/header/account-setting/data-source-page-new/install-from-marketplace.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3692,19 +2005,9 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/data-source-page-new/operator.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
-    }
-  },
   "app/components/header/account-setting/data-source-page-new/types.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-notion/operate/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
     }
   },
   "app/components/header/account-setting/data-source-page/data-source-website/index.tsx": {
@@ -3713,28 +2016,12 @@
     }
   },
   "app/components/header/account-setting/data-source-page/panel/config-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/header/account-setting/data-source-page/panel/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 15
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/key-validator/ValidateStatus.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -3743,61 +2030,17 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/members-page/edit-workspace-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/members-page/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/members-page/invite-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/members-page/invite-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     }
   },
-  "app/components/header/account-setting/members-page/invite-modal/role-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/members-page/invited-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/header/account-setting/members-page/operation/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/members-page/operation/transfer-ownership.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
   },
   "app/components/header/account-setting/members-page/transfer-ownership-modal/member-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -3820,54 +2063,13 @@
       "count": 3
     }
   },
-  "app/components/header/account-setting/model-provider-page/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/install-from-marketplace.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-auth/add-credential-in-load-balancing.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
   },
-  "app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-auth/authorized/credential-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-auth/config-model.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-auth/config-provider.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-auth/credential-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 2
     }
   },
@@ -3882,9 +2084,6 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/switch-credential-in-load-balancing.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3900,16 +2099,8 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/model-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 5
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/model-parameter-modal/configuration-button.tsx": {
@@ -3922,41 +2113,8 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-parameter-modal/status-indicators.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-selector/empty-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-selector/feature-icon.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 8
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-selector/model-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-selector/popup.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 2
     }
   },
@@ -3971,22 +2129,11 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/provider-added-card/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/header/account-setting/model-provider-page/provider-added-card/model-list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-configs.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -3999,35 +2146,12 @@
       "count": 3
     }
   },
-  "app/components/header/account-setting/model-provider-page/provider-added-card/priority-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/system-model-selector/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/plugin-page/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/plugin-page/utils.ts": {
     "ts/no-explicit-any": {
       "count": 4
     }
   },
-  "app/components/header/app-back/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/header/app-nav/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -4035,78 +2159,8 @@
       "count": 1
     }
   },
-  "app/components/header/app-selector/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/header/dataset-nav/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/header/explore-nav/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/header/github-star/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/header/header-wrapper.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/header/license-env/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/header/nav/nav-selector/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    }
-  },
-  "app/components/header/plan-badge/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/header/tools-nav/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/base/deprecation-notice.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/base/key-value-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/card/base/card-icon.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/card/base/download-count.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/card/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/install-plugin/base/loading-error.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -4128,19 +2182,9 @@
       "count": 2
     }
   },
-  "app/components/plugins/install-plugin/install-bundle/steps/install.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/plugins/install-plugin/install-from-github/index.tsx": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/plugins/install-plugin/install-from-github/steps/loaded.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/plugins/install-plugin/install-from-github/steps/selectPackage.tsx": {
@@ -4148,15 +2192,7 @@
       "count": 1
     }
   },
-  "app/components/plugins/install-plugin/install-from-local-package/steps/install.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/plugins/install-plugin/install-from-local-package/steps/uploading.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -4169,55 +2205,12 @@
       "count": 2
     }
   },
-  "app/components/plugins/install-plugin/install-from-marketplace/steps/install.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/marketplace/list/card-wrapper.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/marketplace/list/list-with-collection.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/marketplace/plugin-type-switch.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 6
-    }
-  },
-  "app/components/plugins/marketplace/search-box/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    }
-  },
-  "app/components/plugins/marketplace/search-box/trigger/marketplace.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/plugins/marketplace/search-box/trigger/tool-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/plugins/marketplace/sort-dropdown/index.spec.tsx": {
     "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
-  "app/components/plugins/marketplace/sort-dropdown/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/plugins/plugin-auth/authorize/add-oauth-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -4232,31 +2225,17 @@
       "count": 2
     }
   },
-  "app/components/plugins/plugin-auth/authorized-in-data-source-node.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-auth/authorized-in-node.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/plugins/plugin-auth/authorized/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/plugins/plugin-auth/authorized/item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4267,15 +2246,7 @@
     }
   },
   "app/components/plugins/plugin-auth/plugin-auth-in-agent.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/plugin-auth/plugin-auth-in-datasource-node.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -4304,41 +2275,22 @@
       "count": 8
     }
   },
-  "app/components/plugins/plugin-detail-panel/app-selector/app-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-detail-panel/datasource-action-list.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/plugins/plugin-detail-panel/detail-header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    }
-  },
   "app/components/plugins/plugin-detail-panel/endpoint-card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/plugins/plugin-detail-panel/endpoint-list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/plugins/plugin-detail-panel/endpoint-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 7
     }
@@ -4367,42 +2319,18 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/multiple-tool-selector/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/operation-dropdown.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/plugins/plugin-detail-panel/strategy-detail.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/subscription-list/create/common-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/subscription-list/create/oauth-client.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
@@ -4411,57 +2339,11 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/log-viewer.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
-  "app/components/plugins/plugin-detail-panel/subscription-list/selector-entry.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/subscription-list/selector-view.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/subscription-list/subscription-card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/tool-selector/components/reasoning-config-form.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/tool-selector/components/schema-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/tool-selector/components/tool-credentials-form.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/tool-selector/components/tool-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/tool-selector/components/tool-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/plugins/plugin-detail-panel/trigger/event-detail-drawer.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -4471,20 +2353,12 @@
       "count": 1
     }
   },
-  "app/components/plugins/plugin-item/action.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/plugins/plugin-item/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 10
     }
   },
   "app/components/plugins/plugin-item/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 6
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4499,11 +2373,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/plugin-page/debug-info.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/plugins/plugin-page/empty/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 7
@@ -4514,25 +2383,7 @@
       "count": 2
     }
   },
-  "app/components/plugins/plugin-page/filter-management/category-filter.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/plugin-page/filter-management/tag-filter.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/plugin-page/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/plugins/plugin-page/install-plugin-dropdown.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     }
@@ -4542,54 +2393,14 @@
       "count": 4
     }
   },
-  "app/components/plugins/plugin-page/plugin-tasks/components/plugin-task-list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/plugins/plugin-page/plugin-tasks/components/task-status-indicator.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/plugins/plugin-page/plugin-tasks/index.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/provider-card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/readme-panel/entrance.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/readme-panel/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 2
     }
   },
   "app/components/plugins/reference-setting-modal/auto-update-setting/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 7
-    }
-  },
-  "app/components/plugins/reference-setting-modal/auto-update-setting/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/reference-setting-modal/auto-update-setting/plugins-picker.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/reference-setting-modal/auto-update-setting/strategy-picker.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/plugins/reference-setting-modal/index.spec.tsx": {
@@ -4623,9 +2434,6 @@
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/editor/form/show-all-settings.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4635,48 +2443,13 @@
       "count": 1
     }
   },
-  "app/components/rag-pipeline/components/panel/input-field/editor/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/rag-pipeline/components/panel/input-field/field-list/field-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/rag-pipeline/components/panel/input-field/field-list/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/rag-pipeline/components/panel/input-field/field-list/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/rag-pipeline/components/panel/input-field/footer-tip.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/rag-pipeline/components/panel/input-field/hooks.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/components/rag-pipeline/components/panel/input-field/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/rag-pipeline/components/panel/input-field/preview/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/rag-pipeline/components/panel/test-run/header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -4701,9 +2474,6 @@
     }
   },
   "app/components/rag-pipeline/components/panel/test-run/result/result-preview/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4713,35 +2483,12 @@
       "count": 4
     }
   },
-  "app/components/rag-pipeline/components/publish-as-knowledge-pipeline-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/rag-pipeline/components/publish-toast.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/rag-pipeline/components/rag-pipeline-children.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/rag-pipeline/components/rag-pipeline-header/publisher/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/rag-pipeline/components/rag-pipeline-header/publisher/popup.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
-    }
-  },
   "app/components/rag-pipeline/components/rag-pipeline-header/run-mode.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4752,9 +2499,6 @@
     }
   },
   "app/components/rag-pipeline/components/update-dsl-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4805,9 +2549,6 @@
     }
   },
   "app/components/share/text-generation/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -4816,30 +2557,16 @@
     }
   },
   "app/components/share/text-generation/menu-dropdown.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
   "app/components/share/text-generation/no-data/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-empty-object-type": {
       "count": 1
     }
   },
-  "app/components/share/text-generation/result/header.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
-    }
-  },
   "app/components/share/text-generation/result/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     },
@@ -4857,25 +2584,12 @@
       "count": 2
     }
   },
-  "app/components/share/text-generation/run-batch/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/share/text-generation/run-batch/res-download/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/share/text-generation/run-once/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 4
     }
   },
   "app/components/share/text-generation/run-once/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -4889,17 +2603,11 @@
     }
   },
   "app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/tools/edit-custom-collection-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     },
@@ -4908,58 +2616,21 @@
     }
   },
   "app/components/tools/edit-custom-collection-modal/test-api.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/tools/labels/filter.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/tools/labels/selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/tools/marketplace/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/tools/mcp/create-card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/tools/mcp/detail/content.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
   },
-  "app/components/tools/mcp/detail/operation-dropdown.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/tools/mcp/headers-input.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/tools/mcp/mcp-server-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -4969,20 +2640,7 @@
       "count": 1
     }
   },
-  "app/components/tools/mcp/mcp-service-card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/tools/mcp/modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/tools/mcp/provider-card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -4992,20 +2650,7 @@
       "count": 1
     }
   },
-  "app/components/tools/provider/custom-create-card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/tools/provider/detail.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/tools/provider/empty.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -5020,37 +2665,12 @@
       "count": 4
     }
   },
-  "app/components/tools/workflow-tool/configure-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/tools/workflow-tool/confirm-modal/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/tools/workflow-tool/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/tools/workflow-tool/method-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow-app/components/workflow-children.tsx": {
     "no-console": {
       "count": 1
     },
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/workflow-app/components/workflow-header/features-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/workflow-app/components/workflow-main.tsx": {
@@ -5114,22 +2734,11 @@
     }
   },
   "app/components/workflow/block-selector/all-start-blocks.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
-  "app/components/workflow/block-selector/all-tools.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/block-selector/featured-tools.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -5138,9 +2747,6 @@
     }
   },
   "app/components/workflow/block-selector/featured-triggers.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -5154,22 +2760,11 @@
     }
   },
   "app/components/workflow/block-selector/market-place-plugin/action.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
-  "app/components/workflow/block-selector/market-place-plugin/list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/workflow/block-selector/rag-tool-recommendations/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
@@ -5180,9 +2775,6 @@
     }
   },
   "app/components/workflow/block-selector/tool/tool.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     }
@@ -5193,9 +2785,6 @@
     }
   },
   "app/components/workflow/block-selector/trigger-plugin/item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -5208,40 +2797,12 @@
       "count": 1
     }
   },
-  "app/components/workflow/block-selector/view-type-select.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/workflow/candidate-node-main.tsx": {
     "ts/no-explicit-any": {
       "count": 2
     }
   },
-  "app/components/workflow/dsl-export-confirm-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/header/checklist.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/header/header-in-restoring.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/header/run-and-history.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/header/run-mode.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "no-console": {
       "count": 1
     },
@@ -5249,25 +2810,7 @@
       "count": 1
     }
   },
-  "app/components/workflow/header/undo-redo.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/header/version-history-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/header/view-history.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/workflow/header/view-workflow-history.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -5350,20 +2893,12 @@
       "count": 2
     }
   },
-  "app/components/workflow/nodes/_base/components/add-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/workflow/nodes/_base/components/agent-strategy-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -5377,9 +2912,6 @@
     }
   },
   "app/components/workflow/nodes/_base/components/before-run-form/form-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 11
     }
@@ -5392,11 +2924,6 @@
   "app/components/workflow/nodes/_base/components/before-run-form/index.tsx": {
     "ts/no-explicit-any": {
       "count": 8
-    }
-  },
-  "app/components/workflow/nodes/_base/components/before-run-form/panel-wrap.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars.tsx": {
@@ -5417,52 +2944,14 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/_base/components/error-handle/error-handle-tip.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/error-handle/error-handle-type-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/nodes/_base/components/error-handle/fail-branch-card.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/_base/components/error-handle/types.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/workflow/nodes/_base/components/field.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/_base/components/form-input-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
-    },
     "ts/no-explicit-any": {
       "count": 33
-    }
-  },
-  "app/components/workflow/nodes/_base/components/form-input-type-switch.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/help-link.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/input-field/add.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/components/input-support-select-var.tsx": {
@@ -5471,20 +2960,7 @@
     }
   },
   "app/components/workflow/nodes/_base/components/input-var-type-icon.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 8
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/install-plugin-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -5503,40 +2979,12 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/_base/components/next-step/add.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/next-step/operator.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/node-control.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/_base/components/node-handle.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
-  "app/components/workflow/nodes/_base/components/node-status-icon.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    }
-  },
-  "app/components/workflow/nodes/_base/components/panel-operator/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/_base/components/prompt/editor.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -5544,16 +2992,6 @@
   "app/components/workflow/nodes/_base/components/readonly-input-with-select-var.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/remove-button.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/retry/retry-on-node.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
     }
   },
   "app/components/workflow/nodes/_base/components/selector.tsx": {
@@ -5566,34 +3004,9 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/_base/components/switch-plugin-version.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/nodes/_base/components/toggle-expand-btn.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/nodes/_base/components/variable/manage-input-field.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/_base/components/variable/match-schema-type.ts": {
     "ts/no-explicit-any": {
       "count": 8
-    }
-  },
-  "app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker/field.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show/field.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/components/variable/utils.ts": {
@@ -5601,15 +3014,7 @@
       "count": 32
     }
   },
-  "app/components/workflow/nodes/_base/components/variable/var-list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 6
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -5617,20 +3022,7 @@
       "count": 3
     }
   },
-  "app/components/workflow/nodes/_base/components/variable/var-type-picker.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-label.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     },
@@ -5639,19 +3031,11 @@
     }
   },
   "app/components/workflow/nodes/_base/components/workflow-panel/last-run/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 7
     },
     "ts/no-explicit-any": {
       "count": 5
-    }
-  },
-  "app/components/workflow/nodes/_base/components/workflow-panel/last-run/no-data.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/components/workflow-panel/last-run/use-last-run.ts": {
@@ -5691,9 +3075,6 @@
     }
   },
   "app/components/workflow/nodes/_base/node.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -5743,16 +3124,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/assigner/components/operation-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/nodes/assigner/components/var-list/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/assigner/default.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -5760,11 +3131,6 @@
   },
   "app/components/workflow/nodes/assigner/hooks.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/assigner/panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -5785,11 +3151,6 @@
   },
   "app/components/workflow/nodes/code/default.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/code/dependency-picker.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -5816,11 +3177,6 @@
   },
   "app/components/workflow/nodes/data-source-empty/hooks.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/data-source-empty/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -5874,11 +3230,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/http/components/api-input.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/http/components/key-value/key-value-edit/index.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -5907,39 +3258,9 @@
       "count": 5
     }
   },
-  "app/components/workflow/nodes/if-else/components/condition-add.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/if-else/components/condition-list/condition-input.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/workflow/nodes/if-else/components/condition-list/condition-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/if-else/components/condition-list/condition-operator.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/if-else/components/condition-list/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/if-else/components/condition-number-input.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/if-else/components/condition-wrap.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
     }
   },
   "app/components/workflow/nodes/if-else/default.ts": {
@@ -5947,24 +3268,9 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/if-else/panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/if-else/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 5
-    }
-  },
-  "app/components/workflow/nodes/iteration-start/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/nodes/iteration/add-block.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/iteration/default.ts": {
@@ -5980,16 +3286,6 @@
   "app/components/workflow/nodes/iteration/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 6
-    }
-  },
-  "app/components/workflow/nodes/knowledge-base/components/chunk-structure/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/knowledge-base/components/index-method.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/hooks.tsx": {
@@ -6012,66 +3308,8 @@
       "count": 3
     }
   },
-  "app/components/workflow/nodes/knowledge-retrieval/components/dataset-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/nodes/knowledge-retrieval/components/metadata/add-condition.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-date.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-operator.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-value-method.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter/metadata-filter-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-icon.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/knowledge-retrieval/components/retrieval-config.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -6126,35 +3364,16 @@
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
   },
-  "app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-importer.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
   },
-  "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-config.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/generated-result.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "style/multiline-ternary": {
       "count": 2
     }
@@ -6164,29 +3383,9 @@
       "count": 2
     }
   },
-  "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/prompt-editor.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/add-field.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/actions.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/auto-width-input.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/type-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/hooks.ts": {
@@ -6194,15 +3393,7 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/schema-node.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/workflow/nodes/llm/components/structure-output.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -6210,11 +3401,6 @@
   "app/components/workflow/nodes/llm/default.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/workflow/nodes/llm/panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/llm/use-config.ts": {
@@ -6235,48 +3421,8 @@
       "count": 10
     }
   },
-  "app/components/workflow/nodes/loop-start/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/nodes/loop/add-block.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/loop/components/condition-add.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/loop/components/condition-list/condition-input.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/loop/components/condition-list/condition-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/loop/components/condition-list/condition-operator.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/loop/components/condition-list/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/loop/components/condition-number-input.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/loop/components/condition-wrap.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -6286,20 +3432,12 @@
     }
   },
   "app/components/workflow/nodes/loop/components/loop-variables/item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
   },
   "app/components/workflow/nodes/loop/default.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/loop/panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -6316,11 +3454,6 @@
   "app/components/workflow/nodes/loop/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "app/components/workflow/nodes/parameter-extractor/components/extract-parameter/item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/parameter-extractor/components/extract-parameter/update.tsx": {
@@ -6352,9 +3485,6 @@
     }
   },
   "app/components/workflow/nodes/question-classifier/components/class-list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
@@ -6377,16 +3507,6 @@
       "count": 8
     }
   },
-  "app/components/workflow/nodes/start/components/var-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/start/components/var-list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/start/panel.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -6407,11 +3527,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/template-transform/panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/template-transform/use-config.ts": {
     "ts/no-explicit-any": {
       "count": 4
@@ -6424,11 +3539,6 @@
   },
   "app/components/workflow/nodes/tool/__tests__/output-schema-utils.test.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/tool/components/copy-id.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -6453,9 +3563,6 @@
     }
   },
   "app/components/workflow/nodes/tool/components/tool-form/item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -6496,9 +3603,6 @@
     }
   },
   "app/components/workflow/nodes/trigger-plugin/components/trigger-form/item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -6538,27 +3642,12 @@
       "count": 7
     }
   },
-  "app/components/workflow/nodes/trigger-schedule/components/mode-switcher.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/nodes/trigger-schedule/components/monthly-days-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/trigger-schedule/default.ts": {
     "regexp/no-unused-capturing-group": {
       "count": 2
     },
     "ts/no-explicit-any": {
       "count": 10
-    }
-  },
-  "app/components/workflow/nodes/trigger-webhook/components/generic-table.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/trigger-webhook/default.ts": {
@@ -6572,9 +3661,6 @@
     }
   },
   "app/components/workflow/nodes/variable-assigner/components/var-group-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -6590,25 +3676,7 @@
     }
   },
   "app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/component.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/note-node/note-editor/toolbar/command.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
-    }
-  },
-  "app/components/workflow/note-node/note-editor/toolbar/font-size-selector.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/note-node/note-editor/toolbar/operator.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -6618,16 +3686,8 @@
     }
   },
   "app/components/workflow/operator/add-block.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/workflow/operator/control.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 6
     }
   },
   "app/components/workflow/operator/hooks.ts": {
@@ -6635,44 +3695,22 @@
       "count": 1
     }
   },
-  "app/components/workflow/operator/more-actions.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/operator/zoom-in-out.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/workflow/panel/chat-record/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 8
     }
   },
   "app/components/workflow/panel/chat-record/user-input.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/workflow/panel/chat-variable-panel/components/array-bool-list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/workflow/panel/chat-variable-panel/components/array-value-list.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -6690,20 +3728,7 @@
       "count": 2
     }
   },
-  "app/components/workflow/panel/chat-variable-panel/components/variable-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/panel/chat-variable-panel/components/variable-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 5
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 8
     },
@@ -6712,16 +3737,8 @@
     }
   },
   "app/components/workflow/panel/chat-variable-panel/components/variable-type-select.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "app/components/workflow/panel/chat-variable-panel/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/components/workflow/panel/debug-and-preview/chat-wrapper.tsx": {
@@ -6730,9 +3747,6 @@
     }
   },
   "app/components/workflow/panel/debug-and-preview/conversation-variable-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -6742,39 +3756,11 @@
       "count": 7
     }
   },
-  "app/components/workflow/panel/debug-and-preview/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/panel/env-panel/env-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
-  "app/components/workflow/panel/env-panel/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/panel/env-panel/variable-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/panel/env-panel/variable-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/panel/global-variable-panel/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -6783,69 +3769,16 @@
       "count": 4
     }
   },
-  "app/components/workflow/panel/version-history-panel/context-menu/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/panel/version-history-panel/empty.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/panel/version-history-panel/filter/filter-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/panel/version-history-panel/filter/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/components/workflow/panel/version-history-panel/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 2
     }
   },
-  "app/components/workflow/panel/version-history-panel/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    }
-  },
   "app/components/workflow/panel/workflow-preview.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/run/agent-log/agent-log-item.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    }
-  },
-  "app/components/workflow/run/agent-log/agent-log-nav-more.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/run/agent-log/agent-log-nav.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/run/agent-log/agent-log-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/run/agent-log/agent-result-panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -6860,9 +3793,6 @@
     }
   },
   "app/components/workflow/run/iteration-log/iteration-log-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     },
@@ -6870,33 +3800,12 @@
       "count": 1
     }
   },
-  "app/components/workflow/run/iteration-log/iteration-result-panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    }
-  },
   "app/components/workflow/run/loop-log/loop-log-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "unicorn/prefer-number-properties": {
       "count": 1
     }
   },
-  "app/components/workflow/run/loop-log/loop-result-panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    }
-  },
-  "app/components/workflow/run/loop-result-panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/components/workflow/run/node.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 6
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
@@ -6913,21 +3822,6 @@
   },
   "app/components/workflow/run/result-text.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/run/retry-log/retry-log-trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/run/retry-log/retry-result-panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/run/tracing-panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 2
     }
   },
@@ -6985,15 +3879,7 @@
     }
   },
   "app/components/workflow/selection-contextmenu.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 8
-    },
     "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
-  "app/components/workflow/simple-node/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 4
     }
   },
@@ -7016,9 +3902,6 @@
     }
   },
   "app/components/workflow/update-dsl-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -7059,24 +3942,13 @@
     }
   },
   "app/components/workflow/variable-inspect/display-content.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/workflow/variable-inspect/group.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/workflow/variable-inspect/large-data-alert.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
     }
   },
   "app/components/workflow/variable-inspect/left.tsx": {
@@ -7090,25 +3962,16 @@
     }
   },
   "app/components/workflow/variable-inspect/panel.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/workflow/variable-inspect/right.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 6
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
   },
   "app/components/workflow/variable-inspect/trigger.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -7137,31 +4000,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/workflow-preview/components/nodes/iteration-start/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/workflow-preview/components/nodes/loop-start/index.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/workflow-preview/components/zoom-in-out.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/education-apply/education-apply-page.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/education-apply/expire-notice-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
   "app/education-apply/hooks.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 5
@@ -7173,15 +4011,7 @@
     }
   },
   "app/education-apply/verify-state-modal.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/forgot-password/ChangePasswordForm.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -7200,38 +4030,13 @@
       "count": 7
     }
   },
-  "app/reset-password/check-code/page.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/reset-password/layout.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/reset-password/page.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
-  "app/reset-password/set-password/page.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 1
-    }
-  },
-  "app/signin/check-code/page.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
-    }
-  },
   "app/signin/components/mail-and-password-auth.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/signin/invite-settings/page.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
       "count": 1
     }
   },
@@ -7240,19 +4045,9 @@
       "count": 1
     }
   },
-  "app/signin/normal-form.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 7
-    }
-  },
   "app/signin/one-more-step.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/signup/check-code/page.tsx": {
-    "dify-i18n/prefer-tailwind-icon": {
-      "count": 2
     }
   },
   "app/signup/layout.tsx": {

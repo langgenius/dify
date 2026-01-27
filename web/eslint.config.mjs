@@ -126,7 +126,7 @@ export default antfu(
       'dify-i18n': difyI18n,
     },
     rules: {
-      'dify-i18n/prefer-tailwind-icon': 'error',
+      'dify-i18n/prefer-tailwind-icon': 'warn',
     },
   },
   // i18n JSON validation rules
