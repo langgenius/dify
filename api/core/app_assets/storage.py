@@ -101,10 +101,7 @@ class _ResolvedAssetPath(SignedAssetPath):
         _require_uuid(self.node_id, "node_id")
 
     def get_storage_key(self) -> str:
-        return (
-            f"{_ASSET_BASE}/{self.tenant_id}/{self.app_id}/artifacts/"
-            f"{self.resource_id}/resolved/{self.node_id}"
-        )
+        return f"{_ASSET_BASE}/{self.tenant_id}/{self.app_id}/artifacts/{self.resource_id}/resolved/{self.node_id}"
 
     def signature_parts(self) -> tuple[str, str | None]:
         return (self.resource_id, self.node_id)
