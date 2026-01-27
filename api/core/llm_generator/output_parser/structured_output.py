@@ -24,7 +24,6 @@ from core.model_runtime.entities.message_entities import (
     PromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
-    TextPromptMessageContent,
 )
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ParameterRule
 
