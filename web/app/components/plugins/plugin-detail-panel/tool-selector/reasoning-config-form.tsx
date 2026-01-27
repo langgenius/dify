@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import type { Node } from 'reactflow'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'

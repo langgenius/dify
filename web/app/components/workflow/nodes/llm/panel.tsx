@@ -235,12 +235,14 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             />
           </>
         )}
-        <Tools
-          nodeId={id}
-          tools={inputs.tools}
-          maxIterations={inputs.max_iterations}
-          hideMaxIterations
-        />
+        {!isSupportSandbox && (
+          <Tools
+            nodeId={id}
+            tools={inputs.tools}
+            maxIterations={inputs.max_iterations}
+            hideMaxIterations
+          />
+        )}
       </div>
 
       {/* Advanced Settings - 折叠区 */}
