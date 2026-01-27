@@ -138,7 +138,7 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
                     display_in_ui=display_in_ui,
                     form_token=form_token,
                     resolved_default_values=form_definition.default_values,
-                    expiration_time=form.expiration_time,
+                    expiration_time=int(form.expiration_time.timestamp()),
                 ),
             )
 

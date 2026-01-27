@@ -167,7 +167,7 @@ def test_get_by_message_ids_returns_unsubmitted_form_definition() -> None:
     assert domain_content.submitted is False
     assert domain_content.workflow_run_id == "workflow-run"
     assert domain_content.form_definition is not None
-    assert domain_content.form_definition.expiration_time == form.expiration_time
+    assert domain_content.form_definition.expiration_time == int(form.expiration_time.timestamp())
     assert domain_content.form_definition is not None
     form_definition = domain_content.form_definition
     assert form_definition.form_id == "form-1"
@@ -177,4 +177,4 @@ def test_get_by_message_ids_returns_unsubmitted_form_definition() -> None:
     assert form_definition.display_in_ui is True
     assert form_definition.form_token == "token-1"
     assert form_definition.resolved_default_values == {"name": "John"}
-    assert form_definition.expiration_time == form.expiration_time
+    assert form_definition.expiration_time == int(form.expiration_time.timestamp())
