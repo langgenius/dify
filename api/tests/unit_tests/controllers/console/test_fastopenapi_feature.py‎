@@ -1,6 +1,7 @@
 import sys
 import builtins
 import pytest
+import importlib
 from unittest.mock import MagicMock, patch
 from flask import Flask
 from flask.views import MethodView
@@ -66,34 +67,36 @@ def mock_auth_environment():
     # Context manager for patching multiple dependencies
     # We patch 'controllers.fastopenapi.console_router' so that when the feature module
     # reloads, it registers routes to our temp_router instead of the global one.
-    with patch("controllers.fastopenapi.console_router", temp_router), \
-         patch(f"{target_module}.setup_required", side_effect=noop), \
-         patch(f"{target_module}.login_required", side_effect=noop), \
-         patch(f"{target_module}.account_initialization_required", side_effect=noop), \
-         patch(f"{target_module}.cloud_utm_record", side_effect=noop), \
-         patch(f"{target_module}.current_account_with_tenant", return_value=(MagicMock(), "tenant-id")):
-        
-        # Explicitly import the module to trigger the decorators with patches applied
-        # This will register routes to 'temp_router' because of the patch above.
-        import controllers.console.feature
-        
-        # IMPORTANT: Ensure ext_fastopenapi uses our temp_router.
-        # If ext_fastopenapi has already imported console_router, it holds the old reference.
-        # We might need to patch ext_fastopenapi's reference or rely on it resolving it dynamically.
-        # Assuming ext_fastopenapi.init_app iterates over a list of routers, we need to ensure
-        # it sees our temp_router.
-        # If ext_fastopenapi imports 'console_router' from 'controllers.fastopenapi', 
-        # checking 'sys.modules' for ext_fastopenapi and reloading it might be needed,
-        # but that could be too invasive.
-        # 
-        # However, since we patched 'controllers.fastopenapi.console_router', any *new* import
-        # or attribute lookup on 'controllers.fastopenapi' will yield 'temp_router'.
-        
-        yield
+    try:
+        with patch("controllers.fastopenapi.console_router", temp_router), \
+             patch(f"{target_module}.setup_required", side_effect=noop), \
+             patch(f"{target_module}.login_required", side_effect=noop), \
+             patch(f"{target_module}.account_initialization_required", side_effect=noop), \
+             patch(f"{target_module}.cloud_utm_record", side_effect=noop), \
+             patch(f"{target_module}.current_account_with_tenant", return_value=(MagicMock(), "tenant-id")):
+            
+            # Explicitly import the module to trigger the decorators with patches applied
+            # This will register routes to 'temp_router' because of the patch above.
+            import controllers.console.feature
+            
+            # RELOAD EXTENSION: Ensure ext_fastopenapi also sees the patched console_router.
+            # If ext_fastopenapi imported console_router at the top level, it holds a reference 
+            # to the OLD (real) router. Reloading it forces it to re-import from 
+            # controllers.fastopenapi, which is currently patched to return temp_router.
+            importlib.reload(ext_fastopenapi)
+            
+            yield
 
-    # Optional: Clean up sys.modules again after test to avoid side effects
-    if target_module in sys.modules:
-        del sys.modules[target_module]
+    finally:
+        # Restore the original state of ext_fastopenapi (pointing to the real router)
+        # The patch context manager above has already exited, so controllers.fastopenapi.console_router
+        # is back to the real router. Reloading the extension will make it pick up the real one again.
+        # This is inside finally to ensure execution even if the test crashes.
+        importlib.reload(ext_fastopenapi)
+
+        # Clean up sys.modules again after test to avoid side effects
+        if target_module in sys.modules:
+            del sys.modules[target_module]
 
 
 # ------------------------------------------------------------------------------
