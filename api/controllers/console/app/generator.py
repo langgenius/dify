@@ -70,8 +70,8 @@ class ContextGeneratePayload(BaseModel):
     model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
     available_vars: list[AvailableVarPayload] = Field(..., description="Available variables from upstream nodes")
     parameter_info: ParameterInfoPayload = Field(..., description="Target parameter metadata from the frontend")
-    code_context: CodeContextPayload | None = Field(
-        default=None, description="Existing code node context for incremental generation"
+    code_context: CodeContextPayload = Field(
+        description="Existing code node context for incremental generation"
     )
 
 
@@ -81,8 +81,8 @@ class SuggestedQuestionsPayload(BaseModel):
     language: str = Field(
         default="English", description="Language for generated questions (e.g. English, Chinese, Japanese)"
     )
-    model_config_data: dict[str, Any] | None = Field(
-        default=None,
+    model_config_data: dict[str, Any] = Field(
+        default_factory=dict,
         alias="model_config",
         description="Model configuration (optional, uses system default if not provided)",
     )

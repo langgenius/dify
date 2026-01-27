@@ -730,6 +730,8 @@ Generate {language} code to extract/transform available variables for the target
             raise ValueError("Workflow not found for the given app model.")
         last_run = workflow_service.get_node_last_run(app_model=app, workflow=workflow, node_id=node_id)
         try:
+            if not last_run:
+                raise ValueError()
             node_type = last_run.node_type
         except Exception:
             try:
