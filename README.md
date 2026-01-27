@@ -76,7 +76,8 @@ The easiest way to start the Dify server is through [Docker Compose](docker/dock
 ```bash
 cd dify
 cd docker
-./dify-compose up -d
+./setup_env.sh
+docker compose up -d
 ```
 
 On Windows PowerShell, run `.\dify-compose.ps1 up -d` from the `docker` directory.
