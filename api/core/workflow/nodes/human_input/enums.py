@@ -2,11 +2,20 @@ import enum
 
 
 class HumanInputFormStatus(enum.StrEnum):
-    """Status of a human input form."""
+    """Status of a human input form.
+    """
 
+    # Awaiting submission from any recipient. Forms stay in this state until
+    # submitted or a timeout rule applies.
     WAITING = enum.auto()
+    # Global timeout reached. The workflow run is stopped and will not resume.
+    # This is distinct from node-level timeout.
     EXPIRED = enum.auto()
+    # Submitted by a recipient; form data is available and execution resumes
+    # along the selected action edge.
     SUBMITTED = enum.auto()
+    # Node-level timeout reached. The human input node should emit a timeout
+    # event and the workflow should resume along the timeout edge.
     TIMEOUT = enum.auto()
 
 

@@ -188,6 +188,10 @@ class HumanInputFormRecord:
         )
 
 
+class _InvalidTimeoutStatusError(ValueError):
+    pass
+
+
 class HumanInputFormRepositoryImpl:
     def __init__(
         self,
@@ -502,20 +506,29 @@ class HumanInputFormSubmissionRepository:
 
             return HumanInputFormRecord.from_models(form_model, recipient_model)
 
-    def mark_timeout(self, *, form_id: str, reason: str | None = None) -> HumanInputFormRecord:
+    def mark_timeout(
+        self,
+        *,
+        form_id: str,
+        timeout_status: HumanInputFormStatus,
+        reason: str | None = None,
+    ) -> HumanInputFormRecord:
         with self._session_factory(expire_on_commit=False) as session, session.begin():
             form_model = session.get(HumanInputForm, form_id)
             if form_model is None:
                 raise FormNotFoundError(f"form not found, id={form_id}")
 
+            if timeout_status not in {HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED}:
+                raise _InvalidTimeoutStatusError(f"invalid timeout status: {timeout_status}")
+
             # already handled or submitted
-            if form_model.status == HumanInputFormStatus.TIMEOUT:
+            if form_model.status in {HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED}:
                 return HumanInputFormRecord.from_models(form_model, None)
 
             if form_model.submitted_at is not None or form_model.status == HumanInputFormStatus.SUBMITTED:
                 raise FormNotFoundError(f"form already submitted, id={form_id}")
 
-            form_model.status = HumanInputFormStatus.TIMEOUT
+            form_model.status = timeout_status
             form_model.selected_action_id = None
             form_model.submitted_data = None
             form_model.submission_user_id = None

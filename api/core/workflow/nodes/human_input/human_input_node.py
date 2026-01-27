@@ -249,7 +249,10 @@ class HumanInputNode(Node[HumanInputNodeData]):
             yield self._form_to_pause_event(form_entity)
             return
 
-        if form.status == HumanInputFormStatus.TIMEOUT or form.expiration_time <= naive_utc_now():
+        if (
+            form.status in {HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED}
+            or form.expiration_time <= naive_utc_now()
+        ):
             yield HumanInputFormTimeoutEvent(
                 node_title=self._node_data.title,
                 expiration_time=form.expiration_time,

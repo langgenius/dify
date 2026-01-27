@@ -47,7 +47,7 @@ def _handle_global_timeout(*, form_id: str, workflow_run_id: str, node_id: str, 
     with session_factory() as session, session.begin():
         workflow_run = session.get(WorkflowRun, workflow_run_id)
         if workflow_run is not None:
-            workflow_run.status = WorkflowExecutionStatus.FAILED
+            workflow_run.status = WorkflowExecutionStatus.STOPPED
             workflow_run.error = f"Human input global timeout at node {node_id}"
             workflow_run.finished_at = now
             session.add(workflow_run)
@@ -83,6 +83,7 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
                 HumanInputForm.status == HumanInputFormStatus.WAITING,
                 HumanInputForm.expiration_time <= now,
             )
+            .order_by(HumanInputForm.id.asc())
             .limit(limit)
         )
         expired_forms = session.scalars(stmt).all()
@@ -90,11 +91,16 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
     for form_model in expired_forms:
         try:
             if form_model.form_kind == HumanInputFormKind.DELIVERY_TEST:
-                form_repo.mark_timeout(form_id=form_model.id, reason="delivery_test_timeout")
+                form_repo.mark_timeout(
+                    form_id=form_model.id,
+                    timeout_status=HumanInputFormStatus.TIMEOUT,
+                    reason="delivery_test_timeout",
+                )
                 continue
             is_global = _is_global_timeout(form_model, global_timeout_seconds)
             record = form_repo.mark_timeout(
                 form_id=form_model.id,
+                timeout_status=HumanInputFormStatus.EXPIRED if is_global else HumanInputFormStatus.TIMEOUT,
                 reason="global_timeout" if is_global else "node_timeout",
             )
             if is_global:

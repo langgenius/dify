@@ -186,7 +186,7 @@ class HumanInputService:
     def ensure_form_active(self, form: Form) -> None:
         if form.submitted:
             raise FormSubmittedError(form.id)
-        if form.status == HumanInputFormStatus.TIMEOUT:
+        if form.status in {HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED}:
             raise FormExpiredError(form.id)
         now = naive_utc_now()
         if ensure_naive_utc(form.expiration_time) <= now:
