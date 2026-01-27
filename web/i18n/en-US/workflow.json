@@ -417,6 +417,7 @@
   "nodes.common.errorHandle.failBranch.title": "Fail Branch",
   "nodes.common.errorHandle.fallbackModel.addModel": "Add Fallback Model",
   "nodes.common.errorHandle.fallbackModel.desc": "When an error occurs, try alternative models in sequence",
+  "nodes.common.errorHandle.fallbackModel.inLog": "Node exception, will automatically execute the fallback model. The node output will return an error type and error message and pass them to downstream.",
   "nodes.common.errorHandle.fallbackModel.modelIndex": "Fallback Model {{index}}",
   "nodes.common.errorHandle.fallbackModel.title": "Fallback Model",
   "nodes.common.errorHandle.none.desc": "The node will stop running if an exception occurs and is not handled",

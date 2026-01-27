@@ -17,6 +17,9 @@ const ErrorHandleTip = ({
 
     if (type === ErrorHandleTypeEnum.defaultValue)
       return t('nodes.common.errorHandle.defaultValue.inLog', { ns: 'workflow' })
+
+    if (type === ErrorHandleTypeEnum.fallbackModel)
+      return t('nodes.common.errorHandle.fallbackModel.inLog', { ns: 'workflow' })
   }, [t, type])
 
   if (!type)
