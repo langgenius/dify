@@ -11,6 +11,7 @@ from fields.dataset_fields import dataset_metadata_fields
 from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
+    DocumentMetadataOperation,
     MetadataArgs,
     MetadataOperationData,
 )
@@ -21,7 +22,9 @@ class MetadataUpdatePayload(BaseModel):
     name: str
 
 
-register_schema_models(console_ns, MetadataArgs, MetadataOperationData, MetadataUpdatePayload)
+register_schema_models(
+    console_ns, MetadataArgs, MetadataOperationData, MetadataUpdatePayload, DocumentMetadataOperation
+)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata")

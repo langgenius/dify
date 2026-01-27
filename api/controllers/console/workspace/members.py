@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 import services
 from configs import dify_config
-from controllers.common.schema import get_or_create_model
+from controllers.common.schema import get_or_create_model, register_enum_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -68,7 +68,7 @@ reg(MemberRoleUpdatePayload)
 reg(OwnerTransferEmailPayload)
 reg(OwnerTransferCheckPayload)
 reg(OwnerTransferPayload)
-
+register_enum_models(console_ns, TenantAccountRole)
 
 account_with_role_model = get_or_create_model("AccountWithRole", account_with_role_fields)
 

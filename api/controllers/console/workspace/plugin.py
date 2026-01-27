@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
@@ -203,6 +203,8 @@ register_schema_models(
     ParserExcludePlugin,
     ParserReadme,
 )
+
+register_enum_models(console_ns, TenantPluginPermission.DebugPermission)
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
