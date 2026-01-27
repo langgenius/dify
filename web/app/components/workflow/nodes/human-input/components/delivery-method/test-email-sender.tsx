@@ -110,6 +110,7 @@ const EmailSenderModal = ({
         },
         variable: `#${item.join('.')}#`,
         value_selector: item,
+        required: true,
       }
     })
     const varInputs = variables.filter(item => !isENV(item.value_selector) && !isOutput(item.value_selector)).map((item) => {
@@ -119,7 +120,7 @@ const EmailSenderModal = ({
           label: item.label || item.variable,
           variable: item.variable,
           type: InputVarType.textInput,
-          required: false,
+          required: true,
           value_selector: item.value_selector,
         }
       }
@@ -127,14 +128,14 @@ const EmailSenderModal = ({
         label: item.label || item.variable,
         variable: item.variable,
         type: originalVar.type === VarType.number ? InputVarType.number : InputVarType.textInput,
-        required: false,
+        required: true,
       }
     })
     return varInputs
   }, [availableNodes, config?.body, formContent, formInputs, nodesOutputVars])
 
   const [inputs, setInputs] = useState<Record<string, unknown>>({})
-  const [collapsed, setCollapsed] = useState(true)
+  const [collapsed, setCollapsed] = useState(!(generatedInputs.length > 0))
   const [sendingEmail, setSendingEmail] = useState(false)
   const [done, setDone] = useState(false)
 
@@ -145,7 +146,21 @@ const EmailSenderModal = ({
     })
   }
 
+  const confirmChecked = useMemo(() => {
+    for (const variable of generatedInputs) {
+      if (variable.required) {
+        const value = inputs[variable.variable]
+        if (value === undefined || value === null || value === '') {
+          return false
+        }
+      }
+    }
+    return true
+  }, [generatedInputs, inputs])
+
   const handleConfirm = useCallback(async () => {
+    if (!confirmChecked)
+      return
     setSendingEmail(true)
     try {
       await testEmailSender({
@@ -159,7 +174,7 @@ const EmailSenderModal = ({
     finally {
       setSendingEmail(false)
     }
-  }, [testEmailSender, appDetail?.id, nodeId, deliveryId, inputs])
+  }, [confirmChecked, testEmailSender, appDetail?.id, nodeId, deliveryId, inputs])
 
   if (done) {
     return (
@@ -303,39 +318,40 @@ const EmailSenderModal = ({
         </>
       )}
       {/* vars */}
-      <>
-        <div className="px-6">
-          <Divider className="!mb-2 !mt-4 !h-px !w-12 bg-divider-regular" />
-        </div>
-        <div className="px-6 py-2">
-          <div className="group flex h-6 cursor-pointer items-center" onClick={() => setCollapsed(!collapsed)}>
-            <div className="system-sm-semibold-uppercase mr-1 text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`, { ns: 'workflow' })}</div>
-            <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailSender.optional`, { ns: 'workflow' })}</div>
-            <RiArrowRightSFill className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} />
+      {generatedInputs.length > 0 && (
+        <>
+          <div className="px-6">
+            <Divider className="!mb-2 !mt-4 !h-px !w-12 bg-divider-regular" />
           </div>
-          <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailSender.varsTip`, { ns: 'workflow' })}</div>
-          {!collapsed && (
-            <div className="mt-3 space-y-4">
-              {generatedInputs.map((variable, index) => (
-                <div
-                  key={variable.variable}
-                  className="mb-4 last-of-type:mb-0"
-                >
-                  <FormItem
-                    autoFocus={index === 0}
-                    payload={variable}
-                    value={inputs[variable.variable]}
-                    onChange={v => handleValueChange(variable.variable, v)}
-                  />
-                </div>
-              ))}
+          <div className="px-6 py-2">
+            <div className="group flex h-6 cursor-pointer items-center" onClick={() => setCollapsed(!collapsed)}>
+              <div className="system-sm-semibold-uppercase mr-1 text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`, { ns: 'workflow' })}</div>
+              <RiArrowRightSFill className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} />
             </div>
-          )}
-        </div>
-      </>
+            <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailSender.varsTip`, { ns: 'workflow' })}</div>
+            {!collapsed && (
+              <div className="mt-3 space-y-4">
+                {generatedInputs.map((variable, index) => (
+                  <div
+                    key={variable.variable}
+                    className="mb-4 last-of-type:mb-0"
+                  >
+                    <FormItem
+                      autoFocus={index === 0}
+                      payload={variable}
+                      value={inputs[variable.variable]}
+                      onChange={v => handleValueChange(variable.variable, v)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
       <div className="flex flex-row-reverse gap-2 p-6 pt-5">
         <Button
-          disabled={sendingEmail}
+          disabled={sendingEmail || !confirmChecked}
           loading={sendingEmail}
           variant="primary"
           onClick={handleConfirm}
