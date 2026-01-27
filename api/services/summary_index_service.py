@@ -5,6 +5,9 @@ import time
 import uuid
 from datetime import UTC, datetime
 
+from core.model_manager import ModelManager
+from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import Document
@@ -24,7 +27,7 @@ class SummaryIndexService:
         segment: DocumentSegment,
         dataset: Dataset,
         summary_index_setting: dict,
-    ) -> str:
+    ) -> tuple[str, LLMUsage]:
         """
         Generate summary for a single segment.
 
@@ -34,7 +37,7 @@ class SummaryIndexService:
             summary_index_setting: Summary index configuration
 
         Returns:
-            Generated summary text
+            Tuple of (summary_content, llm_usage) where llm_usage is LLMUsage object
 
         Raises:
             ValueError: If summary_index_setting is invalid or generation fails
@@ -43,7 +46,7 @@ class SummaryIndexService:
         # Use lazy import to avoid circular import
         from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 
-        summary_content = ParagraphIndexProcessor.generate_summary(
+        summary_content, usage = ParagraphIndexProcessor.generate_summary(
             tenant_id=dataset.tenant_id,
             text=segment.content,
             summary_index_setting=summary_index_setting,
@@ -53,7 +56,7 @@ class SummaryIndexService:
         if not summary_content:
             raise ValueError("Generated summary is empty")
 
-        return summary_content
+        return summary_content, usage
 
     @staticmethod
     def create_summary_record(
@@ -153,6 +156,22 @@ class SummaryIndexService:
                     str(e),
                 )
 
+        # Calculate embedding tokens for summary (for logging and statistics)
+        embedding_tokens = 0
+        try:
+            model_manager = ModelManager()
+            embedding_model = model_manager.get_model_instance(
+                tenant_id=dataset.tenant_id,
+                provider=dataset.embedding_model_provider,
+                model_type=ModelType.TEXT_EMBEDDING,
+                model=dataset.embedding_model,
+            )
+            if embedding_model:
+                tokens_list = embedding_model.get_text_embedding_num_tokens([summary_record.summary_content])
+                embedding_tokens = tokens_list[0] if tokens_list else 0
+        except Exception as e:
+            logger.warning("Failed to calculate embedding tokens for summary: %s", str(e))
+
         # Create document with summary content and metadata
         summary_document = Document(
             page_content=summary_record.summary_content,
@@ -179,9 +198,18 @@ class SummaryIndexService:
                 # we still want to re-vectorize (upsert will overwrite)
                 vector.add_texts([summary_document], duplicate_check=False)
 
+                # Log embedding token usage
+                if embedding_tokens > 0:
+                    logger.info(
+                        "Summary embedding for segment %s used %s tokens",
+                        segment.id,
+                        embedding_tokens,
+                    )
+
                 # Success - update summary record with index node info
                 summary_record.summary_index_node_id = summary_index_node_id
                 summary_record.summary_index_node_hash = summary_hash
+                summary_record.tokens = embedding_tokens  # Save embedding tokens
                 summary_record.status = "completed"
                 # Explicitly update updated_at to ensure it's refreshed even if other fields haven't changed
                 summary_record.updated_at = datetime.now(UTC).replace(tzinfo=None)
@@ -364,13 +392,23 @@ class SummaryIndexService:
             db.session.add(summary_record)
             db.session.flush()
 
-            # Generate summary
-            summary_content = SummaryIndexService.generate_summary_for_segment(
+            # Generate summary (returns summary_content and llm_usage)
+            summary_content, llm_usage = SummaryIndexService.generate_summary_for_segment(
                 segment, dataset, summary_index_setting
             )
 
             # Update summary content
             summary_record.summary_content = summary_content
+
+            # Log LLM usage for summary generation
+            if llm_usage and llm_usage.total_tokens > 0:
+                logger.info(
+                    "Summary generation for segment %s used %s tokens (prompt: %s, completion: %s)",
+                    segment.id,
+                    llm_usage.total_tokens,
+                    llm_usage.prompt_tokens,
+                    llm_usage.completion_tokens,
+                )
 
             # Vectorize summary (will delete old vector if exists before creating new one)
             SummaryIndexService.vectorize_summary(summary_record, segment, dataset)

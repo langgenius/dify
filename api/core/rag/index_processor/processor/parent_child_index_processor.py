@@ -382,7 +382,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             if flask_app:
                 # Ensure Flask app context in worker thread
                 with flask_app.app_context():
-                    summary = ParagraphIndexProcessor.generate_summary(
+                    summary, _ = ParagraphIndexProcessor.generate_summary(
                         tenant_id=tenant_id,
                         text=preview.content,
                         summary_index_setting=summary_index_setting,
@@ -390,7 +390,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     preview.summary = summary
             else:
                 # Fallback: try without app context (may fail)
-                summary = ParagraphIndexProcessor.generate_summary(
+                summary, _ = ParagraphIndexProcessor.generate_summary(
                     tenant_id=tenant_id,
                     text=preview.content,
                     summary_index_setting=summary_index_setting,
