@@ -1404,12 +1404,18 @@ class LLMNode(Node[LLMNodeData]):
 
         prompt_template = typed_node_data.prompt_template
         variable_selectors = []
+        prompt_context_selectors: list[Sequence[str]] = []
         if isinstance(prompt_template, list):
             for prompt in prompt_template:
                 prompt: LLMNodeChatModelMessage | PromptMessageContext
                 if isinstance(prompt, LLMNodeChatModelMessage) and prompt.edition_type == "jinja2":
                     variable_template_parser = VariableTemplateParser(template=prompt.text)
                     variable_selectors.extend(variable_template_parser.extract_variable_selectors())
+                    continue
+                if isinstance(prompt, PromptMessageContext):
+                    if len(prompt.value_selector) < 2:
+                        continue
+                    prompt_context_selectors.append(prompt.value_selector)
         elif isinstance(prompt_template, LLMNodeCompletionModelPromptTemplate):
             if prompt_template.edition_type != "jinja2":
                 variable_template_parser = VariableTemplateParser(template=prompt_template.text)
@@ -1420,6 +1426,10 @@ class LLMNode(Node[LLMNodeData]):
         variable_mapping: dict[str, Any] = {}
         for variable_selector in variable_selectors:
             variable_mapping[variable_selector.variable] = variable_selector.value_selector
+
+        for context_selector in prompt_context_selectors:
+            variable_key = f"#{'.'.join(context_selector)}#"
+            variable_mapping[variable_key] = list(context_selector)
 
         memory = typed_node_data.memory
         if memory and memory.query_prompt_template:
