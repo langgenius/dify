@@ -4,7 +4,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import marshal
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, TypeAdapter, model_validator
 from sqlalchemy import desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -34,6 +34,7 @@ from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
 
@@ -75,6 +76,11 @@ class DocumentListQuery(BaseModel):
     keyword: str | None = Field(default=None, description="Search keyword")
     status: str | None = Field(default=None, description="Document status filter")
 
+
+service_api_ns.schema_model(
+    RetrievalMethod.__name__,
+    TypeAdapter(RetrievalMethod).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 for m in [ProcessRule, RetrievalModel, DocumentTextCreatePayload, DocumentTextUpdate, DocumentListQuery]:
     service_api_ns.schema_model(m.__name__, m.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))  # type: ignore
