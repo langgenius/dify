@@ -349,10 +349,62 @@ class ZipSandbox:
             (
                 pipeline(self.vm)
                 .add(["mkdir", "-p", dest_dir], error_message="Failed to create destination directory")
-                .add(["tar", extract_flag, archive_path, "-C", dest_dir], error_message="Failed to extract tar archive")
+                .add(
+                    ["sh", "-c", f'tar {extract_flag} "$1" -C "$2" 2>/dev/null; exit $?', "sh", archive_path, dest_dir],
+                    error_message="Failed to extract tar archive",
+                )
                 .execute(timeout=self._DEFAULT_TIMEOUT_SECONDS, raise_on_error=True)
             )
         except PipelineExecutionError as exc:
             raise RuntimeError(str(exc)) from exc
 
         return dest_dir
+
+    def tar(self, src: str = ".", *, include_base: bool = True, compress: bool = True) -> SandboxFile:
+        """Create a tar archive and return a handle to it.
+
+        Args:
+            src: Source path to archive (file or directory)
+            include_base: If True, include the base directory name in the archive
+            compress: If True, create a gzipped tar archive (.tar.gz)
+
+        Returns:
+            SandboxFile handle to the created archive
+        """
+        src = self._normalize_path(src)
+        extension = ".tar.gz" if compress else ".tar"
+        out_path = f"/tmp/{uuid4().hex}{extension}"
+
+        create_flag = "-czf" if compress else "-cf"
+
+        try:
+            if src in (".", ""):
+                # Archive current directory contents
+                execute(
+                    self.vm,
+                    ["tar", create_flag, out_path, "-C", ".", "."],
+                    timeout=self._DEFAULT_TIMEOUT_SECONDS,
+                    error_message="Failed to create tar archive",
+                )
+            elif include_base:
+                # Archive with base directory name included
+                parent_dir = posixpath.dirname(src) or "."
+                base_name = posixpath.basename(src)
+                execute(
+                    self.vm,
+                    ["tar", create_flag, out_path, "-C", parent_dir, base_name],
+                    timeout=self._DEFAULT_TIMEOUT_SECONDS,
+                    error_message="Failed to create tar archive",
+                )
+            else:
+                # Archive contents without base directory name
+                execute(
+                    self.vm,
+                    ["tar", create_flag, out_path, "-C", src, "."],
+                    timeout=self._DEFAULT_TIMEOUT_SECONDS,
+                    error_message="Failed to create tar archive",
+                )
+        except CommandExecutionError as exc:
+            raise RuntimeError(str(exc)) from exc
+
+        return SandboxFile(path=out_path)
