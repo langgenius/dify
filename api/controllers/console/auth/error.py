@@ -155,3 +155,37 @@ class MemberNotInTenantError(BaseHTTPException):
     error_code = "member_not_in_tenant"
     description = "The member is not in the workspace."
     code = 400
+
+
+class PhoneCodeLoginRateLimitExceededError(BaseHTTPException):
+    error_code = "phone_code_login_rate_limit_exceeded"
+    description = "Too many phone verification codes have been sent. Please try again in {minutes} minutes."
+    code = 429
+
+    def __init__(self, minutes: int = 5):
+        description = self.description.format(minutes=int(minutes)) if self.description else None
+        super().__init__(description=description)
+
+
+class PhoneCodeError(BaseHTTPException):
+    error_code = "phone_code_error"
+    description = "Phone verification code is invalid or expired."
+    code = 400
+
+
+class PhoneVerifyLimitError(BaseHTTPException):
+    error_code = "phone_verify_limit"
+    description = "Too many failed phone verification attempts. Please try again in 24 hours."
+    code = 429
+
+
+class PlivoVerifyNotEnabledError(BaseHTTPException):
+    error_code = "plivo_verify_not_enabled"
+    description = "Phone verification is not enabled."
+    code = 400
+
+
+class InvalidPhoneNumberError(BaseHTTPException):
+    error_code = "invalid_phone_number"
+    description = "The phone number is not valid. Please use E.164 format (e.g., +14155551234)."
+    code = 400

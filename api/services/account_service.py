@@ -96,12 +96,16 @@ class AccountService:
     )
     change_email_rate_limiter = RateLimiter(prefix="change_email_rate_limit", max_attempts=1, time_window=60 * 1)
     owner_transfer_rate_limiter = RateLimiter(prefix="owner_transfer_rate_limit", max_attempts=1, time_window=60 * 1)
+    phone_code_login_rate_limiter = RateLimiter(
+        prefix="phone_code_login_rate_limit", max_attempts=3, time_window=300 * 1
+    )
 
     LOGIN_MAX_ERROR_LIMITS = 5
     FORGOT_PASSWORD_MAX_ERROR_LIMITS = 5
     CHANGE_EMAIL_MAX_ERROR_LIMITS = 5
     OWNER_TRANSFER_MAX_ERROR_LIMITS = 5
     EMAIL_REGISTER_MAX_ERROR_LIMITS = 5
+    PHONE_VERIFY_MAX_ERROR_LIMITS = 5
 
     @staticmethod
     def _get_refresh_token_key(refresh_token: str) -> str:
@@ -982,6 +986,129 @@ class AccountService:
     @staticmethod
     def check_email_unique(email: str) -> bool:
         return db.session.query(Account).filter_by(email=email).first() is None
+
+    # Phone verification methods for Plivo Verify integration
+    @classmethod
+    def send_phone_verification_code(cls, phone_number: str) -> str | None:
+        """
+        Send phone verification code using Plivo Verify API.
+
+        Args:
+            phone_number: The phone number to send verification code to (E.164 format)
+
+        Returns:
+            token (session reference) if successful, None otherwise
+
+        Raises:
+            PhoneCodeLoginRateLimitExceededError: If rate limit is exceeded
+        """
+        if not dify_config.PLIVO_VERIFY_ENABLED:
+            raise ValueError("Plivo Verify is not enabled")
+
+        if cls.phone_code_login_rate_limiter.is_rate_limited(phone_number):
+            from controllers.console.auth.error import PhoneCodeLoginRateLimitExceededError
+
+            raise PhoneCodeLoginRateLimitExceededError(int(cls.phone_code_login_rate_limiter.time_window / 60))
+
+        from extensions.ext_sms import sms
+
+        if not sms.is_inited() or not sms.is_verify_enabled():
+            raise ValueError("Plivo SMS client is not initialized or verify is not enabled")
+
+        try:
+            result = sms.send_verification_code(phone_number)
+            session_uuid = result.get("session_uuid")
+
+            if session_uuid:
+                # Store the session_uuid with phone number for later verification
+                token = TokenManager.generate_token(
+                    email=phone_number,  # Using phone_number in place of email for token generation
+                    token_type="phone_code_login",
+                    additional_data={"session_uuid": session_uuid, "phone_number": phone_number},
+                )
+                cls.phone_code_login_rate_limiter.increment_rate_limit(phone_number)
+                return token
+
+            return None
+        except Exception as e:
+            logger.exception("Failed to send phone verification code to %s: %s", phone_number, str(e))
+            raise
+
+    @classmethod
+    def verify_phone_code(cls, token: str, otp: str) -> bool:
+        """
+        Verify phone code using Plivo Verify API.
+
+        Args:
+            token: The token returned from send_phone_verification_code
+            otp: The OTP code entered by the user
+
+        Returns:
+            True if verification is successful, False otherwise
+        """
+        if not dify_config.PLIVO_VERIFY_ENABLED:
+            raise ValueError("Plivo Verify is not enabled")
+
+        token_data = cls.get_phone_code_login_data(token)
+        if token_data is None:
+            return False
+
+        session_uuid = token_data.get("session_uuid")
+        phone_number = token_data.get("phone_number")
+
+        if not session_uuid or not phone_number:
+            return False
+
+        from extensions.ext_sms import sms
+
+        if not sms.is_inited() or not sms.is_verify_enabled():
+            raise ValueError("Plivo SMS client is not initialized or verify is not enabled")
+
+        try:
+            result = sms.verify_code(session_uuid, otp)
+            if result:
+                # Revoke the token after successful verification
+                cls.revoke_phone_code_login_token(token)
+            return result
+        except Exception as e:
+            logger.exception("Failed to verify phone code for session %s: %s", session_uuid, str(e))
+            return False
+
+    @classmethod
+    def get_phone_code_login_data(cls, token: str) -> dict[str, Any] | None:
+        return TokenManager.get_token_data(token, "phone_code_login")
+
+    @classmethod
+    def revoke_phone_code_login_token(cls, token: str):
+        TokenManager.revoke_token(token, "phone_code_login")
+
+    @staticmethod
+    @redis_fallback(default_return=None)
+    def add_phone_verify_error_rate_limit(phone_number: str):
+        key = f"phone_verify_error_rate_limit:{phone_number}"
+        count = redis_client.get(key)
+        if count is None:
+            count = 0
+        count = int(count) + 1
+        redis_client.setex(key, dify_config.PHONE_VERIFY_LOCKOUT_DURATION, count)
+
+    @staticmethod
+    @redis_fallback(default_return=False)
+    def is_phone_verify_error_rate_limit(phone_number: str) -> bool:
+        key = f"phone_verify_error_rate_limit:{phone_number}"
+        count = redis_client.get(key)
+        if count is None:
+            return False
+        count = int(count)
+        if count > AccountService.PHONE_VERIFY_MAX_ERROR_LIMITS:
+            return True
+        return False
+
+    @staticmethod
+    @redis_fallback(default_return=None)
+    def reset_phone_verify_error_rate_limit(phone_number: str):
+        key = f"phone_verify_error_rate_limit:{phone_number}"
+        redis_client.delete(key)
 
 
 class TenantService:

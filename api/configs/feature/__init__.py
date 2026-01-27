@@ -882,6 +882,42 @@ class TemplateMode(StrEnum):
     DISABLED = "disabled"
 
 
+class PlivoConfig(BaseSettings):
+    """
+    Configuration for Plivo SMS and Verify services
+    """
+
+    PLIVO_AUTH_ID: str | None = Field(
+        description="Plivo Auth ID for API authentication",
+        default=None,
+    )
+
+    PLIVO_AUTH_TOKEN: str | None = Field(
+        description="Plivo Auth Token for API authentication",
+        default=None,
+    )
+
+    PLIVO_VERIFY_ENABLED: bool = Field(
+        description="Enable Plivo Verify for phone authentication",
+        default=False,
+    )
+
+    PLIVO_DEFAULT_FROM_NUMBER: str | None = Field(
+        description="Default Plivo phone number for outbound messages",
+        default=None,
+    )
+
+    PHONE_CODE_LOGIN_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Expiry time in minutes for phone code login token",
+        default=5,
+    )
+
+    PHONE_VERIFY_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying phone verification after exceeding the rate limit.",
+        default=86400,
+    )
+
+
 class MailConfig(BaseSettings):
     """
     Configuration for email services
@@ -1336,6 +1372,7 @@ class FeatureConfig(
     ModelLoadBalanceConfig,
     ModerationConfig,
     MultiModalTransferConfig,
+    PlivoConfig,
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,

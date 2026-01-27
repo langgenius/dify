@@ -1,0 +1,45 @@
+identity:
+  name: send_sms
+  author: Plivo
+  label:
+    en_US: Send SMS
+    zh_Hans: 发送短信
+description:
+  human:
+    en_US: Send an SMS message to a phone number using Plivo.
+    zh_Hans: 使用 Plivo 向手机号码发送短信。
+  llm: Send an SMS message to a destination phone number. Requires the destination number, source number, and message content.
+parameters:
+  - name: to
+    type: string
+    required: true
+    label:
+      en_US: To Number
+      zh_Hans: 目标号码
+    human_description:
+      en_US: The destination phone number in E.164 format (e.g., +14155551234).
+      zh_Hans: E.164 格式的目标手机号码（例如：+14155551234）。
+    llm_description: The destination phone number to send the SMS to, in E.164 format (e.g., +14155551234).
+    form: llm
+  - name: from_number
+    type: string
+    required: true
+    label:
+      en_US: From Number
+      zh_Hans: 发送号码
+    human_description:
+      en_US: The source phone number (must be a Plivo number) in E.164 format.
+      zh_Hans: 发送方手机号码（必须是 Plivo 号码），E.164 格式。
+    llm_description: The source phone number to send the SMS from. Must be a valid Plivo phone number in E.164 format (e.g., +14155550100).
+    form: llm
+  - name: message
+    type: string
+    required: true
+    label:
+      en_US: Message
+      zh_Hans: 消息内容
+    human_description:
+      en_US: The text content of the SMS message.
+      zh_Hans: 短信的文本内容。
+    llm_description: The text content of the SMS message to send.
+    form: llm
