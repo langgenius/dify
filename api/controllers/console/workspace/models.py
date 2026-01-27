@@ -5,6 +5,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
+from controllers.common.schema import register_enum_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
@@ -118,6 +119,8 @@ reg(ParserCreateCredential)
 reg(ParserUpdateCredential)
 reg(ParserDeleteCredential)
 reg(ParserParameter)
+
+register_enum_models(console_ns, ModelType)
 
 
 @console_ns.route("/workspaces/current/default-model")
