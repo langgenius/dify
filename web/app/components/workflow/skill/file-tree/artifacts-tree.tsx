@@ -58,7 +58,7 @@ const ArtifactsTreeNode: FC<ArtifactsTreeNodeProps> = ({
     onDownload(node)
   }, [node, onDownload])
 
-  const fileIconType = !isFolder ? getFileIconType(node.name) : null
+  const fileIconType = !isFolder ? getFileIconType(node.name, node.extension) : null
 
   return (
     <div>

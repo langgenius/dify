@@ -33,7 +33,7 @@ const FileReferenceBlock: FC<FileReferenceBlockProps> = ({ nodeKey, resourceId }
   const currentNode = useMemo(() => nodeMap?.get(resourceId), [nodeMap, resourceId])
   const isFolder = currentNode?.node_type === 'folder'
   const displayName = currentNode?.name ?? resourceId
-  const iconType = !isFolder && currentNode ? getFileIconType(currentNode.name) : null
+  const iconType = !isFolder && currentNode ? getFileIconType(currentNode.name, currentNode.extension) : null
   const title = currentNode?.path ?? displayName
 
   const handleSelect = useCallback((node: TreeNodeData) => {

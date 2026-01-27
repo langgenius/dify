@@ -14,6 +14,7 @@ type TreeNodeIconProps = {
   isFolder: boolean
   isOpen: boolean
   fileName: string
+  extension?: string
   isDirty: boolean
   onToggle?: (e: React.MouseEvent) => void
 }
@@ -22,6 +23,7 @@ export const TreeNodeIcon: FC<TreeNodeIconProps> = ({
   isFolder,
   isOpen,
   fileName,
+  extension,
   isDirty,
   onToggle,
 }) => {
@@ -46,7 +48,7 @@ export const TreeNodeIcon: FC<TreeNodeIconProps> = ({
     )
   }
 
-  const fileIconType = getFileIconType(fileName)
+  const fileIconType = getFileIconType(fileName, extension)
 
   return (
     <div className="relative flex size-full items-center justify-center">

@@ -13,6 +13,7 @@ import { getFileIconType } from './utils/file-utils'
 type FileTabItemProps = {
   fileId: string
   name: string
+  extension?: string
   isActive: boolean
   isDirty: boolean
   isPreview: boolean
@@ -24,6 +25,7 @@ type FileTabItemProps = {
 const FileTabItem: FC<FileTabItemProps> = ({
   fileId,
   name,
+  extension,
   isActive,
   isDirty,
   isPreview,
@@ -32,7 +34,7 @@ const FileTabItem: FC<FileTabItemProps> = ({
   onDoubleClick,
 }) => {
   const { t } = useTranslation()
-  const iconType = getFileIconType(name)
+  const iconType = getFileIconType(name, extension)
 
   const handleClick = useCallback(() => {
     onClick(fileId)

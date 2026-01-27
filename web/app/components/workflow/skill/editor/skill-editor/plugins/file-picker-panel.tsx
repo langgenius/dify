@@ -24,7 +24,7 @@ const FilePickerTreeNode: FC<FilePickerTreeNodeProps> = ({ node, style, dragHand
   const { t } = useTranslation('workflow')
   const isFolder = node.data.node_type === 'folder'
   const isSelected = node.isSelected
-  const fileIconType = !isFolder ? getFileIconType(node.data.name) : null
+  const fileIconType = !isFolder ? getFileIconType(node.data.name, node.data.extension) : null
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()

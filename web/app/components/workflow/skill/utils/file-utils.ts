@@ -86,19 +86,33 @@ export function getFileExtension(name?: string, extension?: string): string {
   return name.split('.').pop()?.toLowerCase() ?? ''
 }
 
-export function getFileIconType(name: string): FileAppearanceTypeEnum {
-  const extension = name.split('.').pop()?.toLowerCase() ?? ''
+const AUDIO_EXTENSIONS = ['mp3', 'm4a', 'wav', 'amr', 'mpga', 'ogg', 'flac', 'aac', 'wma', 'aiff', 'opus']
+const PDF_EXTENSIONS = ['pdf']
+const EXCEL_EXTENSIONS = ['xlsx', 'xls', 'csv']
+const WORD_EXTENSIONS = ['doc', 'docx']
+const PPT_EXTENSIONS = ['ppt', 'pptx']
 
-  if (MARKDOWN_EXTENSIONS.includes(extension))
-    return FileAppearanceTypeEnum.markdown
+const EXTENSION_TO_ICON_TYPE = new Map<string, FileAppearanceTypeEnum>(
+  ([
+    [['gif'], FileAppearanceTypeEnum.gif],
+    [IMAGE_EXTENSIONS, FileAppearanceTypeEnum.image],
+    [VIDEO_EXTENSIONS, FileAppearanceTypeEnum.video],
+    [AUDIO_EXTENSIONS, FileAppearanceTypeEnum.audio],
+    [PDF_EXTENSIONS, FileAppearanceTypeEnum.pdf],
+    [MARKDOWN_EXTENSIONS, FileAppearanceTypeEnum.markdown],
+    [EXCEL_EXTENSIONS, FileAppearanceTypeEnum.excel],
+    [WORD_EXTENSIONS, FileAppearanceTypeEnum.word],
+    [PPT_EXTENSIONS, FileAppearanceTypeEnum.ppt],
+    [CODE_EXTENSIONS, FileAppearanceTypeEnum.code],
+    [SQLITE_EXTENSIONS, FileAppearanceTypeEnum.database],
+  ] as [string[], FileAppearanceTypeEnum][]).flatMap(
+    ([exts, type]) => exts.map(e => [e, type] as [string, FileAppearanceTypeEnum]),
+  ),
+)
 
-  if (CODE_EXTENSIONS.includes(extension))
-    return FileAppearanceTypeEnum.code
-
-  if (SQLITE_EXTENSIONS.includes(extension))
-    return FileAppearanceTypeEnum.database
-
-  return FileAppearanceTypeEnum.document
+export function getFileIconType(name: string, ext?: string | null): FileAppearanceTypeEnum {
+  const extension = ext?.toLowerCase() ?? name.split('.').pop()?.toLowerCase() ?? ''
+  return EXTENSION_TO_ICON_TYPE.get(extension) ?? FileAppearanceTypeEnum.document
 }
 
 export function isMarkdownFile(extension: string): boolean {

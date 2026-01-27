@@ -73,6 +73,7 @@ function buildTreeFromFlatList(nodes: SandboxFileNode[]): SandboxFileTreeNode[] 
       node_type: node.is_dir ? 'folder' : 'file',
       size: node.size,
       mtime: node.mtime,
+      extension: node.extension,
       children: [],
     }
 

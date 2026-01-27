@@ -126,6 +126,7 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
             isFolder={isFolder}
             isOpen={node.isOpen}
             fileName={node.data.name}
+            extension={node.data.extension}
             isDirty={isDirty}
             onToggle={handleToggle}
           />

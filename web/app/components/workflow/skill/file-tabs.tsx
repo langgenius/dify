@@ -86,6 +86,7 @@ const FileTabs: FC = () => {
               key={fileId}
               fileId={fileId}
               name={name}
+              extension={node?.extension}
               isActive={isActive}
               isDirty={isDirty}
               isPreview={isPreview}

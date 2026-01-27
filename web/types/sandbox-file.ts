@@ -18,6 +18,8 @@ export type SandboxFileNode = {
   size: number | null
   /** Modification timestamp in seconds (null for some directories) */
   mtime: number | null
+  /** File extension (null for directories) */
+  extension: string | null
 }
 
 /**
@@ -48,6 +50,8 @@ export type SandboxFileTreeNode = {
   size: number | null
   /** Modification timestamp */
   mtime: number | null
+  /** File extension (null for directories) */
+  extension: string | null
   /** Child nodes (for folders) */
   children: SandboxFileTreeNode[]
 }
