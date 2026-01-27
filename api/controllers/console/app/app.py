@@ -24,7 +24,6 @@ from controllers.console.wraps import (
 )
 from core.file import helpers as file_helpers
 from core.ops.ops_trace_manager import OpsTraceManager
-from core.rag.extractor.entity.extract_setting import NotionInfo, WebsiteInfo
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.enums import NodeType, WorkflowExecutionStatus
 from extensions.ext_database import db
@@ -38,11 +37,13 @@ from services.entities.knowledge_entities.knowledge_entities import (
     DataSource,
     InfoList,
     NotionIcon,
+    NotionInfo,
     NotionPage,
     PreProcessingRule,
     RerankingModel,
     Rule,
     Segmentation,
+    WebsiteInfo,
     WeightKeywordSetting,
     WeightModel,
     WeightVectorSetting,
