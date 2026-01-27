@@ -21,12 +21,6 @@ from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.plugin.plugin_service import PluginService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
-
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
 
 @console_ns.route("/workspaces/current/plugin/debugging-key")
 class PluginDebuggingKeyApi(Resource):
@@ -204,7 +198,13 @@ register_schema_models(
     ParserReadme,
 )
 
-register_enum_models(console_ns, TenantPluginPermission.DebugPermission)
+register_enum_models(
+    console_ns,
+    TenantPluginPermission.DebugPermission,
+    TenantPluginAutoUpgradeStrategy.UpgradeMode,
+    TenantPluginAutoUpgradeStrategy.StrategySetting,
+    TenantPluginPermission.InstallPermission,
+)
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")

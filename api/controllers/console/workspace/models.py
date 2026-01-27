@@ -24,12 +24,13 @@ class ParserGetDefault(BaseModel):
     model_type: ModelType
 
 
-class ParserPostDefault(BaseModel):
-    class Inner(BaseModel):
-        model_type: ModelType
-        model: str | None = None
-        provider: str | None = None
+class Inner(BaseModel):
+    model_type: ModelType
+    model: str | None = None
+    provider: str | None = None
 
+
+class ParserPostDefault(BaseModel):
     model_settings: list[Inner]
 
 
@@ -117,6 +118,7 @@ register_schema_models(
     ParserUpdateCredential,
     ParserDeleteCredential,
     ParserParameter,
+    Inner,
 )
 
 register_enum_models(console_ns, ModelType)
