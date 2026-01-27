@@ -21,7 +21,7 @@ import {
 
 export { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 
-export const MODEL_PROVIDER_QUOTA_GET_PAID = [ModelProviderQuotaGetPaid.ANTHROPIC, ModelProviderQuotaGetPaid.OPENAI, ModelProviderQuotaGetPaid.GEMINI, ModelProviderQuotaGetPaid.X, ModelProviderQuotaGetPaid.DEEPSEEK, ModelProviderQuotaGetPaid.TONGYI]
+export const MODEL_PROVIDER_QUOTA_GET_PAID = [ModelProviderQuotaGetPaid.OPENAI, ModelProviderQuotaGetPaid.ANTHROPIC, ModelProviderQuotaGetPaid.GEMINI, ModelProviderQuotaGetPaid.X, ModelProviderQuotaGetPaid.DEEPSEEK, ModelProviderQuotaGetPaid.TONGYI]
 
 export const modelNameMap = {
   [ModelProviderQuotaGetPaid.OPENAI]: 'OpenAI',

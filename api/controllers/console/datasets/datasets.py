@@ -286,7 +286,7 @@ class DatasetListApi(Resource):
     @enterprise_license_required
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        query = ConsoleDatasetListQuery.model_validate(request.args.to_dict(flat=False))
+        query = ConsoleDatasetListQuery.model_validate(request.args.to_dict())
         # provider = request.args.get("provider", default="vendor")
         if query.ids:
             datasets, total = DatasetService.get_datasets_by_ids(query.ids, current_tenant_id)
