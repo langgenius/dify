@@ -10,10 +10,7 @@ from core.workflow.nodes.human_input.entities import (
     FormDefinition,
     UserAction,
 )
-from core.workflow.nodes.human_input.enums import (
-    HumanInputFormStatus,
-    TimeoutUnit,
-)
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from models.execution_extra_content import HumanInputContent as HumanInputContentModel
 from models.human_input import ConsoleRecipientPayload, HumanInputForm, HumanInputFormRecipient, RecipientType
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
@@ -52,13 +49,13 @@ class _FakeSessionMaker:
 
 
 def _build_form(action_id: str, action_title: str, rendered_content: str) -> HumanInputForm:
+    expiration_time = datetime.now(UTC) + timedelta(days=1)
     definition = FormDefinition(
         form_content="content",
         inputs=[],
         user_actions=[UserAction(id=action_id, title=action_title)],
         rendered_content="rendered",
-        timeout=1,
-        timeout_unit=TimeoutUnit.HOUR,
+        expiration_time=expiration_time,
         node_title="Approval",
         display_in_ui=True,
     )
@@ -71,7 +68,7 @@ def _build_form(action_id: str, action_title: str, rendered_content: str) -> Hum
         form_definition=definition.model_dump_json(),
         rendered_content=rendered_content,
         status=HumanInputFormStatus.SUBMITTED,
-        expiration_time=datetime.now(UTC) + timedelta(days=1),
+        expiration_time=expiration_time,
     )
     form.selected_action_id = action_id
     return form
@@ -120,13 +117,13 @@ def test_get_by_message_ids_groups_contents_by_message() -> None:
 
 
 def test_get_by_message_ids_returns_unsubmitted_form_definition() -> None:
+    expiration_time = datetime.now(UTC) + timedelta(days=1)
     definition = FormDefinition(
         form_content="content",
         inputs=[],
         user_actions=[UserAction(id="approve", title="Approve")],
         rendered_content="rendered",
-        timeout=1,
-        timeout_unit=TimeoutUnit.HOUR,
+        expiration_time=expiration_time,
         default_values={"name": "John"},
         node_title="Approval",
         display_in_ui=True,
@@ -140,7 +137,7 @@ def test_get_by_message_ids_returns_unsubmitted_form_definition() -> None:
         form_definition=definition.model_dump_json(),
         rendered_content="Rendered block",
         status=HumanInputFormStatus.WAITING,
-        expiration_time=datetime.now(UTC) + timedelta(days=1),
+        expiration_time=expiration_time,
     )
     content = HumanInputContentModel(
         id="content-msg-1",
@@ -170,6 +167,8 @@ def test_get_by_message_ids_returns_unsubmitted_form_definition() -> None:
     assert domain_content.submitted is False
     assert domain_content.workflow_run_id == "workflow-run"
     assert domain_content.form_definition is not None
+    assert domain_content.form_definition.expiration_time == form.expiration_time
+    assert domain_content.form_definition is not None
     form_definition = domain_content.form_definition
     assert form_definition.form_id == "form-1"
     assert form_definition.node_id == "node-id"
@@ -178,3 +177,4 @@ def test_get_by_message_ids_returns_unsubmitted_form_definition() -> None:
     assert form_definition.display_in_ui is True
     assert form_definition.form_token == "token-1"
     assert form_definition.resolved_default_values == {"name": "John"}
+    assert form_definition.expiration_time == form.expiration_time

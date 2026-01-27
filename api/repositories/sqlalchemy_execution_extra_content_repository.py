@@ -112,7 +112,10 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
             return None
 
         try:
-            form_definition = FormDefinition.model_validate_json(form.form_definition)
+            definition_payload = json.loads(form.form_definition)
+            if "expiration_time" not in definition_payload:
+                definition_payload["expiration_time"] = form.expiration_time
+            form_definition = FormDefinition.model_validate(definition_payload)
         except ValueError:
             logger.warning("Failed to load form definition for HumanInputContent(id=%s)", model.id)
             return None
@@ -135,6 +138,7 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
                     display_in_ui=display_in_ui,
                     form_token=form_token,
                     resolved_default_values=form_definition.default_values,
+                    expiration_time=form.expiration_time,
                 ),
             )
 

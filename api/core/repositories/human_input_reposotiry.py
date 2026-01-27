@@ -164,6 +164,9 @@ class HumanInputFormRecord:
     def from_models(
         cls, form_model: HumanInputForm, recipient_model: HumanInputFormRecipient | None
     ) -> "HumanInputFormRecord":
+        definition_payload = json.loads(form_model.form_definition)
+        if "expiration_time" not in definition_payload:
+            definition_payload["expiration_time"] = form_model.expiration_time
         return cls(
             form_id=form_model.id,
             workflow_run_id=form_model.workflow_run_id,
@@ -171,7 +174,7 @@ class HumanInputFormRecord:
             tenant_id=form_model.tenant_id,
             app_id=form_model.app_id,
             form_kind=form_model.form_kind,
-            definition=FormDefinition.model_validate_json(form_model.form_definition),
+            definition=FormDefinition.model_validate(definition_payload),
             rendered_content=form_model.rendered_content,
             created_at=form_model.created_at,
             expiration_time=form_model.expiration_time,
@@ -341,8 +344,7 @@ class HumanInputFormRepositoryImpl:
                 inputs=form_config.inputs,
                 user_actions=form_config.user_actions,
                 rendered_content=params.rendered_content,
-                timeout=form_config.timeout,
-                timeout_unit=form_config.timeout_unit,
+                expiration_time=node_expiration,
                 default_values=dict(params.resolved_default_values),
                 display_in_ui=params.display_in_ui,
                 node_title=form_config.title,

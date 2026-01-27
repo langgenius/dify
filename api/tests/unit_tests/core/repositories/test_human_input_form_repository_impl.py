@@ -19,10 +19,9 @@ from core.workflow.nodes.human_input.entities import (
     ExternalRecipient,
     FormDefinition,
     MemberRecipient,
-    TimeoutUnit,
     UserAction,
 )
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import (
     EmailExternalRecipientPayload,
@@ -162,8 +161,7 @@ def _make_form_definition() -> str:
         inputs=[],
         user_actions=[UserAction(id="submit", title="Submit")],
         rendered_content="<p>hello</p>",
-        timeout=1,
-        timeout_unit=TimeoutUnit.HOUR,
+        expiration_time=datetime.utcnow(),
     ).model_dump_json()
 
 
@@ -177,6 +175,8 @@ class _DummyForm:
     form_definition: str
     rendered_content: str
     expiration_time: datetime
+    form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
+    created_at: datetime = dataclasses.field(default_factory=naive_utc_now)
     selected_action_id: str | None = None
     submitted_data: str | None = None
     submitted_at: datetime | None = None

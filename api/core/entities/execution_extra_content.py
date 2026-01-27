@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from datetime import datetime
 from typing import Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -21,6 +22,7 @@ class HumanInputFormDefinition(BaseModel):
     display_in_ui: bool = False
     form_token: str | None = None
     resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
+    expiration_time: datetime
 
 
 class HumanInputFormSubmissionData(BaseModel):

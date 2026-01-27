@@ -312,9 +312,7 @@ class FormDefinition(BaseModel):
     inputs: list[FormInput] = Field(default_factory=list)
     user_actions: list[UserAction] = Field(default_factory=list)
     rendered_content: str
-
-    timeout: int
-    timeout_unit: TimeoutUnit
+    expiration_time: datetime
 
     # this is used to store the resolved default values
     default_values: dict[str, Any] = Field(default_factory=dict)

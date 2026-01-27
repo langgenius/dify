@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.workflow.entities.pause_reason import HumanInputRequired, PauseReasonType
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.nodes.human_input.entities import FormDefinition, FormInput, UserAction
-from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormStatus, TimeoutUnit
+from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormStatus
 from models.human_input import BackstageRecipientPayload, HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowPause as WorkflowPauseModel
 from models.workflow import WorkflowPauseReason, WorkflowRun
@@ -208,6 +208,7 @@ class TestResumeWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
         sample_workflow_pause.resumed_at = None
 
         mock_session.scalar.return_value = sample_workflow_run
+        mock_session.scalars.return_value.all.return_value = []
 
         with patch("repositories.sqlalchemy_api_workflow_run_repository.naive_utc_now") as mock_now:
             mock_now.return_value = datetime.now(UTC)
@@ -372,13 +373,13 @@ class TestPrivateWorkflowPauseEntity(TestDifyAPISQLAlchemyWorkflowRunRepository)
 
 class TestBuildHumanInputRequiredReason:
     def test_prefers_backstage_token_when_available(self):
+        expiration_time = datetime.now(UTC)
         form_definition = FormDefinition(
             form_content="content",
             inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
             user_actions=[UserAction(id="approve", title="Approve")],
             rendered_content="rendered",
-            timeout=1,
-            timeout_unit=TimeoutUnit.HOUR,
+            expiration_time=expiration_time,
             default_values={"name": "Alice"},
             node_title="Ask Name",
             display_in_ui=True,
@@ -392,7 +393,7 @@ class TestBuildHumanInputRequiredReason:
             form_definition=form_definition.model_dump_json(),
             rendered_content="rendered",
             status=HumanInputFormStatus.WAITING,
-            expiration_time=datetime.now(UTC),
+            expiration_time=expiration_time,
         )
         reason_model = WorkflowPauseReason(
             pause_id="pause-1",

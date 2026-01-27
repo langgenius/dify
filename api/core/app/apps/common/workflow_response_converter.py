@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, NewType, Union
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
@@ -58,6 +61,8 @@ from core.workflow.enums import (
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.runtime import GraphRuntimeState
+from extensions.ext_database import db
+from models.human_input import HumanInputForm
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -296,11 +301,23 @@ class WorkflowResponseConverter:
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}
         pause_reasons = [reason.model_dump(mode="json") for reason in event.reasons]
+        human_input_form_ids = [reason.form_id for reason in event.reasons if isinstance(reason, HumanInputRequired)]
+        expiration_times_by_form_id: dict[str, datetime] = {}
+        if human_input_form_ids:
+            stmt = select(HumanInputForm.id, HumanInputForm.expiration_time).where(
+                HumanInputForm.id.in_(human_input_form_ids)
+            )
+            with Session(bind=db.engine) as session:
+                for form_id, expiration_time in session.execute(stmt):
+                    expiration_times_by_form_id[str(form_id)] = expiration_time
 
         responses: list[StreamResponse] = []
 
         for reason in event.reasons:
             if isinstance(reason, HumanInputRequired):
+                expiration_time = expiration_times_by_form_id.get(reason.form_id)
+                if expiration_time is None:
+                    raise ValueError(f"HumanInputForm not found for pause reason, form_id={reason.form_id}")
                 responses.append(
                     HumanInputRequiredResponse(
                         task_id=task_id,
@@ -315,6 +332,7 @@ class WorkflowResponseConverter:
                             display_in_ui=reason.display_in_ui,
                             form_token=reason.form_token,
                             resolved_default_values=reason.resolved_default_values,
+                            expiration_time=int(expiration_time.timestamp()),
                         ),
                     )
                 )

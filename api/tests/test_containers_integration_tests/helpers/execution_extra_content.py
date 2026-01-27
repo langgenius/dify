@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
-from core.workflow.nodes.human_input.entities import FormDefinition, TimeoutUnit, UserAction
+from core.workflow.nodes.human_input.entities import FormDefinition, UserAction
 from models.account import Account, Tenant, TenantAccountJoin
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm, HumanInputFormStatus
@@ -116,8 +116,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         inputs=[],
         user_actions=[UserAction(id=action_id, title=action_text)],
         rendered_content="Rendered block",
-        timeout=1,
-        timeout_unit=TimeoutUnit.HOUR,
+        expiration_time=datetime.utcnow() + timedelta(days=1),
         node_title=node_title,
         display_in_ui=True,
     )

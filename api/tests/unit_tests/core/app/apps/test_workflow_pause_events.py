@@ -1,6 +1,10 @@
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
+
+import core.app.apps.common.workflow_response_converter as workflow_response_converter
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -111,7 +115,7 @@ def _build_converter():
     )
 
 
-def test_queue_workflow_paused_event_to_stream_responses():
+def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.MonkeyPatch):
     converter = _build_converter()
     converter.workflow_start_to_stream_response(
         task_id="task",
@@ -119,6 +123,21 @@ def test_queue_workflow_paused_event_to_stream_responses():
         workflow_id="workflow-id",
         reason=WorkflowStartReason.INITIAL,
     )
+
+    expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
+
+    class _FakeSession:
+        def execute(self, _stmt):
+            return [("form-1", expiration_time)]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(workflow_response_converter, "Session", lambda **_: _FakeSession())
+    monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=object()))
 
     reason = HumanInputRequired(
         form_id="form-1",
@@ -161,3 +180,4 @@ def test_queue_workflow_paused_event_to_stream_responses():
     assert hi_resp.data.inputs[0].output_variable_name == "field"
     assert hi_resp.data.actions[0].id == "approve"
     assert hi_resp.data.display_in_ui is True
+    assert hi_resp.data.expiration_time == int(expiration_time.timestamp())

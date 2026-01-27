@@ -288,6 +288,7 @@ class HumanInputRequiredResponse(StreamResponse):
         display_in_ui: bool = False
         form_token: str | None = None
         resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
+        expiration_time: int = Field(..., description="Unix timestamp in seconds")
 
     event: StreamEvent = StreamEvent.HUMAN_INPUT_REQUIRED
     workflow_run_id: str

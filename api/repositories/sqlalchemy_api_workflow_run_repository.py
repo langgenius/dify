@@ -19,6 +19,7 @@ Implementation Notes:
 - Maintains data consistency with proper transaction handling
 """
 
+import json
 import logging
 import uuid
 from collections.abc import Sequence
@@ -84,12 +85,14 @@ def _build_human_input_required_reason(
     node_title = "Human Input"
     form_id = reason_model.form_id
     node_id = reason_model.node_id
-
     if form_model is not None:
         form_id = form_model.id
         node_id = form_model.node_id or node_id
         try:
-            definition = FormDefinition.model_validate_json(form_model.form_definition)
+            definition_payload = json.loads(form_model.form_definition)
+            if "expiration_time" not in definition_payload:
+                definition_payload["expiration_time"] = form_model.expiration_time
+            definition = FormDefinition.model_validate(definition_payload)
         except ValidationError:
             definition = None
 

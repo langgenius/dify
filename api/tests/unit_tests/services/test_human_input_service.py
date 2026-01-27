@@ -14,12 +14,7 @@ from core.workflow.nodes.human_input.entities import (
     FormInput,
     UserAction,
 )
-from core.workflow.nodes.human_input.enums import (
-    FormInputType,
-    HumanInputFormKind,
-    HumanInputFormStatus,
-    TimeoutUnit,
-)
+from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus
 from models.human_input import RecipientType
 from services.human_input_service import Form, FormExpiredError, HumanInputService, InvalidFormDataError
 
@@ -50,8 +45,7 @@ def sample_form_record():
             inputs=[],
             user_actions=[UserAction(id="submit", title="Submit")],
             rendered_content="<p>hello</p>",
-            timeout=1,
-            timeout_unit=TimeoutUnit.HOUR,
+            expiration_time=datetime.utcnow() + timedelta(hours=1),
         ),
         rendered_content="<p>hello</p>",
         created_at=datetime.utcnow(),
@@ -277,8 +271,7 @@ def test_submit_form_by_token_missing_inputs(sample_form_record, mock_session_fa
         inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="content")],
         user_actions=sample_form_record.definition.user_actions,
         rendered_content="<p>hello</p>",
-        timeout=1,
-        timeout_unit=TimeoutUnit.HOUR,
+        expiration_time=sample_form_record.expiration_time,
     )
     form_with_input = dataclasses.replace(sample_form_record, definition=definition_with_input)
     repo.get_by_token.return_value = form_with_input

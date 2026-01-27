@@ -8,7 +8,6 @@ from collections.abc import Generator
 
 from flask import Response, jsonify, request
 from flask_restx import Resource, reqparse
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -33,8 +32,10 @@ from services.workflow_event_snapshot_service import build_workflow_event_stream
 logger = logging.getLogger(__name__)
 
 
-def _jsonify_pydantic_model(model: BaseModel) -> Response:
-    return Response(model.model_dump_json(), mimetype="application/json")
+def _jsonify_form_definition(form: Form) -> Response:
+    payload = form.get_definition().model_dump()
+    payload["expiration_time"] = int(form.expiration_time.timestamp())
+    return Response(json.dumps(payload, ensure_ascii=False), mimetype="application/json")
 
 
 @console_ns.route("/form/human_input/<string:form_token>")
@@ -64,7 +65,7 @@ class ConsoleHumanInputFormApi(Resource):
 
         self._ensure_console_access(form)
 
-        return _jsonify_pydantic_model(form.get_definition())
+        return _jsonify_form_definition(form)
 
     @account_initialization_required
     @login_required
