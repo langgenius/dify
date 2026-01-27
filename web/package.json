@@ -210,7 +210,7 @@
     "@vitejs/plugin-react": "5.1.2",
     "@vitest/coverage-v8": "4.0.17",
     "autoprefixer": "10.4.21",
-    "code-inspector-plugin": "1.3.6",
+    "code-inspector-plugin": "1.4.1",
     "cross-env": "10.1.0",
     "esbuild-wasm": "0.27.2",
     "eslint": "9.39.2",

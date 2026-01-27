@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
-import { cleanupSVG, importDirectorySync, isEmptyColor, parseColors, runSVGO } from '@iconify/tools'
+import { cleanupSVG, deOptimisePaths, importDirectorySync, isEmptyColor, parseColors, runSVGO } from '@iconify/tools'
 import { compareColors, stringToColor } from '@iconify/utils/lib/colors'
 import tailwindTypography from '@tailwindcss/typography'
 // @ts-expect-error workaround for turbopack issue
@@ -68,6 +68,9 @@ function getCollections(dir: string) {
 
       // Optimise
       runSVGO(svg)
+
+      // Update paths for compatibility with old software
+      deOptimisePaths(svg)
     }
     catch (err) {
       // Invalid icon
@@ -232,7 +235,13 @@ const config = {
     iconsPlugin({
       collections: {
         'custom-public': getCollections(path.resolve(_dirname, 'app/components/base/icons/assets/public')),
+        'custom-vender': getCollections(path.resolve(_dirname, 'app/components/base/icons/assets/vender')),
         ...getIconCollections(['heroicons', 'ri']),
+      },
+      extraProperties: {
+        width: '1rem',
+        height: '1rem',
+        display: 'block',
       },
     }),
   ],
