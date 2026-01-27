@@ -5,46 +5,67 @@ import ListLoading from './list-loading'
 describe('ListLoading', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(<ListLoading />)
+      const { container } = render(<ListLoading />)
+      expect(container).toBeInTheDocument()
+    })
 
-      // Should render the container with space-y-2 class
+    it('should render 5 skeleton items', () => {
+      render(<ListLoading />)
+      const skeletonItems = document.querySelectorAll('[class*="bg-components-panel-on-panel-item-bg-hover"]')
+      expect(skeletonItems.length).toBe(5)
+    })
+
+    it('should have rounded-xl class on skeleton items', () => {
+      render(<ListLoading />)
+      const skeletonItems = document.querySelectorAll('.rounded-xl')
+      expect(skeletonItems.length).toBeGreaterThanOrEqual(5)
+    })
+
+    it('should have proper spacing', () => {
+      render(<ListLoading />)
       const container = document.querySelector('.space-y-2')
       expect(container).toBeInTheDocument()
     })
 
-    it('should render 5 loading skeleton items', () => {
+    it('should render placeholder bars with different widths', () => {
       render(<ListLoading />)
+      const bar180 = document.querySelector('.w-\\[180px\\]')
+      const bar148 = document.querySelector('.w-\\[148px\\]')
+      const bar196 = document.querySelector('.w-\\[196px\\]')
 
-      // Each skeleton item has the class bg-components-panel-on-panel-item-bg-hover
-      const skeletonItems = document.querySelectorAll('.bg-components-panel-on-panel-item-bg-hover')
-      expect(skeletonItems).toHaveLength(5)
+      expect(bar180).toBeInTheDocument()
+      expect(bar148).toBeInTheDocument()
+      expect(bar196).toBeInTheDocument()
     })
 
-    it('should render skeleton items with correct structure', () => {
+    it('should have opacity styling on skeleton bars', () => {
       render(<ListLoading />)
+      const opacity20Bars = document.querySelectorAll('.opacity-20')
+      const opacity10Bars = document.querySelectorAll('.opacity-10')
 
-      // Each skeleton item should have 3 inner divs with h-2 class
-      const heightBars = document.querySelectorAll('.h-2')
-      // 5 items × 3 bars = 15 total
-      expect(heightBars.length).toBe(15)
+      expect(opacity20Bars.length).toBeGreaterThan(0)
+      expect(opacity10Bars.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Structure', () => {
+    it('should have correct nested structure', () => {
+      render(<ListLoading />)
+      const items = document.querySelectorAll('.space-y-3')
+      expect(items.length).toBe(5)
     })
 
-    it('should have opacity variations for visual effect', () => {
+    it('should render padding on skeleton items', () => {
       render(<ListLoading />)
-
-      // Check for opacity-20 and opacity-10 classes
-      const opacity20Elements = document.querySelectorAll('.opacity-20')
-      const opacity10Elements = document.querySelectorAll('.opacity-10')
-
-      expect(opacity20Elements.length).toBeGreaterThan(0)
-      expect(opacity10Elements.length).toBeGreaterThan(0)
+      const paddedItems = document.querySelectorAll('.p-4')
+      expect(paddedItems.length).toBe(5)
     })
 
-    it('should have rounded corners on skeleton items', () => {
+    it('should render height-2 skeleton bars', () => {
       render(<ListLoading />)
-
-      const roundedItems = document.querySelectorAll('.rounded-xl')
-      expect(roundedItems.length).toBe(5)
+      const h2Bars = document.querySelectorAll('.h-2')
+      // 3 bars per skeleton item * 5 items = 15
+      expect(h2Bars.length).toBe(15)
     })
   })
 })

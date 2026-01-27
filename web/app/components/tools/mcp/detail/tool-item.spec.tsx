@@ -1,119 +1,126 @@
+import type { Tool } from '@/app/components/tools/types'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import MCPToolItem from './tool-item'
 
-// Mock useLocale hook
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
-// Mock getLanguage
-vi.mock('@/i18n-config/language', () => ({
-  getLanguage: () => 'en-US',
-}))
-
-type MockTool = Parameters<typeof MCPToolItem>[0]['tool']
-
 describe('MCPToolItem', () => {
-  const mockTool = {
-    name: 'search-tool',
+  const createMockTool = (overrides = {}): Tool => ({
+    name: 'test-tool',
     label: {
-      'en-US': 'Search Tool',
-      'zh-CN': '搜索工具',
+      en_US: 'Test Tool',
+      zh_Hans: '测试工具',
     },
     description: {
-      'en-US': 'A powerful search tool',
-      'zh-CN': '强大的搜索工具',
+      en_US: 'A test tool description',
+      zh_Hans: '测试工具描述',
     },
     parameters: [],
-  } as unknown as MockTool
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    ...overrides,
+  } as unknown as Tool)
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(<MCPToolItem tool={mockTool} />)
-
-      expect(screen.getByText('Search Tool')).toBeInTheDocument()
+      const tool = createMockTool()
+      render(<MCPToolItem tool={tool} />)
+      expect(screen.getByText('Test Tool')).toBeInTheDocument()
     })
 
-    it('should display tool label in current language', () => {
-      render(<MCPToolItem tool={mockTool} />)
-
-      expect(screen.getByText('Search Tool')).toBeInTheDocument()
+    it('should display tool label', () => {
+      const tool = createMockTool()
+      render(<MCPToolItem tool={tool} />)
+      expect(screen.getByText('Test Tool')).toBeInTheDocument()
     })
 
-    it('should display tool description in current language', () => {
-      render(<MCPToolItem tool={mockTool} />)
-
-      expect(screen.getByText('A powerful search tool')).toBeInTheDocument()
-    })
-
-    it('should have clickable card styling', () => {
-      render(<MCPToolItem tool={mockTool} />)
-
-      const card = document.querySelector('.cursor-pointer')
-      expect(card).toBeInTheDocument()
+    it('should display tool description', () => {
+      const tool = createMockTool()
+      render(<MCPToolItem tool={tool} />)
+      expect(screen.getByText('A test tool description')).toBeInTheDocument()
     })
   })
 
-  describe('Parameters', () => {
-    it('should not render parameters section when no parameters', () => {
-      render(<MCPToolItem tool={mockTool} />)
-
+  describe('With Parameters', () => {
+    it('should not show parameters section when no parameters', () => {
+      const tool = createMockTool({ parameters: [] })
+      render(<MCPToolItem tool={tool} />)
       expect(screen.queryByText('tools.mcp.toolItem.parameters')).not.toBeInTheDocument()
     })
 
-    it('should render parameters when tool has parameters', () => {
-      const toolWithParams = {
-        ...mockTool,
+    it('should render with parameters', () => {
+      const tool = createMockTool({
         parameters: [
           {
-            name: 'query',
+            name: 'param1',
             type: 'string',
             human_description: {
-              'en-US': 'Search query string',
+              en_US: 'A parameter description',
             },
           },
         ],
-      }
-
-      render(<MCPToolItem tool={toolWithParams as unknown as MockTool} />)
-
-      // The parameters are in the tooltip popup, which may not be visible initially
-      // We just check the component renders without errors
-      expect(screen.getByText('Search Tool')).toBeInTheDocument()
+      })
+      render(<MCPToolItem tool={tool} />)
+      // Tooltip content is rendered in portal, may not be visible immediately
+      expect(screen.getByText('Test Tool')).toBeInTheDocument()
     })
   })
 
-  describe('Tooltip', () => {
-    it('should wrap content in Tooltip component', () => {
-      render(<MCPToolItem tool={mockTool} />)
+  describe('Styling', () => {
+    it('should have cursor-pointer class', () => {
+      const tool = createMockTool()
+      render(<MCPToolItem tool={tool} />)
+      const toolElement = document.querySelector('.cursor-pointer')
+      expect(toolElement).toBeInTheDocument()
+    })
 
-      // The tooltip should be present (checking for the card that triggers it)
-      const card = document.querySelector('.rounded-xl.border-\\[0\\.5px\\]')
-      expect(card).toBeInTheDocument()
+    it('should have rounded-xl class', () => {
+      const tool = createMockTool()
+      render(<MCPToolItem tool={tool} />)
+      const toolElement = document.querySelector('.rounded-xl')
+      expect(toolElement).toBeInTheDocument()
+    })
+
+    it('should have hover styles', () => {
+      const tool = createMockTool()
+      render(<MCPToolItem tool={tool} />)
+      const toolElement = document.querySelector('[class*="hover:bg-components-panel-on-panel-item-bg-hover"]')
+      expect(toolElement).toBeInTheDocument()
     })
   })
 
   describe('Edge Cases', () => {
-    it('should handle missing language fallback', () => {
-      const toolWithMissingLang = {
-        name: 'test-tool',
-        label: {
-          'zh-CN': '测试工具',
-        },
-        description: {
-          'zh-CN': '测试描述',
-        },
-        parameters: [],
-      }
+    it('should handle empty label', () => {
+      const tool = createMockTool({
+        label: { en_US: '', zh_Hans: '' },
+      })
+      render(<MCPToolItem tool={tool} />)
+      // Should render without crashing
+      expect(document.querySelector('.cursor-pointer')).toBeInTheDocument()
+    })
 
-      // Should render without crashing even if en-US is missing
-      render(<MCPToolItem tool={toolWithMissingLang as unknown as MockTool} />)
-      expect(document.querySelector('.rounded-xl')).toBeInTheDocument()
+    it('should handle empty description', () => {
+      const tool = createMockTool({
+        description: { en_US: '', zh_Hans: '' },
+      })
+      render(<MCPToolItem tool={tool} />)
+      expect(screen.getByText('Test Tool')).toBeInTheDocument()
+    })
+
+    it('should handle long description with line clamp', () => {
+      const longDescription = 'This is a very long description '.repeat(20)
+      const tool = createMockTool({
+        description: { en_US: longDescription, zh_Hans: longDescription },
+      })
+      render(<MCPToolItem tool={tool} />)
+      const descElement = document.querySelector('.line-clamp-2')
+      expect(descElement).toBeInTheDocument()
+    })
+
+    it('should handle special characters in tool name', () => {
+      const tool = createMockTool({
+        name: 'special-tool_v2.0',
+        label: { en_US: 'Special Tool <v2.0>', zh_Hans: '特殊工具' },
+      })
+      render(<MCPToolItem tool={tool} />)
+      expect(screen.getByText('Special Tool <v2.0>')).toBeInTheDocument()
     })
   })
 })
