@@ -253,8 +253,10 @@ class WorkflowCollaborationService:
 
     def _ensure_leader(self, workflow_id: str, sid: str) -> None:
         current_leader = self._repository.get_current_leader(workflow_id)
-        if current_leader and self.is_session_active(workflow_id, current_leader) and self._repository.is_graph_active(
-            workflow_id, current_leader
+        if (
+            current_leader
+            and self.is_session_active(workflow_id, current_leader)
+            and self._repository.is_graph_active(workflow_id, current_leader)
         ):
             self._repository.expire_leader(workflow_id)
             return
@@ -291,9 +293,7 @@ class WorkflowCollaborationService:
 
     def _select_graph_leader(self, workflow_id: str, preferred_sid: str | None = None) -> str | None:
         session_sids = [
-            session["sid"]
-            for session in self._repository.list_sessions(workflow_id)
-            if session.get("graph_active")
+            session["sid"] for session in self._repository.list_sessions(workflow_id) if session.get("graph_active")
         ]
         if not session_sids:
             return None
@@ -301,9 +301,7 @@ class WorkflowCollaborationService:
             return preferred_sid
         return session_sids[0]
 
-    def _select_skill_leader(
-        self, workflow_id: str, file_id: str, preferred_sid: str | None = None
-    ) -> str | None:
+    def _select_skill_leader(self, workflow_id: str, file_id: str, preferred_sid: str | None = None) -> str | None:
         session_sids = [
             sid
             for sid in self._repository.get_active_skill_session_sids(workflow_id, file_id)
