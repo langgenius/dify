@@ -186,7 +186,7 @@ const VibePanel: FC = () => {
     return null
 
   const renderLoading = (
-    <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
+    <div className="flex h-full w-full grow flex-col items-center justify-center space-y-3">
       <Loading />
       <div className="text-[13px] text-text-tertiary">{t('vibe.generatingFlowchart', { ns: 'workflow' })}</div>
     </div>
@@ -275,7 +275,7 @@ const VibePanel: FC = () => {
 
         {!isVibeGenerating && vibePanelIntent === 'off_topic' && renderOffTopic}
         {!isVibeGenerating && vibePanelIntent !== 'off_topic' && (vibePanelPreviewNodes.length > 0 || vibePanelMermaidCode) && (
-          <div className="h-full w-0 grow bg-background-default-subtle p-6 pb-0">
+          <div className="relative h-full w-0 grow bg-background-default-subtle p-6 pb-0">
             <div className="flex h-full flex-col">
               <div className="mb-3 flex shrink-0 items-center justify-between">
                 <div className="flex shrink-0 flex-col">
@@ -308,16 +308,23 @@ const VibePanel: FC = () => {
               <div className="flex grow flex-col overflow-hidden pb-6">
                 <WorkflowPreview
                   key={currentVersionIndex}
+                  fitView
+                  fitViewOptions={{ padding: 0.2 }}
                   nodes={vibePanelPreviewNodes}
                   edges={vibePanelPreviewEdges}
-                  viewport={{ x: 0, y: 0, zoom: 1 }}
                   className="rounded-lg border border-divider-subtle"
                 />
               </div>
             </div>
+
+            {isVibeGenerating && (
+              <div className="absolute bottom-0 left-0 right-0 top-0 z-[10] bg-background-default-subtle">
+                {renderLoading}
+              </div>
+            )}
+
           </div>
         )}
-        {isVibeGenerating && renderLoading}
         {!isVibeGenerating && vibePanelIntent !== 'off_topic' && vibePanelPreviewNodes.length === 0 && !vibePanelMermaidCode && <ResPlaceholder />}
       </div>
     </Modal>
