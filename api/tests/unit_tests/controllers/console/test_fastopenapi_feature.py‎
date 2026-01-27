@@ -66,11 +66,6 @@ def mock_auth_environment():
     if target_module in sys.modules:
         del sys.modules[target_module]
 
-
-# ------------------------------------------------------------------------------
-# Test Cases
-# ------------------------------------------------------------------------------
-
 @pytest.mark.parametrize("url, service_mock_path, mock_model_instance, json_key", [
     (
         "/console/api/features", 
@@ -111,22 +106,34 @@ def test_console_features_success(
     expected_data = mock_model_instance.model_dump(mode='json')
     assert response.get_json() == {json_key: expected_data}
 
-
-def test_console_features_service_error(app, mock_auth_environment):
+@pytest.mark.parametrize("url, service_mock_path", [
+    (
+        "/console/api/features", 
+        "controllers.console.feature.FeatureService.get_features"
+    ),
+    (
+        "/console/api/system-features", 
+        "controllers.console.feature.FeatureService.get_system_features"
+    ),
+])
+def test_console_features_service_error(
+    app, 
+    mock_auth_environment, 
+    url, 
+    service_mock_path
+):
     """
-    Tests how the application handles Service layer errors.
+    Tests how the application handles Service layer errors for both endpoints.
     
     Note: When app.config['TESTING'] is True, Flask propagates exceptions 
     instead of handling them generically (unless an error handler is registered).
     Therefore, we assert that the specific exception is raised.
     """
-    service_path = "controllers.console.feature.FeatureService.get_features"
-    
     # Simulate a service failure
-    with patch(service_path, side_effect=ValueError("Service Failure")):
+    with patch(service_mock_path, side_effect=ValueError("Service Failure")):
         ext_fastopenapi.init_app(app)
         client = app.test_client()
         
         # We expect the application to raise the ValueError
         with pytest.raises(ValueError, match="Service Failure"):
-            client.get("/console/api/features")
+            client.get(url)
