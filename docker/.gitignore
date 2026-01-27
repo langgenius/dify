@@ -1,0 +1,3 @@
+# Ignore actual .env files (keep only .env.example files in git)
+*.env
+!*.env.example
