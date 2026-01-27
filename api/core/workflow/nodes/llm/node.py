@@ -685,7 +685,7 @@ class LLMNode(Node[LLMNodeData]):
                         if "content" not in item:
                             raise InvalidContextStructureError(f"Invalid context structure: {item}")
 
-                        if "summary" in item and item["summary"]:
+                        if item.get("summary"):
                             context_str += item["summary"] + "\n"
                         context_str += item["content"] + "\n"
 
@@ -748,6 +748,7 @@ class LLMNode(Node[LLMNodeData]):
                 page=metadata.get("page"),
                 doc_metadata=metadata.get("doc_metadata"),
                 files=context_dict.get("files"),
+                summary=context_dict.get("summary"), 
             )
 
             return source
