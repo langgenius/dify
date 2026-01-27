@@ -63,5 +63,12 @@ class NodeRunHumanInputFormFilledEvent(GraphNodeEventBase):
     action_text: str = Field(..., description="Display text of the chosen action button.")
 
 
+class NodeRunHumanInputFormTimeoutEvent(GraphNodeEventBase):
+    """Emitted when a HumanInput form times out."""
+
+    node_title: str = Field(..., description="HumanInput node title")
+    expiration_time: datetime = Field(..., description="Form expiration time")
+
+
 class NodeRunPauseRequestedEvent(GraphNodeEventBase):
     reason: PauseReason = Field(..., description="pause reason")

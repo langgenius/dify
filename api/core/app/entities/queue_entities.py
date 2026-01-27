@@ -50,6 +50,7 @@ class QueueEvent(StrEnum):
     RETRY = "retry"
     PAUSE = "pause"
     HUMAN_INPUT_FORM_FILLED = "human_input_form_filled"
+    HUMAN_INPUT_FORM_TIMEOUT = "human_input_form_timeout"
 
 
 class AppQueueEvent(BaseModel):
@@ -504,6 +505,19 @@ class QueueHumanInputFormFilledEvent(AppQueueEvent):
     rendered_content: str
     action_id: str
     action_text: str
+
+
+class QueueHumanInputFormTimeoutEvent(AppQueueEvent):
+    """
+    QueueHumanInputFormTimeoutEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.HUMAN_INPUT_FORM_TIMEOUT
+
+    node_id: str
+    node_type: NodeType
+    node_title: str
+    expiration_time: datetime
 
 
 class QueueMessage(BaseModel):

@@ -8,6 +8,7 @@ from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueAgentLogEvent,
     QueueHumanInputFormFilledEvent,
+    QueueHumanInputFormTimeoutEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -42,6 +43,7 @@ from core.workflow.graph_events import (
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunHumanInputFormFilledEvent,
+    NodeRunHumanInputFormTimeoutEvent,
     NodeRunIterationFailedEvent,
     NodeRunIterationNextEvent,
     NodeRunIterationStartedEvent,
@@ -391,6 +393,15 @@ class WorkflowBasedAppRunner:
                     rendered_content=event.rendered_content,
                     action_id=event.action_id,
                     action_text=event.action_text,
+                )
+            )
+        elif isinstance(event, NodeRunHumanInputFormTimeoutEvent):
+            self._publish_event(
+                QueueHumanInputFormTimeoutEvent(
+                    node_id=event.node_id,
+                    node_type=event.node_type,
+                    node_title=event.node_title,
+                    expiration_time=event.expiration_time,
                 )
             )
         elif isinstance(event, NodeRunRetryEvent):

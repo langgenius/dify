@@ -25,6 +25,7 @@ from core.app.entities.queue_entities import (
     QueueAnnotationReplyEvent,
     QueueErrorEvent,
     QueueHumanInputFormFilledEvent,
+    QueueHumanInputFormTimeoutEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -692,6 +693,14 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             event=event, task_id=self._application_generate_entity.task_id
         )
 
+    def _handle_human_input_form_timeout_event(
+        self, event: QueueHumanInputFormTimeoutEvent, **kwargs
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle human input form timeout events."""
+        yield self._workflow_response_converter.human_input_form_timeout_to_stream_response(
+            event=event, task_id=self._application_generate_entity.task_id
+        )
+
     def _persist_human_input_extra_content(self, *, node_id: str | None = None, form_id: str | None = None) -> None:
         if not self._workflow_run_id or not self._message_id:
             return
@@ -774,6 +783,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueueAdvancedChatMessageEndEvent: self._handle_advanced_chat_message_end_event,
             QueueAgentLogEvent: self._handle_agent_log_event,
             QueueHumanInputFormFilledEvent: self._handle_human_input_form_filled_event,
+            QueueHumanInputFormTimeoutEvent: self._handle_human_input_form_timeout_event,
         }
 
     def _dispatch_event(

@@ -87,6 +87,7 @@ class StreamEvent(StrEnum):
     AGENT_LOG = "agent_log"
     HUMAN_INPUT_REQUIRED = "human_input_required"
     HUMAN_INPUT_FORM_FILLED = "human_input_form_filled"
+    HUMAN_INPUT_FORM_TIMEOUT = "human_input_form_timeout"
 
 
 class StreamResponse(BaseModel):
@@ -301,6 +302,21 @@ class HumanInputFormFilledResponse(StreamResponse):
         action_text: str
 
     event: StreamEvent = StreamEvent.HUMAN_INPUT_FORM_FILLED
+    workflow_run_id: str
+    data: Data
+
+
+class HumanInputFormTimeoutResponse(StreamResponse):
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        node_id: str
+        node_title: str
+        expiration_time: int
+
+    event: StreamEvent = StreamEvent.HUMAN_INPUT_FORM_TIMEOUT
     workflow_run_id: str
     data: Data
 

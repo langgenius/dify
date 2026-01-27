@@ -56,3 +56,10 @@ class HumanInputFormFilledEvent(NodeEventBase):
     rendered_content: str
     action_id: str
     action_text: str
+
+
+class HumanInputFormTimeoutEvent(NodeEventBase):
+    """Event emitted when a human input form times out."""
+
+    node_title: str
+    expiration_time: datetime

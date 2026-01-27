@@ -7,7 +7,12 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.repositories.human_input_reposotiry import HumanInputFormRepositoryImpl
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
-from core.workflow.node_events import HumanInputFormFilledEvent, NodeRunResult, PauseRequestedEvent
+from core.workflow.node_events import (
+    HumanInputFormFilledEvent,
+    HumanInputFormTimeoutEvent,
+    NodeRunResult,
+    PauseRequestedEvent,
+)
 from core.workflow.node_events.base import NodeEventBase
 from core.workflow.node_events.node import StreamCompletedEvent
 from core.workflow.nodes.base.node import Node
@@ -245,6 +250,10 @@ class HumanInputNode(Node[HumanInputNodeData]):
             return
 
         if form.status == HumanInputFormStatus.TIMEOUT or form.expiration_time <= naive_utc_now():
+            yield HumanInputFormTimeoutEvent(
+                node_title=self._node_data.title,
+                expiration_time=form.expiration_time,
+            )
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,

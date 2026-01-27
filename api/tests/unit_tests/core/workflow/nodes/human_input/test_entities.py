@@ -80,9 +80,7 @@ class TestFormInput:
         """Test text input with constant default value."""
         default = FormInputDefault(type=PlaceholderType.CONSTANT, value="Enter your response here...")
 
-        form_input = FormInput(
-            type=FormInputType.TEXT_INPUT, output_variable_name="user_input", default=default
-        )
+        form_input = FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="user_input", default=default)
 
         assert form_input.type == FormInputType.TEXT_INPUT
         assert form_input.output_variable_name == "user_input"
@@ -93,9 +91,7 @@ class TestFormInput:
         """Test text input with variable default value."""
         default = FormInputDefault(type=PlaceholderType.VARIABLE, selector=["node_123", "output_var"])
 
-        form_input = FormInput(
-            type=FormInputType.TEXT_INPUT, output_variable_name="user_input", default=default
-        )
+        form_input = FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="user_input", default=default)
 
         assert form_input.default.type == PlaceholderType.VARIABLE
         assert form_input.default.selector == ["node_123", "output_var"]

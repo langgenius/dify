@@ -1,8 +1,9 @@
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent
+from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent, QueueHumanInputFormTimeoutEvent
 from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
@@ -60,3 +61,27 @@ def test_human_input_form_filled_stream_response_contains_rendered_content():
     assert resp.data.node_title == "Human Input"
     assert resp.data.rendered_content.startswith("# Title")
     assert resp.data.action_id == "Approve"
+
+
+def test_human_input_form_timeout_stream_response_contains_timeout_metadata():
+    converter = _build_converter()
+    converter.workflow_start_to_stream_response(
+        task_id="task-1",
+        workflow_run_id="run-1",
+        workflow_id="wf-1",
+        reason=WorkflowStartReason.INITIAL,
+    )
+
+    queue_event = QueueHumanInputFormTimeoutEvent(
+        node_id="node-1",
+        node_type="human-input",
+        node_title="Human Input",
+        expiration_time=datetime(2025, 1, 1, tzinfo=UTC),
+    )
+
+    resp = converter.human_input_form_timeout_to_stream_response(event=queue_event, task_id="task-1")
+
+    assert resp.workflow_run_id == "run-1"
+    assert resp.data.node_id == "node-1"
+    assert resp.data.node_title == "Human Input"
+    assert resp.data.expiration_time == 1735689600

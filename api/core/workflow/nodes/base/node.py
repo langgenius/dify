@@ -17,6 +17,7 @@ from core.workflow.graph_events import (
     NodeRunAgentLogEvent,
     NodeRunFailedEvent,
     NodeRunHumanInputFormFilledEvent,
+    NodeRunHumanInputFormTimeoutEvent,
     NodeRunIterationFailedEvent,
     NodeRunIterationNextEvent,
     NodeRunIterationStartedEvent,
@@ -34,6 +35,7 @@ from core.workflow.graph_events import (
 from core.workflow.node_events import (
     AgentLogEvent,
     HumanInputFormFilledEvent,
+    HumanInputFormTimeoutEvent,
     IterationFailedEvent,
     IterationNextEvent,
     IterationStartedEvent,
@@ -647,6 +649,16 @@ class Node(Generic[NodeDataT]):
             rendered_content=event.rendered_content,
             action_id=event.action_id,
             action_text=event.action_text,
+        )
+
+    @_dispatch.register
+    def _(self, event: HumanInputFormTimeoutEvent):
+        return NodeRunHumanInputFormTimeoutEvent(
+            id=self.execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            node_title=event.node_title,
+            expiration_time=event.expiration_time,
         )
 
     @_dispatch.register

@@ -9,6 +9,7 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueHumanInputFormFilledEvent,
+    QueueHumanInputFormTimeoutEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -25,6 +26,7 @@ from core.app.entities.queue_entities import (
 from core.app.entities.task_entities import (
     AgentLogStreamResponse,
     HumanInputFormFilledResponse,
+    HumanInputFormTimeoutResponse,
     HumanInputRequiredResponse,
     IterationNodeCompletedStreamResponse,
     IterationNodeNextStreamResponse,
@@ -335,6 +337,20 @@ class WorkflowResponseConverter:
                 rendered_content=event.rendered_content,
                 action_id=event.action_id,
                 action_text=event.action_text,
+            ),
+        )
+
+    def human_input_form_timeout_to_stream_response(
+        self, *, event: QueueHumanInputFormTimeoutEvent, task_id: str
+    ) -> HumanInputFormTimeoutResponse:
+        run_id = self._ensure_workflow_run_id()
+        return HumanInputFormTimeoutResponse(
+            task_id=task_id,
+            workflow_run_id=run_id,
+            data=HumanInputFormTimeoutResponse.Data(
+                node_id=event.node_id,
+                node_title=event.node_title,
+                expiration_time=int(event.expiration_time.timestamp()),
             ),
         )
 
