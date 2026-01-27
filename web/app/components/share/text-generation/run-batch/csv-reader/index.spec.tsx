@@ -7,7 +7,7 @@ const mockParseCSV = vi.fn()
 vi.mock('@/utils/csv', () => ({
   parseCSV: (file: File, options: { complete?: (results: { data: string[][] }) => void }) => {
     mockParseCSV(file, options)
-    options.complete?.({ data: [['row1', 'row2']] })
+    options.complete?.({ data: [['row1', 'row2']] }) // This line makes the mock always return the same data
   },
 }))
 
