@@ -167,9 +167,7 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(monkeypatch: pyt
 
     task_module.check_and_handle_human_input_timeouts(limit=100)
 
-    assert {
-        (call["form_id"], call["timeout_status"], call["reason"]) for call in repo.calls
-    } == {
+    assert {(call["form_id"], call["timeout_status"], call["reason"]) for call in repo.calls} == {
         ("form-global", HumanInputFormStatus.EXPIRED, "global_timeout"),
         ("form-node", HumanInputFormStatus.TIMEOUT, "node_timeout"),
         ("form-delivery", HumanInputFormStatus.TIMEOUT, "delivery_test_timeout"),

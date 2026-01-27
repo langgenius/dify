@@ -494,17 +494,19 @@ class TestWorkflowRunService:
 
         # Assert: Verify the expected outcomes
         assert result is not None
-        assert len(result) == 3
+        assert len(result) == 4
 
         # Verify node execution properties
+        statuses = [node_execution.status for node_execution in result]
+        assert "paused" in statuses
+        assert statuses.count("succeeded") == 3
+        assert statuses.count("paused") == 1
+
         for node_execution in result:
-            assert node_execution.status != "paused"
             assert node_execution.tenant_id == app.tenant_id
             assert node_execution.app_id == app.id
             assert node_execution.workflow_run_id == workflow_run.id
-            assert node_execution.index in [0, 1, 2]  # Check that index is one of the expected values
-            assert node_execution.node_id.startswith("node_")  # Check that node_id starts with "node_"
-            assert node_execution.status == "succeeded"
+            assert node_execution.node_id.startswith("node_")
 
     def test_get_workflow_run_node_executions_empty(
         self, db_session_with_containers, mock_external_service_dependencies

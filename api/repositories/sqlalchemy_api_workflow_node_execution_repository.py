@@ -114,7 +114,6 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             WorkflowNodeExecutionModel.tenant_id == tenant_id,
             WorkflowNodeExecutionModel.app_id == app_id,
             WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-            WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED,
         ).order_by(asc(WorkflowNodeExecutionModel.created_at))
 
         with self._session_maker() as session:

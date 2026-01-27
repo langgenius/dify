@@ -34,9 +34,6 @@ def _patch_console_guards(monkeypatch: pytest.MonkeyPatch, account: Account) -> 
     monkeypatch.setattr(login_lib, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(login_lib, "check_csrf_token", lambda *_, **__: None)
     monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(
-        workflow_run_module, "current_account_with_tenant", lambda: (account, account.current_tenant_id)
-    )
     monkeypatch.setattr(workflow_run_module, "current_user", account)
     monkeypatch.setattr(console_wraps.dify_config, "EDITION", "CLOUD")
 
@@ -58,7 +55,8 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
     workflow_run = Mock(spec=WorkflowRun)
     workflow_run.status = WorkflowExecutionStatus.PAUSED
     workflow_run.created_at = datetime(2024, 1, 1, 12, 0, 0)
-    monkeypatch.setattr(workflow_run_module.db.session, "get", lambda *_: workflow_run)
+    fake_db = SimpleNamespace(engine=Mock(), session=SimpleNamespace(get=lambda *_: workflow_run))
+    monkeypatch.setattr(workflow_run_module, "db", fake_db)
 
     reason = HumanInputRequired(
         form_id="form-1",

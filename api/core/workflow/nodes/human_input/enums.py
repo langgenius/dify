@@ -2,8 +2,7 @@ import enum
 
 
 class HumanInputFormStatus(enum.StrEnum):
-    """Status of a human input form.
-    """
+    """Status of a human input form."""
 
     # Awaiting submission from any recipient. Forms stay in this state until
     # submitted or a timeout rule applies.
