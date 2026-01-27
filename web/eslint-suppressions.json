@@ -822,7 +822,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 15
+      "count": 14
     }
   },
   "app/components/base/chat/chat/index.tsx": {
@@ -1083,11 +1083,6 @@
   "app/components/base/form/utils/secret-input/index.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/base/icons/icon-gallery.stories.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/base/icons/utils.ts": {
@@ -2648,19 +2643,6 @@
   "app/components/tools/mcp/mcp-server-param-item.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/tools/mcp/mcp-service-card.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
-  "app/components/tools/mcp/modal.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 20
     }
   },
   "app/components/tools/mcp/provider-card.tsx": {
