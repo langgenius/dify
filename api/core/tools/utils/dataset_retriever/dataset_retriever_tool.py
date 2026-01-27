@@ -216,6 +216,9 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                     source.content = f"question:{segment.content} \nanswer:{segment.answer}"
                                 else:
                                     source.content = segment.content
+                                # Add summary if this segment was retrieved via summary
+                                if hasattr(record, 'summary') and record.summary:
+                                    source.summary = record.summary
                                 retrieval_resource_list.append(source)
 
             if self.return_resource and retrieval_resource_list:

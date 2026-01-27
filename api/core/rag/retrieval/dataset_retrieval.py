@@ -316,6 +316,9 @@ class DatasetRetrieval:
                                 source.content = f"question:{segment.content} \nanswer:{segment.answer}"
                             else:
                                 source.content = segment.content
+                            # Add summary if this segment was retrieved via summary
+                            if hasattr(record, 'summary') and record.summary:
+                                source.summary = record.summary
                             retrieval_resource_list.append(source)
         if hit_callback and retrieval_resource_list:
             retrieval_resource_list = sorted(retrieval_resource_list, key=lambda x: x.score or 0.0, reverse=True)
