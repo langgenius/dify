@@ -1,8 +1,7 @@
-import type { currentVarType } from './panel'
+import type { currentVarType } from './variables-tab'
 import type { GenRes } from '@/service/debug'
 import {
   RiArrowGoBackLine,
-  RiCloseLine,
   RiFileDownloadFill,
   RiMenuLine,
   RiSparklingFill,
@@ -52,8 +51,6 @@ const Right = ({
 }: Props) => {
   const { t } = useTranslation()
   const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
-  const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
-  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
   const toolIcon = useToolIcon(currentNodeVar?.nodeData)
   const currentVar = currentNodeVar?.var
   const currentNodeType = currentNodeVar?.nodeType
@@ -80,11 +77,6 @@ const Right = ({
     if (!currentNodeVar || !currentVar)
       return
     resetToLastRunVar(currentNodeVar.nodeId, currentVar.id)
-  }
-
-  const handleClose = () => {
-    setShowVariableInspectPanel(false)
-    setCurrentFocusNodeId('')
   }
 
   const handleClear = () => {
@@ -179,7 +171,7 @@ const Right = ({
       {/* header */}
       <div className="flex shrink-0 items-center justify-between gap-1 px-2 pt-2">
         {bottomPanelWidth < 488 && (
-          <ActionButton className="shrink-0" onClick={handleOpenMenu}>
+          <ActionButton className="shrink-0" onClick={handleOpenMenu} aria-label="Open menu">
             <RiMenuLine className="h-4 w-4" />
           </ActionButton>
         )}
@@ -233,23 +225,22 @@ const Right = ({
             <>
               {canShowPromptGenerator && (
                 <Tooltip popupContent={t('generate.optimizePromptTooltip', { ns: 'appDebug' })}>
-                  <div
+                  <button
+                    type="button"
                     className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
                     onClick={handleShowPromptGenerator}
                   >
                     <RiSparklingFill className="size-4 text-components-input-border-active-prompt-1" />
-                  </div>
+                  </button>
                 </Tooltip>
               )}
               {isTruncated && (
                 <Tooltip popupContent={t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}>
-                  <ActionButton>
-                    <a
-                      href={fullContent?.download_url}
-                      target="_blank"
-                    >
-                      <RiFileDownloadFill className="size-4" />
-                    </a>
+                  <ActionButton
+                    onClick={() => window.open(fullContent?.download_url, '_blank')}
+                    aria-label={t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}
+                  >
+                    <RiFileDownloadFill className="size-4" />
                   </ActionButton>
                 </Tooltip>
               )}
@@ -278,9 +269,6 @@ const Right = ({
               )}
             </>
           )}
-          <ActionButton onClick={handleClose}>
-            <RiCloseLine className="h-4 w-4" />
-          </ActionButton>
         </div>
       </div>
       {/* content */}

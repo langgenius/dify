@@ -1,4 +1,4 @@
-import type { currentVarType } from './panel'
+import type { currentVarType } from './variables-tab'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import {
   RiArrowRightSLine,
@@ -107,7 +107,7 @@ const Group = ({
             <RiLoader2Line className="h-3 w-3 animate-spin text-text-accent" />
           )}
           {(!nodeData || !nodeData.isSingRunRunning) && visibleVarList.length > 0 && (
-            <RiArrowRightSLine className={cn('h-3 w-3 text-text-tertiary', !isCollapsed && 'rotate-90')} onClick={() => setIsCollapsed(!isCollapsed)} />
+            <RiArrowRightSLine className={cn('h-3 w-3 text-text-tertiary', !isCollapsed && 'rotate-90')} aria-hidden="true" />
           )}
         </div>
         <div className="flex grow cursor-pointer items-center gap-1" onClick={() => setIsCollapsed(!isCollapsed)}>
@@ -152,10 +152,11 @@ const Group = ({
             const isAgentAliasVar = typeof varItem.name === 'string' && varItem.name.startsWith('@')
             const displayName = isAgentAliasVar ? varItem.name.slice(1) : varItem.name
             return (
-              <div
+              <button
+                type="button"
                 key={varItem.id}
                 className={cn(
-                  'relative flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover',
+                  'relative flex w-full cursor-pointer items-center gap-1 rounded-md px-3 py-1 text-left hover:bg-state-base-hover',
                   varItem.id === currentVar?.var?.id && 'bg-state-base-hover-alt hover:bg-state-base-hover-alt',
                 )}
                 onClick={() => handleSelectVar(varItem, varType)}
@@ -171,7 +172,7 @@ const Group = ({
                     )}
                 <div className="system-sm-medium grow truncate text-text-secondary">{displayName}</div>
                 <div className="system-xs-regular shrink-0 text-text-tertiary">{formatVarTypeLabel(varItem.value_type)}</div>
-              </div>
+              </button>
             )
           })}
         </div>

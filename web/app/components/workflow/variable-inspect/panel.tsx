@@ -1,217 +1,83 @@
 import type { FC } from 'react'
-import type { NodeProps } from '../types'
-import type { VarInInspect } from '@/types/workflow'
 import {
   RiCloseLine,
 } from '@remixicon/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { VarInInspectType } from '@/types/workflow'
+import Button from '@/app/components/base/button'
+import Loading from '@/app/components/base/loading'
 import { cn } from '@/utils/classnames'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
-import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
-
 import { useStore } from '../store'
-import Empty from './empty'
-import Left from './left'
-import Listening from './listening'
-import Right from './right'
-import { toEnvVarInInspect } from './utils'
+import { InspectTab } from './types'
+import VariablesTab from './variables-tab'
 
-export type currentVarType = {
-  nodeId: string
-  nodeType: string
-  title: string
-  isValueFetched?: boolean
-  var?: VarInInspect
-  nodeData?: NodeProps['data']
-}
+const ArtifactsTab = lazy(() => import('./artifacts-tab'))
+
+const TAB_ITEMS = [
+  { value: InspectTab.Variables, labelKey: 'debug.variableInspect.tab.variables' },
+  { value: InspectTab.Artifacts, labelKey: 'debug.variableInspect.tab.artifacts' },
+] as const
 
 const Panel: FC = () => {
-  const { t } = useTranslation()
-
-  const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
+  const { t } = useTranslation('workflow')
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
-  const [showLeftPanel, setShowLeftPanel] = useState(true)
-  const isListening = useStore(s => s.isListening)
+  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
+  const [activeTab, setActiveTab] = useState<InspectTab>(InspectTab.Variables)
 
   const environmentVariables = useStore(s => s.environmentVariables)
-  const currentFocusNodeId = useStore(s => s.currentFocusNodeId)
-  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
-  const [currentVarId, setCurrentVarId] = useState('')
+  const { conversationVars, systemVars, nodesWithInspectVars, deleteAllInspectorVars } = useCurrentVars()
 
-  const {
-    conversationVars,
-    systemVars,
-    nodesWithInspectVars,
-    fetchInspectVarValue,
-  } = useCurrentVars()
-
-  const isEmpty = useMemo(() => {
-    const allVars = [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars]
-    return allVars.length === 0
+  const isVariablesEmpty = useMemo(() => {
+    return [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars].length === 0
   }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
-  const currentNodeInfo = useMemo(() => {
-    if (!currentFocusNodeId)
-      return
-    if (currentFocusNodeId === VarInInspectType.environment) {
-      const currentVar = environmentVariables.find(v => v.id === currentVarId)
-      return {
-        nodeId: VarInInspectType.environment,
-        title: VarInInspectType.environment,
-        nodeType: VarInInspectType.environment,
-        var: currentVar ? toEnvVarInInspect(currentVar) : undefined,
-      }
-    }
-    if (currentFocusNodeId === VarInInspectType.conversation) {
-      const currentVar = conversationVars.find(v => v.id === currentVarId)
-      const res = {
-        nodeId: VarInInspectType.conversation,
-        title: VarInInspectType.conversation,
-        nodeType: VarInInspectType.conversation,
-        var: currentVar
-          ? {
-              ...currentVar,
-              type: VarInInspectType.conversation,
-            }
-          : undefined,
-      }
-      return res
-    }
-    if (currentFocusNodeId === VarInInspectType.system) {
-      const currentVar = systemVars.find(v => v.id === currentVarId)
-      const res = {
-        nodeId: VarInInspectType.system,
-        title: VarInInspectType.system,
-        nodeType: VarInInspectType.system,
-        var: currentVar
-          ? {
-              ...currentVar,
-              type: VarInInspectType.system,
-            }
-          : undefined,
-      }
-      return res
-    }
-    const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
-    if (!targetNode)
-      return
-    const currentVar = targetNode.vars.find(v => v.id === currentVarId)
-    return {
-      nodeId: targetNode.nodeId,
-      nodeType: targetNode.nodeType,
-      title: targetNode.title,
-      isSingRunRunning: targetNode.isSingRunRunning,
-      isValueFetched: targetNode.isValueFetched,
-      nodeData: targetNode.nodePayload,
-      var: currentVar,
-    }
-  }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
+  const handleClear = useCallback(() => {
+    deleteAllInspectorVars()
+    setCurrentFocusNodeId('')
+  }, [deleteAllInspectorVars, setCurrentFocusNodeId])
 
-  const currentAliasMeta = useMemo(() => {
-    if (!currentFocusNodeId || !currentVarId)
-      return undefined
-    const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
-    const targetVar = targetNode?.vars.find(v => v.id === currentVarId)
-    return targetVar?.aliasMeta
-  }, [currentFocusNodeId, currentVarId, nodesWithInspectVars])
-  const fetchNodeId = currentAliasMeta?.extractorNodeId || currentFocusNodeId
-
-  const isCurrentNodeVarValueFetching = useMemo(() => {
-    if (!fetchNodeId)
-      return false
-    const targetNode = nodesWithInspectVars.find(node => node.nodeId === fetchNodeId)
-    if (!targetNode)
-      return false
-    return !targetNode.isValueFetched
-  }, [fetchNodeId, nodesWithInspectVars])
-
-  const handleNodeVarSelect = useCallback((node: currentVarType) => {
-    setCurrentFocusNodeId(node.nodeId)
-    if (node.var)
-      setCurrentVarId(node.var.id)
-  }, [setCurrentFocusNodeId, setCurrentVarId])
-
-  const { isLoading, schemaTypeDefinitions } = useMatchSchemaType()
-  const { eventEmitter } = useEventEmitterContextContext()
-
-  const handleStopListening = useCallback(() => {
-    eventEmitter?.emit({ type: EVENT_WORKFLOW_STOP } as any)
-  }, [eventEmitter])
-
-  useEffect(() => {
-    if (currentFocusNodeId && currentVarId && !isLoading && fetchNodeId) {
-      const targetNode = nodesWithInspectVars.find(node => node.nodeId === fetchNodeId)
-      if (targetNode && !targetNode.isValueFetched)
-        fetchInspectVarValue([fetchNodeId], schemaTypeDefinitions!)
-    }
-  }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue, schemaTypeDefinitions, isLoading, fetchNodeId])
-
-  if (isListening) {
-    return (
-      <div className={cn('flex h-full flex-col')}>
-        <div className="flex shrink-0 items-center justify-between pl-4 pr-2 pt-2">
-          <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className="h-4 w-4" />
-          </ActionButton>
-        </div>
-        <div className="grow p-2">
-          <Listening
-            onStop={handleStopListening}
-          />
-        </div>
-      </div>
-    )
-  }
-
-  if (isEmpty) {
-    return (
-      <div className={cn('flex h-full flex-col')}>
-        <div className="flex shrink-0 items-center justify-between pl-4 pr-2 pt-2">
-          <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className="h-4 w-4" />
-          </ActionButton>
-        </div>
-        <div className="grow p-2">
-          <Empty />
-        </div>
-      </div>
-    )
-  }
+  const handleClose = useCallback(() => {
+    setShowVariableInspectPanel(false)
+  }, [setShowVariableInspectPanel])
 
   return (
-    <div className={cn('relative flex h-full')}>
-      {/* left */}
-      {bottomPanelWidth < 488 && showLeftPanel && <div className="absolute left-0 top-0 h-full w-full" onClick={() => setShowLeftPanel(false)}></div>}
-      <div
-        className={cn(
-          'w-60 shrink-0 border-r border-divider-burn',
-          bottomPanelWidth < 488
-            ? showLeftPanel
-              ? 'absolute left-0 top-0 z-10 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm'
-              : 'hidden'
-            : 'block',
-        )}
-      >
-        <Left
-          currentNodeVar={currentNodeInfo as currentVarType}
-          handleVarSelect={handleNodeVarSelect}
-        />
+    <div className={cn('flex h-full flex-col')}>
+      <div className="flex shrink-0 items-center justify-between gap-1 pl-3 pr-2 pt-2">
+        <div className="flex items-center gap-0.5">
+          {TAB_ITEMS.map(tab => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setActiveTab(tab.value)}
+              className={cn(
+                'system-sm-semibold rounded-md px-2 py-1 transition-colors',
+                activeTab === tab.value
+                  ? 'bg-state-base-active text-text-primary'
+                  : 'text-text-tertiary hover:text-text-secondary',
+              )}
+            >
+              {t(tab.labelKey)}
+            </button>
+          ))}
+          {activeTab === InspectTab.Variables && !isVariablesEmpty && (
+            <Button variant="ghost" size="small" onClick={handleClear}>
+              {t('debug.variableInspect.clearAll')}
+            </Button>
+          )}
+        </div>
+        <ActionButton onClick={handleClose}>
+          <RiCloseLine className="h-4 w-4" />
+        </ActionButton>
       </div>
-      {/* right */}
-      <div className="w-0 grow">
-        <Right
-          nodeId={currentFocusNodeId!}
-          isValueFetching={isCurrentNodeVarValueFetching}
-          currentNodeVar={currentNodeInfo as currentVarType}
-          handleOpenMenu={() => setShowLeftPanel(true)}
-        />
+      <div className="min-h-0 flex-1">
+        {activeTab === InspectTab.Variables && <VariablesTab />}
+        {activeTab === InspectTab.Artifacts && (
+          <Suspense fallback={<div className="flex h-full items-center justify-center"><Loading /></div>}>
+            <ArtifactsTab />
+          </Suspense>
+        )}
       </div>
     </div>
   )

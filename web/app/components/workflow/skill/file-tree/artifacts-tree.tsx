@@ -16,6 +16,8 @@ const INDENT_SIZE = 20
 type ArtifactsTreeProps = {
   data: SandboxFileTreeNode[] | undefined
   onDownload: (node: SandboxFileTreeNode) => void
+  onSelect?: (node: SandboxFileTreeNode) => void
+  selectedPath?: string
   isDownloading?: boolean
 }
 
@@ -23,6 +25,8 @@ type ArtifactsTreeNodeProps = {
   node: SandboxFileTreeNode
   depth: number
   onDownload: (node: SandboxFileTreeNode) => void
+  onSelect?: (node: SandboxFileTreeNode) => void
+  selectedPath?: string
   isDownloading?: boolean
 }
 
@@ -30,16 +34,24 @@ const ArtifactsTreeNode: FC<ArtifactsTreeNodeProps> = ({
   node,
   depth,
   onDownload,
+  onSelect,
+  selectedPath,
   isDownloading,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const isFolder = node.node_type === 'folder'
   const hasChildren = isFolder && node.children.length > 0
 
-  const handleToggle = useCallback(() => {
-    if (isFolder)
+  const isSelected = !isFolder && selectedPath === node.path
+
+  const handleClick = useCallback(() => {
+    if (isFolder) {
       setIsExpanded(prev => !prev)
-  }, [isFolder])
+    }
+    else {
+      onSelect?.(node)
+    }
+  }, [isFolder, node, onSelect])
 
   const handleDownload = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -51,21 +63,20 @@ const ArtifactsTreeNode: FC<ArtifactsTreeNodeProps> = ({
   return (
     <div>
       <div
-        role={isFolder ? 'button' : undefined}
-        tabIndex={isFolder ? 0 : undefined}
-        aria-label={isFolder ? `${node.name} folder` : undefined}
+        role="button"
+        tabIndex={0}
+        aria-label={isFolder ? `${node.name} folder` : node.name}
         aria-expanded={isFolder ? isExpanded : undefined}
-        onClick={handleToggle}
-        onKeyDown={isFolder
-          ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ')
-                handleToggle()
-            }
-          : undefined}
+        aria-selected={isSelected}
+        onClick={handleClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ')
+            handleClick()
+        }}
         className={cn(
-          'group relative flex h-6 items-center rounded-md px-2',
-          isFolder && 'cursor-pointer hover:bg-state-base-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-components-input-border-active',
-          !isFolder && 'hover:bg-state-base-hover',
+          'group relative flex h-6 cursor-pointer items-center rounded-md px-2',
+          'hover:bg-state-base-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-components-input-border-active',
+          isSelected && 'bg-state-base-hover',
         )}
         style={{ paddingLeft: `${8 + depth * INDENT_SIZE}px` }}
       >
@@ -110,6 +121,8 @@ const ArtifactsTreeNode: FC<ArtifactsTreeNodeProps> = ({
               node={child}
               depth={depth + 1}
               onDownload={onDownload}
+              onSelect={onSelect}
+              selectedPath={selectedPath}
               isDownloading={isDownloading}
             />
           ))}
@@ -122,6 +135,8 @@ const ArtifactsTreeNode: FC<ArtifactsTreeNodeProps> = ({
 const ArtifactsTree: FC<ArtifactsTreeProps> = ({
   data,
   onDownload,
+  onSelect,
+  selectedPath,
   isDownloading,
 }) => {
   if (!data || data.length === 0)
@@ -135,6 +150,8 @@ const ArtifactsTree: FC<ArtifactsTreeProps> = ({
           node={node}
           depth={0}
           onDownload={onDownload}
+          onSelect={onSelect}
+          selectedPath={selectedPath}
           isDownloading={isDownloading}
         />
       ))}

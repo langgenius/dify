@@ -11,3 +11,8 @@ export enum PreviewType {
   Markdown = 'markdown',
   Chunks = 'chunks',
 }
+
+export enum InspectTab {
+  Variables = 'variables',
+  Artifacts = 'artifacts',
+}

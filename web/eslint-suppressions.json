@@ -3958,11 +3958,6 @@
       "count": 2
     }
   },
-  "app/components/workflow/variable-inspect/panel.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/workflow/variable-inspect/right.tsx": {
     "ts/no-explicit-any": {
       "count": 3
