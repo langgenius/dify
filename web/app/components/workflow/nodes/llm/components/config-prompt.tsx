@@ -147,9 +147,7 @@ const ConfigPrompt: FC<Props> = ({
       const newPrompt = produce(payload as PromptTemplateItem[], (draft) => {
         const item = draft[index]
         if (!isPromptMessageContext(item)) {
-          const content = item.text
-          const nextMetadata = cleanupToolMetadata(content, metadata)
-            ; (item as PromptItem).metadata = nextMetadata
+          (item as PromptItem).metadata = metadata
         }
       })
       onChange(newPrompt)
@@ -258,12 +256,8 @@ const ConfigPrompt: FC<Props> = ({
   }, [onChange, payload])
 
   const handleCompletionMetadataChange = useCallback((metadata: Record<string, unknown>) => {
-    const promptItem = payload as PromptItem
-    const contentKey = promptItem.edition_type === EditionType.jinja2 ? 'jinja2_text' : 'text'
-    const content = (promptItem[contentKey] ?? '') as string
-    const nextMetadata = cleanupToolMetadata(content, metadata)
     const newPrompt = produce(payload as PromptItem, (draft) => {
-      draft.metadata = nextMetadata
+      draft.metadata = metadata
     })
     onChange(newPrompt)
   }, [onChange, payload])

@@ -44,6 +44,29 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
 
   const options = useMemo(() => [new ToolPickerMenuOption()], [])
 
+  const buildNextMetadata = useCallback((metadata: Record<string, unknown>, toolEntries: {
+    configId: string
+    tool: ToolDefaultValue
+  }[]) => {
+    const nextTools = { ...(metadata.tools || {}) } as Record<string, unknown>
+    toolEntries.forEach(({ configId, tool }) => {
+      const schemas = toolParametersToFormSchemas((tool.paramSchemas || []) as ToolParameter[])
+      const fields = schemas.map(schema => ({
+        id: schema.variable,
+        value: schema.default ?? null,
+        auto: schema.form === 'llm',
+      }))
+      nextTools[configId] = {
+        type: tool.provider_type,
+        configuration: { fields },
+      }
+    })
+    return {
+      ...metadata,
+      tools: nextTools,
+    }
+  }, [])
+
   const insertTools = useCallback((tools: ToolDefaultValue[]) => {
     const toolEntries = tools.map(tool => ({
       configId: uuid(),
@@ -88,48 +111,20 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
 
     if (isUsingExternalMetadata) {
       const metadata = (toolBlockContext?.metadata || {}) as Record<string, unknown>
-      const nextTools = { ...(metadata.tools || {}) } as Record<string, unknown>
-      toolEntries.forEach(({ configId, tool }) => {
-        const schemas = toolParametersToFormSchemas((tool.paramSchemas || []) as ToolParameter[])
-        const fields = schemas.map(schema => ({
-          id: schema.variable,
-          value: schema.default ?? null,
-          auto: schema.form === 'llm',
-        }))
-        nextTools[configId] = {
-          type: tool.provider_type,
-          configuration: { fields },
-        }
-      })
-      toolBlockContext?.onMetadataChange?.({
-        ...metadata,
-        tools: nextTools,
-      })
+      const nextMetadata = buildNextMetadata(metadata, toolEntries)
+      toolBlockContext?.onMetadataChange?.(nextMetadata)
       return
     }
     const { activeTabId, fileMetadata, setDraftMetadata, pinTab } = storeApi.getState()
     if (!activeTabId || activeTabId === START_TAB_ID)
       return
     const metadata = (fileMetadata.get(activeTabId) || {}) as Record<string, unknown>
-    const nextTools = { ...(metadata.tools || {}) } as Record<string, unknown>
-    toolEntries.forEach(({ configId, tool }) => {
-      const schemas = toolParametersToFormSchemas((tool.paramSchemas || []) as ToolParameter[])
-      const fields = schemas.map(schema => ({
-        id: schema.variable,
-        value: schema.default ?? null,
-        auto: schema.form === 'llm',
-      }))
-      nextTools[configId] = {
-        type: tool.provider_type, //  === CollectionType.mcp ? 'mcp' : 'builtin'
-        configuration: { fields },
-      }
-    })
+    const nextMetadata = buildNextMetadata(metadata, toolEntries)
     setDraftMetadata(activeTabId, {
-      ...metadata,
-      tools: nextTools,
+      ...nextMetadata,
     })
     pinTab(activeTabId)
-  }, [checkForTriggerMatch, editor, isUsingExternalMetadata, storeApi, toolBlockContext])
+  }, [buildNextMetadata, checkForTriggerMatch, editor, isUsingExternalMetadata, storeApi, toolBlockContext])
 
   const renderMenu = useCallback((
     anchorElementRef: React.RefObject<HTMLElement | null>,
