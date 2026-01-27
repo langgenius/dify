@@ -356,6 +356,15 @@ PromptTemplateItem: TypeAlias = Annotated[
 ]
 
 
+class ToolSetting(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: ToolProviderType
+    provider: str
+    tool_name: str
+    enabled: bool = Field(default=True, description="Whether the tool is enabled")
+
+
 class LLMNodeData(BaseNodeData):
     model: ModelConfig
     prompt_template: Sequence[PromptTemplateItem] | LLMNodeCompletionModelPromptTemplate
@@ -386,6 +395,7 @@ class LLMNodeData(BaseNodeData):
 
     # Tool support
     tools: Sequence[ToolMetadata] = Field(default_factory=list)
+    tool_settings: Sequence[ToolSetting] = Field(default_factory=list)
     max_iterations: int | None = Field(default=100, description="Maximum number of iterations for the LLM node")
 
     @field_validator("prompt_config", mode="before")
