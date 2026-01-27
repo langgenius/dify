@@ -37,7 +37,7 @@ from services.workflow_run_service import WorkflowRunService
 def _build_backstage_input_url(form_token: str | None) -> str | None:
     if not form_token:
         return None
-    base_url = dify_config.CONSOLE_WEB_URL
+    base_url = dify_config.APP_WEB_URL
     if not base_url:
         return None
     return f"{base_url.rstrip('/')}/form/{form_token}"

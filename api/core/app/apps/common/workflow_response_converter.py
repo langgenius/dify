@@ -61,13 +61,13 @@ from core.workflow.enums import (
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.runtime import GraphRuntimeState
-from extensions.ext_database import db
-from models.human_input import HumanInputForm
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
+from models.human_input import HumanInputForm
 from models.workflow import WorkflowRun
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 
