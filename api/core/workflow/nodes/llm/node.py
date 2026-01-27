@@ -1406,7 +1406,8 @@ class LLMNode(Node[LLMNodeData]):
         variable_selectors = []
         if isinstance(prompt_template, list):
             for prompt in prompt_template:
-                if prompt.edition_type != "jinja2":
+                prompt: LLMNodeChatModelMessage | PromptMessageContext
+                if isinstance(prompt, LLMNodeChatModelMessage) and prompt.edition_type == "jinja2":
                     variable_template_parser = VariableTemplateParser(template=prompt.text)
                     variable_selectors.extend(variable_template_parser.extract_variable_selectors())
         elif isinstance(prompt_template, LLMNodeCompletionModelPromptTemplate):
@@ -1442,12 +1443,13 @@ class LLMNode(Node[LLMNodeData]):
 
             if isinstance(prompt_template, list):
                 for prompt in prompt_template:
-                    if prompt.edition_type == "jinja2":
+                    prompt: LLMNodeChatModelMessage | PromptMessageContext
+                    if isinstance(prompt, LLMNodeChatModelMessage) and prompt.edition_type == "jinja2":
                         enable_jinja = True
                         break
             else:
-                if prompt_template.edition_type == "jinja2":
-                    enable_jinja = True
+                prompt_template: LLMNodeCompletionModelPromptTemplate
+                enable_jinja = True
 
             if enable_jinja:
                 for variable_selector in typed_node_data.prompt_config.jinja2_variables or []:
