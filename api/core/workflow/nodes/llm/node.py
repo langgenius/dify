@@ -421,8 +421,9 @@ class LLMNode(Node[LLMNodeData]):
                 outputs["structured_output"] = structured_output.structured_output
 
             # Send final chunk event to indicate streaming is complete
-            if not self.tool_call_enabled:
-                # For tool calls and sandbox, final events are already sent in _process_tool_outputs
+            # For tool calls and sandbox, final events are already sent in _process_tool_outputs
+            sandbox_used = sandbox and has_skill_prompt
+            if not self.tool_call_enabled and not sandbox_used:
                 yield StreamChunkEvent(
                     selector=[self._node_id, "text"],
                     chunk="",
