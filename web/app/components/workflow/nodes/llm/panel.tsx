@@ -245,7 +245,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         )}
       </div>
 
-      {/* Advanced Settings - 折叠区 */}
+      {/* Advanced Settings */}
       <FieldCollapse title={t(`${i18nPrefix}.advancedSettings`, { ns: 'workflow' })}>
         <div className="space-y-4">
           {/* Context */}

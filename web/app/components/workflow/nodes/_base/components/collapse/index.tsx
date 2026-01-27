@@ -13,6 +13,7 @@ type CollapseProps = {
   onCollapse?: (collapsed: boolean) => void
   operations?: ReactNode
   hideCollapseIcon?: boolean
+  noXSpacing?: boolean
 }
 const Collapse = ({
   disabled,
@@ -22,6 +23,7 @@ const Collapse = ({
   onCollapse,
   operations,
   hideCollapseIcon,
+  noXSpacing,
 }: CollapseProps) => {
   const [collapsedLocal, setCollapsedLocal] = useState(true)
   const collapsedMerged = collapsed !== undefined ? collapsed : collapsedLocal
@@ -42,7 +44,7 @@ const Collapse = ({
     <>
       <div className="group/collapse flex items-center">
         <div
-          className="ml-4 flex grow items-center"
+          className={cn('ml-4 flex grow items-center', noXSpacing && 'ml-0')}
           onClick={() => {
             if (!disabled) {
               setCollapsedLocal(!collapsedMerged)
