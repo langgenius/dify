@@ -36,6 +36,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     Rule,
     Segmentation,
     WeightKeywordSetting,
+    WeightModel,
     WeightVectorSetting,
 )
 from services.feature_service import FeatureService
@@ -431,6 +432,7 @@ register_schema_models(
     Rule,
     WeightVectorSetting,
     WeightKeywordSetting,
+    WeightModel,
 )
 
 
