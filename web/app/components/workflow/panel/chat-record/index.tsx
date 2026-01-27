@@ -12,7 +12,7 @@ import {
 } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
-import { buildChatItemTree, buildToolCallsFromHistorySequence, getThreadMessages } from '@/app/components/base/chat/utils'
+import { buildChatItemTree, buildLLMGenerationItemsFromHistorySequence, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import Loading from '@/app/components/base/loading'
 import { fetchConversationMessages } from '@/service/debug'
@@ -38,8 +38,8 @@ function getFormattedChatList(messages: ChatMessageRes[]) {
     const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
     res.push({
       id: item.id,
-      content: buildToolCallsFromHistorySequence(item).message,
-      toolCalls: buildToolCallsFromHistorySequence(item).toolCalls,
+      content: buildLLMGenerationItemsFromHistorySequence(item).message,
+      llmGenerationItems: buildLLMGenerationItemsFromHistorySequence(item).llmGenerationItems,
       feedback: item.feedback,
       isAnswer: true,
       citation: item.metadata?.retriever_resources,

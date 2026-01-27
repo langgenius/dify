@@ -33,9 +33,9 @@ export type IconObject = {
   content: string
 }
 
-export type ToolCallItem = {
+export type LLMGenerationItem = {
   id: string
-  type: 'model' | 'tool' | 'thought'
+  type: 'model' | 'tool' | 'thought' | 'text'
   thoughtCompleted?: boolean
   thoughtOutput?: string
 
@@ -55,6 +55,10 @@ export type ToolCallItem = {
   modelDuration?: number
   modelIcon?: string | IconObject
   modelIconDark?: string | IconObject
+
+  text?: string
+  textCompleted?: boolean
+  isError?: boolean
 }
 
 export type ToolCallDetail = {

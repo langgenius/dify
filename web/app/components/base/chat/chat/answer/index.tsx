@@ -18,10 +18,10 @@ import { cn } from '@/utils/classnames'
 import ContentSwitch from '../content-switch'
 import AgentContent from './agent-content'
 import BasicContent from './basic-content'
+import GenerationContent from './generation-content'
 import More from './more'
 import Operation from './operation'
 import SuggestedQuestions from './suggested-questions'
-import ToolCalls from './tool-calls'
 import WorkflowProcessItem from './workflow-process'
 
 type AnswerProps = {
@@ -62,7 +62,7 @@ const Answer: FC<AnswerProps> = ({
     workflowProcess,
     allFiles,
     message_files,
-    toolCalls,
+    llmGenerationItems,
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
@@ -114,6 +114,9 @@ const Answer: FC<AnswerProps> = ({
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
   const contentIsEmpty = typeof content === 'string' && content.trim() === ''
+  const generationContentRenderIsUsed = llmGenerationItems?.length && llmGenerationItems.some((item) => {
+    return item.type === 'tool' || item.type === 'thought'
+  })
 
   return (
     <div className="mb-2 flex last:mb-0">
@@ -157,8 +160,8 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              !!toolCalls?.length && (
-                <ToolCalls toolCalls={toolCalls} />
+              generationContentRenderIsUsed && (
+                <GenerationContent llmGenerationItems={llmGenerationItems} />
               )
             }
             {
@@ -169,7 +172,7 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              !contentIsEmpty && !hasAgentThoughts && (
+              !contentIsEmpty && !hasAgentThoughts && !generationContentRenderIsUsed && (
                 <BasicContent item={item} />
               )
             }

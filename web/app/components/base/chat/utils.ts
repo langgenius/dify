@@ -1,6 +1,6 @@
 import type { ChatMessageRes, IChatItem } from './chat/type'
 import type { ChatItem, ChatItemInTree } from './types'
-import type { ToolCallItem } from '@/types/workflow'
+import type { LLMGenerationItem } from '@/types/workflow'
 import { v4 as uuidV4 } from 'uuid'
 import { UUID_NIL } from './constants'
 
@@ -234,18 +234,18 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   return ret
 }
 
-const buildToolCallsFromHistorySequence = (message: ChatMessageRes): {
-  toolCalls: ToolCallItem[]
+const buildLLMGenerationItemsFromHistorySequence = (message: ChatMessageRes): {
+  llmGenerationItems: LLMGenerationItem[]
   message: string
 } => {
   const { answer, generation_detail } = message
 
   if (!generation_detail) {
-    return { toolCalls: [], message: answer || '' }
+    return { llmGenerationItems: [], message: answer || '' }
   }
 
   const { reasoning_content = [], tool_calls = [], sequence = [] } = generation_detail
-  const toolCalls: ToolCallItem[] = []
+  const llmGenerationItems: LLMGenerationItem[] = []
   let answerMessage = ''
 
   sequence.forEach((segment) => {
@@ -260,7 +260,7 @@ const buildToolCallsFromHistorySequence = (message: ChatMessageRes): {
       case 'reasoning': {
         const reasoning = reasoning_content[segment.index]
         if (reasoning) {
-          toolCalls.push({
+          llmGenerationItems.push({
             id: uuidV4(),
             type: 'thought',
             thoughtOutput: reasoning,
@@ -272,7 +272,7 @@ const buildToolCallsFromHistorySequence = (message: ChatMessageRes): {
       case 'tool_call': {
         const toolCall = tool_calls[segment.index]
         if (toolCall) {
-          toolCalls.push({
+          llmGenerationItems.push({
             id: uuidV4(),
             type: 'tool',
             toolName: toolCall.name,
@@ -288,12 +288,12 @@ const buildToolCallsFromHistorySequence = (message: ChatMessageRes): {
     }
   })
 
-  return { toolCalls, message: answerMessage || '' }
+  return { llmGenerationItems, message: answerMessage || '' }
 }
 
 export {
   buildChatItemTree,
-  buildToolCallsFromHistorySequence,
+  buildLLMGenerationItemsFromHistorySequence,
   getLastAnswer,
   getProcessedInputsFromUrlParams,
   getProcessedSystemVariablesFromUrlParams,

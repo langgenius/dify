@@ -2,8 +2,8 @@
 
 import type { FC } from 'react'
 import type {
+  LLMGenerationItem,
   LLMTraceItem,
-  ToolCallItem,
 } from '@/types/workflow'
 import {
   RiArrowLeftLine,
@@ -63,7 +63,7 @@ const LLMResultPanel: FC<Props> = ({
       <div className="space-y-1 p-2">
         {
           formattedList.map((item, index) => (
-            <ToolCallItemComponent key={index} payload={item as ToolCallItem} />
+            <ToolCallItemComponent key={index} payload={item as LLMGenerationItem} />
           ))
         }
       </div>

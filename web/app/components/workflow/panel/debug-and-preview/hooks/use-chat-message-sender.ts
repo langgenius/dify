@@ -158,14 +158,37 @@ export function useChatMessageSender({
         }) => {
           if (!isCurrentRun())
             return
-          if (chunk_type === 'text')
+          if (chunk_type === 'text') {
             responseItem.content = responseItem.content + message
 
+            if (!responseItem.llmGenerationItems)
+              responseItem.llmGenerationItems = []
+
+            const isNotCompletedTextItemIndex = responseItem.llmGenerationItems?.findIndex(item => item.type === 'text' && !item.textCompleted)
+
+            if (isNotCompletedTextItemIndex > -1) {
+              responseItem.llmGenerationItems![isNotCompletedTextItemIndex].text += message
+            }
+            else {
+              toolCallId = uuidV4()
+              responseItem.llmGenerationItems?.push({
+                id: toolCallId,
+                type: 'text',
+                text: message,
+              })
+            }
+          }
+
           if (chunk_type === 'tool_call') {
-            if (!responseItem.toolCalls)
-              responseItem.toolCalls = []
+            if (!responseItem.llmGenerationItems)
+              responseItem.llmGenerationItems = []
+
+            const isNotCompletedTextItemIndex = responseItem.llmGenerationItems?.findIndex(item => item.type === 'text' && !item.textCompleted)
+            if (isNotCompletedTextItemIndex > -1) {
+              responseItem.llmGenerationItems![isNotCompletedTextItemIndex].textCompleted = true
+            }
             toolCallId = uuidV4()
-            responseItem.toolCalls?.push({
+            responseItem.llmGenerationItems?.push({
               id: toolCallId,
               type: 'tool',
               toolName: tool_name,
@@ -176,21 +199,26 @@ export function useChatMessageSender({
           }
 
           if (chunk_type === 'tool_result') {
-            const currentToolCallIndex = responseItem.toolCalls?.findIndex(item => item.id === toolCallId) ?? -1
+            const currentToolCallIndex = responseItem.llmGenerationItems?.findIndex(item => item.id === toolCallId) ?? -1
 
             if (currentToolCallIndex > -1) {
-              responseItem.toolCalls![currentToolCallIndex].toolError = tool_error
-              responseItem.toolCalls![currentToolCallIndex].toolDuration = tool_elapsed_time
-              responseItem.toolCalls![currentToolCallIndex].toolFiles = tool_files
-              responseItem.toolCalls![currentToolCallIndex].toolOutput = message
+              responseItem.llmGenerationItems![currentToolCallIndex].toolError = tool_error
+              responseItem.llmGenerationItems![currentToolCallIndex].toolDuration = tool_elapsed_time
+              responseItem.llmGenerationItems![currentToolCallIndex].toolFiles = tool_files
+              responseItem.llmGenerationItems![currentToolCallIndex].toolOutput = message
             }
           }
 
           if (chunk_type === 'thought_start') {
-            if (!responseItem.toolCalls)
-              responseItem.toolCalls = []
+            if (!responseItem.llmGenerationItems)
+              responseItem.llmGenerationItems = []
+
+            const isNotCompletedTextItemIndex = responseItem.llmGenerationItems?.findIndex(item => item.type === 'text' && !item.textCompleted)
+            if (isNotCompletedTextItemIndex > -1) {
+              responseItem.llmGenerationItems![isNotCompletedTextItemIndex].textCompleted = true
+            }
             thoughtId = uuidV4()
-            responseItem.toolCalls.push({
+            responseItem.llmGenerationItems?.push({
               id: thoughtId,
               type: 'thought',
               thoughtOutput: '',
@@ -198,17 +226,17 @@ export function useChatMessageSender({
           }
 
           if (chunk_type === 'thought') {
-            const currentThoughtIndex = responseItem.toolCalls?.findIndex(item => item.id === thoughtId) ?? -1
+            const currentThoughtIndex = responseItem.llmGenerationItems?.findIndex(item => item.id === thoughtId) ?? -1
             if (currentThoughtIndex > -1) {
-              responseItem.toolCalls![currentThoughtIndex].thoughtOutput += message
+              responseItem.llmGenerationItems![currentThoughtIndex].thoughtOutput += message
             }
           }
 
           if (chunk_type === 'thought_end') {
-            const currentThoughtIndex = responseItem.toolCalls?.findIndex(item => item.id === thoughtId) ?? -1
+            const currentThoughtIndex = responseItem.llmGenerationItems?.findIndex(item => item.id === thoughtId) ?? -1
             if (currentThoughtIndex > -1) {
-              responseItem.toolCalls![currentThoughtIndex].thoughtOutput += message
-              responseItem.toolCalls![currentThoughtIndex].thoughtCompleted = true
+              responseItem.llmGenerationItems![currentThoughtIndex].thoughtOutput += message
+              responseItem.llmGenerationItems![currentThoughtIndex].thoughtCompleted = true
             }
           }
 
@@ -245,6 +273,10 @@ export function useChatMessageSender({
             if (errorMessage) {
               responseItem.content = errorMessage
               responseItem.isError = true
+              responseItem.llmGenerationItems?.forEach((item) => {
+                if (item.type === 'text')
+                  item.isError = true
+              })
               updateCurrentQAOnTree({
                 placeholderQuestionId,
                 questionItem,

@@ -1,4 +1,4 @@
-import type { ToolCallItem } from '@/types/workflow'
+import type { LLMGenerationItem } from '@/types/workflow'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { Thinking } from '@/app/components/base/icons/src/vender/workflow'
+import { Markdown } from '@/app/components/base/markdown'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -14,7 +15,7 @@ import { cn } from '@/utils/classnames'
 
 type ToolCallItemComponentProps = {
   className?: string
-  payload: ToolCallItem
+  payload: LLMGenerationItem
 }
 const ToolCallItemComponent = ({
   className,
@@ -22,6 +23,19 @@ const ToolCallItemComponent = ({
 }: ToolCallItemComponentProps) => {
   const { t } = useTranslation()
   const [expand, setExpand] = useState(false)
+
+  if (payload.type === 'text') {
+    return (
+      <Markdown
+        className={cn(
+          'px-2',
+          payload.isError && '!text-[#F04438]',
+        )}
+        content={payload.text ?? ''}
+      />
+    )
+  }
+
   return (
     <div
       className={cn('rounded-[10px] border-[0.5px] border-components-panel-border bg-background-default-subtle px-2 pb-1 pt-2 shadow-xs', className)}
