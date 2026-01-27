@@ -101,7 +101,6 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     return triggerPlugins.find(
       provider =>
         provider.name === provider_name
-        || provider.name === provider_id
         || provider.id === provider_id
         || (provider_id && provider.plugin_id === provider_id),
     )
