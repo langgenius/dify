@@ -298,17 +298,17 @@ class LLMNode(Node[LLMNodeData]):
             structured_output: LLMStructuredOutput | None = None
 
             sandbox = self.graph_runtime_state.sandbox
-            if sandbox:
-                tool_dependencies = self._extract_tool_dependencies()
-                generator = self._invoke_llm_with_sandbox(
-                    sandbox=sandbox,
-                    model_instance=model_instance,
-                    prompt_messages=prompt_messages,
-                    stop=stop,
-                    variable_pool=variable_pool,
-                    tool_dependencies=tool_dependencies,
-                )
-            elif self.tool_call_enabled:
+            if self.tool_call_enabled:
+                if sandbox:
+                    tool_dependencies = self._extract_tool_dependencies()
+                    generator = self._invoke_llm_with_sandbox(
+                        sandbox=sandbox,
+                        model_instance=model_instance,
+                        prompt_messages=prompt_messages,
+                        stop=stop,
+                        variable_pool=variable_pool,
+                        tool_dependencies=tool_dependencies,
+                    )
                 generator = self._invoke_llm_with_tools(
                     model_instance=model_instance,
                     prompt_messages=prompt_messages,
