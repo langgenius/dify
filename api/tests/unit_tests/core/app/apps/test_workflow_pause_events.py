@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import core.app.apps.common.workflow_response_converter as workflow_response_converter
+from core.app.apps.common import workflow_response_converter
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom

@@ -80,10 +80,6 @@ class EmailDeliveryConfig(BaseModel):
         """Replace the url placeholder with provided value."""
         return body.replace(cls.URL_PLACEHOLDER, url or "")
 
-    def body_with_url(self, url: str | None) -> str:
-        """Return body content with url placeholder replaced."""
-        return self.render_body_template(body=self.body, url=url)
-
     @classmethod
     def render_body_template(
         cls,
