@@ -3,7 +3,7 @@ from typing import Any
 
 from flask import request
 from flask_restx import Resource, marshal_with
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
@@ -28,6 +28,10 @@ class InstalledAppUpdatePayload(BaseModel):
     is_pinned: bool | None = None
 
 
+class InstalledAppsListQuery(BaseModel):
+    app_id: str | None = Field(default=None, description="App ID to filter by")
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,13 +41,13 @@ class InstalledAppsListApi(Resource):
     @account_initialization_required
     @marshal_with(installed_app_list_fields)
     def get(self):
-        app_id = request.args.get("app_id", default=None, type=str)
+        query = InstalledAppsListQuery.model_validate(request.args.to_dict())
         current_user, current_tenant_id = current_account_with_tenant()
 
-        if app_id:
+        if query.app_id:
             installed_apps = db.session.scalars(
                 select(InstalledApp).where(
-                    and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == app_id)
+                    and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == query.app_id)
                 )
             ).all()
         else:
