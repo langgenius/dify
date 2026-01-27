@@ -1037,8 +1037,8 @@ class AccountService:
                 return token
 
             return None
-        except Exception as e:
-            logger.exception("Failed to send phone verification code to %s: %s", phone_number, str(e))
+        except Exception:
+            logger.exception("Failed to send phone verification code to %s", phone_number)
             raise
 
     @classmethod
@@ -1077,8 +1077,8 @@ class AccountService:
                 # Revoke the token after successful verification
                 cls.revoke_phone_code_login_token(token)
             return result
-        except Exception as e:
-            logger.exception("Failed to verify phone code for session %s: %s", session_uuid, str(e))
+        except Exception:
+            logger.exception("Failed to verify phone code for session %s", session_uuid)
             return False
 
     @classmethod

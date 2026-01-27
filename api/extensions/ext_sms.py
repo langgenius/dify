@@ -51,7 +51,7 @@ class SMS:
             self._verify_enabled = True
             logger.info("Plivo SMS client initialized successfully")
         except Exception as e:
-            logger.exception("Failed to initialize Plivo client: %s", str(e))
+            logger.exception("Failed to initialize Plivo client")
             raise ValueError(f"Failed to initialize Plivo client: {e}")
 
     def send_verification_code(
