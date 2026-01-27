@@ -272,7 +272,7 @@
   },
   "resolutions": {
     "@eslint/plugin-kit": "~0.3",
-    "@types/react": "~19.2.7",
+    "@types/react": "~19.2.9",
     "@types/react-dom": "~19.2.3",
     "brace-expansion": "~2.0",
     "canvas": "^3.2.0",
