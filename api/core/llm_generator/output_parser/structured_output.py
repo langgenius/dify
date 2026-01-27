@@ -208,13 +208,7 @@ def invoke_llm_with_structured_output(
                     system_fingerprint = event.system_fingerprint
 
                     # Collect text content
-                    if isinstance(event.delta.message.content, str):
-                        result_text += event.delta.message.content
-                    elif isinstance(event.delta.message.content, list):
-                        for item in event.delta.message.content:
-                            if isinstance(item, TextPromptMessageContent):
-                                result_text += item.data
-
+                    result_text += event.delta.message.get_text_content()
                     # Collect tool call arguments
                     if event.delta.message.tool_calls:
                         for tool_call in event.delta.message.tool_calls:
@@ -350,9 +344,7 @@ def _extract_structured_output(llm_result: LLMResult) -> Mapping[str, Any]:
                 return _parse_tool_call_arguments(tool_call.function.arguments)
 
     # Fallback to text content parsing
-    content = llm_result.message.content
-    if not isinstance(content, str):
-        raise OutputParserError(f"Failed to parse structured output, LLM result is not a string: {content}")
+    content = llm_result.message.get_text_content()
     return _parse_structured_output(content)
 
 
