@@ -306,6 +306,7 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
           sign_content: res.data.sign_content,
           keywords: res.data.keywords,
           attachments: res.data.attachments,
+          summary: res.data.summary,
           word_count: res.data.word_count,
           hit_count: res.data.hit_count,
           enabled: res.data.enabled,

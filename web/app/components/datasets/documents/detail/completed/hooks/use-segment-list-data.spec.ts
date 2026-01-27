@@ -614,7 +614,7 @@ describe('useSegmentListData', () => {
       })
 
       await act(async () => {
-        await result.current.handleUpdateSegment('seg-1', 'content', '', [], [], undefined, true)
+        await result.current.handleUpdateSegment('seg-1', 'content', '', [], [], 'summary', true)
       })
 
       expect(onCloseSegmentDetail).not.toHaveBeenCalled()
