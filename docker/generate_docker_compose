@@ -50,24 +50,44 @@ def generate_shared_env_block(env_vars, anchor_name="shared-api-worker-env"):
     return "\n".join(lines)
 
 
-def insert_shared_env(template_path, output_path, shared_env_block, header_comments):
+def create_env_files_from_example(env_example_path):
     """
-    Inserts the shared environment variables block and header comments into the template file,
-    removing any existing x-shared-env anchors, and generates the final docker-compose.yaml file.
+    Creates actual env files from .env.example by copying the categorized .env.example files.
+    This allows docker-compose to use env_file references.
+    """
+    envs_dir = "envs"
+    os.makedirs(envs_dir, exist_ok=True)
+    
+    # List of env file categories
+    categories = ['global', 'server', 'security', 'database', 'redis', 'storage', 'vectorstore']
+    
+    created_files = []
+    for category in categories:
+        example_file = os.path.join(envs_dir, f"{category}.env.example")
+        env_file = os.path.join(envs_dir, f"{category}.env")
+        
+        if os.path.exists(example_file):
+            # Copy .example to actual file
+            with open(example_file, 'r') as src, open(env_file, 'w') as dst:
+                dst.write(src.read())
+            created_files.append(env_file)
+            print(f"Created {env_file}")
+        else:
+            print(f"Warning: {example_file} not found, skipping {category}.env")
+    
+    return created_files
+
+
+def insert_shared_env(template_path, output_path, header_comments):
+    """
+    Copies the template file to output path with header comments.
+    The template now uses env_file references instead of a huge YAML anchor.
     """
     with open(template_path, "r") as f:
         template_content = f.read()
 
-    # Remove existing x-shared-env: &shared-api-worker-env lines
-    template_content = re.sub(
-        r"^x-shared-env: &shared-api-worker-env\s*\n?",
-        "",
-        template_content,
-        flags=re.MULTILINE,
-    )
-
-    # Prepare the final content with header comments and shared env block
-    final_content = f"{header_comments}\n{shared_env_block}\n\n{template_content}"
+    # Prepare the final content with header comments
+    final_content = f"{header_comments}\n{template_content}"
 
     with open(output_path, "w") as f:
         f.write(final_content)
@@ -95,17 +115,13 @@ def main():
             print(f"Error: File {path} does not exist.")
             sys.exit(1)
 
-    # Parse .env.example file
-    env_vars = parse_env_example(env_example_path)
+    # Create env files from categorized .env.example files
+    # These files are used by docker-compose's env_file directive
+    create_env_files_from_example(env_example_path)
 
-    if not env_vars:
-        print("Warning: No environment variables found in .env.example.")
-
-    # Generate shared environment variables block
-    shared_env_block = generate_shared_env_block(env_vars, anchor_name)
-
-    # Insert shared environment variables block and header comments into the template
-    insert_shared_env(template_path, output_path, shared_env_block, header_comments)
+    # Copy template to output with header comments
+    # The template now uses env_file references instead of a huge YAML anchor
+    insert_shared_env(template_path, output_path, header_comments)
 
 
 if __name__ == "__main__":
