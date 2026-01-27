@@ -122,7 +122,7 @@ class DatasetListApi(DatasetApiResource):
     )
     def get(self, tenant_id):
         """Resource for getting datasets."""
-        query = DatasetListQuery.model_validate(request.args.to_dict(flat=False))
+        query = DatasetListQuery.model_validate(request.args.to_dict())
         # provider = request.args.get("provider", default="vendor")
 
         datasets, total = DatasetService.get_datasets(
