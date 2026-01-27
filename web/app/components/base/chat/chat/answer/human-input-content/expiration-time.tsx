@@ -21,7 +21,7 @@ const ExpirationTime = ({
     <div
       className={cn(
         'system-xs-regular mt-1 flex items-center gap-x-1 text-text-tertiary',
-        isSameOrAfter && 'text-text-warning',
+        !isSameOrAfter && 'text-text-warning',
       )}
     >
       {

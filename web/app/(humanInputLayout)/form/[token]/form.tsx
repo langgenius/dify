@@ -1,6 +1,7 @@
 'use client'
 import type { ButtonProps } from '@/app/components/base/button'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import type { SiteInfo } from '@/models/share'
 import type { HumanInputFormError } from '@/service/use-share'
 import {
   RiCheckboxCircleFill,
@@ -24,7 +25,7 @@ import { useGetHumanInputForm, useSubmitHumanInputForm } from '@/service/use-sha
 import { cn } from '@/utils/classnames'
 
 export type FormData = {
-  site: any
+  site: { site: SiteInfo }
   form_content: string
   inputs: FormInputItem[]
   resolved_default_values: Record<string, string>
@@ -40,15 +41,13 @@ const FormContent = () => {
 
   const [inputs, setInputs] = useState<Record<string, string>>({})
   const [success, setSuccess] = useState(false)
+  const [expired, setExpired] = useState(false)
 
   const { mutate: submitForm, isPending: isSubmitting } = useSubmitHumanInputForm()
 
   const { data: formData, isLoading, error } = useGetHumanInputForm(token)
 
-  const expired = (error as HumanInputFormError | null)?.code === 'human_input_form_expired'
   const submitted = (error as HumanInputFormError | null)?.code === 'human_input_form_submitted'
-
-  const site = formData?.site.site
 
   const splitByOutputVar = (content: string): string[] => {
     const outputVarRegex = /(\{\{#\$output\.[^#]+#\}\})/g
@@ -86,6 +85,14 @@ const FormContent = () => {
       {
         onSuccess: () => {
           setSuccess(true)
+        },
+        onError: async (error) => {
+          if (error instanceof Response && error.status && error.json) {
+            const errorData = await error.json() as { code: string, message: string }
+            if (errorData.code === 'human_input_form_expired') {
+              setExpired(true)
+            }
+          }
         },
       },
     )
@@ -207,12 +214,14 @@ const FormContent = () => {
     )
   }
 
+  const site = formData.site.site
+
   return (
     <div className={cn('mx-auto flex h-full w-full max-w-[720px] flex-col items-center')}>
       <div className="mt-4 flex w-full shrink-0 items-center gap-3 py-3">
         <AppIcon
           size="large"
-          iconType={site.icon_type as any}
+          iconType={site.icon_type}
           icon={site.icon}
           background={site.icon_background}
           imageUrl={site.icon_url}
