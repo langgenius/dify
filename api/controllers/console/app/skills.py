@@ -3,7 +3,7 @@ from flask_restx import Resource
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, current_account_with_tenant, setup_required
 from libs.login import login_required
 from models import App
 from models.model import AppMode
@@ -33,13 +33,19 @@ class NodeSkillsApi(Resource):
         - tool_references: Aggregated tool references from all skill prompts
         - file_references: Aggregated file references from all skill prompts
         """
+        current_user, _ = current_account_with_tenant()
         workflow_service = WorkflowService()
         workflow = workflow_service.get_draft_workflow(app_model=app_model)
 
         if not workflow:
             raise DraftWorkflowNotExist()
 
-        skill_info = SkillService.get_node_skill_info(workflow=workflow, node_id=node_id)
+        skill_info = SkillService.get_node_skill_info(
+            app=app_model,
+            workflow=workflow,
+            node_id=node_id,
+            user_id=current_user.id,
+        )
         return skill_info.model_dump()
 
 
@@ -62,11 +68,16 @@ class WorkflowSkillsApi(Resource):
 
         Returns a list of nodes with their skill information.
         """
+        current_user, _ = current_account_with_tenant()
         workflow_service = WorkflowService()
         workflow = workflow_service.get_draft_workflow(app_model=app_model)
 
         if not workflow:
             raise DraftWorkflowNotExist()
 
-        skills_info = SkillService.get_workflow_skills(workflow=workflow)
+        skills_info = SkillService.get_workflow_skills(
+            app=app_model,
+            workflow=workflow,
+            user_id=current_user.id,
+        )
         return {"nodes": [info.model_dump() for info in skills_info]}
