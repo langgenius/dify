@@ -2,7 +2,10 @@ import json
 import logging
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from models.account import Account
 
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
