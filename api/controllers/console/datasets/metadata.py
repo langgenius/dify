@@ -13,6 +13,7 @@ from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
     MetadataArgs,
+    MetadataDetail,
     MetadataOperationData,
 )
 from services.metadata_service import MetadataService
@@ -23,7 +24,7 @@ class MetadataUpdatePayload(BaseModel):
 
 
 register_schema_models(
-    console_ns, MetadataArgs, MetadataOperationData, MetadataUpdatePayload, DocumentMetadataOperation
+    console_ns, MetadataArgs, MetadataOperationData, MetadataUpdatePayload, DocumentMetadataOperation, MetadataDetail
 )
 
 

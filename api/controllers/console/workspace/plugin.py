@@ -46,9 +46,6 @@ class ParserList(BaseModel):
     page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
 
 
-reg(ParserList)
-
-
 @console_ns.route("/workspaces/current/plugin/list")
 class PluginListApi(Resource):
     @console_ns.expect(console_ns.models[ParserList.__name__])
@@ -177,6 +174,7 @@ class ParserReadme(BaseModel):
 
 register_schema_models(
     console_ns,
+    ParserList,
     PluginAutoUpgradeSettingsPayload,
     PluginPermissionSettingsPayload,
     ParserLatest,
