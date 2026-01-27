@@ -164,6 +164,11 @@ def test_build_snapshot_events_includes_pause_event() -> None:
     pause_data = events[-1]["data"]
     assert pause_data["paused_nodes"] == ["node-1"]
     assert pause_data["outputs"] == {"result": "value"}
+    assert pause_data["status"] == WorkflowExecutionStatus.PAUSED.value
+    assert pause_data["created_at"] == int(workflow_run.created_at.timestamp())
+    assert pause_data["elapsed_time"] == workflow_run.elapsed_time
+    assert pause_data["total_tokens"] == workflow_run.total_tokens
+    assert pause_data["total_steps"] == workflow_run.total_steps
 
 
 def test_build_snapshot_events_applies_message_context() -> None:

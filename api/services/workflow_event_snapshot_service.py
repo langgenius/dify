@@ -242,6 +242,7 @@ def _build_snapshot_events(
 
     if workflow_run.status == WorkflowExecutionStatus.PAUSED and pause_entity is not None:
         pause_event = _build_pause_event(
+            workflow_run=workflow_run,
             workflow_run_id=workflow_run.id,
             task_id=task_id,
             pause_entity=pause_entity,
@@ -350,6 +351,7 @@ def _build_node_finished_event(
 
 def _build_pause_event(
     *,
+    workflow_run: WorkflowRun,
     workflow_run_id: str,
     task_id: str,
     pause_entity: WorkflowPauseEntity,
@@ -371,6 +373,11 @@ def _build_pause_event(
             paused_nodes=paused_nodes,
             outputs=outputs,
             reasons=reasons,
+            status=workflow_run.status.value,
+            created_at=int(workflow_run.created_at.timestamp()),
+            elapsed_time=float(workflow_run.elapsed_time or 0.0),
+            total_tokens=int(workflow_run.total_tokens or 0),
+            total_steps=int(workflow_run.total_steps or 0),
         ),
     )
     payload = response.model_dump(mode="json")
