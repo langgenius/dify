@@ -391,46 +391,79 @@ class QdrantVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        """Return docs most similar by bm25.
+        """Return docs most similar by full-text search.
+
+        Searches each keyword separately and merges results to ensure documents
+        matching ANY keyword are returned. This guarantees that results for each
+        keyword are included, regardless of Qdrant's scroll ordering.
+
+        Note: Total results may exceed top_k when multiple keywords are searched,
+        as each keyword search returns up to top_k results.
+
+        Args:
+            query: Search query text (each keyword searched separately)
+            **kwargs: Additional search parameters (top_k, document_ids_filter)
+
         Returns:
-            List of documents most similar to the query text and distance for each.
+            List of unique documents matching any of the query keywords.
         """
         from qdrant_client.http import models
 
-        scroll_filter = models.Filter(
-            must=[
-                models.FieldCondition(
-                    key="group_id",
-                    match=models.MatchValue(value=self._group_id),
-                ),
-                models.FieldCondition(
-                    key="page_content",
-                    match=models.MatchText(text=query),
-                ),
-            ]
-        )
+        # Build base must conditions (AND logic) for metadata filters
+        base_must_conditions: list = [
+            models.FieldCondition(
+                key="group_id",
+                match=models.MatchValue(value=self._group_id),
+            ),
+        ]
+
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            if scroll_filter.must:
-                scroll_filter.must.append(
-                    models.FieldCondition(
-                        key="metadata.document_id",
-                        match=models.MatchAny(any=document_ids_filter),
-                    )
+            base_must_conditions.append(
+                models.FieldCondition(
+                    key="metadata.document_id",
+                    match=models.MatchAny(any=document_ids_filter),
                 )
-        response = self._client.scroll(
-            collection_name=self._collection_name,
-            scroll_filter=scroll_filter,
-            limit=kwargs.get("top_k", 2),
-            with_payload=True,
-            with_vectors=True,
-        )
-        results = response[0]
-        documents = []
-        for result in results:
-            if result:
-                document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
-                documents.append(document)
+            )
+
+        # Split query into keywords
+        keywords = [kw.strip() for kw in query.strip().split() if kw.strip()]
+
+        if not keywords:
+            return []
+
+        top_k = kwargs.get("top_k", 2)
+        seen_ids: set[str | int] = set()
+        documents: list[Document] = []
+
+        # Search each keyword separately and merge results.
+        # This ensures each keyword gets its own search, preventing one keyword's
+        # results from completely overshadowing another's due to scroll ordering.
+        for keyword in keywords:
+            scroll_filter = models.Filter(
+                must=[
+                    *base_must_conditions,
+                    models.FieldCondition(
+                        key="page_content",
+                        match=models.MatchText(text=keyword),
+                    ),
+                ]
+            )
+
+            response = self._client.scroll(
+                collection_name=self._collection_name,
+                scroll_filter=scroll_filter,
+                limit=top_k,
+                with_payload=True,
+                with_vectors=True,
+            )
+            results = response[0]
+
+            for result in results:
+                if result and result.id not in seen_ids:
+                    seen_ids.add(result.id)
+                    document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
+                    documents.append(document)
 
         return documents
 
