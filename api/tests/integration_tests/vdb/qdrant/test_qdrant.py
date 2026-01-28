@@ -61,13 +61,7 @@ class QdrantVectorTest(AbstractVectorTest):
         self.vector.add_texts(documents=documents, embeddings=embeddings)
 
     def search_by_full_text_multi_keyword(self):
-        """Test that multi-keyword search returns documents matching ANY keyword.
-
-        Verifies OR logic: searching for 'apple banana' should return:
-        - Document with 'apple' only
-        - Document with 'banana' only
-        - Document with both 'apple and banana'
-        """
+        """Test multi-keyword search returns docs matching ANY keyword (OR logic)."""
         # First verify single keyword searches work correctly
         hits_apple = self.vector.search_by_full_text(query="apple", top_k=10)
         apple_ids = {doc.metadata["doc_id"] for doc in hits_apple}
@@ -86,6 +80,7 @@ class QdrantVectorTest(AbstractVectorTest):
         assert self.doc_apple_id in doc_ids, "Document with 'apple' should be found in multi-keyword search"
         assert self.doc_banana_id in doc_ids, "Document with 'banana' should be found in multi-keyword search"
         assert self.doc_both_id in doc_ids, "Document with both keywords should be found"
+        # Expect 3 results: doc_apple (apple only), doc_banana (banana only), doc_both (contains both)
         assert len(hits) == 3, f"Expected 3 documents, got {len(hits)}"
 
         # Test keyword order independence
