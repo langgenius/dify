@@ -277,7 +277,7 @@ class SummaryIndexService:
                         summary_record_in_session = (
                             session.query(DocumentSegmentSummary).filter_by(id=summary_record_id).first()
                         )
-                        
+
                         if not summary_record_in_session:
                             # Record not found - try to find by chunk_id and dataset_id instead
                             logger.debug(
@@ -293,7 +293,7 @@ class SummaryIndexService:
                                 .filter_by(chunk_id=segment.id, dataset_id=dataset.id)
                                 .first()
                             )
-                            
+
                             if not summary_record_in_session:
                                 # Still not found - create a new one using the parameter data
                                 logger.warning(
@@ -336,7 +336,7 @@ class SummaryIndexService:
                                 summary_record_id,
                                 segment.id,
                             )
-                    
+
                     # Update all fields including summary_content
                     # Always use the summary_content from the parameter (which is the latest from outer session)
                     # rather than relying on what's in the database, in case outer session hasn't committed yet
@@ -350,7 +350,7 @@ class SummaryIndexService:
                     # Explicitly update updated_at to ensure it's refreshed even if other fields haven't changed
                     summary_record_in_session.updated_at = datetime.now(UTC).replace(tzinfo=None)
                     session.add(summary_record_in_session)
-                    
+
                     # Only commit if we created the session ourselves
                     if not use_provided_session:
                         logger.debug("Committing session for segment %s (self-created session)", segment.id)
@@ -366,7 +366,7 @@ class SummaryIndexService:
                         session.flush()
                         logger.debug("Successfully flushed session for segment %s", segment.id)
                     # If using provided session, let the caller handle commit
-                    
+
                     logger.info(
                         "Successfully vectorized summary for segment %s, index_node_id=%s, index_node_hash=%s, "
                         "tokens=%s, summary_record_id=%s, use_provided_session=%s",
@@ -465,7 +465,7 @@ class SummaryIndexService:
                                 .filter_by(chunk_id=segment.id, dataset_id=dataset.id)
                                 .first()
                             )
-                        
+
                         if summary_record_in_session:
                             summary_record_in_session.status = "error"
                             summary_record_in_session.error = f"Vectorization failed: {str(e)}"
