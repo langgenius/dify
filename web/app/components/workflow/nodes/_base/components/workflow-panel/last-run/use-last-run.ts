@@ -11,6 +11,9 @@ import {
 } from '@/app/components/workflow/hooks'
 import { useWorkflowRunValidation } from '@/app/components/workflow/hooks/use-checklist'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import {
+  useSubGraphVariablesCheck,
+} from '@/app/components/workflow/nodes/_base/components/workflow-panel/last-run/sub-graph-variables-check'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import useAgentSingleRunFormParams from '@/app/components/workflow/nodes/agent/use-single-run-form-params'
 import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/nodes/assigner/use-single-run-form-params'
@@ -115,8 +118,8 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
 }
 
 const useGetDataForCheckMoreHooks = <T>(nodeType: BlockEnum) => {
-  return (id: string, payload: CommonNodeType<T>) => {
-    return getDataForCheckMoreHooks[nodeType]?.({ id, payload }) || {
+  return (nodeId: string, payload: CommonNodeType<T>) => {
+    return getDataForCheckMoreHooks[nodeType]?.({ id: nodeId, payload }) || {
       getData: () => {
         return {}
       },
@@ -128,7 +131,20 @@ type Params<T> = Omit<OneStepRunParams<T>, 'isRunAfterSingleRun'>
 const useLastRun = <T>({
   ...oneStepRunParams
 }: Params<T>) => {
-  const { conversationVars, systemVars, hasSetInspectVar } = useInspectVarsCrud()
+  const currentNodeId = oneStepRunParams.id
+  const flowId = oneStepRunParams.flowId
+  const flowType = oneStepRunParams.flowType
+  const data = oneStepRunParams.data
+  const {
+    conversationVars,
+    systemVars,
+    hasSetInspectVar,
+    nodesWithInspectVars,
+  } = useInspectVarsCrud()
+  const { hasNullDependentOutputs } = useSubGraphVariablesCheck({
+    currentNodeId,
+    nodesWithInspectVars,
+  })
   const { t } = useTranslation()
   const blockType = oneStepRunParams.data.type
   const isStartNode = blockType === BlockEnum.Start
@@ -139,32 +155,26 @@ const useLastRun = <T>({
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     getData: getDataForCheckMore,
-  } = useGetDataForCheckMoreHooks<T>(blockType)(oneStepRunParams.id, oneStepRunParams.data)
+  } = useGetDataForCheckMoreHooks<T>(blockType)(currentNodeId, oneStepRunParams.data)
   const [isRunAfterSingleRun, setIsRunAfterSingleRun] = useState(false)
 
-  const {
-    id,
-    flowId,
-    flowType,
-    data,
-  } = oneStepRunParams
   const oneStepRunRes = useOneStepRun({
     ...oneStepRunParams,
-    iteratorInputKey: blockType === BlockEnum.Iteration ? `${id}.input_selector` : '',
+    iteratorInputKey: blockType === BlockEnum.Iteration ? `${currentNodeId}.input_selector` : '',
     moreDataForCheckValid: getDataForCheckMore(),
     isRunAfterSingleRun,
   })
 
   const { warningNodes } = useWorkflowRunValidation()
   const blockIfChecklistFailed = useCallback(() => {
-    const warningForNode = warningNodes.find(item => item.id === id)
+    const warningForNode = warningNodes.find(item => item.id === currentNodeId)
     if (!warningForNode)
       return false
 
     const message = warningForNode.errorMessage || 'This node has unresolved checklist issues'
     Toast.notify({ type: 'error', message })
     return true
-  }, [warningNodes, id])
+  }, [warningNodes, currentNodeId])
 
   const {
     hideSingleRun,
@@ -187,7 +197,7 @@ const useLastRun = <T>({
   const {
     ...singleRunParams
   } = useSingleRunFormParamsHooks(blockType)({
-    id,
+    id: currentNodeId,
     payload: data,
     runInputData,
     runInputDataRef,
@@ -211,11 +221,11 @@ const useLastRun = <T>({
       formattedData[`${nodeId}.${allVarObject[key].inSingleRunPassedKey}`] = data[varSectorStr]
     })
     if (isIterationNode) {
-      const iteratorInputKey = `${id}.input_selector`
+      const iteratorInputKey = `${currentNodeId}.input_selector`
       formattedData[iteratorInputKey] = data[iteratorInputKey]
     }
     return formattedData
-  }, [isIterationNode, isLoopNode, singleRunParams?.allVarObject, id])
+  }, [isIterationNode, isLoopNode, singleRunParams?.allVarObject, currentNodeId])
 
   const callRunApi = (data: Record<string, any>, cb?: () => void) => {
     handleSyncWorkflowDraft(true, true, {
@@ -235,7 +245,7 @@ const useLastRun = <T>({
 
     setInitShowLastRunTab(false)
   }, [initShowLastRunTab])
-  const invalidLastRun = useInvalidLastRun(flowType, flowId, id)
+  const invalidLastRun = useInvalidLastRun(flowType, flowId, currentNodeId)
 
   const ensureLLMContextReady = useCallback(() => {
     if (blockType !== BlockEnum.LLM)
@@ -257,6 +267,11 @@ const useLastRun = <T>({
       return
     if (!ensureLLMContextReady())
       return
+    const dependentVars = singleRunParams?.getDependentVars?.()
+    if (hasNullDependentOutputs(dependentVars)) {
+      Toast.notify({ type: 'error', message: t('singleRun.subgraph.nullOutputError', { ns: 'workflow' }) })
+      return
+    }
     setNodeRunning()
     setIsRunAfterSingleRun(true)
     setTabType(TabType.lastRun)
@@ -286,7 +301,7 @@ const useLastRun = <T>({
         if (!selector || selector.length === 0)
           return
         const [nodeId, varName] = selector.slice(0, 2)
-        if (!isStartNode && nodeId === id) { // inner vars like loop vars
+        if (!isStartNode && nodeId === currentNodeId) { // inner vars like loop vars
           values[variable] = true
           return
         }
@@ -359,13 +374,18 @@ const useLastRun = <T>({
       return
     if (!ensureLLMContextReady())
       return
+    const dependentVars = singleRunParams?.getDependentVars?.()
+    if (hasNullDependentOutputs(dependentVars)) {
+      Toast.notify({ type: 'error', message: t('singleRun.subgraph.nullOutputError', { ns: 'workflow' }) })
+      return
+    }
     if (blockType === BlockEnum.TriggerWebhook || blockType === BlockEnum.TriggerPlugin || blockType === BlockEnum.TriggerSchedule)
       setShowVariableInspectPanel(true)
     if (isCustomRunNode) {
       showSingleRun()
       return
     }
-    const vars = singleRunParams?.getDependentVars?.()
+    const vars = dependentVars
     // no need to input params
     if (isAggregatorNode ? checkAggregatorVarsSet(vars) : isAllVarsHasValue(vars)) {
       callRunApi({}, async () => {

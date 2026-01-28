@@ -1031,6 +1031,7 @@
   "singleRun.reRun": "重新運行",
   "singleRun.running": "運行中",
   "singleRun.startRun": "開始運行",
+  "singleRun.subgraph.nullOutputError": "子圖輸出包含空值，無法單步調試。請先執行依賴節點。",
   "singleRun.testRun": "測試運行",
   "singleRun.testRunIteration": "測試運行迭代",
   "singleRun.testRunLoop": "測試運行循環",

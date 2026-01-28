@@ -68,6 +68,7 @@ const ChatView = ({
         <div className="flex w-full flex-col items-end gap-4 pt-3">
           {(() => {
             let assistantIndex = -1
+            // FIXME: delete these hard coded values assistant
             return promptMessages.map((message, index) => {
               if (message.role === 'assistant')
                 assistantIndex += 1

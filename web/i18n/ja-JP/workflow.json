@@ -1030,6 +1030,7 @@
   "singleRun.reRun": "再実行",
   "singleRun.running": "実行中",
   "singleRun.startRun": "実行開始",
+  "singleRun.subgraph.nullOutputError": "サブグラフの出力にnullが含まれているため、単体デバッグできません。依存ノードを先に実行してください。",
   "singleRun.testRun": "テスト実行",
   "singleRun.testRunIteration": "テスト実行（イテレーション）",
   "singleRun.testRunLoop": "テスト実行ループ",

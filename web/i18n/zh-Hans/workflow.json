@@ -1050,6 +1050,7 @@
   "singleRun.reRun": "重新运行",
   "singleRun.running": "运行中",
   "singleRun.startRun": "开始运行",
+  "singleRun.subgraph.nullOutputError": "子图输出包含空值，无法单步调试。请先运行依赖节点。",
   "singleRun.testRun": "测试运行",
   "singleRun.testRunIteration": "测试运行迭代",
   "singleRun.testRunLoop": "测试运行循环",
