@@ -369,6 +369,16 @@ export type TextChunkResponse = {
   event: string
   data: {
     text: string
+    chunk_type?: 'text' | 'tool_call' | 'tool_result' | 'thought' | 'thought_start' | 'thought_end'
+    tool_call_id?: string
+    tool_name?: string
+    tool_arguments?: string
+    tool_icon?: string | IconObject
+    tool_icon_dark?: string | IconObject
+
+    tool_files?: string[]
+    tool_error?: string
+    tool_elapsed_time?: number
   }
 }
 

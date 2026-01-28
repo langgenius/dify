@@ -5,10 +5,12 @@ import type {
   WorkflowRunningData,
 } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
+import type { LLMGenerationItem } from '@/types/workflow'
 
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
   resultText?: string
+  resultLLMGenerationItems?: LLMGenerationItem[]
 }
 
 type MousePosition = {

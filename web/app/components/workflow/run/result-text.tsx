@@ -1,6 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import type { LLMGenerationItem } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
+import GenerationContent from '@/app/components/base/chat/chat/answer/generation-content'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { FileList } from '@/app/components/base/file-uploader'
 import { ImageIndentLeft } from '@/app/components/base/icons/src/vender/line/editor'
@@ -10,6 +12,7 @@ import StatusContainer from '@/app/components/workflow/run/status-container'
 type ResultTextProps = {
   isRunning?: boolean
   outputs?: any
+  llmGenerationItems?: LLMGenerationItem[]
   error?: string
   onClick?: () => void
   allFiles?: any[]
@@ -18,11 +21,16 @@ type ResultTextProps = {
 const ResultText: FC<ResultTextProps> = ({
   isRunning,
   outputs,
+  llmGenerationItems,
   error,
   onClick,
   allFiles,
 }) => {
   const { t } = useTranslation()
+  const generationContentRenderIsUsed = llmGenerationItems?.length && llmGenerationItems.some((item) => {
+    return item.type === 'tool' || item.type === 'thought'
+  })
+
   return (
     <div className="bg-background-section-burn">
       {isRunning && !outputs && (
@@ -50,11 +58,18 @@ const ResultText: FC<ResultTextProps> = ({
       )}
       {(outputs || !!allFiles?.length) && (
         <>
-          {outputs && (
+          {outputs && !generationContentRenderIsUsed && (
             <div className="px-4 py-2">
               <Markdown content={outputs} />
             </div>
           )}
+          {
+            generationContentRenderIsUsed && (
+              <div className="px-2 py-1">
+                <GenerationContent llmGenerationItems={llmGenerationItems} />
+              </div>
+            )
+          }
           {!!allFiles?.length && allFiles.map(item => (
             <div key={item.varName} className="system-xs-regular flex flex-col gap-1 px-4 py-2">
               <div className="py-1 text-text-tertiary ">{item.varName}</div>
