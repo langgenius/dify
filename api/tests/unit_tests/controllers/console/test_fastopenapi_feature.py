@@ -1,8 +1,9 @@
-import sys
 import builtins
-import pytest
 import importlib
+import sys
 from unittest.mock import MagicMock, patch
+
+import pytest
 from flask import Flask
 from flask.views import MethodView
 
@@ -25,10 +26,10 @@ def app():
 def fix_method_view_issue(monkeypatch):
     """
     Automatic fixture to patch 'builtins.MethodView'.
-    
-    Some legacy code or dependencies (like ext_fastopenapi) might incorrectly 
+
+    Some legacy code or dependencies (like ext_fastopenapi) might incorrectly
     assume 'MethodView' is available globally in builtins.
-    
+
     This fixture safely injects it if missing and cleans up after the test.
     """
     if not hasattr(builtins, "MethodView"):
@@ -40,14 +41,15 @@ def fix_method_view_issue(monkeypatch):
 def mock_auth_environment():
     """
     Sets up a mocked authentication environment.
-    
+
     1. Removes the target controller from sys.modules to force a reload.
        This is necessary because decorators (like @login_required) run at import time.
     2. Patches all auth-related decorators with a no-op (no operation) lambda.
     3. Mocks the current user/account retrieval functions.
-    4. PREVENTS ROUTE DUPLICATION by replacing the global console_router with a 
+    4. PREVENTS ROUTE DUPLICATION by replacing the global console_router with a
        temporary instance during the test.
     """
+
     def noop(f):
         return f
 
@@ -55,7 +57,7 @@ def mock_auth_environment():
 
     # Import the router module to access the class and global variable
     import controllers.fastopenapi
-    
+
     # Create a fresh router instance to isolate this test's route registrations.
     # We dynamically get the class type to avoid hardcoding dependencies.
     RouterClass = type(controllers.fastopenapi.console_router)
@@ -69,23 +71,24 @@ def mock_auth_environment():
     # We patch 'controllers.fastopenapi.console_router' so that when the feature module
     # reloads, it registers routes to our temp_router instead of the global one.
     try:
-        with patch("controllers.fastopenapi.console_router", temp_router), \
-             patch(f"{target_module}.setup_required", side_effect=noop), \
-             patch(f"{target_module}.login_required", side_effect=noop), \
-             patch(f"{target_module}.account_initialization_required", side_effect=noop), \
-             patch(f"{target_module}.cloud_utm_record", side_effect=noop), \
-             patch(f"{target_module}.current_account_with_tenant", return_value=(MagicMock(), "tenant-id")):
-            
+        with (
+            patch("controllers.fastopenapi.console_router", temp_router),
+            patch(f"{target_module}.setup_required", side_effect=noop),
+            patch(f"{target_module}.login_required", side_effect=noop),
+            patch(f"{target_module}.account_initialization_required", side_effect=noop),
+            patch(f"{target_module}.cloud_utm_record", side_effect=noop),
+            patch(f"{target_module}.current_account_with_tenant", return_value=(MagicMock(), "tenant-id")),
+        ):
             # Explicitly import the module to trigger the decorators with patches applied
             # This will register routes to 'temp_router' because of the patch above.
             import controllers.console.feature
-            
+
             # RELOAD EXTENSION: Ensure ext_fastopenapi also sees the patched console_router.
-            # If ext_fastopenapi imported console_router at the top level, it holds a reference 
-            # to the OLD (real) router. Reloading it forces it to re-import from 
+            # If ext_fastopenapi imported console_router at the top level, it holds a reference
+            # to the OLD (real) router. Reloading it forces it to re-import from
             # controllers.fastopenapi, which is currently patched to return temp_router.
             importlib.reload(ext_fastopenapi)
-            
+
             yield
 
     finally:
@@ -104,30 +107,25 @@ def mock_auth_environment():
 # Test Cases
 # ------------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize(
     ("url", "service_mock_path", "mock_model_instance", "json_key"),
     [
-    (
-        "/console/api/features", 
-        "controllers.console.feature.FeatureService.get_features", 
-        FeatureModel(can_replace_logo=True), 
-        "features"
-    ),
-    (
-        "/console/api/system-features", 
-        "controllers.console.feature.FeatureService.get_system_features", 
-        SystemFeatureModel(enable_marketplace=True), 
-        "features" 
-    ),
-])
-def test_console_features_success(
-    app, 
-    mock_auth_environment, 
-    url, 
-    service_mock_path, 
-    mock_model_instance,
-    json_key
-):
+        (
+            "/console/api/features",
+            "controllers.console.feature.FeatureService.get_features",
+            FeatureModel(can_replace_logo=True),
+            "features",
+        ),
+        (
+            "/console/api/system-features",
+            "controllers.console.feature.FeatureService.get_system_features",
+            SystemFeatureModel(enable_marketplace=True),
+            "features",
+        ),
+    ],
+)
+def test_console_features_success(app, mock_auth_environment, url, service_mock_path, mock_model_instance, json_key):
     """
     Tests that the feature APIs return a 200 OK status and correct JSON structure.
     """
@@ -135,35 +133,30 @@ def test_console_features_success(
     with patch(service_mock_path, return_value=mock_model_instance):
         # Initialize the API extension
         ext_fastopenapi.init_app(app)
-        
+
         client = app.test_client()
         response = client.get(url)
 
     # Assertions
     assert response.status_code == 200
-    
+
     # Verify the JSON response matches the Pydantic model dump
-    expected_data = mock_model_instance.model_dump(mode='json')
+    expected_data = mock_model_instance.model_dump(mode="json")
     assert response.get_json() == {json_key: expected_data}
 
 
 @pytest.mark.parametrize(
     ("url", "service_mock_path"),
     [
-    (
-        "/console/api/features", 
-        "controllers.console.feature.FeatureService.get_features"
-    ),
-    (
-        "/console/api/system-features", 
-        "controllers.console.feature.FeatureService.get_system_features"
-    ),
-])
+        ("/console/api/features", "controllers.console.feature.FeatureService.get_features"),
+        ("/console/api/system-features", "controllers.console.feature.FeatureService.get_system_features"),
+    ],
+)
 def test_console_features_service_error(app, mock_auth_environment, url, service_mock_path):
     """
     Tests how the application handles Service layer errors.
-    
-    Note: When app.config['TESTING'] is True, Flask propagates exceptions 
+
+    Note: When app.config['TESTING'] is True, Flask propagates exceptions
     instead of handling them generically (unless an error handler is registered).
     Therefore, we assert that the specific exception is raised.
     """
@@ -171,7 +164,7 @@ def test_console_features_service_error(app, mock_auth_environment, url, service
     with patch(service_mock_path, side_effect=ValueError("Service Failure")):
         ext_fastopenapi.init_app(app)
         client = app.test_client()
-        
+
         # We expect the application to raise the ValueError
         with pytest.raises(ValueError, match="Service Failure"):
             client.get(url)
