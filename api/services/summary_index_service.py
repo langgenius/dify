@@ -215,9 +215,7 @@ class SummaryIndexService:
                 with session_factory.create_session() as session:
                     # Refresh the summary record in the new session
                     summary_record_in_session = (
-                        session.query(DocumentSegmentSummary)
-                        .filter_by(id=summary_record_id)
-                        .first()
+                        session.query(DocumentSegmentSummary).filter_by(id=summary_record_id).first()
                     )
                     if summary_record_in_session:
                         summary_record_in_session.summary_index_node_id = summary_index_node_id
@@ -278,9 +276,7 @@ class SummaryIndexService:
                     # Update error status in session
                     with session_factory.create_session() as session:
                         summary_record_in_session = (
-                            session.query(DocumentSegmentSummary)
-                            .filter_by(id=summary_record_id)
-                            .first()
+                            session.query(DocumentSegmentSummary).filter_by(id=summary_record_id).first()
                         )
                         if summary_record_in_session:
                             summary_record_in_session.status = "error"
@@ -401,9 +397,7 @@ class SummaryIndexService:
             try:
                 # Get or refresh summary record in this session
                 summary_record_in_session = (
-                    session.query(DocumentSegmentSummary)
-                    .filter_by(chunk_id=segment.id, dataset_id=dataset.id)
-                    .first()
+                    session.query(DocumentSegmentSummary).filter_by(chunk_id=segment.id, dataset_id=dataset.id).first()
                 )
 
                 if not summary_record_in_session:
@@ -457,9 +451,7 @@ class SummaryIndexService:
                 logger.exception("Failed to generate summary for segment %s", segment.id)
                 # Update summary record with error status
                 summary_record_in_session = (
-                    session.query(DocumentSegmentSummary)
-                    .filter_by(chunk_id=segment.id, dataset_id=dataset.id)
-                    .first()
+                    session.query(DocumentSegmentSummary).filter_by(chunk_id=segment.id, dataset_id=dataset.id).first()
                 )
                 if summary_record_in_session:
                     summary_record_in_session.status = "error"
@@ -949,9 +941,7 @@ class SummaryIndexService:
             return query.all()
 
     @staticmethod
-    def get_document_summary_index_status(
-        document_id: str, dataset_id: str, tenant_id: str
-    ) -> str | None:
+    def get_document_summary_index_status(document_id: str, dataset_id: str, tenant_id: str) -> str | None:
         """
         Get summary_index_status for a single document.
 

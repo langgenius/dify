@@ -201,9 +201,7 @@ class DatasetDocumentSegmentListApi(Resource):
 
             summary_records = SummaryIndexService.get_segments_summaries(segment_ids=segment_ids, dataset_id=dataset_id)
             # Only include enabled summaries (already filtered by service)
-            summaries = {
-                chunk_id: summary.summary_content for chunk_id, summary in summary_records.items()
-            }
+            summaries = {chunk_id: summary.summary_content for chunk_id, summary in summary_records.items()}
 
         # Add summary to each segment
         segments_with_summary = []
