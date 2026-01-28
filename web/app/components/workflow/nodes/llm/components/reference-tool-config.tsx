@@ -65,6 +65,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
       },
     }),
     enabled: !!appId && !!nodeId,
+    placeholderData: previous => previous,
   })
 
   const toolDependencies = useMemo<ToolDependency[]>(() => data?.tool_dependencies ?? [], [data?.tool_dependencies])
