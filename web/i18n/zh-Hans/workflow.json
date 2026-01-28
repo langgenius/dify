@@ -525,6 +525,7 @@
   "nodes.humanInput.deliveryMethod.emailConfigure.subject": "邮件主题",
   "nodes.humanInput.deliveryMethod.emailConfigure.subjectPlaceholder": "输入邮件主题",
   "nodes.humanInput.deliveryMethod.emailConfigure.title": "电子邮件配置",
+  "nodes.humanInput.deliveryMethod.emailSender.configIncomplete": "请先完成邮件配置（主题、正文和收件人）",
   "nodes.humanInput.deliveryMethod.emailSender.debugDone": "测试邮件已发送到 <email>{{email}}</email>。请检查您的收件箱。",
   "nodes.humanInput.deliveryMethod.emailSender.debugModeTip": "调试模式已启用。",
   "nodes.humanInput.deliveryMethod.emailSender.debugModeTip2": "邮件将发送到 <email>{{email}}</email>。",
