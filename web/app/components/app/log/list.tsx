@@ -321,7 +321,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
     // Update pagination anchor ref with the oldest answer ID
     const answerItems = allChatItems.filter(item => item.isAnswer)
-    const oldestAnswer = answerItems[answerItems.length - 1]
+    const oldestAnswer = answerItems[0]
     if (oldestAnswer?.id)
       oldestAnswerIdRef.current = oldestAnswer.id
   }, [allChatItems, hasMore, detail?.model_config?.configs?.introduction])
@@ -506,58 +506,17 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
   }, [detail.id, hasMore, isLoading, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
 
-  useEffect(() => {
+  const handleScroll = () => {
     const scrollableDiv = document.getElementById('scrollableDiv')
-    const outerDiv = scrollableDiv?.parentElement
-    const chatContainer = document.querySelector('.mx-1.mb-1.grow.overflow-auto') as HTMLElement
+    const clientHeight = scrollableDiv!.clientHeight
+    const scrollHeight = scrollableDiv!.scrollHeight
+    const currentScrollTop = scrollableDiv!.scrollTop
+    const isNearTop = Math.abs(currentScrollTop) > scrollHeight - clientHeight - 40
 
-    let scrollContainer: HTMLElement | null = null
-
-    if (outerDiv && outerDiv.scrollHeight > outerDiv.clientHeight) {
-      scrollContainer = outerDiv
+    if (isNearTop && hasMore && !isLoading) {
+      loadMoreMessages()
     }
-    else if (scrollableDiv && scrollableDiv.scrollHeight > scrollableDiv.clientHeight) {
-      scrollContainer = scrollableDiv
-    }
-    else if (chatContainer && chatContainer.scrollHeight > chatContainer.clientHeight) {
-      scrollContainer = chatContainer
-    }
-    else {
-      const possibleContainers = document.querySelectorAll('.overflow-auto, .overflow-y-auto')
-      for (let i = 0; i < possibleContainers.length; i++) {
-        const container = possibleContainers[i] as HTMLElement
-        if (container.scrollHeight > container.clientHeight) {
-          scrollContainer = container
-          break
-        }
-      }
-    }
-
-    if (!scrollContainer)
-      return
-
-    const handleScroll = () => {
-      const currentScrollTop = scrollContainer!.scrollTop
-      const isNearTop = currentScrollTop < 30
-
-      if (isNearTop && hasMore && !isLoading) {
-        loadMoreMessages()
-      }
-    }
-
-    scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
-
-    const handleWheel = (e: WheelEvent) => {
-      if (e.deltaY < 0)
-        handleScroll()
-    }
-    scrollContainer.addEventListener('wheel', handleWheel, { passive: true })
-
-    return () => {
-      scrollContainer!.removeEventListener('scroll', handleScroll)
-      scrollContainer!.removeEventListener('wheel', handleWheel)
-    }
-  }, [hasMore, isLoading, loadMoreMessages])
+  }
 
   const isChatMode = appDetail?.mode !== AppModeEnum.COMPLETION
   const isAdvanced = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
@@ -690,19 +649,10 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 height: '100%',
                 overflow: 'auto',
               }}
+              onScroll={handleScroll}
             >
               {/* Put the scroll bar always on the bottom */}
               <div className="flex w-full flex-col-reverse" style={{ position: 'relative' }}>
-                {/* Loading state indicator - only shown when loading */}
-                {hasMore && isLoading && (
-                  <div className="sticky left-0 right-0 top-0 z-10 bg-primary-50/40 py-3 text-center">
-                    <div className="system-xs-regular text-text-tertiary">
-                      {t('detail.loading', { ns: 'appLog' })}
-                      ...
-                    </div>
-                  </div>
-                )}
-
                 <Chat
                   config={{
                     appId: appDetail?.id,
@@ -728,6 +678,15 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   switchSibling={switchSibling}
                 />
               </div>
+              {/* Loading state indicator - only shown when loading */}
+              {hasMore && (
+                <div className="py-3 text-center">
+                  <div className="system-xs-regular text-text-tertiary">
+                    {t('detail.loading', { ns: 'appLog' })}
+                    ...
+                  </div>
+                </div>
+              )}
             </div>
           )}
       </div>
