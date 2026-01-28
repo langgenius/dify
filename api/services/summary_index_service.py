@@ -341,7 +341,7 @@ class SummaryIndexService:
                                 summary_record_id,
                                 segment.id,
                             )
-                        
+
                         # At this point, summary_record_in_session is guaranteed to be not None
                         if summary_record_in_session is None:
                             raise RuntimeError("summary_record_in_session should not be None at this point")
