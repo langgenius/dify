@@ -106,6 +106,7 @@ ignore_imports =
     core.workflow.nodes.loop.loop_node -> core.app.workflow.node_factory
     core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
     core.workflow.graph_engine.layers.observability -> configs
+    core.workflow.graph_engine.layers.observability -> extensions.otel.parser
     core.workflow.graph_engine.layers.observability -> extensions.otel.runtime
     core.workflow.graph_engine.layers.persistence -> core.ops.ops_trace_manager
     core.workflow.graph_engine.worker_management.worker_pool -> configs
@@ -119,6 +120,7 @@ ignore_imports =
     core.workflow.nodes.document_extractor.node -> configs
     core.workflow.nodes.document_extractor.node -> core.file.file_manager
     core.workflow.nodes.document_extractor.node -> core.helper.ssrf_proxy
+    core.workflow.nodes.document_extractor.node -> extensions.ext_database
     core.workflow.nodes.document_extractor.node -> extensions.ext_storage
     core.workflow.nodes.http_request.entities -> configs
     core.workflow.nodes.http_request.executor -> configs
