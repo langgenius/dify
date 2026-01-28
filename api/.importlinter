@@ -55,6 +55,7 @@ ignore_imports =
     core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
     core.workflow.nodes.tool.tool_node -> extensions.ext_database
+    core.workflow.nodes.document_extractor.node -> extensions.ext_database
     core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
     core.workflow.graph_engine.manager -> extensions.ext_redis
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_redis
@@ -118,6 +119,7 @@ ignore_imports =
     core.workflow.nodes.document_extractor.node -> configs
     core.workflow.nodes.document_extractor.node -> core.file.file_manager
     core.workflow.nodes.document_extractor.node -> core.helper.ssrf_proxy
+    core.workflow.nodes.document_extractor.node -> extensions.ext_storage
     core.workflow.nodes.http_request.entities -> configs
     core.workflow.nodes.http_request.executor -> configs
     core.workflow.nodes.http_request.executor -> core.file.file_manager
