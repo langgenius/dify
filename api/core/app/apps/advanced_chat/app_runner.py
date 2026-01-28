@@ -123,6 +123,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 workflow_id=self._workflow.id,
                 tenant_id=self._workflow.tenant_id,
                 user_id=self.application_generate_entity.user_id,
+                invoke_from=invoke_from,
+                user_from=user_from,
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             # Handle single iteration or single loop run
