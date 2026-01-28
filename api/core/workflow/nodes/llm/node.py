@@ -297,9 +297,10 @@ class LLMNode(Node[LLMNodeData]):
             generation_data: LLMGenerationData | None = None
             structured_output: LLMStructuredOutput | None = None
 
-            sandbox = self.graph_runtime_state.sandbox
-            has_skill_prompt = self._has_skill_prompt()
-            if sandbox and has_skill_prompt:
+            if self.node_data.computer_use:
+                sandbox = self.graph_runtime_state.sandbox
+                if not sandbox:
+                    raise LLMNodeError("computer use is enabled but no sandbox found")
                 tool_dependencies = self._extract_tool_dependencies()
                 generator = self._invoke_llm_with_sandbox(
                     sandbox=sandbox,
@@ -422,8 +423,7 @@ class LLMNode(Node[LLMNodeData]):
 
             # Send final chunk event to indicate streaming is complete
             # For tool calls and sandbox, final events are already sent in _process_tool_outputs
-            sandbox_used = sandbox and has_skill_prompt
-            if not self.tool_call_enabled and not sandbox_used:
+            if not self.tool_call_enabled and not self.node_data.computer_use:
                 yield StreamChunkEvent(
                     selector=[self._node_id, "text"],
                     chunk="",
@@ -1821,12 +1821,6 @@ class LLMNode(Node[LLMNodeData]):
             structured_output,
             generation_data,
         )
-
-    def _has_skill_prompt(self) -> bool:
-        for prompt in self.node_data.prompt_template:
-            if isinstance(prompt, LLMNodeChatModelMessage) and prompt.skill:
-                return True
-        return False
 
     def _extract_tool_dependencies(self) -> ToolDependencies | None:
         """Extract tool artifact from prompt template."""

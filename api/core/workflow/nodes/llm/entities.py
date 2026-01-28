@@ -392,7 +392,8 @@ class LLMNodeData(BaseNodeData):
             """
         ),
     )
-
+    # Computer Use
+    computer_use: bool = Field(default=False, description="Whether to use the computer use feature")
     # Tool support
     tools: Sequence[ToolMetadata] = Field(default_factory=list)
     tool_settings: Sequence[ToolSetting] = Field(default_factory=list)
