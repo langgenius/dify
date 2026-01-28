@@ -24,11 +24,13 @@ const InspectLayout: FC<InspectLayoutProps> = ({
 }) => {
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center justify-between">
-        <TabHeader activeTab={activeTab} onTabChange={onTabChange}>
-          {headerActions}
-        </TabHeader>
-        <div className="pr-2 pt-2">
+      <div className="flex shrink-0 items-center">
+        <div className="flex w-60 shrink-0 items-center">
+          <TabHeader activeTab={activeTab} onTabChange={onTabChange}>
+            {headerActions}
+          </TabHeader>
+        </div>
+        <div className="flex min-w-0 flex-1 justify-end pr-2 pt-2">
           <ActionButton onClick={onClose} aria-label="Close">
             <RiCloseLine className="h-4 w-4" />
           </ActionButton>
