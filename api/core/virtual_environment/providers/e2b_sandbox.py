@@ -9,8 +9,6 @@ from io import BytesIO
 from typing import Any
 from uuid import uuid4
 
-from e2b_code_interpreter import Sandbox  # type: ignore[import-untyped]
-
 from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.entities import (
     Arch,
@@ -112,9 +110,12 @@ class E2BEnvironment(VirtualEnvironment):
 
     @classmethod
     def validate(cls, options: Mapping[str, Any]) -> None:
+        # Import E2B SDK lazily so it is loaded after gevent monkey-patching.
+        # See `api/gunicorn.conf.py` for how we patch other third-party libs (e.g. gRPC).
         from e2b.exceptions import (
             AuthenticationException,  # type: ignore[import-untyped]
         )
+        from e2b_code_interpreter import Sandbox  # type: ignore[import-untyped]
 
         api_key = options.get(cls.OptionsKey.API_KEY, "")
         if not api_key:
@@ -131,6 +132,9 @@ class E2BEnvironment(VirtualEnvironment):
         """
         Construct a new E2B virtual environment.
         """
+        # Import E2B SDK lazily so it is loaded after gevent monkey-patching.
+        from e2b_code_interpreter import Sandbox  # type: ignore[import-untyped]
+
         # TODO: add Dify as the user agent
         sandbox = Sandbox.create(
             template=options.get(self.OptionsKey.E2B_DEFAULT_TEMPLATE, "code-interpreter-v1"),
@@ -168,6 +172,8 @@ class E2BEnvironment(VirtualEnvironment):
         """
         Release the E2B virtual environment.
         """
+        from e2b_code_interpreter import Sandbox  # type: ignore[import-untyped]
+
         stop_event: threading.Event | None = self.metadata.store.get(self.StoreKey.KEEPALIVE_STOP)
         if stop_event:
             stop_event.set()
@@ -196,7 +202,7 @@ class E2BEnvironment(VirtualEnvironment):
             content (BytesIO): The content of the file.
         """
         remote_path = self._workspace_path(path)
-        sandbox: Sandbox = self.metadata.store[self.StoreKey.SANDBOX]
+        sandbox = self.metadata.store[self.StoreKey.SANDBOX]
         sandbox.files.write(remote_path, content)  # pyright: ignore[reportUnknownMemberType] #
 
     def download_file(self, path: str) -> BytesIO:
@@ -209,7 +215,7 @@ class E2BEnvironment(VirtualEnvironment):
             BytesIO: The content of the file.
         """
         remote_path = self._workspace_path(path)
-        sandbox: Sandbox = self.metadata.store[self.StoreKey.SANDBOX]
+        sandbox = self.metadata.store[self.StoreKey.SANDBOX]
         content = sandbox.files.read(remote_path)
         return BytesIO(content.encode())
 
@@ -217,7 +223,7 @@ class E2BEnvironment(VirtualEnvironment):
         """
         List files in a directory of the E2B virtual environment.
         """
-        sandbox: Sandbox = self.metadata.store[self.StoreKey.SANDBOX]
+        sandbox = self.metadata.store[self.StoreKey.SANDBOX]
         remote_dir = self._workspace_path(directory_path)
         files_info = sandbox.files.list(remote_dir, depth=self.options.get(self.OptionsKey.E2B_LIST_FILE_DEPTH, 3))
         return [
@@ -243,7 +249,7 @@ class E2BEnvironment(VirtualEnvironment):
         STDIN is not yet supported. E2B's API is such a terrible mess... to support it may lead a bad design.
         as a result we leave it for future improvement.
         """
-        sandbox: Sandbox = self.metadata.store[self.StoreKey.SANDBOX]
+        sandbox = self.metadata.store[self.StoreKey.SANDBOX]
         stdout_stream = QueueTransportReadCloser()
         stderr_stream = QueueTransportReadCloser()
 
@@ -269,7 +275,7 @@ class E2BEnvironment(VirtualEnvironment):
 
     def _cmd_thread(
         self,
-        sandbox: Sandbox,
+        sandbox: Any,
         command: list[str],
         environments: Mapping[str, str] | None,
         cwd: str,
@@ -297,7 +303,7 @@ class E2BEnvironment(VirtualEnvironment):
             stdout_stream.close()
             stderr_stream.close()
 
-    def _keepalive_thread(self, sandbox: Sandbox, stop_event: threading.Event) -> None:
+    def _keepalive_thread(self, sandbox: Any, stop_event: threading.Event) -> None:
         while not stop_event.wait(timeout=60):
             try:
                 sandbox.set_timeout(300)

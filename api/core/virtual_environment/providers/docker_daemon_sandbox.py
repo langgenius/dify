@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import socket
 import tarfile
@@ -8,13 +10,13 @@ from functools import lru_cache
 from io import BytesIO
 from pathlib import PurePosixPath
 from queue import Empty, Queue
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
-import docker.errors
-from docker.models.containers import Container
+if TYPE_CHECKING:
+    from docker.models.containers import Container
 
-import docker
+    import docker
 from configs import dify_config
 from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.entities import (
@@ -289,6 +291,9 @@ class DockerDaemonEnvironment(VirtualEnvironment):
 
     @classmethod
     def validate(cls, options: Mapping[str, Any]) -> None:
+        # Import Docker SDK lazily so it is loaded after gevent monkey-patching.
+        import docker
+
         docker_sock = options.get(cls.OptionsKey.DOCKER_SOCK, cls._DEFAULT_DOCKER_SOCK)
         try:
             client = docker.DockerClient(base_url=docker_sock)
@@ -300,6 +305,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         """
         Construct the Docker daemon virtual environment.
         """
+
         docker_client = self.get_docker_daemon(
             docker_sock=options.get(self.OptionsKey.DOCKER_SOCK, self._DEFAULT_DOCKER_SOCK)
         )
@@ -357,6 +363,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
 
         NOTE: I guess nobody will use more than 5 different docker sockets in practice....
         """
+        import docker
         return docker.DockerClient(base_url=docker_sock)
 
     @classmethod
@@ -365,6 +372,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         """
         Get the Docker low-level API client.
         """
+        import docker
         return docker.APIClient(base_url=docker_sock)
 
     def get_docker_sock(self) -> str:
@@ -471,6 +479,8 @@ class DockerDaemonEnvironment(VirtualEnvironment):
             return BytesIO(extracted.read())
 
     def list_files(self, directory_path: str, limit: int) -> Sequence[FileState]:
+        import docker
+
         container = self._get_container()
         container_path = self._container_path(directory_path)
         relative_base = self._relative_path(directory_path)
@@ -515,6 +525,8 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         pass
 
     def release_environment(self) -> None:
+        import docker
+
         try:
             container = self._get_container()
         except docker.errors.NotFound:
