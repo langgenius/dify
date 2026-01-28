@@ -279,7 +279,7 @@ class SummaryIndexService:
                             summary_record_id,
                             segment.id,
                         )
-                        summary_record_in_session = (
+                        summary_record_in_session: DocumentSegmentSummary | None = (
                             session.query(DocumentSegmentSummary).filter_by(id=summary_record_id).first()
                         )
 
@@ -341,6 +341,10 @@ class SummaryIndexService:
                                 summary_record_id,
                                 segment.id,
                             )
+                        
+                        # At this point, summary_record_in_session is guaranteed to be not None
+                        if summary_record_in_session is None:
+                            raise RuntimeError("summary_record_in_session should not be None at this point")
 
                     # Update all fields including summary_content
                     # Always use the summary_content from the parameter (which is the latest from outer session)
@@ -452,7 +456,7 @@ class SummaryIndexService:
                     # Even if original_session was provided, we create a new one for safety
                     with session_factory.create_session() as error_session:
                         # Try to find the record by id first
-                        summary_record_in_session = (
+                        summary_record_in_session: DocumentSegmentSummary | None = (
                             error_session.query(DocumentSegmentSummary).filter_by(id=summary_record_id).first()
                         )
                         if not summary_record_in_session:
@@ -1051,7 +1055,7 @@ class SummaryIndexService:
                     # Update summary content
                     summary_record.summary_content = summary_content
                     summary_record.status = "generating"
-                    summary_record.error = None  # Clear any previous errors
+                    summary_record.error = None  # type: ignore[assignment]  # Clear any previous errors
                     session.add(summary_record)
                     # Flush to ensure summary_content is saved before vectorize_summary queries it
                     session.flush()
