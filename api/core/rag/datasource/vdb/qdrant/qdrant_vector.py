@@ -394,18 +394,15 @@ class QdrantVector(BaseVector):
         """Return docs most similar by full-text search.
 
         Searches each keyword separately and merges results to ensure documents
-        matching ANY keyword are returned. This guarantees that results for each
-        keyword are included, regardless of Qdrant's scroll ordering.
-
-        Note: Total results may exceed top_k when multiple keywords are searched,
-        as each keyword search returns up to top_k results.
+        matching ANY keyword are returned (OR logic). Results are capped at top_k.
 
         Args:
-            query: Search query text (each keyword searched separately)
+            query: Search query text. Multi-word queries are split into keywords,
+                   with each keyword searched separately. Limited to 10 keywords.
             **kwargs: Additional search parameters (top_k, document_ids_filter)
 
         Returns:
-            List of unique documents matching any of the query keywords.
+            List of up to top_k unique documents matching any query keyword.
         """
         from qdrant_client.http import models
 
@@ -426,8 +423,8 @@ class QdrantVector(BaseVector):
                 )
             )
 
-        # Split query into keywords
-        keywords = [kw.strip() for kw in query.strip().split() if kw.strip()]
+        # Split query into keywords, deduplicate and limit to prevent DoS
+        keywords = list(dict.fromkeys(kw.strip() for kw in query.strip().split() if kw.strip()))[:10]
 
         if not keywords:
             return []
@@ -464,6 +461,8 @@ class QdrantVector(BaseVector):
                     seen_ids.add(result.id)
                     document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
                     documents.append(document)
+                    if len(documents) >= top_k:
+                        return documents
 
         return documents
 

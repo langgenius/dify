@@ -106,9 +106,7 @@ class QdrantVectorTest(AbstractVectorTest):
         # Multi-keyword search tests
         self.setup_multi_keyword_documents()
         self.search_by_full_text_multi_keyword()
-        # Cleanup
-        added_doc_ids = self.add_texts()
-        self.delete_by_ids(added_doc_ids)
+        # Cleanup - delete_vector() removes the entire collection
         self.delete_vector()
 
 
