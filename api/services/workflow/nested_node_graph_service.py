@@ -100,9 +100,10 @@ class NestedNodeGraphService:
             {
                 "role": "system",
                 "text": "Extract the required parameter value from the conversation context above.",
+                "skill": False,
             },
             {"$context": context_source},
-            {"role": "user", "text": ""},
+            {"role": "user", "text": "", "skill": False},
         ]
 
         structured_output = {
