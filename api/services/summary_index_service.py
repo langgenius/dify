@@ -87,7 +87,7 @@ class SummaryIndexService:
             # Update existing record
             existing_summary.summary_content = summary_content
             existing_summary.status = status
-            existing_summary.error = None  # Clear any previous errors
+            existing_summary.error = None  # type: ignore[assignment]  # Clear any previous errors
             # Re-enable if it was disabled
             if not existing_summary.enabled:
                 existing_summary.enabled = True
@@ -300,7 +300,7 @@ class SummaryIndexService:
             if existing_summary:
                 # Update existing record
                 existing_summary.status = status
-                existing_summary.error = None  # Clear any previous errors
+                existing_summary.error = None  # type: ignore[assignment]  # Clear any previous errors
                 if not existing_summary.enabled:
                     existing_summary.enabled = True
                     existing_summary.disabled_at = None
@@ -384,11 +384,13 @@ class SummaryIndexService:
             summary_record = SummaryIndexService.create_summary_record(
                 segment, dataset, summary_content="", status="generating"
             )
+            if summary_record:
+                summary_record.error = None  # type: ignore[assignment]
 
         try:
             # Update status to "generating"
             summary_record.status = "generating"
-            summary_record.error = None
+            summary_record.error = None  # type: ignore[assignment]
             db.session.add(summary_record)
             db.session.flush()
 

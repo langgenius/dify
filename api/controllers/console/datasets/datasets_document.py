@@ -327,7 +327,7 @@ class DatasetDocumentListApi(Resource):
         document_ids_need_summary = [str(doc.id) for doc in documents_need_summary]
 
         # Calculate summary_index_status for documents that need summary (only if dataset summary index is enabled)
-        summary_status_map = {}
+        summary_status_map: dict[str, str | None] = {}
         if has_summary_index and document_ids_need_summary:
             # Get all segments for these documents (excluding qa_model and re_segment)
             segments = (
@@ -341,7 +341,7 @@ class DatasetDocumentListApi(Resource):
             )
 
             # Group segments by document_id
-            document_segments_map = {}
+            document_segments_map: dict[str, list[str]] = {}
             for segment in segments:
                 doc_id = str(segment.document_id)
                 if doc_id not in document_segments_map:
@@ -393,10 +393,10 @@ class DatasetDocumentListApi(Resource):
         for document in documents:
             if has_summary_index and document.need_summary is True:
                 # Get status from map, default to None (not queued yet)
-                document.summary_index_status = summary_status_map.get(str(document.id))
+                document.summary_index_status = summary_status_map.get(str(document.id))  # type: ignore[assignment]
             else:
                 # Return null if summary index is not enabled or document doesn't need summary
-                document.summary_index_status = None
+                document.summary_index_status = None  # type: ignore[assignment]
 
         if fetch:
             for document in documents:

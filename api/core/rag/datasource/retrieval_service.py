@@ -558,8 +558,11 @@ class RetrievalService:
                         if child_chunks or attachment_infos:
                             child_chunk_details = []
                             for child_chunk in child_chunks:
-                                document = doc_to_document_map.get(child_chunk.index_node_id)
-                                child_score = document.metadata.get("score", 0.0) if document else 0.0
+                                child_document: Document | None = doc_to_document_map.get(child_chunk.index_node_id)
+                                if child_document:
+                                    child_score = child_document.metadata.get("score", 0.0)
+                                else:
+                                    child_score = 0.0
                                 child_chunk_detail = {
                                     "id": child_chunk.id,
                                     "content": child_chunk.content,

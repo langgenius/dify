@@ -4,7 +4,7 @@ import logging
 import re
 import uuid
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -12,9 +12,10 @@ from core.entities.knowledge_entities import PreviewDetail
 from core.file import File, FileTransferMethod, FileType, file_manager
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
+    PromptMessage,
     PromptMessageContentUnionTypes,
     TextPromptMessageContent,
     UserPromptMessage,
@@ -375,6 +376,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         model_provider_name = summary_index_setting.get("model_provider_name")
         summary_prompt = summary_index_setting.get("summary_prompt")
 
+        if not model_name or not model_provider_name:
+            raise ValueError("model_name and model_provider_name are required in summary_index_setting")
+
         # Import default summary prompt
         if not summary_prompt:
             summary_prompt = DEFAULT_GENERATOR_SUMMARY_PROMPT
@@ -431,7 +435,13 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             prompt = f"{summary_prompt}\n{text}"
             prompt_messages.append(UserPromptMessage(content=prompt))
 
-        result = model_instance.invoke_llm(prompt_messages=prompt_messages, model_parameters={}, stream=False)
+        result = model_instance.invoke_llm(
+            prompt_messages=cast(list[PromptMessage], prompt_messages), model_parameters={}, stream=False
+        )
+
+        # Type assertion: when stream=False, invoke_llm returns LLMResult, not Generator
+        if not isinstance(result, LLMResult):
+            raise ValueError("Expected LLMResult when stream=False")
 
         summary_content = getattr(result.message, "content", "")
         usage = result.usage

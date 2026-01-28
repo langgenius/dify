@@ -516,7 +516,7 @@ class DocumentListApi(DatasetApiResource):
         document_ids_need_summary = [str(doc.id) for doc in documents_need_summary]
 
         # Calculate summary_index_status for documents that need summary (only if dataset summary index is enabled)
-        summary_status_map = {}
+        summary_status_map: dict[str, str | None] = {}
         if has_summary_index and document_ids_need_summary:
             # Get all segments for these documents (excluding qa_model and re_segment)
             segments = (
@@ -530,7 +530,7 @@ class DocumentListApi(DatasetApiResource):
             )
 
             # Group segments by document_id
-            document_segments_map = {}
+            document_segments_map: dict[str, list[str]] = {}
             for segment in segments:
                 doc_id = str(segment.document_id)
                 if doc_id not in document_segments_map:
@@ -559,7 +559,7 @@ class DocumentListApi(DatasetApiResource):
                 segment_ids = document_segments_map.get(doc_id, [])
                 if not segment_ids:
                     # No segments, status is None (not started)
-                    summary_status_map[doc_id] = None
+                    summary_status_map[doc_id] = None  # type: ignore[assignment]
                     continue
 
                 # Check if there are any "not_started" or "generating" status summaries
@@ -578,16 +578,16 @@ class DocumentListApi(DatasetApiResource):
                 else:
                     # All enabled=True summaries are "completed" or "error", task finished
                     # Or no enabled=True summaries exist (all disabled)
-                    summary_status_map[doc_id] = None
+                    summary_status_map[doc_id] = None  # type: ignore[assignment]
 
         # Add summary_index_status to each document
         for document in documents:
             if has_summary_index and document.need_summary is True:
                 # Get status from map, default to None (not queued yet)
-                document.summary_index_status = summary_status_map.get(str(document.id))
+                document.summary_index_status = summary_status_map.get(str(document.id))  # type: ignore[assignment]
             else:
                 # Return null if summary index is not enabled or document doesn't need summary
-                document.summary_index_status = None
+                document.summary_index_status = None  # type: ignore[assignment]
 
         response = {
             "data": marshal(documents, document_fields),
