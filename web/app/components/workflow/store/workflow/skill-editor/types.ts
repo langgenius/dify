@@ -25,6 +25,11 @@ export type PendingCreateNode = {
 
 export type DragActionType = 'upload' | 'move'
 
+export type DragInsertTarget = {
+  parentId: string | null
+  index: number
+}
+
 export type FileTreeSliceShape = {
   expandedFolderIds: Set<string>
   setExpandedFolderIds: (ids: Set<string>) => void
@@ -42,6 +47,8 @@ export type FileTreeSliceShape = {
   clearCreateNode: () => void
   dragOverFolderId: string | null
   setDragOverFolderId: (folderId: string | null) => void
+  dragInsertTarget: DragInsertTarget | null
+  setDragInsertTarget: (target: DragInsertTarget | null) => void
   currentDragType: DragActionType | null
   setCurrentDragType: (type: DragActionType | null) => void
   fileTreeSearchTerm: string

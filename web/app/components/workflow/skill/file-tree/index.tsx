@@ -19,6 +19,7 @@ import { cn } from '@/utils/classnames'
 import { CONTEXT_MENU_TYPE, ROOT_ID } from '../constants'
 import { useInlineCreateNode } from '../hooks/use-inline-create-node'
 import { useNodeMove } from '../hooks/use-node-move'
+import { useNodeReorder } from '../hooks/use-node-reorder'
 import { usePasteOperation } from '../hooks/use-paste-operation'
 import { useRootFileDrop } from '../hooks/use-root-file-drop'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
@@ -35,6 +36,45 @@ type FileTreeProps = {
 }
 
 const emptyTreeNodes: TreeNodeData[] = []
+type DragInsertTarget = {
+  parentId: string | null
+  index: number
+}
+
+const normalizeParentId = (node: NodeApi<TreeNodeData> | null | undefined) => {
+  if (!node || node.isRoot)
+    return null
+  return node.id
+}
+
+const getSiblingIds = (
+  parentNode: NodeApi<TreeNodeData> | null | undefined,
+  tree: TreeApi<TreeNodeData> | null,
+): string[] => {
+  const children = parentNode?.children ?? tree?.root.children ?? []
+  return children.map(child => child.id)
+}
+
+const getAfterNodeIdForReorder = (
+  siblingIds: string[],
+  draggedId: string,
+  targetIndex: number,
+): string | null | undefined => {
+  const originalIndex = siblingIds.indexOf(draggedId)
+  if (originalIndex === -1)
+    return undefined
+
+  let adjustedIndex = targetIndex
+  if (targetIndex > originalIndex)
+    adjustedIndex -= 1
+
+  const siblingsWithoutDragged = siblingIds.filter(id => id !== draggedId)
+  const insertIndex = Math.min(Math.max(adjustedIndex, 0), siblingsWithoutDragged.length)
+  if (insertIndex === 0)
+    return null
+
+  return siblingsWithoutDragged[insertIndex - 1] ?? null
+}
 
 const DropTip = () => {
   const { t } = useTranslation('workflow')
@@ -53,6 +93,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   const treeRef = useRef<TreeApi<TreeNodeData>>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const containerSize = useSize(containerRef)
+  const dragInsertTargetRef = useRef<DragInsertTarget | null>(null)
 
   const { data: treeData, isLoading, error } = useSkillAssetTreeData()
   const isMutating = useIsMutating() > 0
@@ -150,16 +191,76 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
 
   // Node move API (for internal drag-drop)
   const { executeMoveNode } = useNodeMove()
+  const { executeReorderNode } = useNodeReorder()
+
+  const syncDragInsertTarget = useCallback(() => {
+    const tree = treeRef.current
+    if (!tree)
+      return
+
+    const { id, destinationParentId, destinationIndex } = tree.state.nodes.drag
+    if (!id || destinationIndex === null) {
+      if (dragInsertTargetRef.current) {
+        dragInsertTargetRef.current = null
+        storeApi.getState().setDragInsertTarget(null)
+      }
+      return
+    }
+
+    const normalizedParentId = destinationParentId === tree.root.id ? null : destinationParentId
+    const nextTarget = { parentId: normalizedParentId, index: destinationIndex }
+    const prevTarget = dragInsertTargetRef.current
+    if (prevTarget?.parentId === nextTarget.parentId && prevTarget?.index === nextTarget.index)
+      return
+
+    dragInsertTargetRef.current = nextTarget
+    storeApi.getState().setDragInsertTarget(nextTarget)
+  }, [storeApi])
+
+  useEffect(() => {
+    const tree = treeRef.current
+    if (!tree)
+      return
+
+    syncDragInsertTarget()
+    const unsubscribe = tree.store.subscribe(syncDragInsertTarget)
+    return () => {
+      unsubscribe()
+      dragInsertTargetRef.current = null
+      storeApi.getState().setDragInsertTarget(null)
+    }
+  }, [syncDragInsertTarget, storeApi, treeNodes.length])
 
   // react-arborist onMove callback - called when internal drag completes
-  const handleMove = useCallback<MoveHandler<TreeNodeData>>(({ dragIds, parentId }) => {
+  const handleMove = useCallback<MoveHandler<TreeNodeData>>(({ dragIds, parentId, index, dragNodes, parentNode }) => {
     // Only support single node drag for now
     const nodeId = dragIds[0]
-    if (!nodeId)
+    const draggedNode = dragNodes[0]
+    if (!nodeId || !draggedNode)
       return
+
+    const tree = treeRef.current
+    const destinationIndex = tree?.dragDestinationIndex
+    const isInsertLine = destinationIndex !== null && destinationIndex !== undefined
+    const targetParentId = parentId ?? null
+    const sourceParentId = normalizeParentId(draggedNode.parent)
+
+    if (isInsertLine && sourceParentId === targetParentId) {
+      const siblingIds = getSiblingIds(parentNode, tree)
+      const afterNodeId = getAfterNodeIdForReorder(
+        siblingIds,
+        nodeId,
+        destinationIndex ?? index,
+      )
+      if (afterNodeId !== undefined) {
+        executeReorderNode(nodeId, afterNodeId)
+        return
+      }
+    }
+
     // parentId from react-arborist is null for root, otherwise folder ID
-    executeMoveNode(nodeId, parentId)
-  }, [executeMoveNode])
+    executeMoveNode(nodeId, targetParentId)
+  }, [executeMoveNode, executeReorderNode, treeRef])
 
   // react-arborist disableDrop callback - returns true to prevent drop
   const handleDisableDrop = useCallback((args: {
@@ -167,26 +268,20 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
     dragNodes: NodeApi<TreeNodeData>[]
     index: number
   }) => {
-    const { dragNodes, parentNode, index } = args
+    const { dragNodes, parentNode } = args
 
-    // 1. Only allow dropping INTO folders (index = 0), not between items
-    // When index is not 0, it means dropping between items (reordering)
-    // We only want to allow dropping over the folder (willReceiveDrop)
-    if (index !== 0)
-      return true
-
-    // 2. Files cannot be drop targets - only folders can receive drops
+    // 1. Files cannot be drop targets - only folders can receive drops
     if (parentNode.data.node_type === 'file')
       return true
 
-    // 3. Cannot drop node into itself
+    // 2. Cannot drop node into itself
     const draggedNode = dragNodes[0]
     if (!draggedNode)
       return true
     if (draggedNode.id === parentNode.id)
       return true
 
-    // 4. Prevent circular move (folder into its descendant)
+    // 3. Prevent circular move (folder into its descendant)
     if (draggedNode.data.node_type === 'folder') {
       const treeChildrenTyped = treeChildren as AppAssetTreeView[]
       if (isDescendantOf(parentNode.id, draggedNode.id, treeChildrenTyped))

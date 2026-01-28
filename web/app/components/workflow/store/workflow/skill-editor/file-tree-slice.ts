@@ -97,6 +97,12 @@ export const createFileTreeSlice: StateCreator<
     set({ dragOverFolderId: folderId })
   },
 
+  dragInsertTarget: null,
+
+  setDragInsertTarget: (target) => {
+    set({ dragInsertTarget: target })
+  },
+
   currentDragType: null,
 
   setCurrentDragType: (type) => {
