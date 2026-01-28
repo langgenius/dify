@@ -10,7 +10,6 @@ from extensions import ext_fastopenapi
 from services.feature_service import FeatureModel, SystemFeatureModel
 
 
-
 @pytest.fixture
 def app():
     """
@@ -49,7 +48,9 @@ def mock_auth_environment():
     4. PREVENTS ROUTE DUPLICATION by replacing the global console_router with a 
        temporary instance during the test.
     """
-    noop = lambda f: f
+    def noop(f):
+        return f
+
     target_module = "controllers.console.feature"
 
     # Import the router module to access the class and global variable
@@ -103,7 +104,9 @@ def mock_auth_environment():
 # Test Cases
 # ------------------------------------------------------------------------------
 
-@pytest.mark.parametrize("url, service_mock_path, mock_model_instance, json_key", [
+@pytest.mark.parametrize(
+    ("url", "service_mock_path", "mock_model_instance", "json_key"),
+    [
     (
         "/console/api/features", 
         "controllers.console.feature.FeatureService.get_features", 
@@ -144,7 +147,9 @@ def test_console_features_success(
     assert response.get_json() == {json_key: expected_data}
 
 
-@pytest.mark.parametrize("url, service_mock_path", [
+@pytest.mark.parametrize(
+    ("url", "service_mock_path"),
+    [
     (
         "/console/api/features", 
         "controllers.console.feature.FeatureService.get_features"
