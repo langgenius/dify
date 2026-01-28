@@ -9,6 +9,7 @@ import {
   useCreateAppAssetFolder,
   useUploadFileWithPresignedUrl,
 } from '@/service/use-app-asset'
+import { prepareSkillUploadFile } from '../utils/skill-upload-utils'
 
 type UseCreateOperationsOptions = {
   parentId: string | null
@@ -59,8 +60,9 @@ export function useCreateOperations({
     storeApi.getState().setUploadProgress({ uploaded: 0, total, failed: 0 })
 
     try {
+      const uploadFiles = await Promise.all(files.map(file => prepareSkillUploadFile(file)))
       await Promise.all(
-        files.map(async (file) => {
+        uploadFiles.map(async (file) => {
           try {
             await uploadFile.mutateAsync({ appId, file, parentId })
             uploaded++
@@ -98,10 +100,14 @@ export function useCreateOperations({
       const fileMap = new Map<string, File>()
       const tree: BatchUploadNodeInput[] = []
       const folderMap = new Map<string, BatchUploadNodeInput>()
-
-      for (const file of files) {
+      const uploadFiles = await Promise.all(files.map(async (file) => {
         const relativePath = getRelativePath(file)
-        fileMap.set(relativePath, file)
+        const uploadFile = await prepareSkillUploadFile(file)
+        return { relativePath, uploadFile }
+      }))
+
+      for (const { relativePath, uploadFile } of uploadFiles) {
+        fileMap.set(relativePath, uploadFile)
 
         const parts = relativePath.split('/')
         let currentLevel = tree
@@ -116,7 +122,7 @@ export function useCreateOperations({
             currentLevel.push({
               name: part,
               node_type: 'file',
-              size: file.size,
+              size: uploadFile.size,
             })
           }
           else {

@@ -10,6 +10,7 @@ import Toast from '@/app/components/base/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useUploadFileWithPresignedUrl } from '@/service/use-app-asset'
 import { ROOT_ID } from '../constants'
+import { prepareSkillUploadFile } from '../utils/skill-upload-utils'
 
 type FileDropTarget = {
   folderId: string | null
@@ -78,8 +79,9 @@ export function useFileDrop() {
       return
 
     try {
+      const uploadFiles = await Promise.all(files.map(file => prepareSkillUploadFile(file)))
       await Promise.all(
-        files.map(file =>
+        uploadFiles.map(file =>
           uploadFile.mutateAsync({
             appId,
             file,
