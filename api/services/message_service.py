@@ -35,7 +35,7 @@ def _create_execution_extra_content_repository() -> ExecutionExtraContentReposit
     return SQLAlchemyExecutionExtraContentRepository(session_maker=session_maker)
 
 
-def _attach_message_extra_contents(messages: Sequence[Message]) -> None:
+def attach_message_extra_contents(messages: Sequence[Message]) -> None:
     if not messages:
         return
 
@@ -108,7 +108,7 @@ class MessageService:
         if order == "asc":
             history_messages = list(reversed(history_messages))
 
-        _attach_message_extra_contents(history_messages)
+        attach_message_extra_contents(history_messages)
 
         return InfiniteScrollPagination(data=history_messages, limit=limit, has_more=has_more)
 

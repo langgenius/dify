@@ -32,7 +32,7 @@ from libs.login import current_account_with_tenant, login_required
 from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
-from services.message_service import MessageService, _attach_message_extra_contents
+from services.message_service import MessageService, attach_message_extra_contents
 
 logger = logging.getLogger(__name__)
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
@@ -291,7 +291,7 @@ class ChatMessageListApi(Resource):
             has_more = False
 
         history_messages = list(reversed(history_messages))
-        _attach_message_extra_contents(history_messages)
+        attach_message_extra_contents(history_messages)
 
         return InfiniteScrollPagination(data=history_messages, limit=args.limit, has_more=has_more)
 
@@ -476,5 +476,5 @@ class MessageApi(Resource):
         if not message:
             raise NotFound("Message Not Exists.")
 
-        _attach_message_extra_contents([message])
+        attach_message_extra_contents([message])
         return message

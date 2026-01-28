@@ -129,9 +129,13 @@ class HumanInputFormApi(Resource):
         if form is None:
             raise NotFoundError("Form not found")
 
+        if (recipient_type := form.recipient_type) is None:
+            logger.warning("Recipient type is None for form, form_id=%", form.id)
+            raise AssertionError("Recipient type is None")
+
         try:
             service.submit_form_by_token(
-                recipient_type=form.recipient_type,
+                recipient_type=recipient_type,
                 form_token=form_token,
                 selected_action_id=args["action"],
                 form_data=args["inputs"],

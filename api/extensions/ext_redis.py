@@ -257,8 +257,10 @@ def init_app(app: DifyApp):
     app.extensions["redis"] = redis_client
 
     pubsub_client = client
-    if dify_config.PUBSUB_REDIS_URL:
-        pubsub_client = _create_pubsub_client(dify_config.PUBSUB_REDIS_URL, dify_config.PUBSUB_REDIS_USE_CLUSTERS)
+    if dify_config.normalized_pubsub_redis_url:
+        pubsub_client = _create_pubsub_client(
+            dify_config.normalized_pubsub_redis_url, dify_config.PUBSUB_REDIS_USE_CLUSTERS
+        )
     pubsub_redis_client.initialize(pubsub_client)
 
 

@@ -12,7 +12,7 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import NotFoundError
-from core.workflow.entities.pause_reason import HumanInputRequired, SchedulingPause
+from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import WorkflowExecutionStatus
 from extensions.ext_database import db
 from fields.end_user_fields import simple_end_user_fields
@@ -494,14 +494,15 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
 
         # Build response
         paused_at = pause_entity.paused_at if pause_entity else None
+        paused_nodes = []
         response = {
             "paused_at": paused_at.isoformat() + "Z" if paused_at else None,
-            "paused_nodes": [],
+            "paused_nodes": paused_nodes,
         }
 
         for reason in pause_reasons:
             if isinstance(reason, HumanInputRequired):
-                response["paused_nodes"].append(
+                paused_nodes.append(
                     {
                         "node_id": reason.node_id,
                         "node_title": reason.node_title,
@@ -512,13 +513,7 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
                         },
                     }
                 )
-            elif isinstance(reason, SchedulingPause):
-                response["paused_nodes"].append(
-                    {
-                        "node_id": "",
-                        "node_title": "",
-                        "pause_type": {"type": "scheduled_pause", "message": reason.message},
-                    }
-                )
+            else:
+                raise AssertionError("unimplemented.")
 
         return response, 200

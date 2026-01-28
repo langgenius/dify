@@ -35,6 +35,7 @@ from fields.workflow_app_log_fields import build_workflow_app_log_pagination_mod
 from libs import helper
 from libs.helper import OptionalTimestampField, TimestampField
 from models.model import App, AppMode, EndUser
+from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
@@ -65,34 +66,17 @@ register_schema_models(service_api_ns, WorkflowRunPayload, WorkflowLogQuery)
 
 
 class WorkflowRunStatusField(fields.Raw):
-    def output(self, key, obj, **kwargs):
-        status = getattr(obj, "status", None)
-        if hasattr(status, "value"):
-            return status.value
-        if isinstance(obj, dict):
-            value = obj.get(key) or obj.get("status")
-            if hasattr(value, "value"):
-                return value.value
-            return value
-        return status
+    def output(self, key, obj: WorkflowRun, **kwargs):
+        return obj.status.value
 
 
 class WorkflowRunOutputsField(fields.Raw):
-    def output(self, key, obj, **kwargs):
-        status = getattr(obj, "status", None)
-        status_value = status.value if hasattr(status, "value") else status
-        if status_value == WorkflowExecutionStatus.PAUSED.value:
+    def output(self, key, obj: WorkflowRun, **kwargs):
+        if obj.status == WorkflowExecutionStatus.PAUSED:
             return {}
 
-        outputs = getattr(obj, "outputs_dict", None)
-        if outputs is not None:
-            return outputs or {}
-
-        if isinstance(obj, dict):
-            value = obj.get(key) or obj.get("outputs")
-            return value or {}
-
-        return {}
+        outputs = obj.outputs_dict
+        return outputs or {}
 
 
 workflow_run_fields = {

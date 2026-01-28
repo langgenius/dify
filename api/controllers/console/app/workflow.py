@@ -15,7 +15,6 @@ from controllers.console.app.error import ConversationCompletedError, DraftWorkf
 from controllers.console.app.workflow_run import workflow_run_node_execution_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
-from controllers.web.error import InvalidArgumentError
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -671,16 +670,13 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
         current_user, _ = current_account_with_tenant()
         workflow_service = WorkflowService()
         args = HumanInputDeliveryTestPayload.model_validate(console_ns.payload or {})
-        try:
-            workflow_service.test_human_input_delivery(
-                app_model=app_model,
-                account=current_user,
-                node_id=node_id,
-                delivery_method_id=args.delivery_method_id,
-                inputs=args.inputs,
-            )
-        except ValueError as exc:
-            raise InvalidArgumentError(str(exc))
+        workflow_service.test_human_input_delivery(
+            app_model=app_model,
+            account=current_user,
+            node_id=node_id,
+            delivery_method_id=args.delivery_method_id,
+            inputs=args.inputs,
+        )
         return jsonable_encoder({})
 
 

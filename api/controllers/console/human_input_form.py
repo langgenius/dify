@@ -99,6 +99,9 @@ class ConsoleHumanInputFormApi(Resource):
         recipient_type = form.recipient_type
         if recipient_type not in {RecipientType.CONSOLE, RecipientType.BACKSTAGE}:
             raise NotFoundError(f"form not found, token={form_token}")
+        # The type checker is not smart enought to validate the following invariant.
+        # So we need to assert it manually.
+        assert recipient_type is not None, "recipient_type cannot be None here."
 
         service.submit_form_by_token(
             recipient_type=recipient_type,

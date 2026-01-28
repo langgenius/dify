@@ -42,7 +42,7 @@ def test_attach_message_extra_contents_assigns_serialized_payload(monkeypatch: p
 
     monkeypatch.setattr(message_service, "_create_execution_extra_content_repository", lambda: repo)
 
-    message_service._attach_message_extra_contents(messages)
+    message_service.attach_message_extra_contents(messages)
 
     assert messages[0].extra_contents == [
         {

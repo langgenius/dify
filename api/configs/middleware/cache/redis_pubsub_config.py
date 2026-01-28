@@ -1,7 +1,7 @@
 from typing import Literal, Protocol
 from urllib.parse import quote_plus, urlunparse
 
-from pydantic import Field, model_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -27,6 +27,7 @@ class RedisPubSubConfig(BaseSettings, RedisConfigDefaultsMixin):
     """
 
     PUBSUB_REDIS_URL: str | None = Field(
+        alias="PUBSUB_REDIS_URL",
         description=(
             "Redis connection URL for pub/sub streaming events between API "
             "and celery worker, defaults to url constructed from "
@@ -57,19 +58,6 @@ class RedisPubSubConfig(BaseSettings, RedisConfigDefaultsMixin):
         default="pubsub",
     )
 
-    @model_validator(mode="after")
-    def apply_pubsub_defaults(self) -> "RedisPubSubConfig":
-        if self.PUBSUB_REDIS_URL:
-            cleaned = self.PUBSUB_REDIS_URL.strip()
-            self.PUBSUB_REDIS_URL = cleaned or None
-
-        if self.PUBSUB_REDIS_URL:
-            return self
-
-        defaults = self._redis_defaults()
-        self.PUBSUB_REDIS_URL = self._build_default_pubsub_url()
-        return self
-
     def _build_default_pubsub_url(self) -> str:
         defaults = self._redis_defaults()
         if not defaults.REDIS_HOST or not defaults.REDIS_PORT:
@@ -94,3 +82,15 @@ class RedisPubSubConfig(BaseSettings, RedisConfigDefaultsMixin):
 
         netloc = f"{userinfo}{host}:{port}"
         return urlunparse((scheme, netloc, f"/{db}", "", "", ""))
+
+    @property
+    def normalized_pubsub_redis_url(self) -> str:
+        pubsub_redis_url = self.PUBSUB_REDIS_URL
+        if pubsub_redis_url:
+            cleaned = pubsub_redis_url.strip()
+            pubsub_redis_url = cleaned or None
+
+        if pubsub_redis_url:
+            return pubsub_redis_url
+
+        return self._build_default_pubsub_url()

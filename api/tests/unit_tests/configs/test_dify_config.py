@@ -183,7 +183,7 @@ def test_pubsub_redis_url_default(monkeypatch: pytest.MonkeyPatch):
 
     config = DifyConfig()
 
-    assert config.PUBSUB_REDIS_URL == "rediss://user:pass%40word@redis.example.com:6380/2"
+    assert config.normalized_pubsub_redis_url == "rediss://user:pass%40word@redis.example.com:6380/2"
     assert config.PUBSUB_REDIS_CHANNEL_TYPE == "pubsub"
 
 
@@ -201,7 +201,7 @@ def test_pubsub_redis_url_override(monkeypatch: pytest.MonkeyPatch):
 
     config = DifyConfig()
 
-    assert config.PUBSUB_REDIS_URL == "redis://pubsub-host:6381/5"
+    assert config.normalized_pubsub_redis_url == "redis://pubsub-host:6381/5"
 
 
 def test_pubsub_redis_url_required_when_default_unavailable(monkeypatch: pytest.MonkeyPatch):
