@@ -22,6 +22,7 @@ type DrawerGroupProps = {
     answer: string,
     keywords: string[],
     attachments: FileEntity[],
+    summary?: string,
     needRegenerate?: boolean,
   ) => Promise<void>
   isRegenerationModalOpen: boolean

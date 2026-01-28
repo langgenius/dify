@@ -111,7 +111,7 @@ def test_webhook_node_file_conversion_to_file_variable():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -184,7 +184,7 @@ def test_webhook_node_file_conversion_with_missing_files():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -219,7 +219,7 @@ def test_webhook_node_file_conversion_with_none_file():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -256,7 +256,7 @@ def test_webhook_node_file_conversion_with_non_dict_file():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -300,7 +300,7 @@ def test_webhook_node_file_conversion_mixed_parameters():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -370,7 +370,7 @@ def test_webhook_node_different_file_types():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -430,7 +430,7 @@ def test_webhook_node_file_conversion_with_non_dict_wrapper():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
