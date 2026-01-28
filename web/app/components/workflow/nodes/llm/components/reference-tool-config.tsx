@@ -91,30 +91,34 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
       && setting.provider === tool.provider
       && setting.tool_name === tool.tool_name,
     )
-    return matched?.enabled ?? true
+    return matched?.enabled !== false
   }, [toolSettings])
 
   const handleToolEnabledChange = useCallback((tool: ToolDependency, isEnabled: boolean) => {
-    const nextSettings = [...(toolSettings ?? [])]
+    const nextSettings = (toolSettings ?? []).filter(setting => setting.enabled === false)
     const index = nextSettings.findIndex(setting =>
       setting.type === tool.type
       && setting.provider === tool.provider
       && setting.tool_name === tool.tool_name,
     )
-    if (index >= 0) {
+    if (isEnabled) {
+      if (index >= 0)
+        nextSettings.splice(index, 1)
+    }
+    else if (index >= 0) {
       nextSettings[index] = {
         ...nextSettings[index],
-        enabled: isEnabled,
+        enabled: false,
       }
     }
     else {
       nextSettings.push({
         ...tool,
-        enabled: isEnabled,
+        enabled: false,
       })
     }
     handleNodeDataUpdate({
-      tool_settings: nextSettings,
+      tool_settings: nextSettings.length ? nextSettings : [],
     })
   }, [handleNodeDataUpdate, toolSettings])
 
