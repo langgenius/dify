@@ -398,7 +398,7 @@ describe('ChunkCard', () => {
       const { rerender } = render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={initialContent}
           wordCount={15}
           positionId={1}
         />,
@@ -411,7 +411,7 @@ describe('ChunkCard', () => {
       rerender(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={updatedContent}
           wordCount={15}
           positionId={1}
         />,
@@ -428,7 +428,7 @@ describe('ChunkCard', () => {
       const { rerender } = render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={textContent}
           wordCount={12}
           positionId={1}
         />,
@@ -500,7 +500,7 @@ describe('ChunkCard', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={longContentChunk}
           wordCount={10000}
           positionId={1}
         />,
