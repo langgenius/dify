@@ -11,12 +11,6 @@ export const createClipboardSlice: StateCreator<
 > = (set, get) => ({
   clipboard: null,
 
-  copyNodes: (nodeIds) => {
-    if (nodeIds.length === 0)
-      return
-    set({ clipboard: { operation: 'copy', nodeIds: new Set(nodeIds) } })
-  },
-
   cutNodes: (nodeIds) => {
     if (nodeIds.length === 0)
       return

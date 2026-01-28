@@ -9,7 +9,6 @@ import {
   RiDeleteBinLine,
   RiEdit2Line,
   RiFileAddLine,
-  RiFileCopyLine,
   RiFolderAddLine,
   RiFolderUploadLine,
   RiScissorsLine,
@@ -31,7 +30,6 @@ export const MENU_CONTAINER_STYLES = [
   'bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]',
 ] as const
 
-const KBD_COPY = ['ctrl', 'c'] as const
 const KBD_CUT = ['ctrl', 'x'] as const
 const KBD_PASTE = ['ctrl', 'v'] as const
 
@@ -77,14 +75,6 @@ const NodeMenu: FC<NodeMenuProps> = ({
   } = useFileOperations({ nodeId, onClose, treeRef, node })
 
   const currentNodeId = node?.data.id ?? nodeId
-
-  const handleCopy = useCallback(() => {
-    const ids = selectedNodeIds.size > 0 ? [...selectedNodeIds] : (currentNodeId ? [currentNodeId] : [])
-    if (ids.length > 0) {
-      storeApi.getState().copyNodes(ids)
-      onClose()
-    }
-  }, [currentNodeId, onClose, selectedNodeIds, storeApi])
 
   const handleCut = useCallback(() => {
     const ids = selectedNodeIds.size > 0 ? [...selectedNodeIds] : (currentNodeId ? [currentNodeId] : [])
@@ -180,13 +170,6 @@ const NodeMenu: FC<NodeMenuProps> = ({
             label={t('skillSidebar.menu.cut')}
             kbd={KBD_CUT}
             onClick={handleCut}
-            disabled={isLoading}
-          />
-          <MenuItem
-            icon={RiFileCopyLine}
-            label={t('skillSidebar.menu.copy')}
-            kbd={KBD_COPY}
-            onClick={handleCopy}
             disabled={isLoading}
           />
         </>

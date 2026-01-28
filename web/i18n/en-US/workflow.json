@@ -1088,8 +1088,6 @@
   "skillSidebar.loadError": "Failed to load files",
   "skillSidebar.menu.cannotMoveToDescendant": "Cannot move a folder into its descendant",
   "skillSidebar.menu.cannotMoveToSelf": "Cannot move a folder into itself",
-  "skillSidebar.menu.copy": "Copy",
-  "skillSidebar.menu.copyNotSupported": "Copy is not supported yet",
   "skillSidebar.menu.createError": "Failed to create item",
   "skillSidebar.menu.cut": "Cut",
   "skillSidebar.menu.delete": "Delete",

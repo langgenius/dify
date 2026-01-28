@@ -46,16 +46,6 @@ export function useSkillShortcuts({
     return tree.selectedNodes.map(n => n.id)
   }, [treeRef])
 
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
-    if (shouldHandle(e)) {
-      const nodeIds = getSelectedNodeIds()
-      if (nodeIds.length > 0) {
-        e.preventDefault()
-        storeApi.getState().copyNodes(nodeIds)
-      }
-    }
-  }, { exactMatch: true, useCapture: true })
-
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.x`, (e) => {
     if (shouldHandle(e)) {
       const nodeIds = getSelectedNodeIds()

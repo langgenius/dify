@@ -48,7 +48,7 @@ export type FileTreeSliceShape = {
   setFileTreeSearchTerm: (term: string) => void
 }
 
-export type ClipboardOperation = 'copy' | 'cut'
+export type ClipboardOperation = 'cut'
 
 export type ClipboardItem = {
   operation: ClipboardOperation
@@ -57,7 +57,6 @@ export type ClipboardItem = {
 
 export type ClipboardSliceShape = {
   clipboard: ClipboardItem | null
-  copyNodes: (nodeIds: string[]) => void
   cutNodes: (nodeIds: string[]) => void
   clearClipboard: () => void
   isCutNode: (nodeId: string) => boolean

@@ -100,12 +100,6 @@ export function usePasteOperation({
         isPastingRef.current = false
       }
     }
-    else {
-      Toast.notify({
-        type: 'info',
-        message: t('skillSidebar.menu.copyNotSupported'),
-      })
-    }
   }, [appId, moveNode, storeApi, t, treeData?.children, treeRef])
 
   useEffect(() => {
