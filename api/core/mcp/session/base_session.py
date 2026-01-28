@@ -68,7 +68,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         request_id: RequestId,
         request_meta: RequestParams.Meta | None,
         request: ReceiveRequestT,
-        session: """BaseSession[SendRequestT, SendNotificationT, SendResultT, ReceiveRequestT, ReceiveNotificationT]""",
+        session: Any,
         on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], Any],
     ):
         self.request_id = request_id
@@ -145,7 +145,7 @@ class BaseSession(
 
     _response_streams: dict[RequestId, queue.Queue[JSONRPCResponse | JSONRPCError | HTTPStatusError]]
     _request_id: int
-    _in_flight: dict[RequestId, RequestResponder[ReceiveRequestT, SendResultT]]
+    _in_flight: dict[RequestId, RequestResponder[Any, Any]]
     _receive_request_type: type[ReceiveRequestT]
     _receive_notification_type: type[ReceiveNotificationT]
 

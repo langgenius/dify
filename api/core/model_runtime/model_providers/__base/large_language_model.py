@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Callable, Generator, Iterator, Sequence
-from typing import Union
+from typing import Any, Union
 
 from pydantic import ConfigDict
 
@@ -283,7 +283,7 @@ class LargeLanguageModel(AIModel):
             # TODO
             raise self._transform_invoke_error(e)
 
-        if stream and isinstance(result, Generator):
+        if stream and isinstance(result, Generator) and not isinstance(result, LLMResult):
             return self._invoke_result_generator(
                 model=model,
                 result=result,
@@ -319,7 +319,7 @@ class LargeLanguageModel(AIModel):
     def _invoke_result_generator(
         self,
         model: str,
-        result: Generator[LLMResultChunk, None, None],
+        result: Generator[Any, None, None],
         credentials: dict,
         prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
@@ -353,6 +353,8 @@ class LargeLanguageModel(AIModel):
 
         try:
             for chunk in result:
+                if not isinstance(chunk, LLMResultChunk):
+                    raise NotImplementedError("unsupported invoke result type", type(chunk))
                 # Following https://github.com/langgenius/dify/issues/17799,
                 # we removed the prompt_messages from the chunk on the plugin daemon side.
                 # To ensure compatibility, we add the prompt_messages back here.

@@ -136,7 +136,11 @@ class PKCS1OAepCipher:
         # Step 3a (OS2IP)
         em_int = bytes_to_long(em)
         # Step 3b (RSAEP)
-        m_int = gmpy2.powmod(em_int, self._key.e, self._key.n)
+        powmod = getattr(gmpy2, "powmod", None)
+        if callable(powmod):
+            m_int = powmod(em_int, self._key.e, self._key.n)
+        else:
+            m_int = pow(em_int, self._key.e, self._key.n)
         # Step 3c (I2OSP)
         c = long_to_bytes(m_int, k)
         return c
@@ -169,7 +173,11 @@ class PKCS1OAepCipher:
         ct_int = bytes_to_long(ciphertext)
         # Step 2b (RSADP)
         # m_int = self._key._decrypt(ct_int)
-        m_int = gmpy2.powmod(ct_int, self._key.d, self._key.n)
+        powmod = getattr(gmpy2, "powmod", None)
+        if callable(powmod):
+            m_int = powmod(ct_int, self._key.d, self._key.n)
+        else:
+            m_int = pow(ct_int, self._key.d, self._key.n)
         # Complete step 2c (I2OSP)
         em = long_to_bytes(m_int, k)
         # Step 3a
