@@ -1,3 +1,4 @@
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import { RiAddLine, RiDeleteBin7Line } from '@remixicon/react'
 import { useCallback } from 'react'
@@ -73,7 +74,7 @@ const FallbackModelSelector = ({
     }
   }, [models, primaryModel, onChange, t])
 
-  const handleCompletionParamsChange = useCallback((index: number, params: Record<string, any>) => {
+  const handleCompletionParamsChange = useCallback((index: number, params: FormValue) => {
     const newModels = [...models]
     newModels[index] = {
       ...newModels[index],
@@ -83,11 +84,11 @@ const FallbackModelSelector = ({
   }, [models, onChange])
 
   return (
-    <div className="space-y-3 px-4">
+    <div className="space-y-3 px-4 pt-2">
       {models.map((model, index) => (
         <div
           key={index}
-          className="flex items-start gap-2 rounded-lg pt-2"
+          className="flex items-start gap-2 rounded-lg"
         >
           <div className="grow">
             <div className="mb-2 flex items-center justify-between">
