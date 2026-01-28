@@ -38,7 +38,7 @@ const Sidebar: FC<SidebarProps> = ({ children }) => {
       {children}
       <div
         ref={triggerRef}
-        className="absolute -right-1 top-0 z-10 flex h-full w-2 cursor-col-resize items-center justify-center"
+        className="absolute -right-1 top-0 z-10 flex h-full w-3 cursor-col-resize items-center justify-center"
       >
         <div className="h-10 w-0.5 rounded-sm bg-state-base-handle transition-all hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid" />
       </div>
