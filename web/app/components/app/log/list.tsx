@@ -506,17 +506,20 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
   }, [detail.id, hasMore, isLoading, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
 
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     const scrollableDiv = document.getElementById('scrollableDiv')
-    const clientHeight = scrollableDiv!.clientHeight
-    const scrollHeight = scrollableDiv!.scrollHeight
-    const currentScrollTop = scrollableDiv!.scrollTop
+    if (!scrollableDiv)
+      return
+    const clientHeight = scrollableDiv.clientHeight
+    const scrollHeight = scrollableDiv.scrollHeight
+    const currentScrollTop = scrollableDiv.scrollTop
+    // currentScrollTop is negative due to column-reverse flex direction
     const isNearTop = Math.abs(currentScrollTop) > scrollHeight - clientHeight - 40
 
     if (isNearTop && hasMore && !isLoading) {
       loadMoreMessages()
     }
-  }
+  }, [hasMore, isLoading, loadMoreMessages])
 
   const isChatMode = appDetail?.mode !== AppModeEnum.COMPLETION
   const isAdvanced = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
@@ -678,7 +681,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   switchSibling={switchSibling}
                 />
               </div>
-              {/* Loading state indicator - only shown when loading */}
               {hasMore && (
                 <div className="py-3 text-center">
                   <div className="system-xs-regular text-text-tertiary">
