@@ -107,13 +107,13 @@ def mock_auth_environment():
     (
         "/console/api/features", 
         "controllers.console.feature.FeatureService.get_features", 
-        FeatureModel(enabled=True), 
+        FeatureModel(can_replace_logo=True), 
         "features"
     ),
     (
         "/console/api/system-features", 
         "controllers.console.feature.FeatureService.get_system_features", 
-        SystemFeatureModel(system=True), 
+        SystemFeatureModel(enable_marketplace=True), 
         "features" 
     ),
 ])
