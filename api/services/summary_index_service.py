@@ -357,17 +357,22 @@ class SummaryIndexService:
                         session.commit()
                         logger.debug("Successfully committed session for segment %s", segment.id)
                     else:
+                        # When using provided session, flush to ensure changes are written to database
+                        # This prevents refresh() from overwriting our changes
                         logger.debug(
-                            "Skipping commit for segment %s (using provided session, caller will commit)",
+                            "Flushing session for segment %s (using provided session, caller will commit)",
                             segment.id,
                         )
+                        session.flush()
+                        logger.debug("Successfully flushed session for segment %s", segment.id)
                     # If using provided session, let the caller handle commit
                     
                     logger.info(
-                        "Successfully vectorized summary for segment %s, index_node_id=%s, tokens=%s, "
-                        "summary_record_id=%s, use_provided_session=%s",
+                        "Successfully vectorized summary for segment %s, index_node_id=%s, index_node_hash=%s, "
+                        "tokens=%s, summary_record_id=%s, use_provided_session=%s",
                         segment.id,
                         summary_index_node_id,
+                        summary_hash,
                         embedding_tokens,
                         summary_record_in_session.id,
                         use_provided_session,
@@ -1095,6 +1100,8 @@ class SummaryIndexService:
                         SummaryIndexService.vectorize_summary(summary_record, segment, dataset, session=session)
                         # Refresh to get updated status and tokens from database
                         session.refresh(summary_record)
+                        # Commit the session to persist the changes
+                        session.commit()
                         logger.info("Successfully created and vectorized summary for segment %s", segment.id)
                         return summary_record
                     except Exception as e:
