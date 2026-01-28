@@ -51,8 +51,19 @@ export const useWorkflowInteractions = () => {
     }
   }, [workflowStore, handleNodeCancelRunningStatus, handleEdgeCancelRunningStatus])
 
+  const handleClearWorkflowRunHistory = useCallback(() => {
+    workflowStore.setState({
+      workflowRunningData: undefined,
+      inputs: {},
+      files: [],
+    })
+    handleNodeCancelRunningStatus()
+    handleEdgeCancelRunningStatus()
+  }, [workflowStore, handleNodeCancelRunningStatus, handleEdgeCancelRunningStatus])
+
   return {
     handleCancelDebugAndPreviewPanel,
+    handleClearWorkflowRunHistory,
   }
 }
 

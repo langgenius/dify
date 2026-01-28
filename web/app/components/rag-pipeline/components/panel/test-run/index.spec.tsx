@@ -111,7 +111,7 @@ const createMockWorkflowRunningData = (overrides: Partial<WorkflowRunningData> =
     elapsed_time: 1000,
     total_tokens: 100,
     created_at: Date.now(),
-    created_by: 'Test User',
+    created_by: { id: 'test-user-id', name: 'Test User', email: 'test@example.com' },
     total_steps: 5,
     exceptions_count: 0,
   },

@@ -3756,14 +3756,6 @@
       "count": 2
     }
   },
-  "app/components/workflow/panel/workflow-preview.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/workflow/run/hooks.ts": {
     "ts/no-explicit-any": {
       "count": 1

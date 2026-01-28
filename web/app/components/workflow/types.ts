@@ -467,7 +467,11 @@ export type WorkflowRunningData = {
     elapsed_time?: number
     total_tokens?: number
     created_at?: number
-    created_by?: string
+    created_by?: {
+      id: string
+      name: string
+      email: string
+    }
     finished_at?: number
     steps?: number
     showSteps?: boolean
