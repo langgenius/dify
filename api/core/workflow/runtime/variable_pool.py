@@ -44,7 +44,7 @@ class VariablePool(BaseModel):
     )
     system_variables: SystemVariable = Field(
         description="System variables",
-        default_factory=SystemVariable.empty,
+        default_factory=SystemVariable.default,
     )
     environment_variables: Sequence[Variable] = Field(
         description="Environment variables.",
@@ -271,4 +271,4 @@ class VariablePool(BaseModel):
     @classmethod
     def empty(cls) -> VariablePool:
         """Create an empty variable pool."""
-        return cls(system_variables=SystemVariable.empty())
+        return cls(system_variables=SystemVariable.default())

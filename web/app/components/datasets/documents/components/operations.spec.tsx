@@ -44,6 +44,7 @@ const mockPause = vi.fn()
 const mockResume = vi.fn()
 let isDownloadPending = false
 
+const mockGenerateSummary = vi.fn()
 vi.mock('@/service/knowledge/use-document', () => ({
   useDocumentArchive: () => ({ mutateAsync: mockArchive }),
   useDocumentUnArchive: () => ({ mutateAsync: mockUnArchive }),
@@ -55,6 +56,7 @@ vi.mock('@/service/knowledge/use-document', () => ({
   useSyncWebsite: () => ({ mutateAsync: mockSyncWebsite }),
   useDocumentPause: () => ({ mutateAsync: mockPause }),
   useDocumentResume: () => ({ mutateAsync: mockResume }),
+  useDocumentSummary: () => ({ mutateAsync: mockGenerateSummary }),
 }))
 
 // Mock downloadUrl utility

@@ -1,11 +1,12 @@
 from urllib import parse
 
 from flask import abort, request
-from flask_restx import Resource, marshal_with
+from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 
 import services
 from configs import dify_config
+from controllers.common.schema import get_or_create_model, register_enum_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -24,7 +25,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_database import db
-from fields.member_fields import account_with_role_list_fields
+from fields.member_fields import account_with_role_fields, account_with_role_list_fields
 from libs.helper import extract_remote_ip
 from libs.login import current_account_with_tenant, login_required
 from models.account import Account, TenantAccountRole
@@ -67,6 +68,13 @@ reg(MemberRoleUpdatePayload)
 reg(OwnerTransferEmailPayload)
 reg(OwnerTransferCheckPayload)
 reg(OwnerTransferPayload)
+register_enum_models(console_ns, TenantAccountRole)
+
+account_with_role_model = get_or_create_model("AccountWithRole", account_with_role_fields)
+
+account_with_role_list_fields_copy = account_with_role_list_fields.copy()
+account_with_role_list_fields_copy["accounts"] = fields.List(fields.Nested(account_with_role_model))
+account_with_role_list_model = get_or_create_model("AccountWithRoleList", account_with_role_list_fields_copy)
 
 
 @console_ns.route("/workspaces/current/members")
@@ -76,7 +84,7 @@ class MemberListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_with_role_list_fields)
+    @marshal_with(account_with_role_list_model)
     def get(self):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
@@ -227,7 +235,7 @@ class DatasetOperatorMemberListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_with_role_list_fields)
+    @marshal_with(account_with_role_list_model)
     def get(self):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
