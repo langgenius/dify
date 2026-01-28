@@ -22,6 +22,10 @@ class ToolConfiguration(BaseModel):
         return {field.id: field.value for field in self.fields if field.value is not None}
 
 
+def create_tool_id(provider: str, tool_name: str) -> str:
+    return f"{provider}.{tool_name}"
+
+
 class ToolReference(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -32,6 +36,12 @@ class ToolReference(BaseModel):
     enabled: bool = True
     credential_id: str | None = None
     configuration: ToolConfiguration | None = None
+
+    def reference_id(self) -> str:
+        return f"{self.provider}.{self.tool_name}.{self.uuid}"
+
+    def tool_id(self) -> str:
+        return f"{self.provider}.{self.tool_name}"
 
 
 class FileReference(BaseModel):

@@ -9,7 +9,13 @@ from core.skill.entities.asset_references import AssetReferences
 from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_bundle_entry import SkillBundleEntry, SourceInfo
 from core.skill.entities.skill_document import SkillDocument
-from core.skill.entities.skill_metadata import FileReference, SkillMetadata, ToolConfiguration, ToolReference
+from core.skill.entities.skill_metadata import (
+    FileReference,
+    SkillMetadata,
+    ToolConfiguration,
+    ToolReference,
+    create_tool_id,
+)
 from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
 from core.tools.entities.tool_entities import ToolProviderType
 
@@ -164,7 +170,7 @@ class SkillCompiler:
         direct_refs: dict[str, ToolReference] = {}
 
         for tool_ref in metadata.tools.values():
-            key = f"{tool_ref.provider}.{tool_ref.tool_name}"
+            key = tool_ref.tool_id()
             if key not in direct_tools:
                 direct_tools[key] = ToolDependency(
                     type=tool_ref.type,
@@ -207,9 +213,7 @@ class SkillCompiler:
                     continue
 
                 # Collect current tools and files
-                current_tools: dict[str, ToolDependency] = {
-                    f"{d.provider}.{d.tool_name}": d for d in entry.tools.dependencies
-                }
+                current_tools: dict[str, ToolDependency] = {d.tool_id(): d for d in entry.tools.dependencies}
                 current_refs: dict[str, ToolReference] = {r.uuid: r for r in entry.tools.references}
                 current_files: dict[str, FileReference] = {f.asset_id: f for f in entry.files.references}
 
@@ -224,7 +228,7 @@ class SkillCompiler:
                         continue
 
                     for tool_dep in dep_entry.tools.dependencies:
-                        key = f"{tool_dep.provider}.{tool_dep.tool_name}"
+                        key = tool_dep.tool_id()
                         if key not in current_tools:
                             current_tools[key] = tool_dep
 
@@ -324,7 +328,7 @@ class SkillCompiler:
         all_refs: dict[str, ToolReference] = {}
 
         for tool_ref in metadata.tools.values():
-            key = f"{tool_ref.provider}.{tool_ref.tool_name}"
+            key = tool_ref.tool_id()
             if key not in all_tools:
                 all_tools[key] = ToolDependency(
                     type=tool_ref.type,
@@ -335,7 +339,7 @@ class SkillCompiler:
 
         for dep in direct_deps:
             for tool_dep in dep.tools.dependencies:
-                key = f"{tool_dep.provider}.{tool_dep.tool_name}"
+                key = tool_dep.tool_id()
                 if key not in all_tools:
                     all_tools[key] = tool_dep
 
@@ -359,7 +363,7 @@ class SkillCompiler:
             tool_id = match.group(1)
             tool_ref: ToolReference | None = metadata.tools.get(tool_id)
             if not tool_ref:
-                return f"[Tool not found: {tool_id}]"
+                return f"[Tool not found or disabled: {tool_id}]"
             if not tool_ref.enabled:
                 return ""
             return self._tool_resolver.resolve(tool_ref)
@@ -372,7 +376,7 @@ class SkillCompiler:
                 tool_id = tool_match.group(1)
                 tool_ref: ToolReference | None = metadata.tools.get(tool_id)
                 if not tool_ref:
-                    enabled_renders.append(f"[Tool not found: {tool_id}]")
+                    enabled_renders.append(f"[Tool not found or disabled: {tool_id}]")
                     continue
                 if not tool_ref.enabled:
                     continue
@@ -387,32 +391,32 @@ class SkillCompiler:
         content = self._config.tool_pattern.sub(replace_tool, content)
         return content
 
-    def _parse_metadata(self, content: str, raw_metadata: Mapping[str, Any]) -> SkillMetadata:
+    def _parse_metadata(
+        self, content: str, raw_metadata: Mapping[str, Any], disabled_tools: list[ToolDependency] = []
+    ) -> SkillMetadata:
         tools_raw = dict(raw_metadata.get("tools", {}))
         tools: dict[str, ToolReference] = {}
-
+        disabled_tools_set = {tool.tool_id() for tool in disabled_tools}
         tool_iter = re.finditer(r"§\[tool\]\.\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]§", content)
         for match in tool_iter:
             provider, name, uuid = match.group(1), match.group(2), match.group(3)
             if uuid in tools_raw:
                 meta = tools_raw[uuid]
-                if isinstance(meta, ToolReference):
-                    tools[uuid] = meta
-                elif isinstance(meta, dict):
-                    meta_dict = cast(dict[str, Any], meta)
-                    tool_type_str = cast(str | None, meta_dict.get("type"))
-                    if tool_type_str:
-                        tools[uuid] = ToolReference(
-                            uuid=uuid,
-                            type=ToolProviderType.value_of(tool_type_str),
-                            provider=provider,
-                            tool_name=name,
-                            enabled=cast(bool, meta_dict.get("enabled", True)),
-                            credential_id=cast(str | None, meta_dict.get("credential_id")),
-                            configuration=ToolConfiguration.model_validate(meta_dict.get("configuration", {}))
-                            if meta_dict.get("configuration")
-                            else None,
-                        )
+                meta_dict = cast(dict[str, Any], meta)
+                type = cast(str, meta_dict.get("type"))
+                if create_tool_id(provider, name) in disabled_tools_set:
+                    continue
+                tools[uuid] = ToolReference(
+                    uuid=uuid,
+                    type=ToolProviderType.value_of(type),
+                    provider=provider,
+                    tool_name=name,
+                    enabled=cast(bool, meta_dict.get("enabled", True)),
+                    credential_id=cast(str | None, meta_dict.get("credential_id")),
+                    configuration=ToolConfiguration.model_validate(meta_dict.get("configuration", {}))
+                    if meta_dict.get("configuration")
+                    else None,
+                )
 
         parsed_files: list[FileReference] = []
         file_iter = re.finditer(r"§\[file\]\.\[([^\]]+)\]\.\[([^\]]+)\]§", content)

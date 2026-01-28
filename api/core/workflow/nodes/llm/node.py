@@ -59,7 +59,7 @@ from core.sandbox.entities.config import AppAssets
 from core.skill.constants import SkillAttrs
 from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
-from core.skill.entities.tool_dependencies import ToolDependencies
+from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
 from core.skill.skill_compiler import SkillCompiler
 from core.tools.__base.tool import Tool
 from core.tools.signature import sign_upload_file
@@ -301,7 +301,7 @@ class LLMNode(Node[LLMNodeData]):
                 sandbox = self.graph_runtime_state.sandbox
                 if not sandbox:
                     raise LLMNodeError("computer use is enabled but no sandbox found")
-                tool_dependencies = self._extract_tool_dependencies()
+                tool_dependencies: ToolDependencies | None = self._extract_tool_dependencies()
                 generator = self._invoke_llm_with_sandbox(
                     sandbox=sandbox,
                     model_instance=model_instance,
@@ -1822,6 +1822,14 @@ class LLMNode(Node[LLMNodeData]):
             generation_data,
         )
 
+    def _extract_disabled_tools(self) -> dict[str, ToolDependency]:
+        tools = [
+            ToolDependency(type=tool.type, provider=tool.provider, tool_name=tool.tool_name)
+            for tool in self.node_data.tool_settings
+            if not tool.enabled
+        ]
+        return {tool.tool_id(): tool for tool in tools}
+
     def _extract_tool_dependencies(self) -> ToolDependencies | None:
         """Extract tool artifact from prompt template."""
 
@@ -1845,7 +1853,12 @@ class LLMNode(Node[LLMNodeData]):
         if len(tool_deps_list) == 0:
             return None
 
-        return reduce(lambda x, y: x.merge(y), tool_deps_list)
+        disabled_tools = self._extract_disabled_tools()
+        tool_dependencies = reduce(lambda x, y: x.merge(y), tool_deps_list)
+        for tool in tool_dependencies.dependencies:
+            if tool.tool_id() in disabled_tools:
+                tool.enabled = False
+        return tool_dependencies
 
     def _invoke_llm_with_tools(
         self,

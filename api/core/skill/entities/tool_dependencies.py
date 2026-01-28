@@ -10,6 +10,10 @@ class ToolDependency(BaseModel):
     type: ToolProviderType
     provider: str
     tool_name: str
+    enabled: bool = True
+
+    def tool_id(self) -> str:
+        return f"{self.provider}.{self.tool_name}"
 
 
 class ToolDependencies(BaseModel):
@@ -56,4 +60,19 @@ class ToolDependencies(BaseModel):
         return ToolDependencies(
             dependencies=list(dep_map.values()),
             references=list(ref_map.values()),
+        )
+
+    def remove_tools(self, tools: list[ToolDependency]) -> "ToolDependencies":
+        tool_keys = {f"{tool.provider}.{tool.tool_name}" for tool in tools}
+        return ToolDependencies(
+            dependencies=[
+                dependency
+                for dependency in self.dependencies
+                if f"{dependency.provider}.{dependency.tool_name}" not in tool_keys
+            ],
+            references=[
+                reference
+                for reference in self.references
+                if f"{reference.provider}.{reference.tool_name}" not in tool_keys
+            ],
         )

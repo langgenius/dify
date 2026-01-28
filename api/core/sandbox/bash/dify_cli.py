@@ -62,6 +62,7 @@ class DifyCliEnvConfig(BaseModel):
 
 class DifyCliToolConfig(BaseModel):
     provider_type: str
+    enabled: bool = True
     identity: dict[str, Any]
     description: dict[str, Any]
     parameters: list[dict[str, Any]]
@@ -81,8 +82,8 @@ class DifyCliToolConfig(BaseModel):
     @classmethod
     def create_from_tool(cls, tool: Tool) -> DifyCliToolConfig:
         return cls(
-            provider_type=cls.transform_provider_type(tool.tool_provider_type()),
             identity=to_json(tool.entity.identity),
+            provider_type=cls.transform_provider_type(tool.tool_provider_type()),
             description=to_json(tool.entity.description),
             parameters=[cls.transform_parameter(parameter) for parameter in tool.entity.parameters],
         )
@@ -137,15 +138,18 @@ class DifyCliConfig(BaseModel):
 
         cli_api_url = dify_config.CLI_API_URL
 
-        tools: list[Tool] = []
+        tools: list[DifyCliToolConfig] = []
         for dependency in tool_deps.dependencies:
-            tool = ToolManager.get_tool_runtime(
-                tenant_id=tenant_id,
-                provider_type=dependency.type,
-                provider_id=dependency.provider,
-                tool_name=dependency.tool_name,
-                invoke_from=InvokeFrom.AGENT,
+            tool = DifyCliToolConfig.create_from_tool(
+                ToolManager.get_tool_runtime(
+                    tenant_id=tenant_id,
+                    provider_type=dependency.type,
+                    provider_id=dependency.provider,
+                    tool_name=dependency.tool_name,
+                    invoke_from=InvokeFrom.AGENT,
+                )
             )
+            tool.enabled = dependency.enabled
             tools.append(tool)
 
         return cls(
@@ -156,7 +160,7 @@ class DifyCliConfig(BaseModel):
                 cli_api_secret=session.secret,
             ),
             tool_references=[DifyCliToolReference.create_from_tool_reference(ref) for ref in tool_deps.references],
-            tools=[DifyCliToolConfig.create_from_tool(tool) for tool in tools],
+            tools=tools,
         )
 
 
