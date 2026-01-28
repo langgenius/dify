@@ -1061,6 +1061,7 @@
   "skill.startTab.templatesComingSoon": "模板即将推出…",
   "skill.startTab.templatesDesc": "选择模板来快速构建你的 Agent 能力",
   "skill.startTab.templatesTitle": "Skill 模板",
+  "skillEditor.authorizationBadge": "Auth",
   "skillEditor.authorizationRequired": "使用前需要授权。",
   "skillEditor.previewUnavailable": "无法预览",
   "skillEditor.referenceFiles": "引用文件",

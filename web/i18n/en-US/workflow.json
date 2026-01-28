@@ -1069,6 +1069,7 @@
   "skill.startTab.templatesComingSoon": "Templates coming soon…",
   "skill.startTab.templatesDesc": "Choose a template to bootstrap your agent's capabilities",
   "skill.startTab.templatesTitle": "Skill Templates",
+  "skillEditor.authorizationBadge": "Auth",
   "skillEditor.authorizationRequired": "Authorization required before use.",
   "skillEditor.previewUnavailable": "Preview unavailable",
   "skillEditor.referenceFiles": "Reference files",

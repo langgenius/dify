@@ -4,7 +4,7 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
+import { RiAlertFill, RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -108,6 +108,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
 }) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_TOOL_BLOCK_COMMAND)
   const { t } = useTranslation()
+  const authBadgeLabel = t('skillEditor.authorizationBadge', { ns: 'workflow' })
   const language = useGetLanguage()
   const { theme } = useTheme()
   const toolBlockContext = useToolBlockContext()
@@ -506,30 +507,39 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
   const renderIcon = () => {
     if (!resolvedIcon)
       return null
-    if (typeof resolvedIcon === 'string') {
-      if (resolvedIcon.startsWith('http') || resolvedIcon.startsWith('/')) {
+    const iconNode = (() => {
+      if (typeof resolvedIcon === 'string') {
+        if (resolvedIcon.startsWith('http') || resolvedIcon.startsWith('/')) {
+          return (
+            <span
+              className="h-[14px] w-[14px] shrink-0 rounded-[4px] bg-cover bg-center"
+              style={{ backgroundImage: `url(${resolvedIcon})` }}
+            />
+          )
+        }
         return (
-          <span
-            className="h-[14px] w-[14px] shrink-0 rounded-[4px] bg-cover bg-center"
-            style={{ backgroundImage: `url(${resolvedIcon})` }}
+          <AppIcon
+            size="xs"
+            icon={resolvedIcon}
+            className="!h-[14px] !w-[14px] shrink-0 !border-0"
           />
         )
       }
       return (
         <AppIcon
           size="xs"
-          icon={resolvedIcon}
+          icon={resolvedIcon.content}
+          background={resolvedIcon.background}
           className="!h-[14px] !w-[14px] shrink-0 !border-0"
         />
       )
-    }
+    })()
+    if (!needAuthorization)
+      return iconNode
     return (
-      <AppIcon
-        size="xs"
-        icon={resolvedIcon.content}
-        background={resolvedIcon.background}
-        className="!h-[14px] !w-[14px] shrink-0 !border-0"
-      />
+      <span className="flex size-4 items-center justify-center rounded-[5px] border border-components-panel-border-subtle bg-background-default-dodge">
+        {iconNode}
+      </span>
     )
   }
 
@@ -768,7 +778,8 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
       <span
         ref={ref}
         className={cn(
-          'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover px-px py-[1px] shadow-xs',
+          'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border px-px py-[1px] shadow-xs',
+          needAuthorization ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
           isSelected && 'border-text-accent',
         )}
         title={providerLabel}
@@ -779,12 +790,21 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
         }}
       >
         {renderIcon()}
-        <span className="system-xs-medium max-w-[160px] truncate text-text-accent">
+        <span className={cn('system-xs-medium max-w-[160px] truncate', needAuthorization ? 'text-text-secondary' : 'text-text-accent')}>
           {providerLabel}
         </span>
-        <span className="system-2xs-medium-uppercase flex h-4 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 text-text-accent-secondary">
-          {displayEnabledCount}
-        </span>
+        {needAuthorization
+          ? (
+              <span className="system-2xs-medium-uppercase flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning">
+                {authBadgeLabel}
+                <RiAlertFill className="h-3 w-3" />
+              </span>
+            )
+          : (
+              <span className="system-2xs-medium-uppercase flex h-4 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 text-text-accent-secondary">
+                {displayEnabledCount}
+              </span>
+            )}
       </span>
       {useModal && (
         <Modal

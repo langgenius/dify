@@ -3,6 +3,7 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { RiAlertFill } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -118,6 +119,7 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_TOOL_BLOCK_COMMAND)
   const language = useGetLanguage()
   const { t } = useTranslation()
+  const authBadgeLabel = t('skillEditor.authorizationBadge', { ns: 'workflow' })
   const { theme } = useTheme()
   const toolBlockContext = useToolBlockContext()
   const isUsingExternalMetadata = Boolean(toolBlockContext?.onMetadataChange)
@@ -315,33 +317,46 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
     return normalizeProviderIcon(fromMeta)
   })()
 
+  const needAuthorization = useMemo(() => {
+    return !currentProvider?.is_team_authorization
+  }, [currentProvider])
+
   const renderIcon = () => {
     if (!resolvedIcon)
       return null
-    if (typeof resolvedIcon === 'string') {
-      if (resolvedIcon.startsWith('http') || resolvedIcon.startsWith('/')) {
+    const iconNode = (() => {
+      if (typeof resolvedIcon === 'string') {
+        if (resolvedIcon.startsWith('http') || resolvedIcon.startsWith('/')) {
+          return (
+            <span
+              className="h-[14px] w-[14px] shrink-0 rounded-[3px] bg-cover bg-center"
+              style={{ backgroundImage: `url(${resolvedIcon})` }}
+            />
+          )
+        }
         return (
-          <span
-            className="h-[14px] w-[14px] shrink-0 rounded-[3px] bg-cover bg-center"
-            style={{ backgroundImage: `url(${resolvedIcon})` }}
+          <AppIcon
+            size="xs"
+            icon={resolvedIcon}
+            className="!h-[14px] !w-[14px] shrink-0 !border-0"
           />
         )
       }
       return (
         <AppIcon
           size="xs"
-          icon={resolvedIcon}
+          icon={resolvedIcon.content}
+          background={resolvedIcon.background}
           className="!h-[14px] !w-[14px] shrink-0 !border-0"
         />
       )
-    }
+    })()
+    if (!needAuthorization)
+      return iconNode
     return (
-      <AppIcon
-        size="xs"
-        icon={resolvedIcon.content}
-        background={resolvedIcon.background}
-        className="!h-[14px] !w-[14px] shrink-0 !border-0"
-      />
+      <span className="flex size-4 items-center justify-center rounded-[5px] border border-components-panel-border-subtle bg-background-default-dodge">
+        {iconNode}
+      </span>
     )
   }
 
@@ -452,9 +467,6 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
     storeApi.getState().pinTab(activeTabId)
   }
 
-  const needAuthorization = useMemo(() => {
-    return !currentProvider?.is_team_authorization
-  }, [currentProvider])
   const readmeEntrance = useMemo(() => {
     if (!currentProvider)
       return null
@@ -502,7 +514,8 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
       <span
         ref={ref}
         className={cn(
-          'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover py-px pl-px pr-[3px] shadow-xs',
+          'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border py-px pl-px pr-[3px] shadow-xs',
+          needAuthorization ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
           isSelected && 'border-text-accent',
         )}
         title={`${provider}.${tool}`}
@@ -516,9 +529,15 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
         }}
       >
         {renderIcon()}
-        <span className="system-xs-medium max-w-[180px] truncate text-text-accent">
+        <span className={cn('system-xs-medium max-w-[180px] truncate', needAuthorization ? 'text-text-secondary' : 'text-text-accent')}>
           {displayLabel}
         </span>
+        {needAuthorization && (
+          <span className="system-2xs-medium-uppercase flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning">
+            {authBadgeLabel}
+            <RiAlertFill className="h-3 w-3" />
+          </span>
+        )}
       </span>
       {useModal && (
         <Modal
