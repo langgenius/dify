@@ -46,6 +46,9 @@ EmailRecipient = Annotated[MemberRecipient | ExternalRecipient, Field(discrimina
 class EmailRecipients(BaseModel):
     """Email recipients configuration."""
 
+    # When true, recipients are the union of all workspace members and external items.
+    # Member items are ignored because they are already covered by the workspace scope.
+    # De-duplication is applied by (user_id, email) with user_id set to None for external recipients.
     whole_workspace: bool = False
     items: list[EmailRecipient] = Field(default_factory=list)
 

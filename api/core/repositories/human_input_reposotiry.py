@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, selectinload, sessionmaker
 from core.workflow.nodes.human_input.entities import (
     DeliveryChannelConfig,
     EmailDeliveryMethod,
-    EmailRecipient,
+    EmailRecipients,
     ExternalRecipient,
     FormDefinition,
     HumanInputNodeData,
@@ -231,102 +231,113 @@ class HumanInputFormRepositoryImpl:
             recipients.append(recipient_model)
         elif isinstance(delivery_method, EmailDeliveryMethod):
             email_recipients_config = delivery_method.config.recipients
-            if email_recipients_config.whole_workspace:
-                recipients.extend(
-                    self._create_whole_workspace_recipients(
-                        session=session,
-                        form_id=form_id,
-                        delivery_id=delivery_id,
-                    )
+            recipients.extend(
+                self._build_email_recipients(
+                    session=session,
+                    form_id=form_id,
+                    delivery_id=delivery_id,
+                    recipients_config=email_recipients_config,
                 )
-            else:
-                recipients.extend(
-                    self._create_email_recipients(
-                        session=session,
-                        form_id=form_id,
-                        delivery_id=delivery_id,
-                        recipients=email_recipients_config.items,
-                    )
-                )
+            )
 
         return _DeliveryAndRecipients(delivery=delivery_model, recipients=recipients)
 
-    def _create_email_recipients(
+    def _build_email_recipients(
         self,
         session: Session,
         form_id: str,
         delivery_id: str,
-        recipients: Sequence[EmailRecipient],
+        recipients_config: EmailRecipients,
+    ) -> list[HumanInputFormRecipient]:
+        member_user_ids = [
+            recipient.user_id for recipient in recipients_config.items if isinstance(recipient, MemberRecipient)
+        ]
+        external_emails = [
+            recipient.email for recipient in recipients_config.items if isinstance(recipient, ExternalRecipient)
+        ]
+        if recipients_config.whole_workspace:
+            members = self._query_all_workspace_members(session=session)
+        else:
+            members = self._query_workspace_members_by_ids(session=session, restrict_to_user_ids=member_user_ids)
+
+        return self._create_email_recipients_from_resolved(
+            form_id=form_id,
+            delivery_id=delivery_id,
+            members=members,
+            external_emails=external_emails,
+        )
+
+    @staticmethod
+    def _create_email_recipients_from_resolved(
+        *,
+        form_id: str,
+        delivery_id: str,
+        members: Sequence[_WorkspaceMemberInfo],
+        external_emails: Sequence[str],
     ) -> list[HumanInputFormRecipient]:
         recipient_models: list[HumanInputFormRecipient] = []
-        member_user_ids: list[str] = []
-        for r in recipients:
-            if isinstance(r, MemberRecipient):
-                member_user_ids.append(r.user_id)
-            elif isinstance(r, ExternalRecipient):
-                recipient_model = HumanInputFormRecipient.new(
-                    form_id=form_id, delivery_id=delivery_id, payload=EmailExternalRecipientPayload(email=r.email)
-                )
-                recipient_models.append(recipient_model)
-            else:
-                raise AssertionError(f"unknown recipient type: recipient={r}")
+        seen: set[tuple[str | None, str]] = set()
 
-        member_entries = {
-            member.user_id: member.email
-            for member in self._query_workspace_members(session=session, user_ids=member_user_ids)
-        }
-        for user_id in member_user_ids:
-            email = member_entries.get(user_id)
-            if email is None:
+        for member in members:
+            if not member.email:
                 continue
-            payload = EmailMemberRecipientPayload(user_id=user_id, email=email)
-            recipient_model = HumanInputFormRecipient.new(
-                form_id=form_id,
-                delivery_id=delivery_id,
-                payload=payload,
+            key = (member.user_id, member.email)
+            if key in seen:
+                continue
+            seen.add(key)
+            payload = EmailMemberRecipientPayload(user_id=member.user_id, email=member.email)
+            recipient_models.append(
+                HumanInputFormRecipient.new(
+                    form_id=form_id,
+                    delivery_id=delivery_id,
+                    payload=payload,
+                )
             )
-            recipient_models.append(recipient_model)
+
+        for email in external_emails:
+            if not email:
+                continue
+            key = (None, email)
+            if key in seen:
+                continue
+            seen.add(key)
+            recipient_models.append(
+                HumanInputFormRecipient.new(
+                    form_id=form_id,
+                    delivery_id=delivery_id,
+                    payload=EmailExternalRecipientPayload(email=email),
+                )
+            )
+
         return recipient_models
 
-    def _create_whole_workspace_recipients(
+    def _query_all_workspace_members(
         self,
         session: Session,
-        form_id: str,
-        delivery_id: str,
-    ) -> list[HumanInputFormRecipient]:
-        recipeint_models = []
-        members = self._query_workspace_members(session=session, user_ids=None)
-        for member in members:
-            payload = EmailMemberRecipientPayload(user_id=member.user_id, email=member.email)
-            recipient_model = HumanInputFormRecipient.new(
-                form_id=form_id,
-                delivery_id=delivery_id,
-                payload=payload,
-            )
-            recipeint_models.append(recipient_model)
-
-        return recipeint_models
-
-    def _query_workspace_members(
-        self,
-        session: Session,
-        user_ids: Sequence[str] | None,
     ) -> list[_WorkspaceMemberInfo]:
-        unique_ids: set[str] | None
-        if user_ids is None:
-            unique_ids = None
-        else:
-            unique_ids = {user_id for user_id in user_ids if user_id}
-            if not unique_ids:
-                return []
+        stmt = (
+            select(Account.id, Account.email)
+            .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+            .where(TenantAccountJoin.tenant_id == self._tenant_id)
+        )
+        rows = session.execute(stmt).all()
+        return [_WorkspaceMemberInfo(user_id=account_id, email=email) for account_id, email in rows]
+
+    def _query_workspace_members_by_ids(
+        self,
+        session: Session,
+        restrict_to_user_ids: Sequence[str],
+    ) -> list[_WorkspaceMemberInfo]:
+        unique_ids = {user_id for user_id in restrict_to_user_ids if user_id}
+        if not unique_ids:
+            return []
 
         stmt = (
             select(Account.id, Account.email)
             .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
             .where(TenantAccountJoin.tenant_id == self._tenant_id)
         )
-        if unique_ids is not None:
-            stmt = stmt.where(Account.id.in_(unique_ids))
+        stmt = stmt.where(Account.id.in_(unique_ids))
 
         rows = session.execute(stmt).all()
         return [_WorkspaceMemberInfo(user_id=account_id, email=email) for account_id, email in rows]
