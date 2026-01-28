@@ -63,6 +63,7 @@
   "humanInput.expired": "此请求似乎已过期。",
   "humanInput.expiredTip": "此操作已过期。",
   "humanInput.formNotFound": "表单不存在。",
+  "humanInput.rateLimitExceeded": "请求过于频繁，请稍后再试。",
   "humanInput.recorded": "您的输入已被记录。",
   "humanInput.sorry": "抱歉！",
   "humanInput.thanks": "谢谢！",
