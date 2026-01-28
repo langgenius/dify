@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import type { SandboxFileTreeNode } from '@/types/sandbox-file'
 import { RiDownloadLine, RiFolderLine, RiFolderOpenLine } from '@remixicon/react'
@@ -30,14 +29,14 @@ type ArtifactsTreeNodeProps = {
   isDownloading?: boolean
 }
 
-const ArtifactsTreeNode: FC<ArtifactsTreeNodeProps> = ({
+const ArtifactsTreeNode = ({
   node,
   depth,
   onDownload,
   onSelect,
   selectedPath,
   isDownloading,
-}) => {
+}: ArtifactsTreeNodeProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const isFolder = node.node_type === 'folder'
   const hasChildren = isFolder && node.children.length > 0
@@ -132,13 +131,13 @@ const ArtifactsTreeNode: FC<ArtifactsTreeNodeProps> = ({
   )
 }
 
-const ArtifactsTree: FC<ArtifactsTreeProps> = ({
+const ArtifactsTree = ({
   data,
   onDownload,
   onSelect,
   selectedPath,
   isDownloading,
-}) => {
+}: ArtifactsTreeProps) => {
   if (!data || data.length === 0)
     return null
 

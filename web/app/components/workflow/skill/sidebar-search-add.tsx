@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import {
   RiAddLine,
   RiFileAddLine,
@@ -32,7 +31,7 @@ type MenuItemProps = {
   disabled?: boolean
 }
 
-const MenuItem: React.FC<MenuItemProps> = ({ icon: Icon, label, onClick, disabled }) => (
+const MenuItem = ({ icon: Icon, label, onClick, disabled }: MenuItemProps) => (
   <button
     type="button"
     onClick={onClick}
@@ -50,7 +49,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon: Icon, label, onClick, disable
   </button>
 )
 
-const SidebarSearchAdd: FC = () => {
+const SidebarSearchAdd = () => {
   const { t } = useTranslation('workflow')
   const searchValue = useStore(s => s.fileTreeSearchTerm)
   const storeApi = useWorkflowStore()

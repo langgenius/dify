@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import SkillEditor from './skill-editor'
@@ -10,12 +9,12 @@ type MarkdownFileEditorProps = {
   collaborationEnabled?: boolean
 }
 
-const MarkdownFileEditor: FC<MarkdownFileEditorProps> = ({
+const MarkdownFileEditor = ({
   instanceId,
   value,
   onChange,
   collaborationEnabled,
-}) => {
+}: MarkdownFileEditorProps) => {
   const { t } = useTranslation()
   const handleChange = React.useCallback((val: string) => {
     if (val !== value) {

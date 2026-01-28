@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import { RiSearchLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,10 +9,10 @@ type TemplateSearchProps = {
   onChange: (value: string) => void
 }
 
-const TemplateSearch: FC<TemplateSearchProps> = ({
+const TemplateSearch = ({
   value,
   onChange,
-}) => {
+}: TemplateSearchProps) => {
   const { t } = useTranslation('workflow')
 
   return (

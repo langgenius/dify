@@ -88,7 +88,7 @@ const DropTip = () => {
   )
 }
 
-const FileTree: React.FC<FileTreeProps> = ({ className }) => {
+const FileTree = ({ className }: FileTreeProps) => {
   const { t } = useTranslation('workflow')
   const treeRef = useRef<TreeApi<TreeNodeData>>(null)
   const containerRef = useRef<HTMLDivElement>(null)

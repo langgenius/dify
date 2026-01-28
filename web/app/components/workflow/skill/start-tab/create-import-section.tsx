@@ -1,12 +1,11 @@
 'use client'
 
-import type { FC } from 'react'
 import { RiAddCircleFill, RiUploadLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionCard from './action-card'
 
-const CreateImportSection: FC = () => {
+const CreateImportSection = () => {
   const { t } = useTranslation('workflow')
 
   return (

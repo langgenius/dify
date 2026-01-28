@@ -1,5 +1,4 @@
 import type { LexicalNode } from 'lexical'
-import type { FC } from 'react'
 import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -32,7 +31,7 @@ type ToolPickerBlockProps = {
   scope?: string
 }
 
-const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
+const ToolPickerBlock = ({ scope = 'all' }: ToolPickerBlockProps) => {
   const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
     minLength: 0,

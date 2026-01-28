@@ -1,5 +1,4 @@
 import type { LexicalNode } from 'lexical'
-import type { FC } from 'react'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import type { TreeNodeData } from '@/app/components/workflow/skill/type'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -24,7 +23,7 @@ type FileReferenceBlockProps = {
   resourceId: string
 }
 
-const FileReferenceBlock: FC<FileReferenceBlockProps> = ({ nodeKey, resourceId }) => {
+const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) => {
   const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey)
   const { data: nodeMap } = useSkillAssetNodeMap()

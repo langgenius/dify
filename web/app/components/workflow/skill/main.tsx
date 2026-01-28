@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import * as React from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ContentArea from './content-area'
@@ -15,12 +14,12 @@ import Sidebar from './sidebar'
 import SidebarSearchAdd from './sidebar-search-add'
 import SkillPageLayout from './skill-page-layout'
 
-const SkillAutoSaveManager: FC = () => {
+const SkillAutoSaveManager = () => {
   useSkillAutoSave()
   return null
 }
 
-const SkillMain: FC = () => {
+const SkillMain = () => {
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
 

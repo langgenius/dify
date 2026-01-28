@@ -1,6 +1,6 @@
 'use client'
 
-import type { FC, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import {
   RiAlertFill,
   RiCheckboxCircleFill,
@@ -18,7 +18,7 @@ type UploadStatusTooltipProps = {
 
 const SUCCESS_DISPLAY_MS = 2000
 
-const UploadStatusTooltip: FC<UploadStatusTooltipProps> = ({ fallback }) => {
+const UploadStatusTooltip = ({ fallback }: UploadStatusTooltipProps) => {
   const { t } = useTranslation('workflow')
   const storeApi = useWorkflowStore()
   const uploadStatus = useStore(s => s.uploadStatus)

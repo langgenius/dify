@@ -1,7 +1,6 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { FC } from 'react'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
@@ -58,7 +57,7 @@ export type MenuItemProps = {
   disabled?: boolean
 } & VariantProps<typeof menuItemVariants>
 
-const MenuItem: FC<MenuItemProps> = ({ icon: Icon, label, kbd, onClick, disabled, variant }) => {
+const MenuItem = ({ icon: Icon, label, kbd, onClick, disabled, variant }: MenuItemProps) => {
   const handleClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
     onClick(event)

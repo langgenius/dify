@@ -1,6 +1,5 @@
 'use client'
 import type { RangeSelection, TextNode } from 'lexical'
-import type { FC } from 'react'
 import type { OnlineUser } from '@/app/components/workflow/collaboration/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
@@ -316,10 +315,12 @@ const getSelectionRects = (
   return rects
 }
 
-export const LocalCursorPlugin: FC<{
+type LocalCursorPluginProps = {
   fileId?: string
   enabled?: boolean
-}> = ({ fileId, enabled }) => {
+}
+
+export const LocalCursorPlugin = ({ fileId, enabled }: LocalCursorPluginProps) => {
   const [editor] = useLexicalComposerContext()
   const lastEmittedCursorRef = useRef<{ start: number, end: number } | null>(null)
   const lastEmitRef = useRef(0)
@@ -461,10 +462,12 @@ export const LocalCursorPlugin: FC<{
   return null
 }
 
-export const SkillRemoteCursors: FC<{
+type SkillRemoteCursorsProps = {
   fileId?: string
   enabled?: boolean
-}> = ({ fileId, enabled }) => {
+}
+
+export const SkillRemoteCursors = ({ fileId, enabled }: SkillRemoteCursorsProps) => {
   const [editor] = useLexicalComposerContext()
   const { userProfile } = useAppContext()
   const myUserId = userProfile?.id || null

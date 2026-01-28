@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import type { SandboxFileTreeNode } from '@/types/sandbox-file'
 import { RiArrowDownSLine, RiArrowRightSLine, RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
@@ -16,7 +15,7 @@ type ArtifactsSectionProps = {
   className?: string
 }
 
-const ArtifactsSection: FC<ArtifactsSectionProps> = ({ className }) => {
+const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
   const { t } = useTranslation('workflow')
   const { userProfile } = useAppContext()
   const sandboxId = userProfile?.id

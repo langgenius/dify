@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import type { TreeApi } from 'react-arborist'
 import type { TreeNodeData } from '../type'
 import { useClickAway } from 'ahooks'
@@ -14,7 +13,7 @@ type TreeContextMenuProps = {
   treeRef: React.RefObject<TreeApi<TreeNodeData> | null>
 }
 
-const TreeContextMenu: FC<TreeContextMenuProps> = ({ treeRef }) => {
+const TreeContextMenu = ({ treeRef }: TreeContextMenuProps) => {
   const ref = useRef<HTMLDivElement>(null)
   const contextMenu = useStore(s => s.contextMenu)
   const storeApi = useWorkflowStore()

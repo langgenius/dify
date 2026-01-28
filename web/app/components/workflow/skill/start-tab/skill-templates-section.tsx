@@ -1,13 +1,12 @@
 'use client'
 
-import type { FC } from 'react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CategoryTabs from './category-tabs'
 import SectionHeader from './section-header'
 import TemplateSearch from './template-search'
 
-const SkillTemplatesSection: FC = () => {
+const SkillTemplatesSection = () => {
   const { t } = useTranslation('workflow')
   const [activeCategory, setActiveCategory] = useState('all')
   const [searchValue, setSearchValue] = useState('')

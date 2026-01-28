@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Home from '@/app/components/base/icons/src/vender/workflow/Home'
@@ -11,10 +10,10 @@ type StartTabItemProps = {
   onClick: () => void
 }
 
-const StartTabItem: FC<StartTabItemProps> = ({
+const StartTabItem = ({
   isActive,
   onClick,
-}) => {
+}: StartTabItemProps) => {
   const { t } = useTranslation('workflow')
 
   return (

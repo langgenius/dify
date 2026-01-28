@@ -12,11 +12,11 @@ type TreeGuideLinesProps = {
 const INDENT_SIZE = 20
 const DEFAULT_LINE_OFFSET = 10
 
-const TreeGuideLines: React.FC<TreeGuideLinesProps> = ({
+const TreeGuideLines = ({
   level,
   indentSize = INDENT_SIZE,
   lineOffset = DEFAULT_LINE_OFFSET,
-}) => {
+}: TreeGuideLinesProps) => {
   const guides = useMemo(() => {
     if (level === 0)
       return null

@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -7,7 +6,7 @@ type MediaFilePreviewProps = {
   src: string
 }
 
-const MediaFilePreview: FC<MediaFilePreviewProps> = ({ type, src }) => {
+const MediaFilePreview = ({ type, src }: MediaFilePreviewProps) => {
   const { t } = useTranslation('workflow')
 
   if (!src) {

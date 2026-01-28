@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import { memo } from 'react'
 
 type SectionHeaderProps = {
@@ -9,11 +8,11 @@ type SectionHeaderProps = {
   className?: string
 }
 
-const SectionHeader: FC<SectionHeaderProps> = ({
+const SectionHeader = ({
   title,
   description,
   className,
-}) => {
+}: SectionHeaderProps) => {
   return (
     <header className={className}>
       <h2 className="title-xl-semi-bold text-text-primary">

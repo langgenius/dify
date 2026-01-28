@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { NodeRendererProps } from 'react-arborist'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import type { TreeNodeData } from '@/app/components/workflow/skill/type'
@@ -20,7 +19,7 @@ type FilePickerTreeNodeProps = NodeRendererProps<TreeNodeData> & {
   onSelectNode: (node: TreeNodeData) => void
 }
 
-const FilePickerTreeNode: FC<FilePickerTreeNodeProps> = ({ node, style, dragHandle, onSelectNode }) => {
+const FilePickerTreeNode = ({ node, style, dragHandle, onSelectNode }: FilePickerTreeNodeProps) => {
   const { t } = useTranslation('workflow')
   const isFolder = node.data.node_type === 'folder'
   const isSelected = node.isSelected
@@ -114,13 +113,13 @@ type FilePickerPanelProps = {
   showHeader?: boolean
 }
 
-const FilePickerPanel: FC<FilePickerPanelProps> = ({
+const FilePickerPanel = ({
   onSelectNode,
   focusNodeId,
   className,
   contentClassName,
   showHeader = true,
-}) => {
+}: FilePickerPanelProps) => {
   const { t } = useTranslation('workflow')
   const { data: treeData, isLoading, error } = useSkillAssetTreeData()
   const containerRef = useRef<HTMLDivElement>(null)

@@ -1,6 +1,6 @@
 'use client'
 
-import type { FC, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { memo } from 'react'
 import { cn } from '@/utils/classnames'
 
@@ -11,12 +11,12 @@ type ActionCardProps = {
   onClick?: () => void
 }
 
-const ActionCard: FC<ActionCardProps> = ({
+const ActionCard = ({
   icon,
   title,
   description,
   onClick,
-}) => {
+}: ActionCardProps) => {
   return (
     <button
       type="button"

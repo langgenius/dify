@@ -1,5 +1,4 @@
 import type { LexicalNode } from 'lexical'
-import type { FC } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalTypeaheadMenuPlugin, MenuOption } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import {
@@ -24,7 +23,7 @@ class FilePickerMenuOption extends MenuOption {
   }
 }
 
-const FilePickerBlock: FC = () => {
+const FilePickerBlock = () => {
   const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
     minLength: 0,

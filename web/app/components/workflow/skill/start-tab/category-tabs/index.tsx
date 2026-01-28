@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import { memo } from 'react'
 import TabItem from './tab-item'
 
@@ -24,11 +23,11 @@ type CategoryTabsProps = {
   onCategoryChange: (categoryId: string) => void
 }
 
-const CategoryTabs: FC<CategoryTabsProps> = ({
+const CategoryTabs = ({
   categories = MOCK_CATEGORIES,
   activeCategory,
   onCategoryChange,
-}) => {
+}: CategoryTabsProps) => {
   return (
     <div className="flex flex-1 items-center gap-1">
       {categories.map(category => (

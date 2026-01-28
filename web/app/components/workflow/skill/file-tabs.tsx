@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +11,7 @@ import FileTabItem from './file-tab-item'
 import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
 import StartTabItem from './start-tab-item'
 
-const FileTabs: FC = () => {
+const FileTabs = () => {
   const { t } = useTranslation('workflow')
   const openTabIds = useStore(s => s.openTabIds)
   const activeTabId = useStore(s => s.activeTabId)

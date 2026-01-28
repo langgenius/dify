@@ -10,7 +10,7 @@ type TreeEditInputProps = {
   node: NodeApi<TreeNodeData>
 }
 
-const TreeEditInput: React.FC<TreeEditInputProps> = ({ node }) => {
+const TreeEditInput = ({ node }: TreeEditInputProps) => {
   const { t } = useTranslation('workflow')
   const inputRef = useRef<HTMLInputElement>(null)
   const isFolder = node.data.node_type === 'folder'

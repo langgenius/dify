@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -19,12 +18,12 @@ type TableSelectorProps = {
   onTableChange: (tableName: string) => void
 }
 
-const TableSelector: FC<TableSelectorProps> = ({
+const TableSelector = ({
   tables,
   selectedTable,
   isLoading = false,
   onTableChange,
-}) => {
+}: TableSelectorProps) => {
   const { t } = useTranslation('workflow')
   const [open, setOpen] = useState(false)
   const items = useMemo(() => {

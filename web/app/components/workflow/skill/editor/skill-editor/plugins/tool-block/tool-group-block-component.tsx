@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { ToolToken } from './utils'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import type { ToolParameter } from '@/app/components/tools/types'
@@ -102,10 +101,10 @@ const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   return icon
 }
 
-const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
+const ToolGroupBlockComponent = ({
   nodeKey,
   tools,
-}) => {
+}: ToolGroupBlockComponentProps) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_TOOL_BLOCK_COMMAND)
   const { t } = useTranslation()
   const authBadgeLabel = t('skillEditor.authorizationBadge', { ns: 'workflow' })

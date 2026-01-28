@@ -1,4 +1,4 @@
-import type { FC, RefObject } from 'react'
+import type { RefObject } from 'react'
 import type { SQLiteQueryResult } from '../../hooks/sqlite/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,13 +13,13 @@ type TablePanelProps = {
   isTruncated?: boolean
 }
 
-const TablePanel: FC<TablePanelProps> = ({
+const TablePanel = ({
   data,
   isLoading,
   error,
   scrollRef,
   isTruncated = false,
-}) => {
+}: TablePanelProps) => {
   const { t } = useTranslation('workflow')
 
   return (

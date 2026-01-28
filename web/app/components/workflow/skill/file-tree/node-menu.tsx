@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import type { NodeApi, TreeApi } from 'react-arborist'
 import type { NodeMenuType } from '../constants'
 import type { TreeNodeData } from '../type'
@@ -42,14 +41,14 @@ type NodeMenuProps = {
   node?: NodeApi<TreeNodeData>
 }
 
-const NodeMenu: FC<NodeMenuProps> = ({
+const NodeMenu = ({
   type,
   nodeId,
   onClose,
   className,
   treeRef,
   node,
-}) => {
+}: NodeMenuProps) => {
   const { t } = useTranslation('workflow')
   const storeApi = useWorkflowStore()
   const selectedNodeIds = useStore(s => s.selectedNodeIds)

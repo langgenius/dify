@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,7 +12,7 @@ type UnsupportedFileDownloadProps = {
   downloadUrl?: string
 }
 
-const UnsupportedFileDownload: FC<UnsupportedFileDownloadProps> = ({ name, size, downloadUrl }) => {
+const UnsupportedFileDownload = ({ name, size, downloadUrl }: UnsupportedFileDownloadProps) => {
   const { t } = useTranslation('workflow')
   const fileSize = size ? formatFileSize(size) : ''
 

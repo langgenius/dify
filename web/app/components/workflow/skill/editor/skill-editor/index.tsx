@@ -1,7 +1,6 @@
 'use client'
 
 import type { EditorState } from 'lexical'
-import type { FC } from 'react'
 import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
@@ -52,7 +51,7 @@ export type SkillEditorProps = {
   toolPickerScope?: string
 }
 
-const SkillEditor: FC<SkillEditorProps> = ({
+const SkillEditor = ({
   instanceId,
   compact,
   wrapperClassName,
@@ -68,7 +67,7 @@ const SkillEditor: FC<SkillEditorProps> = ({
   onBlur,
   onFocus,
   toolPickerScope = 'all',
-}) => {
+}: SkillEditorProps) => {
   const initialConfig = {
     namespace: 'skill-editor',
     nodes: [

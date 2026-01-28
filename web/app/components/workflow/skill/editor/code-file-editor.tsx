@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import Editor from '@monaco-editor/react'
 import * as React from 'react'
 import Loading from '@/app/components/base/loading'
@@ -11,7 +10,7 @@ type CodeFileEditorProps = {
   onMount: (editor: any, monaco: any) => void
 }
 
-const CodeFileEditor: FC<CodeFileEditorProps> = ({ language, theme, value, onChange, onMount }) => {
+const CodeFileEditor = ({ language, theme, value, onChange, onMount }: CodeFileEditorProps) => {
   return (
     <Editor
       language={language}

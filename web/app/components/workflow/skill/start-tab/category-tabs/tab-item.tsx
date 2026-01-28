@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import { memo } from 'react'
 import { cn } from '@/utils/classnames'
 
@@ -10,11 +9,11 @@ type TabItemProps = {
   onClick: () => void
 }
 
-const TabItem: FC<TabItemProps> = ({
+const TabItem = ({
   label,
   isActive,
   onClick,
-}) => {
+}: TabItemProps) => {
   return (
     <button
       type="button"

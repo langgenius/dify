@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
@@ -22,7 +21,7 @@ type FileTabItemProps = {
   onDoubleClick: (fileId: string) => void
 }
 
-const FileTabItem: FC<FileTabItemProps> = ({
+const FileTabItem = ({
   fileId,
   name,
   extension,
@@ -32,7 +31,7 @@ const FileTabItem: FC<FileTabItemProps> = ({
   onClick,
   onClose,
   onDoubleClick,
-}) => {
+}: FileTabItemProps) => {
   const { t } = useTranslation()
   const iconType = getFileIconType(name, extension)
 

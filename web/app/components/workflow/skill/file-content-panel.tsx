@@ -1,7 +1,6 @@
 'use client'
 
 import type { OnMount } from '@monaco-editor/react'
-import type { FC } from 'react'
 import { loader } from '@monaco-editor/react'
 import dynamic from 'next/dynamic'
 import * as React from 'react'
@@ -34,7 +33,7 @@ const SQLiteFilePreview = dynamic(
 if (typeof window !== 'undefined')
   loader.config({ paths: { vs: `${window.location.origin}${basePath}/vs` } })
 
-const FileContentPanel: FC = () => {
+const FileContentPanel = () => {
   const { t } = useTranslation('workflow')
   const { theme: appTheme } = useTheme()
   const [isMounted, setIsMounted] = useState(false)

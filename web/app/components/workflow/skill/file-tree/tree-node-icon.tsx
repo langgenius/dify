@@ -2,7 +2,6 @@
 
 // Icon rendering for tree nodes (folder/file icons with dirty indicator)
 
-import type { FC } from 'react'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import { RiFolderLine, RiFolderOpenLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -19,14 +18,14 @@ type TreeNodeIconProps = {
   onToggle?: (e: React.MouseEvent) => void
 }
 
-export const TreeNodeIcon: FC<TreeNodeIconProps> = ({
+export const TreeNodeIcon = ({
   isFolder,
   isOpen,
   fileName,
   extension,
   isDirty,
   onToggle,
-}) => {
+}: TreeNodeIconProps) => {
   const { t } = useTranslation('workflow')
 
   if (isFolder) {

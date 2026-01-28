@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
@@ -107,7 +106,7 @@ type ToolConfigValueItem = {
 
 type ToolConfigValueMap = Record<string, ToolConfigValueItem>
 
-const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
+const ToolBlockComponent = ({
   nodeKey,
   provider,
   tool,
@@ -115,7 +114,7 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   label,
   icon,
   iconDark,
-}) => {
+}: ToolBlockComponentProps) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_TOOL_BLOCK_COMMAND)
   const language = useGetLanguage()
   const { t } = useTranslation()

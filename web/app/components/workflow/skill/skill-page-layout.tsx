@@ -1,9 +1,9 @@
-import type { FC, PropsWithChildren } from 'react'
+import type { PropsWithChildren } from 'react'
 import * as React from 'react'
 
 type SkillPageLayoutProps = PropsWithChildren
 
-const SkillPageLayout: FC<SkillPageLayoutProps> = ({ children }) => {
+const SkillPageLayout = ({ children }: SkillPageLayoutProps) => {
   return (
     <div className="flex h-full gap-3 overflow-hidden">
       {children}

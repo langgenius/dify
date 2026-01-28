@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +13,7 @@ type DragActionTooltipProps = {
   action: DragAction
 }
 
-const DragActionTooltip: FC<DragActionTooltipProps> = ({ action }) => {
+const DragActionTooltip = ({ action }: DragActionTooltipProps) => {
   const { t } = useTranslation('workflow')
   const dragOverFolderId = useStore(s => s.dragOverFolderId)
   const { data: nodeMap } = useSkillAssetNodeMap()

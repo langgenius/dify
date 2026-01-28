@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import type { FC, RefObject } from 'react'
+import type { RefObject } from 'react'
 import type { SQLiteValue } from '../../hooks/use-sqlite-database'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import * as React from 'react'
@@ -32,7 +32,7 @@ const truncateValue = (value: string): string => {
   return `${value.slice(0, MAX_CELL_LENGTH)}…`
 }
 
-const DataTable: FC<DataTableProps> = ({ columns, values, scrollRef, isTruncated = false }) => {
+const DataTable = ({ columns, values, scrollRef, isTruncated = false }: DataTableProps) => {
   const { t } = useTranslation('workflow')
   const keyColumnIndex = useMemo(() => {
     const candidates = new Set(['id', 'rowid', 'uuid'])

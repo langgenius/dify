@@ -1,6 +1,6 @@
 'use client'
 
-import type { FC, PropsWithChildren } from 'react'
+import type { PropsWithChildren } from 'react'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -11,7 +11,7 @@ import { SIDEBAR_DEFAULT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH } from './c
 
 type SidebarProps = PropsWithChildren
 
-const Sidebar: FC<SidebarProps> = ({ children }) => {
+const Sidebar = ({ children }: SidebarProps) => {
   const { run: persistWidth } = useDebounceFn(
     (width: number) => storage.set(STORAGE_KEYS.SKILL.SIDEBAR_WIDTH, width),
     { wait: 200 },

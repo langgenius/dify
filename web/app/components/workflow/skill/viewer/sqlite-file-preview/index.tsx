@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import * as React from 'react'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,9 +12,9 @@ type SQLiteFilePreviewProps = {
   downloadUrl: string
 }
 
-const SQLiteFilePreview: FC<SQLiteFilePreviewProps> = ({
+const SQLiteFilePreview = ({
   downloadUrl,
-}) => {
+}: SQLiteFilePreviewProps) => {
   const { t } = useTranslation('workflow')
   const { tables, isLoading, error, queryTable } = useSQLiteDatabase(downloadUrl)
   const [selectedTableId, setSelectedTableId] = useState<string>('')

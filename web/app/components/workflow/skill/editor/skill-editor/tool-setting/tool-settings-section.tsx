@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
@@ -38,13 +37,13 @@ type ToolSettingsSectionProps = {
   onChange?: (value: ToolValue) => void
 }
 
-const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
+const ToolSettingsSection = ({
   currentProvider,
   currentTool,
   value,
   nodeId,
   onChange,
-}) => {
+}: ToolSettingsSectionProps) => {
   const { t } = useTranslation()
   const safeNodeId = nodeId ?? ''
 

@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import type { Emoji } from '@/app/components/tools/types'
 import { RiArrowLeftSLine, RiCloseLine } from '@remixicon/react'
 import AppIcon from '@/app/components/base/app-icon'
@@ -15,7 +14,7 @@ type ToolHeaderProps = {
   backLabel?: string
 }
 
-const ToolHeader: FC<ToolHeaderProps> = ({
+const ToolHeader = ({
   icon,
   providerLabel,
   toolLabel,
@@ -23,7 +22,7 @@ const ToolHeader: FC<ToolHeaderProps> = ({
   onClose,
   onBack,
   backLabel,
-}) => {
+}: ToolHeaderProps) => {
   const renderHeaderIcon = () => {
     if (!icon)
       return null
