@@ -41,8 +41,8 @@ const ShareQRCode = ({ content }: Props) => {
   }, [isShow])
 
   const downloadQR = () => {
-    const canvas = document.getElementsByTagName('canvas')[0]
-    if (!canvas)
+    const canvas = qrCodeRef.current?.querySelector('canvas')
+    if (!(canvas instanceof HTMLCanvasElement))
       return
     downloadUrl({ url: canvas.toDataURL(), fileName: 'qrcode.png' })
   }
