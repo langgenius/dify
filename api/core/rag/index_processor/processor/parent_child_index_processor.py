@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.model_manager import ModelInstance
 from core.rag.cleaner.clean_processor import CleanProcessor
@@ -148,17 +149,18 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         if delete_summaries:
             if node_ids:
                 # Find segments by index_node_id
-                segments = (
-                    db.session.query(DocumentSegment)
-                    .filter(
-                        DocumentSegment.dataset_id == dataset.id,
-                        DocumentSegment.index_node_id.in_(node_ids),
+                with session_factory.create_session() as session:
+                    segments = (
+                        session.query(DocumentSegment)
+                        .filter(
+                            DocumentSegment.dataset_id == dataset.id,
+                            DocumentSegment.index_node_id.in_(node_ids),
+                        )
+                        .all()
                     )
-                    .all()
-                )
-                segment_ids = [segment.id for segment in segments]
-                if segment_ids:
-                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
+                    segment_ids = [segment.id for segment in segments]
+                    if segment_ids:
+                        SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
             else:
                 # Delete all summaries for the dataset
                 SummaryIndexService.delete_summaries_for_segments(dataset, None)

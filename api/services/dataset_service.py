@@ -3811,6 +3811,39 @@ class SegmentService:
         )
         return result if isinstance(result, DocumentSegment) else None
 
+    @classmethod
+    def get_segments_by_document_and_dataset(
+        cls,
+        document_id: str,
+        dataset_id: str,
+        status: str | None = None,
+        enabled: bool | None = None,
+    ) -> Sequence[DocumentSegment]:
+        """
+        Get segments for a document in a dataset with optional filtering.
+
+        Args:
+            document_id: Document ID
+            dataset_id: Dataset ID
+            status: Optional status filter (e.g., "completed")
+            enabled: Optional enabled filter (True/False)
+
+        Returns:
+            Sequence of DocumentSegment instances
+        """
+        query = select(DocumentSegment).where(
+            DocumentSegment.document_id == document_id,
+            DocumentSegment.dataset_id == dataset_id,
+        )
+
+        if status is not None:
+            query = query.where(DocumentSegment.status == status)
+
+        if enabled is not None:
+            query = query.where(DocumentSegment.enabled == enabled)
+
+        return db.session.scalars(query).all()
+
 
 class DatasetCollectionBindingService:
     @classmethod

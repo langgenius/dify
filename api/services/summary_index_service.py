@@ -542,42 +542,42 @@ class SummaryIndexService:
             )
             session.commit()  # Commit initial records
 
-        summary_records = []
+            summary_records = []
 
-        for segment in segments:
-            # For parent-child mode, only process parent chunks
-            # In parent-child mode, all DocumentSegments are parent chunks,
-            # so we process all of them. Child chunks are stored in ChildChunk table
-            # and are not DocumentSegments, so they won't be in the segments list.
-            # This check is mainly for clarity and future-proofing.
-            if only_parent_chunks:
-                # In parent-child mode, all segments in the query are parent chunks
-                # Child chunks are not DocumentSegments, so they won't appear here
-                # We can process all segments
-                pass
+            for segment in segments:
+                # For parent-child mode, only process parent chunks
+                # In parent-child mode, all DocumentSegments are parent chunks,
+                # so we process all of them. Child chunks are stored in ChildChunk table
+                # and are not DocumentSegments, so they won't be in the segments list.
+                # This check is mainly for clarity and future-proofing.
+                if only_parent_chunks:
+                    # In parent-child mode, all segments in the query are parent chunks
+                    # Child chunks are not DocumentSegments, so they won't appear here
+                    # We can process all segments
+                    pass
 
-            try:
-                summary_record = SummaryIndexService.generate_and_vectorize_summary(
-                    segment, dataset, summary_index_setting
-                )
-                summary_records.append(summary_record)
-            except Exception as e:
-                logger.exception("Failed to generate summary for segment %s", segment.id)
-                # Update summary record with error status
-                SummaryIndexService.update_summary_record_error(
-                    segment=segment,
-                    dataset=dataset,
-                    error=str(e),
-                )
-                # Continue with other segments
-                continue
+                try:
+                    summary_record = SummaryIndexService.generate_and_vectorize_summary(
+                        segment, dataset, summary_index_setting
+                    )
+                    summary_records.append(summary_record)
+                except Exception as e:
+                    logger.exception("Failed to generate summary for segment %s", segment.id)
+                    # Update summary record with error status
+                    SummaryIndexService.update_summary_record_error(
+                        segment=segment,
+                        dataset=dataset,
+                        error=str(e),
+                    )
+                    # Continue with other segments
+                    continue
 
-        logger.info(
-            "Completed summary generation for document %s: %s summaries generated and vectorized",
-            document.id,
-            len(summary_records),
-        )
-        return summary_records
+            logger.info(
+                "Completed summary generation for document %s: %s summaries generated and vectorized",
+                document.id,
+                len(summary_records),
+            )
+            return summary_records
 
     @staticmethod
     def disable_summaries_for_segments(

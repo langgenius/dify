@@ -42,7 +42,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
-from services.dataset_service import DatasetService, DocumentService
+from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
 from tasks.generate_summary_index_task import generate_summary_index_task
@@ -1351,14 +1351,7 @@ class DocumentGenerateSummaryApi(Resource):
             raise ValueError("Summary index is not enabled for this dataset. Please enable it in the dataset settings.")
 
         # Verify all documents exist and belong to the dataset
-        documents = (
-            db.session.query(Document)
-            .filter(
-                Document.id.in_(document_list),
-                Document.dataset_id == dataset_id,
-            )
-            .all()
-        )
+        documents = DocumentService.get_documents_by_ids(dataset_id, document_list)
 
         if len(documents) != len(document_list):
             found_ids = {doc.id for doc in documents}
@@ -1422,15 +1415,11 @@ class DocumentSummaryStatusApi(DocumentResource):
             raise Forbidden(str(e))
 
         # Get all segments for this document
-        segments = (
-            db.session.query(DocumentSegment)
-            .filter(
-                DocumentSegment.document_id == document_id,
-                DocumentSegment.dataset_id == dataset_id,
-                DocumentSegment.status == "completed",
-                DocumentSegment.enabled == True,
-            )
-            .all()
+        segments = SegmentService.get_segments_by_document_and_dataset(
+            document_id=document_id,
+            dataset_id=dataset_id,
+            status="completed",
+            enabled=True,
         )
 
         total_segments = len(segments)
