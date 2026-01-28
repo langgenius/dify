@@ -475,7 +475,7 @@ class ExampleOutput(BaseModel):
     name: str
 
 
-def test_structured_output_with_pydantic_model():
+def test_structured_output_with_pydantic_model_non_streaming():
     model_schema = get_model_entity("openai", "gpt-4o", support_structure_output=True)
     model_instance = get_model_instance()
     model_instance.invoke_llm.return_value = LLMResult(
@@ -499,19 +499,45 @@ def test_structured_output_with_pydantic_model():
     assert result.name == "test"
 
 
-def test_structured_output_with_pydantic_model_streaming_rejected():
+def test_structured_output_with_pydantic_model_streaming():
     model_schema = get_model_entity("openai", "gpt-4o", support_structure_output=True)
     model_instance = get_model_instance()
 
-    with pytest.raises(ValueError):
-        invoke_llm_with_pydantic_model(
-            provider="openai",
-            model_schema=model_schema,
-            model_instance=model_instance,
+    def mock_streaming_response():
+        yield LLMResultChunk(
+            model="gpt-4o",
             prompt_messages=[UserPromptMessage(content="test")],
-            output_model=ExampleOutput,
-            stream=True,
+            system_fingerprint="test",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content='{"name":'),
+                usage=create_mock_usage(prompt_tokens=8, completion_tokens=2),
+            ),
         )
+        yield LLMResultChunk(
+            model="gpt-4o",
+            prompt_messages=[UserPromptMessage(content="test")],
+            system_fingerprint="test",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content=' "test"}'),
+                usage=create_mock_usage(prompt_tokens=8, completion_tokens=4),
+            ),
+        )
+
+    model_instance.invoke_llm.return_value = mock_streaming_response()
+
+    result = invoke_llm_with_pydantic_model(
+        provider="openai",
+        model_schema=model_schema,
+        model_instance=model_instance,
+        prompt_messages=[UserPromptMessage(content="Return a JSON object with name.")],
+        output_model=ExampleOutput,
+        stream=True,
+    )
+
+    assert isinstance(result, ExampleOutput)
+    assert result.name == "test"
 
 
 def test_structured_output_with_pydantic_model_validation_error():

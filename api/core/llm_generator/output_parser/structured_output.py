@@ -262,7 +262,7 @@ def invoke_llm_with_pydantic_model(
     model_parameters: Mapping | None = None,
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
-    stream: Literal[False] = False,
+    stream: bool = True,  # Some model plugin implementations don't support stream=False
     user: str | None = None,
     callbacks: list[Callback] | None = None,
     tenant_id: str | None = None,
@@ -271,12 +271,46 @@ def invoke_llm_with_pydantic_model(
     Invoke large language model with a Pydantic output model.
 
     This helper generates a JSON schema from the Pydantic model, invokes the
-    structured-output LLM path, and validates the result in non-streaming mode.
-    """
-    if stream:
-        raise ValueError("invoke_llm_with_pydantic_model only supports stream=False")
+    structured-output LLM path, and validates the result.
 
+    The stream parameter controls the underlying LLM invocation mode:
+    - stream=True (default): Uses streaming LLM call, consumes the generator internally
+    - stream=False: Uses non-streaming LLM call
+
+    In both cases, the function returns the validated Pydantic model directly.
+    """
     json_schema = _schema_from_pydantic(output_model)
+
+    if stream:
+        result_generator = invoke_llm_with_structured_output(
+            provider=provider,
+            model_schema=model_schema,
+            model_instance=model_instance,
+            prompt_messages=prompt_messages,
+            json_schema=json_schema,
+            model_parameters=model_parameters,
+            tools=tools,
+            stop=stop,
+            stream=True,
+            user=user,
+            callbacks=callbacks,
+            tenant_id=tenant_id,
+        )
+
+        # Consume the generator to get the final chunk with structured_output
+        last_chunk: LLMResultChunkWithStructuredOutput | None = None
+        for chunk in result_generator:
+            last_chunk = chunk
+
+        if last_chunk is None:
+            raise OutputParserError("No chunks received from LLM")
+
+        structured_output = last_chunk.structured_output
+        if structured_output is None:
+            raise OutputParserError("Structured output is empty")
+
+        return _validate_structured_output(output_model, structured_output)
+
     result = invoke_llm_with_structured_output(
         provider=provider,
         model_schema=model_schema,
@@ -296,8 +330,7 @@ def invoke_llm_with_pydantic_model(
     if structured_output is None:
         raise OutputParserError("Structured output is empty")
 
-    validated_output = _validate_structured_output(output_model, structured_output)
-    return output_model.model_validate(validated_output)
+    return _validate_structured_output(output_model, structured_output)
 
 
 def _schema_from_pydantic(output_model: type[BaseModel]) -> dict[str, Any]:

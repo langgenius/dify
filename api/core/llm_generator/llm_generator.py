@@ -471,7 +471,7 @@ class LLMGenerator:
                 prompt_messages=complete_messages,
                 output_model=CodeNodeStructuredOutput,
                 model_parameters=model_parameters,
-                stream=False,
+                stream=True,
                 tenant_id=tenant_id,
             )
 
@@ -560,7 +560,7 @@ class LLMGenerator:
                 prompt_messages=prompt_messages,
                 output_model=SuggestedQuestionsOutput,
                 model_parameters=completion_params,
-                stream=False,
+                stream=True,
                 tenant_id=tenant_id,
             )
 
@@ -849,7 +849,7 @@ Generate {language} code to extract/transform available variables for the target
                 prompt_messages=list(prompt_messages),
                 output_model=InstructionModifyOutput,
                 model_parameters=model_parameters,
-                stream=False,
+                stream=True,
             )
             return response.model_dump(mode="python")
         except InvokeError as e:
