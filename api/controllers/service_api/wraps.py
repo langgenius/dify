@@ -262,6 +262,14 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                 if not dataset.enable_api:
                     raise Forbidden("Dataset api access is not enabled.")
             api_token = validate_and_get_api_token("dataset")
+
+            # Dataset-scoped key permission check
+            if api_token.app_id is not None:
+                if not dataset_id:
+                    raise Forbidden("Dataset-scoped API key cannot access tenant-level endpoints.")
+                if str(api_token.app_id) != str(dataset_id):
+                    raise Forbidden("This API key is not authorized for this dataset.")
+
             tenant_account_join = (
                 db.session.query(Tenant, TenantAccountJoin)
                 .where(Tenant.id == api_token.tenant_id)
