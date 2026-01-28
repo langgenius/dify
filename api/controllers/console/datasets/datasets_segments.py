@@ -32,7 +32,7 @@ from extensions.ext_redis import redis_client
 from fields.segment_fields import child_chunk_fields, segment_fields
 from libs.helper import escape_like_pattern
 from libs.login import current_account_with_tenant, login_required
-from models.dataset import ChildChunk, DocumentSegment, DocumentSegmentSummary
+from models.dataset import ChildChunk, DocumentSegment
 from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
@@ -43,17 +43,11 @@ from tasks.batch_create_segment_to_index_task import batch_create_segment_to_ind
 
 def _get_segment_with_summary(segment, dataset_id):
     """Helper function to marshal segment and add summary information."""
+    from services.summary_index_service import SummaryIndexService
+
     segment_dict = dict(marshal(segment, segment_fields))
     # Query summary for this segment (only enabled summaries)
-    summary = (
-        db.session.query(DocumentSegmentSummary)
-        .where(
-            DocumentSegmentSummary.chunk_id == segment.id,
-            DocumentSegmentSummary.dataset_id == dataset_id,
-            DocumentSegmentSummary.enabled == True,  # Only return enabled summaries
-        )
-        .first()
-    )
+    summary = SummaryIndexService.get_segment_summary(segment_id=segment.id, dataset_id=dataset_id)
     segment_dict["summary"] = summary.summary_content if summary else None
     return segment_dict
 
@@ -203,17 +197,12 @@ class DatasetDocumentSegmentListApi(Resource):
         segment_ids = [segment.id for segment in segments.items]
         summaries = {}
         if segment_ids:
-            summary_records = (
-                db.session.query(DocumentSegmentSummary)
-                .where(
-                    DocumentSegmentSummary.chunk_id.in_(segment_ids),
-                    DocumentSegmentSummary.dataset_id == dataset_id,
-                )
-                .all()
-            )
-            # Only include enabled summaries
+            from services.summary_index_service import SummaryIndexService
+
+            summary_records = SummaryIndexService.get_segments_summaries(segment_ids=segment_ids, dataset_id=dataset_id)
+            # Only include enabled summaries (already filtered by service)
             summaries = {
-                summary.chunk_id: summary.summary_content for summary in summary_records if summary.enabled is True
+                chunk_id: summary.summary_content for chunk_id, summary in summary_records.items()
             }
 
         # Add summary to each segment
