@@ -541,6 +541,14 @@ const Result: FC<IResultProps> = ({
             }
           }))
         },
+        onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            if (draft.humanInputFormDataList?.length) {
+              const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
+              draft.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
+            }
+          }))
+        },
         onWorkflowPaused: ({ data: workflowPausedData }) => {
           const url = `/workflow/${workflowPausedData.workflow_run_id}/events`
           sseGet(
