@@ -147,15 +147,14 @@ const MoreActions: FC = () => {
         }
       }
 
+      const fileName = `${filename}.${type}`
+
       if (currentWorkflow) {
         setPreviewUrl(dataUrl)
-        setPreviewTitle(`${filename}.${type}`)
-        downloadUrl({ url: dataUrl, fileName: `${filename}.${type}` })
+        setPreviewTitle(fileName)
       }
-      else {
-        // For current view, just download
-        downloadUrl({ url: dataUrl, fileName: `${filename}.${type}` })
-      }
+
+      downloadUrl({ url: dataUrl, fileName })
     }
     catch (error) {
       console.error('Export image failed:', error)
