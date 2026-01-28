@@ -62,8 +62,11 @@ export const useSegmentationState = (options: UseSegmentationStateOptions = {}) 
   const [summaryIndexSetting, setSummaryIndexSetting] = useState<SummaryIndexSettingType | undefined>(initialSummaryIndexSetting)
   const summaryIndexSettingRef = useRef<SummaryIndexSettingType | undefined>(initialSummaryIndexSetting)
   const handleSummaryIndexSettingChange = useCallback((payload: SummaryIndexSettingType) => {
-    setSummaryIndexSetting({ ...summaryIndexSettingRef.current, ...payload })
-    summaryIndexSettingRef.current = { ...summaryIndexSettingRef.current, ...payload }
+    setSummaryIndexSetting((prev) => {
+      const newSetting = { ...prev, ...payload }
+      summaryIndexSettingRef.current = newSetting
+      return newSetting
+    })
   }, [])
 
   // Parent-child config

@@ -1792,11 +1792,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/detail/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/detail/metadata/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
@@ -2643,19 +2638,6 @@
   "app/components/tools/mcp/mcp-server-param-item.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/tools/mcp/mcp-service-card.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
-  "app/components/tools/mcp/modal.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 20
     }
   },
   "app/components/tools/mcp/provider-card.tsx": {
