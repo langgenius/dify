@@ -70,7 +70,9 @@ class ContextGeneratePayload(BaseModel):
     model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
     available_vars: list[AvailableVarPayload] = Field(..., description="Available variables from upstream nodes")
     parameter_info: ParameterInfoPayload = Field(..., description="Target parameter metadata from the frontend")
-    code_context: CodeContextPayload = Field(description="Existing code node context for incremental generation")
+    code_context: CodeContextPayload = Field(
+        description="Existing code node context for incremental generation"
+    )
 
 
 class SuggestedQuestionsPayload(BaseModel):
