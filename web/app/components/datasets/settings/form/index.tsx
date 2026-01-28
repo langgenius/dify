@@ -78,10 +78,10 @@ const Form = () => {
         },
   )
   const [summaryIndexSetting, setSummaryIndexSetting] = useState(currentDataset?.summary_index_setting)
-  const summaryIndexSettingRef = useRef(currentDataset?.summary_index_setting)
   const handleSummaryIndexSettingChange = useCallback((payload: SummaryIndexSettingType) => {
-    setSummaryIndexSetting({ ...summaryIndexSettingRef.current, ...payload })
-    summaryIndexSettingRef.current = { ...summaryIndexSettingRef.current, ...payload }
+    setSummaryIndexSetting((prev) => {
+      return { ...prev, ...payload }
+    })
   }, [])
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
