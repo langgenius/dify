@@ -212,6 +212,7 @@ class DatasetService:
         embedding_model_provider: str | None = None,
         embedding_model_name: str | None = None,
         retrieval_model: RetrievalModel | None = None,
+        summary_index_setting: dict | None = None,
     ):
         # check if dataset name already exists
         if db.session.query(Dataset).filter_by(name=name, tenant_id=tenant_id).first():
@@ -254,6 +255,8 @@ class DatasetService:
         dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
         dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
+        if summary_index_setting is not None:
+            dataset.summary_index_setting = summary_index_setting
         db.session.add(dataset)
         db.session.flush()
 
@@ -905,10 +908,6 @@ class DatasetService:
         # If old setting doesn't exist, no need to regenerate (no existing summaries to regenerate)
         # Note: This task only regenerates existing summaries, not generates new ones
         if not old_summary_setting:
-            return False
-
-        # If old setting was disabled, no need to regenerate (no existing summaries to regenerate)
-        if not old_summary_setting.get("enable"):
             return False
 
         # Compare model_name and model_provider_name

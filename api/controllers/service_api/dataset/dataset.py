@@ -38,6 +38,7 @@ class DatasetCreatePayload(BaseModel):
     retrieval_model: RetrievalModel | None = None
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
+    summary_index_setting: dict | None = None
 
 
 class DatasetUpdatePayload(BaseModel):
@@ -209,6 +210,7 @@ class DatasetListApi(DatasetApiResource):
                 embedding_model_provider=payload.embedding_model_provider,
                 embedding_model_name=payload.embedding_model,
                 retrieval_model=payload.retrieval_model,
+                summary_index_setting=payload.summary_index_setting,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
