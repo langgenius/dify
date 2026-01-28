@@ -36,6 +36,8 @@ const FallbackResultPanel: FC<Props> = ({
       <TracingPanel
         list={list.map((item, index) => ({
           ...item,
+          // fallback detail list ids are the same, so add index to make them unique
+          id: `${item.id}-${index}`,
           title: `${t('nodes.common.fallback.attempt', { ns: 'workflow' })} ${index + 1}`,
         }))}
         className="bg-background-section-burn"
