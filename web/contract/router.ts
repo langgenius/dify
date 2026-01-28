@@ -30,6 +30,7 @@ import { systemFeaturesContract } from './console/system'
 import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
 import {
   workflowDraftEnvironmentVariablesContract,
+  workflowDraftNodeSkillsContract,
   workflowDraftUpdateConversationVariablesContract,
   workflowDraftUpdateEnvironmentVariablesContract,
   workflowDraftUpdateFeaturesContract,
@@ -89,6 +90,7 @@ export const consoleRouterContract = {
   },
   workflowDraft: {
     environmentVariables: workflowDraftEnvironmentVariablesContract,
+    nodeSkills: workflowDraftNodeSkillsContract,
     updateEnvironmentVariables: workflowDraftUpdateEnvironmentVariablesContract,
     updateConversationVariables: workflowDraftUpdateConversationVariablesContract,
     updateFeatures: workflowDraftUpdateFeaturesContract,

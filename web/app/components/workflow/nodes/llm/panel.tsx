@@ -232,6 +232,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               readonly={readOnly}
               enabled={!!inputs.computer_use}
               onChange={handleComputerUseChange}
+              nodeId={id}
+              toolSettings={inputs.tool_settings}
             />
           </>
         )}

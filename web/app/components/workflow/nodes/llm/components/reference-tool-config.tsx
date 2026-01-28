@@ -1,69 +1,113 @@
 'use client'
 import type { FC } from 'react'
+import type { LLMNodeType, ToolSetting } from '../types'
 import { RiArrowDownSLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
+import { useCallback, useMemo } from 'react'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 import Switch from '@/app/components/base/switch'
+import { useNodeCurdKit } from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { cn } from '@/utils/classnames'
-
-type ToolPermissionAction = {
-  id: string
-  label: string
-  defaultEnabled: boolean
-}
-
-type ToolPermissionProvider = {
-  id: string
-  label: string
-  actions?: ToolPermissionAction[]
-}
 
 type ReferenceToolConfigProps = {
   readonly: boolean
   enabled: boolean
+  nodeId: string
+  toolSettings?: ToolSetting[]
+}
+
+type ToolDependency = {
+  type: string
+  provider: string
+  tool_name: string
+}
+
+type ToolProviderGroup = {
+  id: string
+  actions: ToolDependency[]
 }
 
 const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
   readonly,
   enabled,
+  nodeId,
+  toolSettings,
 }) => {
   const isDisabled = readonly || !enabled
-  const providers: ToolPermissionProvider[] = [
-    {
-      id: 'duckduckgo',
-      label: 'DuckDuckGo',
-      actions: [
-        {
-          id: 'duckduckgo-ai-chat',
-          label: 'DuckDuckGo AI Chat',
-          defaultEnabled: true,
+  const appId = useAppStore(s => s.appDetail?.id)
+  const { handleNodeDataUpdate } = useNodeCurdKit<LLMNodeType>(nodeId)
+
+  const { data } = useQuery({
+    queryKey: consoleQuery.workflowDraft.nodeSkills.queryKey({
+      input: {
+        params: {
+          appId: appId ?? '',
+          nodeId,
         },
-        {
-          id: 'duckduckgo-image-search',
-          label: 'DuckDuckGo Image Search',
-          defaultEnabled: true,
-        },
-        {
-          id: 'duckduckgo-search',
-          label: 'DuckDuckGo Search',
-          defaultEnabled: true,
-        },
-        {
-          id: 'duckduckgo-translate',
-          label: 'DuckDuckGo Translate',
-          defaultEnabled: false,
-        },
-      ],
-    },
-    {
-      id: 'web-search',
-      label: 'Web Search',
-    },
-    {
-      id: 'stability',
-      label: 'Stability',
-    },
-  ]
+      },
+    }),
+    queryFn: () => consoleClient.workflowDraft.nodeSkills({
+      params: {
+        appId: appId ?? '',
+        nodeId,
+      },
+    }),
+    enabled: !!appId && !!nodeId,
+  })
+
+  const toolDependencies = useMemo<ToolDependency[]>(() => data?.tool_dependencies ?? [], [data?.tool_dependencies])
+
+  const providers = useMemo<ToolProviderGroup[]>(() => {
+    const map = new Map<string, ToolDependency[]>()
+    toolDependencies.forEach((tool) => {
+      const key = tool.provider || tool.tool_name || tool.type
+      const group = map.get(key)
+      if (group)
+        group.push(tool)
+      else
+        map.set(key, [tool])
+    })
+    return Array.from(map.entries()).map(([id, actions]) => ({
+      id,
+      actions,
+    }))
+  }, [toolDependencies])
+
+  const resolveToolEnabled = useCallback((tool: ToolDependency) => {
+    const matched = toolSettings?.find(setting =>
+      setting.type === tool.type
+      && setting.provider === tool.provider
+      && setting.tool_name === tool.tool_name,
+    )
+    return matched?.enabled ?? true
+  }, [toolSettings])
+
+  const handleToolEnabledChange = useCallback((tool: ToolDependency, isEnabled: boolean) => {
+    const nextSettings = [...(toolSettings ?? [])]
+    const index = nextSettings.findIndex(setting =>
+      setting.type === tool.type
+      && setting.provider === tool.provider
+      && setting.tool_name === tool.tool_name,
+    )
+    if (index >= 0) {
+      nextSettings[index] = {
+        ...nextSettings[index],
+        enabled: isEnabled,
+      }
+    }
+    else {
+      nextSettings.push({
+        ...tool,
+        enabled: isEnabled,
+      })
+    }
+    handleNodeDataUpdate({
+      tool_settings: nextSettings,
+    })
+  }, [handleNodeDataUpdate, toolSettings])
 
   return (
     <div className={cn('flex flex-col gap-2', isDisabled && 'opacity-50')}>
@@ -78,26 +122,27 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
                 <DefaultToolIcon className="h-4 w-4 text-text-primary" />
               </div>
               <div className="system-sm-medium truncate text-text-primary">
-                {provider.label}
+                {provider.id}
               </div>
               <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
             </div>
           </div>
-          {provider.actions?.map(action => (
+          {provider.actions.map(action => (
             <div
-              key={action.id}
+              key={`${action.type}-${action.provider}-${action.tool_name}`}
               className="relative flex items-center gap-2 rounded-md px-2 py-1"
             >
               <div className="absolute left-3 top-0 h-full w-px bg-divider-subtle" />
               <div className="flex min-w-0 flex-1 items-center pl-5">
                 <span className="system-sm-regular truncate text-text-secondary">
-                  {action.label}
+                  {action.tool_name}
                 </span>
               </div>
               <Switch
                 size="md"
                 disabled={isDisabled}
-                defaultValue={action.defaultEnabled}
+                defaultValue={resolveToolEnabled(action)}
+                onChange={value => handleToolEnabledChange(action, value)}
               />
             </div>
           ))}

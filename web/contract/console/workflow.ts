@@ -80,3 +80,23 @@ export const workflowDraftUpdateFeaturesContract = base
     }
   }>())
   .output(type<CommonResponse>())
+
+export const workflowDraftNodeSkillsContract = base
+  .route({
+    path: '/apps/{appId}/workflows/draft/nodes/{nodeId}/skills',
+    method: 'GET',
+  })
+  .input(type<{
+    params: {
+      appId: string
+      nodeId: string
+    }
+  }>())
+  .output(type<{
+    node_id: string
+    tool_dependencies: {
+      type: string
+      provider: string
+      tool_name: string
+    }[]
+  }>())

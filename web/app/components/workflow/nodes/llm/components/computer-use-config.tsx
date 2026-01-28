@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ToolSetting } from '../types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Switch from '@/app/components/base/switch'
@@ -14,12 +15,16 @@ type Props = {
   readonly: boolean
   enabled: boolean
   onChange: (enabled: boolean) => void
+  nodeId: string
+  toolSettings?: ToolSetting[]
 }
 
 const ComputerUseConfig: FC<Props> = ({
   readonly,
   enabled,
   onChange,
+  nodeId,
+  toolSettings,
 }) => {
   const { t } = useTranslation()
 
@@ -54,7 +59,12 @@ const ComputerUseConfig: FC<Props> = ({
               {t(`${i18nPrefix}.referenceTools`, { ns: 'workflow' })}
             </div>
           </div>
-          <ReferenceToolConfig readonly={readonly} enabled={enabled} />
+          <ReferenceToolConfig
+            readonly={readonly}
+            enabled={enabled}
+            nodeId={nodeId}
+            toolSettings={toolSettings}
+          />
         </div>
       </FieldCollapse>
       <Split />

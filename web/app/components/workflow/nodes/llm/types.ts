@@ -13,6 +13,13 @@ export type Tool = {
   extra?: Record<string, any>
 }
 
+export type ToolSetting = {
+  type: string
+  provider: string
+  tool_name: string
+  enabled: boolean
+}
+
 export type LLMNodeType = CommonNodeType & {
   model: ModelConfig
   prompt_template: PromptTemplateItem[] | PromptItem
@@ -33,6 +40,7 @@ export type LLMNodeType = CommonNodeType & {
   structured_output?: StructuredOutput
   reasoning_format?: 'tagged' | 'separated'
   tools?: ToolValue[]
+  tool_settings?: ToolSetting[]
   max_iterations?: number
 }
 
