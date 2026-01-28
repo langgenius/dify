@@ -94,7 +94,7 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
             )
         )
 
-    except Exception:
+    except Exception as e:
         logger.exception("Failed to generate summary index for document %s", document_id)
         # Update document segments with error status if needed
         if segment_ids:

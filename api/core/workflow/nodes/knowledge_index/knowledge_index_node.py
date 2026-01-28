@@ -229,9 +229,6 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
         is_preview = invoke_from and invoke_from.value == InvokeFrom.DEBUGGER
 
-        # Determine if only parent chunks should be processed
-        only_parent_chunks = dataset.chunk_structure == "parent_child_index"
-
         if is_preview:
             try:
                 # Query segments that need summary generation

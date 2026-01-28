@@ -1462,9 +1462,6 @@ class DocumentSummaryStatusApi(DocumentResource):
         dataset_id = str(dataset_id)
         document_id = str(document_id)
 
-        # Get document
-        document = self.get_document(dataset_id, document_id)
-
         # Get dataset
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:

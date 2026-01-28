@@ -245,6 +245,7 @@ def regenerate_summary_index_task(
                     )
 
                     for segment in segments:
+                        summary_record = None
                         try:
                             # Get existing summary record
                             summary_record = (

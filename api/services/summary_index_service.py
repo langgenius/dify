@@ -216,7 +216,7 @@ class SummaryIndexService:
                 db.session.add(summary_record)
                 db.session.flush()
                 # Success, exit function
-                return
+                return 
 
             except (ConnectionError, Exception) as e:
                 error_str = str(e).lower()
@@ -333,7 +333,9 @@ class SummaryIndexService:
             error: Error message
         """
         summary_record = (
-            db.session.query(DocumentSegmentSummary).filter_by(chunk_id=segment.id, dataset_id=dataset.id).first()
+            db.session.query(DocumentSegmentSummary)
+            .filter_by(chunk_id=segment.id, dataset_id=dataset.id)
+            .first()
         )
 
         if summary_record:
@@ -342,7 +344,9 @@ class SummaryIndexService:
             db.session.add(summary_record)
             db.session.flush()
         else:
-            logger.warning("Summary record not found for segment %s when updating error", segment.id)
+            logger.warning(
+                "Summary record not found for segment %s when updating error", segment.id
+            )
 
     @staticmethod
     def generate_and_vectorize_summary(
@@ -367,12 +371,16 @@ class SummaryIndexService:
         """
         # Get existing summary record (should have been created by batch_create_summary_records)
         summary_record = (
-            db.session.query(DocumentSegmentSummary).filter_by(chunk_id=segment.id, dataset_id=dataset.id).first()
+            db.session.query(DocumentSegmentSummary)
+            .filter_by(chunk_id=segment.id, dataset_id=dataset.id)
+            .first()
         )
 
         if not summary_record:
             # If not found (shouldn't happen), create one
-            logger.warning("Summary record not found for segment %s, creating one", segment.id)
+            logger.warning(
+                "Summary record not found for segment %s, creating one", segment.id
+            )
             summary_record = SummaryIndexService.create_summary_record(
                 segment, dataset, summary_content="", status="generating"
             )
@@ -804,7 +812,7 @@ class SummaryIndexService:
                 logger.info("Successfully created and vectorized summary for segment %s", segment.id)
                 return summary_record
 
-        except Exception:
+        except Exception as e:
             logger.exception("Failed to update summary for segment %s", segment.id)
             # Update summary record with error status if it exists
             summary_record = (
