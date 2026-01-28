@@ -32,7 +32,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 
 logger = logging.getLogger(__name__)
 
-APP_EXECUTE_QUEUE = "chatflow_execute"
+WORKFLOW_BASED_APP_EXECUTION_QUEUE = "workflow_base_app_execution"
 
 
 class _UserType(StrEnum):
@@ -267,7 +267,7 @@ def _publish_streaming_response(response_stream: Iterable[Any], workflow_run_id:
         topic.publish(payload.encode())
 
 
-@shared_task(queue=APP_EXECUTE_QUEUE)
+@shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)
 def chatflow_execute_task(payload: str) -> Mapping[str, Any] | None:
     exec_params = AppExecutionParams.model_validate_json(payload)
 
@@ -511,11 +511,11 @@ def _resume_workflow(
     workflow_run_repo.delete_workflow_pause(pause_entity)
 
 
-@shared_task(queue=APP_EXECUTE_QUEUE, name="resume_app_execution")
+@shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE, name="resume_app_execution")
 def resume_app_execution(payload: dict[str, Any]) -> None:
     _resume_app_execution(payload)
 
 
-@shared_task(queue=APP_EXECUTE_QUEUE, name="resume_chatflow_execution")
+@shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE, name="resume_chatflow_execution")
 def resume_chatflow_execution(payload: dict[str, Any]) -> None:
     _resume_app_execution(payload)
