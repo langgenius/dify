@@ -427,7 +427,7 @@ const VarReferencePicker: FC<Props> = ({
         onOpenChange={setOpen}
         placement={isAddBtnTrigger ? 'bottom-end' : 'bottom-start'}
       >
-        {trigger && <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>{trigger}</PortalToFollowElemTrigger>}
+        {!!trigger && <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>{trigger}</PortalToFollowElemTrigger>}
         {!trigger && (
           <WrapElem
             onClick={() => {
