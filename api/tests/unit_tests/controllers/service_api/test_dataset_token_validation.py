@@ -65,9 +65,7 @@ class TestDatasetScopedKeyPermission:
             return "success"
 
         with (
-            patch(
-                "controllers.service_api.wraps.validate_and_get_api_token", return_value=mock_api_token_tenant_level
-            ),
+            patch("controllers.service_api.wraps.validate_and_get_api_token", return_value=mock_api_token_tenant_level),
             patch("controllers.service_api.wraps.db") as mock_db,
             patch("controllers.service_api.wraps.current_app") as mock_current_app,
             patch("controllers.service_api.wraps.user_logged_in"),
@@ -168,9 +166,7 @@ class TestDatasetScopedKeyPermission:
             return "success"
 
         with (
-            patch(
-                "controllers.service_api.wraps.validate_and_get_api_token", return_value=mock_api_token_tenant_level
-            ),
+            patch("controllers.service_api.wraps.validate_and_get_api_token", return_value=mock_api_token_tenant_level),
             patch("controllers.service_api.wraps.db") as mock_db,
             patch("controllers.service_api.wraps.current_app") as mock_current_app,
             patch("controllers.service_api.wraps.user_logged_in"),
