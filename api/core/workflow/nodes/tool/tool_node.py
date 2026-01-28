@@ -495,16 +495,22 @@ class ToolNode(Node[ToolNodeData]):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
+        Extract variable selector to variable mapping.
+
+        This method extracts:
+        1. Variable references from tool parameters (mixed, variable types)
+        2. Output selector from nested_node_config
+        3. Variable references from nested nodes (nodes with parent_node_id == node_id)
+
+        :param graph_config: graph config containing all nodes
+        :param node_id: current node id
         :param node_data: node data
-        :return:
+        :return: mapping of variable key to variable selector
         """
         # Create typed NodeData from dict
         typed_node_data = ToolNodeData.model_validate(node_data)
 
-        result = {}
+        result: dict[str, Sequence[str]] = {}
         for parameter_name in typed_node_data.tool_parameters:
             input = typed_node_data.tool_parameters[parameter_name]
             if input.type == "mixed":
@@ -517,12 +523,73 @@ class ToolNode(Node[ToolNodeData]):
                     selector_key = ".".join(input.value)
                     result[f"#{selector_key}#"] = input.value
             elif input.type == "nested_node":
-                # Nested node type: value is handled by extractor node, no direct variable reference
-                pass
+                # Nested node type: extract variable selector from nested_node_config
+                # The full selector is extractor_node_id + output_selector
+                if input.nested_node_config is not None:
+                    config = input.nested_node_config
+                    full_selector = [config.extractor_node_id] + list(config.output_selector)
+                    selector_key = ".".join(full_selector)
+                    result[f"#{selector_key}#"] = full_selector
             elif input.type == "constant":
                 pass
 
         result = {node_id + "." + key: value for key, value in result.items()}
+
+        # Extract variable references from nested nodes (nodes with parent_node_id == node_id)
+        nested_node_mapping = cls._extract_nested_node_variable_mapping(
+            graph_config=graph_config, parent_node_id=node_id
+        )
+        result.update(nested_node_mapping)
+
+        return result
+
+    @classmethod
+    def _extract_nested_node_variable_mapping(
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        parent_node_id: str,
+    ) -> dict[str, Sequence[str]]:
+        """
+        Extract variable references from nested nodes.
+
+        Nested nodes are nodes with parent_node_id pointing to the current node.
+        They are typically extractor LLM nodes that extract values from list[PromptMessage].
+
+        :param graph_config: graph config containing all nodes
+        :param parent_node_id: the parent node id to find nested nodes for
+        :return: mapping of variable key to variable selector
+        """
+        from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+
+        result: dict[str, Sequence[str]] = {}
+        nodes = graph_config.get("nodes", [])
+
+        for node_config in nodes:
+            node_data = node_config.get("data", {})
+            # Find nodes that are nested under the parent node
+            if node_data.get("parent_node_id") != parent_node_id:
+                continue
+
+            nested_node_id = node_config.get("id")
+            if not nested_node_id:
+                continue
+
+            # Get nested node class and extract its variable references
+            try:
+                node_type = NodeType(node_data.get("type"))
+                if node_type not in NODE_TYPE_CLASSES_MAPPING:
+                    continue
+                node_version = node_data.get("version", "1")
+                node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
+
+                nested_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
+                    graph_config=graph_config, config=node_config
+                )
+                result.update(nested_variable_mapping)
+            except (NotImplementedError, ValueError, KeyError):
+                # Skip if node type is not found or extraction fails
+                continue
 
         return result
 

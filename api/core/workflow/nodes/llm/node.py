@@ -1402,20 +1402,19 @@ class LLMNode(Node[LLMNodeData]):
         # Create typed NodeData from dict
         typed_node_data = LLMNodeData.model_validate(node_data)
 
-        prompt_template: (Sequence[LLMNodeChatModelMessage | PromptMessageContext] |
-                          LLMNodeCompletionModelPromptTemplate) = typed_node_data.prompt_template
+        prompt_template = typed_node_data.prompt_template
         variable_selectors = []
         prompt_context_selectors: list[Sequence[str]] = []
         if isinstance(prompt_template, list):
-            for prompt in prompt_template:
-                if isinstance(prompt, LLMNodeChatModelMessage) and prompt.edition_type == "jinja2":
-                    variable_template_parser = VariableTemplateParser(template=prompt.text)
+            for item in prompt_template:
+                # Check PromptMessageContext first (same order as _parse_prompt_template)
+                # This extracts value_selector which is used by variable_pool.get(ctx_ref.value_selector)
+                if isinstance(item, PromptMessageContext):
+                    if len(item.value_selector) >= 2:
+                        prompt_context_selectors.append(item.value_selector)
+                elif isinstance(item, LLMNodeChatModelMessage) and item.edition_type == "jinja2":
+                    variable_template_parser = VariableTemplateParser(template=item.text)
                     variable_selectors.extend(variable_template_parser.extract_variable_selectors())
-                    continue
-                if isinstance(prompt, PromptMessageContext):
-                    if len(prompt.value_selector) < 2:
-                        continue
-                    prompt_context_selectors.append(prompt.value_selector)
         elif isinstance(prompt_template, LLMNodeCompletionModelPromptTemplate):
             if prompt_template.edition_type != "jinja2":
                 variable_template_parser = VariableTemplateParser(template=prompt_template.text)
@@ -1452,14 +1451,11 @@ class LLMNode(Node[LLMNodeData]):
             enable_jinja = False
 
             if isinstance(prompt_template, list):
-                for prompt in prompt_template:
-                    if isinstance(prompt, LLMNodeChatModelMessage) and prompt.edition_type == "jinja2":
+                for item in prompt_template:
+                    if isinstance(item, LLMNodeChatModelMessage) and item.edition_type == "jinja2":
                         enable_jinja = True
                         break
-                    if isinstance(prompt, PromptMessageContext):
-                        prompt_context_selectors.append(prompt.value_selector)
             else:
-                prompt_template: LLMNodeCompletionModelPromptTemplate
                 enable_jinja = True
 
             if enable_jinja:

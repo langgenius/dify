@@ -907,14 +907,19 @@ class WorkflowService:
         """
         try:
             node, node_events = invoke_node_fn()
-            node_run_result = next(
-                (
-                    event.node_run_result
-                    for event in node_events
-                    if isinstance(event, (NodeRunSucceededEvent, NodeRunFailedEvent))
-                ),
-                None,
-            )
+            # Collect all events to find the appropriate result:
+            # - For failure: take the first NodeRunFailedEvent (fail fast)
+            # - For success: take the last NodeRunSucceededEvent (parent node result after nested nodes)
+            events_list = list(node_events)
+            node_run_result = None
+            for event in events_list:
+                if isinstance(event, NodeRunFailedEvent):
+                    # Take first failure and stop
+                    node_run_result = event.node_run_result
+                    break
+                elif isinstance(event, NodeRunSucceededEvent):
+                    # Keep updating to get the last success
+                    node_run_result = event.node_run_result
 
             if not node_run_result:
                 raise ValueError("Node execution failed - no result returned")
