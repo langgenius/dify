@@ -830,7 +830,11 @@ describe('formatPreviewChunks', () => {
       const outputs = createMockGeneralOutputs(['content1', 'content2', 'content3'])
       const result = formatPreviewChunks(outputs)
 
-      expect(result).toEqual(['content1', 'content2', 'content3'])
+      expect(result).toEqual([
+        { content: 'content1', summary: undefined },
+        { content: 'content2', summary: undefined },
+        { content: 'content3', summary: undefined },
+      ])
     })
 
     it('should limit to RAG_PIPELINE_PREVIEW_CHUNK_NUM chunks', () => {
@@ -840,7 +844,13 @@ describe('formatPreviewChunks', () => {
 
       // RAG_PIPELINE_PREVIEW_CHUNK_NUM is mocked to 5
       expect(result).toHaveLength(5)
-      expect(result).toEqual(['chunk0', 'chunk1', 'chunk2', 'chunk3', 'chunk4'])
+      expect(result).toEqual([
+        { content: 'chunk0', summary: undefined },
+        { content: 'chunk1', summary: undefined },
+        { content: 'chunk2', summary: undefined },
+        { content: 'chunk3', summary: undefined },
+        { content: 'chunk4', summary: undefined },
+      ])
     })
 
     it('should handle empty preview array', () => {

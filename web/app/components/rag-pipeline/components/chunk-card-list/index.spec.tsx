@@ -159,7 +159,7 @@ describe('ChunkCard', () => {
       )
 
       // Assert
-      expect(screen.getByText('This is plain text content.')).toBeInTheDocument()
+      expect(screen.getByText('This is the first chunk of text content.')).toBeInTheDocument()
       expect(screen.getByText(/Chunk-01/)).toBeInTheDocument()
     })
 
@@ -392,10 +392,13 @@ describe('ChunkCard', () => {
 
     it('should update contentElement memo when content changes', () => {
       // Arrange
+      const initialContent = { content: 'Initial content' }
+      const updatedContent = { content: 'Updated content' }
+
       const { rerender } = render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={initialContent}
           wordCount={15}
           positionId={1}
         />,
@@ -408,7 +411,7 @@ describe('ChunkCard', () => {
       rerender(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={updatedContent}
           wordCount={15}
           positionId={1}
         />,
@@ -421,10 +424,11 @@ describe('ChunkCard', () => {
 
     it('should update contentElement memo when chunkType changes', () => {
       // Arrange
+      const textContent = { content: 'Text content' }
       const { rerender } = render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={textContent}
           wordCount={12}
           positionId={1}
         />,
@@ -490,12 +494,13 @@ describe('ChunkCard', () => {
     it('should handle very long content', () => {
       // Arrange
       const longContent = 'A'.repeat(10000)
+      const longContentChunk = { content: longContent }
 
       // Act
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={longContentChunk}
           wordCount={10000}
           positionId={1}
         />,
