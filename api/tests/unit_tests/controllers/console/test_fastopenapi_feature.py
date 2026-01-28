@@ -118,12 +118,12 @@ def _force_reload_module(target_module: str, alias_module: str):
     2. Type mismatch errors (Class A from module X is not Class A from module Y).
 
     This function ensures both names point to the SAME loaded module instance.
-    """
-    # 1. Clean existing entries to force re-import
-    if target_module in sys.modules:
-        del sys.modules[target_module]
-    if alias_module in sys.modules:
-        del sys.modules[alias_module]
+    module = importlib.import_module(target_module)
+
+    # 3. Alias the module in sys.modules to prevent double loading
+    sys.modules[alias_module] = module
+
+    return module
 
     # 2. Import the module (triggering decorators with active patches)
     import controllers.console.feature
