@@ -70,30 +70,15 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
     })
   }
 
-  const isEmailConfigComplete = useMemo(() => {
-    if (method.type !== DeliveryMethodType.Email || !method.config)
-      return false
-
-    const config = method.config as EmailConfig
-    const hasSubject = !!config.subject
-    const hasBody = !!config.body
-    const hasRecipients = config.recipients?.whole_workspace || (config.recipients?.items?.length > 0)
-
-    return hasSubject && hasBody && hasRecipients
-  }, [method.type, method.config])
-
   const emailSenderTooltipContent = useMemo(() => {
     if (method.type !== DeliveryMethodType.Email) {
       return ''
-    }
-    if (!isEmailConfigComplete) {
-      return t(`${i18nPrefix}.deliveryMethod.emailSender.configIncomplete`, { ns: 'workflow' })
     }
     if (method.config?.debug_mode) {
       return t(`${i18nPrefix}.deliveryMethod.emailSender.testSendTipInDebugMode`, { ns: 'workflow', email })
     }
     return t(`${i18nPrefix}.deliveryMethod.emailSender.testSendTip`, { ns: 'workflow' })
-  }, [method.type, method.config?.debug_mode, isEmailConfigComplete, t, email])
+  }, [method.type, method.config?.debug_mode, t, email])
 
   const jumpToEmailConfigModal = useCallback(() => {
     setShowTestEmailModal(false)
@@ -135,10 +120,8 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
                     needsDelay={false}
                   >
                     <ActionButton
-                      disabled={!isEmailConfigComplete}
                       onClick={() => {
-                        if (isEmailConfigComplete)
-                          setShowTestEmailModal(true)
+                        setShowTestEmailModal(true)
                       }}
                     >
                       <RiSendPlane2Line className="h-4 w-4" />

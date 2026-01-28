@@ -525,7 +525,6 @@
   "nodes.humanInput.deliveryMethod.emailConfigure.subject": "Subject",
   "nodes.humanInput.deliveryMethod.emailConfigure.subjectPlaceholder": "Enter email subject",
   "nodes.humanInput.deliveryMethod.emailConfigure.title": "Email Configuration",
-  "nodes.humanInput.deliveryMethod.emailSender.configIncomplete": "Please complete email configuration first (subject, body, and recipients)",
   "nodes.humanInput.deliveryMethod.emailSender.debugDone": "A test email has been sent to <email>{{email}}</email>. Please check your inbox.",
   "nodes.humanInput.deliveryMethod.emailSender.debugModeTip": "Debug mode is enabled.",
   "nodes.humanInput.deliveryMethod.emailSender.debugModeTip2": "Email will be sent to <email>{{email}}</email>.",

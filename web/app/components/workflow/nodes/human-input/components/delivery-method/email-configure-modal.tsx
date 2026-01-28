@@ -40,7 +40,7 @@ const EmailConfigureModal = ({
   const email = useAppContextWithSelector(s => s.userProfile.email)
   const [recipients, setRecipients] = useState(config?.recipients || { whole_workspace: false, items: [] })
   const [subject, setSubject] = useState(config?.subject || '')
-  const [body, setBody] = useState(config?.body || '')
+  const [body, setBody] = useState(config?.body || '{{#url#}}')
   const [debugMode, setDebugMode] = useState(config?.debug_mode || false)
 
   const checkValidConfig = useCallback(() => {

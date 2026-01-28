@@ -132,15 +132,6 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                   id: uuid4(),
                   type: DeliveryMethodType.Email,
                   enabled: false,
-                  config: {
-                    body: '{{#url#}}',
-                    recipients: {
-                      whole_workspace: false,
-                      items: [],
-                    },
-                    subject: '',
-                    debug_mode: false,
-                  },
                 })
               }}
             >
