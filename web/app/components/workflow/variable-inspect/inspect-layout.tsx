@@ -4,11 +4,14 @@ import { RiCloseLine } from '@remixicon/react'
 import ActionButton from '@/app/components/base/action-button'
 import TabHeader from './tab-header'
 
-type InspectLayoutProps = {
+export type InspectHeaderProps = {
   activeTab: InspectTab
   onTabChange: (tab: InspectTab) => void
   onClose: () => void
   headerActions?: ReactNode
+}
+
+type InspectLayoutProps = InspectHeaderProps & {
   children: ReactNode
 }
 
@@ -31,7 +34,7 @@ const InspectLayout: FC<InspectLayoutProps> = ({
           </ActionButton>
         </div>
       </div>
-      <div className="min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col">
         {children}
       </div>
     </div>

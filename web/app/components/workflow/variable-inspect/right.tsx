@@ -1,7 +1,10 @@
+import type { FC } from 'react'
+import type { SplitRightProps } from './split-panel'
 import type { currentVarType } from './variables-tab'
 import type { GenRes } from '@/service/debug'
 import {
   RiArrowGoBackLine,
+  RiCloseLine,
   RiFileDownloadFill,
   RiMenuLine,
   RiSparklingFill,
@@ -21,7 +24,6 @@ import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/com
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { AppModeEnum } from '@/types/app'
 import { VarInInspectType } from '@/types/workflow'
-import { cn } from '@/utils/classnames'
 import GetCodeGeneratorResModal from '../../app/configuration/config/code-generator/get-code-generator-res'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '../../base/prompt-editor/plugins/update-block'
 import { useNodesInteractions, useToolIcon } from '../hooks'
@@ -30,27 +32,26 @@ import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import useNodeCrud from '../nodes/_base/hooks/use-node-crud'
 import useNodeInfo from '../nodes/_base/hooks/use-node-info'
 import { CodeLanguage } from '../nodes/code/types'
-import { useStore } from '../store'
 import { BlockEnum } from '../types'
 import Empty from './empty'
 import { formatVarTypeLabel } from './utils'
 import ValueContent from './value-content'
 
-type Props = {
+type Props = SplitRightProps & {
   nodeId: string
   currentNodeVar?: currentVarType
-  handleOpenMenu: () => void
   isValueFetching?: boolean
 }
 
-const Right = ({
+const Right: FC<Props> = ({
   nodeId,
   currentNodeVar,
-  handleOpenMenu,
   isValueFetching,
-}: Props) => {
+  isNarrow,
+  onOpenMenu,
+  onClose,
+}) => {
   const { t } = useTranslation()
-  const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
   const toolIcon = useToolIcon(currentNodeVar?.nodeData)
   const currentVar = currentNodeVar?.var
   const currentNodeType = currentNodeVar?.nodeType
@@ -89,10 +90,8 @@ const Right = ({
     const value = currentVar?.value
     if (value === null || value === undefined)
       return ''
-
     if (typeof value === 'object')
       return JSON.stringify(value)
-
     return String(value)
   }
 
@@ -109,10 +108,6 @@ const Right = ({
       return ''
     if (blockType === BlockEnum.LLM)
       return node?.data?.prompt_template?.text || node?.data?.prompt_template?.[0].text
-
-    // if (blockType === BlockEnum.Agent) {
-    //   return node?.data?.agent_parameters?.instruction?.value
-    // }
     if (blockType === BlockEnum.Code)
       return node?.data?.code
   }, [canShowPromptGenerator])
@@ -137,13 +132,6 @@ const Right = ({
               draft.prompt_template.text = res.modified
           }
           break
-
-        //  Agent is a plugin, may has many instructions, can not locate which one to update
-        // case BlockEnum.Agent:
-        //   if (draft?.agent_parameters?.instruction) {
-        //     draft.agent_parameters.instruction.value = res.modified
-        //   }
-        //   break
         case BlockEnum.Code:
           draft.code = res.modified
           break
@@ -167,154 +155,156 @@ const Right = ({
   const displaySchemaType = shouldShowSchemaType ? (`(${schemaType})`) : ''
 
   return (
-    <div className={cn('flex h-full flex-col')}>
-      {/* header */}
+    <>
       <div className="flex shrink-0 items-center justify-between gap-1 px-2 pt-2">
-        {bottomPanelWidth < 488 && (
-          <ActionButton className="shrink-0" onClick={handleOpenMenu} aria-label="Open menu">
-            <RiMenuLine className="h-4 w-4" />
-          </ActionButton>
-        )}
-        <div className="flex w-0 grow items-center gap-1">
-          {currentVar && (
-            <>
-              {
-                currentNodeType
-                && [VarInInspectType.environment, VarInInspectType.conversation, VarInInspectType.system].includes(currentNodeType as VarInInspectType) && (
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          {isNarrow && (
+            <ActionButton className="shrink-0" onClick={onOpenMenu} aria-label="Open menu">
+              <RiMenuLine className="h-4 w-4" />
+            </ActionButton>
+          )}
+          <div className="flex w-0 grow items-center gap-1">
+            {currentVar && (
+              <>
+                {currentNodeType
+                  && [VarInInspectType.environment, VarInInspectType.conversation, VarInInspectType.system].includes(currentNodeType as VarInInspectType) && (
                   <VariableIconWithColor
                     variableCategory={currentNodeType as VarInInspectType}
                     className="size-4"
                   />
-                )
-              }
-              {currentNodeType
-                && currentNodeType !== VarInInspectType.environment
-                && currentNodeType !== VarInInspectType.conversation
-                && currentNodeType !== VarInInspectType.system
-                && (
-                  <>
-                    <BlockIcon
-                      className="shrink-0"
-                      type={currentNodeType as BlockEnum}
-                      size="xs"
-                      toolIcon={toolIcon}
-                    />
-                    <div className="system-sm-regular shrink-0 text-text-secondary">{currentNodeTitle}</div>
-                    <div className="system-sm-regular shrink-0 text-text-quaternary">/</div>
-                  </>
                 )}
-              <div title={displayVarName} className="system-sm-semibold truncate text-text-secondary">{displayVarName}</div>
-              <div className="system-xs-medium ml-1 shrink-0 space-x-2 text-text-tertiary">
-                <span>{`${valueTypeLabel}${displaySchemaType}`}</span>
-                {isTruncated && (
-                  <>
-                    <span>·</span>
-                    <span>
-                      {((fullContent?.size_bytes || 0) / 1024 / 1024).toFixed(1)}
-                      MB
-                    </span>
-                  </>
-                )}
-              </div>
-
-            </>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          {currentVar && (
-            <>
-              {canShowPromptGenerator && (
-                <Tooltip popupContent={t('generate.optimizePromptTooltip', { ns: 'appDebug' })}>
-                  <button
-                    type="button"
-                    className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
-                    onClick={handleShowPromptGenerator}
-                  >
-                    <RiSparklingFill className="size-4 text-components-input-border-active-prompt-1" />
-                  </button>
-                </Tooltip>
-              )}
-              {isTruncated && (
-                <Tooltip popupContent={t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}>
-                  <ActionButton
-                    onClick={() => window.open(fullContent?.download_url, '_blank')}
-                    aria-label={t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}
-                  >
-                    <RiFileDownloadFill className="size-4" />
-                  </ActionButton>
-                </Tooltip>
-              )}
-              {!isTruncated && currentVar.edited && (
-                <Badge>
-                  <span className="ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded bg-text-accent-secondary"></span>
-                  <span className="system-2xs-semibold-uupercase">{t('debug.variableInspect.edited', { ns: 'workflow' })}</span>
-                </Badge>
-              )}
-              {!isTruncated && currentVar.edited && currentVar.type !== VarInInspectType.conversation && (
-                <Tooltip popupContent={t('debug.variableInspect.reset', { ns: 'workflow' })}>
-                  <ActionButton onClick={resetValue}>
-                    <RiArrowGoBackLine className="h-4 w-4" />
-                  </ActionButton>
-                </Tooltip>
-              )}
-              {!isTruncated && currentVar.edited && currentVar.type === VarInInspectType.conversation && (
-                <Tooltip popupContent={t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}>
-                  <ActionButton onClick={handleClear}>
-                    <RiArrowGoBackLine className="h-4 w-4" />
-                  </ActionButton>
-                </Tooltip>
-              )}
-              {currentVar.value_type !== 'secret' && (
-                <CopyFeedback content={getCopyContent()} />
-              )}
-            </>
-          )}
-        </div>
-      </div>
-      {/* content */}
-      <div className="grow p-2">
-        {!currentVar && <Empty />}
-        {isValueFetching && (
-          <div className="flex h-full items-center justify-center">
-            <Loading />
+                {currentNodeType
+                  && currentNodeType !== VarInInspectType.environment
+                  && currentNodeType !== VarInInspectType.conversation
+                  && currentNodeType !== VarInInspectType.system
+                  && (
+                    <>
+                      <BlockIcon
+                        className="shrink-0"
+                        type={currentNodeType as BlockEnum}
+                        size="xs"
+                        toolIcon={toolIcon}
+                      />
+                      <div className="system-sm-regular shrink-0 text-text-secondary">{currentNodeTitle}</div>
+                      <div className="system-sm-regular shrink-0 text-text-quaternary">/</div>
+                    </>
+                  )}
+                <div title={displayVarName} className="system-sm-semibold truncate text-text-secondary">{displayVarName}</div>
+                <div className="system-xs-medium ml-1 shrink-0 space-x-2 text-text-tertiary">
+                  <span>{`${valueTypeLabel}${displaySchemaType}`}</span>
+                  {isTruncated && (
+                    <>
+                      <span>·</span>
+                      <span>
+                        {((fullContent?.size_bytes || 0) / 1024 / 1024).toFixed(1)}
+                        MB
+                      </span>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
           </div>
-        )}
-        {currentVar && currentNodeId && !isValueFetching && (
-          <ValueContent
-            key={`${currentNodeId}-${currentVar.id}`}
-            currentVar={currentVar}
-            handleValueChange={handleValueChange}
-            isTruncated={!!isTruncated}
-          />
+          <div className="flex shrink-0 items-center gap-1">
+            {currentVar && (
+              <>
+                {canShowPromptGenerator && (
+                  <Tooltip popupContent={t('generate.optimizePromptTooltip', { ns: 'appDebug' })}>
+                    <button
+                      type="button"
+                      className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
+                      onClick={handleShowPromptGenerator}
+                    >
+                      <RiSparklingFill className="size-4 text-components-input-border-active-prompt-1" />
+                    </button>
+                  </Tooltip>
+                )}
+                {isTruncated && (
+                  <Tooltip popupContent={t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}>
+                    <ActionButton
+                      onClick={() => window.open(fullContent?.download_url, '_blank')}
+                      aria-label={t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}
+                    >
+                      <RiFileDownloadFill className="size-4" />
+                    </ActionButton>
+                  </Tooltip>
+                )}
+                {!isTruncated && currentVar.edited && (
+                  <Badge>
+                    <span className="ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded bg-text-accent-secondary"></span>
+                    <span className="system-2xs-semibold-uupercase">{t('debug.variableInspect.edited', { ns: 'workflow' })}</span>
+                  </Badge>
+                )}
+                {!isTruncated && currentVar.edited && currentVar.type !== VarInInspectType.conversation && (
+                  <Tooltip popupContent={t('debug.variableInspect.reset', { ns: 'workflow' })}>
+                    <ActionButton onClick={resetValue}>
+                      <RiArrowGoBackLine className="h-4 w-4" />
+                    </ActionButton>
+                  </Tooltip>
+                )}
+                {!isTruncated && currentVar.edited && currentVar.type === VarInInspectType.conversation && (
+                  <Tooltip popupContent={t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}>
+                    <ActionButton onClick={handleClear}>
+                      <RiArrowGoBackLine className="h-4 w-4" />
+                    </ActionButton>
+                  </Tooltip>
+                )}
+                {currentVar.value_type !== 'secret' && (
+                  <CopyFeedback content={getCopyContent()} />
+                )}
+              </>
+            )}
+          </div>
+        </div>
+        <ActionButton className="shrink-0" onClick={onClose} aria-label="Close">
+          <RiCloseLine className="h-4 w-4" />
+        </ActionButton>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="grow p-2">
+          {!currentVar && <Empty />}
+          {isValueFetching && (
+            <div className="flex h-full items-center justify-center">
+              <Loading />
+            </div>
+          )}
+          {currentVar && currentNodeId && !isValueFetching && (
+            <ValueContent
+              key={`${currentNodeId}-${currentVar.id}`}
+              currentVar={currentVar}
+              handleValueChange={handleValueChange}
+              isTruncated={!!isTruncated}
+            />
+          )}
+        </div>
+        {isShowPromptGenerator && (
+          isCodeBlock
+            ? (
+                <GetCodeGeneratorResModal
+                  isShow
+                  mode={AppModeEnum.CHAT}
+                  onClose={handleHidePromptGenerator}
+                  flowId={configsMap?.flowId || ''}
+                  nodeId={nodeId}
+                  currentCode={currentPrompt}
+                  codeLanguages={node?.data?.code_languages || CodeLanguage.python3}
+                  onFinished={handleUpdatePrompt}
+                />
+              )
+            : (
+                <GetAutomaticResModal
+                  mode={AppModeEnum.CHAT}
+                  isShow
+                  onClose={handleHidePromptGenerator}
+                  onFinished={handleUpdatePrompt}
+                  flowId={configsMap?.flowId || ''}
+                  nodeId={nodeId}
+                  currentPrompt={currentPrompt}
+                />
+              )
         )}
       </div>
-      {isShowPromptGenerator && (
-        isCodeBlock
-          ? (
-              <GetCodeGeneratorResModal
-                isShow
-                mode={AppModeEnum.CHAT}
-                onClose={handleHidePromptGenerator}
-                flowId={configsMap?.flowId || ''}
-                nodeId={nodeId}
-                currentCode={currentPrompt}
-                codeLanguages={node?.data?.code_languages || CodeLanguage.python3}
-                onFinished={handleUpdatePrompt}
-              />
-            )
-          : (
-              <GetAutomaticResModal
-                mode={AppModeEnum.CHAT}
-                isShow
-                onClose={handleHidePromptGenerator}
-                onFinished={handleUpdatePrompt}
-                flowId={configsMap?.flowId || ''}
-                nodeId={nodeId}
-                currentPrompt={currentPrompt}
-              />
-            )
-      )}
-    </div>
+    </>
   )
 }
 

@@ -1,19 +1,15 @@
 import type { FC } from 'react'
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import Loading from '@/app/components/base/loading'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { useStore } from '../store'
-import InspectLayout from './inspect-layout'
+import ArtifactsTab from './artifacts-tab'
 import { InspectTab } from './types'
 import VariablesTab from './variables-tab'
 
-const ArtifactsTab = lazy(() => import('./artifacts-tab'))
-
-const Panel: FC = () => {
+const VariablesPanel: FC<{ onClose: () => void }> = ({ onClose }) => {
   const { t } = useTranslation('workflow')
-  const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
   const [activeTab, setActiveTab] = useState<InspectTab>(InspectTab.Variables)
 
@@ -29,10 +25,6 @@ const Panel: FC = () => {
     setCurrentFocusNodeId('')
   }, [deleteAllInspectorVars, setCurrentFocusNodeId])
 
-  const handleClose = useCallback(() => {
-    setShowVariableInspectPanel(false)
-  }, [setShowVariableInspectPanel])
-
   const headerActions = activeTab === InspectTab.Variables && !isVariablesEmpty
     ? (
         <Button variant="ghost" size="small" onClick={handleClear}>
@@ -41,21 +33,26 @@ const Panel: FC = () => {
       )
     : undefined
 
-  return (
-    <InspectLayout
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      onClose={handleClose}
-      headerActions={headerActions}
-    >
-      {activeTab === InspectTab.Variables && <VariablesTab />}
-      {activeTab === InspectTab.Artifacts && (
-        <Suspense fallback={<div className="flex h-full items-center justify-center"><Loading /></div>}>
-          <ArtifactsTab />
-        </Suspense>
-      )}
-    </InspectLayout>
-  )
+  const headerProps = {
+    activeTab,
+    onTabChange: setActiveTab,
+    onClose,
+    headerActions,
+  }
+
+  return activeTab === InspectTab.Variables
+    ? <VariablesTab {...headerProps} />
+    : <ArtifactsTab {...headerProps} />
+}
+
+const Panel: FC = () => {
+  const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
+
+  const handleClose = useCallback(() => {
+    setShowVariableInspectPanel(false)
+  }, [setShowVariableInspectPanel])
+
+  return <VariablesPanel onClose={handleClose} />
 }
 
 export default Panel

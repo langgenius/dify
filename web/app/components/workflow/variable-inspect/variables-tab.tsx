@@ -1,17 +1,19 @@
 import type { FC } from 'react'
 import type { NodeProps } from '../types'
+import type { InspectHeaderProps } from './inspect-layout'
 import type { VarInInspect } from '@/types/workflow'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { VarInInspectType } from '@/types/workflow'
-import { cn } from '@/utils/classnames'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 import { useStore } from '../store'
 import Empty from './empty'
+import InspectLayout from './inspect-layout'
 import Left from './left'
 import Listening from './listening'
 import Right from './right'
+import SplitPanel from './split-panel'
 import { EVENT_WORKFLOW_STOP } from './types'
 import { toEnvVarInInspect } from './utils'
 
@@ -24,11 +26,8 @@ export type currentVarType = {
   nodeData?: NodeProps['data']
 }
 
-const VariablesTab: FC = () => {
-  const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
-  const [showLeftPanel, setShowLeftPanel] = useState(true)
+const VariablesTab: FC<InspectHeaderProps> = (headerProps) => {
   const isListening = useStore(s => s.isListening)
-
   const environmentVariables = useStore(s => s.environmentVariables)
   const currentFocusNodeId = useStore(s => s.currentFocusNodeId)
   const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
@@ -42,8 +41,7 @@ const VariablesTab: FC = () => {
   } = useCurrentVars()
 
   const isEmpty = useMemo(() => {
-    const allVars = [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars]
-    return allVars.length === 0
+    return [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars].length === 0
   }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
   const currentNodeInfo = useMemo(() => {
@@ -128,7 +126,7 @@ const VariablesTab: FC = () => {
   const { isLoading, schemaTypeDefinitions } = useMatchSchemaType()
   const { eventEmitter } = useEventEmitterContextContext()
 
-  const handleStopListening = useCallback(() => {
+  const onStopListening = useCallback(() => {
     // eslint-disable-next-line ts/no-explicit-any -- EventEmitter is typed as string but project-wide convention passes { type } objects
     eventEmitter?.emit({ type: EVENT_WORKFLOW_STOP } as any)
   }, [eventEmitter])
@@ -143,49 +141,39 @@ const VariablesTab: FC = () => {
 
   if (isListening) {
     return (
-      <div className="h-full p-2">
-        <Listening onStop={handleStopListening} />
-      </div>
+      <InspectLayout {...headerProps}>
+        <div className="h-full p-2"><Listening onStop={onStopListening} /></div>
+      </InspectLayout>
     )
   }
 
   if (isEmpty) {
     return (
-      <div className="h-full p-2">
-        <Empty />
-      </div>
+      <InspectLayout {...headerProps}>
+        <div className="h-full p-2"><Empty /></div>
+      </InspectLayout>
     )
   }
 
   return (
-    <div className={cn('relative flex h-full')}>
-      {bottomPanelWidth < 488 && showLeftPanel && <div role="presentation" className="absolute left-0 top-0 h-full w-full" onClick={() => setShowLeftPanel(false)}></div>}
-      <div
-        className={cn(
-          'flex w-60 shrink-0 flex-col border-r border-divider-burn',
-          bottomPanelWidth < 488
-            ? showLeftPanel
-              ? 'absolute left-0 top-0 z-10 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm'
-              : 'hidden'
-            : '',
-        )}
-      >
-        <div className="min-h-0 flex-1">
-          <Left
-            currentNodeVar={currentNodeInfo as currentVarType}
-            handleVarSelect={handleNodeVarSelect}
-          />
-        </div>
-      </div>
-      <div className="w-0 grow">
-        <Right
-          nodeId={currentFocusNodeId!}
-          isValueFetching={isCurrentNodeVarValueFetching}
+    <SplitPanel
+      {...headerProps}
+      left={(
+        <Left
           currentNodeVar={currentNodeInfo as currentVarType}
-          handleOpenMenu={() => setShowLeftPanel(true)}
+          handleVarSelect={handleNodeVarSelect}
         />
-      </div>
-    </div>
+      )}
+    >
+      {rightProps => (
+        <Right
+          {...rightProps}
+          nodeId={currentFocusNodeId!}
+          currentNodeVar={currentNodeInfo as currentVarType}
+          isValueFetching={isCurrentNodeVarValueFetching}
+        />
+      )}
+    </SplitPanel>
   )
 }
 
