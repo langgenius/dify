@@ -23,28 +23,13 @@ DATASET_TOKEN_PREFIX = "ds-"
 APP_RESOURCE_ID_FIELD = "app_id"
 DATASET_RESOURCE_ID_FIELD = "dataset_id"
 
+api_key_item_model = console_ns.model("ApiKeyItem", api_key_fields)
 
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True, extra="ignore")
+api_key_list = {"data": fields.List(fields.Nested(api_key_item_model), attribute="items")}
 
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
-class ApiKeyItem(ResponseModel):
-    id: str = Field(description="API key id")
-    type: str = Field(description="API key type")
-    token: str = Field(description="API token")
-    last_used_at: int | None = Field(default=None, description="Last used timestamp")
-    created_at: int = Field(description="Creation timestamp")
-
-    @field_validator("last_used_at", "created_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+api_key_list_model = console_ns.model(
+    "ApiKeyList", {"data": fields.List(fields.Nested(api_key_item_model), attribute="items")}
+)
 
 
 class ApiKeyListResponse(ResponseModel):

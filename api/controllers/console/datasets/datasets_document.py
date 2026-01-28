@@ -14,7 +14,7 @@ from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from core.errors.error import (
     LLMBadRequestError,
@@ -72,34 +72,27 @@ logger = logging.getLogger(__name__)
 DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
 
 
-def _get_or_create_model(model_name: str, field_def):
-    existing = console_ns.models.get(model_name)
-    if existing is None:
-        existing = console_ns.model(model_name, field_def)
-    return existing
-
-
 # Register models for flask_restx to avoid dict type issues in Swagger
-dataset_model = _get_or_create_model("Dataset", dataset_fields)
+dataset_model = get_or_create_model("Dataset", dataset_fields)
 
-document_metadata_model = _get_or_create_model("DocumentMetadata", document_metadata_fields)
+document_metadata_model = get_or_create_model("DocumentMetadata", document_metadata_fields)
 
 document_fields_copy = document_fields.copy()
 document_fields_copy["doc_metadata"] = fields.List(
     fields.Nested(document_metadata_model), attribute="doc_metadata_details"
 )
-document_model = _get_or_create_model("Document", document_fields_copy)
+document_model = get_or_create_model("Document", document_fields_copy)
 
 document_with_segments_fields_copy = document_with_segments_fields.copy()
 document_with_segments_fields_copy["doc_metadata"] = fields.List(
     fields.Nested(document_metadata_model), attribute="doc_metadata_details"
 )
-document_with_segments_model = _get_or_create_model("DocumentWithSegments", document_with_segments_fields_copy)
+document_with_segments_model = get_or_create_model("DocumentWithSegments", document_with_segments_fields_copy)
 
 dataset_and_document_fields_copy = dataset_and_document_fields.copy()
 dataset_and_document_fields_copy["dataset"] = fields.Nested(dataset_model)
 dataset_and_document_fields_copy["documents"] = fields.List(fields.Nested(document_model))
-dataset_and_document_model = _get_or_create_model("DatasetAndDocument", dataset_and_document_fields_copy)
+dataset_and_document_model = get_or_create_model("DatasetAndDocument", dataset_and_document_fields_copy)
 
 
 class DocumentRetryPayload(BaseModel):
@@ -1178,7 +1171,7 @@ class DocumentRenameApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(document_fields)
+    @marshal_with(document_model)
     @console_ns.expect(console_ns.models[DocumentRenamePayload.__name__])
     def post(self, dataset_id, document_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator

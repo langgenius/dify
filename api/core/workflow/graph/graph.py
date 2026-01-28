@@ -288,6 +288,7 @@ class Graph:
         graph_config: Mapping[str, object],
         node_factory: NodeFactory,
         root_node_id: str | None = None,
+        skip_validation: bool = False,
     ) -> Graph:
         """
         Initialize graph
@@ -339,8 +340,9 @@ class Graph:
             root_node=root_node,
         )
 
-        # Validate the graph structure using built-in validators
-        get_graph_validator().validate(graph)
+        if not skip_validation:
+            # Validate the graph structure using built-in validators
+            get_graph_validator().validate(graph)
 
         return graph
 

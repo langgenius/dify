@@ -70,6 +70,11 @@ const createDefaultProps = (overrides: Partial<Parameters<typeof JinaReader>[0]>
 describe('JinaReader', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   describe('Rendering', () => {
@@ -158,7 +163,7 @@ describe('JinaReader', () => {
   describe('Props', () => {
     it('should call onCrawlOptionsChange when options change', async () => {
       // Arrange
-      const user = userEvent.setup()
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       const onCrawlOptionsChange = vi.fn()
       const props = createDefaultProps({ onCrawlOptionsChange })
 
@@ -237,9 +242,10 @@ describe('JinaReader', () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
       let resolvePromise: () => void
-      mockCreateTask.mockImplementation(() => new Promise((resolve) => {
+      const taskPromise = new Promise((resolve) => {
         resolvePromise = () => resolve({ data: { title: 'T', content: 'C', description: 'D', url: 'https://example.com' } })
-      }))
+      })
+      mockCreateTask.mockImplementation(() => taskPromise)
 
       const props = createDefaultProps()
 
@@ -257,8 +263,11 @@ describe('JinaReader', () => {
         expect(screen.getByText(/totalPageScraped/i)).toBeInTheDocument()
       })
 
-      // Cleanup - resolve the promise
+      // Cleanup - resolve the promise and wait for component to finish
       resolvePromise!()
+      await waitFor(() => {
+        expect(screen.queryByText(/totalPageScraped/i)).not.toBeInTheDocument()
+      })
     })
 
     it('should transition to finished state after successful crawl', async () => {
@@ -394,7 +403,11 @@ describe('JinaReader', () => {
     it('should update controlFoldOptions when step changes', async () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
-      mockCreateTask.mockImplementation(() => new Promise((_resolve) => { /* pending */ }))
+      let resolvePromise: () => void
+      const taskPromise = new Promise((resolve) => {
+        resolvePromise = () => resolve({ data: { title: 'T', content: 'C', description: 'D', url: 'https://example.com' } })
+      })
+      mockCreateTask.mockImplementation(() => taskPromise)
 
       const props = createDefaultProps()
 
@@ -411,6 +424,12 @@ describe('JinaReader', () => {
       // Assert - the crawling indicator should appear
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped/i)).toBeInTheDocument()
+      })
+
+      // Cleanup - resolve the promise
+      resolvePromise!()
+      await waitFor(() => {
+        expect(screen.queryByText(/totalPageScraped/i)).not.toBeInTheDocument()
       })
     })
   })
@@ -1073,9 +1092,13 @@ describe('JinaReader', () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
+      let resolveCheckStatus: () => void
+      const checkStatusPromise = new Promise((resolve) => {
+        resolveCheckStatus = () => resolve({ status: 'completed', current: 0, total: 0, data: [] })
+      })
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-current-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
+      mockCheckStatus.mockImplementation(() => checkStatusPromise)
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 10 }),
@@ -1091,15 +1114,25 @@ describe('JinaReader', () => {
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/10/)).toBeInTheDocument()
       })
+
+      // Cleanup - resolve the promise
+      resolveCheckStatus!()
+      await waitFor(() => {
+        expect(screen.queryByText(/totalPageScraped/i)).not.toBeInTheDocument()
+      })
     })
 
     it('should show 0/0 progress when limit is zero string', async () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
+      let resolveCheckStatus: () => void
+      const checkStatusPromise = new Promise((resolve) => {
+        resolveCheckStatus = () => resolve({ status: 'completed', current: 0, total: 0, data: [] })
+      })
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-total-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
+      mockCheckStatus.mockImplementation(() => checkStatusPromise)
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: '0' }),
@@ -1114,6 +1147,12 @@ describe('JinaReader', () => {
       // Assert - should show 0/0 when limit parses to 0
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/0/)).toBeInTheDocument()
+      })
+
+      // Cleanup - resolve the promise
+      resolveCheckStatus!()
+      await waitFor(() => {
+        expect(screen.queryByText(/totalPageScraped/i)).not.toBeInTheDocument()
       })
     })
 
@@ -1150,9 +1189,13 @@ describe('JinaReader', () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
+      let resolveCheckStatus: () => void
+      const checkStatusPromise = new Promise((resolve) => {
+        resolveCheckStatus = () => resolve({ status: 'completed', current: 0, total: 0, data: [] })
+      })
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'no-total-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
+      mockCheckStatus.mockImplementation(() => checkStatusPromise)
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 15 }),
@@ -1168,12 +1211,22 @@ describe('JinaReader', () => {
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/15/)).toBeInTheDocument()
       })
+
+      // Cleanup - resolve the promise
+      resolveCheckStatus!()
+      await waitFor(() => {
+        expect(screen.queryByText(/totalPageScraped/i)).not.toBeInTheDocument()
+      })
     })
 
     it('should fallback to limit when crawlResult has zero total', async () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
+      let resolveCheckStatus: () => void
+      const checkStatusPromise = new Promise((resolve) => {
+        resolveCheckStatus = () => resolve({ status: 'completed', current: 0, total: 0, data: [] })
+      })
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'both-zero-job' })
       mockCheckStatus
@@ -1183,7 +1236,7 @@ describe('JinaReader', () => {
           total: 0,
           data: [],
         })
-        .mockImplementationOnce(() => new Promise(() => { /* never resolves */ }))
+        .mockImplementationOnce(() => checkStatusPromise)
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 5 }),
@@ -1198,6 +1251,12 @@ describe('JinaReader', () => {
       // Assert - should show progress indicator
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped/)).toBeInTheDocument()
+      })
+
+      // Cleanup - resolve the promise
+      resolveCheckStatus!()
+      await waitFor(() => {
+        expect(screen.queryByText(/totalPageScraped/i)).not.toBeInTheDocument()
       })
     })
 
@@ -1437,9 +1496,13 @@ describe('JinaReader', () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
+      let resolveCheckStatus: () => void
+      const checkStatusPromise = new Promise((resolve) => {
+        resolveCheckStatus = () => resolve({ status: 'completed', current: 0, total: 0, data: [] })
+      })
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'progress-job' })
-      mockCheckStatus.mockImplementation(() => new Promise((_resolve) => { /* pending */ })) // Never resolves
+      mockCheckStatus.mockImplementation(() => checkStatusPromise)
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 10 }),
@@ -1454,6 +1517,12 @@ describe('JinaReader', () => {
       // Assert
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/10/)).toBeInTheDocument()
+      })
+
+      // Cleanup - resolve the promise
+      resolveCheckStatus!()
+      await waitFor(() => {
+        expect(screen.queryByText(/totalPageScraped/i)).not.toBeInTheDocument()
       })
     })
 
