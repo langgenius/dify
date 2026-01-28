@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { LLMNodeType, ToolSetting } from '../types'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
+import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import Switch from '@/app/components/base/switch'
 import { useNodeCurdKit } from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { consoleClient, consoleQuery } from '@/service/client'
@@ -123,45 +123,70 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
     })
   }, [handleNodeDataUpdate, toolSettings])
 
+  const [openMap, setOpenMap] = useState<Record<string, boolean>>({})
+  const handleToggleProvider = useCallback((providerId: string) => {
+    setOpenMap(prev => ({
+      ...prev,
+      [providerId]: !prev[providerId],
+    }))
+  }, [])
+
   return (
     <div className={cn('flex flex-col gap-2', isDisabled && 'opacity-50')}>
-      {providers.map(provider => (
-        <div
-          key={provider.id}
-          className="flex flex-col gap-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-bg p-1 shadow-xs"
-        >
-          <div className="flex items-center gap-2 rounded-lg px-2 py-1.5">
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-md border border-divider-subtle bg-background-default">
-                <DefaultToolIcon className="h-4 w-4 text-text-primary" />
+      {providers.map((provider) => {
+        const isOpen = openMap[provider.id] ?? false
+        return (
+          <div
+            key={provider.id}
+            className="flex flex-col gap-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-bg p-1 shadow-xs"
+          >
+            <div className="flex items-center rounded-lg p-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md border border-divider-subtle bg-background-default">
+                  <DefaultToolIcon className="h-4 w-4 text-text-primary" />
+                </div>
+                <div className="system-sm-medium truncate text-text-primary">
+                  {provider.id}
+                </div>
               </div>
-              <div className="system-sm-medium truncate text-text-primary">
-                {provider.id}
-              </div>
-              <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
+              <button
+                type="button"
+                className="group/collapse-btn flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-state-base-hover"
+                onClick={() => handleToggleProvider(provider.id)}
+                aria-expanded={isOpen}
+              >
+                <ArrowDownRoundFill className={cn('h-4 w-4 text-text-quaternary group-hover/collapse-btn:text-text-secondary', isOpen ? 'rotate-0' : '-rotate-90')} />
+              </button>
             </div>
+            {isOpen && (
+              <div className="pb-1">
+                {provider.actions.map(action => (
+                  <div
+                    key={`${action.type}-${action.provider}-${action.tool_name}`}
+                    className={cn(
+                      'relative flex h-7 items-center justify-between rounded-md pl-9 pr-2',
+                      !isDisabled && 'hover:bg-state-base-hover',
+                    )}
+                  >
+                    <div className="absolute left-4 top-0 h-full w-[2px] bg-divider-subtle" />
+                    <div className="flex min-w-0 flex-1 items-center">
+                      <span className="system-sm-regular truncate text-text-secondary">
+                        {action.tool_name}
+                      </span>
+                    </div>
+                    <Switch
+                      size="md"
+                      disabled={isDisabled}
+                      defaultValue={resolveToolEnabled(action)}
+                      onChange={value => handleToolEnabledChange(action, value)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          {provider.actions.map(action => (
-            <div
-              key={`${action.type}-${action.provider}-${action.tool_name}`}
-              className="relative flex items-center gap-2 rounded-md px-2 py-1"
-            >
-              <div className="absolute left-3 top-0 h-full w-px bg-divider-subtle" />
-              <div className="flex min-w-0 flex-1 items-center pl-5">
-                <span className="system-sm-regular truncate text-text-secondary">
-                  {action.tool_name}
-                </span>
-              </div>
-              <Switch
-                size="md"
-                disabled={isDisabled}
-                defaultValue={resolveToolEnabled(action)}
-                onChange={value => handleToolEnabledChange(action, value)}
-              />
-            </div>
-          ))}
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
