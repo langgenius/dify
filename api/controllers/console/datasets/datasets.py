@@ -8,7 +8,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.apikey import (
     api_key_item_model,
@@ -34,6 +34,7 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.app_fields import app_detail_kernel_fields, related_app_list
 from fields.dataset_fields import (
+    content_fields,
     dataset_detail_fields,
     dataset_fields,
     dataset_query_detail_fields,
@@ -41,6 +42,7 @@ from fields.dataset_fields import (
     doc_metadata_fields,
     external_knowledge_info_fields,
     external_retrieval_model_fields,
+    file_info_fields,
     icon_info_fields,
     keyword_setting_fields,
     reranking_model_fields,
@@ -55,41 +57,33 @@ from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
-
-def _get_or_create_model(model_name: str, field_def):
-    existing = console_ns.models.get(model_name)
-    if existing is None:
-        existing = console_ns.model(model_name, field_def)
-    return existing
-
-
 # Register models for flask_restx to avoid dict type issues in Swagger
-dataset_base_model = _get_or_create_model("DatasetBase", dataset_fields)
+dataset_base_model = get_or_create_model("DatasetBase", dataset_fields)
 
-tag_model = _get_or_create_model("Tag", tag_fields)
+tag_model = get_or_create_model("Tag", tag_fields)
 
-keyword_setting_model = _get_or_create_model("DatasetKeywordSetting", keyword_setting_fields)
-vector_setting_model = _get_or_create_model("DatasetVectorSetting", vector_setting_fields)
+keyword_setting_model = get_or_create_model("DatasetKeywordSetting", keyword_setting_fields)
+vector_setting_model = get_or_create_model("DatasetVectorSetting", vector_setting_fields)
 
 weighted_score_fields_copy = weighted_score_fields.copy()
 weighted_score_fields_copy["keyword_setting"] = fields.Nested(keyword_setting_model)
 weighted_score_fields_copy["vector_setting"] = fields.Nested(vector_setting_model)
-weighted_score_model = _get_or_create_model("DatasetWeightedScore", weighted_score_fields_copy)
+weighted_score_model = get_or_create_model("DatasetWeightedScore", weighted_score_fields_copy)
 
-reranking_model = _get_or_create_model("DatasetRerankingModel", reranking_model_fields)
+reranking_model = get_or_create_model("DatasetRerankingModel", reranking_model_fields)
 
 dataset_retrieval_model_fields_copy = dataset_retrieval_model_fields.copy()
 dataset_retrieval_model_fields_copy["reranking_model"] = fields.Nested(reranking_model)
 dataset_retrieval_model_fields_copy["weights"] = fields.Nested(weighted_score_model, allow_null=True)
-dataset_retrieval_model = _get_or_create_model("DatasetRetrievalModel", dataset_retrieval_model_fields_copy)
+dataset_retrieval_model = get_or_create_model("DatasetRetrievalModel", dataset_retrieval_model_fields_copy)
 
-external_knowledge_info_model = _get_or_create_model("ExternalKnowledgeInfo", external_knowledge_info_fields)
+external_knowledge_info_model = get_or_create_model("ExternalKnowledgeInfo", external_knowledge_info_fields)
 
-external_retrieval_model = _get_or_create_model("ExternalRetrievalModel", external_retrieval_model_fields)
+external_retrieval_model = get_or_create_model("ExternalRetrievalModel", external_retrieval_model_fields)
 
-doc_metadata_model = _get_or_create_model("DatasetDocMetadata", doc_metadata_fields)
+doc_metadata_model = get_or_create_model("DatasetDocMetadata", doc_metadata_fields)
 
-icon_info_model = _get_or_create_model("DatasetIconInfo", icon_info_fields)
+icon_info_model = get_or_create_model("DatasetIconInfo", icon_info_fields)
 
 dataset_detail_fields_copy = dataset_detail_fields.copy()
 dataset_detail_fields_copy["retrieval_model_dict"] = fields.Nested(dataset_retrieval_model)
@@ -98,14 +92,22 @@ dataset_detail_fields_copy["external_knowledge_info"] = fields.Nested(external_k
 dataset_detail_fields_copy["external_retrieval_model"] = fields.Nested(external_retrieval_model, allow_null=True)
 dataset_detail_fields_copy["doc_metadata"] = fields.List(fields.Nested(doc_metadata_model))
 dataset_detail_fields_copy["icon_info"] = fields.Nested(icon_info_model)
-dataset_detail_model = _get_or_create_model("DatasetDetail", dataset_detail_fields_copy)
+dataset_detail_model = get_or_create_model("DatasetDetail", dataset_detail_fields_copy)
 
-dataset_query_detail_model = _get_or_create_model("DatasetQueryDetail", dataset_query_detail_fields)
+file_info_model = get_or_create_model("DatasetFileInfo", file_info_fields)
 
-app_detail_kernel_model = _get_or_create_model("AppDetailKernel", app_detail_kernel_fields)
+content_fields_copy = content_fields.copy()
+content_fields_copy["file_info"] = fields.Nested(file_info_model, allow_null=True)
+content_model = get_or_create_model("DatasetContent", content_fields_copy)
+
+dataset_query_detail_fields_copy = dataset_query_detail_fields.copy()
+dataset_query_detail_fields_copy["queries"] = fields.Nested(content_model)
+dataset_query_detail_model = get_or_create_model("DatasetQueryDetail", dataset_query_detail_fields_copy)
+
+app_detail_kernel_model = get_or_create_model("AppDetailKernel", app_detail_kernel_fields)
 related_app_list_copy = related_app_list.copy()
 related_app_list_copy["data"] = fields.List(fields.Nested(app_detail_kernel_model))
-related_app_list_model = _get_or_create_model("RelatedAppList", related_app_list_copy)
+related_app_list_model = get_or_create_model("RelatedAppList", related_app_list_copy)
 
 
 def _validate_indexing_technique(value: str | None) -> str | None:
@@ -286,7 +288,7 @@ class DatasetListApi(Resource):
     @enterprise_license_required
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        query = ConsoleDatasetListQuery.model_validate(request.args.to_dict(flat=False))
+        query = ConsoleDatasetListQuery.model_validate(request.args.to_dict())
         # provider = request.args.get("provider", default="vendor")
         if query.ids:
             datasets, total = DatasetService.get_datasets_by_ids(query.ids, current_tenant_id)

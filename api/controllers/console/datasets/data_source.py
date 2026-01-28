@@ -3,13 +3,13 @@ from collections.abc import Generator
 from typing import Any, cast
 
 from flask import request
-from flask_restx import Resource, marshal_with
+from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import register_schema_model
+from controllers.common.schema import get_or_create_model, register_schema_model
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
@@ -17,7 +17,14 @@ from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
-from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
+from fields.data_source_fields import (
+    integrate_fields,
+    integrate_icon_fields,
+    integrate_list_fields,
+    integrate_notion_info_list_fields,
+    integrate_page_fields,
+    integrate_workspace_fields,
+)
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import DataSourceOauthBinding, Document
@@ -49,6 +56,49 @@ class DataSourceNotionPreviewQuery(BaseModel):
 register_schema_model(console_ns, NotionEstimatePayload)
 
 
+integrate_icon_model = get_or_create_model("DataSourceIntegrateIcon", integrate_icon_fields)
+
+integrate_page_fields_copy = integrate_page_fields.copy()
+integrate_page_fields_copy["page_icon"] = fields.Nested(integrate_icon_model, allow_null=True)
+integrate_page_model = get_or_create_model("DataSourceIntegratePage", integrate_page_fields_copy)
+
+integrate_workspace_fields_copy = integrate_workspace_fields.copy()
+integrate_workspace_fields_copy["pages"] = fields.List(fields.Nested(integrate_page_model))
+integrate_workspace_model = get_or_create_model("DataSourceIntegrateWorkspace", integrate_workspace_fields_copy)
+
+integrate_fields_copy = integrate_fields.copy()
+integrate_fields_copy["source_info"] = fields.Nested(integrate_workspace_model)
+integrate_model = get_or_create_model("DataSourceIntegrate", integrate_fields_copy)
+
+integrate_list_fields_copy = integrate_list_fields.copy()
+integrate_list_fields_copy["data"] = fields.List(fields.Nested(integrate_model))
+integrate_list_model = get_or_create_model("DataSourceIntegrateList", integrate_list_fields_copy)
+
+notion_page_fields = {
+    "page_name": fields.String,
+    "page_id": fields.String,
+    "page_icon": fields.Nested(integrate_icon_model, allow_null=True),
+    "is_bound": fields.Boolean,
+    "parent_id": fields.String,
+    "type": fields.String,
+}
+notion_page_model = get_or_create_model("NotionIntegratePage", notion_page_fields)
+
+notion_workspace_fields = {
+    "workspace_name": fields.String,
+    "workspace_id": fields.String,
+    "workspace_icon": fields.String,
+    "pages": fields.List(fields.Nested(notion_page_model)),
+}
+notion_workspace_model = get_or_create_model("NotionIntegrateWorkspace", notion_workspace_fields)
+
+integrate_notion_info_list_fields_copy = integrate_notion_info_list_fields.copy()
+integrate_notion_info_list_fields_copy["notion_info"] = fields.List(fields.Nested(notion_workspace_model))
+integrate_notion_info_list_model = get_or_create_model(
+    "NotionIntegrateInfoList", integrate_notion_info_list_fields_copy
+)
+
+
 @console_ns.route(
     "/data-source/integrates",
     "/data-source/integrates/<uuid:binding_id>/<string:action>",
@@ -57,7 +107,7 @@ class DataSourceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(integrate_list_fields)
+    @marshal_with(integrate_list_model)
     def get(self):
         _, current_tenant_id = current_account_with_tenant()
 
@@ -142,7 +192,7 @@ class DataSourceNotionListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(integrate_notion_info_list_fields)
+    @marshal_with(integrate_notion_info_list_model)
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
 
