@@ -2,7 +2,7 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import marshal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -25,6 +25,14 @@ from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 from services.tag_service import TagService
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+service_api_ns.schema_model(
+    DatasetPermissionEnum.__name__,
+    TypeAdapter(DatasetPermissionEnum).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 class DatasetCreatePayload(BaseModel):
@@ -122,7 +130,7 @@ class DatasetListApi(DatasetApiResource):
     )
     def get(self, tenant_id):
         """Resource for getting datasets."""
-        query = DatasetListQuery.model_validate(request.args.to_dict(flat=False))
+        query = DatasetListQuery.model_validate(request.args.to_dict())
         # provider = request.args.get("provider", default="vendor")
 
         datasets, total = DatasetService.get_datasets(
