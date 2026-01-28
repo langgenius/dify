@@ -144,9 +144,7 @@ def test_console_features_success(app, mock_auth_environment, url, service_mock_
         response = client.get(url)
 
     # Assertions
-    if response.status_code != 200:
-        pytest.fail(f"Request failed with status {response.status_code}: {response.text}")
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Request failed with status {response.status_code}: {response.text}"
 
     # Verify the JSON response matches the Pydantic model dump
     expected_data = mock_model_instance.model_dump(mode="json")
