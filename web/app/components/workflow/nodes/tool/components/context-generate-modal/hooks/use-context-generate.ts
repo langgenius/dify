@@ -31,16 +31,6 @@ export type ContextGenerateChatMessage = ContextGenerateMessage & {
   durationMs?: number
 }
 
-const defaultCompletionParams: CompletionParams = {
-  temperature: 0.7,
-  max_tokens: 4096,
-  top_p: 0.1,
-  echo: false,
-  stop: [],
-  presence_penalty: 0,
-  frequency_penalty: 0,
-}
-
 export const normalizeCodeLanguage = (value?: string) => {
   if (value === CodeLanguage.javascript)
     return CodeLanguage.javascript
@@ -286,10 +276,7 @@ const useContextGenerate = ({
     const parsed = JSON.parse(stored) as Model
     return {
       ...parsed,
-      completion_params: {
-        ...defaultCompletionParams,
-        ...parsed.completion_params,
-      },
+      completion_params: (parsed.completion_params ?? {}) as CompletionParams,
     }
   })
 
@@ -305,16 +292,31 @@ const useContextGenerate = ({
         name: '',
         provider: '',
         mode: AppModeEnum.CHAT as unknown as ModelModeType.chat,
-        completion_params: defaultCompletionParams,
+        completion_params: {} as CompletionParams,
       }
     }
     return {
       name: defaultModel.model,
       provider: defaultModel.provider.provider,
       mode: AppModeEnum.CHAT as unknown as ModelModeType.chat,
-      completion_params: defaultCompletionParams,
+      completion_params: {} as CompletionParams,
     }
   }, [defaultModel, modelOverride])
+
+  const modelConfig = useMemo(() => {
+    const completionParams = model.completion_params
+    if (Object.keys(completionParams).length === 0) {
+      return {
+        provider: model.provider,
+        name: model.name,
+      }
+    }
+    return {
+      provider: model.provider,
+      name: model.name,
+      completion_params: completionParams,
+    }
+  }, [model.provider, model.name, model.completion_params])
 
   const handleModelChange = useCallback((newValue: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
     const newModel = {
@@ -365,7 +367,7 @@ const useContextGenerate = ({
   const handleFetchSuggestedQuestions = useCallback(async () => {
     if (!toolNodeId || !paramKey)
       return
-    if (!model.name || !model.provider)
+    if (!modelConfig.name || !modelConfig.provider)
       return
     if (hasFetchedSuggestions || isFetchingSuggestions || !isInitView)
       return
@@ -377,9 +379,7 @@ const useContextGenerate = ({
       const response = await fetchContextGenerateSuggestedQuestions({
         language: promptLanguage,
         model_config: {
-          provider: model.provider,
-          name: model.name,
-          completion_params: model.completion_params,
+          ...modelConfig,
         },
         available_vars: availableVarsPayload,
         parameter_info: parameterInfo,
@@ -422,9 +422,7 @@ const useContextGenerate = ({
     hasFetchedSuggestions,
     isFetchingSuggestions,
     isInitView,
-    model.completion_params,
-    model.name,
-    model.provider,
+    modelConfig,
     paramKey,
     parameterInfo,
     promptLanguage,
@@ -466,9 +464,7 @@ const useContextGenerate = ({
           tool_call_id,
         })),
         model_config: {
-          provider: model.provider,
-          name: model.name,
-          completion_params: model.completion_params,
+          ...modelConfig,
         },
         available_vars: availableVarsPayload,
         parameter_info: parameterInfo,
@@ -506,9 +502,7 @@ const useContextGenerate = ({
     defaultAssistantMessage,
     inputValue,
     isGenerating,
-    model.completion_params,
-    model.name,
-    model.provider,
+    modelConfig,
     paramKey,
     parameterInfo,
     promptMessages,

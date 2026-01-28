@@ -53,15 +53,6 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   },
 ) => {
   const { t } = useTranslation()
-  const defaultCompletionParams = {
-    temperature: 0.7,
-    max_tokens: 0,
-    top_p: 0,
-    echo: false,
-    stop: [],
-    presence_penalty: 0,
-    frequency_penalty: 0,
-  }
   const localModel = localStorage.getItem('auto-gen-model')
     ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
     : null
@@ -69,7 +60,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     name: '',
     provider: '',
     mode: mode as unknown as ModelModeType.chat,
-    completion_params: defaultCompletionParams,
+    completion_params: {} as CompletionParams,
   })
   const {
     defaultModel,
@@ -134,12 +125,19 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       return
     setLoadingTrue()
     try {
+      const completionParams = model.completion_params
+      const modelConfig = Object.keys(completionParams).length > 0
+        ? model
+        : (() => {
+            const { completion_params: _completion_params, ...rest } = model
+            return rest
+          })()
       const { error, ...res } = await generateRule({
         flow_id: flowId,
         node_id: nodeId,
         current: currentCode,
         instruction,
-        model_config: model,
+        model_config: modelConfig,
         ideal_output: ideaOutput,
         language: languageMap[codeLanguages] || 'javascript',
       })
@@ -174,10 +172,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       if (localModel) {
         setModel({
           ...localModel,
-          completion_params: {
-            ...defaultCompletionParams,
-            ...localModel.completion_params,
-          },
+          completion_params: (localModel.completion_params ?? {}) as CompletionParams,
         })
       }
       else {
