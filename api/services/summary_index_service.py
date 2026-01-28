@@ -1093,10 +1093,12 @@ class SummaryIndexService:
                         segment, dataset, summary_content, status="generating"
                     )
                     # Re-vectorize summary (this will update status to "completed" and tokens in its own session)
-                    # Note: summary_record was created in a different session, but vectorize_summary will merge it
+                    # Note: summary_record was created in a different session,
+                    # so we need to merge it into current session
                     try:
-                        # Pass the session to vectorize_summary - it will use merge to handle
-                        # the record from different session
+                        # Merge the record into current session first (since it was created in a different session)
+                        summary_record = session.merge(summary_record)
+                        # Pass the session to vectorize_summary - it will update the merged record
                         SummaryIndexService.vectorize_summary(summary_record, segment, dataset, session=session)
                         # Refresh to get updated status and tokens from database
                         session.refresh(summary_record)
