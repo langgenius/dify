@@ -15,6 +15,7 @@ vi.mock('@/service/knowledge/use-document', () => ({
   useSyncWebsite: () => ({ mutateAsync: vi.fn().mockResolvedValue({}) }),
   useDocumentPause: () => ({ mutateAsync: vi.fn().mockResolvedValue({}) }),
   useDocumentResume: () => ({ mutateAsync: vi.fn().mockResolvedValue({}) }),
+  useDocumentSummary: () => ({ mutateAsync: vi.fn().mockResolvedValue({}) }),
 }))
 
 // Mock utils
