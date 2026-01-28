@@ -9,9 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
-from controllers.common.schema import register_schema_models
+from controllers.common.helpers import FileInfo
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
+from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -22,17 +24,35 @@ from controllers.console.wraps import (
 )
 from core.file import helpers as file_helpers
 from core.ops.ops_trace_manager import OpsTraceManager
-from core.workflow.enums import NodeType
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.workflow.enums import NodeType, WorkflowExecutionStatus
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
-from models import App, Workflow
+from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.knowledge_entities.knowledge_entities import (
+    DataSource,
+    InfoList,
+    NotionIcon,
+    NotionInfo,
+    NotionPage,
+    PreProcessingRule,
+    RerankingModel,
+    Rule,
+    Segmentation,
+    WebsiteInfo,
+    WeightKeywordSetting,
+    WeightModel,
+    WeightVectorSetting,
+)
 from services.feature_service import FeatureService
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+
+register_enum_models(console_ns, IconType)
 
 
 class AppListQuery(BaseModel):
@@ -151,7 +171,7 @@ def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str |
     if icon is None or icon_type is None:
         return None
     icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
-    if icon_type_value.lower() != IconType.IMAGE.value:
+    if icon_type_value.lower() != IconType.IMAGE:
         return None
     return file_helpers.get_signed_file_url(icon)
 
@@ -391,6 +411,8 @@ class AppExportResponse(ResponseModel):
     data: str
 
 
+register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
+
 register_schema_models(
     console_ns,
     AppListQuery,
@@ -414,6 +436,22 @@ register_schema_models(
     AppDetailWithSite,
     AppPagination,
     AppExportResponse,
+    Segmentation,
+    PreProcessingRule,
+    Rule,
+    WeightVectorSetting,
+    WeightKeywordSetting,
+    WeightModel,
+    RerankingModel,
+    InfoList,
+    NotionInfo,
+    FileInfo,
+    WebsiteInfo,
+    NotionPage,
+    NotionIcon,
+    RerankingModel,
+    DataSource,
+    LoadBalancingPayload,
 )
 
 

@@ -22,9 +22,9 @@ api_key_fields = {
     "created_at": TimestampField,
 }
 
-api_key_list = {"data": fields.List(fields.Nested(api_key_fields), attribute="items")}
-
 api_key_item_model = console_ns.model("ApiKeyItem", api_key_fields)
+
+api_key_list = {"data": fields.List(fields.Nested(api_key_item_model), attribute="items")}
 
 api_key_list_model = console_ns.model(
     "ApiKeyList", {"data": fields.List(fields.Nested(api_key_item_model), attribute="items")}
