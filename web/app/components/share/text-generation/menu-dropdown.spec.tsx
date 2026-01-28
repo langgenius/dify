@@ -57,8 +57,8 @@ describe('MenuDropdown', () => {
     it('should render the trigger button', () => {
       render(<MenuDropdown data={baseSiteInfo} />)
 
-      // The trigger button contains an icon
-      const triggerButton = document.querySelector('button')
+      // The trigger button contains a settings icon (RiEqualizer2Line)
+      const triggerButton = screen.getByRole('button')
       expect(triggerButton).toBeInTheDocument()
     })
 
@@ -72,8 +72,8 @@ describe('MenuDropdown', () => {
     it('should show dropdown content when clicked', async () => {
       render(<MenuDropdown data={baseSiteInfo} />)
 
-      const triggerButton = document.querySelector('button')
-      fireEvent.click(triggerButton!)
+      const triggerButton = screen.getByRole('button')
+      fireEvent.click(triggerButton)
 
       await waitFor(() => {
         expect(screen.getByText('theme.theme')).toBeInTheDocument()
@@ -83,8 +83,8 @@ describe('MenuDropdown', () => {
     it('should show About option in dropdown', async () => {
       render(<MenuDropdown data={baseSiteInfo} />)
 
-      const triggerButton = document.querySelector('button')
-      fireEvent.click(triggerButton!)
+      const triggerButton = screen.getByRole('button')
+      fireEvent.click(triggerButton)
 
       await waitFor(() => {
         expect(screen.getByText('userProfile.about')).toBeInTheDocument()
@@ -101,8 +101,8 @@ describe('MenuDropdown', () => {
 
       render(<MenuDropdown data={siteInfoWithPrivacy} />)
 
-      const triggerButton = document.querySelector('button')
-      fireEvent.click(triggerButton!)
+      const triggerButton = screen.getByRole('button')
+      fireEvent.click(triggerButton)
 
       await waitFor(() => {
         expect(screen.getByText('chat.privacyPolicyMiddle')).toBeInTheDocument()
@@ -112,8 +112,8 @@ describe('MenuDropdown', () => {
     it('should not show privacy policy link when not provided', async () => {
       render(<MenuDropdown data={baseSiteInfo} />)
 
-      const triggerButton = document.querySelector('button')
-      fireEvent.click(triggerButton!)
+      const triggerButton = screen.getByRole('button')
+      fireEvent.click(triggerButton)
 
       await waitFor(() => {
         expect(screen.queryByText('chat.privacyPolicyMiddle')).not.toBeInTheDocument()
@@ -129,8 +129,8 @@ describe('MenuDropdown', () => {
 
       render(<MenuDropdown data={siteInfoWithPrivacy} />)
 
-      const triggerButton = document.querySelector('button')
-      fireEvent.click(triggerButton!)
+      const triggerButton = screen.getByRole('button')
+      fireEvent.click(triggerButton)
 
       await waitFor(() => {
         const link = screen.getByText('chat.privacyPolicyMiddle').closest('a')
@@ -144,8 +144,8 @@ describe('MenuDropdown', () => {
     it('should show logout option when hideLogout is false', async () => {
       render(<MenuDropdown data={baseSiteInfo} hideLogout={false} />)
 
-      const triggerButton = document.querySelector('button')
-      fireEvent.click(triggerButton!)
+      const triggerButton = screen.getByRole('button')
+      fireEvent.click(triggerButton)
 
       await waitFor(() => {
         expect(screen.getByText('userProfile.logout')).toBeInTheDocument()
@@ -155,8 +155,8 @@ describe('MenuDropdown', () => {
     it('should hide logout option when hideLogout is true', async () => {
       render(<MenuDropdown data={baseSiteInfo} hideLogout={true} />)
 
-      const triggerButton = document.querySelector('button')
-      fireEvent.click(triggerButton!)
+      const triggerButton = screen.getByRole('button')
+      fireEvent.click(triggerButton)
 
       await waitFor(() => {
         expect(screen.queryByText('userProfile.logout')).not.toBeInTheDocument()
@@ -166,8 +166,8 @@ describe('MenuDropdown', () => {
     it('should call webAppLogout and redirect when logout is clicked', async () => {
       render(<MenuDropdown data={baseSiteInfo} hideLogout={false} />)
 
-      const triggerButton = document.querySelector('button')
-      fireEvent.click(triggerButton!)
+      const triggerButton = screen.getByRole('button')
+      fireEvent.click(triggerButton)
 
       await waitFor(() => {
         expect(screen.getByText('userProfile.logout')).toBeInTheDocument()
@@ -189,8 +189,8 @@ describe('MenuDropdown', () => {
     it('should show InfoModal when About is clicked', async () => {
       render(<MenuDropdown data={baseSiteInfo} />)
 
-      const triggerButton = document.querySelector('button')
-      fireEvent.click(triggerButton!)
+      const triggerButton = screen.getByRole('button')
+      fireEvent.click(triggerButton)
 
       await waitFor(() => {
         expect(screen.getByText('userProfile.about')).toBeInTheDocument()
@@ -209,8 +209,8 @@ describe('MenuDropdown', () => {
     it('should close dropdown when forceClose changes to true', async () => {
       const { rerender } = render(<MenuDropdown data={baseSiteInfo} forceClose={false} />)
 
-      const triggerButton = document.querySelector('button')
-      fireEvent.click(triggerButton!)
+      const triggerButton = screen.getByRole('button')
+      fireEvent.click(triggerButton)
 
       await waitFor(() => {
         expect(screen.getByText('theme.theme')).toBeInTheDocument()
@@ -228,7 +228,7 @@ describe('MenuDropdown', () => {
     it('should accept custom placement', () => {
       render(<MenuDropdown data={baseSiteInfo} placement="top-start" />)
 
-      const triggerButton = document.querySelector('button')
+      const triggerButton = screen.getByRole('button')
       expect(triggerButton).toBeInTheDocument()
     })
   })
@@ -237,16 +237,16 @@ describe('MenuDropdown', () => {
     it('should close dropdown when clicking trigger again', async () => {
       render(<MenuDropdown data={baseSiteInfo} />)
 
-      const triggerButton = document.querySelector('button')
+      const triggerButton = screen.getByRole('button')
 
       // Open
-      fireEvent.click(triggerButton!)
+      fireEvent.click(triggerButton)
       await waitFor(() => {
         expect(screen.getByText('theme.theme')).toBeInTheDocument()
       })
 
       // Close
-      fireEvent.click(triggerButton!)
+      fireEvent.click(triggerButton)
       await waitFor(() => {
         expect(screen.queryByText('theme.theme')).not.toBeInTheDocument()
       })

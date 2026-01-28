@@ -121,7 +121,7 @@ describe('Filter', () => {
   })
 
   describe('Query Params', () => {
-    it('should handle different period values', () => {
+    it('should display "today" when period is set to 1', () => {
       const propsWithPeriod = {
         ...defaultProps,
         queryParams: { ...defaultQueryParams, period: '1' },
@@ -129,10 +129,29 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithPeriod} />)
 
-      expect(screen.getByPlaceholderText('operation.search')).toBeInTheDocument()
+      // Period '1' maps to 'today' in TIME_PERIOD_MAPPING
+      expect(screen.getByText('filter.period.today')).toBeInTheDocument()
     })
 
-    it('should handle annotated status', () => {
+    it('should display "last7days" when period is set to 2', () => {
+      const propsWithPeriod = {
+        ...defaultProps,
+        queryParams: { ...defaultQueryParams, period: '2' },
+      }
+
+      render(<Filter {...propsWithPeriod} />)
+
+      expect(screen.getByText('filter.period.last7days')).toBeInTheDocument()
+    })
+
+    it('should display "allTime" when period is set to 9', () => {
+      render(<Filter {...defaultProps} />)
+
+      // Default period is '9' which maps to 'allTime'
+      expect(screen.getByText('filter.period.allTime')).toBeInTheDocument()
+    })
+
+    it('should display annotated status with count when annotation_status is annotated', () => {
       const propsWithAnnotation = {
         ...defaultProps,
         queryParams: { ...defaultQueryParams, annotation_status: 'annotated' },
@@ -140,10 +159,11 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithAnnotation} />)
 
-      expect(screen.getByPlaceholderText('operation.search')).toBeInTheDocument()
+      // The mock returns count: 10, so the text should include the count
+      expect(screen.getByText('filter.annotation.annotated (10)')).toBeInTheDocument()
     })
 
-    it('should handle not_annotated status', () => {
+    it('should display not_annotated status when annotation_status is not_annotated', () => {
       const propsWithNotAnnotated = {
         ...defaultProps,
         queryParams: { ...defaultQueryParams, annotation_status: 'not_annotated' },
@@ -151,7 +171,14 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithNotAnnotated} />)
 
-      expect(screen.getByPlaceholderText('operation.search')).toBeInTheDocument()
+      expect(screen.getByText('filter.annotation.not_annotated')).toBeInTheDocument()
+    })
+
+    it('should display all annotation status when annotation_status is all', () => {
+      render(<Filter {...defaultProps} />)
+
+      // Default annotation_status is 'all'
+      expect(screen.getByText('filter.annotation.all')).toBeInTheDocument()
     })
   })
 

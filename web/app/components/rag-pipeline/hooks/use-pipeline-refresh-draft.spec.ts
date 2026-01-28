@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -111,35 +111,37 @@ describe('usePipelineRefreshDraft', () => {
     it('should update workflow canvas with response data', async () => {
       const { result } = renderHook(() => usePipelineRefreshDraft())
 
-      await act(async () => {
+      act(() => {
         result.current.handleRefreshWorkflowDraft()
-        // Wait for promise to resolve
-        await new Promise(resolve => setTimeout(resolve, 0))
       })
 
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalled()
+      await waitFor(() => {
+        expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalled()
+      })
     })
 
     it('should update sync hash after fetch', async () => {
       const { result } = renderHook(() => usePipelineRefreshDraft())
 
-      await act(async () => {
+      act(() => {
         result.current.handleRefreshWorkflowDraft()
-        await new Promise(resolve => setTimeout(resolve, 0))
       })
 
-      expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
+      await waitFor(() => {
+        expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
+      })
     })
 
     it('should set syncing state to false after completion', async () => {
       const { result } = renderHook(() => usePipelineRefreshDraft())
 
-      await act(async () => {
+      act(() => {
         result.current.handleRefreshWorkflowDraft()
-        await new Promise(resolve => setTimeout(resolve, 0))
       })
 
-      expect(mockSetIsSyncingWorkflowDraft).toHaveBeenLastCalledWith(false)
+      await waitFor(() => {
+        expect(mockSetIsSyncingWorkflowDraft).toHaveBeenLastCalledWith(false)
+      })
     })
 
     it('should handle secret environment variables', async () => {
@@ -158,12 +160,13 @@ describe('usePipelineRefreshDraft', () => {
 
       const { result } = renderHook(() => usePipelineRefreshDraft())
 
-      await act(async () => {
+      act(() => {
         result.current.handleRefreshWorkflowDraft()
-        await new Promise(resolve => setTimeout(resolve, 0))
       })
 
-      expect(mockSetEnvSecrets).toHaveBeenCalledWith({ 'env-1': 'secret-value' })
+      await waitFor(() => {
+        expect(mockSetEnvSecrets).toHaveBeenCalledWith({ 'env-1': 'secret-value' })
+      })
     })
 
     it('should mask secret values in environment variables', async () => {
@@ -182,15 +185,16 @@ describe('usePipelineRefreshDraft', () => {
 
       const { result } = renderHook(() => usePipelineRefreshDraft())
 
-      await act(async () => {
+      act(() => {
         result.current.handleRefreshWorkflowDraft()
-        await new Promise(resolve => setTimeout(resolve, 0))
       })
 
-      expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
-        { id: 'env-1', value_type: 'secret', value: '[__HIDDEN__]' },
-        { id: 'env-2', value_type: 'string', value: 'plain-value' },
-      ])
+      await waitFor(() => {
+        expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
+          { id: 'env-1', value_type: 'secret', value: '[__HIDDEN__]' },
+          { id: 'env-2', value_type: 'string', value: 'plain-value' },
+        ])
+      })
     })
 
     it('should handle empty environment variables', async () => {
@@ -206,13 +210,14 @@ describe('usePipelineRefreshDraft', () => {
 
       const { result } = renderHook(() => usePipelineRefreshDraft())
 
-      await act(async () => {
+      act(() => {
         result.current.handleRefreshWorkflowDraft()
-        await new Promise(resolve => setTimeout(resolve, 0))
       })
 
-      expect(mockSetEnvSecrets).toHaveBeenCalledWith({})
-      expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([])
+      await waitFor(() => {
+        expect(mockSetEnvSecrets).toHaveBeenCalledWith({})
+        expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([])
+      })
     })
 
     it('should handle undefined environment variables', async () => {
@@ -228,13 +233,14 @@ describe('usePipelineRefreshDraft', () => {
 
       const { result } = renderHook(() => usePipelineRefreshDraft())
 
-      await act(async () => {
+      act(() => {
         result.current.handleRefreshWorkflowDraft()
-        await new Promise(resolve => setTimeout(resolve, 0))
       })
 
-      expect(mockSetEnvSecrets).toHaveBeenCalledWith({})
-      expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([])
+      await waitFor(() => {
+        expect(mockSetEnvSecrets).toHaveBeenCalledWith({})
+        expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([])
+      })
     })
   })
 })

@@ -70,18 +70,18 @@ describe('PublishToast', () => {
     })
 
     it('should render close button', () => {
-      const { container } = render(<PublishToast />)
+      render(<PublishToast />)
 
-      const closeButton = container.querySelector('.cursor-pointer')
+      const closeButton = screen.getByRole('button', { name: /close/i })
       expect(closeButton).toBeInTheDocument()
     })
   })
 
   describe('user interactions', () => {
     it('should hide toast when close button is clicked', () => {
-      const { container } = render(<PublishToast />)
+      render(<PublishToast />)
 
-      const closeButton = container.querySelector('.cursor-pointer')
+      const closeButton = screen.getByRole('button', { name: /close/i })
       expect(screen.getByText('publishToast.title')).toBeInTheDocument()
 
       fireEvent.click(closeButton!)
@@ -90,9 +90,9 @@ describe('PublishToast', () => {
     })
 
     it('should remain hidden after close button is clicked', () => {
-      const { container, rerender } = render(<PublishToast />)
+      const { rerender } = render(<PublishToast />)
 
-      const closeButton = container.querySelector('.cursor-pointer')
+      const closeButton = screen.getByRole('button', { name: /close/i })
       fireEvent.click(closeButton!)
 
       rerender(<PublishToast />)

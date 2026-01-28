@@ -337,11 +337,9 @@ describe('usePipelineInit', () => {
 
       renderHook(() => usePipelineInit())
 
-      // Give time for potential fetch to occur
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // fetchWorkflowDraft should still be called due to initial effect
-      // But it might fail due to undefined id
+      await waitFor(() => {
+        expect(mockFetchWorkflowDraft).toHaveBeenCalled()
+      })
     })
   })
 })
