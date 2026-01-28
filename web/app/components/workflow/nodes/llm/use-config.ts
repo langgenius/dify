@@ -45,23 +45,24 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       })
     }
 
-    // set skill=true for sandbox
+    // sandbox engine
     if (isSupportSandbox) {
-      if (Array.isArray(newPayload.prompt_template) && newPayload.prompt_template.find(item => !item.skill)) {
+      const isSupportSkill = !!newPayload.computer_use
+      if (Array.isArray(newPayload.prompt_template)) {
         newPayload = produce(newPayload, (draft) => {
           draft.prompt_template = (draft.prompt_template as PromptItem[]).map((item) => {
             return {
               ...item,
-              skill: true,
+              skill: isSupportSkill,
             }
           })
         })
       }
-      else if (!Array.isArray(newPayload.prompt_template) && !newPayload.prompt_template.skill) {
+      else {
         newPayload = produce(newPayload, (draft) => {
           draft.prompt_template = {
             ...draft.prompt_template,
-            skill: true,
+            skill: isSupportSkill,
           }
         })
       }
