@@ -264,6 +264,4 @@ def test_parallel_human_input_join_completes_after_second_resume() -> None:
     assert isinstance(second_resume_events[0], GraphRunStartedEvent)
     assert second_resume_events[0].reason is WorkflowStartReason.RESUMPTION
     assert isinstance(second_resume_events[-1], GraphRunSucceededEvent)
-    assert any(
-        isinstance(event, NodeRunSucceededEvent) and event.node_id == "end" for event in second_resume_events
-    )
+    assert any(isinstance(event, NodeRunSucceededEvent) and event.node_id == "end" for event in second_resume_events)

@@ -1442,6 +1442,7 @@ class TestConversationStatusCount:
         ]
 
         with patch("models.model.db.session.scalars") as mock_scalars:
+
             def mock_scalars_side_effect(query):
                 mock_result = MagicMock()
                 if "messages" in str(query):
