@@ -177,9 +177,7 @@ class DebugLoggingLayer(GraphEngineLayer):
                 self.logger.error("  Details: %s", event.node_run_result.error)
 
         elif isinstance(event, NodeRunExceptionEvent):
-            error_strategy = event.node_run_result.metadata.get(
-                WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY
-            )
+            error_strategy = event.node_run_result.metadata.get(WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY)
             if error_strategy == ErrorStrategy.FALLBACK_MODEL:
                 fallback_index = event.node_run_result.metadata.get(
                     WorkflowNodeExecutionMetadataKey.FALLBACK_MODEL_INDEX, 0
