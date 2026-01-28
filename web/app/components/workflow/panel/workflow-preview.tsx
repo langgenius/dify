@@ -109,7 +109,7 @@ const WorkflowPreview = () => {
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
-        {`Test Run${workflowRunningData ? formatWorkflowRunIdentifier(workflowRunningData.result.finished_at) : ''}`}
+        {`${t('singleRun.testRun', { ns: 'workflow' })}${workflowRunningData ? formatWorkflowRunIdentifier(workflowRunningData.result.finished_at, t('common.running', { ns: 'workflow' })) : ''}`}
         <div className="flex items-center gap-1">
           <Tooltip popupContent={t('operation.refresh', { ns: 'common' })}>
             <ActionButton onClick={() => {
