@@ -6,6 +6,7 @@ from flask import Flask
 from flask.views import MethodView
 from werkzeug.exceptions import Unauthorized
 import contextlib
+import importlib
 
 from extensions import ext_fastopenapi
 from extensions.ext_database import db
@@ -76,8 +77,6 @@ def _patch_auth_and_router(temp_router):
     def noop(f):
         return f
 
-import importlib
-    
     # We patch the SOURCE of the decorators/functions, not the destination module.
     # This ensures that when 'controllers.console.feature' imports them, it gets the mocks.
     with patch("controllers.fastopenapi.console_router", temp_router), \
