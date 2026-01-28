@@ -102,7 +102,13 @@ const UploadStatusTooltip: FC<UploadStatusTooltipProps> = ({ fallback }) => {
               failed: uploadProgress.failed,
               total: uploadProgress.total,
             })}
-            {uploadStatus === 'uploading' && '\u00A0'}
+            {uploadStatus === 'uploading' && (
+              <span className="inline-flex gap-px">
+                <span className="animate-pulse">·</span>
+                <span className="animate-pulse" style={{ animationDelay: '0.3s' }}>·</span>
+                <span className="animate-pulse" style={{ animationDelay: '0.6s' }}>·</span>
+              </span>
+            )}
           </span>
         </div>
 
