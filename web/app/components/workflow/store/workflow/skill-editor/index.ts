@@ -7,6 +7,7 @@ import { createFileOperationsMenuSlice } from './file-operations-menu-slice'
 import { createFileTreeSlice } from './file-tree-slice'
 import { createMetadataSlice } from './metadata-slice'
 import { createTabSlice } from './tab-slice'
+import { createUploadSlice } from './upload-slice'
 
 export type { ClipboardSliceShape } from './clipboard-slice'
 export type { DirtySliceShape } from './dirty-slice'
@@ -15,6 +16,7 @@ export type { FileTreeSliceShape } from './file-tree-slice'
 export type { MetadataSliceShape } from './metadata-slice'
 export type { OpenTabOptions, TabSliceShape } from './tab-slice'
 export type { SkillEditorSliceShape } from './types'
+export type { UploadSliceShape } from './upload-slice'
 
 export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...args) => ({
   ...createTabSlice(...args),
@@ -23,6 +25,7 @@ export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...a
   ...createDirtySlice(...args),
   ...createMetadataSlice(...args),
   ...createFileOperationsMenuSlice(...args),
+  ...createUploadSlice(...args),
 
   resetSkillEditor: () => {
     const [set] = args
@@ -40,6 +43,8 @@ export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...a
       dirtyMetadataIds: new Set<string>(),
       contextMenu: null,
       fileTreeSearchTerm: '',
+      uploadStatus: 'idle',
+      uploadProgress: { uploaded: 0, total: 0, failed: 0 },
     })
   },
 })

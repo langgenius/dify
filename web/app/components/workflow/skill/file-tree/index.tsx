@@ -28,6 +28,7 @@ import { isDescendantOf } from '../utils/tree-utils'
 import DragActionTooltip from './drag-action-tooltip'
 import TreeContextMenu from './tree-context-menu'
 import TreeNode from './tree-node'
+import UploadStatusTooltip from './upload-status-tooltip'
 
 type FileTreeProps = {
   className?: string
@@ -240,7 +241,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
             {t('skillSidebar.empty')}
           </span>
         </div>
-        <DropTip />
+        <UploadStatusTooltip fallback={<DropTip />} />
       </div>
     )
   }
@@ -271,7 +272,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
         data-skill-tree-container
         className={cn(
           'flex min-h-[150px] flex-1 flex-col overflow-y-auto',
-          isMutating && 'pointer-events-none opacity-50',
+          isMutating && 'pointer-events-none',
           className,
         )}
       >
@@ -314,7 +315,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
         </div>
         {dragOverFolderId
           ? <DragActionTooltip action={currentDragType ?? 'upload'} />
-          : <DropTip />}
+          : <UploadStatusTooltip fallback={<DropTip />} />}
       </div>
       <TreeContextMenu treeRef={treeRef} />
     </>

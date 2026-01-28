@@ -96,6 +96,22 @@ export type FileOperationsMenuSliceShape = {
   setContextMenu: (menu: ContextMenuState | null) => void
 }
 
+export type UploadStatus = 'idle' | 'uploading' | 'success' | 'partial_error'
+
+export type UploadProgress = {
+  uploaded: number
+  total: number
+  failed: number
+}
+
+export type UploadSliceShape = {
+  uploadStatus: UploadStatus
+  uploadProgress: UploadProgress
+  setUploadStatus: (status: UploadStatus) => void
+  setUploadProgress: (progress: UploadProgress) => void
+  resetUpload: () => void
+}
+
 export type SkillEditorSliceShape
   = TabSliceShape
     & FileTreeSliceShape
@@ -103,6 +119,7 @@ export type SkillEditorSliceShape
     & DirtySliceShape
     & MetadataSliceShape
     & FileOperationsMenuSliceShape
+    & UploadSliceShape
     & {
       resetSkillEditor: () => void
     }

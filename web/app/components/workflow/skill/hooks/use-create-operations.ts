@@ -4,8 +4,6 @@ import type { StoreApi } from 'zustand'
 import type { SkillEditorSliceShape } from '@/app/components/workflow/store/workflow/skill-editor/types'
 import type { BatchUploadNodeInput } from '@/types/app-asset'
 import { useCallback, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
 import {
   useBatchUpload,
   useCreateAppAssetFolder,
@@ -29,7 +27,6 @@ export function useCreateOperations({
   storeApi,
   onClose,
 }: UseCreateOperationsOptions) {
-  const { t } = useTranslation('workflow')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
 
@@ -54,33 +51,38 @@ export function useCreateOperations({
       return
     }
 
+    const total = files.length
+    let uploaded = 0
+    let failed = 0
+
+    storeApi.getState().setUploadStatus('uploading')
+    storeApi.getState().setUploadProgress({ uploaded: 0, total, failed: 0 })
+
     try {
       await Promise.all(
-        files.map(file =>
-          uploadFile.mutateAsync({
-            appId,
-            file,
-            parentId,
-          }),
-        ),
+        files.map(async (file) => {
+          try {
+            await uploadFile.mutateAsync({ appId, file, parentId })
+            uploaded++
+          }
+          catch {
+            failed++
+          }
+          storeApi.getState().setUploadProgress({ uploaded, total, failed })
+        }),
       )
 
-      Toast.notify({
-        type: 'success',
-        message: t('skillSidebar.menu.filesUploaded', { count: files.length }),
-      })
+      storeApi.getState().setUploadStatus(failed > 0 ? 'partial_error' : 'success')
+      storeApi.getState().setUploadProgress({ uploaded, total, failed })
     }
     catch {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.uploadError'),
-      })
+      storeApi.getState().setUploadStatus('partial_error')
     }
     finally {
       e.target.value = ''
       onClose()
     }
-  }, [appId, uploadFile, onClose, parentId, t])
+  }, [appId, uploadFile, onClose, parentId, storeApi])
 
   const handleFolderChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -88,6 +90,9 @@ export function useCreateOperations({
       onClose()
       return
     }
+
+    storeApi.getState().setUploadStatus('uploading')
+    storeApi.getState().setUploadProgress({ uploaded: 0, total: files.length, failed: 0 })
 
     try {
       const fileMap = new Map<string, File>()
@@ -135,24 +140,22 @@ export function useCreateOperations({
         tree,
         files: fileMap,
         parentId,
+        onProgress: (uploaded, total) => {
+          storeApi.getState().setUploadProgress({ uploaded, total, failed: 0 })
+        },
       })
 
-      Toast.notify({
-        type: 'success',
-        message: t('skillSidebar.menu.folderUploaded'),
-      })
+      storeApi.getState().setUploadStatus('success')
+      storeApi.getState().setUploadProgress({ uploaded: files.length, total: files.length, failed: 0 })
     }
     catch {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.uploadError'),
-      })
+      storeApi.getState().setUploadStatus('partial_error')
     }
     finally {
       e.target.value = ''
       onClose()
     }
-  }, [appId, batchUpload, onClose, t])
+  }, [appId, batchUpload, onClose, parentId, storeApi])
 
   return {
     fileInputRef,
