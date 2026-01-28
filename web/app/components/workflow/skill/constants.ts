@@ -27,3 +27,7 @@ export const NODE_MENU_TYPE = {
 } as const
 
 export type NodeMenuType = (typeof NODE_MENU_TYPE)[keyof typeof NODE_MENU_TYPE]
+
+export const SIDEBAR_MIN_WIDTH = 240
+export const SIDEBAR_MAX_WIDTH = 480
+export const SIDEBAR_DEFAULT_WIDTH = 320
