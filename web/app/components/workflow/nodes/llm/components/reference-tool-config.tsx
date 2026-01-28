@@ -2,9 +2,11 @@
 import type { FC } from 'react'
 import type { LLMNodeType, ToolSetting } from '../types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { Locale } from '@/i18n-config/language'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
@@ -12,6 +14,7 @@ import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid
 import Switch from '@/app/components/base/switch'
 import { useNodeCurdKit } from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useTheme from '@/hooks/use-theme'
+import { getLanguage } from '@/i18n-config/language'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
@@ -44,6 +47,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
   promptTemplateKey,
 }) => {
   const isDisabled = readonly || !enabled
+  const { i18n } = useTranslation()
   const appId = useAppStore(s => s.appDetail?.id)
   const { handleNodeDataUpdate } = useNodeCurdKit<LLMNodeType>(nodeId)
   const { theme } = useTheme()
@@ -51,6 +55,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
+  const locale = useMemo(() => getLanguage(i18n.language as Locale), [i18n.language])
 
   const queryKey = useMemo(() => {
     return [
@@ -96,20 +101,35 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
     }))
   }, [toolDependencies])
 
-  const providerIcons = useMemo(() => {
-    const mergedTools = [
+  const mergedTools = useMemo(() => {
+    return [
       ...(buildInTools || []),
       ...(customTools || []),
       ...(workflowTools || []),
       ...(mcpTools || []),
     ]
+  }, [buildInTools, customTools, workflowTools, mcpTools])
+
+  const findProviderMeta = useCallback((providerId: string) => {
+    return mergedTools.find(toolWithProvider =>
+      toolWithProvider.name === providerId
+      || toolWithProvider.id === providerId
+      || toolWithProvider.provider === providerId,
+    )
+  }, [mergedTools])
+
+  const resolveI18nLabel = useCallback((label: ToolWithProvider['label'] | undefined) => {
+    if (!label)
+      return ''
+    if (typeof label === 'string')
+      return label
+    return label[locale] ?? label.en_US ?? Object.values(label)[0] ?? ''
+  }, [locale])
+
+  const providerIcons = useMemo(() => {
     const icons = new Map<string, ToolWithProvider['icon']>()
     providers.forEach((provider) => {
-      const matched = mergedTools.find(toolWithProvider =>
-        toolWithProvider.name === provider.id
-        || toolWithProvider.id === provider.id
-        || toolWithProvider.provider === provider.id,
-      )
+      const matched = findProviderMeta(provider.id)
       let icon = matched
         ? (theme === 'dark' && matched.icon_dark ? matched.icon_dark : matched.icon)
         : undefined
@@ -119,7 +139,33 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
         icons.set(provider.id, icon)
     })
     return icons
-  }, [buildInTools, customTools, workflowTools, mcpTools, providers, theme])
+  }, [findProviderMeta, providers, theme])
+
+  const providerLabels = useMemo(() => {
+    const labels = new Map<string, string>()
+    providers.forEach((provider) => {
+      const matched = findProviderMeta(provider.id)
+      const label = resolveI18nLabel(matched?.label)
+      if (label)
+        labels.set(provider.id, label)
+    })
+    return labels
+  }, [findProviderMeta, providers, resolveI18nLabel])
+
+  const actionLabels = useMemo(() => {
+    const labels = new Map<string, string>()
+    providers.forEach((provider) => {
+      const matched = findProviderMeta(provider.id)
+      if (!matched?.tools)
+        return
+      matched.tools.forEach((tool) => {
+        const label = resolveI18nLabel(tool.label)
+        if (label)
+          labels.set(`${provider.id}::${tool.name}`, label)
+      })
+    })
+    return labels
+  }, [findProviderMeta, providers, resolveI18nLabel])
 
   const resolveToolEnabled = useCallback((tool: ToolDependency) => {
     const matched = toolSettings?.find(setting =>
@@ -207,7 +253,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
                   {renderProviderIcon(provider.id)}
                 </div>
                 <div className="system-sm-medium truncate text-text-primary">
-                  {provider.id}
+                  {providerLabels.get(provider.id) ?? provider.id}
                 </div>
               </div>
               <button
@@ -232,7 +278,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
                     <div className="absolute left-[15px] top-0 h-full w-[2px] bg-divider-subtle" />
                     <div className="flex min-w-0 flex-1 items-center">
                       <span className="system-sm-regular truncate text-text-secondary">
-                        {action.tool_name}
+                        {actionLabels.get(`${provider.id}::${action.tool_name}`) ?? action.tool_name}
                       </span>
                     </div>
                     <Switch
