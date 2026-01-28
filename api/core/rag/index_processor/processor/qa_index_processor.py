@@ -243,7 +243,7 @@ class QAIndexProcessor(BaseIndexProcessor):
     ) -> list[PreviewDetail]:
         """
         QA model doesn't generate summaries, so this method returns preview_texts unchanged.
-        
+
         Note: QA model uses question-answer pairs, which don't require summary generation.
         """
         # QA model doesn't generate summaries, return as-is
