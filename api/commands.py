@@ -434,6 +434,7 @@ def migrate_knowledge_vector_database():
                                     )
                                     child_documents.append(child_document)
                                 document.children = child_documents
+
                         documents.append(document)
                         segments_count = segments_count + 1
 
