@@ -290,7 +290,7 @@ class DatasetListApi(Resource):
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
         # Convert query parameters to dict, handling list parameters correctly
-        query_params = request.args.to_dict()
+        query_params: dict[str, str | list[str]] = dict(request.args.to_dict())
         # Handle ids and tag_ids as lists (Flask request.args.getlist returns list even for single value)
         if "ids" in request.args:
             query_params["ids"] = request.args.getlist("ids")

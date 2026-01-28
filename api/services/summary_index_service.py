@@ -252,6 +252,11 @@ class SummaryIndexService:
                     logger.debug("Using provided session for vectorization of segment %s", segment.id)
                     session_context = None  # Don't use context manager for provided session
 
+                # At this point, session is guaranteed to be not None
+                # Type narrowing: session is definitely not None after the if/else above
+                if session is None:
+                    raise RuntimeError("Session should not be None at this point")
+
                 try:
                     # If using provided session, merge the summary_record into it
                     if use_provided_session:
