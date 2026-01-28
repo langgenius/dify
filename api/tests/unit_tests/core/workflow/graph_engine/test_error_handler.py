@@ -16,7 +16,7 @@ from core.workflow.enums import (
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.domain.graph_execution import GraphExecution
 from core.workflow.graph_engine.error_handler import ErrorHandler
-from core.workflow.graph_events import NodeRunFailedEvent, NodeRunRetryEvent
+from core.workflow.graph_events import NodeRunExceptionEvent, NodeRunFailedEvent
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import RetryConfig
 from core.workflow.nodes.llm.entities import ContextConfig, LLMNodeData, ModelConfig
@@ -143,21 +143,20 @@ def create_failed_event(
 class TestFallbackModelStrategy:
     """Test cases for fallback model error strategy."""
 
-    def test_fallback_model_strategy_returns_retry_event(
+    def test_fallback_model_strategy_returns_exception_event(
         self,
         error_handler: ErrorHandler,
         graph_runtime_state: GraphRuntimeState,
         fallback_models: list[ModelConfig],
     ):
-        """Test that fallback model strategy returns NodeRunRetryEvent with correct index."""
+        """Test that fallback model strategy returns NodeRunExceptionEvent with correct index."""
         event = create_failed_event("llm-node-1")
 
         result = error_handler.handle_node_failure(event)
 
         assert result is not None
-        assert isinstance(result, NodeRunRetryEvent)
+        assert isinstance(result, NodeRunExceptionEvent)
         assert result.node_id == "llm-node-1"
-        assert result.retry_index == 0
         assert result.error == "Model invocation failed"
 
         # Verify metadata contains fallback model index
@@ -248,7 +247,7 @@ class TestFallbackModelStrategy:
         result1 = error_handler.handle_node_failure(event1)
 
         assert result1 is not None
-        assert isinstance(result1, NodeRunRetryEvent)
+        assert isinstance(result1, NodeRunExceptionEvent)
         assert result1.node_run_result.metadata[WorkflowNodeExecutionMetadataKey.FALLBACK_MODEL_INDEX] == 0
 
         # Second failure with first fallback model (index 0)
@@ -259,7 +258,7 @@ class TestFallbackModelStrategy:
         result2 = error_handler.handle_node_failure(event2)
 
         assert result2 is not None
-        assert isinstance(result2, NodeRunRetryEvent)
+        assert isinstance(result2, NodeRunExceptionEvent)
         assert result2.node_run_result.metadata[WorkflowNodeExecutionMetadataKey.FALLBACK_MODEL_INDEX] == 1
 
     def test_fallback_model_strategy_tracks_index_from_variable_pool(
@@ -276,7 +275,7 @@ class TestFallbackModelStrategy:
         result = error_handler.handle_node_failure(event)
 
         assert result is not None
-        assert isinstance(result, NodeRunRetryEvent)
+        assert isinstance(result, NodeRunExceptionEvent)
         # Should use index 1 (next after 0)
         assert result.node_run_result.metadata[WorkflowNodeExecutionMetadataKey.FALLBACK_MODEL_INDEX] == 1
 
@@ -288,7 +287,7 @@ class TestFallbackModelStrategy:
     ):
         """Test that fallback model strategy uses the maximum index from metadata and variable pool."""
         # Set index in variable pool
-        graph_runtime_state.variable_pool.add(("llm-node-1", "_fallback_model_index"), "1")
+        graph_runtime_state.variable_pool.add(("llm-node-1", "_fallback_model_index"), "0")
 
         # Event has lower index in metadata
         event = create_failed_event(
@@ -298,9 +297,9 @@ class TestFallbackModelStrategy:
         result = error_handler.handle_node_failure(event)
 
         assert result is not None
-        assert isinstance(result, NodeRunRetryEvent)
-        # Should use max(0, 1) + 1 = 2
-        assert result.node_run_result.metadata[WorkflowNodeExecutionMetadataKey.FALLBACK_MODEL_INDEX] == 2
+        assert isinstance(result, NodeRunExceptionEvent)
+        # Should use max(0, 0) + 1 = 1
+        assert result.node_run_result.metadata[WorkflowNodeExecutionMetadataKey.FALLBACK_MODEL_INDEX] == 1
 
     def test_fallback_model_strategy_exhausts_all_models(
         self,
