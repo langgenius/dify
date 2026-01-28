@@ -46,13 +46,15 @@ const UserActionItem: FC<UserActionItemProps> = ({
       })
       .join('')
 
-    if (sanitized !== withUnderscores)
+    if (sanitized !== withUnderscores) {
       Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.actionIdFormatTip`, { ns: 'workflow' }) })
+      return
+    }
 
     // Limit to 20 characters
     if (sanitized.length > ACTION_ID_MAX_LENGTH) {
       sanitized = sanitized.slice(0, ACTION_ID_MAX_LENGTH)
-      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.actionIdTooLong`, { ns: 'workflow' }) })
+      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.actionIdTooLong`, { ns: 'workflow', maxLength: ACTION_ID_MAX_LENGTH }) })
     }
 
     if (sanitized)
@@ -63,7 +65,7 @@ const UserActionItem: FC<UserActionItemProps> = ({
     let value = e.target.value
     if (value.length > BUTTON_TEXT_MAX_LENGTH) {
       value = value.slice(0, BUTTON_TEXT_MAX_LENGTH)
-      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.buttonTextTooLong`, { ns: 'workflow' }) })
+      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.buttonTextTooLong`, { ns: 'workflow', maxLength: BUTTON_TEXT_MAX_LENGTH }) })
     }
     onChange({ ...data, title: value })
   }
