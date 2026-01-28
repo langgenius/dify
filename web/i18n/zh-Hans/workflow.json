@@ -544,6 +544,7 @@
   "nodes.humanInput.deliveryMethod.emailSender.wholeTeamTip2": "邮件将发送给 <team>{{team}}</team> 成员。",
   "nodes.humanInput.deliveryMethod.emailSender.wholeTeamTip3": "邮件将发送到以下邮件地址：",
   "nodes.humanInput.deliveryMethod.emptyTip": "未添加提交方式，无法触发操作。",
+  "nodes.humanInput.deliveryMethod.notAvailableInTriggerMode": "不可用",
   "nodes.humanInput.deliveryMethod.notConfigured": "未配置",
   "nodes.humanInput.deliveryMethod.title": "提交方式",
   "nodes.humanInput.deliveryMethod.tooltip": "人工介入表单如何传递给用户。",

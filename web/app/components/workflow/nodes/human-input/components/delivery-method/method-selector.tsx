@@ -19,6 +19,8 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import useWorkflowNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { isTriggerWorkflow } from '@/app/components/workflow/utils/workflow-entry'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
@@ -41,6 +43,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
   const [open, doSetOpen] = useState(false)
   const humanInputEmailDeliveryEnabled = useProviderContextSelector(s => s.humanInputEmailDeliveryEnabled)
   const openRef = useRef(open)
+  const nodes = useWorkflowNodes()
 
   const setOpen = useCallback((v: boolean) => {
     doSetOpen(v)
@@ -50,6 +53,15 @@ const MethodSelector: FC<MethodSelectorProps> = ({
   const handleTrigger = useCallback(() => {
     setOpen(!openRef.current)
   }, [setOpen])
+
+  const webAppDeliveryInfo = useMemo(() => {
+    const isTriggerMode = isTriggerWorkflow(nodes)
+    return {
+      disabled: isTriggerMode || data.some(method => method.type === DeliveryMethodType.WebApp),
+      added: data.some(method => method.type === DeliveryMethodType.WebApp),
+      isTriggerMode,
+    }
+  }, [data, nodes])
 
   const emailDeliveryInfo = useMemo(() => {
     return {
@@ -79,9 +91,9 @@ const MethodSelector: FC<MethodSelectorProps> = ({
         <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
           <div className="p-1">
             <div
-              className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', data.some(method => method.type === DeliveryMethodType.WebApp) && 'cursor-not-allowed bg-transparent hover:bg-transparent')}
+              className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', webAppDeliveryInfo.disabled && 'cursor-not-allowed bg-transparent hover:bg-transparent')}
               onClick={() => {
-                if (data.some(method => method.type === DeliveryMethodType.WebApp))
+                if (webAppDeliveryInfo.disabled)
                   return
                 onAdd({
                   id: uuid4(),
@@ -90,15 +102,18 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 })
               }}
             >
-              <div className={cn('rounded-[4px] border border-divider-regular bg-components-icon-bg-indigo-solid p-1', data.some(method => method.type === DeliveryMethodType.WebApp) && 'opacity-50')}>
+              <div className={cn('rounded-[4px] border border-divider-regular bg-components-icon-bg-indigo-solid p-1', webAppDeliveryInfo.disabled && 'opacity-50')}>
                 <RiRobot2Fill className="h-4 w-4 text-text-primary-on-surface" />
               </div>
-              <div className={cn('p-1', data.some(method => method.type === DeliveryMethodType.WebApp) && 'opacity-50')}>
+              <div className={cn('p-1', webAppDeliveryInfo.disabled && 'opacity-50')}>
                 <div className="system-sm-medium mb-0.5 truncate text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.webapp.title`, { ns: 'workflow' })}</div>
                 <div className="system-xs-regular truncate text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.webapp.description`, { ns: 'workflow' })}</div>
               </div>
-              {data.some(method => method.type === DeliveryMethodType.WebApp) && (
+              {webAppDeliveryInfo.added && (
                 <div className="system-xs-regular absolute right-[12px] top-[13px] text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.added`, { ns: 'workflow' })}</div>
+              )}
+              {webAppDeliveryInfo.isTriggerMode && !webAppDeliveryInfo.added && (
+                <div className="system-xs-regular absolute right-[12px] top-[13px] text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.notAvailableInTriggerMode`, { ns: 'workflow' })}</div>
               )}
             </div>
             <div

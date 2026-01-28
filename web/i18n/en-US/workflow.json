@@ -544,6 +544,7 @@
   "nodes.humanInput.deliveryMethod.emailSender.wholeTeamTip2": "Email will be sent to <team>{{team}}</team> members.",
   "nodes.humanInput.deliveryMethod.emailSender.wholeTeamTip3": "Email will be sent to the following email addresses:",
   "nodes.humanInput.deliveryMethod.emptyTip": "No delivery method added, the operation cannot be triggered.",
+  "nodes.humanInput.deliveryMethod.notAvailableInTriggerMode": "Not available",
   "nodes.humanInput.deliveryMethod.notConfigured": "Not configured",
   "nodes.humanInput.deliveryMethod.title": "Delivery Method",
   "nodes.humanInput.deliveryMethod.tooltip": "How the human input form is delivered to the user.",
