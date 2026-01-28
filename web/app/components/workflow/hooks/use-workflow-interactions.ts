@@ -44,7 +44,6 @@ export const useWorkflowInteractions = () => {
     const isActiveRun = runningStatus === WorkflowRunningStatus.Running || runningStatus === WorkflowRunningStatus.Waiting
     workflowStore.setState({
       showDebugAndPreviewPanel: false,
-      ...(isActiveRun ? {} : { workflowRunningData: undefined }),
     })
     if (!isActiveRun) {
       handleNodeCancelRunningStatus()
