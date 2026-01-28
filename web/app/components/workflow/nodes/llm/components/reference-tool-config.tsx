@@ -1,16 +1,21 @@
 'use client'
 import type { FC } from 'react'
 import type { LLMNodeType, ToolSetting } from '../types'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import AppIcon from '@/app/components/base/app-icon'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import Switch from '@/app/components/base/switch'
 import { useNodeCurdKit } from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import useTheme from '@/hooks/use-theme'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
+import { getIconFromMarketPlace } from '@/utils/get-icon'
 
 type ReferenceToolConfigProps = {
   readonly: boolean
@@ -41,6 +46,11 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
   const isDisabled = readonly || !enabled
   const appId = useAppStore(s => s.appDetail?.id)
   const { handleNodeDataUpdate } = useNodeCurdKit<LLMNodeType>(nodeId)
+  const { theme } = useTheme()
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
 
   const queryKey = useMemo(() => {
     return [
@@ -86,6 +96,31 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
     }))
   }, [toolDependencies])
 
+  const providerIcons = useMemo(() => {
+    const mergedTools = [
+      ...(buildInTools || []),
+      ...(customTools || []),
+      ...(workflowTools || []),
+      ...(mcpTools || []),
+    ]
+    const icons = new Map<string, ToolWithProvider['icon']>()
+    providers.forEach((provider) => {
+      const matched = mergedTools.find(toolWithProvider =>
+        toolWithProvider.name === provider.id
+        || toolWithProvider.id === provider.id
+        || toolWithProvider.provider === provider.id,
+      )
+      let icon = matched
+        ? (theme === 'dark' && matched.icon_dark ? matched.icon_dark : matched.icon)
+        : undefined
+      if (!icon && provider.id.includes('/'))
+        icon = getIconFromMarketPlace(provider.id)
+      if (icon)
+        icons.set(provider.id, icon)
+    })
+    return icons
+  }, [buildInTools, customTools, workflowTools, mcpTools, providers, theme])
+
   const resolveToolEnabled = useCallback((tool: ToolDependency) => {
     const matched = toolSettings?.find(setting =>
       setting.type === tool.type
@@ -124,6 +159,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
   }, [handleNodeDataUpdate, toolSettings])
 
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({})
+  const [iconErrorMap, setIconErrorMap] = useState<Record<string, boolean>>({})
   const handleToggleProvider = useCallback((providerId: string) => {
     setOpenMap(prev => ({
       ...prev,
@@ -142,8 +178,31 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
           >
             <div className="flex items-center rounded-lg p-1">
               <div className="flex min-w-0 items-center gap-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-md border border-divider-subtle bg-background-default">
-                  <DefaultToolIcon className="h-4 w-4 text-text-primary" />
+                <div className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-md">
+                  {(() => {
+                    const icon = providerIcons.get(provider.id)
+                    if (!icon || iconErrorMap[provider.id])
+                      return <DefaultToolIcon className="h-4 w-4 text-text-primary" />
+                    if (typeof icon === 'string') {
+                      return (
+                        <img
+                          src={icon}
+                          alt={provider.id}
+                          className="h-full w-full object-cover"
+                          width={24}
+                          height={24}
+                          onError={() => setIconErrorMap(prev => ({ ...prev, [provider.id]: true }))}
+                        />
+                      )
+                    }
+                    return (
+                      <AppIcon
+                        className="h-full w-full object-cover"
+                        icon={icon.content}
+                        background={icon.background}
+                      />
+                    )
+                  })()}
                 </div>
                 <div className="system-sm-medium truncate text-text-primary">
                   {provider.id}
@@ -168,7 +227,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
                       !isDisabled && 'hover:bg-state-base-hover',
                     )}
                   >
-                    <div className="absolute left-4 top-0 h-full w-[2px] bg-divider-subtle" />
+                    <div className="absolute left-[15px] top-0 h-full w-[2px] bg-divider-subtle" />
                     <div className="flex min-w-0 flex-1 items-center">
                       <span className="system-sm-regular truncate text-text-secondary">
                         {action.tool_name}
