@@ -522,7 +522,7 @@ class LLMNode(Node[LLMNodeData]):
                 json_schema=output_schema,
                 model_parameters=node_data_model.completion_params,
                 stop=list(stop or []),
-                stream=True,
+                stream=False,
                 user=user_id,
                 tenant_id=tenant_id,
             )
