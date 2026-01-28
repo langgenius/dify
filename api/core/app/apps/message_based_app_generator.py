@@ -18,6 +18,7 @@ from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
     ChatAppGenerateEntity,
     CompletionAppGenerateEntity,
+    ConversationAppGenerateEntity,
     InvokeFrom,
 )
 from core.app.entities.task_entities import (
@@ -238,8 +239,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
             db.session.commit()
 
-            application_generate_entity.conversation_id = conversation.id
-            application_generate_entity.is_new_conversation = created_new_conversation
+            if isinstance(application_generate_entity, ConversationAppGenerateEntity):
+                application_generate_entity.conversation_id = conversation.id
+                application_generate_entity.is_new_conversation = created_new_conversation
             return conversation, message
         except Exception:
             db.session.rollback()
