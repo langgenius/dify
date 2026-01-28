@@ -5,6 +5,7 @@ import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStoreApi } from 'reactflow'
 import Toast from '@/app/components/base/toast'
 import {
   useNodesSyncDraft,
@@ -141,7 +142,7 @@ const useLastRun = <T>({
     hasSetInspectVar,
     nodesWithInspectVars,
   } = useInspectVarsCrud()
-  const { hasNullDependentOutputs } = useSubGraphVariablesCheck({
+  const { getNullDependentOutput } = useSubGraphVariablesCheck({
     currentNodeId,
     nodesWithInspectVars,
   })
@@ -153,6 +154,7 @@ const useLastRun = <T>({
   const isAggregatorNode = blockType === BlockEnum.VariableAggregator
   const isCustomRunNode = isSupportCustomRunForm(blockType)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const reactFlowStore = useStoreApi()
   const {
     getData: getDataForCheckMore,
   } = useGetDataForCheckMoreHooks<T>(blockType)(currentNodeId, oneStepRunParams.data)
@@ -238,6 +240,7 @@ const useLastRun = <T>({
   const workflowStore = useWorkflowStore()
   const { setInitShowLastRunTab, setShowVariableInspectPanel } = workflowStore.getState()
   const initShowLastRunTab = useStore(s => s.initShowLastRunTab)
+  const parentAvailableNodes = useStore(s => s.parentAvailableNodes) || []
   const [tabType, setTabType] = useState<TabType>(initShowLastRunTab ? TabType.lastRun : TabType.settings)
   useEffect(() => {
     if (initShowLastRunTab)
@@ -246,6 +249,31 @@ const useLastRun = <T>({
     setInitShowLastRunTab(false)
   }, [initShowLastRunTab])
   const invalidLastRun = useInvalidLastRun(flowType, flowId, currentNodeId)
+
+  const getContextNodeLabel = useCallback((nodeId: string) => {
+    const nodeInFlow = reactFlowStore.getState().getNodes().find(node => node.id === nodeId)
+    const flowNodeTitle = nodeInFlow?.data?.title
+    if (flowNodeTitle && flowNodeTitle !== nodeId)
+      return flowNodeTitle
+    const parentNode = parentAvailableNodes.find(node => node.id === nodeId)
+    const parentNodeTitle = parentNode?.data?.title
+    if (parentNodeTitle && parentNodeTitle !== nodeId)
+      return parentNodeTitle
+    return ''
+  }, [parentAvailableNodes, reactFlowStore])
+
+  const formatSubgraphOutputLabel = useCallback((selector: ValueSelector) => {
+    const [nodeId, varName, ...restPath] = selector || []
+    const nodeLabel = nodeId ? getContextNodeLabel(nodeId) : ''
+    const outputPath = [varName, ...restPath].filter(Boolean).join('.')
+    if (nodeLabel && outputPath)
+      return `${nodeLabel}.${outputPath}`
+    if (nodeLabel)
+      return nodeLabel
+    if (outputPath)
+      return outputPath
+    return t('nodes.llm.contextUnknownNode', { ns: 'workflow' })
+  }, [getContextNodeLabel, t])
 
   const ensureLLMContextReady = useCallback(() => {
     if (blockType !== BlockEnum.LLM)
@@ -265,12 +293,20 @@ const useLastRun = <T>({
       const [nodeId, varName] = selectorKey.split('::')
       const inspectVarValue = hasSetInspectVar(nodeId, varName, systemVars, conversationVars)
       if (!inspectVarValue) {
-        Toast.notify({ type: 'error', message: t('nodes.llm.contextMissing', { ns: 'workflow' }) })
+        const nodeLabel = getContextNodeLabel(nodeId)
+          || t('nodes.llm.contextUnknownNode', { ns: 'workflow' })
+        Toast.notify({
+          type: 'error',
+          message: t('nodes.llm.contextMissing', {
+            ns: 'workflow',
+            nodeName: nodeLabel,
+          }),
+        })
         return false
       }
     }
     return true
-  }, [blockType, data, t])
+  }, [blockType, data, t, hasSetInspectVar, systemVars, conversationVars, getContextNodeLabel])
 
   const handleRunWithParams = async (data: Record<string, any>) => {
     if (blockIfChecklistFailed())
@@ -281,8 +317,15 @@ const useLastRun = <T>({
     if (!ensureLLMContextReady())
       return
     const dependentVars = singleRunParams?.getDependentVars?.()
-    if (hasNullDependentOutputs(dependentVars)) {
-      Toast.notify({ type: 'error', message: t('singleRun.subgraph.nullOutputError', { ns: 'workflow' }) })
+    const nullOutput = getNullDependentOutput(dependentVars)
+    if (nullOutput) {
+      Toast.notify({
+        type: 'error',
+        message: t('singleRun.subgraph.nullOutputError', {
+          ns: 'workflow',
+          output: formatSubgraphOutputLabel(nullOutput),
+        }),
+      })
       return
     }
     setNodeRunning()
@@ -388,8 +431,15 @@ const useLastRun = <T>({
     if (!ensureLLMContextReady())
       return
     const dependentVars = singleRunParams?.getDependentVars?.()
-    if (hasNullDependentOutputs(dependentVars)) {
-      Toast.notify({ type: 'error', message: t('singleRun.subgraph.nullOutputError', { ns: 'workflow' }) })
+    const nullOutput = getNullDependentOutput(dependentVars)
+    if (nullOutput) {
+      Toast.notify({
+        type: 'error',
+        message: t('singleRun.subgraph.nullOutputError', {
+          ns: 'workflow',
+          output: formatSubgraphOutputLabel(nullOutput),
+        }),
+      })
       return
     }
     if (blockType === BlockEnum.TriggerWebhook || blockType === BlockEnum.TriggerPlugin || blockType === BlockEnum.TriggerSchedule)

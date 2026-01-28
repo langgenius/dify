@@ -73,33 +73,32 @@ export const useSubGraphVariablesCheck = ({
     }
   }, [currentNodeId, nodesWithInspectVars])
 
-  const hasNullDependentOutputs = useCallback((vars?: ValueSelector[] | ValueSelector[][]) => {
+  const getNullDependentOutput = useCallback((vars?: ValueSelector[] | ValueSelector[][]) => {
     if (!vars || vars.length === 0)
-      return false
+      return undefined
 
     const isGroupedVars = Array.isArray(vars[0]) && Array.isArray((vars as ValueSelector[][])[0][0])
     const selectors = isGroupedVars ? (vars as ValueSelector[][]).flat() : (vars as ValueSelector[])
     const subGraphNodeIdSet = new Set(subGraphNodeIds)
-    const details = selectors.map((selector) => {
+    for (const selector of selectors) {
       const { found, value } = getInspectVarValueBySelector(selector)
       const valueType = value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value
       const isSubgraphOutput = subGraphNodeIdSet.has(selector[0])
-      return {
-        selector,
-        found,
-        valueType,
-        isSubgraphOutput,
-      }
-    })
-    const hasNull = details.some((item) => {
-      if (!item.found)
-        return item.isSubgraphOutput
-      return item.valueType === 'null' || item.valueType === 'undefined'
-    })
-    return hasNull
+      const isNull = !found
+        ? isSubgraphOutput
+        : valueType === 'null' || valueType === 'undefined'
+      if (isNull)
+        return selector
+    }
+    return undefined
   }, [getInspectVarValueBySelector, subGraphNodeIds])
+
+  const hasNullDependentOutputs = useCallback((vars?: ValueSelector[] | ValueSelector[][]) => {
+    return !!getNullDependentOutput(vars)
+  }, [getNullDependentOutput])
 
   return {
     hasNullDependentOutputs,
+    getNullDependentOutput,
   }
 }
