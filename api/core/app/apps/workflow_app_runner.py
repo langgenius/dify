@@ -157,7 +157,7 @@ class WorkflowBasedAppRunner:
         # Create initial runtime state with variable pool containing environment variables
         graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool(
-                system_variables=SystemVariable.empty(),
+                system_variables=SystemVariable.default(),
                 user_inputs={},
                 environment_variables=workflow.environment_variables,
             ),
@@ -272,7 +272,9 @@ class WorkflowBasedAppRunner:
         )
 
         # init graph
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=node_id)
+        graph = Graph.init(
+            graph_config=graph_config, node_factory=node_factory, root_node_id=node_id, skip_validation=True
+        )
 
         if not graph:
             raise ValueError("graph not found in workflow")
