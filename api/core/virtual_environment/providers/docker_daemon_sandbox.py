@@ -1,18 +1,29 @@
+"""
+Docker Daemon Virtual Environment Provider.
+
+This module implements a VirtualEnvironment using Docker containers. It uses gevent
+primitives for concurrency to ensure compatibility with gevent-based WSGI servers.
+
+IMPORTANT: This module uses gevent.queue.Queue and gevent.spawn instead of standard
+library threading primitives. This is critical for proper cooperative scheduling
+in gevent environments like Gunicorn with gevent workers.
+"""
+
 import logging
 import socket
 import tarfile
-import threading
 from collections.abc import Mapping, Sequence
 from enum import IntEnum, StrEnum
 from functools import lru_cache
 from io import BytesIO
 from pathlib import PurePosixPath
-from queue import Queue
 from typing import Any, cast
 from uuid import uuid4
 
 import docker.errors
+import gevent
 from docker.models.containers import Container
+from gevent.queue import Queue
 
 import docker
 from configs import dify_config
@@ -60,14 +71,20 @@ class DockerDemuxer:
         - Bytes 1-3: reserved (zeros)
         - Bytes 4-7: payload size (big-endian uint32)
 
-    THREAD SAFETY:
-    A single background thread reads frames from the socket and dispatches payloads
-    to thread-safe queues. This avoids race conditions where multiple threads
-    calling _read_next_frame() simultaneously caused frame header/body corruption,
-    resulting in incomplete stdout/stderr output.
+    GEVENT COMPATIBILITY:
+    This class uses gevent.spawn() and gevent.queue.Queue instead of native threading
+    to ensure proper cooperative scheduling in gevent-based WSGI servers. Native threads
+    can cause deadlocks in gevent because:
+    1. Native threads hold the GIL during blocking I/O
+    2. gevent's monkey-patching doesn't affect code running in native threads
+    3. Blocking Queue.get() in native threads prevents greenlet switching
+
+    By using gevent primitives, all I/O operations become cooperative, allowing
+    proper greenlet scheduling even during blocking socket reads.
     """
 
     _HEADER_SIZE = 8
+    _QUEUE_GET_TIMEOUT = 5.0  # Timeout for queue.get() to allow checking for errors
 
     def __init__(self, sock: socket.SocketIO):
         self._sock = sock
@@ -76,14 +93,16 @@ class DockerDemuxer:
         self._closed = False
         self._error: BaseException | None = None
 
-        self._demux_thread = threading.Thread(
-            target=self._demux_loop,
-            daemon=True,
-            name="docker-demuxer",
-        )
-        self._demux_thread.start()
+        # Use gevent.spawn instead of threading.Thread for cooperative scheduling
+        self._demux_greenlet = gevent.spawn(self._demux_loop)
 
     def _demux_loop(self) -> None:
+        """
+        Read frames from socket and dispatch to appropriate queues.
+
+        Runs in a greenlet, so socket reads will yield to other greenlets
+        thanks to gevent's monkey-patching.
+        """
         try:
             while not self._closed:
                 header = self._read_exact(self._HEADER_SIZE)
@@ -112,6 +131,11 @@ class DockerDemuxer:
             self._stderr_queue.put(None)
 
     def _read_exact(self, size: int) -> bytes:
+        """
+        Read exactly `size` bytes from socket.
+
+        Socket reads are cooperative in gevent environment due to monkey-patching.
+        """
         data = bytearray()
         remaining = size
         while remaining > 0:
@@ -132,19 +156,42 @@ class DockerDemuxer:
         return self._read_from_queue(self._stderr_queue)
 
     def _read_from_queue(self, queue: Queue[bytes | None]) -> bytes:
+        """
+        Read from queue with timeout to allow periodic error checking.
+
+        Uses gevent.queue.Queue which cooperatively yields during blocking get().
+        The timeout ensures we can detect errors and closed state even if no data arrives.
+        """
         if self._error:
             raise TransportEOFError(f"Demuxer error: {self._error}") from self._error
 
-        chunk = queue.get()
-        if chunk is None:
-            if self._error:
-                raise TransportEOFError(f"Demuxer error: {str(self._error)}")
-            raise TransportEOFError("End of demuxed stream")
-        return chunk
+        while True:
+            try:
+                # Use timeout to periodically check for errors/closed state
+                chunk = queue.get(timeout=self._QUEUE_GET_TIMEOUT)
+                if chunk is None:
+                    if self._error:
+                        raise TransportEOFError(f"Demuxer error: {str(self._error)}")
+                    raise TransportEOFError("End of demuxed stream")
+                return chunk
+            except gevent.queue.Empty:
+                # Timeout - check if we should continue waiting
+                if self._closed:
+                    raise TransportEOFError("Demuxer closed")
+                if self._error:
+                    raise TransportEOFError(f"Demuxer error: {self._error}") from self._error
+                # No error, continue waiting
+                continue
 
     def close(self) -> None:
+        """
+        Close the demuxer and kill the background greenlet.
+        """
         if not self._closed:
             self._closed = True
+            # Kill the demux greenlet to stop any blocking reads
+            if self._demux_greenlet is not None:
+                self._demux_greenlet.kill(block=False)
             try:
                 self._sock.close()
             except Exception:

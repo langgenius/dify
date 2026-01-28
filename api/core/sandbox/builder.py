@@ -1,10 +1,25 @@
+"""
+Sandbox Builder: Factory for creating and initializing sandboxes.
+
+This module uses gevent.spawn instead of threading.Thread to ensure proper
+cooperative scheduling in gevent-based WSGI servers like Gunicorn.
+
+Using native threading.Thread in a gevent environment can cause issues because:
+1. Native threads hold the GIL during blocking I/O
+2. gevent's monkey-patching doesn't affect code running in native threads
+3. Blocking operations in native threads prevent greenlet switching
+
+By using gevent.spawn(), background initialization runs as a greenlet that
+cooperatively yields during I/O operations.
+"""
+
 from __future__ import annotations
 
 import logging
-import threading
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
+import gevent
 from flask import current_app
 
 from core.entities.provider_entities import BasicProviderConfig
@@ -145,7 +160,8 @@ class SandboxBuilder:
                     sandbox.mark_failed(exc)
 
         # Background init completes or signals failure via sandbox state.
-        threading.Thread(target=initialize, daemon=True).start()
+        # Use gevent.spawn instead of threading.Thread for cooperative scheduling
+        gevent.spawn(initialize)
         return sandbox
 
     @staticmethod

@@ -1,8 +1,23 @@
+"""
+Sandbox: A managed virtual environment instance.
+
+This module uses gevent.event.Event instead of threading.Event to ensure
+proper cooperative scheduling in gevent-based WSGI servers like Gunicorn.
+
+Using native threading.Event in a gevent environment can cause issues because:
+1. threading.Event.wait() blocks the entire thread, not just the greenlet
+2. This prevents other greenlets from running while waiting
+3. Can lead to apparent "freezes" when multiple greenlets wait on events
+
+By using gevent.event.Event, wait() calls cooperatively yield to other greenlets.
+"""
+
 from __future__ import annotations
 
 import logging
-import threading
 from typing import TYPE_CHECKING
+
+from gevent.event import Event
 
 from libs.attr_map import AttrMap
 
@@ -31,8 +46,8 @@ class Sandbox:
         self._app_id = app_id
         self._assets_id = assets_id
         self._attributes = AttrMap()
-        self._ready_event = threading.Event()
-        self._cancel_event = threading.Event()
+        self._ready_event: Event = Event()  # gevent Event for cooperative waiting
+        self._cancel_event: Event = Event()  # gevent Event for cooperative waiting
         self._init_error: Exception | None = None
 
     @property
