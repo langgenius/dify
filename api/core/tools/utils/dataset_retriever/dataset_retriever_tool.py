@@ -174,13 +174,13 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                             segment_content = f"question:{segment.get_sign_content()} answer:{segment.answer}"
                         else:
                             segment_content = segment.get_sign_content()
-                        
+
                         # If summary exists, prepend it to the content
                         if record.summary:
                             final_content = f"{record.summary}\n{segment_content}"
                         else:
                             final_content = segment_content
-                        
+
                         document_context_list.append(
                             DocumentContext(
                                 content=final_content,
@@ -221,7 +221,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                 else:
                                     source.content = segment.content
                                 # Add summary if this segment was retrieved via summary
-                                if hasattr(record, 'summary') and record.summary:
+                                if hasattr(record, "summary") and record.summary:
                                     source.summary = record.summary
                                 retrieval_resource_list.append(source)
 

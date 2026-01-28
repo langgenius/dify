@@ -385,7 +385,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             # Set a reasonable timeout to prevent hanging (60 seconds per chunk, max 5 minutes total)
             timeout_seconds = min(300, 60 * len(preview_output["preview"]))
             errors: list[Exception] = []
-            
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(preview_output["preview"]))) as executor:
                 futures = [
                     executor.submit(generate_summary_for_chunk, preview_item)

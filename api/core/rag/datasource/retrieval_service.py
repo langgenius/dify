@@ -554,7 +554,7 @@ class RetrievalService:
                         # Check if this segment was retrieved via summary
                         # Use summary score as base score if available, otherwise 0.0
                         max_score = summary_score_map.get(segment.id, 0.0)
-                        
+
                         if child_chunks or attachment_infos:
                             child_chunk_details = []
                             for child_chunk in child_chunks:
@@ -571,9 +571,7 @@ class RetrievalService:
                             for attachment_info in attachment_infos:
                                 file_document = doc_to_document_map.get(attachment_info["id"])
                                 if file_document:
-                                    max_score = max(
-                                        max_score, file_document.metadata.get("score", 0.0)
-                                    )
+                                    max_score = max(max_score, file_document.metadata.get("score", 0.0))
 
                             map_detail = {
                                 "max_score": max_score,
@@ -595,23 +593,23 @@ class RetrievalService:
                 else:
                     if segment.id not in include_segment_ids:
                         include_segment_ids.add(segment.id)
-                        
+
                         # Check if this segment was retrieved via summary
                         # Use summary score if available (summary retrieval takes priority)
                         max_score = summary_score_map.get(segment.id, 0.0)
-                        
+
                         # If not retrieved via summary, use original segment's score
                         if segment.id not in summary_score_map:
                             segment_document = doc_to_document_map.get(segment.index_node_id)
                             if segment_document:
                                 max_score = max(max_score, segment_document.metadata.get("score", 0.0))
-                        
+
                         # Also consider attachment scores
                         for attachment_info in attachment_infos:
                             file_doc = doc_to_document_map.get(attachment_info["id"])
                             if file_doc:
                                 max_score = max(max_score, file_doc.metadata.get("score", 0.0))
-                        
+
                         record = {
                             "segment": segment,
                             "score": max_score,

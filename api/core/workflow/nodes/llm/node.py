@@ -748,7 +748,7 @@ class LLMNode(Node[LLMNodeData]):
                 page=metadata.get("page"),
                 doc_metadata=metadata.get("doc_metadata"),
                 files=context_dict.get("files"),
-                summary=context_dict.get("summary"), 
+                summary=context_dict.get("summary"),
             )
 
             return source

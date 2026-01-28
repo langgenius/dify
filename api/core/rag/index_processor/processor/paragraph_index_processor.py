@@ -309,10 +309,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         errors: list[Exception] = []
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(preview_texts))) as executor:
-            futures = [
-                executor.submit(process, preview)
-                for preview in preview_texts
-            ]
+            futures = [executor.submit(process, preview) for preview in preview_texts]
             # Wait for all tasks to complete with timeout
             done, not_done = concurrent.futures.wait(futures, timeout=timeout_seconds)
 

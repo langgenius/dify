@@ -362,7 +362,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         For each parent chunk in preview_texts, concurrently call generate_summary to generate a summary
         and write it to the summary attribute of PreviewDetail.
         In preview mode (indexing-estimate), if any summary generation fails, the method will raise an exception.
-        
+
         Note: For parent-child structure, we only generate summaries for parent chunks.
         """
         import concurrent.futures
@@ -379,6 +379,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         def process(preview: PreviewDetail) -> None:
             """Generate summary for a single preview item (parent chunk)."""
             from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
+
             if flask_app:
                 # Ensure Flask app context in worker thread
                 with flask_app.app_context():
@@ -403,10 +404,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         errors: list[Exception] = []
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(preview_texts))) as executor:
-            futures = [
-                executor.submit(process, preview)
-                for preview in preview_texts
-            ]
+            futures = [executor.submit(process, preview) for preview in preview_texts]
             # Wait for all tasks to complete with timeout
             done, not_done = concurrent.futures.wait(futures, timeout=timeout_seconds)
 
