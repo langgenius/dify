@@ -46,7 +46,7 @@ class WordExtractor(BaseExtractor):
 
         # If the file is a web path, download it to a temporary file, and use that
         if not os.path.isfile(self.file_path) and self._is_valid_url(self.file_path):
-            response = ssrf_proxy.get(self.file_path, timeout=None)
+            response = ssrf_proxy.get(self.file_path)
 
             if response.status_code != 200:
                 response.close()
