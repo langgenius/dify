@@ -1580,13 +1580,13 @@ class SegmentAttachmentBinding(Base):
 
 
 class DocumentSegmentSummary(Base):
-    __tablename__ = "document_segment_summary"
+    __tablename__ = "document_segment_summaries"
     __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="document_segment_summary_pkey"),
-        sa.Index("document_segment_summary_dataset_id_idx", "dataset_id"),
-        sa.Index("document_segment_summary_document_id_idx", "document_id"),
-        sa.Index("document_segment_summary_chunk_id_idx", "chunk_id"),
-        sa.Index("document_segment_summary_status_idx", "status"),
+        sa.PrimaryKeyConstraint("id", name="document_segment_summaries_pkey"),
+        sa.Index("document_segment_summaries_dataset_id_idx", "dataset_id"),
+        sa.Index("document_segment_summaries_document_id_idx", "document_id"),
+        sa.Index("document_segment_summaries_chunk_id_idx", "chunk_id"),
+        sa.Index("document_segment_summaries_status_idx", "status"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
