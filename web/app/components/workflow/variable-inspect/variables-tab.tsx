@@ -143,7 +143,7 @@ const VariablesTab: FC = () => {
 
   if (isListening) {
     return (
-      <div className="grow p-2">
+      <div className="h-full p-2">
         <Listening onStop={handleStopListening} />
       </div>
     )
@@ -162,18 +162,20 @@ const VariablesTab: FC = () => {
       {bottomPanelWidth < 488 && showLeftPanel && <div role="presentation" className="absolute left-0 top-0 h-full w-full" onClick={() => setShowLeftPanel(false)}></div>}
       <div
         className={cn(
-          'w-60 shrink-0 border-r border-divider-burn',
+          'flex w-60 shrink-0 flex-col border-r border-divider-burn',
           bottomPanelWidth < 488
             ? showLeftPanel
               ? 'absolute left-0 top-0 z-10 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm'
               : 'hidden'
-            : 'block',
+            : '',
         )}
       >
-        <Left
-          currentNodeVar={currentNodeInfo as currentVarType}
-          handleVarSelect={handleNodeVarSelect}
-        />
+        <div className="min-h-0 flex-1">
+          <Left
+            currentNodeVar={currentNodeInfo as currentVarType}
+            handleVarSelect={handleNodeVarSelect}
+          />
+        </div>
       </div>
       <div className="w-0 grow">
         <Right

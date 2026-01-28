@@ -1,0 +1,46 @@
+import type { FC, ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
+import { InspectTab } from './types'
+
+const TAB_ITEMS = [
+  { value: InspectTab.Variables, labelKey: 'debug.variableInspect.tab.variables' },
+  { value: InspectTab.Artifacts, labelKey: 'debug.variableInspect.tab.artifacts' },
+] as const
+
+type TabHeaderProps = {
+  activeTab: InspectTab
+  onTabChange: (tab: InspectTab) => void
+  children?: ReactNode
+}
+
+const TabHeader: FC<TabHeaderProps> = ({
+  activeTab,
+  onTabChange,
+  children,
+}) => {
+  const { t } = useTranslation('workflow')
+
+  return (
+    <div className="flex shrink-0 items-center gap-0.5 pl-3 pr-2 pt-2">
+      {TAB_ITEMS.map(tab => (
+        <button
+          key={tab.value}
+          type="button"
+          onClick={() => onTabChange(tab.value)}
+          className={cn(
+            'system-sm-semibold rounded-md px-2 py-1 transition-colors',
+            activeTab === tab.value
+              ? 'bg-state-base-active text-text-primary'
+              : 'text-text-tertiary hover:text-text-secondary',
+          )}
+        >
+          {t(tab.labelKey)}
+        </button>
+      ))}
+      {children}
+    </div>
+  )
+}
+
+export default TabHeader

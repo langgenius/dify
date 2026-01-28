@@ -157,24 +157,22 @@ const ArtifactsTab: FC = () => {
       )}
       <div
         className={cn(
-          'w-60 shrink-0 border-r border-divider-burn',
+          'flex w-60 shrink-0 flex-col border-r border-divider-burn',
           bottomPanelWidth < 488
             ? showLeftPanel
               ? 'absolute left-0 top-0 z-10 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm'
               : 'hidden'
-            : 'block',
+            : '',
         )}
       >
-        <div className="flex h-full flex-col">
-          <div className="grow overflow-y-auto py-1">
-            <ArtifactsTree
-              data={treeData}
-              onDownload={handleDownload}
-              onSelect={handleFileSelect}
-              selectedPath={selectedFile?.path}
-              isDownloading={downloadMutation.isPending}
-            />
-          </div>
+        <div className="min-h-0 flex-1 overflow-y-auto py-1">
+          <ArtifactsTree
+            data={treeData}
+            onDownload={handleDownload}
+            onSelect={handleFileSelect}
+            selectedPath={selectedFile?.path}
+            isDownloading={downloadMutation.isPending}
+          />
         </div>
       </div>
       <div className="w-0 grow">
