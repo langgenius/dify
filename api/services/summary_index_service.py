@@ -219,10 +219,13 @@ class SummaryIndexService:
                         session.query(DocumentSegmentSummary).filter_by(id=summary_record_id).first()
                     )
                     if summary_record_in_session:
+                        # Update all fields including summary_content (in case it was updated in outer session)
                         summary_record_in_session.summary_index_node_id = summary_index_node_id
                         summary_record_in_session.summary_index_node_hash = summary_hash
                         summary_record_in_session.tokens = embedding_tokens  # Save embedding tokens
                         summary_record_in_session.status = "completed"
+                        # Ensure summary_content is preserved (use the latest from summary_record parameter)
+                        summary_record_in_session.summary_content = summary_content
                         # Explicitly update updated_at to ensure it's refreshed even if other fields haven't changed
                         summary_record_in_session.updated_at = datetime.now(UTC).replace(tzinfo=None)
                         session.add(summary_record_in_session)
@@ -232,6 +235,7 @@ class SummaryIndexService:
                         summary_record.summary_index_node_hash = summary_hash
                         summary_record.tokens = embedding_tokens
                         summary_record.status = "completed"
+                        summary_record.summary_content = summary_content
                         summary_record.updated_at = summary_record_in_session.updated_at
                 # Success, exit function
                 return
@@ -428,6 +432,9 @@ class SummaryIndexService:
 
                 # Update summary content
                 summary_record_in_session.summary_content = summary_content
+                session.add(summary_record_in_session)
+                # Flush to ensure summary_content is saved before vectorize_summary queries it
+                session.flush()
 
                 # Log LLM usage for summary generation
                 if llm_usage and llm_usage.total_tokens > 0:
@@ -442,6 +449,7 @@ class SummaryIndexService:
                 # Vectorize summary (will delete old vector if exists before creating new one)
                 # Pass the session-managed record to vectorize_summary
                 # vectorize_summary will update status to "completed" and tokens in its own session
+                # vectorize_summary will also ensure summary_content is preserved
                 SummaryIndexService.vectorize_summary(summary_record_in_session, segment, dataset)
 
                 # Refresh the object from database to get the updated status and tokens from vectorize_summary
@@ -834,7 +842,8 @@ class SummaryIndexService:
                     summary_record.status = "generating"
                     summary_record.error = None  # Clear any previous errors
                     session.add(summary_record)
-                    # Don't flush here - wait until after vectorization succeeds
+                    # Flush to ensure summary_content is saved before vectorize_summary queries it
+                    session.flush()
 
                     # Delete old vector if exists (before vectorization)
                     if old_summary_node_id:
@@ -849,6 +858,7 @@ class SummaryIndexService:
                             )
 
                     # Re-vectorize summary (this will update status to "completed" and tokens in its own session)
+                    # vectorize_summary will also ensure summary_content is preserved
                     try:
                         SummaryIndexService.vectorize_summary(summary_record, segment, dataset)
                         # Refresh the object from database to get the updated status and tokens from vectorize_summary

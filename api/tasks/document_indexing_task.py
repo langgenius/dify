@@ -124,12 +124,17 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                         )
                         if document:
                             logger.info(
-                                "Checking document %s for summary generation: status=%s, doc_form=%s",
+                                "Checking document %s for summary generation: status=%s, doc_form=%s, need_summary=%s",
                                 document_id,
                                 document.indexing_status,
                                 document.doc_form,
+                                document.need_summary,
                             )
-                            if document.indexing_status == "completed" and document.doc_form != "qa_model":
+                            if (
+                                document.indexing_status == "completed"
+                                and document.doc_form != "qa_model"
+                                and document.need_summary is True
+                            ):
                                 try:
                                     generate_summary_index_task.delay(dataset.id, document_id, None)
                                     logger.info(
@@ -146,10 +151,12 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                                     # Don't fail the entire indexing process if summary task queuing fails
                             else:
                                 logger.info(
-                                    "Skipping summary generation for document %s: status=%s, doc_form=%s",
+                                    "Skipping summary generation for document %s: "
+                                    "status=%s, doc_form=%s, need_summary=%s",
                                     document_id,
                                     document.indexing_status,
                                     document.doc_form,
+                                    document.need_summary,
                                 )
                         else:
                             logger.warning("Document %s not found after indexing", document_id)
