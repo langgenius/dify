@@ -459,7 +459,8 @@ class SummaryIndexService:
                     # Even if original_session was provided, we create a new one for safety
                     with session_factory.create_session() as error_session:
                         # Try to find the record by id first
-                        summary_record_in_session: DocumentSegmentSummary | None = (
+                        # Note: Using assignment only (no type annotation) to avoid redeclaration error
+                        summary_record_in_session = (
                             error_session.query(DocumentSegmentSummary).filter_by(id=summary_record_id).first()
                         )
                         if not summary_record_in_session:
