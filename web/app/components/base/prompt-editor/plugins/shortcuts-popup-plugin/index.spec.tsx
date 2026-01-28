@@ -8,6 +8,32 @@ import { useState } from 'react'
 import ShortcutsPopupPlugin, { SHORTCUTS_EMPTY_CONTENT } from './index'
 import '@testing-library/jest-dom'
 
+// Mock Range.getClientRects and getBoundingClientRect for JSDOM
+const mockDOMRect = {
+  x: 100,
+  y: 100,
+  width: 100,
+  height: 20,
+  top: 100,
+  right: 200,
+  bottom: 120,
+  left: 100,
+  toJSON: () => ({}),
+}
+
+beforeAll(() => {
+  // Mock getClientRects on Range prototype
+  Range.prototype.getClientRects = vi.fn(() => {
+    const rectList = [mockDOMRect] as unknown as DOMRectList
+    Object.defineProperty(rectList, 'length', { value: 1 })
+    Object.defineProperty(rectList, 'item', { value: (index: number) => index === 0 ? mockDOMRect : null })
+    return rectList
+  })
+
+  // Mock getBoundingClientRect on Range prototype
+  Range.prototype.getBoundingClientRect = vi.fn(() => mockDOMRect as DOMRect)
+})
+
 const CONTAINER_ID = 'host'
 const CONTENT_EDITABLE_ID = 'ce'
 
