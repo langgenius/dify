@@ -155,7 +155,7 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
     try:
         headers: Headers = _HEADERS_ADAPTER.validate_python(kwargs.get("headers") or {})
     except ValidationError as e:
-        raise TypeError("headers must be a mapping of string keys to string values") from e
+        raise ValueError("headers must be a mapping of string keys to string values") from e
     headers = _inject_trace_headers(headers)
     kwargs["headers"] = headers
 
