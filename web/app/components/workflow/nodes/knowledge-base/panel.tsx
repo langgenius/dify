@@ -7,6 +7,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -51,6 +52,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     handleScoreThresholdChange,
     handleScoreThresholdEnabledChange,
     handleInputVariableChange,
+    handleSummaryIndexSettingChange,
   } = useConfig(id)
 
   const filterVar = useCallback((variable: Var) => {
@@ -167,6 +169,22 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                 <div className="pt-1">
                   <Split className="h-[1px]" />
                 </div>
+                {
+                  data.indexing_technique === IndexMethodEnum.QUALIFIED
+                  && [ChunkStructureEnum.general, ChunkStructureEnum.parent_child].includes(data.chunk_structure)
+                  && (
+                    <>
+                      <SummaryIndexSetting
+                        summaryIndexSetting={data.summary_index_setting}
+                        onSummaryIndexSettingChange={handleSummaryIndexSettingChange}
+                        readonly={nodesReadOnly}
+                      />
+                      <div className="pt-1">
+                        <Split className="h-[1px]" />
+                      </div>
+                    </>
+                  )
+                }
                 <RetrievalSetting
                   indexMethod={data.indexing_technique}
                   searchMethod={data.retrieval_model.search_method}

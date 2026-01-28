@@ -109,6 +109,7 @@ ignore_imports =
     core.workflow.graph_engine.layers.observability -> extensions.otel.parser
     core.workflow.graph_engine.layers.observability -> extensions.otel.runtime
     core.workflow.graph_engine.layers.persistence -> core.ops.ops_trace_manager
+    core.workflow.workflow_entry -> core.app.workflow.layers.observability
     core.workflow.graph_engine.worker_management.worker_pool -> configs
     core.workflow.nodes.agent.agent_node -> core.model_manager
     core.workflow.nodes.agent.agent_node -> core.provider_manager
@@ -151,7 +152,6 @@ ignore_imports =
     core.workflow.workflow_entry -> models.workflow
     core.workflow.nodes.agent.agent_node -> core.agent.entities
     core.workflow.nodes.agent.agent_node -> core.agent.plugin_entities
-    core.workflow.graph_engine.layers.persistence -> core.app.entities.app_invoke_entities
     core.workflow.nodes.base.node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.app_config.entities
@@ -221,7 +221,6 @@ ignore_imports =
     core.workflow.nodes.llm.node -> core.llm_generator.output_parser.errors
     core.workflow.nodes.llm.node -> core.llm_generator.output_parser.structured_output
     core.workflow.nodes.llm.node -> core.model_manager
-    core.workflow.graph_engine.layers.persistence -> core.ops.entities.trace_entity
     core.workflow.nodes.agent.entities -> core.prompt.entities.advanced_prompt_entities
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.prompt.simple_prompt_transform
     core.workflow.nodes.llm.entities -> core.prompt.entities.advanced_prompt_entities
