@@ -62,18 +62,18 @@ const HeaderOptions: FC<Props> = ({
     downloadBlob({ data: file, fileName: `annotations-${locale}.jsonl` })
   }
 
-  const fetchList = async () => {
+  const fetchList = React.useCallback(async () => {
     const { data }: any = await fetchExportAnnotationList(appId)
     setList(data as AnnotationItemBasic[])
-  }
+  }, [appId])
 
   useEffect(() => {
     fetchList()
-  }, [])
+  }, [fetchList])
   useEffect(() => {
     if (controlUpdateList)
       fetchList()
-  }, [controlUpdateList])
+  }, [controlUpdateList, fetchList])
 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)

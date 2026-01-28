@@ -994,7 +994,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/base/file-uploader/utils.ts": {
@@ -4377,11 +4377,6 @@
     "no-console": {
       "count": 1
     },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "utils/format.spec.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }

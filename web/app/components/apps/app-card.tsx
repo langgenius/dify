@@ -342,7 +342,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       dateFormat: `${t('segment.dateTimeFormat', { ns: 'datasetDocuments' })}`,
     })
     return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
-  }, [app.updated_at, app.created_at])
+  }, [app.updated_at, app.created_at, t])
 
   return (
     <>

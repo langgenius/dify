@@ -198,6 +198,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       tabIndex={-1}
     >
       { }
+      {/* eslint-disable-next-line next/no-img-element */}
       <img
         ref={imgRef}
         alt={title}
