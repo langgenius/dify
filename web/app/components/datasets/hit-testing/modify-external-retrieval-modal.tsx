@@ -46,7 +46,7 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
       border-[0.5px] border-components-panel-border bg-components-panel-bg"
     >
       <div className="flex items-center justify-between self-stretch p-4 pb-2">
-        <div className="system-xl-semibold grow text-text-primary">{t('datasetHitTesting.settingTitle')}</div>
+        <div className="system-xl-semibold grow text-text-primary">{t('settingTitle', { ns: 'datasetHitTesting' })}</div>
         <ActionButton className="ml-auto" onClick={onClose}>
           <RiCloseLine className="h-4 w-4 shrink-0" />
         </ActionButton>
@@ -61,8 +61,8 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
         />
       </div>
       <div className="flex w-full items-end justify-end gap-1 p-4 pt-2">
-        <Button className="min-w-[72px] shrink-0" onClick={onClose}>{t('common.operation.cancel')}</Button>
-        <Button variant="primary" className="min-w-[72px] shrink-0" onClick={handleSave}>{t('common.operation.save')}</Button>
+        <Button className="min-w-[72px] shrink-0" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+        <Button variant="primary" className="min-w-[72px] shrink-0" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
       </div>
     </div>
   )

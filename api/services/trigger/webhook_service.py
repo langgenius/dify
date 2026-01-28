@@ -863,10 +863,18 @@ class WebhookService:
                 not_found_in_cache.append(node_id)
                 continue
 
-        with Session(db.engine) as session:
-            try:
-                # lock the concurrent webhook trigger creation
-                redis_client.lock(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:apps:{app.id}:lock", timeout=10)
+        lock_key = f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:apps:{app.id}:lock"
+        lock = redis_client.lock(lock_key, timeout=10)
+        lock_acquired = False
+
+        try:
+            # acquire the lock with blocking and timeout
+            lock_acquired = lock.acquire(blocking=True, blocking_timeout=10)
+            if not lock_acquired:
+                logger.warning("Failed to acquire lock for webhook sync, app %s", app.id)
+                raise RuntimeError("Failed to acquire lock for webhook trigger synchronization")
+
+            with Session(db.engine) as session:
                 # fetch the non-cached nodes from DB
                 all_records = session.scalars(
                     select(WorkflowWebhookTrigger).where(
@@ -903,11 +911,16 @@ class WebhookService:
                         session.delete(nodes_id_in_db[node_id])
                         redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}")
                 session.commit()
-            except Exception:
-                logger.exception("Failed to sync webhook relationships for app %s", app.id)
-                raise
-            finally:
-                redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:apps:{app.id}:lock")
+        except Exception:
+            logger.exception("Failed to sync webhook relationships for app %s", app.id)
+            raise
+        finally:
+            # release the lock only if it was acquired
+            if lock_acquired:
+                try:
+                    lock.release()
+                except Exception:
+                    logger.exception("Failed to release lock for webhook sync, app %s", app.id)
 
     @classmethod
     def generate_webhook_id(cls) -> str:

@@ -126,7 +126,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const websiteCrawlJobId = websiteInfo?.job_id ?? legacyInfo?.job_id
 
   if (error)
-    return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
+    return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
 
   return (
     <div className="flex" style={{ height: 'calc(100vh - 56px)' }}>

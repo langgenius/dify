@@ -100,7 +100,7 @@ const OptionCard = memo(({
       >
         {effectElement}
         {
-          icon && (
+          !!icon && (
             <div className="mr-1 flex h-[18px] w-[18px] shrink-0 items-center justify-center">
               {typeof icon === 'function' ? icon(isActive) : icon}
             </div>
@@ -113,7 +113,7 @@ const OptionCard = memo(({
               {
                 isRecommended && (
                   <Badge className="ml-1 h-4 border-text-accent-secondary text-text-accent-secondary">
-                    {t('datasetCreation.stepTwo.recommend')}
+                    {t('stepTwo.recommend', { ns: 'datasetCreation' })}
                   </Badge>
                 )
               }
@@ -139,7 +139,7 @@ const OptionCard = memo(({
         </div>
       </div>
       {
-        children && isActive && (
+        !!(children && isActive) && (
           <div className="relative rounded-b-xl bg-components-panel-bg p-3">
             <ArrowShape className="absolute left-[14px] top-[-11px] h-4 w-4 text-components-panel-bg" />
             {children}

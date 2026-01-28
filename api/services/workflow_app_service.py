@@ -7,7 +7,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from core.workflow.enums import WorkflowExecutionStatus
-from models import Account, App, EndUser, WorkflowAppLog, WorkflowRun
+from models import Account, App, EndUser, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
 from models.enums import AppTriggerType, CreatorUserRole
 from models.trigger import WorkflowTriggerLog
 from services.plugin.plugin_service import PluginService
@@ -86,12 +86,19 @@ class WorkflowAppService:
             # Join to workflow run for filtering when needed.
 
         if keyword:
-            keyword_like_val = f"%{keyword[:30].encode('unicode_escape').decode('utf-8')}%".replace(r"\u", r"\\u")
+            from libs.helper import escape_like_pattern
+
+            # Escape special characters in keyword to prevent SQL injection via LIKE wildcards
+            escaped_keyword = escape_like_pattern(keyword[:30])
+            keyword_like_val = f"%{escaped_keyword}%"
             keyword_conditions = [
-                WorkflowRun.inputs.ilike(keyword_like_val),
-                WorkflowRun.outputs.ilike(keyword_like_val),
+                WorkflowRun.inputs.ilike(keyword_like_val, escape="\\"),
+                WorkflowRun.outputs.ilike(keyword_like_val, escape="\\"),
                 # filter keyword by end user session id if created by end user role
-                and_(WorkflowRun.created_by_role == "end_user", EndUser.session_id.ilike(keyword_like_val)),
+                and_(
+                    WorkflowRun.created_by_role == "end_user",
+                    EndUser.session_id.ilike(keyword_like_val, escape="\\"),
+                ),
             ]
 
             # filter keyword by workflow run id
@@ -166,7 +173,80 @@ class WorkflowAppService:
             "data": items,
         }
 
-    def handle_trigger_metadata(self, tenant_id: str, meta_val: str) -> dict[str, Any]:
+    def get_paginate_workflow_archive_logs(
+        self,
+        *,
+        session: Session,
+        app_model: App,
+        page: int = 1,
+        limit: int = 20,
+    ):
+        """
+        Get paginate workflow archive logs using SQLAlchemy 2.0 style.
+        """
+        stmt = select(WorkflowArchiveLog).where(
+            WorkflowArchiveLog.tenant_id == app_model.tenant_id,
+            WorkflowArchiveLog.app_id == app_model.id,
+            WorkflowArchiveLog.log_id.isnot(None),
+        )
+
+        stmt = stmt.order_by(WorkflowArchiveLog.run_created_at.desc())
+
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = session.scalar(count_stmt) or 0
+
+        offset_stmt = stmt.offset((page - 1) * limit).limit(limit)
+
+        logs = list(session.scalars(offset_stmt).all())
+        account_ids = {log.created_by for log in logs if log.created_by_role == CreatorUserRole.ACCOUNT}
+        end_user_ids = {log.created_by for log in logs if log.created_by_role == CreatorUserRole.END_USER}
+
+        accounts_by_id = {}
+        if account_ids:
+            accounts_by_id = {
+                account.id: account
+                for account in session.scalars(select(Account).where(Account.id.in_(account_ids))).all()
+            }
+
+        end_users_by_id = {}
+        if end_user_ids:
+            end_users_by_id = {
+                end_user.id: end_user
+                for end_user in session.scalars(select(EndUser).where(EndUser.id.in_(end_user_ids))).all()
+            }
+
+        items = []
+        for log in logs:
+            if log.created_by_role == CreatorUserRole.ACCOUNT:
+                created_by_account = accounts_by_id.get(log.created_by)
+                created_by_end_user = None
+            elif log.created_by_role == CreatorUserRole.END_USER:
+                created_by_account = None
+                created_by_end_user = end_users_by_id.get(log.created_by)
+            else:
+                created_by_account = None
+                created_by_end_user = None
+
+            items.append(
+                {
+                    "id": log.id,
+                    "workflow_run": log.workflow_run_summary,
+                    "trigger_metadata": self.handle_trigger_metadata(app_model.tenant_id, log.trigger_metadata),
+                    "created_by_account": created_by_account,
+                    "created_by_end_user": created_by_end_user,
+                    "created_at": log.log_created_at,
+                }
+            )
+
+        return {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "has_more": total > page * limit,
+            "data": items,
+        }
+
+    def handle_trigger_metadata(self, tenant_id: str, meta_val: str | None) -> dict[str, Any]:
         metadata: dict[str, Any] | None = self._safe_json_loads(meta_val)
         if not metadata:
             return {}

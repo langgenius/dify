@@ -15,7 +15,7 @@ type Props = {
   onChange: (payload: TimeoutPayloadType) => void
 }
 
-const i18nPrefix = 'workflow.nodes.http'
+const i18nPrefix = 'nodes.http'
 
 const InputField: FC<{
   title: string
@@ -69,13 +69,13 @@ const Timeout: FC<Props> = ({ readonly, payload, onChange }) => {
   const defaultTimeout = defaultConfig?.timeout || {}
 
   return (
-    <FieldCollapse title={t(`${i18nPrefix}.timeout.title`)}>
+    <FieldCollapse title={t(`${i18nPrefix}.timeout.title`, { ns: 'workflow' })}>
       <div className="mt-2 space-y-1">
         <div className="space-y-3">
           <InputField
-            title={t('workflow.nodes.http.timeout.connectLabel')!}
-            description={t('workflow.nodes.http.timeout.connectPlaceholder')!}
-            placeholder={t('workflow.nodes.http.timeout.connectPlaceholder')!}
+            title={t('nodes.http.timeout.connectLabel', { ns: 'workflow' })!}
+            description={t('nodes.http.timeout.connectPlaceholder', { ns: 'workflow' })!}
+            placeholder={t('nodes.http.timeout.connectPlaceholder', { ns: 'workflow' })!}
             readOnly={readonly}
             value={connect}
             onChange={v => onChange?.({ ...payload, connect: v })}
@@ -83,9 +83,9 @@ const Timeout: FC<Props> = ({ readonly, payload, onChange }) => {
             max={max_connect_timeout || defaultTimeout.max_connect_timeout || 10}
           />
           <InputField
-            title={t('workflow.nodes.http.timeout.readLabel')!}
-            description={t('workflow.nodes.http.timeout.readPlaceholder')!}
-            placeholder={t('workflow.nodes.http.timeout.readPlaceholder')!}
+            title={t('nodes.http.timeout.readLabel', { ns: 'workflow' })!}
+            description={t('nodes.http.timeout.readPlaceholder', { ns: 'workflow' })!}
+            placeholder={t('nodes.http.timeout.readPlaceholder', { ns: 'workflow' })!}
             readOnly={readonly}
             value={read}
             onChange={v => onChange?.({ ...payload, read: v })}
@@ -93,9 +93,9 @@ const Timeout: FC<Props> = ({ readonly, payload, onChange }) => {
             max={max_read_timeout || defaultTimeout.max_read_timeout || 600}
           />
           <InputField
-            title={t('workflow.nodes.http.timeout.writeLabel')!}
-            description={t('workflow.nodes.http.timeout.writePlaceholder')!}
-            placeholder={t('workflow.nodes.http.timeout.writePlaceholder')!}
+            title={t('nodes.http.timeout.writeLabel', { ns: 'workflow' })!}
+            description={t('nodes.http.timeout.writePlaceholder', { ns: 'workflow' })!}
+            placeholder={t('nodes.http.timeout.writePlaceholder', { ns: 'workflow' })!}
             readOnly={readonly}
             value={write}
             onChange={v => onChange?.({ ...payload, write: v })}

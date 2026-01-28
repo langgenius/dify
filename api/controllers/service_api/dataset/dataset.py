@@ -2,7 +2,7 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import marshal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -13,7 +13,6 @@ from controllers.service_api.dataset.error import DatasetInUseError, DatasetName
 from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
-    validate_dataset_token,
 )
 from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
@@ -26,6 +25,14 @@ from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 from services.tag_service import TagService
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+service_api_ns.schema_model(
+    DatasetPermissionEnum.__name__,
+    TypeAdapter(DatasetPermissionEnum).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 class DatasetCreatePayload(BaseModel):
@@ -88,6 +95,14 @@ class TagUnbindingPayload(BaseModel):
     target_id: str
 
 
+class DatasetListQuery(BaseModel):
+    page: int = Field(default=1, description="Page number")
+    limit: int = Field(default=20, description="Number of items per page")
+    keyword: str | None = Field(default=None, description="Search keyword")
+    include_all: bool = Field(default=False, description="Include all datasets")
+    tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
+
+
 register_schema_models(
     service_api_ns,
     DatasetCreatePayload,
@@ -97,6 +112,7 @@ register_schema_models(
     TagDeletePayload,
     TagBindingPayload,
     TagUnbindingPayload,
+    DatasetListQuery,
 )
 
 
@@ -114,15 +130,11 @@ class DatasetListApi(DatasetApiResource):
     )
     def get(self, tenant_id):
         """Resource for getting datasets."""
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
+        query = DatasetListQuery.model_validate(request.args.to_dict())
         # provider = request.args.get("provider", default="vendor")
-        search = request.args.get("keyword", default=None, type=str)
-        tag_ids = request.args.getlist("tag_ids")
-        include_all = request.args.get("include_all", default="false").lower() == "true"
 
         datasets, total = DatasetService.get_datasets(
-            page, limit, tenant_id, current_user, search, tag_ids, include_all
+            query.page, query.limit, tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
         )
         # check embedding setting
         provider_manager = ProviderManager()
@@ -148,7 +160,13 @@ class DatasetListApi(DatasetApiResource):
                     item["embedding_available"] = False
             else:
                 item["embedding_available"] = True
-        response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
+        response = {
+            "data": data,
+            "has_more": len(datasets) == query.limit,
+            "limit": query.limit,
+            "total": total,
+            "page": query.page,
+        }
         return response, 200
 
     @service_api_ns.expect(service_api_ns.models[DatasetCreatePayload.__name__])
@@ -460,9 +478,8 @@ class DatasetTagsApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
-    @validate_dataset_token
     @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
-    def get(self, _, dataset_id):
+    def get(self, _):
         """Get all knowledge type tags."""
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
@@ -482,8 +499,7 @@ class DatasetTagsApi(DatasetApiResource):
         }
     )
     @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
-    @validate_dataset_token
-    def post(self, _, dataset_id):
+    def post(self, _):
         """Add a knowledge type tag."""
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -506,8 +522,7 @@ class DatasetTagsApi(DatasetApiResource):
         }
     )
     @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
-    @validate_dataset_token
-    def patch(self, _, dataset_id):
+    def patch(self, _):
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
@@ -533,9 +548,8 @@ class DatasetTagsApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    @validate_dataset_token
     @edit_permission_required
-    def delete(self, _, dataset_id):
+    def delete(self, _):
         """Delete a knowledge type tag."""
         payload = TagDeletePayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag(payload.tag_id)
@@ -555,8 +569,7 @@ class DatasetTagBindingApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    @validate_dataset_token
-    def post(self, _, dataset_id):
+    def post(self, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -580,8 +593,7 @@ class DatasetTagUnbindingApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    @validate_dataset_token
-    def post(self, _, dataset_id):
+    def post(self, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -604,7 +616,6 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
-    @validate_dataset_token
     def get(self, _, *args, **kwargs):
         """Get all knowledge type tags."""
         dataset_id = kwargs.get("dataset_id")

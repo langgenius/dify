@@ -301,7 +301,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
 
         text = ""
         files: list[File] = []
-        json: list[dict] = []
+        json: list[dict | list] = []
 
         variables: dict[str, Any] = {}
 

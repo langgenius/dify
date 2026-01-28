@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.entities import GraphInitParams
@@ -16,7 +17,6 @@ from core.workflow.enums import WorkflowType
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.command_channels.in_memory_channel import InMemoryChannel
 from core.workflow.graph_engine.graph_engine import GraphEngine
-from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserAction

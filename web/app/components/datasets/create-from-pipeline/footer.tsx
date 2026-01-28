@@ -47,7 +47,7 @@ const Footer = () => {
         onClick={openImportFromDSL}
       >
         <RiFileUploadLine className="size-5" />
-        <span>{t('datasetPipeline.creation.importDSL')}</span>
+        <span>{t('creation.importDSL', { ns: 'datasetPipeline' })}</span>
       </button>
       <CreateFromDSLModal
         show={showImportModal}

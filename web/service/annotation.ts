@@ -1,4 +1,3 @@
-import type { Fetcher } from 'swr'
 import type { AnnotationCreateResponse, AnnotationEnableStatus, AnnotationItemBasic, EmbeddingModelConfig } from '@/app/components/app/annotation/type'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { del, get, post } from './base'
@@ -44,11 +43,11 @@ export const addAnnotation = (appId: string, body: AnnotationItemBasic) => {
   return post<AnnotationCreateResponse>(`apps/${appId}/annotations`, { body })
 }
 
-export const annotationBatchImport: Fetcher<{ job_id: string, job_status: string }, { url: string, body: FormData }> = ({ url, body }) => {
+export const annotationBatchImport = ({ url, body }: { url: string, body: FormData }): Promise<{ job_id: string, job_status: string }> => {
   return post<{ job_id: string, job_status: string }>(url, { body }, { bodyStringify: false, deleteContentType: true })
 }
 
-export const checkAnnotationBatchImportProgress: Fetcher<{ job_id: string, job_status: string }, { jobID: string, appId: string }> = ({ jobID, appId }) => {
+export const checkAnnotationBatchImportProgress = ({ jobID, appId }: { jobID: string, appId: string }): Promise<{ job_id: string, job_status: string }> => {
   return get<{ job_id: string, job_status: string }>(`/apps/${appId}/annotations/batch-import-status/${jobID}`)
 }
 

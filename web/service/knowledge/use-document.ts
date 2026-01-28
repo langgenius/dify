@@ -1,4 +1,4 @@
-import type { MetadataType, SortType } from '../datasets'
+import type { DocumentDownloadResponse, DocumentDownloadZipRequest, MetadataType, SortType } from '../datasets'
 import type { CommonResponse } from '@/models/common'
 import type { DocumentDetailResponse, DocumentListResponse, UpdateDocumentBatchParams } from '@/models/datasets'
 import {
@@ -7,8 +7,8 @@ import {
 } from '@tanstack/react-query'
 import { normalizeStatusForQuery } from '@/app/components/datasets/documents/status-filter'
 import { DocumentActionType } from '@/models/datasets'
-import { del, get, patch } from '../base'
-import { pauseDocIndexing, resumeDocIndexing } from '../datasets'
+import { del, get, patch, post } from '../base'
+import { downloadDocumentsZip, fetchDocumentDownloadUrl, pauseDocIndexing, resumeDocIndexing } from '../datasets'
 import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'knowledge/document'
@@ -38,7 +38,7 @@ export const useDocumentList = (payload: {
   if (normalizedStatus && normalizedStatus !== 'all')
     params.status = normalizedStatus
   return useQuery<DocumentListResponse>({
-    queryKey: [...useDocumentListKey, datasetId, keyword, page, limit, sort, normalizedStatus],
+    queryKey: [...useDocumentListKey, datasetId, params],
     queryFn: () => get<DocumentListResponse>(`/datasets/${datasetId}/documents`, {
       params,
     }),
@@ -123,7 +123,7 @@ export const useDocumentDetail = (payload: {
 }) => {
   const { datasetId, documentId, params } = payload
   return useQuery<DocumentDetailResponse>({
-    queryKey: [...useDocumentDetailKey, 'withoutMetaData', datasetId, documentId],
+    queryKey: [...useDocumentDetailKey, 'withoutMetaData', datasetId, documentId, params],
     queryFn: () => get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params }),
   })
 }
@@ -135,7 +135,7 @@ export const useDocumentMetadata = (payload: {
 }) => {
   const { datasetId, documentId, params } = payload
   return useQuery<DocumentDetailResponse>({
-    queryKey: [...useDocumentDetailKey, 'onlyMetaData', datasetId, documentId],
+    queryKey: [...useDocumentDetailKey, 'onlyMetaData', datasetId, documentId, params],
     queryFn: () => get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params }),
   })
 }
@@ -160,6 +160,38 @@ export const useDocumentResume = () => {
       if (!datasetId || !documentId)
         throw new Error('datasetId and documentId are required')
       return resumeDocIndexing({ datasetId, documentId }) as Promise<CommonResponse>
+    },
+  })
+}
+
+export const useDocumentDownload = () => {
+  return useMutation({
+    mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
+      if (!datasetId || !documentId)
+        throw new Error('datasetId and documentId are required')
+      return fetchDocumentDownloadUrl({ datasetId, documentId }) as Promise<DocumentDownloadResponse>
+    },
+  })
+}
+
+export const useDocumentDownloadZip = () => {
+  return useMutation({
+    mutationFn: ({ datasetId, documentIds }: DocumentDownloadZipRequest) => {
+      if (!datasetId || !documentIds?.length)
+        throw new Error('datasetId and documentIds are required')
+      return downloadDocumentsZip({ datasetId, documentIds })
+    },
+  })
+}
+
+export const useDocumentBatchRetryIndex = () => {
+  return useMutation({
+    mutationFn: ({ datasetId, documentIds }: { datasetId: string, documentIds: string[] }) => {
+      return post<CommonResponse>(`/datasets/${datasetId}/retry`, {
+        body: {
+          document_ids: documentIds,
+        },
+      })
     },
   })
 }

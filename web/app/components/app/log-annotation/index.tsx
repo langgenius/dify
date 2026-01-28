@@ -27,10 +27,10 @@ const LogAnnotation: FC<Props> = ({
 
   const options = useMemo(() => {
     if (appDetail?.mode === AppModeEnum.COMPLETION)
-      return [{ value: PageType.log, text: t('appLog.title') }]
+      return [{ value: PageType.log, text: t('title', { ns: 'appLog' }) }]
     return [
-      { value: PageType.log, text: t('appLog.title') },
-      { value: PageType.annotation, text: t('appAnnotation.title') },
+      { value: PageType.log, text: t('title', { ns: 'appLog' }) },
+      { value: PageType.annotation, text: t('title', { ns: 'appAnnotation' }) },
     ]
   }, [appDetail?.mode, t])
 

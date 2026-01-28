@@ -47,15 +47,15 @@ const Command = ({
   const tip = useMemo(() => {
     switch (type) {
       case 'bold':
-        return t('workflow.nodes.note.editor.bold')
+        return t('nodes.note.editor.bold', { ns: 'workflow' })
       case 'italic':
-        return t('workflow.nodes.note.editor.italic')
+        return t('nodes.note.editor.italic', { ns: 'workflow' })
       case 'strikethrough':
-        return t('workflow.nodes.note.editor.strikethrough')
+        return t('nodes.note.editor.strikethrough', { ns: 'workflow' })
       case 'link':
-        return t('workflow.nodes.note.editor.link')
+        return t('nodes.note.editor.link', { ns: 'workflow' })
       case 'bullet':
-        return t('workflow.nodes.note.editor.bulletList')
+        return t('nodes.note.editor.bulletList', { ns: 'workflow' })
     }
   }, [type, t])
 

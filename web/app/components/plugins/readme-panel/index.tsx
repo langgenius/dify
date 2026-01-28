@@ -38,7 +38,7 @@ const ReadmePanel: FC = () => {
           <div className="flex items-center gap-1">
             <RiBookReadLine className="h-3 w-3 text-text-tertiary" />
             <span className="text-xs font-medium uppercase text-text-tertiary">
-              {t('plugin.readmeInfo.title')}
+              {t('readmeInfo.title', { ns: 'plugin' })}
             </span>
           </div>
           <ActionButton onClick={onClose}>
@@ -61,7 +61,7 @@ const ReadmePanel: FC = () => {
           if (error) {
             return (
               <div className="py-8 text-center text-text-tertiary">
-                <p>{t('plugin.readmeInfo.failedToFetch')}</p>
+                <p>{t('readmeInfo.failedToFetch', { ns: 'plugin' })}</p>
               </div>
             )
           }
@@ -77,7 +77,7 @@ const ReadmePanel: FC = () => {
 
           return (
             <div className="py-8 text-center text-text-tertiary">
-              <p>{t('plugin.readmeInfo.noReadmeAvailable')}</p>
+              <p>{t('readmeInfo.noReadmeAvailable', { ns: 'plugin' })}</p>
             </div>
           )
         })()}

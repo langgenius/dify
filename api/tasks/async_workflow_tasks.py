@@ -19,11 +19,12 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.app.layers.timeslice_layer import TimeSliceLayer
 from core.app.layers.trigger_post_layer import TriggerPostLayer
+from core.db.session_factory import session_factory
 from core.repositories import DifyCoreRepositoryFactory
 from core.workflow.runtime import GraphRuntimeState
 from extensions.ext_database import db
 from models.account import Account
-from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
 from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
@@ -107,10 +108,7 @@ def _execute_workflow_common(
 ):
     """Execute workflow with common logic and trigger log updates."""
 
-    # Create a new session for this task
-    session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-
-    with session_factory() as session:
+    with session_factory.create_session() as session:
         trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
 
         # Get trigger log
@@ -154,7 +152,7 @@ def _execute_workflow_common(
                 args["workflow_id"] = str(trigger_data.workflow_id)
 
             pause_config = PauseStateLayerConfig(
-                session_factory=session_factory,
+                session_factory=session_factory.get_session_maker(),
                 state_owner_user_id=workflow.created_by,
             )
 
@@ -171,7 +169,7 @@ def _execute_workflow_common(
                 root_node_id=trigger_data.root_node_id,
                 graph_engine_layers=[
                     # TODO: Re-enable TimeSliceLayer after the HITL release.
-                    TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id, session_factory),
+                    TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id),
                 ],
                 pause_state_config=pause_config,
             )
@@ -271,7 +269,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         graph_engine_layers.extend(
             [
                 TimeSliceLayer(cfs_plan_scheduler),
-                TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id, session_factory),
+                TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id),
             ]
         )
 
@@ -291,7 +289,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
     workflow_run_repo.delete_workflow_pause(pause_entity)
 
 
-def _get_user(session: Session, workflow_run: WorkflowRun) -> Account | EndUser:
+def _get_user(session: Session, workflow_run: WorkflowRun | WorkflowTriggerLog) -> Account | EndUser:
     """Compose user from trigger log"""
     tenant = session.scalar(select(Tenant).where(Tenant.id == workflow_run.tenant_id))
     if not tenant:
@@ -326,19 +324,9 @@ def _query_trigger_log_info(session_factory: sessionmaker[Session], workflow_run
         trigger_log = trigger_log_repo.get_by_workflow_run_id(workflow_run_id)
         if not trigger_log:
             logger.debug("Trigger log not found for workflow_run: workflow_run_id=%s", workflow_run_id)
-            return
+            return None
 
-        cfs_plan_scheduler_entity = AsyncWorkflowCFSPlanEntity(
-            queue=trigger_log.queue_name,
-            schedule_strategy=AsyncWorkflowSystemStrategy,
-            granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
-        )
-        cfs_plan_scheduler = AsyncWorkflowCFSPlanScheduler(plan=cfs_plan_scheduler_entity)
-
-        try:
-            trigger_type = AppTriggerType(trigger_log.trigger_type)
-        except ValueError:
-            trigger_type = AppTriggerType.UNKNOWN
+        return trigger_log
 
 
 class _TenantNotFoundError(Exception):

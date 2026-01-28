@@ -13,7 +13,7 @@ import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline
 import { CrawlStep } from '@/models/datasets'
 import { cn } from '@/utils/classnames'
 
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const I18N_PREFIX = 'stepOne.website'
 
 type OptionsProps = {
   variables: RAGPipelineVariables
@@ -89,7 +89,7 @@ const Options = ({
           onClick={foldToggle}
         >
           <span className="system-sm-semibold-uppercase text-text-secondary">
-            {t(`${I18N_PREFIX}.options`)}
+            {t(`${I18N_PREFIX}.options`, { ns: 'datasetCreation' })}
           </span>
           <ArrowDownRoundFill className={cn('h-4 w-4 shrink-0 text-text-quaternary', fold && '-rotate-90')} />
         </div>
@@ -102,7 +102,7 @@ const Options = ({
           spinnerClassName="!ml-0"
         >
           <RiPlayLargeLine className="size-4" />
-          <span className="px-0.5">{!isRunning ? t(`${I18N_PREFIX}.run`) : t(`${I18N_PREFIX}.running`)}</span>
+          <span className="px-0.5">{!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.running`, { ns: 'datasetCreation' })}</span>
         </Button>
       </div>
       {!fold && (

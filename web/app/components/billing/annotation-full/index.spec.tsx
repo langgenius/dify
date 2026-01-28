@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react'
 import AnnotationFull from './index'
 
 vi.mock('./usage', () => ({
-  __esModule: true,
   default: (props: { className?: string }) => {
     return (
       <div data-testid="usage-component" data-classname={props.className ?? ''}>
@@ -13,7 +12,6 @@ vi.mock('./usage', () => ({
 }))
 
 vi.mock('../upgrade-btn', () => ({
-  __esModule: true,
   default: (props: { loc?: string }) => {
     return (
       <button type="button" data-testid="upgrade-btn">

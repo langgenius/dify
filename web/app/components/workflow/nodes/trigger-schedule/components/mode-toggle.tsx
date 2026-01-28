@@ -17,8 +17,8 @@ const ModeToggle = ({ mode, onChange }: ModeToggleProps) => {
   }
 
   const currentText = mode === 'visual'
-    ? t('workflow.nodes.triggerSchedule.useCronExpression')
-    : t('workflow.nodes.triggerSchedule.useVisualPicker')
+    ? t('nodes.triggerSchedule.useCronExpression', { ns: 'workflow' })
+    : t('nodes.triggerSchedule.useVisualPicker', { ns: 'workflow' })
 
   const currentIcon = mode === 'visual' ? Asterisk : CalendarCheckLine
 

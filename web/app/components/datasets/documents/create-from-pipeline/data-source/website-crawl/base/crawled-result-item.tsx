@@ -76,7 +76,7 @@ const CrawledResultItem = ({
           onClick={onPreview}
           className="system-xs-medium-uppercase right-2 top-2 hidden px-1.5 group-hover:absolute group-hover:block"
         >
-          {t('datasetCreation.stepOne.website.preview')}
+          {t('stepOne.website.preview', { ns: 'datasetCreation' })}
         </Button>
       )}
     </div>

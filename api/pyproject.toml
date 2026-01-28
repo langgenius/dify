@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.11.2"
+version = "1.11.4"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
@@ -31,7 +31,7 @@ dependencies = [
     "gunicorn~=23.0.0",
     "httpx[socks]~=0.27.0",
     "jieba==0.42.1",
-    "json-repair>=0.41.1",
+    "json-repair>=0.55.1",
     "jsonschema>=4.25.1",
     "langfuse~=2.51.3",
     "langsmith~=0.1.77",
@@ -64,7 +64,7 @@ dependencies = [
     "pandas[excel,output-formatting,performance]~=2.2.2",
     "psycogreen~=1.0.2",
     "psycopg2-binary~=2.9.6",
-    "pycryptodome==3.19.1",
+    "pycryptodome==3.23.0",
     "pydantic~=2.11.4",
     "pydantic-extra-types~=2.10.3",
     "pydantic-settings~=2.11.0",
@@ -93,6 +93,7 @@ dependencies = [
     "weaviate-client==4.17.0",
     "apscheduler>=3.11.0",
     "weave>=0.52.16",
+    "fastopenapi[flask]>=0.7.0",
 ]
 # Before adding new dependency, consider place it in
 # alphabet order (a-z) and suitable group.
@@ -189,7 +190,7 @@ storage = [
     "opendal~=0.46.0",
     "oss2==2.18.5",
     "supabase~=2.18.1",
-    "tos~=2.7.1",
+    "tos~=2.9.0",
 ]
 
 ############################################################

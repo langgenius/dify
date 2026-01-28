@@ -26,7 +26,6 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
-  __esModule: true,
   default: () => ({
     formatTime: () => '2023-12-01 10:30:00',
   }),
@@ -35,7 +34,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
 // Note: i18n is automatically mocked by Vitest via web/vitest.setup.ts
 
 vi.mock('@/app/components/billing/annotation-full', () => ({
-  __esModule: true,
   default: () => <div data-testid="annotation-full" />,
 }))
 

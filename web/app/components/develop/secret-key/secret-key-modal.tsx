@@ -88,27 +88,27 @@ const SecretKeyModal = ({
   }
 
   return (
-    <Modal isShow={isShow} onClose={onClose} title={`${t('appApi.apiKeyModal.apiSecretKey')}`} className={`${s.customModal} flex flex-col px-8`}>
+    <Modal isShow={isShow} onClose={onClose} title={`${t('apiKeyModal.apiSecretKey', { ns: 'appApi' })}`} className={`${s.customModal} flex flex-col px-8`}>
       <div className="-mr-2 -mt-6 mb-4 flex justify-end">
         <XMarkIcon className="h-6 w-6 cursor-pointer text-text-tertiary" onClick={onClose} />
       </div>
-      <p className="mt-1 shrink-0 text-[13px] font-normal leading-5 text-text-tertiary">{t('appApi.apiKeyModal.apiSecretKeyTips')}</p>
+      <p className="mt-1 shrink-0 text-[13px] font-normal leading-5 text-text-tertiary">{t('apiKeyModal.apiSecretKeyTips', { ns: 'appApi' })}</p>
       {isApiKeysLoading && <div className="mt-4"><Loading /></div>}
       {
         !!apiKeysList?.data?.length && (
           <div className="mt-4 flex grow flex-col overflow-hidden">
             <div className="flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary">
-              <div className="w-64 shrink-0 px-3">{t('appApi.apiKeyModal.secretKey')}</div>
-              <div className="w-[200px] shrink-0 px-3">{t('appApi.apiKeyModal.created')}</div>
-              <div className="w-[200px] shrink-0 px-3">{t('appApi.apiKeyModal.lastUsed')}</div>
+              <div className="w-64 shrink-0 px-3">{t('apiKeyModal.secretKey', { ns: 'appApi' })}</div>
+              <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.created', { ns: 'appApi' })}</div>
+              <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.lastUsed', { ns: 'appApi' })}</div>
               <div className="grow px-3"></div>
             </div>
             <div className="grow overflow-auto">
               {apiKeysList.data.map(api => (
                 <div className="flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary" key={api.id}>
                   <div className="w-64 shrink-0 truncate px-3 font-mono">{generateToken(api.token)}</div>
-                  <div className="w-[200px] shrink-0 truncate px-3">{formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string)}</div>
-                  <div className="w-[200px] shrink-0 truncate px-3">{api.last_used_at ? formatTime(Number(api.last_used_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
+                  <div className="w-[200px] shrink-0 truncate px-3">{formatTime(Number(api.created_at), t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
+                  <div className="w-[200px] shrink-0 truncate px-3">{api.last_used_at ? formatTime(Number(api.last_used_at), t('dateTimeFormat', { ns: 'appLog' }) as string) : t('never', { ns: 'appApi' })}</div>
                   <div className="flex grow space-x-2 px-3">
                     <CopyFeedback content={api.token} />
                     {isCurrentWorkspaceManager && (
@@ -131,14 +131,14 @@ const SecretKeyModal = ({
       <div className="flex">
         <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
           <PlusIcon className="mr-1 flex h-4 w-4 shrink-0" />
-          <div className="text-xs font-medium text-text-secondary">{t('appApi.apiKeyModal.createNewSecretKey')}</div>
+          <div className="text-xs font-medium text-text-secondary">{t('apiKeyModal.createNewSecretKey', { ns: 'appApi' })}</div>
         </Button>
       </div>
       <SecretKeyGenerateModal className="shrink-0" isShow={isVisible} onClose={() => setVisible(false)} newKey={newKey} />
       {showConfirmDelete && (
         <Confirm
-          title={`${t('appApi.actionMsg.deleteConfirmTitle')}`}
-          content={`${t('appApi.actionMsg.deleteConfirmTips')}`}
+          title={`${t('actionMsg.deleteConfirmTitle', { ns: 'appApi' })}`}
+          content={`${t('actionMsg.deleteConfirmTips', { ns: 'appApi' })}`}
           isShow={showConfirmDelete}
           onConfirm={onDel}
           onCancel={() => {

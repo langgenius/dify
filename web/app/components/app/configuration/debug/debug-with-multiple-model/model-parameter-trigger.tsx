@@ -104,7 +104,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           {
             !currentModel && (
               <div className="mr-0.5 truncate text-[13px] font-medium text-text-accent">
-                {t('common.modelProvider.selectModel')}
+                {t('modelProvider.selectModel', { ns: 'common' })}
               </div>
             )
           }

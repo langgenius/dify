@@ -39,14 +39,14 @@ const InvitationLink = ({
       <div className="flex h-5 grow items-center">
         <div className="relative h-full grow text-[13px]">
           <Tooltip
-            popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
+            popupContent={isCopied ? `${t('copied', { ns: 'appApi' })}` : `${t('copy', { ns: 'appApi' })}`}
           >
             <div className="r-0 absolute left-0 top-0 w-full cursor-pointer truncate pl-2 pr-2 text-text-primary" onClick={copyHandle}>{value.url}</div>
           </Tooltip>
         </div>
         <div className="h-4 shrink-0 border bg-divider-regular" />
         <Tooltip
-          popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
+          popupContent={isCopied ? `${t('copied', { ns: 'appApi' })}` : `${t('copy', { ns: 'appApi' })}`}
         >
           <div className="shrink-0 px-0.5">
             <div className={`box-border flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover ${s.copyIcon} ${isCopied ? s.copied : ''}`} onClick={copyHandle}>

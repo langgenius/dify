@@ -88,7 +88,7 @@ const TagFilter: FC<TagFilterProps> = ({
               <Tag01 className="h-3.5 w-3.5 text-text-tertiary" />
             </div>
             <div className="text-[13px] leading-[18px] text-text-secondary">
-              {!value.length && t('common.tag.placeholder')}
+              {!value.length && t('tag.placeholder', { ns: 'common' })}
               {!!value.length && currentTag?.name}
             </div>
             {value.length > 1 && (
@@ -137,7 +137,7 @@ const TagFilter: FC<TagFilterProps> = ({
               {!filteredTagList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
                   <Tag03 className="h-6 w-6 text-text-tertiary" />
-                  <div className="text-xs leading-[14px] text-text-tertiary">{t('common.tag.noTag')}</div>
+                  <div className="text-xs leading-[14px] text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
                 </div>
               )}
             </div>
@@ -152,7 +152,7 @@ const TagFilter: FC<TagFilterProps> = ({
               >
                 <Tag03 className="h-4 w-4 text-text-tertiary" />
                 <div className="grow truncate text-sm leading-5 text-text-secondary">
-                  {t('common.tag.manageTags')}
+                  {t('tag.manageTags', { ns: 'common' })}
                 </div>
               </div>
             </div>

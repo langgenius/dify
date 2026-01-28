@@ -80,12 +80,12 @@ const AddCustomModel = ({
         )}
       >
         <RiAddCircleFill className="mr-1 h-3.5 w-3.5" />
-        {t('common.modelProvider.addModel')}
+        {t('modelProvider.addModel', { ns: 'common' })}
       </Button>
     )
     if (notAllowCustomCredential && !!noModels) {
       return (
-        <Tooltip asChild popupContent={t('plugin.auth.credentialUnavailable')}>
+        <Tooltip asChild popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}>
           {Item}
         </Tooltip>
       )
@@ -155,7 +155,7 @@ const AddCustomModel = ({
                 }}
               >
                 <RiAddLine className="mr-1 h-4 w-4" />
-                {t('common.modelProvider.auth.addNewModel')}
+                {t('modelProvider.auth.addNewModel', { ns: 'common' })}
               </div>
             )
           }

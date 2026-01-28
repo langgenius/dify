@@ -17,7 +17,7 @@ import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 
-const i18nPrefix = 'workflow.singleRun'
+const i18nPrefix = 'singleRun'
 
 type Props = {
   list: NodeTracing[][]
@@ -89,7 +89,7 @@ const LoopResultPanel: FC<Props> = ({
         }}
       >
         <RiArrowLeftLine className="mr-1 h-4 w-4" />
-        <div className="system-sm-medium">{t(`${i18nPrefix}.back`)}</div>
+        <div className="system-sm-medium">{t(`${i18nPrefix}.back`, { ns: 'workflow' })}</div>
       </div>
       {/* List */}
       <div className="bg-components-panel-bg p-2">
@@ -108,7 +108,7 @@ const LoopResultPanel: FC<Props> = ({
                   <Loop className="h-3 w-3 text-text-primary-on-surface" />
                 </div>
                 <span className="system-sm-semibold-uppercase grow text-text-primary">
-                  {t(`${i18nPrefix}.loop`)}
+                  {t(`${i18nPrefix}.loop`, { ns: 'workflow' })}
                   {' '}
                   {index + 1}
                 </span>
@@ -133,7 +133,7 @@ const LoopResultPanel: FC<Props> = ({
                   <div className="p-2 pb-0">
                     <CodeEditor
                       readOnly
-                      title={<div>{t('workflow.nodes.loop.loopVariables').toLocaleUpperCase()}</div>}
+                      title={<div>{t('nodes.loop.loopVariables', { ns: 'workflow' }).toLocaleUpperCase()}</div>}
                       language={CodeLanguage.json}
                       height={112}
                       value={loopVariableMap[index]}

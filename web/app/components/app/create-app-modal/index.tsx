@@ -5,7 +5,6 @@ import { RiArrowRightLine, RiArrowRightSLine, RiCommandLine, RiCornerDownLeftLin
 
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,7 +21,6 @@ import { ToastContext } from '@/app/components/base/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
 import { createApp } from '@/service/apps'
@@ -64,11 +62,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
 
   const onCreate = useCallback(async () => {
     if (!appMode) {
-      notify({ type: 'error', message: t('app.newApp.appTypeRequired') })
+      notify({ type: 'error', message: t('newApp.appTypeRequired', { ns: 'app' }) })
       return
     }
     if (!name.trim()) {
-      notify({ type: 'error', message: t('app.newApp.nameNotEmpty') })
+      notify({ type: 'error', message: t('newApp.nameNotEmpty', { ns: 'app' }) })
       return
     }
     if (isCreatingRef.current)
@@ -90,7 +88,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         description,
       })
 
-      notify({ type: 'success', message: t('app.newApp.appCreated') })
+      notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app' }) })
       onSuccess()
       onClose()
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
@@ -99,7 +97,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
     catch (e: any) {
       notify({
         type: 'error',
-        message: e.message || t('app.newApp.appCreateFailed'),
+        message: e.message || t('newApp.appCreateFailed', { ns: 'app' }),
       })
     }
     isCreatingRef.current = false
@@ -118,18 +116,18 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
           <div className="px-10">
             <div className="h-6 w-full 2xl:h-[139px]" />
             <div className="pb-6 pt-1">
-              <span className="title-2xl-semi-bold text-text-primary">{t('app.newApp.startFromBlank')}</span>
+              <span className="title-2xl-semi-bold text-text-primary">{t('newApp.startFromBlank', { ns: 'app' })}</span>
             </div>
             <div className="mb-2 leading-6">
-              <span className="system-sm-semibold text-text-secondary">{t('app.newApp.chooseAppType')}</span>
+              <span className="system-sm-semibold text-text-secondary">{t('newApp.chooseAppType', { ns: 'app' })}</span>
             </div>
             <div className="flex w-[660px] flex-col gap-4">
               <div>
                 <div className="flex flex-row gap-2">
                   <AppTypeCard
                     active={appMode === AppModeEnum.WORKFLOW}
-                    title={t('app.types.workflow')}
-                    description={t('app.newApp.workflowShortDescription')}
+                    title={t('types.workflow', { ns: 'app' })}
+                    description={t('newApp.workflowShortDescription', { ns: 'app' })}
                     icon={(
                       <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-indigo-solid">
                         <RiExchange2Fill className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
@@ -141,8 +139,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                   />
                   <AppTypeCard
                     active={appMode === AppModeEnum.ADVANCED_CHAT}
-                    title={t('app.types.advanced')}
-                    description={t('app.newApp.advancedShortDescription')}
+                    title={t('types.advanced', { ns: 'app' })}
+                    description={t('newApp.advancedShortDescription', { ns: 'app' })}
                     icon={(
                       <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-light-solid">
                         <BubbleTextMod className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
@@ -161,7 +159,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     className="flex cursor-pointer items-center border-0 bg-transparent p-0"
                     onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
                   >
-                    <span className="system-2xs-medium-uppercase text-text-tertiary">{t('app.newApp.forBeginners')}</span>
+                    <span className="system-2xs-medium-uppercase text-text-tertiary">{t('newApp.forBeginners', { ns: 'app' })}</span>
                     <RiArrowRightSLine className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} />
                   </button>
                 </div>
@@ -169,8 +167,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                   <div className="flex flex-row gap-2">
                     <AppTypeCard
                       active={appMode === AppModeEnum.CHAT}
-                      title={t('app.types.chatbot')}
-                      description={t('app.newApp.chatbotShortDescription')}
+                      title={t('types.chatbot', { ns: 'app' })}
+                      description={t('newApp.chatbotShortDescription', { ns: 'app' })}
                       icon={(
                         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
                           <ChatBot className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
@@ -182,8 +180,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     />
                     <AppTypeCard
                       active={appMode === AppModeEnum.AGENT_CHAT}
-                      title={t('app.types.agent')}
-                      description={t('app.newApp.agentShortDescription')}
+                      title={t('types.agent', { ns: 'app' })}
+                      description={t('newApp.agentShortDescription', { ns: 'app' })}
                       icon={(
                         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-violet-solid">
                           <Logic className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
@@ -195,8 +193,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     />
                     <AppTypeCard
                       active={appMode === AppModeEnum.COMPLETION}
-                      title={t('app.newApp.completeApp')}
-                      description={t('app.newApp.completionShortDescription')}
+                      title={t('newApp.completeApp', { ns: 'app' })}
+                      description={t('newApp.completionShortDescription', { ns: 'app' })}
                       icon={(
                         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-teal-solid">
                           <ListSparkle className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
@@ -213,12 +211,12 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               <div className="flex items-center space-x-3">
                 <div className="flex-1">
                   <div className="mb-1 flex h-6 items-center">
-                    <label className="system-sm-semibold text-text-secondary">{t('app.newApp.captionName')}</label>
+                    <label className="system-sm-semibold text-text-secondary">{t('newApp.captionName', { ns: 'app' })}</label>
                   </div>
                   <Input
                     value={name}
                     onChange={e => setName(e.target.value)}
-                    placeholder={t('app.newApp.appNamePlaceholder') || ''}
+                    placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
                   />
                 </div>
                 <AppIcon
@@ -244,16 +242,16 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               </div>
               <div>
                 <div className="mb-1 flex h-6 items-center">
-                  <label className="system-sm-semibold text-text-secondary">{t('app.newApp.captionDescription')}</label>
+                  <label className="system-sm-semibold text-text-secondary">{t('newApp.captionDescription', { ns: 'app' })}</label>
                   <span className="system-xs-regular ml-1 text-text-tertiary">
                     (
-                    {t('app.newApp.optional')}
+                    {t('newApp.optional', { ns: 'app' })}
                     )
                   </span>
                 </div>
                 <Textarea
                   className="resize-none"
-                  placeholder={t('app.newApp.appDescriptionPlaceholder') || ''}
+                  placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                 />
@@ -262,15 +260,15 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
             {isAppsFull && <AppsFull className="mt-4" loc="app-create" />}
             <div className="flex items-center justify-between pb-10 pt-5">
               <div className="system-xs-regular flex cursor-pointer items-center gap-1 text-text-tertiary" onClick={onCreateFromTemplate}>
-                <span>{t('app.newApp.noIdeaTip')}</span>
+                <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
                 <div className="p-[1px]">
                   <RiArrowRightLine className="h-3.5 w-3.5" />
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button onClick={onClose}>{t('app.newApp.Cancel')}</Button>
+                <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
                 <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
-                  <span>{t('app.newApp.Create')}</span>
+                  <span>{t('newApp.Create', { ns: 'app' })}</span>
                   <div className="flex gap-0.5">
                     <RiCommandLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
                     <RiCornerDownLeftLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
@@ -346,41 +344,26 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
 
 function AppPreview({ mode }: { mode: AppModeEnum }) {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const modeToPreviewInfoMap = {
     [AppModeEnum.CHAT]: {
-      title: t('app.types.chatbot'),
-      description: t('app.newApp.chatbotUserDescription'),
-      link: docLink('/guides/application-orchestrate/chatbot-application'),
+      title: t('types.chatbot', { ns: 'app' }),
+      description: t('newApp.chatbotUserDescription', { ns: 'app' }),
     },
     [AppModeEnum.ADVANCED_CHAT]: {
-      title: t('app.types.advanced'),
-      description: t('app.newApp.advancedUserDescription'),
-      link: docLink('/guides/workflow/README', {
-        'zh-Hans': '/guides/workflow/readme',
-        'ja-JP': '/guides/workflow/concepts',
-      }),
+      title: t('types.advanced', { ns: 'app' }),
+      description: t('newApp.advancedUserDescription', { ns: 'app' }),
     },
     [AppModeEnum.AGENT_CHAT]: {
-      title: t('app.types.agent'),
-      description: t('app.newApp.agentUserDescription'),
-      link: docLink('/guides/application-orchestrate/agent'),
+      title: t('types.agent', { ns: 'app' }),
+      description: t('newApp.agentUserDescription', { ns: 'app' }),
     },
     [AppModeEnum.COMPLETION]: {
-      title: t('app.newApp.completeApp'),
-      description: t('app.newApp.completionUserDescription'),
-      link: docLink('/guides/application-orchestrate/text-generator', {
-        'zh-Hans': '/guides/application-orchestrate/readme',
-        'ja-JP': '/guides/application-orchestrate/README',
-      }),
+      title: t('newApp.completeApp', { ns: 'app' }),
+      description: t('newApp.completionUserDescription', { ns: 'app' }),
     },
     [AppModeEnum.WORKFLOW]: {
-      title: t('app.types.workflow'),
-      description: t('app.newApp.workflowUserDescription'),
-      link: docLink('/guides/workflow/README', {
-        'zh-Hans': '/guides/workflow/readme',
-        'ja-JP': '/guides/workflow/concepts',
-      }),
+      title: t('types.workflow', { ns: 'app' }),
+      description: t('newApp.workflowUserDescription', { ns: 'app' }),
     },
   }
   const previewInfo = modeToPreviewInfoMap[mode]
@@ -389,7 +372,6 @@ function AppPreview({ mode }: { mode: AppModeEnum }) {
       <h4 className="system-sm-semibold-uppercase text-text-secondary">{previewInfo.title}</h4>
       <div className="system-xs-regular mt-1 min-h-8 max-w-96 text-text-tertiary">
         <span>{previewInfo.description}</span>
-        {previewInfo.link && <Link target="_blank" href={previewInfo.link} className="ml-1 text-text-accent">{t('app.newApp.learnMore')}</Link>}
       </div>
     </div>
   )

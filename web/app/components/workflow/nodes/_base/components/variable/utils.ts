@@ -33,7 +33,8 @@ import type {
 import type { PromptItem } from '@/models/debug'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { SchemaTypeDefinition } from '@/service/use-common'
-import { isArray, uniq } from 'es-toolkit/compat'
+import { uniq } from 'es-toolkit/array'
+import { isArray } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import {
   AGENT_OUTPUT_STRUCT,
@@ -352,7 +353,7 @@ const formatItem = (
         try {
           if (type === VarType.object && v.json_schema) {
             varRes.children = {
-              schema: JSON.parse(v.json_schema),
+              schema: typeof v.json_schema === 'string' ? JSON.parse(v.json_schema) : v.json_schema,
             }
           }
         }
@@ -473,7 +474,6 @@ const formatItem = (
       break
     }
 
-    // eslint-disable-next-line sonarjs/no-duplicated-branches
     case BlockEnum.VariableAggregator: {
       const { output_type, advanced_settings }
         = data as VariableAssignerNodeType
@@ -1233,7 +1233,7 @@ export const toNodeAvailableVars = ({
         : {}
     const iterationVar = {
       nodeId: iterationNode?.id,
-      title: t('workflow.nodes.iteration.currentIteration'),
+      title: t('nodes.iteration.currentIteration', { ns: 'workflow' }),
       vars: [
         {
           variable: 'item',
@@ -1874,7 +1874,7 @@ export const updateNodeVars = (
         }
         break
       }
-      // eslint-disable-next-line sonarjs/no-duplicated-branches
+
       case BlockEnum.VariableAggregator: {
         const payload = data as VariableAssignerNodeType
         if (payload.variables) {

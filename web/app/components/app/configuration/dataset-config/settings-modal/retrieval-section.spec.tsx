@@ -1,5 +1,6 @@
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
@@ -34,7 +35,6 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  __esModule: true,
   useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
     mockUseModelListAndDefaultModelAndCurrentProviderAndModel(...args),
   useModelListAndDefaultModel: (...args: unknown[]) => mockUseModelListAndDefaultModel(...args),
@@ -43,7 +43,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  __esModule: true,
   default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
     <div data-testid="model-selector">
       {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
@@ -52,7 +51,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
 }))
 
 vi.mock('@/app/components/datasets/create/step-two', () => ({
-  __esModule: true,
   IndexingType: {
     QUALIFIED: 'high_quality',
     ECONOMICAL: 'economy',
@@ -168,7 +166,10 @@ describe('RetrievalChangeTip', () => {
 })
 
 describe('RetrievalSection', () => {
-  const t = (key: string) => key
+  const t = (key: string, options?: { ns?: string }) => {
+    const prefix = options?.ns ? `${options.ns}.` : ''
+    return `${prefix}${key}`
+  }
   const rowClass = 'row'
   const labelClass = 'label'
 
@@ -237,15 +238,15 @@ describe('RetrievalSection', () => {
         retrievalConfig={retrievalConfig}
         showMultiModalTip
         onRetrievalConfigChange={vi.fn()}
-        docLink={docLink}
+        docLink={docLink as unknown as (path?: DocPathWithoutLang) => string}
       />,
     )
 
     // Assert
     expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
     const learnMoreLink = screen.getByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' })
-    expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')
-    expect(docLink).toHaveBeenCalledWith('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')
+    expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example/use-dify/knowledge/create-knowledge/setting-indexing-methods')
+    expect(docLink).toHaveBeenCalledWith('/use-dify/knowledge/create-knowledge/setting-indexing-methods')
   })
 
   it('propagates retrieval config changes for economical indexing', async () => {
@@ -263,7 +264,7 @@ describe('RetrievalSection', () => {
         retrievalConfig={createRetrievalConfig()}
         showMultiModalTip={false}
         onRetrievalConfigChange={handleRetrievalChange}
-        docLink={path => path}
+        docLink={path => path || ''}
       />,
     )
     const [topKIncrement] = screen.getAllByLabelText('increment')

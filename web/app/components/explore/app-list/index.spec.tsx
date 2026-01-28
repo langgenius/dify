@@ -16,9 +16,13 @@ let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 
-vi.mock('@/hooks/use-tab-searchparams', () => ({
-  useTabSearchParams: () => [mockTabValue, mockSetTab],
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return {
+    ...actual,
+    useQueryState: () => [mockTabValue, mockSetTab],
+  }
+})
 
 vi.mock('ahooks', async () => {
   const actual = await vi.importActual<typeof import('ahooks')>('ahooks')
@@ -58,7 +62,6 @@ vi.mock('@/hooks/use-import-dsl', () => ({
 }))
 
 vi.mock('@/app/components/explore/create-app-modal', () => ({
-  __esModule: true,
   default: (props: CreateAppModalProps) => {
     if (!props.show)
       return null
@@ -83,7 +86,6 @@ vi.mock('@/app/components/explore/create-app-modal', () => ({
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal', () => ({
-  __esModule: true,
   default: ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
     <div data-testid="dsl-confirm-modal">
       <button data-testid="dsl-confirm" onClick={onConfirm}>confirm</button>
@@ -104,6 +106,7 @@ const createApp = (overrides: Partial<App> = {}): App => ({
     description: overrides.app?.description ?? 'Alpha description',
     use_icon_as_answer_icon: overrides.app?.use_icon_as_answer_icon ?? false,
   },
+  can_trial: true,
   app_id: overrides.app_id ?? 'app-1',
   description: overrides.description ?? 'Alpha description',
   copyright: overrides.copyright ?? '',
@@ -129,6 +132,8 @@ const renderWithContext = (hasEditPermission = false, onSuccess?: () => void) =>
         setInstalledApps: vi.fn(),
         isFetchingInstalledApps: false,
         setIsFetchingInstalledApps: vi.fn(),
+        isShowTryAppPanel: false,
+        setShowTryAppPanel: vi.fn(),
       }}
     >
       <AppList onSuccess={onSuccess} />

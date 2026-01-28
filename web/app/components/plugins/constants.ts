@@ -19,7 +19,9 @@ export const tagKeys = [
   'entertainment',
   'utilities',
   'other',
-]
+] as const
+
+export type TagKey = typeof tagKeys[number]
 
 export const categoryKeys = [
   PluginCategoryEnum.model,
@@ -29,4 +31,6 @@ export const categoryKeys = [
   PluginCategoryEnum.extension,
   'bundle',
   PluginCategoryEnum.trigger,
-]
+] as const
+
+export type CategoryKey = typeof categoryKeys[number]

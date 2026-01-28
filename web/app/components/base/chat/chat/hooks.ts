@@ -8,7 +8,8 @@ import type { InputForm } from './type'
 import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
-import { noop, uniqBy } from 'es-toolkit/compat'
+import { uniqBy } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
 import { useParams, usePathname } from 'next/navigation'
 import {
@@ -226,7 +227,7 @@ export const useChat = (
     setSuggestQuestions([])
 
     if (isRespondingRef.current) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 
@@ -418,9 +419,40 @@ export const useChat = (
           }
         },
         onFile(file) {
+          // Convert simple file type to MIME type for non-agent mode
+          // Backend sends: { id, type: "image", belongs_to, url }
+          // Frontend expects: { id, type: "image/png", transferMethod, url, uploadedId, supportFileType, name, size }
+
+          // Determine file type for MIME conversion
+          const fileType = (file as { type?: string }).type || 'image'
+
+          // If file already has transferMethod, use it as base and ensure all required fields exist
+          // Otherwise, create a new complete file object
+          const baseFile = ('transferMethod' in file) ? (file as Partial<FileEntity>) : null
+
+          const convertedFile: FileEntity = {
+            id: baseFile?.id || (file as { id: string }).id,
+            type: baseFile?.type || (fileType === 'image' ? 'image/png' : fileType === 'video' ? 'video/mp4' : fileType === 'audio' ? 'audio/mpeg' : 'application/octet-stream'),
+            transferMethod: (baseFile?.transferMethod as FileEntity['transferMethod']) || (fileType === 'image' ? 'remote_url' : 'local_file'),
+            uploadedId: baseFile?.uploadedId || (file as { id: string }).id,
+            supportFileType: baseFile?.supportFileType || (fileType === 'image' ? 'image' : fileType === 'video' ? 'video' : fileType === 'audio' ? 'audio' : 'document'),
+            progress: baseFile?.progress ?? 100,
+            name: baseFile?.name || `generated_${fileType}.${fileType === 'image' ? 'png' : fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'bin'}`,
+            url: baseFile?.url || (file as { url?: string }).url,
+            size: baseFile?.size ?? 0, // Generated files don't have a known size
+          }
+
+          // For agent mode, add files to the last thought
           const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
-          if (lastThought)
-            responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...(lastThought as any).message_files, file]
+          if (lastThought) {
+            const thought = lastThought as { message_files?: FileEntity[] }
+            responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...(thought.message_files ?? []), convertedFile]
+          }
+          // For non-agent mode, add files directly to responseItem.message_files
+          else {
+            const currentFiles = (responseItem.message_files as FileEntity[] | undefined) ?? []
+            responseItem.message_files = [...currentFiles, convertedFile]
+          }
 
           updateCurrentQAOnTree({
             placeholderQuestionId,

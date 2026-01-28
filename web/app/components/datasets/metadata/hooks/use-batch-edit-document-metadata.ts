@@ -134,7 +134,7 @@ const useBatchEditDocumentMetadata = ({
     hideEditModal()
     Toast.notify({
       type: 'success',
-      message: t('common.actionMsg.modifiedSuccessfully'),
+      message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }),
     })
   }
 

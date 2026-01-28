@@ -41,7 +41,7 @@ const Operations = ({
           onClick={onClickEdit}
         >
           <span className="system-md-regular px-1 text-text-secondary">
-            {t('datasetPipeline.operations.editInfo')}
+            {t('operations.editInfo', { ns: 'datasetPipeline' })}
           </span>
         </div>
         <div
@@ -49,7 +49,7 @@ const Operations = ({
           onClick={onClickExport}
         >
           <span className="system-md-regular px-1 text-text-secondary">
-            {t('datasetPipeline.operations.exportPipeline')}
+            {t('operations.exportPipeline', { ns: 'datasetPipeline' })}
           </span>
         </div>
       </div>
@@ -60,7 +60,7 @@ const Operations = ({
           onClick={onClickDelete}
         >
           <span className="system-md-regular px-1 text-text-secondary group-hover:text-text-destructive">
-            {t('common.operation.delete')}
+            {t('operation.delete', { ns: 'common' })}
           </span>
         </div>
       </div>

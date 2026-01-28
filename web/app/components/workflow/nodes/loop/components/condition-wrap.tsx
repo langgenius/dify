@@ -125,7 +125,7 @@ const ConditionWrap: FC<Props> = ({
                         disabled={readOnly}
                       >
                         <RiAddLine className="mr-1 h-3.5 w-3.5" />
-                        {t('workflow.nodes.ifElse.addSubVariable')}
+                        {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
                       </Button>
                     )}
                     hideChecked

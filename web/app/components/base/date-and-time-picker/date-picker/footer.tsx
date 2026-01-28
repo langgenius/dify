@@ -33,7 +33,7 @@ const Footer: FC<DatePickerFooterProps> = ({
         >
           <RiTimeLine className="h-3.5 w-3.5" />
           {view === ViewType.date && <span>{displayTime}</span>}
-          {view === ViewType.time && <span>{t('time.operation.pickDate')}</span>}
+          {view === ViewType.time && <span>{t('operation.pickDate', { ns: 'time' })}</span>}
         </button>
       )}
       <div className="flex items-center gap-x-1">
@@ -43,7 +43,7 @@ const Footer: FC<DatePickerFooterProps> = ({
           className="system-xs-medium flex items-center justify-center px-1.5 py-1 text-components-button-secondary-accent-text"
           onClick={handleSelectCurrentDate}
         >
-          <span className="px-[3px]">{t('time.operation.now')}</span>
+          <span className="px-[3px]">{t('operation.now', { ns: 'time' })}</span>
         </button>
         {/* Confirm Button */}
         <Button
@@ -52,7 +52,7 @@ const Footer: FC<DatePickerFooterProps> = ({
           className="w-16 px-1.5 py-1"
           onClick={handleConfirmDate}
         >
-          {t('time.operation.ok')}
+          {t('operation.ok', { ns: 'time' })}
         </Button>
       </div>
     </div>

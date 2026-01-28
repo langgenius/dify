@@ -18,7 +18,7 @@ import DocumentList from './document-list'
 
 type Props = {
   className?: string
-  value: DocumentItem
+  value?: DocumentItem
   files: DocumentItem[]
   onChange: (value: DocumentItem) => void
 }
@@ -30,7 +30,8 @@ const PreviewDocumentPicker: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { name, extension } = value
+  const name = value?.name || ''
+  const extension = value?.extension
 
   const [open, {
     set: setOpen,
@@ -66,7 +67,7 @@ const PreviewDocumentPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[11]">
         <div className="w-[392px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
-          {files?.length > 1 && <div className="system-xs-medium-uppercase flex h-8 items-center pl-2 text-text-tertiary">{t('dataset.preprocessDocument', { num: files.length })}</div>}
+          {files?.length > 1 && <div className="system-xs-medium-uppercase flex h-8 items-center pl-2 text-text-tertiary">{t('preprocessDocument', { ns: 'dataset', num: files.length })}</div>}
           {files?.length > 0
             ? (
                 <DocumentList

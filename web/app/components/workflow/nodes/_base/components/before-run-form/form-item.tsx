@@ -48,6 +48,12 @@ const FormItem: FC<Props> = ({
   const { t } = useTranslation()
   const { type } = payload
   const fileSettings = useHooksStore(s => s.configsMap?.fileSettings)
+  const jsonSchemaPlaceholder = React.useMemo(() => {
+    const schema = (payload as any)?.json_schema
+    if (!schema)
+      return ''
+    return typeof schema === 'string' ? schema : JSON.stringify(schema, null, 2)
+  }, [payload])
 
   const handleArrayItemChange = useCallback((index: number) => {
     return (newValue: any) => {
@@ -125,13 +131,13 @@ const FormItem: FC<Props> = ({
           {payload.hide === true
             ? (
                 <span className="system-xs-regular text-text-tertiary">
-                  {t('workflow.panel.optional_and_hidden')}
+                  {t('panel.optional_and_hidden', { ns: 'workflow' })}
                 </span>
               )
             : (
                 !payload.required && (
                   <span className="system-xs-regular text-text-tertiary">
-                    {t('workflow.panel.optional')}
+                    {t('panel.optional', { ns: 'workflow' })}
                   </span>
                 )
               )}
@@ -211,7 +217,7 @@ const FormItem: FC<Props> = ({
             noWrapper
             className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
             placeholder={
-              <div className="whitespace-pre">{payload.json_schema}</div>
+              <div className="whitespace-pre">{jsonSchemaPlaceholder}</div>
             }
           />
         )}
@@ -323,7 +329,7 @@ const FormItem: FC<Props> = ({
                   value={item}
                   title={(
                     <span>
-                      {t('appDebug.variableConfig.content')}
+                      {t('variableConfig.content', { ns: 'appDebug' })}
                       {' '}
                       {index + 1}
                       {' '}

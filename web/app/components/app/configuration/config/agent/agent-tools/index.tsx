@@ -40,7 +40,7 @@ type AgentToolWithMoreInfo = AgentTool & { icon: any, collection?: Collection } 
 const AgentTools: FC = () => {
   const { t } = useTranslation()
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
-  const { modelConfig, setModelConfig } = useContext(ConfigContext)
+  const { readonly, modelConfig, setModelConfig } = useContext(ConfigContext)
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -152,11 +152,11 @@ const AgentTools: FC = () => {
         noBodySpacing={tools.length === 0}
         title={(
           <div className="flex items-center">
-            <div className="mr-1">{t('appDebug.agent.tools.name')}</div>
+            <div className="mr-1">{t('agent.tools.name', { ns: 'appDebug' })}</div>
             <Tooltip
               popupContent={(
                 <div className="w-[180px]">
-                  {t('appDebug.agent.tools.description')}
+                  {t('agent.tools.description', { ns: 'appDebug' })}
                 </div>
               )}
             />
@@ -168,10 +168,10 @@ const AgentTools: FC = () => {
               {tools.filter(item => !!item.enabled).length}
               /
               {tools.length}
-&nbsp;
-              {t('appDebug.agent.tools.enabled')}
+              &nbsp;
+              {t('agent.tools.enabled', { ns: 'appDebug' })}
             </div>
-            {tools.length < MAX_TOOLS_NUM && (
+            {tools.length < MAX_TOOLS_NUM && !readonly && (
               <>
                 <div className="ml-3 mr-1 h-3.5 w-px bg-divider-regular"></div>
                 <ToolPicker
@@ -183,14 +183,13 @@ const AgentTools: FC = () => {
                   onSelect={handleSelectTool}
                   onSelectMultiple={handleSelectMultipleTool}
                   selectedTools={tools as unknown as ToolValue[]}
-                  canChooseMCPTool
                 />
               </>
             )}
           </div>
         )}
       >
-        <div className="grid grid-cols-1 flex-wrap items-center justify-between gap-1 2xl:grid-cols-2">
+        <div className={cn('grid grid-cols-1 items-center gap-1 2xl:grid-cols-2', readonly && 'cursor-not-allowed grid-cols-2')}>
           {tools.map((item: AgentTool & { icon: any, collection?: Collection }, index) => (
             <div
               key={index}
@@ -215,13 +214,13 @@ const AgentTools: FC = () => {
                 >
                   <span className="system-xs-medium pr-1.5 text-text-secondary">{getProviderShowName(item)}</span>
                   <span className="text-text-tertiary">{item.tool_label}</span>
-                  {!item.isDeleted && (
+                  {!item.isDeleted && !readonly && (
                     <Tooltip
                       popupContent={(
                         <div className="w-[180px]">
                           <div className="mb-1.5 text-text-secondary">{item.tool_name}</div>
-                          <div className="mb-1.5 text-text-tertiary">{t('tools.toolNameUsageTip')}</div>
-                          <div className="cursor-pointer text-text-accent" onClick={() => copy(item.tool_name)}>{t('tools.copyToolName')}</div>
+                          <div className="mb-1.5 text-text-tertiary">{t('toolNameUsageTip', { ns: 'tools' })}</div>
+                          <div className="cursor-pointer text-text-accent" onClick={() => copy(item.tool_name)}>{t('copyToolName', { ns: 'tools' })}</div>
                         </div>
                       )}
                     >
@@ -238,7 +237,7 @@ const AgentTools: FC = () => {
                 {item.isDeleted && (
                   <div className="mr-2 flex items-center">
                     <Tooltip
-                      popupContent={t('tools.toolRemoved')}
+                      popupContent={t('toolRemoved', { ns: 'tools' })}
                     >
                       <div className="mr-1 cursor-pointer rounded-md p-1 hover:bg-black/5">
                         <AlertTriangle className="h-4 w-4 text-[#F79009]" />
@@ -260,11 +259,11 @@ const AgentTools: FC = () => {
                     </div>
                   </div>
                 )}
-                {!item.isDeleted && (
+                {!item.isDeleted && !readonly && (
                   <div className="mr-2 hidden items-center gap-1 group-hover:flex">
                     {!item.notAuthor && (
                       <Tooltip
-                        popupContent={t('tools.setBuiltInTools.infoAndSetting')}
+                        popupContent={t('setBuiltInTools.infoAndSetting', { ns: 'tools' })}
                         needsDelay={false}
                       >
                         <div
@@ -299,7 +298,7 @@ const AgentTools: FC = () => {
                   {!item.notAuthor && (
                     <Switch
                       defaultValue={item.isDeleted ? false : item.enabled}
-                      disabled={item.isDeleted}
+                      disabled={item.isDeleted || readonly}
                       size="md"
                       onChange={(enabled) => {
                         const newModelConfig = produce(modelConfig, (draft) => {
@@ -313,13 +312,14 @@ const AgentTools: FC = () => {
                   {item.notAuthor && (
                     <Button
                       variant="secondary"
+                      disabled={readonly}
                       size="small"
                       onClick={() => {
                         setCurrentTool(item)
                         setIsShowSettingTool(true)
                       }}
                     >
-                      {t('tools.notAuthorized')}
+                      {t('notAuthorized', { ns: 'tools' })}
                       <Indicator className="ml-2" color="orange" />
                     </Button>
                   )}

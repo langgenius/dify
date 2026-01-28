@@ -87,7 +87,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
       Toast.notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
       invalidToolsByType()
       hideSetAuthModal()
@@ -174,7 +174,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         draft.tool_configurations = getConfiguredValue(
           tool_configurations,
           toolSettingSchema,
-        )
+        ) as ToolVarInputs
       }
       if (
         !draft.tool_parameters
@@ -183,7 +183,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         draft.tool_parameters = getConfiguredValue(
           tool_parameters,
           toolInputVarSchema,
-        )
+        ) as ToolVarInputs
       }
     })
     return inputsWithDefaultValue

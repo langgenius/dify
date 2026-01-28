@@ -88,7 +88,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
             ? (
                 <Tooltip
                   popupContent={
-                    <span className="font-semibold">{t('common.modelProvider.modelHasBeenDeprecated')}</span>
+                    <span className="font-semibold">{t('modelProvider.modelHasBeenDeprecated', { ns: 'common' })}</span>
                   }
                   offset={{ mainAxis: 4 }}
                 >

@@ -15,14 +15,12 @@ vi.mock('@/hooks/use-breakpoints', () => {
   }
   const mockUseBreakpoints = vi.fn(() => MediaType.pc)
   return {
-    __esModule: true,
     default: mockUseBreakpoints,
     MediaType,
   }
 })
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  __esModule: true,
   default: ({ value, onChange }: { value?: string, onChange?: (val: string) => void }) => (
     <textarea data-testid="code-editor-mock" value={value} onChange={e => onChange?.(e.target.value)} />
   ),
@@ -36,7 +34,6 @@ vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', (
     return <div data-testid="vision-uploader-mock" />
   }
   return {
-    __esModule: true,
     default: TextGenerationImageUploaderMock,
   }
 })
@@ -238,5 +235,47 @@ describe('RunOnce', () => {
     })
     const stopButton = screen.getByTestId('stop-button')
     expect(stopButton).toBeDisabled()
+  })
+
+  describe('maxLength behavior', () => {
+    it('should not have maxLength attribute when max_length is not set', async () => {
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'textInput',
+            name: 'Text Input',
+            type: 'string',
+            // max_length is not set
+          }),
+        ],
+      }
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalled()
+      })
+      const input = screen.getByPlaceholderText('Text Input')
+      expect(input).not.toHaveAttribute('maxLength')
+    })
+
+    it('should have maxLength attribute when max_length is set', async () => {
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'textInput',
+            name: 'Text Input',
+            type: 'string',
+            max_length: 100,
+          }),
+        ],
+      }
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalled()
+      })
+      const input = screen.getByPlaceholderText('Text Input')
+      expect(input).toHaveAttribute('maxLength', '100')
+    })
   })
 })

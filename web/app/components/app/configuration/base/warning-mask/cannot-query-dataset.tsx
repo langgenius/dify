@@ -16,12 +16,12 @@ const FormattingChanged: FC<IFormattingChangedProps> = ({
 
   return (
     <WarningMask
-      title={t('appDebug.feature.dataSet.queryVariable.unableToQueryDataSet')}
-      description={t('appDebug.feature.dataSet.queryVariable.unableToQueryDataSetTip')}
+      title={t('feature.dataSet.queryVariable.unableToQueryDataSet', { ns: 'appDebug' })}
+      description={t('feature.dataSet.queryVariable.unableToQueryDataSetTip', { ns: 'appDebug' })}
       footer={(
         <div className="flex space-x-2">
           <Button variant="primary" className="flex !w-[96px] justify-start" onClick={onConfirm}>
-            <span className="text-[13px] font-medium">{t('appDebug.feature.dataSet.queryVariable.ok')}</span>
+            <span className="text-[13px] font-medium">{t('feature.dataSet.queryVariable.ok', { ns: 'appDebug' })}</span>
           </Button>
         </div>
       )}

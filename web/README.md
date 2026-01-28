@@ -8,8 +8,18 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 Before starting the web frontend service, please make sure the following environment is ready.
 
-- [Node.js](https://nodejs.org) >= v22.11.x
-- [pnpm](https://pnpm.io) v10.x
+- [Node.js](https://nodejs.org)
+- [pnpm](https://pnpm.io)
+
+> [!TIP]
+> It is recommended to install and enable Corepack to manage package manager versions automatically:
+>
+> ```bash
+> npm install -g corepack
+> corepack enable
+> ```
+>
+> Learn more: [Corepack](https://github.com/nodejs/corepack#readme)
 
 First, install the dependencies:
 
@@ -128,7 +138,7 @@ This will help you determine the testing strategy. See [web/testing/testing.md](
 
 ## Documentation
 
-Visit <https://docs.dify.ai/getting-started/readme> to view the full documentation.
+Visit <https://docs.dify.ai> to view the full documentation.
 
 ## Community
 

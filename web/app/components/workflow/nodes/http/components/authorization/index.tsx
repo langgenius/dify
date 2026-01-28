@@ -16,7 +16,7 @@ import { cn } from '@/utils/classnames'
 import { APIType, AuthorizationType } from '../../types'
 import RadioGroup from './radio-group'
 
-const i18nPrefix = 'workflow.nodes.http.authorization'
+const i18nPrefix = 'nodes.http.authorization'
 
 type Props = {
   nodeId: string
@@ -116,17 +116,17 @@ const Authorization: FC<Props> = ({
   }, [tempPayload, onChange, onHide])
   return (
     <Modal
-      title={t(`${i18nPrefix}.authorization`)}
+      title={t(`${i18nPrefix}.authorization`, { ns: 'workflow' })}
       isShow={isShow}
       onClose={onHide}
     >
       <div>
         <div className="space-y-2">
-          <Field title={t(`${i18nPrefix}.authorizationType`)}>
+          <Field title={t(`${i18nPrefix}.authorizationType`, { ns: 'workflow' })}>
             <RadioGroup
               options={[
-                { value: AuthorizationType.none, label: t(`${i18nPrefix}.no-auth`) },
-                { value: AuthorizationType.apiKey, label: t(`${i18nPrefix}.api-key`) },
+                { value: AuthorizationType.none, label: t(`${i18nPrefix}.no-auth`, { ns: 'workflow' }) },
+                { value: AuthorizationType.apiKey, label: t(`${i18nPrefix}.api-key`, { ns: 'workflow' }) },
               ]}
               value={tempPayload.type}
               onChange={handleAuthTypeChange}
@@ -135,19 +135,19 @@ const Authorization: FC<Props> = ({
 
           {tempPayload.type === AuthorizationType.apiKey && (
             <>
-              <Field title={t(`${i18nPrefix}.auth-type`)}>
+              <Field title={t(`${i18nPrefix}.auth-type`, { ns: 'workflow' })}>
                 <RadioGroup
                   options={[
-                    { value: APIType.basic, label: t(`${i18nPrefix}.basic`) },
-                    { value: APIType.bearer, label: t(`${i18nPrefix}.bearer`) },
-                    { value: APIType.custom, label: t(`${i18nPrefix}.custom`) },
+                    { value: APIType.basic, label: t(`${i18nPrefix}.basic`, { ns: 'workflow' }) },
+                    { value: APIType.bearer, label: t(`${i18nPrefix}.bearer`, { ns: 'workflow' }) },
+                    { value: APIType.custom, label: t(`${i18nPrefix}.custom`, { ns: 'workflow' }) },
                   ]}
                   value={tempPayload.config?.type || APIType.basic}
                   onChange={handleAuthAPITypeChange}
                 />
               </Field>
               {tempPayload.config?.type === APIType.custom && (
-                <Field title={t(`${i18nPrefix}.header`)} isRequired>
+                <Field title={t(`${i18nPrefix}.header`, { ns: 'workflow' })} isRequired>
                   <BaseInput
                     value={tempPayload.config?.header || ''}
                     onChange={handleAPIKeyOrHeaderChange('header')}
@@ -155,7 +155,7 @@ const Authorization: FC<Props> = ({
                 </Field>
               )}
 
-              <Field title={t(`${i18nPrefix}.api-key-title`)} isRequired>
+              <Field title={t(`${i18nPrefix}.api-key-title`, { ns: 'workflow' })} isRequired>
                 <div className="flex">
                   <Input
                     instanceId="http-api-key"
@@ -174,8 +174,8 @@ const Authorization: FC<Props> = ({
           )}
         </div>
         <div className="mt-6 flex justify-end space-x-2">
-          <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
-          <Button variant="primary" onClick={handleConfirm}>{t('common.operation.save')}</Button>
+          <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+          <Button variant="primary" onClick={handleConfirm}>{t('operation.save', { ns: 'common' })}</Button>
         </div>
       </div>
     </Modal>

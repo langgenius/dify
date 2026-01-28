@@ -12,7 +12,6 @@ export const fetchAppDetail = ({ url, id }: { url: string, id: string }): Promis
   return get<AppDetailResponse>(`${url}/${id}`)
 }
 
-// Direct API call function for non-SWR usage
 export const fetchAppDetailDirect = async ({ url, id }: { url: string, id: string }): Promise<AppDetailResponse> => {
   return get<AppDetailResponse>(`${url}/${id}`)
 }

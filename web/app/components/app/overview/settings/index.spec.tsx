@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import type { ReactNode } from 'react'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
@@ -15,11 +18,10 @@ vi.mock('react-i18next', async () => {
     ...actual,
     useTranslation: () => ({
       t: (key: string, options?: Record<string, unknown>) => {
+        const prefix = options?.ns ? `${options.ns}.` : ''
         if (options?.returnObjects)
-          return [`${key}-feature-1`, `${key}-feature-2`]
-        if (options)
-          return `${key}:${JSON.stringify(options)}`
-        return key
+          return [`${prefix}${key}-feature-1`, `${prefix}${key}-feature-2`]
+        return `${prefix}${key}`
       },
       i18n: {
         language: 'en',
@@ -176,7 +178,7 @@ describe('SettingsModal', () => {
     renderSettingsModal()
     fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
     const privacyInput = screen.getByPlaceholderText('appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder')
-    // eslint-disable-next-line sonarjs/no-clear-text-protocols
+
     fireEvent.change(privacyInput, { target: { value: 'ftp://invalid-url' } })
 
     fireEvent.click(screen.getByText('common.operation.save'))

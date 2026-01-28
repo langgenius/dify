@@ -1,48 +1,47 @@
-import type { Locale } from '@/i18n-config'
-import { noop } from 'es-toolkit/compat'
-import {
-  createContext,
-  useContext,
-} from 'use-context-selector'
+import type { Locale } from '@/i18n-config/language'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
+import { useTranslation } from '#i18n'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
+import { apiReferencePathTranslations } from '@/types/doc-paths'
 
-type II18NContext = {
-  locale: Locale
-  i18n: Record<string, any>
-  setLocaleOnClient: (_lang: Locale, _reloadPage?: boolean) => Promise<void>
+export const useLocale = () => {
+  const { i18n } = useTranslation()
+  return i18n.language as Locale
 }
 
-const I18NContext = createContext<II18NContext>({
-  locale: 'en-US',
-  i18n: {},
-  setLocaleOnClient: async (_lang: Locale, _reloadPage?: boolean) => {
-    noop()
-  },
-})
-
-export const useI18N = () => useContext(I18NContext)
 export const useGetLanguage = () => {
-  const { locale } = useI18N()
+  const locale = useLocale()
 
   return getLanguage(locale)
 }
 export const useGetPricingPageLanguage = () => {
-  const { locale } = useI18N()
+  const locale = useLocale()
 
   return getPricingPageLanguage(locale)
 }
 
 export const defaultDocBaseUrl = 'https://docs.dify.ai'
-export const useDocLink = (baseUrl?: string): ((path?: string, pathMap?: { [index: string]: string }) => string) => {
+export type DocPathMap = Partial<Record<Locale, DocPathWithoutLang>>
+
+export const useDocLink = (baseUrl?: string): ((path?: DocPathWithoutLang, pathMap?: DocPathMap) => string) => {
   let baseDocUrl = baseUrl || defaultDocBaseUrl
   baseDocUrl = (baseDocUrl.endsWith('/')) ? baseDocUrl.slice(0, -1) : baseDocUrl
-  const { locale } = useI18N()
+  const locale = useLocale()
   const docLanguage = getDocLanguage(locale)
-  return (path?: string, pathMap?: { [index: string]: string }): string => {
+  return (path?: DocPathWithoutLang, pathMap?: DocPathMap): string => {
     const pathUrl = path || ''
     let targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
-    targetPath = (targetPath.startsWith('/')) ? targetPath.slice(1) : targetPath
-    return `${baseDocUrl}/${docLanguage}/${targetPath}`
+    let languagePrefix = `/${docLanguage}`
+
+    // Translate API reference paths for non-English locales
+    if (targetPath.startsWith('/api-reference/') && docLanguage !== 'en') {
+      const translatedPath = apiReferencePathTranslations[targetPath]?.[docLanguage as 'zh' | 'ja']
+      if (translatedPath) {
+        targetPath = translatedPath
+        languagePrefix = ''
+      }
+    }
+
+    return `${baseDocUrl}${languagePrefix}${targetPath}`
   }
 }
-export default I18NContext

@@ -3,10 +3,12 @@ import uuid
 from flask import request
 from flask_restx import Resource, marshal
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy.dialects.postgresql import JSONB
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
@@ -28,6 +30,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import child_chunk_fields, segment_fields
+from libs.helper import escape_like_pattern
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import ChildChunk, DocumentSegment
 from models.model import UploadFile
@@ -87,6 +90,7 @@ register_schema_models(
     ChildChunkCreatePayload,
     ChildChunkUpdatePayload,
     ChildChunkBatchUpdatePayload,
+    ChildChunkUpdateArgs,
 )
 
 
@@ -143,7 +147,31 @@ class DatasetDocumentSegmentListApi(Resource):
             query = query.where(DocumentSegment.hit_count >= hit_count_gte)
 
         if keyword:
-            query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
+            # Escape special characters in keyword to prevent SQL injection via LIKE wildcards
+            escaped_keyword = escape_like_pattern(keyword)
+            # Search in both content and keywords fields
+            # Use database-specific methods for JSON array search
+            if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
+                # PostgreSQL: Use jsonb_array_elements_text to properly handle Unicode/Chinese text
+                keywords_condition = func.array_to_string(
+                    func.array(
+                        select(func.jsonb_array_elements_text(cast(DocumentSegment.keywords, JSONB)))
+                        .correlate(DocumentSegment)
+                        .scalar_subquery()
+                    ),
+                    ",",
+                ).ilike(f"%{escaped_keyword}%", escape="\\")
+            else:
+                # MySQL: Cast JSON to string for pattern matching
+                # MySQL stores Chinese text directly in JSON without Unicode escaping
+                keywords_condition = cast(DocumentSegment.keywords, String).ilike(f"%{escaped_keyword}%", escape="\\")
+
+            query = query.where(
+                or_(
+                    DocumentSegment.content.ilike(f"%{escaped_keyword}%", escape="\\"),
+                    keywords_condition,
+                )
+            )
 
         if args.enabled.lower() != "all":
             if args.enabled.lower() == "true":

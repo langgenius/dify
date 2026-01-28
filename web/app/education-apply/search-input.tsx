@@ -84,7 +84,7 @@ const SearchInput = ({
       <PortalToFollowElemTrigger className="block w-full">
         <Input
           className="w-full"
-          placeholder={t('education.form.schoolName.placeholder')}
+          placeholder={t('form.schoolName.placeholder', { ns: 'education' })}
           value={value}
           onChange={handleValueChange}
         />

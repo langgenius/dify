@@ -75,13 +75,13 @@ export default function AccountSetting({
     const items: GroupItem[] = [
       {
         key: ACCOUNT_SETTING_TAB.PROVIDER,
-        name: t('common.settings.provider'),
+        name: t('settings.provider', { ns: 'common' }),
         icon: <RiBrain2Line className={iconClassName} />,
         activeIcon: <RiBrain2Fill className={iconClassName} />,
       },
       {
         key: ACCOUNT_SETTING_TAB.MEMBERS,
-        name: t('common.settings.members'),
+        name: t('settings.members', { ns: 'common' }),
         icon: <RiGroup2Line className={iconClassName} />,
         activeIcon: <RiGroup2Fill className={iconClassName} />,
       },
@@ -90,8 +90,8 @@ export default function AccountSetting({
     if (enableBilling) {
       items.push({
         key: ACCOUNT_SETTING_TAB.BILLING,
-        name: t('common.settings.billing'),
-        description: t('billing.plansCommon.receiptInfo'),
+        name: t('settings.billing', { ns: 'common' }),
+        description: t('plansCommon.receiptInfo', { ns: 'billing' }),
         icon: <RiMoneyDollarCircleLine className={iconClassName} />,
         activeIcon: <RiMoneyDollarCircleFill className={iconClassName} />,
       })
@@ -100,13 +100,13 @@ export default function AccountSetting({
     items.push(
       {
         key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-        name: t('common.settings.dataSource'),
+        name: t('settings.dataSource', { ns: 'common' }),
         icon: <RiDatabase2Line className={iconClassName} />,
         activeIcon: <RiDatabase2Fill className={iconClassName} />,
       },
       {
         key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
-        name: t('common.settings.apiBasedExtension'),
+        name: t('settings.apiBasedExtension', { ns: 'common' }),
         icon: <RiPuzzle2Line className={iconClassName} />,
         activeIcon: <RiPuzzle2Fill className={iconClassName} />,
       },
@@ -115,7 +115,7 @@ export default function AccountSetting({
     if (enableReplaceWebAppLogo || enableBilling) {
       items.push({
         key: ACCOUNT_SETTING_TAB.CUSTOM,
-        name: t('custom.custom'),
+        name: t('custom', { ns: 'custom' }),
         icon: <RiColorFilterLine className={iconClassName} />,
         activeIcon: <RiColorFilterFill className={iconClassName} />,
       })
@@ -130,16 +130,16 @@ export default function AccountSetting({
   const menuItems = [
     {
       key: 'workspace-group',
-      name: t('common.settings.workplaceGroup'),
+      name: t('settings.workplaceGroup', { ns: 'common' }),
       items: workplaceGroupItems,
     },
     {
       key: 'account-group',
-      name: t('common.settings.generalGroup'),
+      name: t('settings.generalGroup', { ns: 'common' }),
       items: [
         {
           key: ACCOUNT_SETTING_TAB.LANGUAGE,
-          name: t('common.settings.language'),
+          name: t('settings.language', { ns: 'common' }),
           icon: <RiTranslate2 className={iconClassName} />,
           activeIcon: <RiTranslate2 className={iconClassName} />,
         },
@@ -171,7 +171,7 @@ export default function AccountSetting({
     >
       <div className="mx-auto flex h-[100vh] max-w-[1048px]">
         <div className="flex w-[44px] flex-col border-r border-divider-burn pl-4 pr-6 sm:w-[224px]">
-          <div className="title-2xl-semi-bold mb-8 mt-6 px-3 py-2 text-text-primary">{t('common.userProfile.settings')}</div>
+          <div className="title-2xl-semi-bold mb-8 mt-6 px-3 py-2 text-text-primary">{t('userProfile.settings', { ns: 'common' })}</div>
           <div className="w-full">
             {
               menuItems.map(menuItem => (

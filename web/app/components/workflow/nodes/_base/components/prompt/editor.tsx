@@ -165,7 +165,7 @@ const Editor: FC<Props> = ({
                 {' '}
                 {required && <span className="text-text-destructive">*</span>}
               </div>
-              {titleTooltip && <Tooltip popupContent={titleTooltip} />}
+              {!!titleTooltip && <Tooltip popupContent={titleTooltip} />}
             </div>
             <div className="flex items-center">
               <div className="text-xs font-medium leading-[18px] text-text-tertiary">{value?.length || 0}</div>
@@ -187,8 +187,8 @@ const Editor: FC<Props> = ({
                   <Tooltip
                     popupContent={(
                       <div>
-                        <div>{t('workflow.common.enableJinja')}</div>
-                        <a className="text-text-accent" target="_blank" href="https://jinja.palletsprojects.com/en/2.10.x/">{t('workflow.common.learnMore')}</a>
+                        <div>{t('common.enableJinja', { ns: 'workflow' })}</div>
+                        <a className="text-text-accent" target="_blank" href="https://jinja.palletsprojects.com/en/2.10.x/">{t('common.learnMore', { ns: 'workflow' })}</a>
                       </div>
                     )}
                   >
@@ -207,7 +207,7 @@ const Editor: FC<Props> = ({
                 )}
                 {!readOnly && (
                   <Tooltip
-                    popupContent={`${t('workflow.common.insertVarTip')}`}
+                    popupContent={`${t('common.insertVarTip', { ns: 'workflow' })}`}
                   >
                     <ActionButton onClick={handleInsertVariable}>
                       <Variable02 className="h-4 w-4" />
@@ -281,7 +281,7 @@ const Editor: FC<Props> = ({
                           }
                           if (node.data.type === BlockEnum.Start) {
                             acc.sys = {
-                              title: t('workflow.blocks.start'),
+                              title: t('blocks.start', { ns: 'workflow' }),
                               type: BlockEnum.Start,
                             }
                           }

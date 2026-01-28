@@ -31,13 +31,13 @@ const TriggerEventsLimitModal: FC<Props> = ({
       onClose={onClose}
       onUpgrade={onUpgrade}
       Icon={TriggerAll as React.ComponentType<React.SVGProps<SVGSVGElement>>}
-      title={t('billing.triggerLimitModal.title')}
-      description={t('billing.triggerLimitModal.description')}
+      title={t('triggerLimitModal.title', { ns: 'billing' })}
+      description={t('triggerLimitModal.description', { ns: 'billing' })}
       extraInfo={(
         <UsageInfo
           className="mt-4 w-full rounded-[12px] bg-components-panel-on-panel-item-bg"
           Icon={TriggerAll}
-          name={t('billing.triggerLimitModal.usageTitle')}
+          name={t('triggerLimitModal.usageTitle', { ns: 'billing' })}
           usage={usage}
           total={total}
           resetInDays={resetInDays}

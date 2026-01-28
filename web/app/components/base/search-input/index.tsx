@@ -20,6 +20,7 @@ const SearchInput: FC<SearchInputProps> = ({
   white,
 }) => {
   const { t } = useTranslation()
+  const inputRef = useRef<HTMLInputElement>(null)
   const [focus, setFocus] = useState<boolean>(false)
   const isComposing = useRef<boolean>(false)
   const [compositionValue, setCompositionValue] = useState<string>('')
@@ -36,13 +37,14 @@ const SearchInput: FC<SearchInputProps> = ({
         <RiSearchLine className="h-4 w-4 text-components-input-text-placeholder" aria-hidden="true" />
       </div>
       <input
+        ref={inputRef}
         type="text"
         name="query"
         className={cn(
           'system-sm-regular caret-#295EFF block h-[18px] grow appearance-none border-0 bg-transparent text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder',
           white && '!bg-white placeholder:!text-gray-400 hover:!bg-white group-hover:!bg-white',
         )}
-        placeholder={placeholder || t('common.operation.search')!}
+        placeholder={placeholder || t('operation.search', { ns: 'common' })!}
         value={isComposing.current ? compositionValue : value}
         onChange={(e) => {
           const newValue = e.target.value
@@ -65,14 +67,17 @@ const SearchInput: FC<SearchInputProps> = ({
         autoComplete="off"
       />
       {value && (
-        <div
-          className="group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center"
+        <button
+          type="button"
+          aria-label={t('operation.clear', { ns: 'common' })}
+          className="group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0"
           onClick={() => {
             onChange('')
+            inputRef.current?.focus()
           }}
         >
           <RiCloseCircleFill className="h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
-        </div>
+        </button>
       )}
     </div>
   )

@@ -1,6 +1,6 @@
 import type { ButtonProps } from '@/app/components/base/button'
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -86,7 +86,7 @@ const Modal = ({
             </div>
           </div>
           {
-            children && (
+            !!children && (
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">{children}</div>
             )
           }
@@ -103,7 +103,7 @@ const Modal = ({
                       onClick={onExtraButtonClick}
                       disabled={disabled}
                     >
-                      {extraButtonText || t('common.operation.remove')}
+                      {extraButtonText || t('operation.remove', { ns: 'common' })}
                     </Button>
                     <div className="mx-3 h-4 w-[1px] bg-divider-regular"></div>
                   </>
@@ -113,7 +113,7 @@ const Modal = ({
                 onClick={onCancel}
                 disabled={disabled}
               >
-                {cancelButtonText || t('common.operation.cancel')}
+                {cancelButtonText || t('operation.cancel', { ns: 'common' })}
               </Button>
               <Button
                 className="ml-2"
@@ -121,11 +121,11 @@ const Modal = ({
                 onClick={onConfirm}
                 disabled={disabled}
               >
-                {confirmButtonText || t('common.operation.save')}
+                {confirmButtonText || t('operation.save', { ns: 'common' })}
               </Button>
             </div>
           </div>
-          {bottomSlot && (
+          {!!bottomSlot && (
             <div className="shrink-0">
               {bottomSlot}
             </div>

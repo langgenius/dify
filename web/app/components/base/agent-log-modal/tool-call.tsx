@@ -6,13 +6,13 @@ import {
   RiErrorWarningLine,
 } from '@remixicon/react'
 import { useState } from 'react'
-import { useContext } from 'use-context-selector'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import I18n from '@/context/i18n'
+
+import { useLocale } from '@/context/i18n'
 import { cn } from '@/utils/classnames'
 
 type Props = {
@@ -26,7 +26,7 @@ type Props = {
 
 const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, observation, finalAnswer }) => {
   const [collapseState, setCollapseState] = useState<boolean>(true)
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const toolName = isLLM ? 'LLM' : (toolCall.tool_label[locale] || toolCall.tool_label[locale.replaceAll('-', '_')])
 
   const getTime = (time: number) => {
@@ -72,7 +72,7 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
             {toolName}
           </div>
           <div className="shrink-0 text-xs leading-[18px] text-text-tertiary">
-            {toolCall.time_cost && (
+            {!!toolCall.time_cost && (
               <span>{getTime(toolCall.time_cost || 0)}</span>
             )}
             {isLLM && (

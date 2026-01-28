@@ -27,7 +27,7 @@ const Actions = ({
         variant="secondary"
         onClick={onBack}
       >
-        {t('datasetPipeline.operations.backToDataSource')}
+        {t('operations.backToDataSource', { ns: 'datasetPipeline' })}
       </Button>
       <Button
         variant="primary"
@@ -37,7 +37,7 @@ const Actions = ({
         disabled={runDisabled || isSubmitting || !canSubmit || isRunning}
         loading={isSubmitting || isRunning}
       >
-        {t('datasetPipeline.operations.process')}
+        {t('operations.process', { ns: 'datasetPipeline' })}
       </Button>
     </div>
   )

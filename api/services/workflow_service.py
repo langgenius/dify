@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
@@ -15,8 +16,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_reposotiry import HumanInputFormRepositoryImpl
-from core.variables import Variable
-from core.variables.variables import VariableUnion
+from core.variables import VariableBase
+from core.variables.variables import Variable
 from core.workflow.entities import GraphInitParams, WorkflowNodeExecution
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -220,8 +221,8 @@ class WorkflowService:
         features: dict,
         unique_hash: str | None,
         account: Account,
-        environment_variables: Sequence[Variable],
-        conversation_variables: Sequence[Variable],
+        environment_variables: Sequence[VariableBase],
+        conversation_variables: Sequence[VariableBase],
     ) -> Workflow:
         """
         Sync draft workflow
@@ -697,7 +698,7 @@ class WorkflowService:
 
         else:
             variable_pool = VariablePool(
-                system_variables=SystemVariable.empty(),
+                system_variables=SystemVariable.default(),
                 user_inputs=user_inputs,
                 environment_variables=draft_workflow.environment_variables,
                 conversation_variables=[],
@@ -1007,6 +1008,8 @@ class WorkflowService:
 
     @staticmethod
     def _load_email_recipients(form_id: str) -> list[DeliveryTestEmailRecipient]:
+        logger = logging.getLogger(__name__)
+
         with Session(bind=db.engine) as session:
             recipients = session.scalars(
                 select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id == form_id)
@@ -1426,7 +1429,7 @@ def _setup_variable_pool(
     workflow: Workflow,
     node_type: NodeType,
     conversation_id: str,
-    conversation_variables: list[Variable],
+    conversation_variables: list[VariableBase],
 ):
     # Only inject system variables for START node type.
     if node_type == NodeType.START or node_type.is_trigger_node:
@@ -1445,16 +1448,16 @@ def _setup_variable_pool(
             system_variable.conversation_id = conversation_id
             system_variable.dialogue_count = 1
     else:
-        system_variable = SystemVariable.empty()
+        system_variable = SystemVariable.default()
 
     # init variable pool
     variable_pool = VariablePool(
         system_variables=system_variable,
         user_inputs=user_inputs,
         environment_variables=workflow.environment_variables,
-        # Based on the definition of `VariableUnion`,
-        # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
-        conversation_variables=cast(list[VariableUnion], conversation_variables),  #
+        # Based on the definition of `Variable`,
+        # `VariableBase` instances can be safely used as `Variable` since they are compatible.
+        conversation_variables=cast(list[Variable], conversation_variables),  #
     )
 
     return variable_pool

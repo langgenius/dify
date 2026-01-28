@@ -54,7 +54,7 @@ const pageNameEnrichmentPlugin = (): amplitude.Types.EnrichmentPlugin => {
 }
 
 const AmplitudeProvider: FC<IAmplitudeProps> = ({
-  sessionReplaySampleRate = 1,
+  sessionReplaySampleRate = 0.5,
 }) => {
   useEffect(() => {
     // Only enable in Saas edition with valid API key
@@ -68,6 +68,7 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
         pageViews: true,
         formInteractions: true,
         fileDownloads: true,
+        attribution: true,
       },
     })
 

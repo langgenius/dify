@@ -18,7 +18,7 @@ const DisplayToggle: FC<DisplayToggleProps> = ({
 
   return (
     <Tooltip
-      popupContent={isCollapsed ? t('datasetDocuments.segment.expandChunks') : t('datasetDocuments.segment.collapseChunks')}
+      popupContent={isCollapsed ? t('segment.expandChunks', { ns: 'datasetDocuments' }) : t('segment.collapseChunks', { ns: 'datasetDocuments' })}
       popupClassName="text-text-secondary system-xs-medium border-[0.5px] border-components-panel-border"
     >
       <button

@@ -2,8 +2,8 @@ import type { App, AppCategory } from '@/models/explore'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode } from '@/models/access-control'
-import { fetchAppList, fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
-import { fetchAppMeta, fetchAppParams } from './share'
+import { fetchAppList, fetchBanners, fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
+import { AppSourceType, fetchAppMeta, fetchAppParams } from './share'
 
 const NAME_SPACE = 'explore'
 
@@ -59,7 +59,7 @@ export const useUpdateAppPinStatus = () => {
 export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   return useQuery({
-    queryKey: [NAME_SPACE, 'appAccessMode', appId],
+    queryKey: [NAME_SPACE, 'appAccessMode', appId, systemFeatures.webapp_auth.enabled],
     queryFn: () => {
       if (systemFeatures.webapp_auth.enabled === false) {
         return {
@@ -81,7 +81,7 @@ export const useGetInstalledAppParams = (appId: string | null) => {
     queryFn: () => {
       if (!appId || appId.length === 0)
         return Promise.reject(new Error('App ID is required to get app params'))
-      return fetchAppParams(true, appId)
+      return fetchAppParams(AppSourceType.installedApp, appId)
     },
     enabled: !!appId,
   })
@@ -93,8 +93,17 @@ export const useGetInstalledAppMeta = (appId: string | null) => {
     queryFn: () => {
       if (!appId || appId.length === 0)
         return Promise.reject(new Error('App ID is required to get app meta'))
-      return fetchAppMeta(true, appId)
+      return fetchAppMeta(AppSourceType.installedApp, appId)
     },
     enabled: !!appId,
+  })
+}
+
+export const useGetBanners = (locale?: string) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'banners', locale],
+    queryFn: () => {
+      return fetchBanners(locale)
+    },
   })
 }

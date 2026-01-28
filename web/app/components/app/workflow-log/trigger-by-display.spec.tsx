@@ -17,13 +17,11 @@ import TriggerByDisplay from './trigger-by-display'
 
 let mockTheme = Theme.light
 vi.mock('@/hooks/use-theme', () => ({
-  __esModule: true,
   default: () => ({ theme: mockTheme }),
 }))
 
 // Mock BlockIcon as it has complex dependencies
 vi.mock('@/app/components/workflow/block-icon', () => ({
-  __esModule: true,
   default: ({ type, toolIcon }: { type: string, toolIcon?: string }) => (
     <div data-testid="block-icon" data-type={type} data-tool-icon={toolIcon || ''}>
       BlockIcon

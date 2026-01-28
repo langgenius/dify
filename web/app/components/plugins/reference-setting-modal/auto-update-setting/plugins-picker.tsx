@@ -10,7 +10,7 @@ import PluginsSelected from './plugins-selected'
 import ToolPicker from './tool-picker'
 import { AUTO_UPDATE_MODE } from './types'
 
-const i18nPrefix = 'plugin.autoUpdate'
+const i18nPrefix = 'autoUpdate'
 
 type Props = {
   updateMode: AUTO_UPDATE_MODE
@@ -38,8 +38,8 @@ const PluginsPicker: FC<Props> = ({
       {hasSelected
         ? (
             <div className="flex justify-between text-text-tertiary">
-              <div className="system-xs-medium">{t(`${i18nPrefix}.${isExcludeMode ? 'excludeUpdate' : 'partialUPdate'}`, { num: value.length })}</div>
-              <div className="system-xs-medium cursor-pointer" onClick={handleClear}>{t(`${i18nPrefix}.operation.clearAll`)}</div>
+              <div className="system-xs-medium">{t(`${i18nPrefix}.${isExcludeMode ? 'excludeUpdate' : 'partialUPdate'}`, { ns: 'plugin', num: value.length })}</div>
+              <div className="system-xs-medium cursor-pointer" onClick={handleClear}>{t(`${i18nPrefix}.operation.clearAll`, { ns: 'plugin' })}</div>
             </div>
           )
         : (
@@ -57,7 +57,7 @@ const PluginsPicker: FC<Props> = ({
         trigger={(
           <Button className="mt-2 w-full" size="small" variant="secondary-accent">
             <RiAddLine className="size-3.5" />
-            {t(`${i18nPrefix}.operation.select`)}
+            {t(`${i18nPrefix}.operation.select`, { ns: 'plugin' })}
           </Button>
         )}
         value={value}

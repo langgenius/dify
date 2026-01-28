@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { Resolution } from '@/types/app'
 
-const i18nPrefix = 'workflow.nodes.llm'
+const i18nPrefix = 'nodes.llm'
 
 type Props = {
   value: Resolution
@@ -26,15 +26,15 @@ const ResolutionPicker: FC<Props> = ({
   }, [onChange])
   return (
     <div className="flex items-center justify-between">
-      <div className="mr-2 text-xs font-medium uppercase text-text-secondary">{t(`${i18nPrefix}.resolution.name`)}</div>
+      <div className="mr-2 text-xs font-medium uppercase text-text-secondary">{t(`${i18nPrefix}.resolution.name`, { ns: 'workflow' })}</div>
       <div className="flex items-center space-x-1">
         <OptionCard
-          title={t(`${i18nPrefix}.resolution.high`)}
+          title={t(`${i18nPrefix}.resolution.high`, { ns: 'workflow' })}
           onSelect={handleOnChange(Resolution.high)}
           selected={value === Resolution.high}
         />
         <OptionCard
-          title={t(`${i18nPrefix}.resolution.low`)}
+          title={t(`${i18nPrefix}.resolution.low`, { ns: 'workflow' })}
           onSelect={handleOnChange(Resolution.low)}
           selected={value === Resolution.low}
         />

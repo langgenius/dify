@@ -3,7 +3,7 @@ import type {
   Model,
   ModelProvider,
 } from '../declarations'
-import { OpenaiBlue, OpenaiTeal, OpenaiViolet, OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
+import { OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import useTheme from '@/hooks/use-theme'
 import { renderI18nObject } from '@/i18n-config'
@@ -29,12 +29,6 @@ const ModelIcon: FC<ModelIconProps> = ({
   const language = useLanguage()
   if (provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider) && modelName?.startsWith('o'))
     return <div className="flex items-center justify-center"><OpenaiYellow className={cn('h-5 w-5', className)} /></div>
-  if (provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider) && modelName?.includes('gpt-4.1'))
-    return <div className="flex items-center justify-center"><OpenaiTeal className={cn('h-5 w-5', className)} /></div>
-  if (provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider) && modelName?.includes('gpt-4o'))
-    return <div className="flex items-center justify-center"><OpenaiBlue className={cn('h-5 w-5', className)} /></div>
-  if (provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider) && modelName?.startsWith('gpt-4'))
-    return <div className="flex items-center justify-center"><OpenaiViolet className={cn('h-5 w-5', className)} /></div>
 
   if (provider?.icon_small) {
     return (

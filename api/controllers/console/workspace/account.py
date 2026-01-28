@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Literal
 
@@ -39,7 +41,7 @@ from fields.member_fields import account_fields
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, TimestampField, extract_remote_ip, timezone
 from libs.login import current_account_with_tenant, login_required
-from models import Account, AccountIntegrate, InvitationCode
+from models import AccountIntegrate, InvitationCode
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
@@ -99,7 +101,7 @@ class AccountPasswordPayload(BaseModel):
     repeat_new_password: str
 
     @model_validator(mode="after")
-    def check_passwords_match(self) -> "AccountPasswordPayload":
+    def check_passwords_match(self) -> AccountPasswordPayload:
         if self.new_password != self.repeat_new_password:
             raise RepeatPasswordNotMatchError()
         return self
@@ -168,6 +170,19 @@ reg(ChangeEmailSendPayload)
 reg(ChangeEmailValidityPayload)
 reg(ChangeEmailResetPayload)
 reg(CheckEmailUniquePayload)
+
+integrate_fields = {
+    "provider": fields.String,
+    "created_at": TimestampField,
+    "is_bound": fields.Boolean,
+    "link": fields.String,
+}
+
+integrate_model = console_ns.model("AccountIntegrate", integrate_fields)
+integrate_list_model = console_ns.model(
+    "AccountIntegrateList",
+    {"data": fields.List(fields.Nested(integrate_model))},
+)
 
 
 @console_ns.route("/account/init")
@@ -334,21 +349,10 @@ class AccountPasswordApi(Resource):
 
 @console_ns.route("/account/integrates")
 class AccountIntegrateApi(Resource):
-    integrate_fields = {
-        "provider": fields.String,
-        "created_at": TimestampField,
-        "is_bound": fields.Boolean,
-        "link": fields.String,
-    }
-
-    integrate_list_fields = {
-        "data": fields.List(fields.Nested(integrate_fields)),
-    }
-
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(integrate_list_fields)
+    @marshal_with(integrate_list_model)
     def get(self):
         account, _ = current_account_with_tenant()
 
@@ -534,7 +538,8 @@ class ChangeEmailSendEmailApi(Resource):
         else:
             language = "en-US"
         account = None
-        user_email = args.email
+        user_email = None
+        email_for_sending = args.email.lower()
         if args.phase is not None and args.phase == "new_email":
             if args.token is None:
                 raise InvalidTokenError()
@@ -544,16 +549,24 @@ class ChangeEmailSendEmailApi(Resource):
                 raise InvalidTokenError()
             user_email = reset_data.get("email", "")
 
-            if user_email != current_user.email:
+            if user_email.lower() != current_user.email.lower():
                 raise InvalidEmailError()
+
+            user_email = current_user.email
         else:
             with Session(db.engine) as session:
-                account = session.execute(select(Account).filter_by(email=args.email)).scalar_one_or_none()
+                account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
             if account is None:
                 raise AccountNotFound()
+            email_for_sending = account.email
+            user_email = account.email
 
         token = AccountService.send_change_email_email(
-            account=account, email=args.email, old_email=user_email, language=language, phase=args.phase
+            account=account,
+            email=email_for_sending,
+            old_email=user_email,
+            language=language,
+            phase=args.phase,
         )
         return {"result": "success", "data": token}
 
@@ -569,9 +582,9 @@ class ChangeEmailCheckApi(Resource):
         payload = console_ns.payload or {}
         args = ChangeEmailValidityPayload.model_validate(payload)
 
-        user_email = args.email
+        user_email = args.email.lower()
 
-        is_change_email_error_rate_limit = AccountService.is_change_email_error_rate_limit(args.email)
+        is_change_email_error_rate_limit = AccountService.is_change_email_error_rate_limit(user_email)
         if is_change_email_error_rate_limit:
             raise EmailChangeLimitError()
 
@@ -579,11 +592,13 @@ class ChangeEmailCheckApi(Resource):
         if token_data is None:
             raise InvalidTokenError()
 
-        if user_email != token_data.get("email"):
+        token_email = token_data.get("email")
+        normalized_token_email = token_email.lower() if isinstance(token_email, str) else token_email
+        if user_email != normalized_token_email:
             raise InvalidEmailError()
 
         if args.code != token_data.get("code"):
-            AccountService.add_change_email_error_rate_limit(args.email)
+            AccountService.add_change_email_error_rate_limit(user_email)
             raise EmailCodeError()
 
         # Verified, revoke the first token
@@ -594,8 +609,8 @@ class ChangeEmailCheckApi(Resource):
             user_email, code=args.code, old_email=token_data.get("old_email"), additional_data={}
         )
 
-        AccountService.reset_change_email_error_rate_limit(args.email)
-        return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
+        AccountService.reset_change_email_error_rate_limit(user_email)
+        return {"is_valid": True, "email": normalized_token_email, "token": new_token}
 
 
 @console_ns.route("/account/change-email/reset")
@@ -609,11 +624,12 @@ class ChangeEmailResetApi(Resource):
     def post(self):
         payload = console_ns.payload or {}
         args = ChangeEmailResetPayload.model_validate(payload)
+        normalized_new_email = args.new_email.lower()
 
-        if AccountService.is_account_in_freeze(args.new_email):
+        if AccountService.is_account_in_freeze(normalized_new_email):
             raise AccountInFreezeError()
 
-        if not AccountService.check_email_unique(args.new_email):
+        if not AccountService.check_email_unique(normalized_new_email):
             raise EmailAlreadyInUseError()
 
         reset_data = AccountService.get_change_email_data(args.token)
@@ -624,13 +640,13 @@ class ChangeEmailResetApi(Resource):
 
         old_email = reset_data.get("old_email", "")
         current_user, _ = current_account_with_tenant()
-        if current_user.email != old_email:
+        if current_user.email.lower() != old_email.lower():
             raise AccountNotFound()
 
-        updated_account = AccountService.update_account_email(current_user, email=args.new_email)
+        updated_account = AccountService.update_account_email(current_user, email=normalized_new_email)
 
         AccountService.send_change_email_completed_notify_email(
-            email=args.new_email,
+            email=normalized_new_email,
         )
 
         return updated_account
@@ -643,8 +659,9 @@ class CheckEmailUnique(Resource):
     def post(self):
         payload = console_ns.payload or {}
         args = CheckEmailUniquePayload.model_validate(payload)
-        if AccountService.is_account_in_freeze(args.email):
+        normalized_email = args.email.lower()
+        if AccountService.is_account_in_freeze(normalized_email):
             raise AccountInFreezeError()
-        if not AccountService.check_email_unique(args.email):
+        if not AccountService.check_email_unique(normalized_email):
             raise EmailAlreadyInUseError()
         return {"result": "success"}

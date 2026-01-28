@@ -26,15 +26,15 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Toast from '@/app/components/base/toast'
 import Res from '@/app/components/share/text-generation/result'
 import RunOnce from '@/app/components/share/text-generation/run-once'
-import { appDefaultIconBackground, DEFAULT_VALUE_MAX_LEN } from '@/config'
+import { appDefaultIconBackground, BATCH_CONCURRENCY } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { changeLanguage } from '@/i18n-config/i18next-config'
+import { changeLanguage } from '@/i18n-config/client'
 import { AccessMode } from '@/models/access-control'
-import { fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
+import { AppSourceType, fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
 import { Resolution, TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
@@ -43,7 +43,7 @@ import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
 
-const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
+const GROUP_SIZE = BATCH_CONCURRENCY // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
   pending = 'pending',
   running = 'running',
@@ -69,10 +69,10 @@ export type IMainProps = {
 
 const TextGeneration: FC<IMainProps> = ({
   isInstalledApp = false,
-  installedAppInfo,
   isWorkflow = false,
 }) => {
   const { notify } = Toast
+  const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
 
   const { t } = useTranslation()
   const media = useBreakpoints()
@@ -102,17 +102,19 @@ const TextGeneration: FC<IMainProps> = ({
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
   const fetchSavedMessage = useCallback(async () => {
-    const res: any = await doFetchSavedMessage(isInstalledApp, appId)
+    if (!appId)
+      return
+    const res: any = await doFetchSavedMessage(appSourceType, appId)
     setSavedMessages(res.data)
-  }, [isInstalledApp, appId])
+  }, [appSourceType, appId])
   const handleSaveMessage = async (messageId: string) => {
-    await saveMessage(messageId, isInstalledApp, appId)
-    notify({ type: 'success', message: t('common.api.saved') })
+    await saveMessage(messageId, appSourceType, appId)
+    notify({ type: 'success', message: t('api.saved', { ns: 'common' }) })
     fetchSavedMessage()
   }
   const handleRemoveSavedMessage = async (messageId: string) => {
-    await removeMessage(messageId, isInstalledApp, appId)
-    notify({ type: 'success', message: t('common.api.remove') })
+    await removeMessage(messageId, appSourceType, appId)
+    notify({ type: 'success', message: t('api.remove', { ns: 'common' }) })
     fetchSavedMessage()
   }
 
@@ -187,12 +189,12 @@ const TextGeneration: FC<IMainProps> = ({
     if (typeof batchCompletionResLatest[task.id] === 'object')
       result = JSON.stringify(result)
 
-    res[t('share.generation.completionResult')] = result
+    res[t('generation.completionResult', { ns: 'share' })] = result
     return res
   })
   const checkBatchInputs = (data: string[][]) => {
     if (!data || data.length === 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.empty') })
+      notify({ type: 'error', message: t('generation.errorMsg.empty', { ns: 'share' }) })
       return false
     }
     const headerData = data[0]
@@ -206,13 +208,13 @@ const TextGeneration: FC<IMainProps> = ({
     })
 
     if (!isMapVarName) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.fileStructNotMatch') })
+      notify({ type: 'error', message: t('generation.errorMsg.fileStructNotMatch', { ns: 'share' }) })
       return false
     }
 
     let payloadData = data.slice(1)
     if (payloadData.length === 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.atLeastOne') })
+      notify({ type: 'error', message: t('generation.errorMsg.atLeastOne', { ns: 'share' }) })
       return false
     }
 
@@ -233,7 +235,7 @@ const TextGeneration: FC<IMainProps> = ({
       })
 
       if (hasMiddleEmptyLine) {
-        notify({ type: 'error', message: t('share.generation.errorMsg.emptyLine', { rowIndex: startIndex + 2 }) })
+        notify({ type: 'error', message: t('generation.errorMsg.emptyLine', { ns: 'share', rowIndex: startIndex + 2 }) })
         return false
       }
     }
@@ -242,7 +244,7 @@ const TextGeneration: FC<IMainProps> = ({
     payloadData = payloadData.filter(item => !item.every(i => i === ''))
     // after remove empty rows in the end, checked again
     if (payloadData.length === 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.atLeastOne') })
+      notify({ type: 'error', message: t('generation.errorMsg.atLeastOne', { ns: 'share' }) })
       return false
     }
     let errorRowIndex = 0
@@ -256,11 +258,10 @@ const TextGeneration: FC<IMainProps> = ({
       promptConfig?.prompt_variables.forEach((varItem, varIndex) => {
         if (errorRowIndex !== 0)
           return
-        if (varItem.type === 'string') {
-          const maxLen = varItem.max_length || DEFAULT_VALUE_MAX_LEN
-          if (item[varIndex].length > maxLen) {
+        if (varItem.type === 'string' && varItem.max_length) {
+          if (item[varIndex].length > varItem.max_length) {
             moreThanMaxLengthVarName = varItem.name
-            maxLength = maxLen
+            maxLength = varItem.max_length
             errorRowIndex = index + 1
             return
           }
@@ -277,10 +278,10 @@ const TextGeneration: FC<IMainProps> = ({
 
     if (errorRowIndex !== 0) {
       if (requiredVarName)
-        notify({ type: 'error', message: t('share.generation.errorMsg.invalidLine', { rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
+        notify({ type: 'error', message: t('generation.errorMsg.invalidLine', { ns: 'share', rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
 
       if (moreThanMaxLengthVarName)
-        notify({ type: 'error', message: t('share.generation.errorMsg.moreThanMaxLengthLine', { rowIndex: errorRowIndex + 1, varName: moreThanMaxLengthVarName, maxLength }) })
+        notify({ type: 'error', message: t('generation.errorMsg.moreThanMaxLengthLine', { ns: 'share', rowIndex: errorRowIndex + 1, varName: moreThanMaxLengthVarName, maxLength }) })
 
       return false
     }
@@ -290,7 +291,7 @@ const TextGeneration: FC<IMainProps> = ({
     if (!checkBatchInputs(data))
       return
     if (!allTasksFinished) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForBatchResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForBatchResponse', { ns: 'appDebug' }) })
       return
     }
 
@@ -398,7 +399,7 @@ const TextGeneration: FC<IMainProps> = ({
   }, [appData, appParams, fetchSavedMessage, isWorkflow])
 
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
-  useDocumentTitle(siteInfo?.title || t('share.generation.title'))
+  useDocumentTitle(siteInfo?.title || t('generation.title', { ns: 'share' }))
 
   useAppFavicon({
     enable: !isInstalledApp,
@@ -424,9 +425,8 @@ const TextGeneration: FC<IMainProps> = ({
       isCallBatchAPI={isCallBatchAPI}
       isPC={isPC}
       isMobile={!isPC}
-      isInstalledApp={isInstalledApp}
+      appSourceType={isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp}
       appId={appId}
-      installedAppInfo={installedAppInfo}
       isError={task?.status === TaskStatus.failed}
       promptConfig={promptConfig}
       moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
@@ -470,7 +470,7 @@ const TextGeneration: FC<IMainProps> = ({
           !isPC && 'px-4 pb-1 pt-3',
         )}
         >
-          <div className="system-md-semibold-uppercase text-text-primary">{t('share.generation.executions', { num: allTaskList.length })}</div>
+          <div className="system-md-semibold-uppercase text-text-primary">{t('generation.executions', { ns: 'share', num: allTaskList.length })}</div>
           {allSuccessTaskList.length > 0 && (
             <ResDownload
               isMobile={!isPC}
@@ -496,9 +496,9 @@ const TextGeneration: FC<IMainProps> = ({
       {isCallBatchAPI && allFailedTaskList.length > 0 && (
         <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-sm">
           <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
-          <div className="system-sm-medium text-text-secondary">{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
+          <div className="system-sm-medium text-text-secondary">{t('generation.batchFailed.info', { ns: 'share', num: allFailedTaskList.length })}</div>
           <div className="h-3.5 w-px bg-divider-regular"></div>
-          <div onClick={handleRetryAllFailedTask} className="system-sm-semibold-uppercase cursor-pointer text-text-accent">{t('share.generation.batchFailed.retry')}</div>
+          <div onClick={handleRetryAllFailedTask} className="system-sm-semibold-uppercase cursor-pointer text-text-accent">{t('generation.batchFailed.retry', { ns: 'share' })}</div>
         </div>
       )}
     </div>
@@ -544,12 +544,12 @@ const TextGeneration: FC<IMainProps> = ({
           )}
           <TabHeader
             items={[
-              { id: 'create', name: t('share.generation.tabs.create') },
-              { id: 'batch', name: t('share.generation.tabs.batch') },
+              { id: 'create', name: t('generation.tabs.create', { ns: 'share' }) },
+              { id: 'batch', name: t('generation.tabs.batch', { ns: 'share' }) },
               ...(!isWorkflow
                 ? [{
                     id: 'saved',
-                    name: t('share.generation.tabs.saved'),
+                    name: t('generation.tabs.saved', { ns: 'share' }),
                     isRight: true,
                     icon: <RiBookmark3Line className="h-4 w-4" />,
                     extra: savedMessages.length > 0
@@ -611,7 +611,7 @@ const TextGeneration: FC<IMainProps> = ({
             !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}
           >
-            <div className="system-2xs-medium-uppercase text-text-tertiary">{t('share.chat.poweredBy')}</div>
+            <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
             {
               systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                 ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />

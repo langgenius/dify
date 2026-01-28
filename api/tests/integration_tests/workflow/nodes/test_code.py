@@ -5,12 +5,13 @@ import pytest
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.node_factory import DifyNodeFactory
+from core.workflow.nodes.code.limits import CodeNodeLimits
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
@@ -67,6 +68,16 @@ def init_code_node(code_config: dict):
         config=code_config,
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        code_limits=CodeNodeLimits(
+            max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
+            max_number=dify_config.CODE_MAX_NUMBER,
+            min_number=dify_config.CODE_MIN_NUMBER,
+            max_precision=dify_config.CODE_MAX_PRECISION,
+            max_depth=dify_config.CODE_MAX_DEPTH,
+            max_number_array_length=dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH,
+            max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
+            max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
+        ),
     )
 
     return node

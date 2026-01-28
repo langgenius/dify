@@ -94,7 +94,7 @@ const List = ({
                 className="flex items-center justify-center py-2"
                 role="status"
                 aria-live="polite"
-                aria-label={t('appApi.loading')}
+                aria-label={t('loading', { ns: 'appApi' })}
               >
                 <RiLoader2Line className="animation-spin size-4 text-text-tertiary" />
               </div>

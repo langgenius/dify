@@ -46,7 +46,6 @@ Features Detected:
   ${analysis.hasEvents ? '✓' : '✗'} Event handlers
   ${analysis.hasRouter ? '✓' : '✗'} Next.js routing
   ${analysis.hasAPI ? '✓' : '✗'} API calls
-  ${analysis.hasSWR ? '✓' : '✗'} SWR data fetching
   ${analysis.hasReactQuery ? '✓' : '✗'} React Query
   ${analysis.hasAhooks ? '✓' : '✗'} ahooks
   ${analysis.hasForwardRef ? '✓' : '✗'} Ref forwarding (forwardRef)
@@ -70,7 +69,7 @@ ${this.getSpecificGuidelines(analysis)}
 📋 PROMPT FOR AI ASSISTANT (COPY THIS TO YOUR AI ASSISTANT):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Generate a comprehensive test file for @${analysis.path}
+Generate a comprehensive test file for all files in @${path.dirname(analysis.path)}
 
 Including but not limited to:
 ${this.buildFocusPoints(analysis)}
@@ -236,7 +235,7 @@ Create the test file at: ${testPath}
     // ===== API Calls =====
     if (analysis.hasAPI) {
       guidelines.push('🌐 API calls detected:')
-      guidelines.push('   - Mock API calls/hooks (useSWR, useQuery, fetch, etc.)')
+      guidelines.push('   - Mock API calls/hooks (useQuery, useMutation, fetch, etc.)')
       guidelines.push('   - Test loading, success, and error states')
       guidelines.push('   - Focus on component behavior, not the data fetching lib')
     }

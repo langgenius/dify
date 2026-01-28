@@ -3,7 +3,7 @@ import {
   RiErrorWarningFill,
   RiMoreLine,
 } from '@remixicon/react'
-import { capitalize } from 'es-toolkit/compat'
+import { capitalize } from 'es-toolkit/string'
 import { memo } from 'react'
 import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
@@ -61,7 +61,7 @@ const VariableLabel = ({
         notShowFullPath={notShowFullPath}
       />
       {
-        variableType && (
+        !!variableType && (
           <div className="system-xs-regular shrink-0 text-text-tertiary">
             {capitalize(variableType)}
           </div>

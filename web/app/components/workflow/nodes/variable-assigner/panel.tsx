@@ -13,7 +13,7 @@ import RemoveEffectVarConfirm from '../_base/components/remove-effect-var-confir
 import VarGroupItem from './components/var-group-item'
 import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.variableAssigner'
+const i18nPrefix = 'nodes.variableAssigner'
 const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
   id,
   data,
@@ -77,7 +77,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
                 </div>
                 <AddButton
                   className="mt-2"
-                  text={t(`${i18nPrefix}.addGroup`)}
+                  text={t(`${i18nPrefix}.addGroup`, { ns: 'workflow' })}
                   onClick={handleAddGroup}
                 />
               </div>
@@ -86,8 +86,8 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
       <Split />
       <div className={cn('px-4 pt-4', isEnableGroup ? 'pb-4' : 'pb-2')}>
         <Field
-          title={t(`${i18nPrefix}.aggregationGroup`)}
-          tooltip={t(`${i18nPrefix}.aggregationGroupTip`)!}
+          title={t(`${i18nPrefix}.aggregationGroup`, { ns: 'workflow' })}
+          tooltip={t(`${i18nPrefix}.aggregationGroupTip`, { ns: 'workflow' })!}
           operations={(
             <Switch
               defaultValue={isEnableGroup}
@@ -109,6 +109,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
                   name={`${item.group_name}.output`}
                   type={item.output_type}
                   description={t(`${i18nPrefix}.outputVars.varDescribe`, {
+                    ns: 'workflow',
                     groupName: item.group_name,
                   })}
                 />

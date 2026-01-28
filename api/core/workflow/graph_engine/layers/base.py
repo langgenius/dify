@@ -8,9 +8,17 @@ intercept and respond to GraphEngine events.
 from abc import ABC, abstractmethod
 
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
-from core.workflow.graph_events import GraphEngineEvent
+from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
 from core.workflow.runtime import ReadOnlyGraphRuntimeState
+
+
+class GraphEngineLayerNotInitializedError(Exception):
+    """Raised when a layer's runtime state is accessed before initialization."""
+
+    def __init__(self, layer_name: str | None = None) -> None:
+        name = layer_name or "GraphEngineLayer"
+        super().__init__(f"{name} runtime state is not initialized. Bind the layer to a GraphEngine before access.")
 
 
 class GraphEngineLayer(ABC):
@@ -28,22 +36,27 @@ class GraphEngineLayer(ABC):
 
     def __init__(self) -> None:
         """Initialize the layer. Subclasses can override with custom parameters."""
-        self.graph_runtime_state: ReadOnlyGraphRuntimeState | None = None
+        self._graph_runtime_state: ReadOnlyGraphRuntimeState | None = None
         self.command_channel: CommandChannel | None = None
+
+    @property
+    def graph_runtime_state(self) -> ReadOnlyGraphRuntimeState:
+        if self._graph_runtime_state is None:
+            raise GraphEngineLayerNotInitializedError(type(self).__name__)
+        return self._graph_runtime_state
 
     def initialize(self, graph_runtime_state: ReadOnlyGraphRuntimeState, command_channel: CommandChannel) -> None:
         """
         Initialize the layer with engine dependencies.
 
-        Called by GraphEngine before execution starts to inject the read-only runtime state
-        and command channel. This allows layers to observe engine context and send
-        commands, but prevents direct state modification.
-
+        Called by GraphEngine to inject the read-only runtime state and command channel.
+        This is invoked when the layer is registered with a `GraphEngine` instance.
+        Implementations should be idempotent.
         Args:
             graph_runtime_state: Read-only view of the runtime state
             command_channel: Channel for sending commands to the engine
         """
-        self.graph_runtime_state = graph_runtime_state
+        self._graph_runtime_state = graph_runtime_state
         self.command_channel = command_channel
 
     @abstractmethod
@@ -85,7 +98,7 @@ class GraphEngineLayer(ABC):
         """
         pass
 
-    def on_node_run_start(self, node: Node) -> None:  # noqa: B027
+    def on_node_run_start(self, node: Node) -> None:
         """
         Called immediately before a node begins execution.
 
@@ -96,9 +109,11 @@ class GraphEngineLayer(ABC):
         Args:
             node: The node instance about to be executed
         """
-        pass
+        return
 
-    def on_node_run_end(self, node: Node, error: Exception | None) -> None:  # noqa: B027
+    def on_node_run_end(
+        self, node: Node, error: Exception | None, result_event: GraphNodeEventBase | None = None
+    ) -> None:
         """
         Called after a node finishes execution.
 
@@ -108,5 +123,6 @@ class GraphEngineLayer(ABC):
         Args:
             node: The node instance that just finished execution
             error: Exception instance if the node failed, otherwise None
+            result_event: The final result event from node execution (succeeded/failed/paused), if any
         """
-        pass
+        return

@@ -9,7 +9,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { ToastContext } from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
-import { useStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
@@ -25,8 +25,7 @@ const VariableModal = ({
 }: ModalPropsType) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const envList = useStore(s => s.environmentVariables)
-  const envSecrets = useStore(s => s.envSecrets)
+  const workflowStore = useWorkflowStore()
   const [type, setType] = React.useState<'string' | 'number' | 'secret'>('string')
   const [name, setName] = React.useState('')
   const [value, setValue] = React.useState<any>()
@@ -37,7 +36,7 @@ const VariableModal = ({
     if (!isValid) {
       notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: t('workflow.env.modal.name') }) as string,
+        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }),
       })
       return false
     }
@@ -58,6 +57,7 @@ const VariableModal = ({
       return notify({ type: 'error', message: 'value can not be empty' })
 
     // Add check for duplicate name when editing
+    const envList = workflowStore.getState().environmentVariables
     if (env && env.name !== name && envList.some(e => e.name === name))
       return notify({ type: 'error', message: 'name is existed' })
     // Original check for create new variable
@@ -78,17 +78,18 @@ const VariableModal = ({
     if (env) {
       setType(env.value_type)
       setName(env.name)
+      const envSecrets = workflowStore.getState().envSecrets
       setValue(env.value_type === 'secret' ? envSecrets[env.id] : env.value)
       setDescription(env.description)
     }
-  }, [env, envSecrets])
+  }, [env, workflowStore])
 
   return (
     <div
       className={cn('flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl')}
     >
       <div className="system-xl-semibold mb-3 flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary">
-        {!env ? t('workflow.env.modal.title') : t('workflow.env.modal.editTitle')}
+        {!env ? t('env.modal.title', { ns: 'workflow' }) : t('env.modal.editTitle', { ns: 'workflow' })}
         <div className="flex items-center">
           <div
             className="flex h-6 w-6 cursor-pointer items-center justify-center"
@@ -101,7 +102,7 @@ const VariableModal = ({
       <div className="px-4 py-2">
         {/* type */}
         <div className="mb-4">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('workflow.env.modal.type')}</div>
+          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('env.modal.type', { ns: 'workflow' })}</div>
           <div className="flex gap-2">
             <div
               className={cn(
@@ -136,7 +137,7 @@ const VariableModal = ({
               <Tooltip
                 popupContent={(
                   <div className="w-[240px]">
-                    {t('workflow.env.modal.secretTip')}
+                    {t('env.modal.secretTip', { ns: 'workflow' })}
                   </div>
                 )}
                 triggerClassName="ml-0.5 w-3.5 h-3.5"
@@ -146,10 +147,10 @@ const VariableModal = ({
         </div>
         {/* name */}
         <div className="mb-4">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('workflow.env.modal.name')}</div>
+          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('env.modal.name', { ns: 'workflow' })}</div>
           <div className="flex">
             <Input
-              placeholder={t('workflow.env.modal.namePlaceholder') || ''}
+              placeholder={t('env.modal.namePlaceholder', { ns: 'workflow' }) || ''}
               value={name}
               onChange={handleVarNameChange}
               onBlur={e => checkVariableName(e.target.value)}
@@ -159,7 +160,7 @@ const VariableModal = ({
         </div>
         {/* value */}
         <div className="mb-4">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('workflow.env.modal.value')}</div>
+          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('env.modal.value', { ns: 'workflow' })}</div>
           <div className="flex">
             {
               type !== 'number'
@@ -167,13 +168,13 @@ const VariableModal = ({
                     <textarea
                       className="system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
                       value={value}
-                      placeholder={t('workflow.env.modal.valuePlaceholder') || ''}
+                      placeholder={t('env.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
                       onChange={e => setValue(e.target.value)}
                     />
                   )
                 : (
                     <Input
-                      placeholder={t('workflow.env.modal.valuePlaceholder') || ''}
+                      placeholder={t('env.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
                       value={value}
                       onChange={e => setValue(e.target.value)}
                       type="number"
@@ -184,12 +185,12 @@ const VariableModal = ({
         </div>
         {/* description */}
         <div className="">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('workflow.env.modal.description')}</div>
+          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('env.modal.description', { ns: 'workflow' })}</div>
           <div className="flex">
             <textarea
               className="system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
               value={description}
-              placeholder={t('workflow.env.modal.descriptionPlaceholder') || ''}
+              placeholder={t('env.modal.descriptionPlaceholder', { ns: 'workflow' }) || ''}
               onChange={e => setDescription(e.target.value)}
             />
           </div>
@@ -197,8 +198,8 @@ const VariableModal = ({
       </div>
       <div className="flex flex-row-reverse rounded-b-2xl p-4 pt-2">
         <div className="flex gap-2">
-          <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
-          <Button variant="primary" onClick={handleSave}>{t('common.operation.save')}</Button>
+          <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+          <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
         </div>
       </div>
     </div>

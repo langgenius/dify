@@ -34,7 +34,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
         userInput = {
           id: node.id,
           type: TriggerType.UserInput,
-          name: nodeData.title || t('workflow.blocks.start'),
+          name: nodeData.title || t('blocks.start', { ns: 'workflow' }),
           icon: (
             <BlockIcon
               type={BlockEnum.Start}
@@ -49,7 +49,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
         allTriggers.push({
           id: node.id,
           type: TriggerType.Schedule,
-          name: nodeData.title || t('workflow.blocks.trigger-schedule'),
+          name: nodeData.title || t('blocks.trigger-schedule', { ns: 'workflow' }),
           icon: (
             <BlockIcon
               type={BlockEnum.TriggerSchedule}
@@ -64,7 +64,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
         allTriggers.push({
           id: node.id,
           type: TriggerType.Webhook,
-          name: nodeData.title || t('workflow.blocks.trigger-webhook'),
+          name: nodeData.title || t('blocks.trigger-webhook', { ns: 'workflow' }),
           icon: (
             <BlockIcon
               type={BlockEnum.TriggerWebhook}
@@ -94,7 +94,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
         allTriggers.push({
           id: node.id,
           type: TriggerType.Plugin,
-          name: nodeData.title || (nodeData as any).plugin_name || t('workflow.blocks.trigger-plugin'),
+          name: nodeData.title || (nodeData as any).plugin_name || t('blocks.trigger-plugin', { ns: 'workflow' }),
           icon,
           nodeId: node.id,
           enabled: true,
@@ -108,7 +108,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
         userInput = {
           id: startNode.id,
           type: TriggerType.UserInput,
-          name: (startNode.data as CommonNodeType)?.title || t('workflow.blocks.start'),
+          name: (startNode.data as CommonNodeType)?.title || t('blocks.start', { ns: 'workflow' }),
           icon: (
             <BlockIcon
               type={BlockEnum.Start}
@@ -129,7 +129,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
       ? {
           id: 'run-all',
           type: TriggerType.All,
-          name: t('workflow.common.runAllTriggers'),
+          name: t('common.runAllTriggers', { ns: 'workflow' }),
           icon: (
             <div className="flex h-6 w-6 items-center justify-center rounded-lg border-[0.5px] border-white/2 bg-util-colors-purple-purple-500 text-white shadow-md">
               <TriggerAll className="h-4.5 w-4.5" />

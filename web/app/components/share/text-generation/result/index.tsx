@@ -4,8 +4,8 @@ import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
-import type { InstalledApp } from '@/models/explore'
 import type { SiteInfo } from '@/models/share'
+import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { RiLoader2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -35,9 +35,8 @@ export type IResultProps = {
   isCallBatchAPI: boolean
   isPC: boolean
   isMobile: boolean
-  isInstalledApp: boolean
-  appId: string
-  installedAppInfo?: InstalledApp
+  appSourceType: AppSourceType
+  appId?: string
   isError: boolean
   isShowTextToSpeech: boolean
   promptConfig: PromptConfig | null
@@ -63,9 +62,8 @@ const Result: FC<IResultProps> = ({
   isCallBatchAPI,
   isPC,
   isMobile,
-  isInstalledApp,
+  appSourceType,
   appId,
-  installedAppInfo,
   isError,
   isShowTextToSpeech,
   promptConfig,
@@ -133,7 +131,7 @@ const Result: FC<IResultProps> = ({
   })
 
   const handleFeedback = async (feedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, installedAppInfo?.id)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
     setFeedback(feedback)
   }
 
@@ -147,9 +145,9 @@ const Result: FC<IResultProps> = ({
     setIsStopping(true)
     try {
       if (isWorkflow)
-        await stopWorkflowMessage(appId, currentTaskId, isInstalledApp, installedAppInfo?.id || '')
+        await stopWorkflowMessage(appId!, currentTaskId, appSourceType, appId || '')
       else
-        await stopChatMessageResponding(appId, currentTaskId, isInstalledApp, installedAppInfo?.id || '')
+        await stopChatMessageResponding(appId!, currentTaskId, appSourceType, appId || '')
       abortControllerRef.current?.abort()
     }
     catch (error) {
@@ -159,7 +157,7 @@ const Result: FC<IResultProps> = ({
     finally {
       setIsStopping(false)
     }
-  }, [appId, currentTaskId, installedAppInfo?.id, isInstalledApp, isStopping, isWorkflow, notify])
+  }, [appId, currentTaskId, appSourceType, appId, isStopping, isWorkflow, notify])
 
   useEffect(() => {
     if (!onRunControlChange)
@@ -183,7 +181,7 @@ const Result: FC<IResultProps> = ({
     const prompt_variables = promptConfig?.prompt_variables
     if (!prompt_variables || prompt_variables?.length === 0) {
       if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-        notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+        notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
         return false
       }
       return true
@@ -205,12 +203,12 @@ const Result: FC<IResultProps> = ({
     })
 
     if (hasEmptyInput) {
-      logError(t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }))
+      logError(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }))
       return false
     }
 
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return false
     }
     return !hasEmptyInput
@@ -218,7 +216,7 @@ const Result: FC<IResultProps> = ({
 
   const handleSend = async () => {
     if (isResponding) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 
@@ -394,7 +392,7 @@ const Result: FC<IResultProps> = ({
           },
           onWorkflowFinished: ({ data }) => {
             if (isTimeout) {
-              notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
+              notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
               return
             }
             const workflowStatus = data.status as WorkflowRunningStatus | undefined
@@ -468,8 +466,8 @@ const Result: FC<IResultProps> = ({
             }))
           },
         },
-        isInstalledApp,
-        installedAppInfo?.id,
+        appSourceType,
+        appId,
       ).catch((error) => {
         setRespondingFalse()
         resetRunState()
@@ -488,7 +486,7 @@ const Result: FC<IResultProps> = ({
         },
         onCompleted: () => {
           if (isTimeout) {
-            notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
+            notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
             return
           }
           setRespondingFalse()
@@ -503,7 +501,7 @@ const Result: FC<IResultProps> = ({
         },
         onError() {
           if (isTimeout) {
-            notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
+            notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
             return
           }
           setRespondingFalse()
@@ -514,7 +512,7 @@ const Result: FC<IResultProps> = ({
         getAbortController: (abortController) => {
           abortControllerRef.current = abortController
         },
-      }, isInstalledApp, installedAppInfo?.id)
+      }, appSourceType, appId)
     }
   }
 
@@ -545,7 +543,7 @@ const Result: FC<IResultProps> = ({
                 ? <RiLoader2Line className="mr-[5px] h-3.5 w-3.5 animate-spin" />
                 : <StopCircle className="mr-[5px] h-3.5 w-3.5" />
             }
-            <span className="text-xs font-normal">{t('appDebug.operation.stopResponding')}</span>
+            <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
           </Button>
         </div>
       )}
@@ -562,8 +560,8 @@ const Result: FC<IResultProps> = ({
         feedback={feedback}
         onSave={handleSaveMessage}
         isMobile={isMobile}
-        isInstalledApp={isInstalledApp}
-        installedAppId={installedAppInfo?.id}
+        appSourceType={appSourceType}
+        installedAppId={appId}
         isLoading={isCallBatchAPI ? (!completionRes && isResponding) : false}
         taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
         controlClearMoreLikeThis={controlClearMoreLikeThis}

@@ -9,13 +9,6 @@ import Processing from './index'
 // Mock External Dependencies
 // ==========================================
 
-// Mock react-i18next (handled by global mock in web/vitest.setup.ts but we override for custom messages)
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock useDocLink - returns a function that generates doc URLs
 // Strips leading slash from path to match actual implementation behavior
 vi.mock('@/context/i18n', () => ({
@@ -41,7 +34,6 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock the EmbeddingProcess component to track props
 let embeddingProcessProps: Record<string, unknown> = {}
 vi.mock('./embedding-process', () => ({
-  __esModule: true,
   default: (props: Record<string, unknown>) => {
     embeddingProcessProps = props
     return (
@@ -167,7 +159,7 @@ describe('Processing', () => {
 
       // Assert
       const link = screen.getByRole('link', { name: 'datasetPipeline.addDocuments.stepThree.learnMore' })
-      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/en-US/guides/knowledge-base/integrate-knowledge-within-application')
+      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/en-US/use-dify/knowledge/knowledge-pipeline/authorize-data-source')
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noreferrer noopener')
     })

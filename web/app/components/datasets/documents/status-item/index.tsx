@@ -72,10 +72,10 @@ const StatusItem = ({
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
     if (!e) {
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       onUpdate?.(operationName)
     }
-    else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
+    else { notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) }) }
   }
 
   const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
@@ -114,7 +114,7 @@ const StatusItem = ({
         scene === 'detail' && (
           <div className="ml-1.5 flex items-center justify-between">
             <Tooltip
-              popupContent={t('datasetDocuments.list.action.enableWarning')}
+              popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })}
               popupClassName="text-text-secondary system-xs-medium"
               disabled={!archived}
             >

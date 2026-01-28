@@ -30,7 +30,7 @@ export default function Operate({
   const updateIntegrates = () => {
     Toast.notify({
       type: 'success',
-      message: t('common.api.success'),
+      message: t('api.success', { ns: 'common' }),
     })
     invalidateDataSourceIntegrates()
   }
@@ -69,11 +69,11 @@ export default function Operate({
                     >
                       <RiStickyNoteAddLine className="mr-2 mt-[2px] h-4 w-4 text-text-tertiary" />
                       <div>
-                        <div className="system-sm-semibold text-text-secondary">{t('common.dataSource.notion.changeAuthorizedPages')}</div>
+                        <div className="system-sm-semibold text-text-secondary">{t('dataSource.notion.changeAuthorizedPages', { ns: 'common' })}</div>
                         <div className="system-xs-regular text-text-tertiary">
                           {payload.total}
                           {' '}
-                          {t('common.dataSource.notion.pagesAuthorized')}
+                          {t('dataSource.notion.pagesAuthorized', { ns: 'common' })}
                         </div>
                       </div>
                     </div>
@@ -81,7 +81,7 @@ export default function Operate({
                   <MenuItem>
                     <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={handleSync}>
                       <RiLoopLeftLine className="mr-2 mt-[2px] h-4 w-4 text-text-tertiary" />
-                      <div className="system-sm-semibold text-text-secondary">{t('common.dataSource.notion.sync')}</div>
+                      <div className="system-sm-semibold text-text-secondary">{t('dataSource.notion.sync', { ns: 'common' })}</div>
                     </div>
                   </MenuItem>
                 </div>
@@ -89,7 +89,7 @@ export default function Operate({
                   <div className="border-t border-divider-subtle p-1">
                     <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={handleRemove}>
                       <RiDeleteBinLine className="mr-2 mt-[2px] h-4 w-4 text-text-tertiary" />
-                      <div className="system-sm-semibold text-text-secondary">{t('common.dataSource.notion.remove')}</div>
+                      <div className="system-sm-semibold text-text-secondary">{t('dataSource.notion.remove', { ns: 'common' })}</div>
                     </div>
                   </div>
                 </MenuItem>

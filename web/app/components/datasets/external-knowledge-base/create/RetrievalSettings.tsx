@@ -32,7 +32,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
     <div className={cn('flex flex-col gap-2 self-stretch', isInRetrievalSetting && 'w-full max-w-[480px]')}>
       {!isInHitTesting && !isInRetrievalSetting && (
         <div className="flex h-7 flex-col gap-2 self-stretch pt-1">
-          <label className="system-sm-semibold text-text-secondary">{t('dataset.retrievalSettings')}</label>
+          <label className="system-sm-semibold text-text-secondary">{t('retrievalSettings', { ns: 'dataset' })}</label>
         </div>
       )}
       <div className={cn(

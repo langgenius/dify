@@ -39,7 +39,7 @@ const Header = ({
         value={inputValue}
         onChange={handleInputChange}
         onClear={handleResetKeywords}
-        placeholder={t('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')}
+        placeholder={t('onlineDrive.breadcrumbs.searchPlaceholder', { ns: 'datasetPipeline' })}
         showLeftIcon
         showClearIcon
         wrapperClassName="w-[200px] h-8 shrink-0"

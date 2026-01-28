@@ -3,12 +3,12 @@ import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import Countdown from '@/app/components/signin/countdown'
-import I18NContext from '@/context/i18n'
+
+import { useLocale } from '@/context/i18n'
 import { sendWebAppResetPasswordCode, verifyWebAppResetPasswordCode } from '@/service/common'
 
 export default function CheckCode() {
@@ -19,21 +19,21 @@ export default function CheckCode() {
   const token = decodeURIComponent(searchParams.get('token') as string)
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
-  const { locale } = useContext(I18NContext)
+  const locale = useLocale()
 
   const verify = async () => {
     try {
       if (!code.trim()) {
         Toast.notify({
           type: 'error',
-          message: t('login.checkCode.emptyCode'),
+          message: t('checkCode.emptyCode', { ns: 'login' }),
         })
         return
       }
       if (!/\d{6}/.test(code)) {
         Toast.notify({
           type: 'error',
-          message: t('login.checkCode.invalidCode'),
+          message: t('checkCode.invalidCode', { ns: 'login' }),
         })
         return
       }
@@ -69,22 +69,22 @@ export default function CheckCode() {
         <RiMailSendFill className="h-6 w-6 text-2xl" />
       </div>
       <div className="pb-4 pt-2">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('login.checkCode.checkYourEmail')}</h2>
+        <h2 className="title-4xl-semi-bold text-text-primary">{t('checkCode.checkYourEmail', { ns: 'login' })}</h2>
         <p className="body-md-regular mt-2 text-text-secondary">
           <span>
-            {t('login.checkCode.tipsPrefix')}
+            {t('checkCode.tipsPrefix', { ns: 'login' })}
             <strong>{email}</strong>
           </span>
           <br />
-          {t('login.checkCode.validTime')}
+          {t('checkCode.validTime', { ns: 'login' })}
         </p>
       </div>
 
       <form action="">
         <input type="text" className="hidden" />
-        <label htmlFor="code" className="system-md-semibold mb-1 text-text-secondary">{t('login.checkCode.verificationCode')}</label>
-        <Input value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className="mt-1" placeholder={t('login.checkCode.verificationCodePlaceholder') || ''} />
-        <Button loading={loading} disabled={loading} className="my-3 w-full" variant="primary" onClick={verify}>{t('login.checkCode.verify')}</Button>
+        <label htmlFor="code" className="system-md-semibold mb-1 text-text-secondary">{t('checkCode.verificationCode', { ns: 'login' })}</label>
+        <Input value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className="mt-1" placeholder={t('checkCode.verificationCodePlaceholder', { ns: 'login' }) || ''} />
+        <Button loading={loading} disabled={loading} className="my-3 w-full" variant="primary" onClick={verify}>{t('checkCode.verify', { ns: 'login' })}</Button>
         <Countdown onResend={resendCode} />
       </form>
       <div className="py-2">
@@ -94,7 +94,7 @@ export default function CheckCode() {
         <div className="bg-background-default-dimm inline-block rounded-full p-1">
           <RiArrowLeftLine size={12} />
         </div>
-        <span className="system-xs-regular ml-2">{t('login.back')}</span>
+        <span className="system-xs-regular ml-2">{t('back', { ns: 'login' })}</span>
       </div>
     </div>
   )

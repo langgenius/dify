@@ -77,7 +77,7 @@ const OptionCard = <T,>({
           )
         }
         {
-          icon && (
+          !!icon && (
             <div className={cn(
               'flex size-6 shrink-0 items-center justify-center text-text-tertiary',
               isActive && iconActiveColor,
@@ -95,7 +95,7 @@ const OptionCard = <T,>({
             {
               isRecommended && (
                 <Badge className="h-[18px] border-text-accent-secondary text-text-accent-secondary">
-                  {t('datasetCreation.stepTwo.recommend')}
+                  {t('stepTwo.recommend', { ns: 'datasetCreation' })}
                 </Badge>
               )
             }
@@ -110,7 +110,7 @@ const OptionCard = <T,>({
         </div>
       </div>
       {
-        children && showChildren && (
+        !!(children && showChildren) && (
           <div className="relative rounded-b-xl bg-components-panel-bg p-4">
             <ArrowShape className="absolute left-[14px] top-[-11px] size-4 text-components-panel-bg" />
             {children}

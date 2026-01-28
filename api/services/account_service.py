@@ -8,7 +8,7 @@ from hashlib import sha256
 from typing import Any, cast
 
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
@@ -748,6 +748,21 @@ class AccountService:
         cls.email_code_login_rate_limiter.increment_rate_limit(email)
         return token
 
+    @staticmethod
+    def get_account_by_email_with_case_fallback(email: str, session: Session | None = None) -> Account | None:
+        """
+        Retrieve an account by email and fall back to the lowercase email if the original lookup fails.
+
+        This keeps backward compatibility for older records that stored uppercase emails while the
+        rest of the system gradually normalizes new inputs.
+        """
+        query_session = session or db.session
+        account = query_session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
+        if account or email == email.lower():
+            return account
+
+        return query_session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()
+
     @classmethod
     def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
         return TokenManager.get_token_data(token, "email_code_login")
@@ -999,6 +1014,11 @@ class TenantService:
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
         db.session.commit()
+
+        from services.credit_pool_service import CreditPoolService
+
+        CreditPoolService.create_default_pool(tenant.id)
+
         return tenant
 
     @staticmethod
@@ -1358,16 +1378,27 @@ class RegisterService:
         if not inviter:
             raise ValueError("Inviter is required")
 
+        normalized_email = email.lower()
+
         """Invite new member"""
+        # Check workspace permission for member invitations
+        from libs.workspace_permission import check_workspace_member_invite_permission
+
+        check_workspace_member_invite_permission(tenant.id)
+
         with Session(db.engine) as session:
-            account = session.query(Account).filter_by(email=email).first()
+            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, "add")
-            name = email.split("@")[0]
+            name = normalized_email.split("@")[0]
 
             account = cls.register(
-                email=email, name=name, language=language, status=AccountStatus.PENDING, is_setup=True
+                email=normalized_email,
+                name=name,
+                language=language,
+                status=AccountStatus.PENDING,
+                is_setup=True,
             )
             # Create new tenant member for invited tenant
             TenantService.create_tenant_member(tenant, account, role)
@@ -1389,7 +1420,7 @@ class RegisterService:
         # send email
         send_invite_member_mail_task.delay(
             language=language,
-            to=email,
+            to=account.email,
             token=token,
             inviter_name=inviter.name if inviter else "Dify",
             workspace_name=tenant.name,
@@ -1487,6 +1518,16 @@ class RegisterService:
 
             invitation: dict = json.loads(data)
             return invitation
+
+    @classmethod
+    def get_invitation_with_case_fallback(
+        cls, workspace_id: str | None, email: str | None, token: str
+    ) -> dict[str, Any] | None:
+        invitation = cls.get_invitation_if_token_valid(workspace_id, email, token)
+        if invitation or not email or email == email.lower():
+            return invitation
+        normalized_email = email.lower()
+        return cls.get_invitation_if_token_valid(workspace_id, normalized_email, token)
 
 
 def _generate_refresh_token(length: int = 64):

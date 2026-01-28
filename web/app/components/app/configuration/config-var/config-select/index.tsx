@@ -90,7 +90,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
         className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3  text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
       >
         <RiAddLine className="h-4 w-4" />
-        <div className="system-sm-medium text-[13px]">{t('appDebug.variableConfig.addOption')}</div>
+        <div className="system-sm-medium text-[13px]">{t('variableConfig.addOption', { ns: 'appDebug' })}</div>
       </div>
     </div>
   )

@@ -1,14 +1,16 @@
+from __future__ import annotations
+
 import contextvars
 import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Literal, Union, overload
+from typing import TYPE_CHECKING, Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 import contexts
 from configs import dify_config
@@ -24,6 +26,7 @@ from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTas
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
+from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -42,6 +45,9 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
+
+if TYPE_CHECKING:
+    from controllers.console.app.workflow import LoopNodeRunPayload
 
 SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
 
@@ -434,7 +440,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow: Workflow,
         node_id: str,
         user: Account | EndUser,
-        args: Mapping[str, Any],
+        args: LoopNodeRunPayload,
         streaming: bool = True,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
@@ -450,7 +456,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         if not node_id:
             raise ValueError("node_id is required")
 
-        if args.get("inputs") is None:
+        if args.inputs is None:
             raise ValueError("inputs is required")
 
         # convert to app config
@@ -466,7 +472,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
-            single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
+            single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args.inputs or {}),
             workflow_execution_id=str(uuid.uuid4()),
         )
         contexts.plugin_tool_providers.set({})
@@ -532,7 +538,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :return:
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
-            with Session(db.engine, expire_on_commit=False) as session:
+            with session_factory.create_session() as session:
                 workflow = session.scalar(
                     select(Workflow).where(
                         Workflow.tenant_id == application_generate_entity.app_config.tenant_id,

@@ -28,9 +28,9 @@ const PublishToast = () => {
           <RiInformation2Fill className="text-text-accent" />
         </div>
         <div className="p-1">
-          <div className="system-sm-semibold mb-1 text-text-primary">{t('pipeline.publishToast.title')}</div>
+          <div className="system-sm-semibold mb-1 text-text-primary">{t('publishToast.title', { ns: 'pipeline' })}</div>
           <div className="system-xs-regular text-text-secondary">
-            {t('pipeline.publishToast.desc')}
+            {t('publishToast.desc', { ns: 'pipeline' })}
           </div>
         </div>
         <div

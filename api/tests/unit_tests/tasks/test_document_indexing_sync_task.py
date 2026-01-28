@@ -109,13 +109,25 @@ def mock_document_segments(document_id):
 
 @pytest.fixture
 def mock_db_session():
-    """Mock database session."""
-    with patch("tasks.document_indexing_sync_task.db.session") as mock_session:
-        mock_query = MagicMock()
-        mock_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_session.scalars.return_value = MagicMock()
-        yield mock_session
+    """Mock database session via session_factory.create_session()."""
+    with patch("tasks.document_indexing_sync_task.session_factory") as mock_sf:
+        session = MagicMock()
+        # Ensure tests can observe session.close() via context manager teardown
+        session.close = MagicMock()
+        cm = MagicMock()
+        cm.__enter__.return_value = session
+
+        def _exit_side_effect(*args, **kwargs):
+            session.close()
+
+        cm.__exit__.side_effect = _exit_side_effect
+        mock_sf.create_session.return_value = cm
+
+        query = MagicMock()
+        session.query.return_value = query
+        query.where.return_value = query
+        session.scalars.return_value = MagicMock()
+        yield session
 
 
 @pytest.fixture
@@ -251,8 +263,8 @@ class TestDocumentIndexingSyncTask:
         # Assert
         # Document status should remain unchanged
         assert mock_document.indexing_status == "completed"
-        # No session operations should be performed beyond the initial query
-        mock_db_session.close.assert_not_called()
+        # Session should still be closed via context manager teardown
+        assert mock_db_session.close.called
 
     def test_successful_sync_when_page_updated(
         self,
@@ -286,9 +298,9 @@ class TestDocumentIndexingSyncTask:
         mock_processor = mock_index_processor_factory.return_value.init_index_processor.return_value
         mock_processor.clean.assert_called_once()
 
-        # Verify segments were deleted from database
-        for segment in mock_document_segments:
-            mock_db_session.delete.assert_any_call(segment)
+        # Verify segments were deleted from database in batch (DELETE FROM document_segments)
+        execute_sqls = [" ".join(str(c[0][0]).split()) for c in mock_db_session.execute.call_args_list]
+        assert any("DELETE FROM document_segments" in sql for sql in execute_sqls)
 
         # Verify indexing runner was called
         mock_indexing_runner.run.assert_called_once_with([mock_document])

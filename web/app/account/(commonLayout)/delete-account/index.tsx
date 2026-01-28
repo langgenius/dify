@@ -33,7 +33,7 @@ export default function DeleteAccount(props: DeleteAccountProps) {
     <CustomDialog
       show={true}
       onClose={props.onCancel}
-      title={t('common.account.delete')}
+      title={t('account.delete', { ns: 'common' })}
       className="max-w-[480px]"
       footer={false}
     >

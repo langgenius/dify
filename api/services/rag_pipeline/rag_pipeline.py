@@ -36,7 +36,7 @@ from core.rag.entities.event import (
 )
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.variables.variables import Variable
+from core.variables.variables import VariableBase
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
@@ -270,8 +270,8 @@ class RagPipelineService:
         graph: dict,
         unique_hash: str | None,
         account: Account,
-        environment_variables: Sequence[Variable],
-        conversation_variables: Sequence[Variable],
+        environment_variables: Sequence[VariableBase],
+        conversation_variables: Sequence[VariableBase],
         rag_pipeline_variables: list,
     ) -> Workflow:
         """
@@ -436,7 +436,7 @@ class RagPipelineService:
                 user_inputs=user_inputs,
                 user_id=account.id,
                 variable_pool=VariablePool(
-                    system_variables=SystemVariable.empty(),
+                    system_variables=SystemVariable.default(),
                     user_inputs=user_inputs,
                     environment_variables=[],
                     conversation_variables=[],
@@ -874,7 +874,7 @@ class RagPipelineService:
             variable_pool = node_instance.graph_runtime_state.variable_pool
             invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
             if invoke_from:
-                if invoke_from.value == InvokeFrom.PUBLISHED:
+                if invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:
                     document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
                     if document_id:
                         document = db.session.query(Document).where(Document.id == document_id.value).first()
@@ -1318,7 +1318,7 @@ class RagPipelineService:
                 "datasource_info_list": [json.loads(document_pipeline_execution_log.datasource_info)],
                 "original_document_id": document.id,
             },
-            invoke_from=InvokeFrom.PUBLISHED,
+            invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
             streaming=False,
             call_depth=0,
             workflow_thread_pool_id=None,

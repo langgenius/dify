@@ -37,6 +37,7 @@ from .enums import (
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
 from .human_input import HumanInputForm
 from .model import (
+    AccountTrialAppRecord,
     ApiRequest,
     ApiToken,
     App,
@@ -49,6 +50,7 @@ from .model import (
     DatasetRetrieverResource,
     DifySetup,
     EndUser,
+    ExporleBanner,
     IconType,
     InstalledApp,
     Message,
@@ -62,7 +64,9 @@ from .model import (
     Site,
     Tag,
     TagBinding,
+    TenantCreditPool,
     TraceAppConfig,
+    TrialApp,
     UploadFile,
 )
 from .oauth import DatasourceOauthParamConfig, DatasourceProvider
@@ -101,6 +105,7 @@ from .workflow import (
     Workflow,
     WorkflowAppLog,
     WorkflowAppLogCreatedFrom,
+    WorkflowArchiveLog,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
@@ -115,6 +120,7 @@ __all__ = [
     "Account",
     "AccountIntegrate",
     "AccountStatus",
+    "AccountTrialAppRecord",
     "ApiRequest",
     "ApiToken",
     "ApiToolProvider",
@@ -152,6 +158,7 @@ __all__ = [
     "Embedding",
     "EndUser",
     "ExecutionExtraContent",
+    "ExporleBanner",
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
     "HumanInputContent",
@@ -182,6 +189,7 @@ __all__ = [
     "Tenant",
     "TenantAccountJoin",
     "TenantAccountRole",
+    "TenantCreditPool",
     "TenantDefaultModel",
     "TenantPreferredModelProvider",
     "TenantStatus",
@@ -191,6 +199,7 @@ __all__ = [
     "ToolLabelBinding",
     "ToolModelInvoke",
     "TraceAppConfig",
+    "TrialApp",
     "TriggerOAuthSystemClient",
     "TriggerOAuthTenantClient",
     "TriggerSubscription",
@@ -200,6 +209,7 @@ __all__ = [
     "Workflow",
     "WorkflowAppLog",
     "WorkflowAppLogCreatedFrom",
+    "WorkflowArchiveLog",
     "WorkflowNodeExecutionModel",
     "WorkflowNodeExecutionOffload",
     "WorkflowNodeExecutionTriggeredFrom",

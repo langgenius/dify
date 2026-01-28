@@ -17,7 +17,7 @@ const ConfigAudio: FC = () => {
   const { t } = useTranslation()
   const file = useFeatures(s => s.features.file)
   const featuresStore = useFeaturesStore()
-  const { isShowAudioConfig } = useContext(ConfigContext)
+  const { isShowAudioConfig, readonly } = useContext(ConfigContext)
 
   const isAudioEnabled = file?.allowed_file_types?.includes(SupportUploadFileTypes.audio) ?? false
 
@@ -45,7 +45,7 @@ const ConfigAudio: FC = () => {
     setFeatures(newFeatures)
   }, [featuresStore])
 
-  if (!isShowAudioConfig)
+  if (!isShowAudioConfig || (readonly && !isAudioEnabled))
     return null
 
   return (
@@ -56,23 +56,25 @@ const ConfigAudio: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="system-sm-semibold mr-1 text-text-secondary">{t('appDebug.feature.audioUpload.title')}</div>
+        <div className="system-sm-semibold mr-1 text-text-secondary">{t('feature.audioUpload.title', { ns: 'appDebug' })}</div>
         <Tooltip
           popupContent={(
             <div className="w-[180px]">
-              {t('appDebug.feature.audioUpload.description')}
+              {t('feature.audioUpload.description', { ns: 'appDebug' })}
             </div>
           )}
         />
       </div>
-      <div className="flex shrink-0 items-center">
-        <div className="ml-1 mr-3 h-3.5 w-[1px] bg-divider-subtle"></div>
-        <Switch
-          defaultValue={isAudioEnabled}
-          onChange={handleChange}
-          size="md"
-        />
-      </div>
+      {!readonly && (
+        <div className="flex shrink-0 items-center">
+          <div className="ml-1 mr-3 h-3.5 w-[1px] bg-divider-subtle"></div>
+          <Switch
+            defaultValue={isAudioEnabled}
+            onChange={handleChange}
+            size="md"
+          />
+        </div>
+      )}
     </div>
   )
 }

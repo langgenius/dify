@@ -7,6 +7,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import { ConfigProvider } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import Indicator from '@/app/components/header/indicator'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { changeModelProviderPriority } from '@/service/common'
 import { cn } from '@/utils/classnames'
@@ -26,6 +27,7 @@ import PriorityUseTip from './priority-use-tip'
 type CredentialPanelProps = {
   provider: ModelProvider
 }
+
 const CredentialPanel = ({
   provider,
 }: CredentialPanelProps) => {
@@ -47,6 +49,8 @@ const CredentialPanel = ({
     notAllowedToUse,
   } = useCredentialStatus(provider)
 
+  const showPrioritySelector = systemConfig.enabled && isCustomConfigured && IS_CLOUD_EDITION
+
   const handleChangePriority = async (key: PreferredProviderTypeEnum) => {
     const res = await changeModelProviderPriority({
       url: `/workspaces/current/model-providers/${provider.provider}/preferred-provider-type`,
@@ -55,7 +59,7 @@ const CredentialPanel = ({
       },
     })
     if (res.result === 'success') {
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       updateModelProviders()
 
       configurateMethods.forEach((method) => {
@@ -71,11 +75,11 @@ const CredentialPanel = ({
   }
   const credentialLabel = useMemo(() => {
     if (!hasCredential)
-      return t('common.modelProvider.auth.unAuthorized')
+      return t('modelProvider.auth.unAuthorized', { ns: 'common' })
     if (authorized)
       return current_credential_name
     if (authRemoved)
-      return t('common.modelProvider.auth.authRemoved')
+      return t('modelProvider.auth.authRemoved', { ns: 'common' })
 
     return ''
   }, [authorized, authRemoved, current_credential_name, hasCredential])
@@ -114,7 +118,7 @@ const CredentialPanel = ({
                 provider={provider}
               />
               {
-                systemConfig.enabled && isCustomConfigured && (
+                showPrioritySelector && (
                   <PrioritySelector
                     value={priorityUseType}
                     onSelect={handleChangePriority}
@@ -131,7 +135,7 @@ const CredentialPanel = ({
         )
       }
       {
-        systemConfig.enabled && isCustomConfigured && !provider.provider_credential_schema && (
+        showPrioritySelector && !provider.provider_credential_schema && (
           <div className="ml-1">
             <PrioritySelector
               value={priorityUseType}

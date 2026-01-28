@@ -50,7 +50,6 @@ type Props = {
   supportAddCustomTool?: boolean
   scope?: string
   selectedTools?: ToolValue[]
-  canChooseMCPTool?: boolean
 }
 
 const ToolPicker: FC<Props> = ({
@@ -66,7 +65,6 @@ const ToolPicker: FC<Props> = ({
   scope = 'all',
   selectedTools,
   panelClassName,
-  canChooseMCPTool,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -141,7 +139,7 @@ const ToolPicker: FC<Props> = ({
     await createCustomCollection(data)
     Toast.notify({
       type: 'success',
-      message: t('common.api.actionSuccess'),
+      message: t('api.actionSuccess', { ns: 'common' }),
     })
     hideEditCustomCollectionModal()
     handleAddedCustomTool()
@@ -179,7 +177,7 @@ const ToolPicker: FC<Props> = ({
               onSearchChange={setSearchText}
               tags={tags}
               onTagsChange={setTags}
-              placeholder={t('plugin.searchTools')!}
+              placeholder={t('searchTools', { ns: 'plugin' })!}
               supportAddCustomTool={supportAddCustomTool}
               onAddedCustomTool={handleAddedCustomTool}
               onShowAddCustomCollectionModal={showEditCustomCollectionModal}
@@ -198,7 +196,6 @@ const ToolPicker: FC<Props> = ({
             workflowTools={workflowToolList || []}
             mcpTools={mcpTools || []}
             selectedTools={selectedTools}
-            canChooseMCPTool={canChooseMCPTool}
             onTagsChange={setTags}
             featuredPlugins={featuredPlugins}
             featuredLoading={isFeaturedLoading}

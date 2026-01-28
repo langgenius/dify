@@ -61,7 +61,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
             }}
             fieldProps={{
               fieldTitleProps: {
-                title: t('workflow.nodes.tool.inputVars'),
+                title: t('nodes.tool.inputVars', { ns: 'workflow' }),
               },
               supportCollapse: true,
             }}
@@ -90,7 +90,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
             }}
             fieldProps={{
               fieldTitleProps: {
-                title: t('workflow.nodes.dataSource.supportedFileFormats'),
+                title: t('nodes.dataSource.supportedFileFormats', { ns: 'workflow' }),
               },
             }}
           >
@@ -98,7 +98,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
               <TagInput
                 items={fileExtensions}
                 onChange={handleFileExtensionsChange}
-                placeholder={t('workflow.nodes.dataSource.supportedFileFormatsPlaceholder')}
+                placeholder={t('nodes.dataSource.supportedFileFormatsPlaceholder', { ns: 'workflow' })}
                 inputClassName="bg-transparent"
                 disableAdd={nodesReadOnly}
                 disableRemove={nodesReadOnly}
@@ -139,20 +139,22 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
 
           return (
             <div key={outputItem.name}>
-              {outputItem.value?.type === 'object' ? (
-                <StructureOutputItem
-                  rootClassName="code-sm-semibold text-text-secondary"
-                  payload={wrapStructuredVarItem(outputItem, schemaType)}
-                />
-              ) : (
-                <VarItem
-                  name={outputItem.name}
-                  // eslint-disable-next-line sonarjs/no-nested-template-literals
-                  type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
-                  description={outputItem.description}
-                  isIndent={hasObjectOutput}
-                />
-              )}
+              {outputItem.value?.type === 'object'
+                ? (
+                    <StructureOutputItem
+                      rootClassName="code-sm-semibold text-text-secondary"
+                      payload={wrapStructuredVarItem(outputItem, schemaType)}
+                    />
+                  )
+                : (
+                    <VarItem
+                      name={outputItem.name}
+
+                      type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
+                      description={outputItem.description}
+                      isIndent={hasObjectOutput}
+                    />
+                  )}
             </div>
           )
         })}

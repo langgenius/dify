@@ -16,7 +16,7 @@ import { EditionType, PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import ConfigPromptItem from './config-prompt-item'
 
-const i18nPrefix = 'workflow.nodes.llm'
+const i18nPrefix = 'nodes.llm'
 
 type Props = {
   readOnly: boolean
@@ -106,12 +106,12 @@ const ConfigPrompt: FC<Props> = ({
   const handleAddPrompt = useCallback(() => {
     const newPrompt = produce(payload as PromptItem[], (draft) => {
       if (draft.length === 0) {
-        draft.push({ role: PromptRole.system, text: '' })
+        draft.push({ role: PromptRole.system, text: '', id: uuid4() })
 
         return
       }
       const isLastItemUser = draft[draft.length - 1].role === PromptRole.user
-      draft.push({ role: isLastItemUser ? PromptRole.assistant : PromptRole.user, text: '' })
+      draft.push({ role: isLastItemUser ? PromptRole.assistant : PromptRole.user, text: '', id: uuid4() })
     })
     onChange(newPrompt)
   }, [onChange, payload])
@@ -215,7 +215,7 @@ const ConfigPrompt: FC<Props> = ({
               </div>
               <AddButton
                 className="mt-2"
-                text={t(`${i18nPrefix}.addMessage`)}
+                text={t(`${i18nPrefix}.addMessage`, { ns: 'workflow' })}
                 onClick={handleAddPrompt}
               />
             </div>
@@ -224,7 +224,7 @@ const ConfigPrompt: FC<Props> = ({
             <div>
               <Editor
                 instanceId={`${nodeId}-chat-workflow-llm-prompt-editor`}
-                title={<span className="capitalize">{t(`${i18nPrefix}.prompt`)}</span>}
+                title={<span className="capitalize">{t(`${i18nPrefix}.prompt`, { ns: 'workflow' })}</span>}
                 value={((payload as PromptItem).edition_type === EditionType.basic || !(payload as PromptItem).edition_type) ? (payload as PromptItem).text : ((payload as PromptItem).jinja2_text || '')}
                 onChange={handleCompletionPromptChange}
                 readOnly={readOnly}

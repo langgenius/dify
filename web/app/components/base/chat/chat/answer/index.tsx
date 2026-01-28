@@ -111,7 +111,7 @@ const Answer: FC<AnswerProps> = ({
     }
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
-  const contentIsEmpty = content.trim() === ''
+  const contentIsEmpty = typeof content === 'string' && content.trim() === ''
 
   return (
     <div className="mb-2 flex last:mb-0">
@@ -150,7 +150,7 @@ const Answer: FC<AnswerProps> = ({
                   data={workflowProcess}
                   item={item}
                   hideProcessDetail={hideProcessDetail}
-                  readonly={hideProcessDetail && appData ? !appData.site.show_workflow_steps : undefined}
+                  readonly={hideProcessDetail && appData ? !appData.site?.show_workflow_steps : undefined}
                 />
               )
             }
@@ -201,7 +201,7 @@ const Answer: FC<AnswerProps> = ({
               annotation?.id && annotation.authorName && (
                 <EditTitle
                   className="mt-1"
-                  title={t('appAnnotation.editBy', { author: annotation.authorName })}
+                  title={t('editBy', { ns: 'appAnnotation', author: annotation.authorName })}
                 />
               )
             }
@@ -212,7 +212,7 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && (
+              !!(item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined) && (
                 <ContentSwitch
                   count={item.siblingCount}
                   currentIndex={item.siblingIndex}

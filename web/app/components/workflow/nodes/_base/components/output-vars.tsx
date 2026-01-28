@@ -25,7 +25,7 @@ const OutputVars: FC<Props> = ({
   const { t } = useTranslation()
   return (
     <FieldCollapse
-      title={title || t('workflow.nodes.common.outputVars')}
+      title={title || t('nodes.common.outputVars', { ns: 'workflow' })}
       operations={operations}
       collapsed={collapsed}
       onCollapse={onCollapse}

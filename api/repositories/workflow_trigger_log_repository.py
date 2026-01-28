@@ -121,3 +121,15 @@ class WorkflowTriggerLogRepository(Protocol):
             The matching WorkflowTriggerLog if present, None otherwise
         """
         ...
+
+    def delete_by_run_ids(self, run_ids: Sequence[str]) -> int:
+        """
+        Delete trigger logs for workflow run IDs.
+
+        Args:
+            run_ids: Workflow run IDs to delete
+
+        Returns:
+            Number of rows deleted
+        """
+        ...
