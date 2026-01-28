@@ -161,6 +161,7 @@ const FileContentPanel: FC = () => {
     fileId: fileTabId,
     enabled: canInitCollaboration,
     initialContent: initialCollaborativeContent,
+    baselineContent: originalContent,
     onLocalChange: handleEditorChange,
     onLeaderSync: handleLeaderSync,
   })

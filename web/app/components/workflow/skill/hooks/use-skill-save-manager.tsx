@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEventListener } from 'ahooks'
 import isDeepEqual from 'fast-deep-equal'
 import * as React from 'react'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -181,8 +181,9 @@ export const SkillSaveProvider = ({
     }
 
     const snapshot = buildSnapshot(fileId, options?.fallbackContent, options?.fallbackMetadata)
-    if (!snapshot)
+    if (!snapshot) {
       return { saved: false }
+    }
 
     try {
       await updateContent.mutateAsync({
@@ -208,6 +209,10 @@ export const SkillSaveProvider = ({
         const normalizedLatest = normalizeMetadata(latestMetadata, snapshot.content)
         if (isDeepEqual(normalizedLatest, snapshot.metadata))
           latestState.clearDraftMetadata(fileId)
+      }
+
+      if (isCollaborationEnabled && skillCollaborationManager.isFileCollaborative(fileId)) {
+        skillCollaborationManager.emitFileSaved(fileId, snapshot.content, snapshot.metadata)
       }
 
       return { saved: true }
@@ -298,6 +303,38 @@ export const SkillSaveProvider = ({
     registerFallback,
     unregisterFallback,
   }), [saveAllDirty, saveFile, registerFallback, unregisterFallback])
+
+  useEffect(() => {
+    if (!appId || !isCollaborationEnabled)
+      return
+
+    return skillCollaborationManager.onAnyFileSaved((payload) => {
+      if (!payload?.file_id || typeof payload.content !== 'string')
+        return
+
+      const fileId = payload.file_id
+      const queryKey = consoleQuery.appAsset.getFileContent.queryKey({
+        input: { params: { appId, nodeId: fileId } },
+      })
+      const serialized = JSON.stringify({
+        content: payload.content,
+        ...(payload.metadata ? { metadata: payload.metadata } : {}),
+      })
+      const existing = queryClient.getQueryData<CachedFileContent>(queryKey)
+      queryClient.setQueryData(queryKey, {
+        ...(existing && typeof existing === 'object' ? existing : {}),
+        content: serialized,
+      })
+
+      const state = storeApi.getState()
+      state.clearDraftContent(fileId)
+
+      const latestMetadata = state.fileMetadata.get(fileId)
+      const normalizedLatest = normalizeMetadata(latestMetadata, payload.content)
+      if (payload.metadata === undefined || isDeepEqual(normalizedLatest, payload.metadata))
+        state.clearDraftMetadata(fileId)
+    })
+  }, [appId, isCollaborationEnabled, queryClient, storeApi])
 
   return (
     <SkillSaveContext.Provider value={value}>

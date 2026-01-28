@@ -21,6 +21,12 @@ type SkillCursorPayload = {
   end?: number | null
 }
 
+type SkillFileSavedPayload = {
+  file_id: string
+  content?: string
+  metadata?: Record<string, unknown>
+}
+
 type SkillDocEntry = {
   doc: LoroDoc
   text: ReturnType<LoroDoc['getText']>
@@ -47,6 +53,8 @@ class SkillCollaborationManager {
   private pendingResync = new Set<string>()
   private cursorByFile = new Map<string, SkillCursorMap>()
   private cursorEmitter = new EventEmitter()
+  private fileEmitter = new EventEmitter()
+  private fileSavedGlobalKey = 'skill_file_saved:all'
 
   private handleSkillUpdate = (payload: SkillUpdatePayload) => {
     if (!payload || !payload.file_id || !payload.update)
@@ -79,6 +87,15 @@ class SkillCollaborationManager {
   private handleCollaborationUpdate = (update: CollaborationUpdate) => {
     if (!update || !update.type)
       return
+
+    if (update.type === 'skill_file_saved') {
+      const data = update.data as SkillFileSavedPayload | undefined
+      const fileId = data?.file_id
+      if (!fileId)
+        return
+      this.fileEmitter.emit(this.fileSavedGlobalKey, data)
+      return
+    }
 
     if (update.type === 'skill_cursor') {
       const data = update.data as SkillCursorPayload | undefined
@@ -139,6 +156,7 @@ class SkillCollaborationManager {
       this.pendingResync.clear()
       this.cursorByFile.clear()
       this.cursorEmitter.removeAllListeners()
+      this.fileEmitter.removeAllListeners()
     }
 
     this.appId = appId
@@ -256,6 +274,10 @@ class SkillCollaborationManager {
     return off
   }
 
+  onAnyFileSaved(callback: (payload: SkillFileSavedPayload) => void): () => void {
+    return this.fileEmitter.on(this.fileSavedGlobalKey, callback)
+  }
+
   isLeader(fileId: string): boolean {
     return this.leaderByFile.get(fileId) || false
   }
@@ -281,6 +303,18 @@ class SkillCollaborationManager {
     emitWithAuthGuard(this.socket, 'collaboration_event', {
       type: 'skill_cursor',
       data: payload,
+      timestamp: Date.now(),
+    })
+  }
+
+  emitFileSaved(fileId: string, content: string, metadata?: Record<string, unknown>): void {
+    if (!fileId || !this.socket || !this.socket.connected) {
+      return
+    }
+
+    emitWithAuthGuard(this.socket, 'collaboration_event', {
+      type: 'skill_file_saved',
+      data: { file_id: fileId, content, metadata },
       timestamp: Date.now(),
     })
   }
