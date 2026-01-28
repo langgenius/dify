@@ -7,9 +7,15 @@ type MarkdownFileEditorProps = {
   instanceId?: string
   value: string
   onChange: (value: string) => void
+  collaborationEnabled?: boolean
 }
 
-const MarkdownFileEditor: FC<MarkdownFileEditorProps> = ({ instanceId, value, onChange }) => {
+const MarkdownFileEditor: FC<MarkdownFileEditorProps> = ({
+  instanceId,
+  value,
+  onChange,
+  collaborationEnabled,
+}) => {
   const { t } = useTranslation()
   const handleChange = React.useCallback((val: string) => {
     if (val !== value) {
@@ -23,6 +29,7 @@ const MarkdownFileEditor: FC<MarkdownFileEditorProps> = ({ instanceId, value, on
         instanceId={instanceId}
         value={value}
         onChange={handleChange}
+        collaborationEnabled={collaborationEnabled}
         showLineNumbers
         className="h-full"
         wrapperClassName="h-full"

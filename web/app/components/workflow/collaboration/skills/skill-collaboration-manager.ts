@@ -1,6 +1,7 @@
 import type { Socket } from 'socket.io-client'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import { LoroDoc } from 'loro-crdt'
+import { EventEmitter } from '@/app/components/workflow/collaboration/core/event-emitter'
 import { emitWithAuthGuard, webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 
 type SkillUpdatePayload = {
@@ -14,12 +15,27 @@ type SkillStatusPayload = {
   isLeader: boolean
 }
 
+type SkillCursorPayload = {
+  file_id: string
+  start?: number | null
+  end?: number | null
+}
+
 type SkillDocEntry = {
   doc: LoroDoc
   text: ReturnType<LoroDoc['getText']>
   subscribers: Set<(text: string, source: 'remote') => void>
   suppressBroadcast: boolean
 }
+
+type SkillCursorInfo = {
+  userId: string
+  start: number
+  end: number
+  timestamp: number
+}
+
+type SkillCursorMap = Record<string, SkillCursorInfo>
 
 class SkillCollaborationManager {
   private appId: string | null = null
@@ -29,10 +45,17 @@ class SkillCollaborationManager {
   private syncHandlers = new Map<string, Set<() => void>>()
   private activeFileId: string | null = null
   private pendingResync = new Set<string>()
+  private cursorByFile = new Map<string, SkillCursorMap>()
+  private cursorEmitter = new EventEmitter()
 
   private handleSkillUpdate = (payload: SkillUpdatePayload) => {
     if (!payload || !payload.file_id || !payload.update)
       return
+
+    if (payload.is_snapshot) {
+      this.replaceEntryWithSnapshot(payload.file_id, payload.update)
+      return
+    }
 
     const entry = this.docs.get(payload.file_id)
     if (!entry)
@@ -56,6 +79,28 @@ class SkillCollaborationManager {
   private handleCollaborationUpdate = (update: CollaborationUpdate) => {
     if (!update || !update.type)
       return
+
+    if (update.type === 'skill_cursor') {
+      const data = update.data as SkillCursorPayload | undefined
+      const fileId = data?.file_id
+      if (!fileId || !update.userId)
+        return
+
+      const start = typeof data?.start === 'number' ? data.start : null
+      const end = typeof data?.end === 'number' ? data.end : null
+      if (start === null || end === null || start < 0 || end < 0) {
+        this.updateCursor(fileId, update.userId, null)
+        return
+      }
+
+      this.updateCursor(fileId, update.userId, {
+        userId: update.userId,
+        start,
+        end,
+        timestamp: update.timestamp,
+      })
+      return
+    }
 
     if (update.type === 'skill_resync_request') {
       const fileId = (update.data as { file_id?: string } | undefined)?.file_id
@@ -92,6 +137,8 @@ class SkillCollaborationManager {
       this.syncHandlers.clear()
       this.activeFileId = null
       this.pendingResync.clear()
+      this.cursorByFile.clear()
+      this.cursorEmitter.removeAllListeners()
     }
 
     this.appId = appId
@@ -132,31 +179,14 @@ class SkillCollaborationManager {
     if (!this.docs.has(fileId)) {
       const doc = new LoroDoc()
       const text = doc.getText('content')
-      const entry: SkillDocEntry = {
-        doc,
-        text,
-        subscribers: new Set(),
-        suppressBroadcast: true,
-      }
+      const entry = this.createEntry(fileId, doc, text)
+      entry.suppressBroadcast = true
 
       if (initialContent)
         text.update(initialContent)
 
       doc.commit()
       entry.suppressBroadcast = false
-
-      doc.subscribe((event: { by?: string }) => {
-        if (event.by === 'local') {
-          if (entry.suppressBroadcast)
-            return
-          const update = doc.export({ mode: 'update' })
-          this.emitUpdate(fileId, update)
-          return
-        }
-
-        const nextText = text.toString()
-        entry.subscribers.forEach(callback => callback(nextText, 'remote'))
-      })
 
       this.docs.set(fileId, entry)
     }
@@ -216,6 +246,16 @@ class SkillCollaborationManager {
     }
   }
 
+  onCursorUpdate(fileId: string, callback: (cursors: SkillCursorMap) => void): () => void {
+    if (!fileId)
+      return () => {}
+
+    const eventKey = this.getCursorEventKey(fileId)
+    const off = this.cursorEmitter.on(eventKey, callback)
+    callback({ ...(this.cursorByFile.get(fileId) || {}) })
+    return off
+  }
+
   isLeader(fileId: string): boolean {
     return this.leaderByFile.get(fileId) || false
   }
@@ -226,6 +266,23 @@ class SkillCollaborationManager {
 
   requestSync(fileId: string): void {
     this.emitSyncRequest(fileId)
+  }
+
+  emitCursorUpdate(fileId: string, cursor: { start: number, end: number } | null): void {
+    if (!fileId || !this.socket || !this.socket.connected)
+      return
+
+    const payload: SkillCursorPayload = {
+      file_id: fileId,
+      start: cursor?.start ?? null,
+      end: cursor?.end ?? null,
+    }
+
+    emitWithAuthGuard(this.socket, 'collaboration_event', {
+      type: 'skill_cursor',
+      data: payload,
+      timestamp: Date.now(),
+    })
   }
 
   setActiveFile(appId: string, fileId: string, active: boolean): void {
@@ -292,6 +349,79 @@ class SkillCollaborationManager {
       data: { file_id: fileId, active },
       timestamp: Date.now(),
     })
+  }
+
+  private getCursorEventKey(fileId: string): string {
+    return `skill_cursor:${fileId}`
+  }
+
+  private updateCursor(fileId: string, userId: string, cursor: SkillCursorInfo | null): void {
+    const current = this.cursorByFile.get(fileId) || {}
+    if (!cursor) {
+      if (!current[userId])
+        return
+      delete current[userId]
+      this.cursorByFile.set(fileId, current)
+      this.cursorEmitter.emit(this.getCursorEventKey(fileId), { ...current })
+      return
+    }
+
+    current[userId] = cursor
+    this.cursorByFile.set(fileId, current)
+    this.cursorEmitter.emit(this.getCursorEventKey(fileId), { ...current })
+  }
+
+  private subscribeDoc(fileId: string, entry: SkillDocEntry) {
+    entry.doc.subscribe((event: { by?: string }) => {
+      if (event.by === 'local') {
+        if (entry.suppressBroadcast)
+          return
+        const update = entry.doc.export({ mode: 'update' })
+        this.emitUpdate(fileId, update)
+        return
+      }
+
+      const nextText = entry.text.toString()
+      entry.subscribers.forEach(callback => callback(nextText, 'remote'))
+    })
+  }
+
+  private createEntry(fileId: string, doc: LoroDoc, text: ReturnType<LoroDoc['getText']>) {
+    const entry: SkillDocEntry = {
+      doc,
+      text,
+      subscribers: new Set(),
+      suppressBroadcast: false,
+    }
+
+    this.subscribeDoc(fileId, entry)
+    return entry
+  }
+
+  private replaceEntryWithSnapshot(fileId: string, snapshot: Uint8Array) {
+    const existing = this.docs.get(fileId)
+    const subscribers = existing?.subscribers ?? new Set<(text: string, source: 'remote') => void>()
+    const doc = new LoroDoc()
+    try {
+      doc.import(new Uint8Array(snapshot))
+    }
+    catch (error) {
+      console.error('Failed to import skill snapshot:', error)
+      return
+    }
+
+    const text = doc.getText('content')
+    const entry: SkillDocEntry = {
+      doc,
+      text,
+      subscribers,
+      suppressBroadcast: false,
+    }
+    this.subscribeDoc(fileId, entry)
+    this.docs.set(fileId, entry)
+
+    const nextText = text.toString()
+    entry.subscribers.forEach(callback => callback(nextText, 'remote'))
   }
 }
 

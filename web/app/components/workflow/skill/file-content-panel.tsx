@@ -211,6 +211,7 @@ const FileContentPanel: FC = () => {
               instanceId={fileTabId || undefined}
               value={currentContent}
               onChange={handleCollaborativeChange}
+              collaborationEnabled={canInitCollaboration}
             />
           )
         : null}

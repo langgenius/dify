@@ -24,6 +24,7 @@ import styles from './line-numbers.module.css'
 import FilePickerBlock from './plugins/file-picker-block'
 import { FileReferenceNode } from './plugins/file-reference-block/node'
 import FileReferenceReplacementBlock from './plugins/file-reference-block/replacement-block'
+import { LocalCursorPlugin, SkillRemoteCursors } from './plugins/remote-cursors'
 import {
   ToolBlock,
   ToolBlockNode,
@@ -44,6 +45,7 @@ export type SkillEditorProps = {
   style?: React.CSSProperties
   value?: string
   editable?: boolean
+  collaborationEnabled?: boolean
   onChange?: (text: string) => void
   onBlur?: () => void
   onFocus?: () => void
@@ -61,6 +63,7 @@ const SkillEditor: FC<SkillEditorProps> = ({
   style,
   value,
   editable = true,
+  collaborationEnabled,
   onChange,
   onBlur,
   onFocus,
@@ -135,6 +138,8 @@ const SkillEditor: FC<SkillEditorProps> = ({
         <OnChangePlugin onChange={handleEditorChange} />
         <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
         <UpdateBlock instanceId={instanceId} />
+        <LocalCursorPlugin fileId={instanceId} enabled={collaborationEnabled} />
+        <SkillRemoteCursors fileId={instanceId} enabled={collaborationEnabled} />
         <HistoryPlugin />
       </div>
     </LexicalComposer>

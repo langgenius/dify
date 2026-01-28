@@ -64,6 +64,7 @@ export type CollaborationEventType
     | 'app_publish_update'
     | 'graph_view_active'
     | 'skill_file_active'
+    | 'skill_cursor'
     | 'skill_sync_request'
     | 'skill_resync_request'
     | 'graph_resync_request'
