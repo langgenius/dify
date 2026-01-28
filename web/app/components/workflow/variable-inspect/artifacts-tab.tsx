@@ -3,13 +3,12 @@ import type { InspectHeaderProps } from './inspect-layout'
 import type { SandboxFileTreeNode } from '@/types/sandbox-file'
 import {
   RiCloseLine,
-  RiDownloadLine,
   RiMenuLine,
 } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import CopyFeedback from '@/app/components/base/copy-feedback'
+import { FileDownload01 } from '@/app/components/base/icons/src/vender/line/files'
 import Loading from '@/app/components/base/loading'
 import ArtifactsTree from '@/app/components/workflow/skill/file-tree/artifacts-tree'
 import { useAppContext } from '@/context/app-context'
@@ -127,13 +126,12 @@ const ArtifactsTab: FC<InspectHeaderProps> = (headerProps) => {
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    <CopyFeedback content={file.path} />
                     <ActionButton
                       onClick={() => handleDownload(file)}
                       disabled={downloadMutation.isPending}
                       aria-label={`Download ${file.name}`}
                     >
-                      <RiDownloadLine className="h-4 w-4" />
+                      <FileDownload01 className="h-4 w-4" />
                     </ActionButton>
                   </div>
                 </>
