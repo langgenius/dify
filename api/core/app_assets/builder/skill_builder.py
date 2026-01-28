@@ -30,6 +30,7 @@ class _CompiledSkill:
     content_bytes: bytes
 
 
+# FIXME(Mairuis): move the logic into sandbox
 class SkillBuilder:
     _nodes: list[tuple[AppAssetNode, str]]
     _max_workers: int

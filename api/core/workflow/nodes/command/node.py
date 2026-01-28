@@ -3,6 +3,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from core.sandbox import sandbox_debug
+from core.sandbox.bash.session import SANDBOX_READY_TIMEOUT
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
 from core.virtual_environment.__base.helpers import submit_command, with_connection
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
@@ -73,6 +74,7 @@ class CommandNode(Node[CommandNodeData]):
         timeout = COMMAND_NODE_TIMEOUT_SECONDS if COMMAND_NODE_TIMEOUT_SECONDS > 0 else None
 
         try:
+            sandbox.wait_ready(timeout=SANDBOX_READY_TIMEOUT)
             with with_connection(sandbox.vm) as conn:
                 command = ["bash", "-c", raw_command]
 
