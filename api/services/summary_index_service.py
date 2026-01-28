@@ -147,6 +147,8 @@ class SummaryIndexService:
 
         # Always regenerate hash (in case summary content changed)
         summary_content = summary_record.summary_content
+        if not summary_content or not summary_content.strip():
+            raise ValueError(f"Summary content is empty for segment {segment.id}, cannot vectorize")
         summary_hash = helper.generate_text_hash(summary_content)
 
         # Delete old vector only if we're reusing the same index_node_id (to overwrite)
@@ -219,17 +221,26 @@ class SummaryIndexService:
                         session.query(DocumentSegmentSummary).filter_by(id=summary_record_id).first()
                     )
                     if summary_record_in_session:
-                        # Update all fields including summary_content (in case it was updated in outer session)
+                        # Update all fields including summary_content
+                        # Always use the summary_content from the parameter (which is the latest from outer session)
+                        # rather than relying on what's in the database, in case outer session hasn't committed yet
                         summary_record_in_session.summary_index_node_id = summary_index_node_id
                         summary_record_in_session.summary_index_node_hash = summary_hash
                         summary_record_in_session.tokens = embedding_tokens  # Save embedding tokens
                         summary_record_in_session.status = "completed"
                         # Ensure summary_content is preserved (use the latest from summary_record parameter)
+                        # This is critical: use the parameter value, not the database value
                         summary_record_in_session.summary_content = summary_content
                         # Explicitly update updated_at to ensure it's refreshed even if other fields haven't changed
                         summary_record_in_session.updated_at = datetime.now(UTC).replace(tzinfo=None)
                         session.add(summary_record_in_session)
                         session.commit()
+                        logger.info(
+                            "Successfully vectorized summary for segment %s, index_node_id=%s, tokens=%s",
+                            segment.id,
+                            summary_index_node_id,
+                            embedding_tokens,
+                        )
                         # Update the original object for consistency
                         summary_record.summary_index_node_id = summary_index_node_id
                         summary_record.summary_index_node_hash = summary_hash
@@ -237,6 +248,13 @@ class SummaryIndexService:
                         summary_record.status = "completed"
                         summary_record.summary_content = summary_content
                         summary_record.updated_at = summary_record_in_session.updated_at
+                    else:
+                        logger.error(
+                            "Summary record not found in database for segment %s (id=%s) after vectorization",
+                            segment.id,
+                            summary_record_id,
+                        )
+                        raise ValueError(f"Summary record not found for segment {segment.id} after vectorization")
                 # Success, exit function
                 return
 
@@ -450,14 +468,23 @@ class SummaryIndexService:
                 # Pass the session-managed record to vectorize_summary
                 # vectorize_summary will update status to "completed" and tokens in its own session
                 # vectorize_summary will also ensure summary_content is preserved
-                SummaryIndexService.vectorize_summary(summary_record_in_session, segment, dataset)
-
-                # Refresh the object from database to get the updated status and tokens from vectorize_summary
-                session.refresh(summary_record_in_session)
-                # Commit the session (summary_record_in_session should have status="completed" and tokens from refresh)
-                session.commit()
-                logger.info("Successfully generated and vectorized summary for segment %s", segment.id)
-                return summary_record_in_session
+                try:
+                    SummaryIndexService.vectorize_summary(summary_record_in_session, segment, dataset)
+                    # Refresh the object from database to get the updated status and tokens from vectorize_summary
+                    session.refresh(summary_record_in_session)
+                    # Commit the session
+                    # (summary_record_in_session should have status="completed" and tokens from refresh)
+                    session.commit()
+                    logger.info("Successfully generated and vectorized summary for segment %s", segment.id)
+                    return summary_record_in_session
+                except Exception as vectorize_error:
+                    # If vectorization fails, update status to error in current session
+                    logger.exception("Failed to vectorize summary for segment %s", segment.id)
+                    summary_record_in_session.status = "error"
+                    summary_record_in_session.error = f"Vectorization failed: {str(vectorize_error)}"
+                    session.add(summary_record_in_session)
+                    session.commit()
+                    raise
 
             except Exception as e:
                 logger.exception("Failed to generate summary for segment %s", segment.id)
@@ -859,6 +886,8 @@ class SummaryIndexService:
 
                     # Re-vectorize summary (this will update status to "completed" and tokens in its own session)
                     # vectorize_summary will also ensure summary_content is preserved
+                    # Note: vectorize_summary may take time due to embedding API calls, but we need to complete it
+                    # to ensure the summary is properly indexed
                     try:
                         SummaryIndexService.vectorize_summary(summary_record, segment, dataset)
                         # Refresh the object from database to get the updated status and tokens from vectorize_summary
@@ -869,11 +898,15 @@ class SummaryIndexService:
                         return summary_record
                     except Exception as e:
                         # If vectorization fails, update status to error in current session
+                        # Don't raise the exception - just log it and return the record with error status
+                        # This allows the segment update to complete even if vectorization fails
                         summary_record.status = "error"
                         summary_record.error = f"Vectorization failed: {str(e)}"
                         session.commit()
                         logger.exception("Failed to vectorize summary for segment %s", segment.id)
-                        raise
+                        # Return the record with error status instead of raising
+                        # The caller can check the status if needed
+                        return summary_record
                 else:
                     # Create new summary record if doesn't exist
                     summary_record = SummaryIndexService.create_summary_record(
@@ -901,8 +934,13 @@ class SummaryIndexService:
                                 error_record.status = "error"
                                 error_record.error = f"Vectorization failed: {str(e)}"
                                 error_session.commit()
+                                # Update the returned record
+                                summary_record.status = "error"
+                                summary_record.error = error_record.error
                         logger.exception("Failed to vectorize summary for segment %s", segment.id)
-                        raise
+                        # Return the record with error status instead of raising
+                        # This allows the segment update to complete even if vectorization fails
+                        return summary_record
 
             except Exception as e:
                 logger.exception("Failed to update summary for segment %s", segment.id)

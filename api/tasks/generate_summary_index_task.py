@@ -48,6 +48,16 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
                 logger.error(click.style(f"Document not found: {document_id}", fg="red"))
                 return
 
+            # Check if document needs summary
+            if not document.need_summary:
+                logger.info(
+                    click.style(
+                        f"Skipping summary generation for document {document_id}: need_summary is False",
+                        fg="cyan",
+                    )
+                )
+                return
+
             # Only generate summary index for high_quality indexing technique
             if dataset.indexing_technique != "high_quality":
                 logger.info(
