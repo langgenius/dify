@@ -22,7 +22,7 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from core.rag.models.document import Document
+from core.rag.models.document import ChildDocument, Document
 from core.tools.utils.system_oauth_encryption import encrypt_system_oauth_params
 from events.app_event import app_was_created
 from extensions.ext_database import db
@@ -418,6 +418,22 @@ def migrate_knowledge_vector_database():
                                 "dataset_id": segment.dataset_id,
                             },
                         )
+                        if dataset_document.doc_form == "hierarchical_model":
+                            child_chunks = segment.get_child_chunks()
+                            if child_chunks:
+                                child_documents = []
+                                for child_chunk in child_chunks:
+                                    child_document = ChildDocument(
+                                        page_content=child_chunk.content,
+                                        metadata={
+                                            "doc_id": child_chunk.index_node_id,
+                                            "doc_hash": child_chunk.index_node_hash,
+                                            "document_id": segment.document_id,
+                                            "dataset_id": segment.dataset_id,
+                                        },
+                                    )
+                                    child_documents.append(child_document)
+                                document.children = child_documents
 
                         documents.append(document)
                         segments_count = segments_count + 1
@@ -431,7 +447,13 @@ def migrate_knowledge_vector_database():
                                 fg="green",
                             )
                         )
+                        all_child_documents = []
+                        for doc in documents:
+                            if doc.children:
+                                all_child_documents.extend(doc.children)
                         vector.create(documents)
+                        if all_child_documents:
+                            vector.create(all_child_documents)
                         click.echo(click.style(f"Created vector index for dataset {dataset.id}.", fg="green"))
                     except Exception as e:
                         click.echo(click.style(f"Failed to created vector index for dataset {dataset.id}.", fg="red"))
