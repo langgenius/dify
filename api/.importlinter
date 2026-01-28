@@ -60,6 +60,8 @@ ignore_imports =
     core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
     core.workflow.graph_engine.manager -> extensions.ext_redis
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_redis
+    # TODO(QuantumGhost): use DI to avoid depending on global DB.
+    core.workflow.nodes.human_input.human_input_node -> extensions.ext_database
 
 [importlinter:contract:workflow-external-imports]
 name = Workflow External Imports
@@ -148,6 +150,7 @@ ignore_imports =
     core.workflow.nodes.agent.agent_node -> core.agent.entities
     core.workflow.nodes.agent.agent_node -> core.agent.plugin_entities
     core.workflow.nodes.base.node -> core.app.entities.app_invoke_entities
+    core.workflow.nodes.human_input.human_input_node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.app_config.entities
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.entities.app_invoke_entities
@@ -248,6 +251,7 @@ ignore_imports =
     core.workflow.nodes.document_extractor.node -> core.variables.segments
     core.workflow.nodes.http_request.executor -> core.variables.segments
     core.workflow.nodes.http_request.node -> core.variables.segments
+    core.workflow.nodes.human_input.entities -> core.variables.consts
     core.workflow.nodes.iteration.iteration_node -> core.variables
     core.workflow.nodes.iteration.iteration_node -> core.variables.segments
     core.workflow.nodes.iteration.iteration_node -> core.variables.variables
@@ -294,6 +298,8 @@ ignore_imports =
     core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
     core.workflow.nodes.tool.tool_node -> extensions.ext_database
+    core.workflow.nodes.human_input.human_input_node -> extensions.ext_database
+    core.workflow.nodes.human_input.human_input_node -> core.repositories.human_input_reposotiry
     core.workflow.workflow_entry -> extensions.otel.runtime
     core.workflow.nodes.agent.agent_node -> models
     core.workflow.nodes.base.node -> models.enums
@@ -302,6 +308,7 @@ ignore_imports =
     core.workflow.workflow_entry -> models.enums
     core.workflow.nodes.agent.agent_node -> services
     core.workflow.nodes.tool.tool_node -> services
+
 
 [importlinter:contract:rsc]
 name = RSC
