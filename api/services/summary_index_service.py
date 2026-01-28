@@ -258,6 +258,9 @@ class SummaryIndexService:
                     raise RuntimeError("Session should not be None at this point")
 
                 try:
+                    # Declare summary_record_in_session variable
+                    summary_record_in_session: DocumentSegmentSummary | None
+                    
                     # If using provided session, merge the summary_record into it
                     if use_provided_session:
                         # Merge the summary_record into the provided session
@@ -279,7 +282,7 @@ class SummaryIndexService:
                             summary_record_id,
                             segment.id,
                         )
-                        summary_record_in_session: DocumentSegmentSummary | None = (
+                        summary_record_in_session = (
                             session.query(DocumentSegmentSummary).filter_by(id=summary_record_id).first()
                         )
 
