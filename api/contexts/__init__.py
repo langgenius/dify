@@ -29,11 +29,8 @@ plugin_model_providers_lock: RecyclableContextVar[Lock] = RecyclableContextVar(
     ContextVar("plugin_model_providers_lock")
 )
 
-plugin_model_schema_lock: RecyclableContextVar[Lock] = RecyclableContextVar(ContextVar("plugin_model_schema_lock"))
-
-plugin_model_schemas: RecyclableContextVar[dict[str, "AIModelEntity"]] = RecyclableContextVar(
-    ContextVar("plugin_model_schemas")
-)
+plugin_model_schema_lock: Lock = Lock()
+plugin_model_schemas: dict[str, "AIModelEntity"] = {}
 
 datasource_plugin_providers: RecyclableContextVar[dict[str, "DatasourcePluginProviderController"]] = (
     RecyclableContextVar(ContextVar("datasource_plugin_providers"))
