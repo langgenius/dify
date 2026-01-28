@@ -223,6 +223,57 @@ class TestSkillCompilerCompileOne:
         assert result.tools.dependencies[0].tool_name == "python"
 
 
+class TestSkillCompilerToolGroups:
+    def test_compile_tool_group_filters_disabled(self):
+        # given
+        doc = SkillDocument(
+            skill_id="skill-1",
+            content="Tools:[§[tool].[sandbox].[bash].[tool-a]§, §[tool].[sandbox].[bash].[tool-b]§]",
+            metadata={
+                "tools": {
+                    "tool-a": {"type": ToolProviderType.BUILT_IN.value, "enabled": True},
+                    "tool-b": {"type": ToolProviderType.BUILT_IN.value, "enabled": False},
+                }
+            },
+        )
+        tree = create_file_tree(
+            AppAssetNode.create_file("skill-1", "skill.md"),
+        )
+        compiler = SkillCompiler()
+
+        # when
+        artifact_set = compiler.compile_all([doc], tree, "assets-1")
+
+        # then
+        artifact = artifact_set.get("skill-1")
+        assert artifact is not None
+        assert artifact.content == "Tools:[[Bash Command: bash_tool-a]]"
+
+    def test_compile_tool_group_renders_nothing_when_all_disabled(self):
+        # given
+        doc = SkillDocument(
+            skill_id="skill-1",
+            content="Tools:[§[tool].[sandbox].[bash].[tool-b]§]",
+            metadata={
+                "tools": {
+                    "tool-b": {"type": ToolProviderType.BUILT_IN.value, "enabled": False},
+                }
+            },
+        )
+        tree = create_file_tree(
+            AppAssetNode.create_file("skill-1", "skill.md"),
+        )
+        compiler = SkillCompiler()
+
+        # when
+        artifact_set = compiler.compile_all([doc], tree, "assets-1")
+
+        # then
+        artifact = artifact_set.get("skill-1")
+        assert artifact is not None
+        assert artifact.content == "Tools:"
+
+
 class TestSkillCompilerComplexGraph:
     def test_large_complex_dependency_graph(self):
         """

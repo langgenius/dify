@@ -29,6 +29,7 @@ class ToolReference(BaseModel):
     type: ToolProviderType
     provider: str
     tool_name: str
+    enabled: bool = True
     credential_id: str | None = None
     configuration: ToolConfiguration | None = None
 
