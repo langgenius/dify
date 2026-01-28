@@ -179,15 +179,9 @@ class ModelProviderFactory:
         sorted_credentials = sorted(credentials.items()) if credentials else []
         cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
 
-        try:
-            contexts.plugin_model_schemas.get()
-        except LookupError:
-            contexts.plugin_model_schemas.set({})
-            contexts.plugin_model_schema_lock.set(Lock())
-
-        with contexts.plugin_model_schema_lock.get():
-            if cache_key in contexts.plugin_model_schemas.get():
-                return contexts.plugin_model_schemas.get()[cache_key]
+        with contexts.plugin_model_schema_lock:
+            if cache_key in contexts.plugin_model_schemas:
+                return contexts.plugin_model_schemas[cache_key]
 
             schema = self.plugin_model_manager.get_model_schema(
                 tenant_id=self.tenant_id,
@@ -200,7 +194,7 @@ class ModelProviderFactory:
             )
 
             if schema:
-                contexts.plugin_model_schemas.get()[cache_key] = schema
+                contexts.plugin_model_schemas[cache_key] = schema
 
             return schema
 
