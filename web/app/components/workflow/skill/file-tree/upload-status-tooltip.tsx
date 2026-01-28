@@ -57,7 +57,13 @@ const UploadStatusTooltip: FC<UploadStatusTooltipProps> = ({ fallback }) => {
         )}
       >
         {uploadStatus === 'uploading' && (
-          <div className="absolute inset-[-0.5px] animate-pulse bg-state-accent-hover-alt opacity-60" />
+          <>
+            <div className="absolute inset-[-0.5px] bg-components-progress-bar-bg" />
+            <div
+              className="absolute bottom-[-0.5px] left-[-0.5px] top-[-0.5px] border-r-[1.5px] border-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
+              style={{ width: uploadProgress.total > 0 ? `${(uploadProgress.uploaded / uploadProgress.total) * 100}%` : '0%' }}
+            />
+          </>
         )}
         {uploadStatus === 'success' && (
           <div className="absolute inset-[-0.5px] bg-toast-success-bg opacity-40" />
@@ -68,7 +74,7 @@ const UploadStatusTooltip: FC<UploadStatusTooltipProps> = ({ fallback }) => {
 
         <div className="relative z-10 shrink-0">
           {uploadStatus === 'uploading' && (
-            <RiUploadCloud2Line className="size-5 text-text-accent" />
+            <RiUploadCloud2Line className="size-6 text-text-accent" />
           )}
           {uploadStatus === 'success' && (
             <RiCheckboxCircleFill className="size-5 text-text-success" />
