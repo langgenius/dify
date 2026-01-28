@@ -7,10 +7,10 @@ import struct
 import subprocess
 import time
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Annotated, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Annotated, Any, Optional, Protocol, Union, cast
 from uuid import UUID
 from zoneinfo import available_timezones
 
@@ -400,11 +400,35 @@ class TokenManager:
         return f"{token_type}:account:{account_id}"
 
 
+class _RateLimiterRedisClient(Protocol):
+    def zadd(self, name: str | bytes, mapping: dict[str | bytes, float | int]) -> int: ...
+
+    def zremrangebyscore(self, name: str | bytes, min: str | float, max: str | float) -> int: ...
+
+    def zcard(self, name: str | bytes) -> int: ...
+
+    def expire(self, name: str | bytes, time: int) -> bool: ...
+
+
+def _default_rate_limit_member_factory() -> str:
+    current_time = int(time.time())
+    return f"{current_time}:{secrets.token_urlsafe(nbytes=8)}"
+
+
 class RateLimiter:
-    def __init__(self, prefix: str, max_attempts: int, time_window: int):
+    def __init__(
+        self,
+        prefix: str,
+        max_attempts: int,
+        time_window: int,
+        member_factory: Callable[[], str] = _default_rate_limit_member_factory,
+        redis_client: _RateLimiterRedisClient = redis_client,
+    ):
         self.prefix = prefix
         self.max_attempts = max_attempts
         self.time_window = time_window
+        self._member_factory = member_factory
+        self._redis_client = redis_client
 
     def _get_key(self, email: str) -> str:
         return f"{self.prefix}:{email}"
@@ -414,8 +438,8 @@ class RateLimiter:
         current_time = int(time.time())
         window_start_time = current_time - self.time_window
 
-        redis_client.zremrangebyscore(key, "-inf", window_start_time)
-        attempts = redis_client.zcard(key)
+        self._redis_client.zremrangebyscore(key, "-inf", window_start_time)
+        attempts = self._redis_client.zcard(key)
 
         if attempts and int(attempts) >= self.max_attempts:
             return True
@@ -423,7 +447,8 @@ class RateLimiter:
 
     def increment_rate_limit(self, email: str):
         key = self._get_key(email)
+        member = self._member_factory()
         current_time = int(time.time())
 
-        redis_client.zadd(key, {current_time: current_time})
-        redis_client.expire(key, self.time_window * 2)
+        self._redis_client.zadd(key, {member: current_time})
+        self._redis_client.expire(key, self.time_window * 2)
