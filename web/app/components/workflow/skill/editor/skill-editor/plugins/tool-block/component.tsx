@@ -318,7 +318,9 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   })()
 
   const needAuthorization = useMemo(() => {
-    return !currentProvider?.is_team_authorization
+    if (!currentProvider)
+      return false
+    return !currentProvider.is_team_authorization
   }, [currentProvider])
 
   const renderIcon = () => {
@@ -529,7 +531,7 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
         }}
       >
         {renderIcon()}
-        <span className={cn('system-xs-medium max-w-[180px] truncate', needAuthorization ? 'text-text-secondary' : 'text-text-accent')}>
+        <span className={cn('system-xs-medium max-w-[180px] truncate', needAuthorization ? 'text-text-warning' : 'text-text-accent')}>
           {displayLabel}
         </span>
         {needAuthorization && (

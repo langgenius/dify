@@ -295,7 +295,9 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
   }, [currentTool, defaultToolValue, toolConfigFromMetadata])
 
   const needAuthorization = useMemo(() => {
-    return !currentProvider?.is_team_authorization
+    if (!currentProvider)
+      return false
+    return !currentProvider.is_team_authorization
   }, [currentProvider])
 
   const readmeEntrance = useMemo(() => {
@@ -790,7 +792,7 @@ const ToolGroupBlockComponent: FC<ToolGroupBlockComponentProps> = ({
         }}
       >
         {renderIcon()}
-        <span className={cn('system-xs-medium max-w-[160px] truncate', needAuthorization ? 'text-text-secondary' : 'text-text-accent')}>
+        <span className={cn('system-xs-medium max-w-[160px] truncate', needAuthorization ? 'text-text-warning' : 'text-text-accent')}>
           {providerLabel}
         </span>
         {needAuthorization
