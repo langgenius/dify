@@ -1414,76 +1414,12 @@ class DocumentSummaryStatusApi(DocumentResource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        # Get all segments for this document
-        segments = SegmentService.get_segments_by_document_and_dataset(
+        # Get summary status detail from service
+        from services.summary_index_service import SummaryIndexService
+
+        result = SummaryIndexService.get_document_summary_status_detail(
             document_id=document_id,
             dataset_id=dataset_id,
-            status="completed",
-            enabled=True,
         )
 
-        total_segments = len(segments)
-
-        # Get all summary records for these segments
-        segment_ids = [segment.id for segment in segments]
-        summaries = []
-        if segment_ids:
-            from services.summary_index_service import SummaryIndexService
-
-            summaries = SummaryIndexService.get_document_summaries(
-                document_id=document_id,
-                dataset_id=dataset_id,
-                segment_ids=segment_ids,
-            )
-
-        # Create a mapping of chunk_id to summary
-        summary_map = {summary.chunk_id: summary for summary in summaries}
-
-        # Count statuses
-        status_counts = {
-            "completed": 0,
-            "generating": 0,
-            "error": 0,
-            "not_started": 0,
-        }
-
-        summary_list = []
-        for segment in segments:
-            summary = summary_map.get(segment.id)
-            if summary:
-                status = summary.status
-                status_counts[status] = status_counts.get(status, 0) + 1
-                summary_list.append(
-                    {
-                        "segment_id": segment.id,
-                        "segment_position": segment.position,
-                        "status": summary.status,
-                        "summary_preview": (
-                            summary.summary_content[:100] + "..."
-                            if summary.summary_content and len(summary.summary_content) > 100
-                            else summary.summary_content
-                        ),
-                        "error": summary.error,
-                        "created_at": int(summary.created_at.timestamp()) if summary.created_at else None,
-                        "updated_at": int(summary.updated_at.timestamp()) if summary.updated_at else None,
-                    }
-                )
-            else:
-                status_counts["not_started"] += 1
-                summary_list.append(
-                    {
-                        "segment_id": segment.id,
-                        "segment_position": segment.position,
-                        "status": "not_started",
-                        "summary_preview": None,
-                        "error": None,
-                        "created_at": None,
-                        "updated_at": None,
-                    }
-                )
-
-        return {
-            "total_segments": total_segments,
-            "summary_status": status_counts,
-            "summaries": summary_list,
-        }, 200
+        return result, 200
