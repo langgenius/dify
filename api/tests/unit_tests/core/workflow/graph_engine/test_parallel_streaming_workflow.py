@@ -17,7 +17,7 @@ from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine
+from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_events import (
     GraphRunSucceededEvent,
@@ -123,6 +123,7 @@ def test_parallel_streaming_workflow():
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
+        config=GraphEngineConfig(),
     )
 
     # Define LLM outputs

@@ -11,7 +11,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from core.workflow.enums import ErrorStrategy
-from core.workflow.graph_engine import GraphEngine
+from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_events import (
     GraphRunPartialSucceededEvent,
@@ -469,6 +469,7 @@ def test_layer_system_basic():
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
+        config=GraphEngineConfig(),
     )
 
     # Add debug logging layer
@@ -525,6 +526,7 @@ def test_layer_chaining():
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
+        config=GraphEngineConfig(),
     )
 
     # Chain multiple layers
@@ -572,6 +574,7 @@ def test_layer_error_handling():
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
+        config=GraphEngineConfig(),
     )
 
     # Add faulty layer
@@ -753,6 +756,7 @@ def test_graph_run_emits_partial_success_when_node_failure_recovered():
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
+        config=GraphEngineConfig(),
     )
 
     events = list(engine.run())
