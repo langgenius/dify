@@ -59,7 +59,7 @@ def downgrade():
         batch_op.drop_column('need_summary')
 
     with op.batch_alter_table('datasets', schema=None) as batch_op:
-        batch_op.drop_column('summary_index_setting')ß
+        batch_op.drop_column('summary_index_setting')
 
     with op.batch_alter_table('document_segment_summaries', schema=None) as batch_op:
         batch_op.drop_index('document_segment_summaries_status_idx')
