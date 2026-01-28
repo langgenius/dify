@@ -875,9 +875,7 @@ class SummaryIndexService:
                         # Refresh to get updated status and tokens from database
                         with session_factory.create_session() as refresh_session:
                             refreshed_record = (
-                                refresh_session.query(DocumentSegmentSummary)
-                                .filter_by(id=summary_record.id)
-                                .first()
+                                refresh_session.query(DocumentSegmentSummary).filter_by(id=summary_record.id).first()
                             )
                             if refreshed_record:
                                 summary_record = refreshed_record
@@ -887,9 +885,7 @@ class SummaryIndexService:
                         # If vectorization fails, update status to error
                         with session_factory.create_session() as error_session:
                             error_record = (
-                                error_session.query(DocumentSegmentSummary)
-                                .filter_by(id=summary_record.id)
-                                .first()
+                                error_session.query(DocumentSegmentSummary).filter_by(id=summary_record.id).first()
                             )
                             if error_record:
                                 error_record.status = "error"
