@@ -104,9 +104,6 @@ forbidden_modules =
 ignore_imports =
     core.workflow.nodes.loop.loop_node -> core.app.workflow.node_factory
     core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
-    core.workflow.graph_engine.layers.observability -> configs
-    core.workflow.graph_engine.layers.observability -> extensions.otel.parser
-    core.workflow.graph_engine.layers.observability -> extensions.otel.runtime
     core.workflow.graph_engine.layers.persistence -> core.ops.ops_trace_manager
     core.workflow.workflow_entry -> core.app.workflow.layers.observability
     core.workflow.graph_engine.worker_management.worker_pool -> configs
