@@ -1233,6 +1233,6 @@
   "versionHistory.releaseNotesPlaceholder": "Describe what changed",
   "versionHistory.restorationTip": "After version restoration, the current draft will be overwritten.",
   "versionHistory.title": "Versions",
-  "viewPicker.graph": "Graph",
+  "viewPicker.graph": "Canvas",
   "viewPicker.skill": "Skill"
 }

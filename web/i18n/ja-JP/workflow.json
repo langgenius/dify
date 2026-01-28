@@ -1117,5 +1117,7 @@
   "versionHistory.nameThisVersion": "バージョン名を付ける",
   "versionHistory.releaseNotesPlaceholder": "変更内容を入力してください",
   "versionHistory.restorationTip": "バージョンを復元すると、現在の下書きが上書きされます",
-  "versionHistory.title": "バージョン"
+  "versionHistory.title": "バージョン",
+  "viewPicker.graph": "ワークフロー",
+  "viewPicker.skill": "スキル"
 }
