@@ -41,6 +41,7 @@ export const useSetWorkflowVarsWithValue = ({
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
   const dataSourceList = useStore(s => s.dataSourceList)
+  const parentAvailableNodes = useStore(s => s.parentAvailableNodes) || []
   const allPluginInfoList = {
     buildInTools: buildInTools || [],
     customTools: customTools || [],
@@ -54,10 +55,17 @@ export const useSetWorkflowVarsWithValue = ({
     const { getNodes } = store.getState()
 
     const nodeArr = getNodes()
-    const allNodesOutputVars = toNodeOutputVars(nodeArr, false, () => true, [], [], [], passedInAllPluginInfoList || allPluginInfoList, passedInSchemaTypeDefinitions || schemaTypeDefinitions)
+    const parentNodeIds = new Set(parentAvailableNodes.map(node => node.id))
+    const nodeMap = new Map(nodeArr.map(node => [node.id, node]))
+    parentAvailableNodes.forEach((node) => {
+      if (!nodeMap.has(node.id))
+        nodeMap.set(node.id, node)
+    })
+    const allNodes = Array.from(nodeMap.values())
+    const allNodesOutputVars = toNodeOutputVars(allNodes, false, () => true, [], [], [], passedInAllPluginInfoList || allPluginInfoList, passedInSchemaTypeDefinitions || schemaTypeDefinitions)
 
     const nodesKeyValue: Record<string, Node> = {}
-    nodeArr.forEach((node) => {
+    allNodes.forEach((node) => {
       nodesKeyValue[node.id] = node
     })
 
@@ -74,8 +82,10 @@ export const useSetWorkflowVarsWithValue = ({
       return nodesKeyValue[nodeId]
     })
 
+    const resolvedInteractionMode = interactionMode ?? InteractionMode.Default
     const res: NodeWithVar[] = withValueNodes.map((node) => {
       const nodeId = node.id
+      const isParentNode = resolvedInteractionMode === InteractionMode.Subgraph && parentNodeIds.has(nodeId)
       const varsUnderTheNode = inspectVars.filter((varItem) => {
         return varItem.selector[0] === nodeId
       })
@@ -95,12 +105,12 @@ export const useSetWorkflowVarsWithValue = ({
         }),
         isSingRunRunning: false,
         isValueFetched: false,
+        isHidden: isParentNode,
       }
       return nodeWithVar
     })
-    const resolvedInteractionMode = interactionMode ?? InteractionMode.Default
     const shouldApplyAlias = resolvedInteractionMode !== InteractionMode.Subgraph
-    const nextNodes = shouldApplyAlias ? applyAgentSubgraphInspectVars(res, nodeArr) : res
+    const nextNodes = shouldApplyAlias ? applyAgentSubgraphInspectVars(res, allNodes) : res
     setNodesWithInspectVars(nextNodes)
   }
 

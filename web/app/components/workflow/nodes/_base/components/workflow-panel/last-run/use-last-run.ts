@@ -37,7 +37,7 @@ import useToolSingleRunFormParams from '@/app/components/workflow/nodes/tool/use
 import useTriggerPluginGetDataForCheckMore from '@/app/components/workflow/nodes/trigger-plugin/use-check-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, isPromptMessageContext } from '@/app/components/workflow/types'
 import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 import { useInvalidLastRun } from '@/service/use-workflow'
@@ -251,10 +251,23 @@ const useLastRun = <T>({
     if (blockType !== BlockEnum.LLM)
       return true
     const llmData = data as unknown as LLMNodeType
-    const contextSelector = llmData.context?.variable_selector
-    if (!Array.isArray(contextSelector) || contextSelector.length === 0) {
-      Toast.notify({ type: 'error', message: t('nodes.llm.contextMissing', { ns: 'workflow' }) })
-      return false
+    const promptTemplate = llmData.prompt_template
+    if (!Array.isArray(promptTemplate))
+      return true
+    const contextSelectors = promptTemplate
+      .filter(isPromptMessageContext)
+      .map(item => item.$context)
+      .filter(selector => Array.isArray(selector) && selector.length >= 2)
+    if (contextSelectors.length === 0)
+      return true
+    const uniqueSelectors = new Set(contextSelectors.map(selector => `${selector[0]}::${selector[1]}`))
+    for (const selectorKey of uniqueSelectors) {
+      const [nodeId, varName] = selectorKey.split('::')
+      const inspectVarValue = hasSetInspectVar(nodeId, varName, systemVars, conversationVars)
+      if (!inspectVarValue) {
+        Toast.notify({ type: 'error', message: t('nodes.llm.contextMissing', { ns: 'workflow' }) })
+        return false
+      }
     }
     return true
   }, [blockType, data, t])
