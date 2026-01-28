@@ -17,6 +17,7 @@ type Props = {
   onChange: (enabled: boolean) => void
   nodeId: string
   toolSettings?: ToolSetting[]
+  promptTemplateKey: string
 }
 
 const ComputerUseConfig: FC<Props> = ({
@@ -25,6 +26,7 @@ const ComputerUseConfig: FC<Props> = ({
   onChange,
   nodeId,
   toolSettings,
+  promptTemplateKey,
 }) => {
   const { t } = useTranslation()
 
@@ -64,6 +66,7 @@ const ComputerUseConfig: FC<Props> = ({
             enabled={enabled}
             nodeId={nodeId}
             toolSettings={toolSettings}
+            promptTemplateKey={promptTemplateKey}
           />
         </div>
       </FieldCollapse>

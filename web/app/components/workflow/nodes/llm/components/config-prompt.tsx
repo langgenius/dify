@@ -65,6 +65,7 @@ type Props = {
   varList?: Variable[]
   handleAddVariable: (payload: any) => void
   modelConfig: ModelConfig
+  onPromptEditorBlur?: () => void
 }
 
 const ConfigPrompt: FC<Props> = ({
@@ -80,6 +81,7 @@ const ConfigPrompt: FC<Props> = ({
   varList = [],
   handleAddVariable,
   modelConfig,
+  onPromptEditorBlur,
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -358,6 +360,7 @@ const ConfigPrompt: FC<Props> = ({
                             handleAddVariable={handleAddVariable}
                             modelConfig={modelConfig}
                             isSupportSandbox={isSupportSandbox}
+                            onPromptEditorBlur={onPromptEditorBlur}
                           />
                         </div>
                       )
@@ -434,6 +437,7 @@ const ConfigPrompt: FC<Props> = ({
                 onGenerated={handleGenerated}
                 modelConfig={modelConfig}
                 isSupportSandbox={isSupportSandbox}
+                onBlur={onPromptEditorBlur}
               />
             </div>
           )}

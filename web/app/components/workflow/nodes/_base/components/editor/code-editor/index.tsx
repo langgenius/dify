@@ -26,6 +26,8 @@ export type Props = {
   value?: string | object
   placeholder?: React.JSX.Element | string
   onChange?: (value: string) => void
+  onBlur?: () => void
+  onFocus?: () => void
   title?: string | React.JSX.Element
   language: CodeLanguage
   headerRight?: React.JSX.Element
@@ -55,6 +57,8 @@ const CodeEditor: FC<Props> = ({
   value = '',
   placeholder = '',
   onChange = noop,
+  onBlur,
+  onFocus,
   title = '',
   headerRight,
   language,
@@ -109,9 +113,11 @@ const CodeEditor: FC<Props> = ({
 
     editor.onDidFocusEditorText(() => {
       setIsFocus(true)
+      onFocus?.()
     })
     editor.onDidBlurEditorText(() => {
       setIsFocus(false)
+      onBlur?.()
     })
 
     monaco.editor.setTheme(appTheme === Theme.light ? 'light' : 'vs-dark') // Fix: sometimes not load the default theme

@@ -17,6 +17,7 @@ type ReferenceToolConfigProps = {
   enabled: boolean
   nodeId: string
   toolSettings?: ToolSetting[]
+  promptTemplateKey: string
 }
 
 type ToolDependency = {
@@ -35,20 +36,28 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
   enabled,
   nodeId,
   toolSettings,
+  promptTemplateKey,
 }) => {
   const isDisabled = readonly || !enabled
   const appId = useAppStore(s => s.appDetail?.id)
   const { handleNodeDataUpdate } = useNodeCurdKit<LLMNodeType>(nodeId)
 
-  const { data } = useQuery({
-    queryKey: consoleQuery.workflowDraft.nodeSkills.queryKey({
-      input: {
-        params: {
-          appId: appId ?? '',
-          nodeId,
+  const queryKey = useMemo(() => {
+    return [
+      ...consoleQuery.workflowDraft.nodeSkills.queryKey({
+        input: {
+          params: {
+            appId: appId ?? '',
+            nodeId,
+          },
         },
-      },
-    }),
+      }),
+      promptTemplateKey,
+    ]
+  }, [appId, nodeId, promptTemplateKey])
+
+  const { data } = useQuery({
+    queryKey,
     queryFn: () => consoleClient.workflowDraft.nodeSkills({
       params: {
         appId: appId ?? '',

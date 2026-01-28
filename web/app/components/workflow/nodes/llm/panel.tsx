@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import type { LLMNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { RiAlertFill, RiInformationLine, RiQuestionLine } from '@remixicon/react'
+import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -74,6 +75,22 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleComputerUseChange,
   } = useConfig(id, data)
 
+  const promptTemplateKey = React.useMemo(() => {
+    try {
+      return JSON.stringify(inputs.prompt_template ?? null)
+    }
+    catch {
+      return ''
+    }
+  }, [inputs.prompt_template])
+  const [skillsRefreshKey, setSkillsRefreshKey] = React.useState(promptTemplateKey)
+  const { run: scheduleSkillsRefresh } = useDebounceFn((nextKey: string) => {
+    setSkillsRefreshKey(nextKey)
+  }, { wait: 3000 })
+  const handlePromptEditorBlur = useCallback(() => {
+    scheduleSkillsRefresh(promptTemplateKey)
+  }, [promptTemplateKey, scheduleSkillsRefresh])
+
   const {
     handleMaxIterationsChange,
   } = useNodeTools(id)
@@ -144,6 +161,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             varList={inputs.prompt_config?.jinja2_variables || []}
             handleAddVariable={handleAddVariable}
             modelConfig={model}
+            onPromptEditorBlur={handlePromptEditorBlur}
           />
         )}
 
@@ -234,6 +252,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               onChange={handleComputerUseChange}
               nodeId={id}
               toolSettings={inputs.tool_settings}
+              promptTemplateKey={skillsRefreshKey}
             />
           </>
         )}

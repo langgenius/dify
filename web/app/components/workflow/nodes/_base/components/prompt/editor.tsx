@@ -83,6 +83,8 @@ type Props = {
   placeholderClassName?: string
   titleClassName?: string
   required?: boolean
+  onBlur?: () => void
+  onFocus?: () => void
 }
 
 const Editor: FC<Props> = ({
@@ -125,6 +127,8 @@ const Editor: FC<Props> = ({
   titleClassName,
   editorContainerClassName,
   required,
+  onBlur,
+  onFocus,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -297,8 +301,14 @@ const Editor: FC<Props> = ({
                         onManageInputField: () => setShowInputFieldPanel?.(true),
                       }}
                       onChange={onChange}
-                      onBlur={setBlur}
-                      onFocus={setFocus}
+                      onBlur={() => {
+                        setBlur()
+                        onBlur?.()
+                      }}
+                      onFocus={() => {
+                        setFocus()
+                        onFocus?.()
+                      }}
                       editable={!readOnly}
                       isSupportFileVar={isSupportFileVar}
                       isSupportSandbox={isSupportSandbox}
@@ -323,6 +333,8 @@ const Editor: FC<Props> = ({
                       noWrapper
                       isExpand={isExpand}
                       className={inputClassName}
+                      onBlur={onBlur}
+                      onFocus={onFocus}
                     />
                   </div>
                 )}
