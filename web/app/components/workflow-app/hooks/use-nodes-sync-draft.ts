@@ -115,7 +115,7 @@ export const useNodesSyncDraft = () => {
         if (error && error.json && !error.bodyUsed) {
           error.json().then((err: any) => {
             if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft()
+              handleRefreshWorkflowDraft(true)
           })
         }
         callback?.onError?.()

@@ -2,7 +2,7 @@
   "compilerOptions": {
     "incremental": true,
     "target": "es2022",
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "lib": [
       "dom",
       "dom.iterable",

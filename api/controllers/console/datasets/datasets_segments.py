@@ -32,7 +32,7 @@ from extensions.ext_redis import redis_client
 from fields.segment_fields import child_chunk_fields, segment_fields
 from libs.helper import escape_like_pattern
 from libs.login import current_account_with_tenant, login_required
-from models.dataset import ChildChunk, DocumentSegment
+from models.dataset import ChildChunk, DocumentSegment, DocumentSegmentSummary
 from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
