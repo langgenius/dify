@@ -167,6 +167,31 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
     }))
   }, [])
 
+  const renderProviderIcon = useCallback((providerId: string) => {
+    const icon = providerIcons.get(providerId)
+    if (!icon || iconErrorMap[providerId])
+      return <DefaultToolIcon className="h-4 w-4 text-text-primary" />
+    if (typeof icon === 'string') {
+      return (
+        <img
+          src={icon}
+          alt={providerId}
+          className="h-full w-full object-cover"
+          width={24}
+          height={24}
+          onError={() => setIconErrorMap(prev => ({ ...prev, [providerId]: true }))}
+        />
+      )
+    }
+    return (
+      <AppIcon
+        className="h-full w-full object-cover"
+        icon={icon.content}
+        background={icon.background}
+      />
+    )
+  }, [iconErrorMap, providerIcons])
+
   return (
     <div className={cn('flex flex-col gap-2', isDisabled && 'opacity-50')}>
       {providers.map((provider) => {
@@ -179,30 +204,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
             <div className="flex items-center rounded-lg p-1">
               <div className="flex min-w-0 items-center gap-2">
                 <div className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-md">
-                  {(() => {
-                    const icon = providerIcons.get(provider.id)
-                    if (!icon || iconErrorMap[provider.id])
-                      return <DefaultToolIcon className="h-4 w-4 text-text-primary" />
-                    if (typeof icon === 'string') {
-                      return (
-                        <img
-                          src={icon}
-                          alt={provider.id}
-                          className="h-full w-full object-cover"
-                          width={24}
-                          height={24}
-                          onError={() => setIconErrorMap(prev => ({ ...prev, [provider.id]: true }))}
-                        />
-                      )
-                    }
-                    return (
-                      <AppIcon
-                        className="h-full w-full object-cover"
-                        icon={icon.content}
-                        background={icon.background}
-                      />
-                    )
-                  })()}
+                  {renderProviderIcon(provider.id)}
                 </div>
                 <div className="system-sm-medium truncate text-text-primary">
                   {provider.id}
