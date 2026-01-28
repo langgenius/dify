@@ -1073,7 +1073,7 @@ class WorkflowService:
             draft_var_srv.prefill_conversation_variable_default_values(workflow)
 
         variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+            system_variables=SystemVariable.default(),
             user_inputs={},
             environment_variables=workflow.environment_variables,
             conversation_variables=[],

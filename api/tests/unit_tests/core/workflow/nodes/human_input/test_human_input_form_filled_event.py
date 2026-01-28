@@ -27,8 +27,7 @@ class _FakeFormRepository:
 
 
 def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#}}") -> HumanInputNode:
-    system_variables = SystemVariable.empty()
-    system_variables.workflow_execution_id = str(uuid.uuid4())
+    system_variables = SystemVariable.default()
     graph_runtime_state = GraphRuntimeState(
         variable_pool=VariablePool(system_variables=system_variables, user_inputs={}, environment_variables=[]),
         start_at=0.0,
@@ -88,8 +87,7 @@ def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#
 
 
 def _build_timeout_node() -> HumanInputNode:
-    system_variables = SystemVariable.empty()
-    system_variables.workflow_execution_id = str(uuid.uuid4())
+    system_variables = SystemVariable.default()
     graph_runtime_state = GraphRuntimeState(
         variable_pool=VariablePool(system_variables=system_variables, user_inputs={}, environment_variables=[]),
         start_at=0.0,
