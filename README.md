@@ -76,7 +76,7 @@ The easiest way to start the Dify server is through [Docker Compose](docker/dock
 ```bash
 cd dify
 cd docker
-cp .env.example .env
+./setup_env.sh
 docker compose up -d
 ```
 

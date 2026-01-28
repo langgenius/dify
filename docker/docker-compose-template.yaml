@@ -1,4 +1,112 @@
-x-shared-env: &shared-api-worker-env
+# Shared configuration using YAML anchors and env_file
+x-shared-api-worker-config: &shared-api-worker-config
+  env_file:
+    - ./envs/core-services/shared.env
+    - ./envs/core-services/api.env
+    - ./envs/security.env
+    - ./envs/databases/db-postgres.env
+    - ./envs/databases/db-mysql.env
+    - ./envs/databases/redis.env
+    - ./envs/vectorstores/weaviate.env
+    - ./envs/vectorstores/qdrant.env
+    - ./envs/vectorstores/oceanbase.env
+    - ./envs/vectorstores/seekdb.env
+    - ./envs/vectorstores/couchbase.env
+    - ./envs/vectorstores/pgvector.env
+    - ./envs/vectorstores/vastbase.env
+    - ./envs/vectorstores/pgvecto-rs.env
+    - ./envs/vectorstores/chroma.env
+    - ./envs/vectorstores/iris.env
+    - ./envs/vectorstores/oracle.env
+    - ./envs/vectorstores/opengauss.env
+    - ./envs/vectorstores/myscale.env
+    - ./envs/vectorstores/matrixone.env
+    - ./envs/vectorstores/elasticsearch.env
+    - ./envs/vectorstores/opensearch.env
+    - ./envs/vectorstores/milvus.env
+    - ./envs/infrastructure/nginx.env
+    - ./envs/infrastructure/certbot.env
+    - ./envs/infrastructure/ssrf-proxy.env
+    - ./envs/infrastructure/etcd.env
+    - ./envs/infrastructure/minio.env
+    - ./envs/infrastructure/milvus-standalone.env
+  networks:
+    - ssrf_proxy_network
+    - default
+  restart: always
+
+x-shared-worker-config: &shared-worker-config
+  env_file:
+    - ./envs/core-services/shared.env
+    - ./envs/core-services/worker.env
+    - ./envs/security.env
+    - ./envs/databases/db-postgres.env
+    - ./envs/databases/db-mysql.env
+    - ./envs/databases/redis.env
+    - ./envs/vectorstores/weaviate.env
+    - ./envs/vectorstores/qdrant.env
+    - ./envs/vectorstores/oceanbase.env
+    - ./envs/vectorstores/seekdb.env
+    - ./envs/vectorstores/couchbase.env
+    - ./envs/vectorstores/pgvector.env
+    - ./envs/vectorstores/vastbase.env
+    - ./envs/vectorstores/pgvecto-rs.env
+    - ./envs/vectorstores/chroma.env
+    - ./envs/vectorstores/iris.env
+    - ./envs/vectorstores/oracle.env
+    - ./envs/vectorstores/opengauss.env
+    - ./envs/vectorstores/myscale.env
+    - ./envs/vectorstores/matrixone.env
+    - ./envs/vectorstores/elasticsearch.env
+    - ./envs/vectorstores/opensearch.env
+    - ./envs/vectorstores/milvus.env
+    - ./envs/infrastructure/nginx.env
+    - ./envs/infrastructure/certbot.env
+    - ./envs/infrastructure/ssrf-proxy.env
+    - ./envs/infrastructure/etcd.env
+    - ./envs/infrastructure/minio.env
+    - ./envs/infrastructure/milvus-standalone.env
+  networks:
+    - ssrf_proxy_network
+    - default
+  restart: always
+
+x-shared-worker-beat-config: &shared-worker-beat-config
+  env_file:
+    - ./envs/core-services/shared.env
+    - ./envs/core-services/worker-beat.env
+    - ./envs/security.env
+    - ./envs/databases/db-postgres.env
+    - ./envs/databases/db-mysql.env
+    - ./envs/databases/redis.env
+    - ./envs/vectorstores/weaviate.env
+    - ./envs/vectorstores/qdrant.env
+    - ./envs/vectorstores/oceanbase.env
+    - ./envs/vectorstores/seekdb.env
+    - ./envs/vectorstores/couchbase.env
+    - ./envs/vectorstores/pgvector.env
+    - ./envs/vectorstores/vastbase.env
+    - ./envs/vectorstores/pgvecto-rs.env
+    - ./envs/vectorstores/chroma.env
+    - ./envs/vectorstores/iris.env
+    - ./envs/vectorstores/oracle.env
+    - ./envs/vectorstores/opengauss.env
+    - ./envs/vectorstores/myscale.env
+    - ./envs/vectorstores/matrixone.env
+    - ./envs/vectorstores/elasticsearch.env
+    - ./envs/vectorstores/opensearch.env
+    - ./envs/vectorstores/milvus.env
+    - ./envs/infrastructure/nginx.env
+    - ./envs/infrastructure/certbot.env
+    - ./envs/infrastructure/ssrf-proxy.env
+    - ./envs/infrastructure/etcd.env
+    - ./envs/infrastructure/minio.env
+    - ./envs/infrastructure/milvus-standalone.env
+  networks:
+    - ssrf_proxy_network
+    - default
+  restart: always
+
 services:
   # Init container to fix permissions
   init_permissions:
@@ -21,11 +129,9 @@ services:
 
   # API service
   api:
+    <<: *shared-api-worker-config
     image: langgenius/dify-api:1.11.4
-    restart: always
     environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
       # Startup mode, 'api' starts the API server.
       MODE: api
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -63,11 +169,9 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
+    <<: *shared-worker-config
     image: langgenius/dify-api:1.11.4
-    restart: always
     environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
       # Startup mode, 'worker' starts the Celery worker for processing all queues.
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -102,11 +206,9 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
+    <<: *shared-worker-beat-config
     image: langgenius/dify-api:1.11.4
-    restart: always
     environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
       # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
       MODE: beat
     depends_on:
@@ -134,6 +236,9 @@ services:
   web:
     image: langgenius/dify-web:1.11.4
     restart: always
+    env_file:
+      - ./envs/core-services/web.env
+      - ./envs/security.env
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
@@ -248,6 +353,9 @@ services:
   sandbox:
     image: langgenius/dify-sandbox:0.2.12
     restart: always
+    env_file:
+      - ./envs/core-services/sandbox.env
+      - ./envs/security.env
     environment:
       # The DifySandbox configurations
       # Make sure you are changing this key for your deployment with a strong key.
@@ -272,9 +380,17 @@ services:
   plugin_daemon:
     image: langgenius/dify-plugin-daemon:0.5.2-local
     restart: always
+    env_file:
+      - ./envs/core-services/shared.env
+      - ./envs/core-services/plugin-daemon.env
+      - ./envs/security.env
+      - ./envs/databases/db-postgres.env
+      - ./envs/databases/db-mysql.env
+      - ./envs/databases/redis.env
+    networks:
+      - ssrf_proxy_network
+      - default
     environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
       DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
       SERVER_PORT: ${PLUGIN_DAEMON_PORT:-5002}
       SERVER_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
