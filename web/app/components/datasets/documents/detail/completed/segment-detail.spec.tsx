@@ -356,6 +356,8 @@ describe('SegmentDetail', () => {
         expect.any(String),
         expect.any(Array),
         expect.any(Array),
+        expect.any(String),
+        expect.any(Boolean),
       )
     })
 
@@ -545,6 +547,8 @@ describe('SegmentDetail', () => {
         expect.any(String),
         expect.any(Array),
         expect.arrayContaining([expect.objectContaining({ id: 'new-attachment' })]),
+        expect.any(String),
+        expect.any(Boolean),
       )
     })
 
@@ -585,6 +589,7 @@ describe('SegmentDetail', () => {
         expect.any(String),
         expect.any(Array),
         expect.any(Array),
+        expect.any(String),
         true,
       )
     })
