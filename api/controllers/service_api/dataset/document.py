@@ -16,6 +16,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
@@ -29,12 +30,20 @@ from controllers.service_api.wraps import (
     cloud_edition_billing_resource_check,
 )
 from core.errors.error import ProviderTokenNotInitError
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService
-from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
+from services.entities.knowledge_entities.knowledge_entities import (
+    KnowledgeConfig,
+    PreProcessingRule,
+    ProcessRule,
+    RetrievalModel,
+    Rule,
+    Segmentation,
+)
 from services.file_service import FileService
 
 
@@ -69,8 +78,26 @@ class DocumentTextUpdate(BaseModel):
         return self
 
 
-for m in [ProcessRule, RetrievalModel, DocumentTextCreatePayload, DocumentTextUpdate]:
-    service_api_ns.schema_model(m.__name__, m.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))  # type: ignore
+class DocumentListQuery(BaseModel):
+    page: int = Field(default=1, description="Page number")
+    limit: int = Field(default=20, description="Number of items per page")
+    keyword: str | None = Field(default=None, description="Search keyword")
+    status: str | None = Field(default=None, description="Document status filter")
+
+
+register_enum_models(service_api_ns, RetrievalMethod)
+
+register_schema_models(
+    service_api_ns,
+    ProcessRule,
+    RetrievalModel,
+    DocumentTextCreatePayload,
+    DocumentTextUpdate,
+    DocumentListQuery,
+    Rule,
+    PreProcessingRule,
+    Segmentation,
+)
 
 
 @service_api_ns.route(
@@ -261,17 +288,6 @@ class DocumentAddByFileApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         """Create document by upload file."""
-        args = {}
-        if "data" in request.form:
-            args = json.loads(request.form["data"])
-        if "doc_form" not in args:
-            args["doc_form"] = "text_model"
-        if "doc_language" not in args:
-            args["doc_language"] = "English"
-
-        # get dataset info
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
@@ -279,6 +295,18 @@ class DocumentAddByFileApi(DatasetApiResource):
 
         if dataset.provider == "external":
             raise ValueError("External datasets are not supported.")
+
+        args = {}
+        if "data" in request.form:
+            args = json.loads(request.form["data"])
+        if "doc_form" not in args:
+            args["doc_form"] = dataset.chunk_structure or "text_model"
+        if "doc_language" not in args:
+            args["doc_language"] = "English"
+
+        # get dataset info
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
 
         indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
         if not indexing_technique:
@@ -370,17 +398,6 @@ class DocumentUpdateByFileApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id, document_id):
         """Update document by upload file."""
-        args = {}
-        if "data" in request.form:
-            args = json.loads(request.form["data"])
-        if "doc_form" not in args:
-            args["doc_form"] = "text_model"
-        if "doc_language" not in args:
-            args["doc_language"] = "English"
-
-        # get dataset info
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
@@ -388,6 +405,18 @@ class DocumentUpdateByFileApi(DatasetApiResource):
 
         if dataset.provider == "external":
             raise ValueError("External datasets are not supported.")
+
+        args = {}
+        if "data" in request.form:
+            args = json.loads(request.form["data"])
+        if "doc_form" not in args:
+            args["doc_form"] = dataset.chunk_structure or "text_model"
+        if "doc_language" not in args:
+            args["doc_language"] = "English"
+
+        # get dataset info
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
 
         # indexing_technique is already set in dataset since this is an update
         args["indexing_technique"] = dataset.indexing_technique
@@ -458,34 +487,33 @@ class DocumentListApi(DatasetApiResource):
     def get(self, tenant_id, dataset_id):
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        search = request.args.get("keyword", default=None, type=str)
-        status = request.args.get("status", default=None, type=str)
+        query_params = DocumentListQuery.model_validate(request.args.to_dict())
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
             raise NotFound("Dataset not found.")
 
         query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=tenant_id)
 
-        if status:
-            query = DocumentService.apply_display_status_filter(query, status)
+        if query_params.status:
+            query = DocumentService.apply_display_status_filter(query, query_params.status)
 
-        if search:
-            search = f"%{search}%"
+        if query_params.keyword:
+            search = f"%{query_params.keyword}%"
             query = query.where(Document.name.like(search))
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
-        paginated_documents = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+        paginated_documents = db.paginate(
+            select=query, page=query_params.page, per_page=query_params.limit, max_per_page=100, error_out=False
+        )
         documents = paginated_documents.items
 
         response = {
             "data": marshal(documents, document_fields),
-            "has_more": len(documents) == limit,
-            "limit": limit,
+            "has_more": len(documents) == query_params.limit,
+            "limit": query_params.limit,
             "total": paginated_documents.total,
-            "page": page,
+            "page": query_params.page,
         }
 
         return response

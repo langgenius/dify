@@ -1,0 +1,4442 @@
+{
+  "__tests__/check-i18n.test.ts": {
+    "regexp/no-unused-capturing-group": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "__tests__/document-detail-navigation-fix.test.tsx": {
+    "no-console": {
+      "count": 10
+    }
+  },
+  "__tests__/document-list-sorting.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "__tests__/embedded-user-id-auth.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "__tests__/embedded-user-id-store.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "__tests__/goto-anything/command-selector.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "__tests__/goto-anything/slash-command-modes.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "__tests__/i18n-upload-features.test.ts": {
+    "no-console": {
+      "count": 3
+    }
+  },
+  "__tests__/navigation-utils.test.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "__tests__/plugin-tool-workflow-error.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "__tests__/real-browser-flicker.test.tsx": {
+    "no-console": {
+      "count": 16
+    },
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "__tests__/unified-tags-logic.test.ts": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "__tests__/workflow-onboarding-integration.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/svg-attribute-error-reproduction.spec.tsx": {
+    "no-console": {
+      "count": 19
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/(commonLayout)/datasets/(datasetDetailLayout)/[datasetId]/layout-main.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/(shareLayout)/components/splash.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/(shareLayout)/webapp-reset-password/layout.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/(shareLayout)/webapp-signin/components/mail-and-password-auth.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/account/(commonLayout)/account-page/email-change-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/account/(commonLayout)/account-page/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/account/(commonLayout)/delete-account/components/verify-email.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/account/oauth/authorize/layout.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/account/oauth/authorize/page.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app-sidebar/app-info.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app-sidebar/app-operations.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    }
+  },
+  "app/components/app-sidebar/dataset-info/dropdown.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app-sidebar/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app-sidebar/navLink.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app-sidebar/sidebar-animation-issues.spec.tsx": {
+    "no-console": {
+      "count": 26
+    }
+  },
+  "app/components/app-sidebar/text-squeeze-fix-verification.spec.tsx": {
+    "no-console": {
+      "count": 51
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/annotation/batch-add-annotation-modal/csv-downloader.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/app/annotation/batch-add-annotation-modal/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/app/annotation/edit-annotation-modal/edit-item/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/app/annotation/edit-annotation-modal/index.spec.tsx": {
+    "test/prefer-hooks-in-order": {
+      "count": 1
+    }
+  },
+  "app/components/app/annotation/header-opts/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/annotation/header-opts/index.tsx": {
+    "react/no-nested-component-definitions": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/annotation/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/app/annotation/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/app/annotation/view-annotation-modal/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 5
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/app-access-control/access-control.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/app/app-publisher/features-wrapper.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/app/app-publisher/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/app/configuration/config-prompt/advanced-prompt-input.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/app/configuration/config-prompt/conversation-history/edit-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config-prompt/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config-prompt/simple-prompt-input.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/app/configuration/config-var/config-modal/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/app/configuration/config-var/select-var-type.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config-vision/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config/agent-setting-button.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/app/configuration/config/agent/agent-setting/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config/agent/agent-tools/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/app/configuration/config/agent/agent-tools/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/app/configuration/config/assistant-type-picker/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config/automatic/get-automatic-res.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config/automatic/instruction-editor.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/app/configuration/config/automatic/prompt-res-in-workflow.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config/automatic/prompt-res.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config/code-generator/get-code-generator-res.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/app/configuration/config/config-audio.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config/config-document.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/app/configuration/dataset-config/card-item/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/dataset-config/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 37
+    }
+  },
+  "app/components/app/configuration/dataset-config/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/dataset-config/params-config/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/dataset-config/select-dataset/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/app/configuration/dataset-config/select-dataset/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/app/configuration/dataset-config/settings-modal/retrieval-section.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/debug/debug-with-multiple-model/chat-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/app/configuration/debug/debug-with-multiple-model/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/app/configuration/debug/debug-with-multiple-model/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/app/configuration/debug/debug-with-multiple-model/text-generation-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/app/configuration/debug/debug-with-single-model/index.spec.tsx": {
+    "react/no-create-ref": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/app/configuration/debug/debug-with-single-model/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/app/configuration/debug/hooks.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/app/configuration/debug/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 11
+    }
+  },
+  "app/components/app/configuration/debug/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "style/multiline-ternary": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 24
+    }
+  },
+  "app/components/app/configuration/prompt-value-panel/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/app/configuration/prompt-value-panel/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/tools/external-data-tool-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/app/create-app-dialog/app-card/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/create-app-dialog/app-list/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/create-app-modal/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/app/create-app-modal/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/create-from-dsl-modal/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/app/log/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/app/log/list.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 6
+    },
+    "style/multiline-ternary": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 14
+    }
+  },
+  "app/components/app/log/model-info.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/app/overview/__tests__/toggle-logic.test.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/overview/app-card.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/overview/app-chart.tsx": {
+    "ts/no-explicit-any": {
+      "count": 13
+    }
+  },
+  "app/components/app/overview/embedded/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/app/overview/settings/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 3
+    },
+    "regexp/no-unused-capturing-group": {
+      "count": 1
+    }
+  },
+  "app/components/app/overview/trigger-card.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/switch-app-modal/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/app/text-generate/item/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/app/text-generate/item/result-tab.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/app/workflow-log/list.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/workflow-log/list.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/app/workflow-log/trigger-by-display.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/apps/app-card.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 22
+    }
+  },
+  "app/components/apps/app-card.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react/no-nested-component-definitions": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/apps/list.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/apps/list.tsx": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "app/components/apps/new-app-card.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/apps/new-app-card.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/agent-log-modal/detail.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/agent-log-modal/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/agent-log-modal/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/agent-log-modal/result.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/agent-log-modal/tool-call.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/amplitude/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/app-icon-picker/ImageInput.tsx": {
+    "react/no-create-ref": {
+      "count": 1
+    }
+  },
+  "app/components/base/audio-btn/audio.ts": {
+    "node/prefer-global/buffer": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/audio-gallery/AudioPlayer.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/auto-height-textarea/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/avatar/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/block-input/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/block-input/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react/no-nested-component-definitions": {
+      "count": 1
+    }
+  },
+  "app/components/base/button/add-button.stories.tsx": {
+    "no-console": {
+      "count": 1
+    }
+  },
+  "app/components/base/button/sync-button.stories.tsx": {
+    "no-console": {
+      "count": 1
+    }
+  },
+  "app/components/base/chat/chat-with-history/chat-wrapper.tsx": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/base/chat/chat-with-history/context.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/base/chat/chat-with-history/header-in-mobile.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/chat/chat-with-history/header/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/chat/chat-with-history/hooks.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 18
+    }
+  },
+  "app/components/base/chat/chat-with-history/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/chat/chat-with-history/inputs-form/content.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/chat/chat-with-history/sidebar/operation.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/chat/chat/answer/agent-content.tsx": {
+    "style/multiline-ternary": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/chat/chat/answer/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/base/chat/chat/answer/workflow-process.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/chat/chat/chat-input-area/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/chat/chat/check-input-forms-hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/chat/chat/citation/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/chat/chat/hooks.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 14
+    }
+  },
+  "app/components/base/chat/chat/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/chat/chat/type.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/base/chat/chat/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/chat/embedded-chatbot/chat-wrapper.tsx": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/base/chat/embedded-chatbot/context.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/base/chat/embedded-chatbot/hooks.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 3
+    }
+  },
+  "app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/chat/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "app/components/base/checkbox/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/chip/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/confirm/index.stories.tsx": {
+    "no-console": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/confirm/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/base/content-dialog/index.stories.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/date-and-time-picker/date-picker/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    }
+  },
+  "app/components/base/date-and-time-picker/time-picker/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/base/dialog/index.stories.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/emoji-picker/Inner.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/error-boundary/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/features/new-feature-panel/annotation-reply/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/features/new-feature-panel/annotation-reply/score-slider/base-slider/index.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/features/new-feature-panel/conversation-opener/modal.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/features/new-feature-panel/feature-card.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/base/features/new-feature-panel/file-upload/setting-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/features/new-feature-panel/moderation/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/features/new-feature-panel/moderation/moderation-setting-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/features/new-feature-panel/text-to-speech/voice-settings.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/features/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/file-uploader/dynamic-pdf-preview.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/file-uploader/file-list-in-log.tsx": {
+    "react/no-missing-key": {
+      "count": 1
+    }
+  },
+  "app/components/base/file-uploader/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/file-uploader/utils.spec.ts": {
+    "test/no-identical-title": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/file-uploader/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/form/components/base/base-field.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/form/components/base/base-form.tsx": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/base/form/components/field/mixed-variable-text-input/placeholder.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/form/components/field/variable-or-constant-input.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/form/components/field/variable-selector.tsx": {
+    "no-console": {
+      "count": 1
+    }
+  },
+  "app/components/base/form/form-scenarios/base/field.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/form/form-scenarios/base/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/form/form-scenarios/demo/index.tsx": {
+    "no-console": {
+      "count": 2
+    }
+  },
+  "app/components/base/form/form-scenarios/input-field/field.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/form/form-scenarios/input-field/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/form/form-scenarios/node-panel/field.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/form/form-scenarios/node-panel/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/form/hooks/use-check-validated.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/form/hooks/use-get-validators.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/form/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 16
+    }
+  },
+  "app/components/base/form/utils/secret-input/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/icons/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/image-uploader/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/base/image-uploader/image-link-input.tsx": {
+    "regexp/no-unused-capturing-group": {
+      "count": 1
+    }
+  },
+  "app/components/base/image-uploader/image-preview.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/image-uploader/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/inline-delete-confirm/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    }
+  },
+  "app/components/base/input-number/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/input/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/input/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/markdown-blocks/audio-block.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/base/markdown-blocks/button.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/markdown-blocks/code-block.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 10
+    },
+    "ts/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "app/components/base/markdown-blocks/form.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 11
+    }
+  },
+  "app/components/base/markdown-blocks/img.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/markdown-blocks/link.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/markdown-blocks/paragraph.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/markdown-blocks/plugin-img.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/base/markdown-blocks/plugin-paragraph.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/markdown-blocks/pre-code.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/markdown-blocks/script-block.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/markdown-blocks/think-block.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/base/markdown-blocks/video-block.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/base/markdown/error-boundary.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/base/markdown/markdown-utils.ts": {
+    "regexp/no-unused-capturing-group": {
+      "count": 1
+    }
+  },
+  "app/components/base/markdown/react-markdown-wrapper.tsx": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/base/mermaid/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 7
+    },
+    "regexp/no-super-linear-backtracking": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/mermaid/utils.ts": {
+    "regexp/no-unused-capturing-group": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/base/message-log-modal/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/message-log-modal/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/modal-like-wrap/index.stories.tsx": {
+    "no-console": {
+      "count": 3
+    }
+  },
+  "app/components/base/modal/index.stories.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/modal/modal.stories.tsx": {
+    "no-console": {
+      "count": 4
+    },
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/new-audio-button/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/notion-connector/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    }
+  },
+  "app/components/base/notion-page-selector/base.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/base/notion-page-selector/page-selector/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/pagination/index.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "app/components/base/pagination/type.ts": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    }
+  },
+  "app/components/base/param-item/top-k-item.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "app/components/base/portal-to-follow-elem/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/prompt-editor/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/prompt-editor/plugins/context-block/component.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/prompt-editor/plugins/history-block/component.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/prompt-editor/plugins/on-blur-or-focus-block.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/prompt-editor/plugins/update-block.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/workflow-variable-block/node.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/base/prompt-editor/plugins/workflow-variable-block/workflow-variable-block-replacement-block.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/prompt-log-modal/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    }
+  },
+  "app/components/base/prompt-log-modal/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/radio-card/index.stories.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/radio/component/group/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/radio/context/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/radio/index.stories.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/search-input/index.stories.tsx": {
+    "no-console": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/select/index.stories.tsx": {
+    "no-console": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/select/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "style/multiline-ternary": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/slider/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/sort/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/svg-gallery/index.tsx": {
+    "node/prefer-global/buffer": {
+      "count": 1
+    }
+  },
+  "app/components/base/switch/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/switch/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/tab-slider/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/base/tag-input/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/text-generation/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/textarea/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/video-gallery/VideoPlayer.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/voice-input/index.stories.tsx": {
+    "no-console": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/voice-input/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/base/with-input-validation/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/base/with-input-validation/index.stories.tsx": {
+    "no-console": {
+      "count": 1
+    }
+  },
+  "app/components/base/with-input-validation/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/zendesk/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/billing/plan/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/billing/pricing/plans/cloud-plan-item/index.spec.tsx": {
+    "test/prefer-hooks-in-order": {
+      "count": 1
+    }
+  },
+  "app/components/billing/pricing/plans/self-hosted-plan-item/index.spec.tsx": {
+    "test/prefer-hooks-in-order": {
+      "count": 1
+    }
+  },
+  "app/components/billing/upgrade-btn/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "app/components/billing/upgrade-btn/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/custom/custom-web-app-brand/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/custom/custom-web-app-brand/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/datasets/common/document-picker/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/common/document-picker/preview-document-picker.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/common/image-previewer/index.tsx": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/datasets/common/image-uploader/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/datasets/common/retrieval-method-config/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/create/file-preview/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/create/file-uploader/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/datasets/create/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 16
+    }
+  },
+  "app/components/datasets/create/notion-page-preview/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/create/step-three/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/datasets/create/step-two/hooks/use-indexing-config.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 3
+    }
+  },
+  "app/components/datasets/create/stop-embedding-modal/index.spec.tsx": {
+    "test/prefer-hooks-in-order": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/create/website/firecrawl/index.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/datasets/create/website/firecrawl/options.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/create/website/jina-reader/index.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/datasets/create/website/jina-reader/options.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/create/website/watercrawl/index.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/datasets/create/website/watercrawl/options.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/components/list.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/base/header.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/connect/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 11
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 5
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/store/slices/online-drive.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 11
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/process-documents/form.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/process-documents/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/datasets/documents/detail/batch-modal/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/detail/completed/common/chunk-content.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/detail/completed/new-child-segment.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/detail/context.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/detail/metadata/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/datasets/documents/detail/new-segment.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/detail/settings/pipeline-settings/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/datasets/documents/detail/settings/pipeline-settings/process-documents/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/datasets/documents/hooks/use-documents-page-state.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 12
+    }
+  },
+  "app/components/datasets/documents/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/datasets/external-api/external-api-modal/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/external-knowledge-base/create/ExternalApiSelection.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/formatted-text/flavours/type.ts": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/hit-testing/components/score.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/list/dataset-card/hooks/use-dataset-card-state.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/metadata/edit-metadata-batch/input-combined.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/datasets/metadata/hooks/use-edit-dataset-metadata.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/metadata/hooks/use-metadata-document.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/metadata/metadata-dataset/create-content.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/metadata/metadata-dataset/create-metadata-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/settings/form/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/settings/permission-selector/index.tsx": {
+    "react/no-missing-key": {
+      "count": 1
+    }
+  },
+  "app/components/develop/code.tsx": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "app/components/develop/doc.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/develop/md.tsx": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/explore/app-card/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/explore/create-app-modal/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    },
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "app/components/explore/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/explore/item-operation/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/explore/sidebar/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/goto-anything/actions/commands/command-bus.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/goto-anything/actions/commands/registry.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/goto-anything/actions/commands/slash.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/goto-anything/actions/commands/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/goto-anything/actions/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/goto-anything/context.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    }
+  },
+  "app/components/goto-anything/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/goto-anything/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-setting/data-source-page-new/card.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/header/account-setting/data-source-page-new/hooks/use-marketplace-all-plugins.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-setting/data-source-page-new/install-from-marketplace.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-setting/data-source-page-new/item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-setting/data-source-page-new/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/header/account-setting/data-source-page/data-source-website/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-setting/data-source-page/panel/config-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-setting/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-setting/key-validator/declarations.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-setting/members-page/invite-modal/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 3
+    }
+  },
+  "app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/header/account-setting/members-page/transfer-ownership-modal/member-selector.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/declarations.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/hooks.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/hooks.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-auth/add-credential-in-load-balancing.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-auth/authorized/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-auth/hooks/use-auth.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-auth/hooks/use-model-form-schemas.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-auth/switch-credential-in-load-balancing.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-modal/Form.tsx": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-modal/Input.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 2
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-modal/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-parameter-modal/configuration-button.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-parameter-modal/model-display.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-parameter-modal/status-indicators.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/provider-added-card/cooldown-timer.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/provider-added-card/credential-panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/provider-added-card/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-configs.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/header/account-setting/plugin-page/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/header/app-nav/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/header/header-wrapper.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/install-plugin/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/plugins/install-plugin/install-bundle/item/github-item.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/install-plugin/install-bundle/steps/install-multi.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 5
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/install-plugin/install-from-github/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/plugins/install-plugin/install-from-github/steps/selectPackage.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/install-plugin/install-from-local-package/steps/uploading.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/install-plugin/install-from-marketplace/steps/install.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/marketplace/sort-dropdown/index.spec.tsx": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-auth/authorize/add-oauth-button.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-auth/authorize/api-key-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-auth/authorize/oauth-client-settings.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-auth/authorized-in-node.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-auth/authorized/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-auth/authorized/item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-auth/hooks/use-plugin-auth-action.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-auth/plugin-auth-in-agent.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-auth/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-auth/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/agent-strategy-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form.tsx": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/datasource-action-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/endpoint-card.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/endpoint-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/endpoint-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/model-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/model-selector/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/model-selector/tts-params-panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/multiple-tool-selector/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/multiple-tool-selector/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/strategy-detail.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/subscription-list/log-viewer.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/trigger/event-detail-drawer.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/plugins/plugin-item/action.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-item/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "app/components/plugins/plugin-item/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-mutation-model/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-page/context.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-page/empty/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/plugins/plugin-page/empty/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-page/install-plugin-dropdown.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/plugin-page/list/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/plugins/plugin-page/plugin-tasks/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/reference-setting-modal/auto-update-setting/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/plugins/reference-setting-modal/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/plugins/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 30
+    }
+  },
+  "app/components/plugins/update-plugin/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/rag-pipeline/components/panel/input-field/editor/form/hidden-fields.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/components/panel/input-field/editor/form/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/rag-pipeline/components/panel/input-field/editor/form/initial-fields.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/rag-pipeline/components/panel/input-field/editor/form/show-all-settings.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/components/panel/input-field/editor/form/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/components/panel/input-field/field-list/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/components/panel/input-field/hooks.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/components/panel/test-run/preparation/document-processing/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/components/panel/test-run/preparation/document-processing/options.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/rag-pipeline/components/panel/test-run/preparation/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/rag-pipeline/components/panel/test-run/result/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/components/panel/test-run/result/result-preview/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/components/panel/test-run/result/result-preview/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/rag-pipeline/components/rag-pipeline-children.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/components/rag-pipeline-header/run-mode.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/components/rag-pipeline-main.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/rag-pipeline/components/update-dsl-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/hooks/use-DSL.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/hooks/use-input-fields.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/rag-pipeline/hooks/use-nodes-sync-draft.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/rag-pipeline/hooks/use-pipeline-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/rag-pipeline/hooks/use-pipeline-init.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/rag-pipeline/store/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/rag-pipeline/utils/nodes.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/share/text-generation/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/share/text-generation/menu-dropdown.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/share/text-generation/no-data/index.tsx": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    }
+  },
+  "app/components/share/text-generation/result/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/share/text-generation/run-batch/csv-reader/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/share/text-generation/run-batch/csv-reader/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/share/text-generation/run-once/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/share/text-generation/run-once/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/share/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/tools/edit-custom-collection-modal/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/tools/edit-custom-collection-modal/test-api.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/tools/mcp/create-card.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/tools/mcp/detail/content.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/tools/mcp/mcp-server-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/tools/mcp/mcp-server-param-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/tools/mcp/provider-card.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/tools/provider-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/tools/provider/empty.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/tools/setting/build-in/config-credentials.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/tools/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow-app/components/workflow-children.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow-app/components/workflow-main.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow-app/components/workflow-onboarding-modal/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow-app/components/workflow-onboarding-modal/start-node-selection-panel.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow-app/hooks/use-DSL.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow-app/hooks/use-workflow-init.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow-app/hooks/use-workflow-refresh-draft.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow-app/hooks/use-workflow-run.ts": {
+    "ts/no-explicit-any": {
+      "count": 13
+    }
+  },
+  "app/components/workflow-app/hooks/use-workflow-template.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow-app/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow-app/store/workflow/workflow-slice.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/__tests__/trigger-status-sync.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/block-selector/all-start-blocks.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/block-selector/featured-tools.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/block-selector/featured-triggers.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/block-selector/hooks.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/block-selector/market-place-plugin/action.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/block-selector/rag-tool-recommendations/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/block-selector/tool/tool-list-flat-view/list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/block-selector/tool/tool.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/block-selector/trigger-plugin/action-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/block-selector/trigger-plugin/item.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/block-selector/use-check-vertical-scrollbar.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/candidate-node-main.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/header/run-mode.tsx": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/header/view-workflow-history.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/hooks-store/store.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/workflow/hooks/use-checklist.ts": {
+    "ts/no-empty-object-type": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/hooks/use-dynamic-test-run-options.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/hooks/use-helpline.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/hooks/use-inspect-vars-crud-common.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/hooks/use-node-data-update.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/hooks/use-nodes-interactions.ts": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/workflow/hooks/use-nodes-layout.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/hooks/use-serial-async-callback.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/hooks/use-workflow-interactions.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/hooks/use-workflow-run-event/use-workflow-agent-log.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/hooks/use-workflow-run-event/use-workflow-finished.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/hooks/use-workflow-search.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/hooks/use-workflow-variables.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/_base/components/agent-strategy-selector.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/nodes/_base/components/agent-strategy.tsx": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/nodes/_base/components/before-run-form/form-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 11
+    }
+  },
+  "app/components/workflow/nodes/_base/components/before-run-form/form.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/_base/components/before-run-form/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/workflow/nodes/_base/components/editor/code-editor/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/workflow/nodes/_base/components/error-handle/default-value.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/components/error-handle/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/components/form-input-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 33
+    }
+  },
+  "app/components/workflow/nodes/_base/components/input-support-select-var.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/components/input-var-type-icon.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/components/memory-config.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/components/mixed-variable-text-input/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/components/mixed-variable-text-input/placeholder.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/components/node-handle.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/components/prompt/editor.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/nodes/_base/components/readonly-input-with-select-var.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/components/selector.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/_base/components/setting-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/components/variable/match-schema-type.ts": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/workflow/nodes/_base/components/variable/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 32
+    }
+  },
+  "app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/workflow/nodes/_base/components/workflow-panel/last-run/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 7
+    },
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/workflow/nodes/_base/components/workflow-panel/last-run/use-last-run.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/workflow/nodes/_base/components/workflow-panel/tab.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/hooks/use-one-step-run.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 22
+    }
+  },
+  "app/components/workflow/nodes/_base/hooks/use-output-var-list.ts": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/workflow/nodes/_base/hooks/use-toggle-expend.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/hooks/use-var-list.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/_base/node.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/_base/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/agent/components/model-bar.tsx": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/agent/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/agent/node.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/agent/panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/agent/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/agent/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/workflow/nodes/agent/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/answer/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/assigner/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/assigner/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/assigner/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/assigner/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/assigner/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/code/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/code/use-config.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "regexp/no-useless-assertions": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/workflow/nodes/code/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/workflow/nodes/components.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/data-source-empty/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/data-source/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/workflow/nodes/data-source/hooks/use-before-run-form.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/data-source/hooks/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/workflow/nodes/data-source/panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/data-source/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/data-source/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/document-extractor/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/document-extractor/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/nodes/end/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/end/node.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/http/components/key-value/key-value-edit/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/http/components/key-value/key-value-edit/item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/http/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/http/use-config.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/http/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/workflow/nodes/if-else/components/condition-list/condition-input.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/if-else/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/if-else/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/workflow/nodes/iteration/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/iteration/node.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/iteration/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/hooks.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/type.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/knowledge-base/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/knowledge-retrieval/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/knowledge-retrieval/node.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/knowledge-retrieval/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/knowledge-retrieval/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/knowledge-retrieval/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/workflow/nodes/list-operator/components/filter-condition.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/list-operator/components/sub-variable-picker.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/list-operator/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/llm/components/config-prompt-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/llm/components/config-prompt.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-importer.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/generated-result.tsx": {
+    "style/multiline-ternary": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/auto-width-input.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/llm/components/structure-output.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/llm/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/llm/use-config.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/llm/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "app/components/workflow/nodes/llm/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "app/components/workflow/nodes/loop/components/condition-list/condition-input.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/loop/components/loop-variables/form-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/loop/components/loop-variables/item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/nodes/loop/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/loop/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/loop/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/loop/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/nodes/parameter-extractor/components/extract-parameter/update.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/parameter-extractor/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/parameter-extractor/use-config.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/parameter-extractor/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 9
+    }
+  },
+  "app/components/workflow/nodes/question-classifier/components/class-item.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/question-classifier/components/class-list.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/question-classifier/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/question-classifier/use-config.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/question-classifier/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/workflow/nodes/start/panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/start/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/start/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/template-transform/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/template-transform/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/nodes/template-transform/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/workflow/nodes/tool/__tests__/output-schema-utils.test.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/tool/components/input-var-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/workflow/nodes/tool/components/mixed-variable-text-input/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/tool/components/mixed-variable-text-input/placeholder.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/tool/components/tool-form/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/tool/components/tool-form/item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/tool/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/workflow/nodes/tool/output-schema-utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/nodes/tool/panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/tool/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/tool/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/workflow/nodes/tool/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "app/components/workflow/nodes/trigger-plugin/components/trigger-form/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/trigger-plugin/components/trigger-form/item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/trigger-plugin/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 11
+    }
+  },
+  "app/components/workflow/nodes/trigger-plugin/node.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/trigger-plugin/panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/trigger-plugin/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/nodes/trigger-plugin/use-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/trigger-plugin/utils/__tests__/form-helpers.test.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/trigger-plugin/utils/form-helpers.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/workflow/nodes/trigger-schedule/default.ts": {
+    "regexp/no-unused-capturing-group": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "app/components/workflow/nodes/trigger-webhook/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/variable-assigner/components/var-group-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/variable-assigner/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/variable-assigner/use-single-run-form-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/component.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/note-node/note-editor/utils.ts": {
+    "regexp/no-useless-quantifier": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/operator/add-block.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/operator/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/panel/chat-record/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/workflow/panel/chat-record/user-input.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/panel/chat-variable-panel/components/array-bool-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/panel/chat-variable-panel/components/array-value-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/panel/chat-variable-panel/components/object-value-item.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    },
+    "unicorn/prefer-number-properties": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/panel/chat-variable-panel/components/object-value-list.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/panel/chat-variable-panel/components/variable-modal.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 8
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/panel/chat-variable-panel/components/variable-type-select.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/panel/debug-and-preview/chat-wrapper.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/components/workflow/panel/debug-and-preview/conversation-variable-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/panel/debug-and-preview/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/workflow/panel/env-panel/variable-modal.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/panel/inputs-panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/panel/version-history-panel/index.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/panel/workflow-preview.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/run/hooks.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/run/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/run/iteration-log/iteration-log-trigger.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    },
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/run/loop-log/loop-log-trigger.tsx": {
+    "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/run/node.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/run/output-panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/run/result-panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/run/result-text.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/run/utils/format-log/agent/index.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/run/utils/format-log/agent/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 11
+    }
+  },
+  "app/components/workflow/run/utils/format-log/graph-to-log-struct.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/components/workflow/run/utils/format-log/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/run/utils/format-log/iteration/index.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/run/utils/format-log/iteration/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/run/utils/format-log/loop/index.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/run/utils/format-log/loop/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/run/utils/format-log/parallel/index.ts": {
+    "no-console": {
+      "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/run/utils/format-log/retry/index.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/selection-contextmenu.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "app/components/workflow/store/workflow/debug/inspect-vars-slice.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/store/workflow/workflow-draft-slice.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/types.ts": {
+    "ts/no-empty-object-type": {
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/workflow/update-dsl-modal.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/utils/data-source.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/utils/debug.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/utils/node-navigation.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/utils/node.ts": {
+    "regexp/no-super-linear-backtracking": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/utils/tool.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/utils/workflow-init.ts": {
+    "ts/no-explicit-any": {
+      "count": 12
+    }
+  },
+  "app/components/workflow/utils/workflow.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/variable-inspect/display-content.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/variable-inspect/group.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/variable-inspect/left.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/variable-inspect/listening.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/variable-inspect/panel.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/variable-inspect/right.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/variable-inspect/trigger.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/variable-inspect/utils.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/variable-inspect/value-content.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 5
+    },
+    "regexp/no-super-linear-backtracking": {
+      "count": 1
+    },
+    "regexp/no-unused-capturing-group": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "app/components/workflow/workflow-preview/components/nodes/constants.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/education-apply/hooks.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 5
+    }
+  },
+  "app/education-apply/search-input.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/education-apply/verify-state-modal.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/forgot-password/ForgotPasswordForm.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "app/init/InitPasswordPopup.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/install/installForm.spec.tsx": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "app/reset-password/layout.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/signin/components/mail-and-password-auth.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/signin/layout.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/signin/one-more-step.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/signup/layout.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "context/app-context.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "context/hooks/use-trigger-events-limit-modal.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 3
+    }
+  },
+  "context/modal-context.test.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "context/modal-context.tsx": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "context/provider-context.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "hooks/use-async-window-open.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "hooks/use-format-time-from-now.spec.ts": {
+    "regexp/no-dupe-disjunctions": {
+      "count": 5
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "hooks/use-metadata.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "hooks/use-mitt.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "hooks/use-moderate.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "hooks/use-oauth.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "hooks/use-pay.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    }
+  },
+  "i18n-config/README.md": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "i18n/de-DE/billing.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "i18n/en-US/app-debug.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "i18n/fr-FR/app-debug.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "i18n/fr-FR/app.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "i18n/fr-FR/plugin-trigger.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "i18n/fr-FR/tools.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "i18n/fr-FR/workflow.json": {
+    "no-irregular-whitespace": {
+      "count": 2
+    }
+  },
+  "i18n/pt-BR/common.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "i18n/ru-RU/common.json": {
+    "no-irregular-whitespace": {
+      "count": 2
+    }
+  },
+  "i18n/uk-UA/app-debug.json": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "models/common.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "models/datasets.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "models/debug.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "models/log.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "models/pipeline.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "models/share.ts": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "scripts/analyze-component.js": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/component-analyzer.js": {
+    "regexp/no-unused-capturing-group": {
+      "count": 6
+    }
+  },
+  "scripts/optimize-standalone.js": {
+    "unused-imports/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "service/annotation.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "service/apps.ts": {
+    "ts/no-explicit-any": {
+      "count": 17
+    }
+  },
+  "service/base.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "service/common.ts": {
+    "ts/no-explicit-any": {
+      "count": 29
+    }
+  },
+  "service/datasets.ts": {
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "service/debug.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "service/fetch.ts": {
+    "regexp/no-unused-capturing-group": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "service/share.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "service/use-apps.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "service/use-common.ts": {
+    "ts/no-empty-object-type": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "service/use-endpoints.ts": {
+    "ts/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "service/use-pipeline.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "service/use-plugins-auth.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "service/use-plugins.ts": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "regexp/no-unused-capturing-group": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "service/use-tools.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "service/use-workflow.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "service/utils.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "service/workflow-payload.ts": {
+    "ts/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "testing/testing.md": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "types/app.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "types/assets.d.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "types/lamejs.d.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "types/pipeline.tsx": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "types/react-18-input-autosize.d.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "types/workflow.ts": {
+    "ts/no-explicit-any": {
+      "count": 15
+    }
+  },
+  "utils/clipboard.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "utils/completion-params.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "utils/completion-params.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "utils/error-parser.ts": {
+    "no-console": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "utils/format.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "utils/get-icon.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "utils/gtag.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "utils/index.spec.ts": {
+    "test/no-identical-title": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "utils/index.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "utils/mcp.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "utils/model-config.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 13
+    }
+  },
+  "utils/model-config.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "utils/navigation.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "utils/tool-call.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "utils/validators.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  }
+}

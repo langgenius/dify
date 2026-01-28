@@ -12,6 +12,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 import services
 from controllers.console import console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
+from controllers.console.app.workflow_run import workflow_run_node_execution_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
@@ -35,7 +36,6 @@ from extensions.ext_database import db
 from factories import file_factory, variable_factory
 from fields.member_fields import simple_account_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
-from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, uuid_value
@@ -87,26 +87,6 @@ workflow_model = console_ns.model("Workflow", workflow_fields_copy)
 workflow_pagination_fields_copy = workflow_pagination_fields.copy()
 workflow_pagination_fields_copy["items"] = fields.List(fields.Nested(workflow_model), attribute="items")
 workflow_pagination_model = console_ns.model("WorkflowPagination", workflow_pagination_fields_copy)
-
-# Reuse workflow_run_node_execution_model from workflow_run.py if already registered
-# Otherwise register it here
-from fields.end_user_fields import simple_end_user_fields
-
-simple_end_user_model = None
-try:
-    simple_end_user_model = console_ns.models.get("SimpleEndUser")
-except AttributeError:
-    pass
-if simple_end_user_model is None:
-    simple_end_user_model = console_ns.model("SimpleEndUser", simple_end_user_fields)
-
-workflow_run_node_execution_model = None
-try:
-    workflow_run_node_execution_model = console_ns.models.get("WorkflowRunNodeExecution")
-except AttributeError:
-    pass
-if workflow_run_node_execution_model is None:
-    workflow_run_node_execution_model = console_ns.model("WorkflowRunNodeExecution", workflow_run_node_execution_fields)
 
 
 class SyncDraftWorkflowPayload(BaseModel):
@@ -470,7 +450,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
         current_user, _ = current_account_with_tenant()
-        args = LoopNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
+        args = LoopNodeRunPayload.model_validate(console_ns.payload or {})
 
         try:
             response = AppGenerateService.generate_single_loop(
@@ -508,7 +488,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
         current_user, _ = current_account_with_tenant()
-        args = LoopNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
+        args = LoopNodeRunPayload.model_validate(console_ns.payload or {})
 
         try:
             response = AppGenerateService.generate_single_loop(
@@ -999,6 +979,7 @@ class DraftWorkflowTriggerRunApi(Resource):
             if not event:
                 return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
             workflow_args = dict(event.workflow_args)
+
             workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             return helper.compact_generate_response(
                 AppGenerateService.generate(
@@ -1147,6 +1128,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
 
         try:
             workflow_args = dict(trigger_debug_event.workflow_args)
+
             workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             response = AppGenerateService.generate(
                 app_model=app_model,

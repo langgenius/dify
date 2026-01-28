@@ -436,7 +436,7 @@ class RagPipelineService:
                 user_inputs=user_inputs,
                 user_id=account.id,
                 variable_pool=VariablePool(
-                    system_variables=SystemVariable.empty(),
+                    system_variables=SystemVariable.default(),
                     user_inputs=user_inputs,
                     environment_variables=[],
                     conversation_variables=[],
