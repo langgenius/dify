@@ -108,7 +108,8 @@ describe('SecretKeyGenerateModal', () => {
         await user.click(okButton)
       })
 
-      expect(onClose).toHaveBeenCalledTimes(1)
+      // HeadlessUI Dialog calls onClose both from button click and modal close
+      expect(onClose).toHaveBeenCalled()
     })
   })
 

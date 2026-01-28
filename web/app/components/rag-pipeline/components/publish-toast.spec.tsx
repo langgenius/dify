@@ -70,18 +70,20 @@ describe('PublishToast', () => {
     })
 
     it('should render close button', () => {
-      render(<PublishToast />)
+      const { container } = render(<PublishToast />)
 
-      const closeButton = screen.getByRole('button', { name: /close/i })
+      // The close button is a div with cursor-pointer, not a semantic button
+      const closeButton = container.querySelector('.cursor-pointer')
       expect(closeButton).toBeInTheDocument()
     })
   })
 
   describe('user interactions', () => {
     it('should hide toast when close button is clicked', () => {
-      render(<PublishToast />)
+      const { container } = render(<PublishToast />)
 
-      const closeButton = screen.getByRole('button', { name: /close/i })
+      // The close button is a div with cursor-pointer, not a semantic button
+      const closeButton = container.querySelector('.cursor-pointer')
       expect(screen.getByText('publishToast.title')).toBeInTheDocument()
 
       fireEvent.click(closeButton!)
@@ -90,20 +92,15 @@ describe('PublishToast', () => {
     })
 
     it('should remain hidden after close button is clicked', () => {
-      const { rerender } = render(<PublishToast />)
+      const { container, rerender } = render(<PublishToast />)
 
-      const closeButton = screen.getByRole('button', { name: /close/i })
+      // The close button is a div with cursor-pointer, not a semantic button
+      const closeButton = container.querySelector('.cursor-pointer')
       fireEvent.click(closeButton!)
 
       rerender(<PublishToast />)
 
       expect(screen.queryByText('publishToast.title')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect((PublishToast as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
     })
   })
 

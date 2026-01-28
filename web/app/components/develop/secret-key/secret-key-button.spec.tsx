@@ -8,10 +8,7 @@ vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
     isShow
       ? (
           <div data-testid="secret-key-modal">
-            <span>
-              Modal for
-              {appId || 'no-app'}
-            </span>
+            <span data-testid="modal-app-id">{`Modal for ${appId || 'no-app'}`}</span>
             <button onClick={onClose} data-testid="close-modal">Close</button>
           </div>
         )
