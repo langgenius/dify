@@ -53,8 +53,7 @@ export function useCreateOperations({
     }
 
     const total = files.length
-    let uploaded = 0
-    let failed = 0
+    const progress = { uploaded: 0, failed: 0 }
 
     storeApi.getState().setUploadStatus('uploading')
     storeApi.getState().setUploadProgress({ uploaded: 0, total, failed: 0 })
@@ -65,17 +64,17 @@ export function useCreateOperations({
         uploadFiles.map(async (file) => {
           try {
             await uploadFile.mutateAsync({ appId, file, parentId })
-            uploaded++
+            progress.uploaded++
           }
           catch {
-            failed++
+            progress.failed++
           }
-          storeApi.getState().setUploadProgress({ uploaded, total, failed })
+          storeApi.getState().setUploadProgress({ uploaded: progress.uploaded, total, failed: progress.failed })
         }),
       )
 
-      storeApi.getState().setUploadStatus(failed > 0 ? 'partial_error' : 'success')
-      storeApi.getState().setUploadProgress({ uploaded, total, failed })
+      storeApi.getState().setUploadStatus(progress.failed > 0 ? 'partial_error' : 'success')
+      storeApi.getState().setUploadProgress({ uploaded: progress.uploaded, total, failed: progress.failed })
     }
     catch {
       storeApi.getState().setUploadStatus('partial_error')
