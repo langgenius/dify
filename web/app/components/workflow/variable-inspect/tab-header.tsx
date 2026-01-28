@@ -22,7 +22,7 @@ const TabHeader: FC<TabHeaderProps> = ({
   const { t } = useTranslation('workflow')
 
   return (
-    <div className="flex shrink-0 items-center gap-0.5 pl-3 pr-2 pt-2">
+    <div className="flex h-10 w-full shrink-0 items-center gap-0.5 pl-3 pr-2">
       {TAB_ITEMS.map(tab => (
         <button
           key={tab.value}
@@ -38,7 +38,7 @@ const TabHeader: FC<TabHeaderProps> = ({
           {t(tab.labelKey)}
         </button>
       ))}
-      {children}
+      <div className="ml-auto">{children}</div>
     </div>
   )
 }
