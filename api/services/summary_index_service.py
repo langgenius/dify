@@ -260,7 +260,7 @@ class SummaryIndexService:
                 try:
                     # Declare summary_record_in_session variable
                     summary_record_in_session: DocumentSegmentSummary | None
-                    
+
                     # If using provided session, merge the summary_record into it
                     if use_provided_session:
                         # Merge the summary_record into the provided session
