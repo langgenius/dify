@@ -27,7 +27,11 @@ def _build_engine_with_workflow_id(
 ) -> tuple[GraphEngine, InMemoryChannel]:
     variable_pool = VariablePool()
     variable_pool.system_variables.workflow_execution_id = workflow_execution_id
-    runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    runtime_state = GraphRuntimeState(
+        variable_pool=variable_pool,
+        start_at=time.perf_counter(),
+        cleanup_mcp_sessions=cleanup_mcp_sessions,
+    )
 
     mock_graph = MagicMock(spec=Graph)
     mock_graph.nodes = {}
@@ -61,7 +65,6 @@ def _build_engine_with_workflow_id(
         graph=mock_graph,
         graph_runtime_state=runtime_state,
         command_channel=command_channel,
-        cleanup_mcp_sessions=cleanup_mcp_sessions,
     )
 
     return engine, command_channel

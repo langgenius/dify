@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 
 class MCPTool(Tool):
+    # MCP session reuse key - set by workflow execution context
+    workflow_execution_id: str | None = None
+
     def __init__(
         self,
         entity: ToolEntity,
@@ -153,7 +156,7 @@ class MCPTool(Tool):
         from extensions.ext_database import db
         from services.tools.mcp_tools_manage_service import MCPToolManageService
 
-        workflow_execution_id = getattr(self.runtime, "workflow_execution_id", None)
+        workflow_execution_id = self.workflow_execution_id
 
         # Step 1: Load provider entity and credentials in a short-lived session
         # This minimizes database connection hold time

@@ -363,14 +363,14 @@ class GraphEngine:
             except Exception:
                 logger.exception("Layer %s failed on_graph_end", layer.__class__.__name__)
 
-        if self._cleanup_mcp_sessions_enabled:
+        if self._graph_runtime_state.cleanup_mcp_sessions:
             self._cleanup_mcp_sessions()
 
     def _cleanup_mcp_sessions(self) -> None:
         """Release any long-lived MCP sessions bound to this workflow run."""
         try:
             system_variables = self._graph_runtime_state.variable_pool.system_variables
-            workflow_execution_id = getattr(system_variables, "workflow_execution_id", None)
+            workflow_execution_id = system_variables.workflow_execution_id
             if workflow_execution_id:
                 McpSessionRegistry.cleanup(workflow_execution_id)
         except Exception:

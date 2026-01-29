@@ -10,6 +10,7 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
+from core.tools.mcp_tool.tool import MCPTool
 from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment
@@ -78,8 +79,8 @@ class ToolNode(Node[ToolNodeData]):
                 self.tenant_id, self.app_id, self._node_id, self.node_data, self.invoke_from, variable_pool
             )
             system_variables = self.graph_runtime_state.variable_pool.system_variables
-            if tool_runtime.runtime and system_variables:
-                tool_runtime.runtime.workflow_execution_id = system_variables.workflow_execution_id
+            if isinstance(tool_runtime, MCPTool) and system_variables:
+                tool_runtime.workflow_execution_id = system_variables.workflow_execution_id
         except ToolNodeError as e:
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
