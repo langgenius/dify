@@ -1,3 +1,5 @@
+from typing import cast
+
 from flask_restx import fields, marshal, marshal_with
 from werkzeug.exceptions import Forbidden
 
@@ -112,10 +114,10 @@ class AppSiteInfo:
 
 def serialize_site(site: Site) -> dict:
     """Serialize Site model using the same schema as AppSiteApi."""
-    return marshal(site, AppSiteApi.site_fields)
+    return cast(dict, marshal(site, AppSiteApi.site_fields))
 
 
 def serialize_app_site_payload(app_model: App, site: Site, end_user_id: str | None) -> dict:
     can_replace_logo = FeatureService.get_features(app_model.tenant_id).can_replace_logo
     app_site_info = AppSiteInfo(app_model.tenant, app_model, site, end_user_id, can_replace_logo)
-    return marshal(app_site_info, AppSiteApi.app_fields)
+    return cast(dict, marshal(app_site_info, AppSiteApi.app_fields))

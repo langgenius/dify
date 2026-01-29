@@ -76,6 +76,16 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         if resume_state is not None:
             graph_runtime_state = resume_state
             variable_pool = graph_runtime_state.variable_pool
+            graph = self._init_graph(
+                graph_config=self._workflow.graph_dict,
+                graph_runtime_state=graph_runtime_state,
+                workflow_id=self._workflow.id,
+                tenant_id=self._workflow.tenant_id,
+                user_id=self.application_generate_entity.user_id,
+                user_from=user_from,
+                invoke_from=invoke_from,
+                root_node_id=self._root_node_id,
+            )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
                 workflow=self._workflow,
@@ -102,11 +112,6 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             )
 
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-
-        # init graph (for both resumed and fresh runs when not single-step)
-        if resume_state is not None or not (
-            self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run
-        ):
             graph = self._init_graph(
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,

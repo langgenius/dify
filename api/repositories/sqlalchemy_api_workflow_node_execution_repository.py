@@ -8,6 +8,7 @@ using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 import json
 from collections.abc import Sequence
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy import asc, delete, desc, func, select
 from sqlalchemy.engine import CursorResult

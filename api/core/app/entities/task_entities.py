@@ -813,7 +813,7 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         total_tokens: int
         total_steps: int
         created_at: int
-        finished_at: int
+        finished_at: int | None
 
     workflow_run_id: str
     data: Data
