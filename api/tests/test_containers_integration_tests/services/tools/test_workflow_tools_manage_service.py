@@ -258,7 +258,7 @@ class TestWorkflowToolManageService:
 
         # Attempt to create second workflow tool with same name
         second_tool_parameters = self._create_test_workflow_tool_parameters()
-        with pytest.raises(WorkflowToolHumanInputNotSupportedError) as exc_info:
+        with pytest.raises(ValueError) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
                 tenant_id=account.current_tenant.id,
@@ -538,7 +538,7 @@ class TestWorkflowToolManageService:
         )
 
         tool_parameters = self._create_test_workflow_tool_parameters()
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(WorkflowToolHumanInputNotSupportedError) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
                 tenant_id=account.current_tenant.id,

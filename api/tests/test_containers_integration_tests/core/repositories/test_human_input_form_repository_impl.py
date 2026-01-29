@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.nodes.human_input.entities import (
+    DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
@@ -59,7 +60,7 @@ def _create_tenant_with_members(session: Session, member_emails: list[str]) -> t
     return tenant, members
 
 
-def _build_form_params(delivery_methods: list[EmailDeliveryMethod]) -> FormCreateParams:
+def _build_form_params(delivery_methods: list[DeliveryChannelConfig]) -> FormCreateParams:
     form_config = HumanInputNodeData(
         title="Human Approval",
         delivery_methods=delivery_methods,
@@ -67,7 +68,7 @@ def _build_form_params(delivery_methods: list[EmailDeliveryMethod]) -> FormCreat
         user_actions=[UserAction(id="approve", title="Approve")],
     )
     return FormCreateParams(
-        app_id="app-1",
+        app_id=str(uuid4()),
         workflow_execution_id=str(uuid4()),
         node_id="human-input-node",
         form_config=form_config,
@@ -175,7 +176,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
         repository = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id=tenant.id)
         resolved_values = {"greeting": "Hello!"}
         params = FormCreateParams(
-            app_id="app-1",
+            app_id=str(uuid4()),
             workflow_execution_id=str(uuid4()),
             node_id="human-input-node",
             form_config=HumanInputNodeData(
@@ -211,7 +212,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
 
         repository = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id=tenant.id)
         params = FormCreateParams(
-            app_id="app-1",
+            app_id=str(uuid4()),
             workflow_execution_id=str(uuid4()),
             node_id="human-input-node",
             form_config=HumanInputNodeData(

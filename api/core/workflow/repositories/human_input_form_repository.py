@@ -18,6 +18,8 @@ class FormNotFoundError(HumanInputError):
 
 @dataclasses.dataclass
 class FormCreateParams:
+    # app_id is the identifier for the app that the form belongs to.
+    # It is a string with uuid format.
     app_id: str
     # None when creating a delivery test form; set for runtime forms.
     workflow_execution_id: str | None
