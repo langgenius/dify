@@ -79,6 +79,7 @@ class AppGenerateResponseConverter(ABC):
                         "document_name": resource["document_name"],
                         "score": resource["score"],
                         "content": resource["content"],
+                        "summary": resource.get("summary"),
                     }
                 )
             metadata["retriever_resources"] = updated_resources
