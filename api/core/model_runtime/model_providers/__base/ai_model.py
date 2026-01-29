@@ -5,7 +5,6 @@ import logging
 from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
-
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 from core.model_runtime.entities.model_entities import (
@@ -16,7 +15,6 @@ from core.model_runtime.entities.model_entities import (
     PriceInfo,
     PriceType,
 )
-from extensions.ext_redis import redis_client
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -26,6 +24,7 @@ from core.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from extensions.ext_redis import redis_client
 
 logger = logging.getLogger(__name__)
 

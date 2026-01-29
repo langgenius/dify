@@ -7,7 +7,6 @@ from threading import Lock
 
 import contexts
 from configs import dify_config
-from extensions.ext_redis import redis_client
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
 from core.model_runtime.model_providers.__base.ai_model import AIModel
@@ -20,6 +19,7 @@ from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
 from core.model_runtime.schema_validators.provider_credential_schema_validator import ProviderCredentialSchemaValidator
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from extensions.ext_redis import redis_client
 from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)
