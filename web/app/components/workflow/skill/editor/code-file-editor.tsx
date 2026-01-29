@@ -1,37 +1,69 @@
+import type { OnMount } from '@monaco-editor/react'
 import Editor from '@monaco-editor/react'
 import * as React from 'react'
 import Loading from '@/app/components/base/loading'
+import { useSkillCodeCursors } from './code-editor/plugins/remote-cursors'
 
 type CodeFileEditorProps = {
   language: string
   theme: string
   value: string
   onChange: (value: string | undefined) => void
-  onMount: (editor: any, monaco: any) => void
+  onMount: OnMount
+  fileId?: string | null
+  collaborationEnabled?: boolean
 }
 
-const CodeFileEditor = ({ language, theme, value, onChange, onMount }: CodeFileEditorProps) => {
+const CodeFileEditor = ({
+  language,
+  theme,
+  value,
+  onChange,
+  onMount,
+  fileId,
+  collaborationEnabled,
+}: CodeFileEditorProps) => {
+  const [editorInstance, setEditorInstance] = React.useState<Parameters<typeof onMount>[0] | null>(null)
+  const { overlay } = useSkillCodeCursors({
+    editor: editorInstance,
+    fileId: fileId ?? null,
+    enabled: Boolean(collaborationEnabled && fileId),
+  })
+  const handleMount = React.useCallback<OnMount>((editor, monaco) => {
+    setEditorInstance(editor)
+    onMount(editor, monaco)
+  }, [onMount])
+
   return (
-    <Editor
-      language={language}
-      theme={theme}
-      value={value}
-      loading={<Loading type="area" />}
-      onChange={onChange}
-      options={{
-        minimap: { enabled: false },
-        lineNumbersMinChars: 3,
-        wordWrap: 'on',
-        unicodeHighlight: {
-          ambiguousCharacters: false,
-        },
-        stickyScroll: { enabled: false },
-        fontSize: 13,
-        lineHeight: 20,
-        padding: { top: 12, bottom: 12 },
-      }}
-      onMount={onMount}
-    />
+    <div className="relative h-full w-full">
+      <Editor
+        language={language}
+        theme={theme}
+        value={value}
+        loading={<Loading type="area" />}
+        onChange={onChange}
+        options={{
+          minimap: { enabled: false },
+          lineNumbersMinChars: 3,
+          wordWrap: 'on',
+          unicodeHighlight: {
+            ambiguousCharacters: false,
+          },
+          stickyScroll: { enabled: false },
+          fontSize: 13,
+          lineHeight: 20,
+          padding: { top: 12, bottom: 12 },
+        }}
+        onMount={handleMount}
+      />
+      {overlay
+        ? (
+            <div className="pointer-events-none absolute inset-0 z-[2]">
+              {overlay}
+            </div>
+          )
+        : null}
+    </div>
   )
 }
 

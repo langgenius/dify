@@ -234,6 +234,8 @@ const FileContentPanel = () => {
               value={currentContent}
               onChange={handleCodeCollaborativeChange}
               onMount={handleEditorDidMount}
+              fileId={fileTabId}
+              collaborationEnabled={canInitCollaboration}
             />
           )
         : null}

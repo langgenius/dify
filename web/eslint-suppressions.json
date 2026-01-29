@@ -3852,11 +3852,6 @@
       "count": 4
     }
   },
-  "app/components/workflow/skill/editor/code-file-editor.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/workflow/store/workflow/debug/inspect-vars-slice.ts": {
     "ts/no-explicit-any": {
       "count": 2
