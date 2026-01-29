@@ -107,7 +107,7 @@ Open [http://localhost:6006](http://localhost:6006) with your browser to see the
 
 If your IDE is VSCode, rename `.vscode/settings.example.json` to `.vscode/settings.json` for lint code setting.
 
-The follow the [Lint Documentation](./docs/lint.md) to lint the code.
+Then follow the [Lint Documentation](./docs/lint.md) to lint the code.
 
 ## Test
 
