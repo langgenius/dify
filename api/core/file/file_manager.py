@@ -104,6 +104,8 @@ def download(f: File, /):
     ):
         return _download_file_content(f.storage_key)
     elif f.transfer_method == FileTransferMethod.REMOTE_URL:
+        if f.remote_url is None:
+            raise ValueError("Missing file remote_url")
         response = ssrf_proxy.get(f.remote_url, follow_redirects=True)
         response.raise_for_status()
         return response.content
@@ -134,6 +136,8 @@ def _download_file_content(path: str, /):
 def _get_encoded_string(f: File, /):
     match f.transfer_method:
         case FileTransferMethod.REMOTE_URL:
+            if f.remote_url is None:
+                raise ValueError("Missing file remote_url")
             response = ssrf_proxy.get(f.remote_url, follow_redirects=True)
             response.raise_for_status()
             data = response.content
