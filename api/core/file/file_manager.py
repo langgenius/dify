@@ -177,6 +177,7 @@ class FileManager:
     This is intentionally a thin wrapper over the existing module-level functions so callers can inject it
     where a protocol-typed file manager is expected.
     """
+
     def download(self, f: File, /) -> bytes:
         return download(f)
 

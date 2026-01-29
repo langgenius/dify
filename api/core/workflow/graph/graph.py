@@ -16,7 +16,7 @@ from .validation import get_graph_validator
 
 logger = logging.getLogger(__name__)
 
-# TODO: Add EdgeConfigDict and GraphConfigDict 
+# TODO: Add EdgeConfigDict and GraphConfigDict
 
 
 class NodeConfigData(TypedDict):
@@ -126,8 +126,8 @@ class Graph:
         # Prefer START node if available
         start_node_id = None
         for nid in root_candidates:
-            node_data = node_configs_map[nid]['data']
-            node_type = node_data['type']
+            node_data = node_configs_map[nid]["data"]
+            node_type = node_data["type"]
             if not isinstance(node_type, str):
                 continue
             if NodeType(node_type).is_start_node:

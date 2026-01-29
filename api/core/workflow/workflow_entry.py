@@ -145,7 +145,7 @@ class WorkflowEntry:
         :return:
         """
         node_config = workflow.get_node_config_by_id(node_id)
-        node_config_data = node_config['data']
+        node_config_data = node_config["data"]
 
         # Get node type
         node_type = NodeType(node_config_data["type"])

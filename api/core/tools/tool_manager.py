@@ -190,12 +190,12 @@ class ToolManager:
 
             if not provider_controller.need_credentials:
                 return builtin_tool.fork_tool_runtime(
-                        runtime=ToolRuntime(
-                            tenant_id=tenant_id,
-                            credentials={},
-                            invoke_from=invoke_from,
-                            tool_invoke_from=tool_invoke_from,
-                        )
+                    runtime=ToolRuntime(
+                        tenant_id=tenant_id,
+                        credentials={},
+                        invoke_from=invoke_from,
+                        tool_invoke_from=tool_invoke_from,
+                    )
                 )
             builtin_provider = None
             if isinstance(provider_controller, PluginToolProviderController):
@@ -298,15 +298,15 @@ class ToolManager:
                 cache.delete()
 
             return builtin_tool.fork_tool_runtime(
-                    runtime=ToolRuntime(
-                        tenant_id=tenant_id,
-                        credentials=dict(decrypted_credentials),
-                        credential_type=CredentialType.of(builtin_provider.credential_type),
-                        runtime_parameters={},
-                        invoke_from=invoke_from,
-                        tool_invoke_from=tool_invoke_from,
-                    )
+                runtime=ToolRuntime(
+                    tenant_id=tenant_id,
+                    credentials=dict(decrypted_credentials),
+                    credential_type=CredentialType.of(builtin_provider.credential_type),
+                    runtime_parameters={},
+                    invoke_from=invoke_from,
+                    tool_invoke_from=tool_invoke_from,
                 )
+            )
 
         elif provider_type == ToolProviderType.API:
             api_provider, credentials = cls.get_api_provider_controller(tenant_id, provider_id)
