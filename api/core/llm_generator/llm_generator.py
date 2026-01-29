@@ -406,7 +406,12 @@ class LLMGenerator:
 
     @staticmethod
     def instruction_modify_legacy(
-        tenant_id: str, flow_id: str, current: str, instruction: str, model_config: ModelConfig, ideal_output: str | None
+        tenant_id: str,
+        flow_id: str,
+        current: str,
+        instruction: str,
+        model_config: ModelConfig,
+        ideal_output: str | None,
     ):
         last_run: Message | None = (
             db.session.query(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
@@ -581,7 +586,5 @@ class LLMGenerator:
             error = str(e)
             return {"error": f"Failed to generate code. Error: {error}"}
         except Exception as e:
-            logger.exception(
-                "Failed to invoke LLM model, model: %s", json.dumps(model_config.name), exc_info=True
-            )
+            logger.exception("Failed to invoke LLM model, model: %s", json.dumps(model_config.name), exc_info=True)
             return {"error": f"An unexpected error occurred: {str(e)}"}
