@@ -509,6 +509,7 @@
   "promptEditor.history.modal.title": "EXAMPLE",
   "promptEditor.history.modal.user": "Hello",
   "promptEditor.placeholder": "Write your prompt word here, enter '{' to insert a variable, enter '/' to insert a prompt content block",
+  "promptEditor.placeholderSandbox": "Write instructions here, <0>/</0> <1>insert</1>, <2>@</2> <3>tools</3>",
   "promptEditor.query.item.desc": "Insert user query template",
   "promptEditor.query.item.title": "Query",
   "promptEditor.skillMarkdown.placeholderPrefix": "Type to write,",

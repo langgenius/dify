@@ -30,6 +30,7 @@ import {
 } from 'lexical'
 import * as React from 'react'
 import { useEffect } from 'react'
+import { Trans } from 'react-i18next'
 import { FileReferenceNode } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/node'
 import FileReferenceReplacementBlock from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/replacement-block'
 import {
@@ -232,6 +233,37 @@ const PromptEditor: FC<PromptEditorProps> = ({
     }
   }, [onToolMetadataChange, toolMetadata])
 
+  const sandboxPlaceHolder = React.useMemo(
+    () => {
+      return isSupportSandbox && (
+        <Trans
+          i18nKey="promptEditor.placeholderSandbox"
+          ns="common"
+          components={[
+            <span
+              key="slash"
+              className="system-kbd inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary"
+            />,
+            <span
+              key="insert"
+              className="border-b border-dotted border-current"
+            />,
+            <span
+              key="at"
+              className="system-kbd inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary"
+            />,
+            <span
+              key="tools"
+              className="border-b border-dotted border-current"
+            />,
+          ]}
+        />
+      )
+    },
+
+    [isSupportSandbox],
+  )
+
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
       <ToolBlockContextProvider value={toolBlockContextValue}>
@@ -252,7 +284,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
             )}
             placeholder={(
               <Placeholder
-                value={placeholder}
+                value={placeholder || sandboxPlaceHolder}
                 className={cn('truncate', placeholderClassName)}
                 compact={compact}
               />
