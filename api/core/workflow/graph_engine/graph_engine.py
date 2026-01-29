@@ -57,6 +57,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+_DEFAULT_CONFIG = GraphEngineConfig()
+
+
 @final
 class GraphEngine:
     """
@@ -72,7 +75,7 @@ class GraphEngine:
         graph: Graph,
         graph_runtime_state: GraphRuntimeState,
         command_channel: CommandChannel,
-        config: GraphEngineConfig,
+        config: GraphEngineConfig = _DEFAULT_CONFIG,
     ) -> None:
         """Initialize the graph engine with all subsystems and dependencies."""
         # stop event
