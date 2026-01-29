@@ -158,3 +158,5 @@ class KnowledgeIndexNodeData(BaseNodeData):
     type: str = "knowledge-index"
     chunk_structure: str
     index_chunk_variable_selector: list[str]
+    indexing_technique: str | None = None
+    summary_index_setting: dict | None = None
