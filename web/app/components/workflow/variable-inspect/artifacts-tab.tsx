@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { InspectHeaderProps } from './inspect-layout'
 import type { SandboxFileTreeNode } from '@/types/sandbox-file'
 import {
@@ -19,6 +18,31 @@ import { cn } from '@/utils/classnames'
 import InspectLayout from './inspect-layout'
 import SplitPanel from './split-panel'
 
+const ArtifactsEmpty = ({ description }: { description: string }) => {
+  const { t } = useTranslation('workflow')
+  const docLink = useDocLink()
+
+  return (
+    <div className="flex h-full flex-col gap-3 rounded-xl bg-background-section p-8">
+      <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
+        <SearchLinesSparkle className="h-5 w-5 text-text-accent" aria-hidden="true" />
+      </div>
+      <div className="flex flex-col gap-1">
+        <div className="system-sm-semibold text-text-secondary">{t('debug.variableInspect.tabArtifacts.emptyTitle')}</div>
+        <div className="system-xs-regular text-text-tertiary">{description}</div>
+        <a
+          className="system-xs-regular cursor-pointer text-text-accent"
+          href={docLink('/use-dify/debug/variable-inspect')}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {t('debug.variableInspect.tabArtifacts.emptyLink')}
+        </a>
+      </div>
+    </div>
+  )
+}
+
 const formatFileSize = (bytes: number | null): string => {
   if (bytes === null || bytes === 0)
     return '0 B'
@@ -27,9 +51,8 @@ const formatFileSize = (bytes: number | null): string => {
   return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
 }
 
-const ArtifactsTab: FC<InspectHeaderProps> = (headerProps) => {
+const ArtifactsTab = (headerProps: InspectHeaderProps) => {
   const { t } = useTranslation('workflow')
-  const docLink = useDocLink()
   const { userProfile } = useAppContext()
   const sandboxId = userProfile?.id
 
@@ -70,23 +93,7 @@ const ArtifactsTab: FC<InspectHeaderProps> = (headerProps) => {
     return (
       <InspectLayout {...headerProps}>
         <div className="h-full p-2">
-          <div className="flex h-full flex-col gap-3 rounded-xl bg-background-section p-8">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
-              <SearchLinesSparkle className="h-5 w-5 text-text-accent" aria-hidden="true" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <div className="system-sm-semibold text-text-secondary">{t('debug.variableInspect.tabArtifacts.emptyTitle')}</div>
-              <div className="system-xs-regular text-text-tertiary">{t('debug.variableInspect.tabArtifacts.emptyTip')}</div>
-              <a
-                className="system-xs-regular cursor-pointer text-text-accent"
-                href={docLink('/use-dify/debug/variable-inspect')}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {t('debug.variableInspect.tabArtifacts.emptyLink')}
-              </a>
-            </div>
-          </div>
+          <ArtifactsEmpty description={t('debug.variableInspect.tabArtifacts.emptyTip')} />
         </div>
       </InspectLayout>
     )
@@ -174,10 +181,8 @@ const ArtifactsTab: FC<InspectHeaderProps> = (headerProps) => {
                   </div>
                 )
               : (
-                  <div className="flex h-full items-center justify-center p-2">
-                    <p className="system-xs-regular text-text-tertiary">
-                      {t('debug.variableInspect.tabArtifacts.selectFile')}
-                    </p>
+                  <div className="grow p-2">
+                    <ArtifactsEmpty description={t('debug.variableInspect.tabArtifacts.selectFile')} />
                   </div>
                 )}
           </div>
