@@ -292,7 +292,7 @@ def _build_node_started_event(
     workflow_run_id: str,
     task_id: str,
     snapshot: WorkflowNodeExecutionSnapshot,
-) -> Mapping[str, Any]:
+) -> dict[str, Any]:
     created_at = int(snapshot.created_at.timestamp()) if snapshot.created_at else 0
     response = NodeStartStreamResponse(
         task_id=task_id,
@@ -319,7 +319,7 @@ def _build_node_finished_event(
     workflow_run_id: str,
     task_id: str,
     snapshot: WorkflowNodeExecutionSnapshot,
-) -> Mapping[str, Any]:
+) -> dict[str, Any]:
     created_at = int(snapshot.created_at.timestamp()) if snapshot.created_at else 0
     finished_at = int(snapshot.finished_at.timestamp()) if snapshot.finished_at else created_at
     response = NodeFinishStreamResponse(
@@ -356,13 +356,13 @@ def _build_pause_event(
     task_id: str,
     pause_entity: WorkflowPauseEntity,
     resumption_context: WorkflowResumptionContext | None,
-) -> Mapping[str, Any] | None:
+) -> dict[str, Any] | None:
     paused_nodes: list[str] = []
     outputs: dict[str, Any] = {}
     if resumption_context is not None:
         state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
         paused_nodes = state.get_paused_nodes()
-        outputs = WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {})
+        outputs = dict(WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {}))
 
     reasons = [reason.model_dump(mode="json") for reason in pause_entity.get_pause_reasons()]
     response = WorkflowPauseStreamResponse(

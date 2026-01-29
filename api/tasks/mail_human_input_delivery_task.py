@@ -15,7 +15,6 @@ from core.workflow.nodes.human_input.entities import EmailDeliveryConfig, EmailD
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from extensions.ext_database import db
 from extensions.ext_mail import mail
-from libs.email_template_renderer import render_email_template
 from models.human_input import (
     DeliveryMethodType,
     HumanInputDelivery,
@@ -38,19 +37,14 @@ class _EmailRecipient:
 @dataclass(frozen=True)
 class _EmailDeliveryJob:
     form_id: str
-    workflow_run_id: str
     subject: str
     body: str
     form_content: str
     recipients: list[_EmailRecipient]
 
 
-def _build_form_link(token: str | None) -> str | None:
-    if not token:
-        return None
+def _build_form_link(token: str) -> str:
     base_url = dify_config.APP_WEB_URL
-    if not base_url:
-        return None
     return f"{base_url.rstrip('/')}/form/{token}"
 
 
@@ -97,7 +91,6 @@ def _load_email_jobs(session: Session, form: HumanInputForm) -> list[_EmailDeliv
         jobs.append(
             _EmailDeliveryJob(
                 form_id=form.id,
-                workflow_run_id=form.workflow_run_id,
                 subject=delivery_config.config.subject,
                 body=delivery_config.config.body,
                 form_content=form.rendered_content,
@@ -107,22 +100,18 @@ def _load_email_jobs(session: Session, form: HumanInputForm) -> list[_EmailDeliv
     return jobs
 
 
-def _render_subject(subject_template: str, substitutions: dict[str, str]) -> str:
-    return render_email_template(subject_template, substitutions)
-
-
 def _render_body(
     body_template: str,
-    substitutions: dict[str, str],
+    form_link: str,
     *,
     variable_pool: VariablePool | None,
 ) -> str:
-    templated_body = EmailDeliveryConfig.render_body_template(
+    body = EmailDeliveryConfig.render_body_template(
         body=body_template,
-        url=substitutions.get("form_link"),
+        url=form_link,
         variable_pool=variable_pool,
     )
-    return render_email_template(templated_body, substitutions)
+    return body
 
 
 def _load_variable_pool(workflow_run_id: str | None) -> VariablePool | None:
@@ -144,24 +133,6 @@ def _load_variable_pool(workflow_run_id: str | None) -> VariablePool | None:
 
     graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     return graph_runtime_state.variable_pool
-
-
-def _build_substitutions(
-    *,
-    job: _EmailDeliveryJob,
-    recipient: _EmailRecipient,
-    node_title: str | None,
-) -> dict[str, str]:
-    raw_values: dict[str, str | None] = {
-        "form_id": job.form_id,
-        "workflow_run_id": job.workflow_run_id,
-        "node_title": node_title,
-        "form_token": recipient.token,
-        "form_link": _build_form_link(recipient.token),
-        "form_content": job.form_content,
-        "recipient_email": recipient.email,
-    }
-    return {key: value or "" for key, value in raw_values.items()}
 
 
 def _open_session(session_factory: sessionmaker | Session | None):
@@ -200,13 +171,12 @@ def dispatch_human_input_email_task(form_id: str, node_title: str | None = None,
 
         for job in jobs:
             for recipient in job.recipients:
-                substitutions = _build_substitutions(job=job, recipient=recipient, node_title=node_title)
-                subject = _render_subject(job.subject, substitutions)
-                body = _render_body(job.body, substitutions, variable_pool=variable_pool)
+                form_link = _build_form_link(recipient.token)
+                body = _render_body(job.body, form_link, variable_pool=variable_pool)
 
                 mail.send(
                     to=recipient.email,
-                    subject=subject,
+                    subject=job.subject,
                     html=body,
                 )
 

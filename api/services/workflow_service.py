@@ -807,8 +807,8 @@ class WorkflowService:
             variable_pool=variable_pool,
         )
 
-        rendered_content = node._render_form_content_before_submission()
-        resolved_default_values = node._resolve_default_values()
+        rendered_content = node.render_form_content_before_submission()
+        resolved_default_values = node.resolve_default_values()
         node_data = node.node_data
         human_input_required = HumanInputRequired(
             form_id=node_id,
@@ -875,10 +875,10 @@ class WorkflowService:
             form_data=form_inputs,
         )
 
-        rendered_content = node._render_form_content_before_submission()
+        rendered_content = node.render_form_content_before_submission()
         outputs: dict[str, Any] = dict(form_inputs)
         outputs["__action_id"] = action
-        outputs["__rendered_content"] = node._render_form_content_with_outputs(
+        outputs["__rendered_content"] = node.render_form_content_with_outputs(
             rendered_content, outputs, node_data.outputs_field_names()
         )
 
@@ -942,8 +942,8 @@ class WorkflowService:
             node_config=node_config,
             variable_pool=variable_pool,
         )
-        rendered_content = node._render_form_content_before_submission()
-        resolved_default_values = node._resolve_default_values()
+        rendered_content = node.render_form_content_before_submission()
+        resolved_default_values = node.resolve_default_values()
         form_id, recipients = self._create_human_input_delivery_test_form(
             app_model=app_model,
             node_id=node_id,

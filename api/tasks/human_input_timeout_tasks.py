@@ -88,12 +88,14 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
                     reason="delivery_test_timeout",
                 )
                 continue
+
             is_global = _is_global_timeout(form_model, global_timeout_seconds, now=now)
             record = form_repo.mark_timeout(
                 form_id=form_model.id,
                 timeout_status=HumanInputFormStatus.EXPIRED if is_global else HumanInputFormStatus.TIMEOUT,
                 reason="global_timeout" if is_global else "node_timeout",
             )
+            assert record.workflow_run_id is not None, "workflow_run_id should not be None for non-test form"
             if is_global:
                 _handle_global_timeout(
                     form_id=record.form_id,
@@ -102,7 +104,7 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
                     session_factory=session_factory,
                 )
             else:
-                service._enqueue_resume(record.workflow_run_id)
+                service.enqueue_resume(record.workflow_run_id)
         except Exception:
             logger.exception(
                 "Failed to handle timeout for form_id=%s workflow_run_id=%s",

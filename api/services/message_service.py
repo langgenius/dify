@@ -4,6 +4,7 @@ from typing import Union
 
 from sqlalchemy.orm import sessionmaker
 
+from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory

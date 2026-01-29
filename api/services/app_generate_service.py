@@ -140,7 +140,11 @@ class AppGenerateService:
                         call_depth=0,
                     )
                     payload_json = payload.model_dump_json()
-                on_subscribe = cls._build_streaming_task_on_subscribe(lambda: chatflow_execute_task.delay(payload_json))
+
+                def on_subscribe():
+                    chatflow_execute_task.delay(payload_json)
+
+                on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                 generator = AdvancedChatAppGenerator()
                 return rate_limit.generate(
                     generator.convert_to_event_stream(
@@ -166,12 +170,14 @@ class AppGenerateService:
                             streaming=True,
                             call_depth=0,
                             root_node_id=root_node_id,
-                            workflow_run_id=uuid.uuid4(),
+                            workflow_run_id=str(uuid.uuid4()),
                         )
                         payload_json = payload.model_dump_json()
-                    on_subscribe = cls._build_streaming_task_on_subscribe(
-                        lambda: chatflow_execute_task.delay(payload_json)
-                    )
+
+                    def on_subscribe():
+                        chatflow_execute_task.delay(payload_json)
+
+                    on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                     return rate_limit.generate(
                         WorkflowAppGenerator.convert_to_event_stream(
                             MessageBasedAppGenerator.retrieve_events(
@@ -341,5 +347,5 @@ class AppGenerateService:
         generator = AdvancedChatAppGenerator()
 
         return generator.convert_to_event_stream(
-            generator.retrieve_events(app_model.mode, workflow_run.id),
+            generator.retrieve_events(AppMode(app_model.mode), workflow_run.id),
         )

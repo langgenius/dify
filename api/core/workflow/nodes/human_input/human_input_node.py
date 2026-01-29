@@ -144,7 +144,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
         pause_requested_event = PauseRequestedEvent(reason=required_event)
         return pause_requested_event
 
-    def _resolve_default_values(self) -> Mapping[str, Any]:
+    def resolve_default_values(self) -> Mapping[str, Any]:
         variable_pool = self.graph_runtime_state.variable_pool
         resolved_defaults: dict[str, Any] = {}
         for input in self._node_data.inputs:
@@ -189,7 +189,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
 
     def _human_input_required_event(self, form_entity: HumanInputFormEntity) -> HumanInputRequired:
         node_data = self._node_data
-        resolved_default_values = self._resolve_default_values()
+        resolved_default_values = self.resolve_default_values()
         display_in_ui = self._display_in_ui()
         form_token = form_entity.web_app_token
         if display_in_ui and form_token is None:
@@ -227,10 +227,10 @@ class HumanInputNode(Node[HumanInputNodeData]):
                 workflow_execution_id=self._workflow_execution_id,
                 node_id=self.id,
                 form_config=self._node_data,
-                rendered_content=self._render_form_content_before_submission(),
+                rendered_content=self.render_form_content_before_submission(),
                 delivery_methods=self._effective_delivery_methods(),
                 display_in_ui=display_in_ui,
-                resolved_default_values=self._resolve_default_values(),
+                resolved_default_values=self.resolve_default_values(),
                 console_recipient_required=self._should_require_console_recipient(),
                 console_creator_account_id=(
                     self.user_id if self.invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE} else None
@@ -276,7 +276,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
         submitted_data = form.submitted_data or {}
         outputs: dict[str, Any] = dict(submitted_data)
         outputs[self._OUTPUT_FIELD_ACTION_ID] = selected_action_id
-        rendered_content = self._render_form_content_with_outputs(
+        rendered_content = self.render_form_content_with_outputs(
             form.rendered_content,
             outputs,
             self._node_data.outputs_field_names(),
@@ -300,7 +300,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
             )
         )
 
-    def _render_form_content_before_submission(self) -> str:
+    def render_form_content_before_submission(self) -> str:
         """
         Process form content by substituting variables.
 
@@ -315,7 +315,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
         return rendered_form_content.markdown
 
     @staticmethod
-    def _render_form_content_with_outputs(
+    def render_form_content_with_outputs(
         form_content: str,
         outputs: Mapping[str, Any],
         field_names: Sequence[str],

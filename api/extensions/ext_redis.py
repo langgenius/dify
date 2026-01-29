@@ -271,8 +271,8 @@ def get_pubsub_redis_client() -> RedisClientWrapper:
 def get_pubsub_broadcast_channel() -> BroadcastChannelProtocol:
     redis_conn = get_pubsub_redis_client()
     if dify_config.PUBSUB_REDIS_CHANNEL_TYPE == "sharded":
-        return ShardedRedisBroadcastChannel(redis_conn)
-    return RedisBroadcastChannel(redis_conn)
+        return ShardedRedisBroadcastChannel(redis_conn)  # pyright: ignore[reportArgumentType]
+    return RedisBroadcastChannel(redis_conn)  # pyright: ignore[reportArgumentType]
 
 
 P = ParamSpec("P")

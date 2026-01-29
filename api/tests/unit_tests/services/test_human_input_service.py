@@ -83,7 +83,7 @@ def test_enqueue_resume_dispatches_task_for_workflow(mocker, mock_session_factor
 
     resume_task = mocker.patch("services.human_input_service.resume_app_execution")
 
-    service._enqueue_resume("workflow-run-id")
+    service.enqueue_resume("workflow-run-id")
 
     resume_task.apply_async.assert_called_once()
     call_kwargs = resume_task.apply_async.call_args.kwargs
@@ -125,7 +125,7 @@ def test_enqueue_resume_dispatches_task_for_advanced_chat(mocker, mock_session_f
 
     resume_task = mocker.patch("services.human_input_service.resume_app_execution")
 
-    service._enqueue_resume("workflow-run-id")
+    service.enqueue_resume("workflow-run-id")
 
     resume_task.apply_async.assert_called_once()
     call_kwargs = resume_task.apply_async.call_args.kwargs
@@ -153,7 +153,7 @@ def test_enqueue_resume_skips_unsupported_app_mode(mocker, mock_session_factory)
 
     resume_task = mocker.patch("services.human_input_service.resume_app_execution")
 
-    service._enqueue_resume("workflow-run-id")
+    service.enqueue_resume("workflow-run-id")
 
     resume_task.apply_async.assert_not_called()
 

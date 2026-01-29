@@ -1,6 +1,5 @@
 import json
 import logging
-import uuid
 from collections.abc import Callable, Generator, Mapping
 from typing import Union, cast
 
@@ -296,11 +295,11 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         return message
 
     @staticmethod
-    def _make_channel_key(app_mode: AppMode, workflow_run_id: uuid.UUID):
-        return f"channel:{app_mode}:{str(workflow_run_id)}"
+    def _make_channel_key(app_mode: AppMode, workflow_run_id: str):
+        return f"channel:{app_mode}:{workflow_run_id}"
 
     @classmethod
-    def get_response_topic(cls, app_mode: AppMode, workflow_run_id: uuid.UUID) -> Topic:
+    def get_response_topic(cls, app_mode: AppMode, workflow_run_id: str) -> Topic:
         key = cls._make_channel_key(app_mode, workflow_run_id)
         channel = get_pubsub_broadcast_channel()
         topic = channel.topic(key)
@@ -310,7 +309,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
     def retrieve_events(
         cls,
         app_mode: AppMode,
-        workflow_run_id: uuid.UUID,
+        workflow_run_id: str,
         idle_timeout=300,
         on_subscribe: Callable[[], None] | None = None,
     ) -> Generator[Mapping | str, None, None]:

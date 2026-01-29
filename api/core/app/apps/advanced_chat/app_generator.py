@@ -69,7 +69,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        workflow_run_id: uuid.UUID,
+        workflow_run_id: str,
         streaming: Literal[False],
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any]: ...
@@ -82,7 +82,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        workflow_run_id: uuid.UUID,
+        workflow_run_id: str,
         streaming: Literal[True],
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Generator[Mapping | str, None, None]: ...
@@ -95,7 +95,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        workflow_run_id: uuid.UUID,
+        workflow_run_id: str,
         streaming: bool,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]: ...
@@ -107,7 +107,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        workflow_run_id: uuid.UUID,
+        workflow_run_id: str,
         streaming: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]:

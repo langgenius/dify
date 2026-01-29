@@ -181,7 +181,7 @@ class HumanInputService:
             return
         if result.workflow_run_id is None:
             return
-        self._enqueue_resume(result.workflow_run_id)
+        self.enqueue_resume(result.workflow_run_id)
 
     def ensure_form_active(self, form: Form) -> None:
         if form.submitted:
@@ -210,7 +210,7 @@ class HumanInputService:
         except HumanInputSubmissionValidationError as exc:
             raise InvalidFormDataError(str(exc)) from exc
 
-    def _enqueue_resume(self, workflow_run_id: str) -> None:
+    def enqueue_resume(self, workflow_run_id: str) -> None:
         workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
         workflow_run = workflow_run_repo.get_workflow_run_by_id_without_tenant(workflow_run_id)
 

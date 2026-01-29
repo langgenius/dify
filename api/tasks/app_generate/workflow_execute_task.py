@@ -1,7 +1,7 @@
 import contextlib
 import logging
 import uuid
-from collections.abc import Iterable, Mapping
+from collections.abc import Generator, Mapping
 from enum import StrEnum
 from typing import Annotated, Any, TypeAlias, Union
 
@@ -86,7 +86,7 @@ class AppExecutionParams(BaseModel):
     streaming: bool = True
     call_depth: int = 0
     root_node_id: str | None = None
-    workflow_run_id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    workflow_run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
     @classmethod
     def new(
@@ -99,7 +99,7 @@ class AppExecutionParams(BaseModel):
         streaming: bool = True,
         call_depth: int = 0,
         root_node_id: str | None = None,
-        workflow_run_id: uuid.UUID | None = None,
+        workflow_run_id: str | None = None,
     ):
         user_params: _Account | _EndUser
         if isinstance(user, Account):
@@ -119,7 +119,7 @@ class AppExecutionParams(BaseModel):
             streaming=streaming,
             call_depth=call_depth,
             root_node_id=root_node_id,
-            workflow_run_id=workflow_run_id or uuid.uuid4(),
+            workflow_run_id=workflow_run_id or str(uuid.uuid4()),
         )
 
 
@@ -171,6 +171,7 @@ class _AppRunner:
             if not exec_params.streaming:
                 return response
 
+            assert isinstance(response, Generator)
             _publish_streaming_response(response, exec_params.workflow_run_id, exec_params.app_mode)
 
     def _run_app(
@@ -237,26 +238,10 @@ def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Accoun
     return session.get(EndUser, workflow_run.created_by)
 
 
-def _coerce_uuid(value: Any) -> uuid.UUID | None:
-    if isinstance(value, uuid.UUID):
-        return value
-    if value is None:
-        return None
-
-    try:
-        return uuid.UUID(str(value))
-    except (ValueError, TypeError):
-        logger.warning("Invalid workflow_run_id value: %s", value)
-        return None
-
-
-def _publish_streaming_response(response_stream: Iterable[Any], workflow_run_id: Any, app_mode: AppMode) -> None:
-    workflow_run_uuid = _coerce_uuid(workflow_run_id)
-    if workflow_run_uuid is None:
-        logger.warning("Unable to publish streaming response without valid workflow_run_id: %s", workflow_run_id)
-        return
-
-    topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_uuid)
+def _publish_streaming_response(
+    response_stream: Generator[str | Mapping[str, Any], None, None], workflow_run_id: str, app_mode: AppMode
+) -> None:
+    topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
     for event in response_stream:
         try:
             payload = json.dumps(event)
@@ -268,7 +253,7 @@ def _publish_streaming_response(response_stream: Iterable[Any], workflow_run_id:
 
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)
-def chatflow_execute_task(payload: str) -> Mapping[str, Any] | None:
+def chatflow_execute_task(payload: str) -> Generator[Mapping[str, Any] | str, None, None] | Mapping[str, Any] | None:
     exec_params = AppExecutionParams.model_validate_json(payload)
 
     logger.info("chatflow_execute_task run with params: %s", exec_params)
@@ -439,14 +424,8 @@ def _resume_advanced_chat(
         raise
 
     if generate_entity.stream:
-        publish_uuid = _coerce_uuid(generate_entity.workflow_run_id) or _coerce_uuid(workflow_run_id)
-        if publish_uuid is None:
-            logger.warning(
-                "Unable to publish streaming response for workflow run %s due to missing workflow_run_id",
-                workflow_run_id,
-            )
-        else:
-            _publish_streaming_response(response, publish_uuid, AppMode.ADVANCED_CHAT)
+        assert isinstance(response, Generator)
+        _publish_streaming_response(response, workflow_run_id, AppMode.ADVANCED_CHAT)
 
 
 def _resume_workflow(
@@ -499,14 +478,8 @@ def _resume_workflow(
         raise
 
     if generate_entity.stream:
-        publish_uuid = _coerce_uuid(generate_entity.workflow_execution_id) or _coerce_uuid(workflow_run_id)
-        if publish_uuid is None:
-            logger.warning(
-                "Unable to publish streaming response for workflow run %s due to missing workflow_run_id",
-                workflow_run_id,
-            )
-        else:
-            _publish_streaming_response(response, publish_uuid, AppMode.WORKFLOW)
+        assert isinstance(response, Generator)
+        _publish_streaming_response(response, workflow_run_id, AppMode.WORKFLOW)
 
     workflow_run_repo.delete_workflow_pause(pause_entity)
 

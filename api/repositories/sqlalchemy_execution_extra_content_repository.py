@@ -160,7 +160,7 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
                 logger.warning("Failed to load submitted data for HumanInputContent(id=%s)", model.id)
                 return None
 
-        rendered_content = HumanInputNode._render_form_content_with_outputs(
+        rendered_content = HumanInputNode.render_form_content_with_outputs(
             form.rendered_content,
             submitted_data,
             _extract_output_field_names(form_definition.form_content),
