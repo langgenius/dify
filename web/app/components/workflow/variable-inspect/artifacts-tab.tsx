@@ -72,7 +72,7 @@ const ArtifactsTab: FC<InspectHeaderProps> = (headerProps) => {
         <div className="h-full p-2">
           <div className="flex h-full flex-col gap-3 rounded-xl bg-background-section p-8">
             <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
-              <SearchLinesSparkle className="h-5 w-5 text-text-accent" />
+              <SearchLinesSparkle className="h-5 w-5 text-text-accent" aria-hidden="true" />
             </div>
             <div className="flex flex-col gap-1">
               <div className="system-sm-semibold text-text-secondary">{t('debug.variableInspect.tabArtifacts.emptyTitle')}</div>
@@ -93,6 +93,12 @@ const ArtifactsTab: FC<InspectHeaderProps> = (headerProps) => {
   }
 
   const file = selectedFile
+  const parts = file?.path.split('/') ?? []
+  let cumPath = ''
+  const pathSegments = parts.map((part, i) => {
+    cumPath += (cumPath ? '/' : '') + part
+    return { part, key: cumPath, isFirst: i === 0, isLast: i === parts.length - 1 }
+  })
 
   return (
     <SplitPanel
@@ -122,16 +128,16 @@ const ArtifactsTab: FC<InspectHeaderProps> = (headerProps) => {
                 <>
                   <div className="flex w-0 grow items-center gap-1">
                     <div className="flex items-center gap-1 truncate">
-                      {file.path.split('/').map((part, i, arr) => (
-                        <span key={i} className="flex items-center gap-1">
-                          {i > 0 && <span className="system-sm-regular text-text-quaternary">/</span>}
+                      {pathSegments!.map(seg => (
+                        <span key={seg.key} className="flex items-center gap-1">
+                          {!seg.isFirst && <span className="system-sm-regular text-text-quaternary">/</span>}
                           <span
                             className={cn(
                               'system-sm-semibold truncate',
-                              i === arr.length - 1 ? 'text-text-secondary' : 'text-text-tertiary',
+                              seg.isLast ? 'text-text-secondary' : 'text-text-tertiary',
                             )}
                           >
-                            {part}
+                            {seg.part}
                           </span>
                         </span>
                       ))}
