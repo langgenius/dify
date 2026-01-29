@@ -299,7 +299,7 @@ ignore_imports =
     core.workflow.nodes.llm.node -> extensions.ext_database
     core.workflow.nodes.tool.tool_node -> extensions.ext_database
     core.workflow.nodes.human_input.human_input_node -> extensions.ext_database
-    core.workflow.nodes.human_input.human_input_node -> core.repositories.human_input_reposotiry
+    core.workflow.nodes.human_input.human_input_node -> core.repositories.human_input_repository
     core.workflow.workflow_entry -> extensions.otel.runtime
     core.workflow.nodes.agent.agent_node -> models
     core.workflow.nodes.base.node -> models.enums

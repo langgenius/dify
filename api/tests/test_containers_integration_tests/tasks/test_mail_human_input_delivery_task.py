@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from configs import dify_config
-from core.repositories.human_input_reposotiry import FormCreateParams, HumanInputFormRepositoryImpl
+from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from core.workflow.nodes.human_input.entities import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,

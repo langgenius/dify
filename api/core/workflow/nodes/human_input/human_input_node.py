@@ -4,7 +4,7 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.repositories.human_input_reposotiry import HumanInputFormRepositoryImpl
+from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import (

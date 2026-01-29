@@ -66,7 +66,7 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.repositories.human_input_reposotiry import HumanInputFormRepositoryImpl
+from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.nodes import NodeType

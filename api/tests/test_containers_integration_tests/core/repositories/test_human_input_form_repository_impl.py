@@ -7,7 +7,7 @@ from uuid import uuid4
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
-from core.repositories.human_input_reposotiry import HumanInputFormRepositoryImpl
+from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.nodes.human_input.entities import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,

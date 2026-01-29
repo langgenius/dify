@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 import services.human_input_service as human_input_service_module
-from core.repositories.human_input_reposotiry import (
+from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )

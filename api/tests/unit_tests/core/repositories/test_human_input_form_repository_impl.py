@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.repositories.human_input_reposotiry import (
+from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormRepositoryImpl,
     HumanInputFormSubmissionRepository,
@@ -67,9 +67,9 @@ def _stub_selectinload(monkeypatch: pytest.MonkeyPatch) -> None:
             return self
 
     monkeypatch.setattr(
-        "core.repositories.human_input_reposotiry.selectinload", lambda *args, **kwargs: "_loader_option"
+        "core.repositories.human_input_repository.selectinload", lambda *args, **kwargs: "_loader_option"
     )
-    monkeypatch.setattr("core.repositories.human_input_reposotiry.select", lambda *args, **kwargs: _FakeSelect())
+    monkeypatch.setattr("core.repositories.human_input_repository.select", lambda *args, **kwargs: _FakeSelect())
 
 
 class TestHumanInputFormRepositoryImplHelpers:
@@ -531,7 +531,7 @@ class TestHumanInputFormSubmissionRepository:
 
     def test_mark_submitted_updates_fields(self, monkeypatch: pytest.MonkeyPatch):
         fixed_now = datetime(2024, 1, 1, 0, 0, 0)
-        monkeypatch.setattr("core.repositories.human_input_reposotiry.naive_utc_now", lambda: fixed_now)
+        monkeypatch.setattr("core.repositories.human_input_repository.naive_utc_now", lambda: fixed_now)
 
         form = _DummyForm(
             id="form-1",

@@ -6,7 +6,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.repositories.human_input_reposotiry import HumanInputFormSubmissionRepository
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_database import db

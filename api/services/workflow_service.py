@@ -15,7 +15,7 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
-from core.repositories.human_input_reposotiry import HumanInputFormRepositoryImpl
+from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.variables import VariableBase
 from core.variables.variables import Variable
 from core.workflow.entities import GraphInitParams, WorkflowNodeExecution
