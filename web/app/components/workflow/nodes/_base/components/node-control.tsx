@@ -22,10 +22,13 @@ import { NodeRunningStatus } from '../../../types'
 import { canRunBySingle } from '../../../utils'
 import PanelOperator from './panel-operator'
 
-type NodeControlProps = Pick<Node, 'id' | 'data'>
+type NodeControlProps = Pick<Node, 'id' | 'data'> & {
+  pluginInstallLocked?: boolean
+}
 const NodeControl: FC<NodeControlProps> = ({
   id,
   data,
+  pluginInstallLocked,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -47,7 +50,7 @@ const NodeControl: FC<NodeControlProps> = ({
     <div
       className={`
       absolute -top-7 right-0 hidden h-7 pb-1
-      ${!data._pluginInstallLocked && 'group-hover:flex'}
+      ${!pluginInstallLocked && 'group-hover:flex'}
       ${data.selected && '!flex'}
       ${open && '!flex'}
       `}

@@ -4,14 +4,13 @@ import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plug
 import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { CommonNodeType, NodeProps, Node as WorkflowNode } from '@/app/components/workflow/types'
 import * as React from 'react'
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useNodesMetaData } from '@/app/components/workflow/hooks'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -48,21 +47,6 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
     shouldDim,
   } = useNodePluginInstallation(data)
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
-  const { handleNodeDataUpdate } = useNodeDataUpdate()
-  const shouldLock = !isChecking && isMissing && canInstall && Boolean(uniqueIdentifier)
-
-  useEffect(() => {
-    if (data._pluginInstallLocked === shouldLock && data._dimmed === shouldDim)
-      return
-    handleNodeDataUpdate({
-      id,
-      data: {
-        _pluginInstallLocked: shouldLock,
-        _dimmed: shouldDim,
-      },
-    })
-  }, [data._pluginInstallLocked, data._dimmed, handleNodeDataUpdate, id, shouldDim, shouldLock])
-
   const nodesById = useMemo(() => {
     return nodes.reduce((acc, node) => {
       acc[node.id] = node

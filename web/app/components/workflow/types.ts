@@ -111,7 +111,6 @@ export type CommonNodeType<T = {}> = {
   subscription_id?: string
   provider_id?: string
   _dimmed?: boolean
-  _pluginInstallLocked?: boolean
 } & T & Partial<PluginDefaultValue>
 
 export type CommonEdgeType = {

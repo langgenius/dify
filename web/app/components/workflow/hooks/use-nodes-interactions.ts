@@ -591,8 +591,6 @@ export const useNodesInteractions = () => {
         return
       if (node.data.type === BlockEnum.DataSourceEmpty)
         return
-      if (node.data._pluginInstallLocked)
-        return
       handleNodeSelect(node.id)
     },
     [handleNodeSelect, workflowStore],
