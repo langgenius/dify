@@ -80,7 +80,7 @@ test:
 		echo "Target: $(TARGET_TESTS)"; \
 		uv run --project api --dev pytest $(TARGET_TESTS); \
 	else \
-		uv run --project api --dev dev/pytest/pytest_unit_tests.sh; \
+		PYTEST_XDIST_ARGS="-n auto" uv run --project api --dev dev/pytest/pytest_unit_tests.sh; \
 	fi
 	@echo "✅ Tests complete"
 
