@@ -112,6 +112,7 @@ class GraphProtocol(Protocol):
 
     def get_outgoing_edges(self, node_id: str) -> Sequence[Any]: ...
 
+
 @dataclass(slots=True)
 class _GraphRuntimeStateSnapshot:
     """Immutable view of a serialized runtime state snapshot."""
