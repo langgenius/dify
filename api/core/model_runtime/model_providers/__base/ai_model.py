@@ -1,5 +1,6 @@
 import decimal
 import hashlib
+import logging
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,6 +26,8 @@ from core.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+
+logger = logging.getLogger(__name__)
 
 
 class AIModel(BaseModel):
@@ -144,8 +147,10 @@ class AIModel(BaseModel):
         from core.plugin.impl.model import PluginModelClient
 
         plugin_model_manager = PluginModelClient()
-        cache_key = f"plugin_model_schema:{self.tenant_id}:{self.plugin_id}:{self.provider_name}:{self.model_type.value}:{model}"
-        # sort credentials
+        cache_key = (
+                    f"plugin_model_schema:{self.tenant_id}:{self.plugin_id}:"
+                    f"{self.provider_name}:{self.model_type.value}:{model}"
+                )        # sort credentials
         sorted_credentials = sorted(credentials.items()) if credentials else []
         cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
 
@@ -154,7 +159,7 @@ class AIModel(BaseModel):
             try:
                 return AIModelEntity.model_validate_json(cached_schema_json)
             except Exception:
-                pass
+                logger.warning("Failed to validate cached plugin model schema for model %s", model)
 
         schema = plugin_model_manager.get_model_schema(
             tenant_id=self.tenant_id,

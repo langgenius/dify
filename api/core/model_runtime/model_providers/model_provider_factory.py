@@ -176,8 +176,10 @@ class ModelProviderFactory:
         Get model schema
         """
         plugin_id, provider_name = self.get_plugin_id_and_provider_name_from_provider(provider)
-        cache_key = f"plugin_model_schema:{self.tenant_id}:{plugin_id}:{provider_name}:{model_type.value}:{model}"
-        # sort credentials
+        cache_key = (
+                    f"plugin_model_schema:{self.tenant_id}:{plugin_id}:"
+                    f"{provider_name}:{model_type.value}:{model}"
+                )        # sort credentials
         sorted_credentials = sorted(credentials.items()) if credentials else []
         cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
 
@@ -186,7 +188,7 @@ class ModelProviderFactory:
             try:
                 return AIModelEntity.model_validate_json(cached_schema_json)
             except Exception:
-                pass
+                logger.warning("Failed to validate cached plugin model schema for model %s", model)
 
         schema = self.plugin_model_manager.get_model_schema(
             tenant_id=self.tenant_id,
