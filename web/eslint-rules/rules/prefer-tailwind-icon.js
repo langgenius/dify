@@ -64,8 +64,12 @@ const DEFAULT_ICON_CONFIGS = [
  * @returns {string} The Tailwind class string
  */
 function pixelToClass(pixels, classPrefix) {
-  const units = pixels / 4
-  return `${classPrefix}-${units}`
+  if (pixels % 4 === 0) {
+    const units = pixels / 4
+    return `${classPrefix}-${units}`
+  }
+  // For non-standard sizes, use Tailwind arbitrary value syntax
+  return `${classPrefix}-[${pixels}px]`
 }
 
 /**
