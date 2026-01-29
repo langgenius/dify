@@ -23,6 +23,14 @@ vi.mock('@/app/components/base/file-uploader/utils', () => ({
   getFileUploadErrorMessage: (e: Error, defaultMsg: string) => e.message || defaultMsg,
 }))
 
+// Mock format utils used by the shared hook
+vi.mock('@/utils/format', () => ({
+  getFileExtension: (filename: string) => {
+    const parts = filename.split('.')
+    return parts[parts.length - 1] || ''
+  },
+}))
+
 // Mock react-i18next
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -68,6 +76,12 @@ vi.mock('@/service/use-common', () => ({
       file_size_limit: 15,
       batch_count_limit: 5,
       file_upload_limit: 10,
+    },
+  })),
+  // Required by the shared useFileUpload hook
+  useFileSupportTypes: vi.fn(() => ({
+    data: {
+      allowed_extensions: ['pdf', 'docx', 'txt'],
     },
   })),
 }))
@@ -629,8 +643,17 @@ describe('useLocalFileUpload', () => {
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
 
       await act(async () => {
-        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & { dataTransfer: { files: File[] } | null }
-        dropEvent.dataTransfer = { files: [mockFile] }
+        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
+          dataTransfer: { items: DataTransferItem[], files: File[] } | null
+        }
+        // Mock dataTransfer with items array (used by the shared hook for directory traversal)
+        dropEvent.dataTransfer = {
+          items: [{
+            kind: 'file',
+            getAsFile: () => mockFile,
+          }] as unknown as DataTransferItem[],
+          files: [mockFile],
+        }
         dropzone.dispatchEvent(dropEvent)
       })
 
@@ -679,8 +702,17 @@ describe('useLocalFileUpload', () => {
       ]
 
       await act(async () => {
-        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & { dataTransfer: { files: File[] } | null }
-        dropEvent.dataTransfer = { files }
+        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
+          dataTransfer: { items: DataTransferItem[], files: File[] } | null
+        }
+        // Mock dataTransfer with items array (used by the shared hook for directory traversal)
+        dropEvent.dataTransfer = {
+          items: files.map(f => ({
+            kind: 'file',
+            getAsFile: () => f,
+          })) as unknown as DataTransferItem[],
+          files,
+        }
         dropzone.dispatchEvent(dropEvent)
       })
 

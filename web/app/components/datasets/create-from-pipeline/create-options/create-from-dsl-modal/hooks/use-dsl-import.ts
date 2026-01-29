@@ -178,7 +178,7 @@ export const useDSLImport = ({
       if (pipeline_id)
         await handleCheckPluginDependencies(pipeline_id, true)
 
-      push(`datasets/${dataset_id}/pipeline`)
+      push(`/datasets/${dataset_id}/pipeline`)
     }
     else if (status === DSLImportStatus.FAILED) {
       notify({ type: 'error', message: t('creation.errorTip', { ns: 'datasetPipeline' }) })

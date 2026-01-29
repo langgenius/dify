@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { CustomFile as File, FileItem } from '@/models/datasets'
+import type { CustomFile, FileItem } from '@/models/datasets'
 import { act, render, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ToastContext } from '@/app/components/base/toast'
@@ -114,7 +114,7 @@ describe('useFileUpload', () => {
         () => useFileUpload({
           ...defaultOptions,
           supportBatchUpload: false,
-          fileList: [{ fileID: 'file-1', file: {} as File, progress: 100 }],
+          fileList: [{ fileID: 'file-1', file: {} as CustomFile, progress: 100 }],
         }),
         { wrapper: createWrapper() },
       )
@@ -201,7 +201,7 @@ describe('useFileUpload', () => {
         { wrapper: createWrapper() },
       )
 
-      const mockFile = { id: 'file-123', name: 'test.pdf', size: 1024 } as File
+      const mockFile = { id: 'file-123', name: 'test.pdf', size: 1024 } as CustomFile
 
       act(() => {
         result.current.handlePreview(mockFile)
@@ -217,7 +217,7 @@ describe('useFileUpload', () => {
         { wrapper: createWrapper() },
       )
 
-      const mockFile = { name: 'test.pdf', size: 1024 } as File
+      const mockFile = { name: 'test.pdf', size: 1024 } as CustomFile
 
       act(() => {
         result.current.handlePreview(mockFile)
@@ -862,7 +862,7 @@ describe('useFileUpload', () => {
     it('should reject when total files exceed limit', () => {
       const existingFiles: FileItem[] = Array.from({ length: 8 }, (_, i) => ({
         fileID: `existing-${i}`,
-        file: { name: `existing-${i}.pdf`, size: 1024 } as File,
+        file: { name: `existing-${i}.pdf`, size: 1024 } as CustomFile,
         progress: 100,
       }))
 

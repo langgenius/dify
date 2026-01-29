@@ -3,10 +3,11 @@ import { RiDeleteBinLine, RiErrorWarningFill } from '@remixicon/react'
 import dynamic from 'next/dynamic'
 import { useMemo } from 'react'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
-import { getFileSize, getFileType } from '@/app/components/datasets/common/image-uploader/utils'
+import { getFileType } from '@/app/components/datasets/common/image-uploader/utils'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { cn } from '@/utils/classnames'
+import { formatFileSize } from '@/utils/format'
 import { PROGRESS_ERROR } from '../constants'
 
 const SimplePieChart = dynamic(() => import('@/app/components/base/simple-pie-chart'), { ssr: false })
@@ -60,7 +61,7 @@ const FileListItem = ({
         <div className="w-full truncate text-2xs leading-3 text-text-tertiary">
           <span className="uppercase">{getFileType(fileItem.file)}</span>
           <span className="px-1 text-text-quaternary">·</span>
-          <span>{getFileSize(fileItem.file.size)}</span>
+          <span>{formatFileSize(fileItem.file.size)}</span>
         </div>
       </div>
       <div className="flex w-16 shrink-0 items-center justify-end gap-1 pr-3">

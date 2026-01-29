@@ -27,6 +27,11 @@ export type UseFileUploadOptions = {
   onFileListUpdate?: (files: FileItem[]) => void
   onPreview: (file: File) => void
   supportBatchUpload?: boolean
+  /**
+   * Optional list of allowed file extensions. If not provided, fetches from API.
+   * Pass this when you need custom extension filtering instead of using the global config.
+   */
+  allowedExtensions?: string[]
 }
 
 export type UseFileUploadReturn = {
@@ -62,6 +67,7 @@ export const useFileUpload = ({
   onFileListUpdate,
   onPreview,
   supportBatchUpload = false,
+  allowedExtensions,
 }: UseFileUploadOptions): UseFileUploadReturn => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -77,9 +83,10 @@ export const useFileUpload = ({
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const { data: supportFileTypesResponse } = useFileSupportTypes()
+  // Use provided allowedExtensions or fetch from API
   const supportTypes = useMemo(
-    () => supportFileTypesResponse?.allowed_extensions || [],
-    [supportFileTypesResponse?.allowed_extensions],
+    () => allowedExtensions ?? supportFileTypesResponse?.allowed_extensions ?? [],
+    [allowedExtensions, supportFileTypesResponse?.allowed_extensions],
   )
 
   const supportTypesShowNames = useMemo(() => {
