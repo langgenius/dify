@@ -13,6 +13,7 @@ from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine
@@ -21,11 +22,12 @@ from core.workflow.graph_engine.entities.commands import PauseCommand
 from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphRunPausedEvent,
+    GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunSucceededEvent,
 )
 from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
+from core.workflow.nodes.base.entities import BaseNodeData, OutputVariableEntity, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
@@ -49,8 +51,12 @@ class _StubToolNodeData(BaseNodeData):
     pass
 
 
-class _StubToolNode(Node):
+class _StubToolNode(Node[_StubToolNodeData]):
     node_type = NodeType.TOOL
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def init_node_data(self, data):
         self._node_data = _StubToolNodeData.model_validate(data)
@@ -109,7 +115,6 @@ def _build_graph(runtime_state: GraphRuntimeState) -> Graph:
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )
-    start_node.init_node_data(start_data.model_dump())
 
     tool_data = _StubToolNodeData(title="tool")
     tool_a = _StubToolNode(
@@ -118,7 +123,6 @@ def _build_graph(runtime_state: GraphRuntimeState) -> Graph:
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )
-    tool_a.init_node_data(tool_data.model_dump())
 
     tool_b = _StubToolNode(
         id="tool_b",
@@ -126,7 +130,6 @@ def _build_graph(runtime_state: GraphRuntimeState) -> Graph:
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )
-    tool_b.init_node_data(tool_data.model_dump())
 
     tool_c = _StubToolNode(
         id="tool_c",
@@ -134,11 +137,10 @@ def _build_graph(runtime_state: GraphRuntimeState) -> Graph:
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )
-    tool_c.init_node_data(tool_data.model_dump())
 
     end_data = EndNodeData(
         title="end",
-        outputs=[VariableSelector(variable="result", value_selector=["tool_c", "value"])],
+        outputs=[OutputVariableEntity(variable="result", value_selector=["tool_c", "value"])],
         desc=None,
     )
     end_node = EndNode(
@@ -147,7 +149,6 @@ def _build_graph(runtime_state: GraphRuntimeState) -> Graph:
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )
-    end_node.init_node_data(end_data.model_dump())
 
     return (
         Graph.new()
@@ -156,9 +157,6 @@ def _build_graph(runtime_state: GraphRuntimeState) -> Graph:
         .add_node(tool_b)
         .add_node(tool_c)
         .add_node(end_node)
-        .add_edge("tool_a", "tool_b")
-        .add_edge("tool_b", "tool_c")
-        .add_edge("tool_c", "end")
         .build()
     )
 
@@ -276,3 +274,15 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker):
 
     assert paused_nodes + resumed_nodes == baseline_nodes
     assert resumed_state.outputs == baseline_outputs
+
+
+def test_resume_emits_resumption_start_reason() -> None:
+    paused_state = _build_runtime_state("resume-reason")
+    paused_events = _run_with_optional_pause(paused_state, pause_on="tool_a")
+    initial_start = next(event for event in paused_events if isinstance(event, GraphRunStartedEvent))
+    assert initial_start.reason == WorkflowStartReason.INITIAL
+
+    resumed_state = GraphRuntimeState.from_snapshot(paused_state.dumps())
+    resumed_events = _run_with_optional_pause(resumed_state, pause_on=None)
+    resume_start = next(event for event in resumed_events if isinstance(event, GraphRunStartedEvent))
+    assert resume_start.reason == WorkflowStartReason.RESUMPTION

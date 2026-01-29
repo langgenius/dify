@@ -55,6 +55,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.runtime import GraphRuntimeState
@@ -282,8 +283,9 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         run_id = self._extract_workflow_run_id(runtime_state)
         self._workflow_execution_id = run_id
 
-        with self._database_session() as session:
-            self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
+        if event.reason == WorkflowStartReason.INITIAL:
+            with self._database_session() as session:
+                self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
 
         start_resp = self._workflow_response_converter.workflow_start_to_stream_response(
             task_id=self._application_generate_entity.task_id,
