@@ -5,7 +5,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Protocol, TypedDict, cast, final
 
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, with_config
 
 from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType
 from core.workflow.nodes.base.node import Node
@@ -19,10 +19,12 @@ logger = logging.getLogger(__name__)
 # TODO: Add EdgeConfigDict and GraphConfigDict
 
 
+@with_config(extra="allow")
 class NodeConfigData(TypedDict):
     type: str
 
 
+@with_config(extra="allow")
 class NodeConfigDict(TypedDict):
     id: str
     data: NodeConfigData
