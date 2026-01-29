@@ -9,6 +9,7 @@ from pydantic import TypeAdapter
 
 from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType
 from core.workflow.nodes.base.node import Node
+from libs.typing import is_str
 
 from .edge import Edge
 from .validation import get_graph_validator
@@ -159,7 +160,7 @@ class Graph:
             source = edge_config.get("source")
             target = edge_config.get("target")
 
-            if not isinstance(source, str) or not isinstance(target, str):
+            if not is_str(source) or not is_str(target):
                 continue
 
             # Create edge
@@ -167,7 +168,7 @@ class Graph:
             edge_counter += 1
 
             source_handle = edge_config.get("sourceHandle", "source")
-            if not isinstance(source_handle, str):
+            if not is_str(source_handle):
                 continue
 
             edge = Edge(
