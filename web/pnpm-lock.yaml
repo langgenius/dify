@@ -597,9 +597,6 @@ importers:
       vitest:
         specifier: 4.0.17
         version: 4.0.17(@types/node@18.15.0)(@vitest/browser-playwright@4.0.17)(jiti@1.21.7)(jsdom@27.3.0(canvas@3.2.1))(sass@1.93.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
-      workspace-root:
-        specifier: 3.3.1
-        version: 3.3.1
 
 packages:
 
@@ -1827,22 +1824,6 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@node-kit/extra.fs@3.3.1':
-    resolution: {integrity: sha512-3HJ6g6kADuVBASMgo99iJf1P2UToxOYtxjzt8JrpaSdfPw2YM9U9FzWAoM8vMdfTMwXCX7t7jVM7nqxZ3VJTeg==}
-    hasBin: true
-
-  '@node-kit/lerna-workspace-root@3.3.1':
-    resolution: {integrity: sha512-NoQ2+L13iqRLx3J8uyW7+05x/POMGwYcF8mzLpYvfrKFTPPh8XdN7YNuHguba0jXZwV6X2VDn8dAGdMhNERcNg==}
-    hasBin: true
-
-  '@node-kit/pnpm-workspace-root@3.3.1':
-    resolution: {integrity: sha512-IBvLeY+X3CgvS7aLQnn4AZDRTguFs5W/WxZJNi4YWlvAIdua1N8GTCjQQps3f6NUnV83IPrZkTJh5HTzYTMY2w==}
-    hasBin: true
-
-  '@node-kit/yarn-workspace-root@3.3.1':
-    resolution: {integrity: sha512-9PmP3y9814aPOsB4CFnYDbIcJ7/nPZZolbFhJ0f0gqYG3aySFrBTL1o2RRq9KlBct19HfceyT80Ut4c/Q+UVpA==}
-    hasBin: true
-
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
     engines: {node: '>= 8'}
@@ -2133,14 +2114,6 @@ packages:
   '@pkgr/core@0.2.9':
     resolution: {integrity: sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
-
-  '@pnpm/constants@7.1.1':
-    resolution: {integrity: sha512-31pZqMtjwV+Vaq7MaPrT1EoDFSYwye3dp6BiHIGRJmVThCQwySRKM7hCvqqI94epNkqFAAYoWrNynWoRYosGdw==}
-    engines: {node: '>=16.14'}
-
-  '@pnpm/error@5.0.3':
-    resolution: {integrity: sha512-ONJU5cUeoeJSy50qOYsMZQHTA/9QKmGgh1ATfEpCLgtbdwqUiwD9MxHNeXUYYI/pocBCz6r1ZCFqiQvO+8SUKA==}
-    engines: {node: '>=16.14'}
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
@@ -7477,10 +7450,6 @@ packages:
     resolution: {integrity: sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==}
     engines: {node: '>=0.10.0'}
 
-  workspace-root@3.3.1:
-    resolution: {integrity: sha512-t/KqdJ8+Fa6ovo2o0tV2+WKfd+5gg2SP59MicW8dnwiN6A2huw73yQrnFyrFokJLPJ+ItwJHUjjhNvabUvl/gg==}
-    hasBin: true
-
   wrap-ansi@7.0.0:
     resolution: {integrity: sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==}
     engines: {node: '>=10'}
@@ -9054,25 +9023,6 @@ snapshots:
   '@next/swc-win32-x64-msvc@16.1.5':
     optional: true
 
-  '@node-kit/extra.fs@3.3.1': {}
-
-  '@node-kit/lerna-workspace-root@3.3.1':
-    dependencies:
-      '@node-kit/extra.fs': 3.3.1
-      find-up: 5.0.0
-
-  '@node-kit/pnpm-workspace-root@3.3.1':
-    dependencies:
-      '@node-kit/extra.fs': 3.3.1
-      '@pnpm/error': 5.0.3
-      find-up: 5.0.0
-
-  '@node-kit/yarn-workspace-root@3.3.1':
-    dependencies:
-      '@node-kit/extra.fs': 3.3.1
-      find-up: 5.0.0
-      micromatch: 4.0.8
-
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -9333,12 +9283,6 @@ snapshots:
     optional: true
 
   '@pkgr/core@0.2.9': {}
-
-  '@pnpm/constants@7.1.1': {}
-
-  '@pnpm/error@5.0.3':
-    dependencies:
-      '@pnpm/constants': 7.1.1
 
   '@polka/url@1.0.0-next.29': {}
 
@@ -15603,12 +15547,6 @@ snapshots:
       stackback: 0.0.2
 
   word-wrap@1.2.5: {}
-
-  workspace-root@3.3.1:
-    dependencies:
-      '@node-kit/lerna-workspace-root': 3.3.1
-      '@node-kit/pnpm-workspace-root': 3.3.1
-      '@node-kit/yarn-workspace-root': 3.3.1
 
   wrap-ansi@7.0.0:
     dependencies:

@@ -12,6 +12,7 @@ const _dirname = typeof __dirname !== 'undefined'
   ? __dirname
   : path.dirname(fileURLToPath(import.meta.url))
 
+// https://iconify.design/docs/articles/cleaning-up-icons/
 function getCollections(dir: string) {
   // Import icons
   const iconSet = importDirectorySync(dir, {

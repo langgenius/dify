@@ -236,8 +236,7 @@
     "uglify-js": "3.19.3",
     "vite": "7.3.1",
     "vite-tsconfig-paths": "6.0.4",
-    "vitest": "4.0.17",
-    "workspace-root": "3.3.1"
+    "vitest": "4.0.17"
   },
   "pnpm": {
     "overrides": {
