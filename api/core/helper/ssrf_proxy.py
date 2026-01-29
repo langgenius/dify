@@ -248,22 +248,22 @@ class SSRFProxy:
     def request_error(self) -> type[Exception]:
         return request_error
 
-    def get(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: dict[str, Any]) -> httpx.Response:
+    def get(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
         return get(url=url, max_retries=max_retries, **kwargs)
 
-    def head(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: dict[str, Any]) -> httpx.Response:
+    def head(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
         return head(url=url, max_retries=max_retries, **kwargs)
 
-    def post(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: dict[str, Any]) -> httpx.Response:
+    def post(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
         return post(url=url, max_retries=max_retries, **kwargs)
 
-    def put(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: dict[str, Any]) -> httpx.Response:
+    def put(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
         return put(url=url, max_retries=max_retries, **kwargs)
 
-    def delete(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: dict[str, Any]) -> httpx.Response:
+    def delete(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
         return delete(url=url, max_retries=max_retries, **kwargs)
 
-    def patch(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: dict[str, Any]) -> httpx.Response:
+    def patch(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
         return patch(url=url, max_retries=max_retries, **kwargs)
 
 
