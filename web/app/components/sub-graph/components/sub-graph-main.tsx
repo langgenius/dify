@@ -4,11 +4,13 @@ import type { SyncWorkflowDraft, SyncWorkflowDraftCallback } from '../types'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
 import type { NestedNodeConfig } from '@/app/components/workflow/nodes/_base/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
 import { InteractionMode, WorkflowWithInnerContext } from '@/app/components/workflow'
+import { useNodesInteractions } from '@/app/components/workflow/hooks'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useInspectVarsCrudCommon } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
 import { useAvailableNodesMetaData } from '../hooks'
@@ -24,6 +26,9 @@ type SubGraphMainBaseProps = {
   selectableNodeTypes?: BlockEnum[]
   onSave?: (nodes: Node[], edges: Edge[]) => void
   onSyncWorkflowDraft?: SyncWorkflowDraft
+  isOpen: boolean
+  pendingSingleRun?: boolean
+  onPendingSingleRunHandled?: () => void
 }
 
 type SubGraphMainProps
@@ -50,8 +55,13 @@ const SubGraphMain: FC<SubGraphMainProps> = (props) => {
     selectableNodeTypes,
     onSave,
     onSyncWorkflowDraft,
+    isOpen,
+    pendingSingleRun,
+    onPendingSingleRunHandled,
   } = props
   const reactFlowStore = useStoreApi()
+  const workflowStore = useWorkflowStore()
+  const { handleNodeSelect } = useNodesInteractions()
   const availableNodesMetaData = useAvailableNodesMetaData()
   const flowType = configsMap?.flowType ?? FlowType.appFlow
   const flowId = configsMap?.flowId ?? ''
@@ -90,6 +100,32 @@ const SubGraphMain: FC<SubGraphMainProps> = (props) => {
       callback?.onSettled?.()
     }
   }, [handleSyncSubGraphDraft, onSyncWorkflowDraft])
+
+  useEffect(() => {
+    if (!isOpen || !pendingSingleRun)
+      return
+
+    const { getNodes } = reactFlowStore.getState()
+    const currentNodes = getNodes()
+    const hasExtractorNode = currentNodes.some(node => node.id === extractorNodeId)
+    if (!hasExtractorNode)
+      return
+
+    // NodePanel listens for pendingSingleRun only when the extractor node is selected in this subgraph.
+    handleNodeSelect(extractorNodeId, false, true)
+
+    // Defer run until the selection is applied and the panel is ready.
+    const frame = requestAnimationFrame(() => {
+      const store = workflowStore.getState()
+      store.setPendingSingleRun({
+        nodeId: extractorNodeId,
+        action: 'run',
+      })
+      onPendingSingleRunHandled?.()
+    })
+
+    return () => cancelAnimationFrame(frame)
+  }, [extractorNodeId, handleNodeSelect, isOpen, onPendingSingleRunHandled, pendingSingleRun, reactFlowStore, workflowStore])
 
   const resolvedSelectableTypes = useMemo(() => {
     if (selectableNodeTypes && selectableNodeTypes.length > 0)

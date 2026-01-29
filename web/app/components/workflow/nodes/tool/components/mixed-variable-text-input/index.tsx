@@ -13,7 +13,6 @@ import type {
 import {
   memo,
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -26,7 +25,7 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { NULL_STRATEGY } from '@/app/components/workflow/nodes/_base/constants'
 import { VarKindType as VarKindTypeEnum } from '@/app/components/workflow/nodes/_base/types'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
 import { useStrategyProviders } from '@/service/use-strategy'
@@ -99,7 +98,6 @@ const MixedVariableTextInput = ({
   const [isContextGenerateModalOpen, setIsContextGenerateModalOpen] = useState(false)
   const contextGenerateModalRef = useRef<ContextGenerateModalHandle>(null)
   const [pendingRunAfterSubGraphOpen, setPendingRunAfterSubGraphOpen] = useState(false)
-  const workflowStore = useWorkflowStore()
 
   const nodesByIdMap = useMemo(() => {
     return availableNodes.reduce((acc, node) => {
@@ -359,35 +357,19 @@ const MixedVariableTextInput = ({
     setPendingRunAfterSubGraphOpen(false)
   }, [])
 
+  const handlePendingSingleRunHandled = useCallback(() => {
+    setPendingRunAfterSubGraphOpen(false)
+  }, [])
+
   const handleCloseContextGenerateModal = useCallback(() => {
     setIsContextGenerateModalOpen(false)
   }, [])
 
   const handleOpenInternalViewAndRun = useCallback(() => {
-    setIsSubGraphModalOpen(true)
+    if (!isSubGraphModalOpen)
+      setIsSubGraphModalOpen(true)
     setPendingRunAfterSubGraphOpen(true)
-  }, [])
-
-  useEffect(() => {
-    if (!isSubGraphModalOpen || !pendingRunAfterSubGraphOpen)
-      return
-
-    const extractorNodeId = assembleExtractorNodeId || (toolNodeId && paramKey ? `${toolNodeId}_ext_${paramKey}` : '')
-    if (!extractorNodeId)
-      return
-
-    const timer = setTimeout(() => {
-      const store = workflowStore()
-      store.setInitShowLastRunTab(true)
-      store.setPendingSingleRun({
-        nodeId: extractorNodeId,
-        action: 'run',
-      })
-      setPendingRunAfterSubGraphOpen(false)
-    }, 300)
-
-    return () => clearTimeout(timer)
-  }, [isSubGraphModalOpen, pendingRunAfterSubGraphOpen, assembleExtractorNodeId, toolNodeId, paramKey, workflowStore])
+  }, [isSubGraphModalOpen])
 
   const sourceVariable: ValueSelector | undefined = detectedAgentFromValue
     ? [detectedAgentFromValue.nodeId, 'context']
@@ -465,6 +447,8 @@ const MixedVariableTextInput = ({
         <SubGraphModal
           isOpen={isSubGraphModalOpen}
           onClose={handleCloseSubGraphModal}
+          pendingSingleRun={pendingRunAfterSubGraphOpen}
+          onPendingSingleRunHandled={handlePendingSingleRunHandled}
           variant="assemble"
           toolNodeId={toolNodeId}
           paramKey={paramKey}

@@ -19,6 +19,7 @@ export type SyncWorkflowDraft = (
 export type SubGraphVariant = 'agent' | 'assemble'
 
 type BaseSubGraphProps = {
+  isOpen: boolean
   toolNodeId: string
   paramKey: string
   configsMap?: HooksStoreShape['configsMap']
@@ -28,6 +29,8 @@ type BaseSubGraphProps = {
   selectableNodeTypes?: BlockEnum[]
   onSave?: (nodes: Node[], edges: Edge[]) => void
   onSyncWorkflowDraft?: SyncWorkflowDraft
+  pendingSingleRun?: boolean
+  onPendingSingleRunHandled?: () => void
 }
 
 export type AgentSubGraphProps = BaseSubGraphProps & {

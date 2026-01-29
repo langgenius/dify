@@ -32,6 +32,7 @@ const defaultViewport: Viewport = {
 
 const SubGraphContent: FC<SubGraphProps> = (props) => {
   const {
+    isOpen,
     toolNodeId,
     paramKey,
     toolParamValue,
@@ -41,6 +42,8 @@ const SubGraphContent: FC<SubGraphProps> = (props) => {
     selectableNodeTypes,
     onSave,
     onSyncWorkflowDraft,
+    pendingSingleRun,
+    onPendingSingleRunHandled,
   } = props
 
   const isAgentVariant = props.variant === 'agent'
@@ -230,6 +233,9 @@ const SubGraphContent: FC<SubGraphProps> = (props) => {
           title={sourceTitle}
           extractorNodeId={`${toolNodeId}_ext_${paramKey}`}
           configsMap={configsMap}
+          isOpen={isOpen}
+          pendingSingleRun={pendingSingleRun}
+          onPendingSingleRunHandled={onPendingSingleRunHandled}
           nestedNodeConfig={props.nestedNodeConfig}
           onNestedNodeConfigChange={props.onNestedNodeConfigChange}
           selectableNodeTypes={selectableNodeTypes}
@@ -253,6 +259,9 @@ const SubGraphContent: FC<SubGraphProps> = (props) => {
         title={sourceTitle}
         extractorNodeId={`${toolNodeId}_ext_${paramKey}`}
         configsMap={configsMap}
+        isOpen={isOpen}
+        pendingSingleRun={pendingSingleRun}
+        onPendingSingleRunHandled={onPendingSingleRunHandled}
         nestedNodeConfig={props.nestedNodeConfig}
         onNestedNodeConfigChange={props.onNestedNodeConfigChange}
         selectableNodeTypes={selectableNodeTypes}
