@@ -183,7 +183,7 @@ class FormInput(BaseModel):
 
     type: FormInputType
     output_variable_name: str
-    default: Optional[FormInputDefault] = None
+    default: FormInputDefault | None = None
 
 
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")

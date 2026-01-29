@@ -136,10 +136,10 @@ class InMemoryFormRepository:
     def save(self, form: HumanInputForm) -> None:
         self._forms[form.form_id] = form
 
-    def get_by_id(self, form_id: str) -> Optional[HumanInputForm]:
+    def get_by_id(self, form_id: str) -> HumanInputForm | None:
         return self._forms.get(form_id)
 
-    def get_by_token(self, token: str) -> Optional[HumanInputForm]:
+    def get_by_token(self, token: str) -> HumanInputForm | None:
         for form in self._forms.values():
             if form.form_token == token:
                 return form
