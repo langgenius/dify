@@ -6,7 +6,7 @@ import re
 import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
-from typing import Annotated, Any, ClassVar, Literal, Optional, Self
+from typing import Annotated, Any, ClassVar, Literal, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 

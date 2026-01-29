@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from core.workflow.nodes.human_input.entities import FormInput
 from core.workflow.nodes.human_input.enums import TimeoutUnit
