@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from celery import Celery
+
     celery: Celery
 
 
