@@ -1,19 +1,18 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import CSVReader from './index'
-
-const mockParseCSV = vi.fn()
+import { parseCSV } from '@/utils/csv'
 
 vi.mock('@/utils/csv', () => ({
-  parseCSV: (file: File, options: { complete?: (results: { data: string[][] }) => void }) => {
-    mockParseCSV(file, options)
-    options.complete?.({ data: [['row1', 'row2']] }) // This line makes the mock always return the same data
-  },
+  parseCSV: vi.fn(),
 }))
 
 describe('CSVReader', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(parseCSV).mockImplementation((_file, options) => {
+      options?.complete?.({ data: [['row1', 'row2']] } as any)
+    })
   })
 
   it('should display upload instructions when no file selected', () => {
@@ -36,7 +35,7 @@ describe('CSVReader', () => {
     })
 
     await waitFor(() => {
-      expect(mockParseCSV).toHaveBeenCalled()
+      expect(parseCSV).toHaveBeenCalled()
       expect(onParsed).toHaveBeenCalledWith([['row1', 'row2']])
     })
   })
@@ -72,7 +71,7 @@ describe('CSVReader', () => {
     })
 
     await waitFor(() => {
-      expect(mockParseCSV).toHaveBeenCalled()
+      expect(parseCSV).toHaveBeenCalled()
       expect(onParsed).toHaveBeenCalledWith([['row1', 'row2']])
     })
   })

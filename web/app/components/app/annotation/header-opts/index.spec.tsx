@@ -127,14 +127,7 @@ vi.mock('@headlessui/react', () => {
   }
 })
 
-let _lastCSVDownloaderProps: Record<string, unknown> | undefined
-const mockDownloadCSV = vi.fn((...args: unknown[]) => {
-  _lastCSVDownloaderProps = {
-    data: args[0],
-    filename: args[1],
-    bom: (args[2] as { bom?: boolean })?.bom,
-  }
-})
+const mockDownloadCSV = vi.fn()
 
 vi.mock('@/utils/csv', () => ({
   downloadCSV: (...args: unknown[]) => mockDownloadCSV(...args),
@@ -169,7 +162,7 @@ const renderComponent = (
   props: Partial<HeaderOptionsProps> = {},
   locale: Locale = LanguagesSupported[0],
 ) => {
-  ;(useLocale as Mock).mockReturnValue(locale)
+  ; (useLocale as Mock).mockReturnValue(locale)
 
   const defaultProps: HeaderOptionsProps = {
     appId: 'test-app-id',
@@ -234,7 +227,6 @@ describe('HeaderOptions', () => {
     vi.clearAllMocks()
     vi.useRealTimers()
     mockDownloadCSV.mockClear()
-    _lastCSVDownloaderProps = undefined
     mockedFetchAnnotations.mockResolvedValue({ data: [] })
   })
 

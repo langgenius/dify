@@ -33,7 +33,8 @@ export function parseCSV(
 ): void {
   const { header = false, skipEmptyLines = true, complete } = options || {}
 
-  Papa.parse(file as unknown as string, {
+  // eslint-disable-next-line ts/no-explicit-any
+  Papa.parse(file as any, {
     header,
     skipEmptyLines,
     complete,
