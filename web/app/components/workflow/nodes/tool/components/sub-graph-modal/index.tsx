@@ -16,6 +16,7 @@ import { AssembleVariablesAlt } from '@/app/components/base/icons/src/vender/lin
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 import { useIsChatMode, useNodesSyncDraft, useWorkflow, useWorkflowVariables } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { NULL_STRATEGY } from '@/app/components/workflow/nodes/_base/constants'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { EditionType, isPromptMessageContext, PromptRole, VarType } from '@/app/components/workflow/types'
@@ -23,7 +24,15 @@ import SubGraphCanvas from './sub-graph-canvas'
 
 const SubGraphModal: FC<SubGraphModalProps> = (props) => {
   const { t } = useTranslation()
-  const { isOpen, onClose, variant, toolNodeId, paramKey } = props
+  const {
+    isOpen,
+    onClose,
+    variant,
+    toolNodeId,
+    paramKey,
+    pendingSingleRun,
+    onPendingSingleRunHandled,
+  } = props
   const isAgentVariant = variant === 'agent'
   const resolvedAgentNodeId = isAgentVariant ? props.agentNodeId : ''
   const agentName = isAgentVariant ? props.agentName : ''
@@ -93,7 +102,7 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
     return {
       extractor_node_id: current?.extractor_node_id || extractorNodeId,
       output_selector: outputSelector.length > 0 ? outputSelector : defaultOutputSelector,
-      null_strategy: current?.null_strategy || 'use_default',
+      null_strategy: current?.null_strategy || NULL_STRATEGY.RAISE_ERROR,
       default_value: current?.default_value ?? '',
     }
   }, [extractorNodeId, isAgentVariant, paramKey, toolParam?.nested_node_config])
@@ -273,6 +282,9 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
                           variant="agent"
                           toolNodeId={toolNodeId}
                           paramKey={paramKey}
+                          isOpen={isOpen}
+                          pendingSingleRun={pendingSingleRun}
+                          onPendingSingleRunHandled={onPendingSingleRunHandled}
                           sourceVariable={props.sourceVariable}
                           agentNodeId={props.agentNodeId}
                           agentName={props.agentName}
@@ -292,6 +304,9 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
                           variant="assemble"
                           toolNodeId={toolNodeId}
                           paramKey={paramKey}
+                          isOpen={isOpen}
+                          pendingSingleRun={pendingSingleRun}
+                          onPendingSingleRunHandled={onPendingSingleRunHandled}
                           title={props.title}
                           configsMap={configsMap}
                           nestedNodeConfig={nestedNodeConfig}

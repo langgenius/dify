@@ -22,6 +22,7 @@ import { WorkflowContext } from '@/app/components/workflow/context'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { NULL_STRATEGY } from '@/app/components/workflow/nodes/_base/constants'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
@@ -334,7 +335,7 @@ const FormInputItem: FC<Props> = ({
       ? (nestedNodeConfig ?? varInput?.nested_node_config ?? {
           extractor_node_id: nodeId && variable ? `${nodeId}_ext_${variable}` : '',
           output_selector: ['result'],
-          null_strategy: 'use_default',
+          null_strategy: NULL_STRATEGY.RAISE_ERROR,
           default_value: '',
         })
       : undefined

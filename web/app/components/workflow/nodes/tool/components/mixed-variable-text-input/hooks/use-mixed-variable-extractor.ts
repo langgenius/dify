@@ -10,6 +10,7 @@ import type {
   Node as WorkflowNode,
 } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
+import { NULL_STRATEGY } from '@/app/components/workflow/nodes/_base/constants'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, EditionType, isPromptMessageContext, PromptRole, VarType } from '@/app/components/workflow/types'
 import { generateNewNode, getNodeCustomTypeByNodeDataType, mergeNodeDefaultData } from '@/app/components/workflow/utils'
@@ -46,7 +47,7 @@ export const buildAssembleNestedNodeConfig = (
   return {
     extractor_node_id: extractorNodeId,
     output_selector: defaultOutputKey ? [defaultOutputKey] : [],
-    null_strategy: 'use_default',
+    null_strategy: NULL_STRATEGY.RAISE_ERROR,
     default_value: '',
   }
 }

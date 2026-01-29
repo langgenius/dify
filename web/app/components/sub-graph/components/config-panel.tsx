@@ -15,6 +15,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import Tab, { TabType } from '@/app/components/workflow/nodes/_base/components/workflow-panel/tab'
+import { NULL_STRATEGY } from '@/app/components/workflow/nodes/_base/constants'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { cn } from '@/utils/classnames'
 
@@ -62,12 +63,12 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
   const [nullStrategyOpen, setNullStrategyOpen] = useState(false)
   const whenOutputNoneOptions = useMemo(() => ([
     {
-      value: 'raise_error' as const,
+      value: NULL_STRATEGY.RAISE_ERROR,
       label: t('subGraphModal.whenOutputNone.error', { ns: 'workflow' }),
       description: t('subGraphModal.whenOutputNone.errorDesc', { ns: 'workflow' }),
     },
     {
-      value: 'use_default' as const,
+      value: NULL_STRATEGY.USE_DEFAULT,
       label: t('subGraphModal.whenOutputNone.default', { ns: 'workflow' }),
       description: t('subGraphModal.whenOutputNone.defaultDesc', { ns: 'workflow' }),
     },
@@ -194,7 +195,7 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
                     {selectedWhenOutputNoneOption.description}
                   </div>
                 )}
-                {nestedNodeConfig.null_strategy === 'use_default' && (
+                {nestedNodeConfig.null_strategy === NULL_STRATEGY.USE_DEFAULT && (
                   <div className={cn('overflow-hidden rounded-lg border border-components-input-border-active bg-components-input-bg-normal p-1')}>
                     <CodeEditor
                       noWrapper

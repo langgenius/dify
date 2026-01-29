@@ -23,6 +23,7 @@ type Props = {
   codeNodeId: string
   availableVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+  onOpenInternalViewAndRun?: () => void
 }
 
 export type ContextGenerateModalHandle = {
@@ -59,6 +60,7 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
   codeNodeId,
   availableVars,
   availableNodes,
+  onOpenInternalViewAndRun,
 }, ref) => {
   const configsMap = useHooksStore(s => s.configsMap)
   const nodes = useStore(s => s.nodes)
@@ -179,13 +181,22 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
       return
     if (current)
       applyToNode(false)
-    const store = workflowStore.getState()
-    store.setInitShowLastRunTab(true)
-    store.setPendingSingleRun({
-      nodeId: codeNodeId,
-      action: 'run',
-    })
-  }, [applyToNode, codeNodeId, current, workflowStore])
+
+    if (onOpenInternalViewAndRun) {
+      // Close this modal and open internal view, then run
+      handleCloseModal()
+      onOpenInternalViewAndRun()
+    }
+    else {
+      // Fallback: direct run (for cases without internal view)
+      const store = workflowStore.getState()
+      store.setInitShowLastRunTab(true)
+      store.setPendingSingleRun({
+        nodeId: codeNodeId,
+        action: 'run',
+      })
+    }
+  }, [applyToNode, codeNodeId, current, handleCloseModal, onOpenInternalViewAndRun, workflowStore])
 
   const isRunning = useMemo(() => {
     const target = nodes.find(node => node.id === codeNodeId)

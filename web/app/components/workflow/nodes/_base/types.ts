@@ -1,3 +1,4 @@
+import type { NullStrategy } from '@/app/components/workflow/nodes/_base/constants'
 import type { ValueSelector } from '@/app/components/workflow/types'
 
 // Generic variable types for all resource forms
@@ -11,7 +12,7 @@ export enum VarKindType {
 export type NestedNodeConfig = {
   extractor_node_id: string
   output_selector: ValueSelector
-  null_strategy: 'raise_error' | 'use_default'
+  null_strategy: NullStrategy
   default_value: unknown
 }
 

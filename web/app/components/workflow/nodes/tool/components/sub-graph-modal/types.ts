@@ -6,6 +6,8 @@ type BaseSubGraphModalProps = {
   onClose: () => void
   toolNodeId: string
   paramKey: string
+  pendingSingleRun?: boolean
+  onPendingSingleRunHandled?: () => void
 }
 
 type AgentSubGraphModalProps = BaseSubGraphModalProps & {
