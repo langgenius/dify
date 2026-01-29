@@ -4,9 +4,9 @@ from uuid import uuid4
 import pytest
 
 from configs import dify_config
-from core.app_assets.storage import AppAssetSigner, AppAssetStorage, AssetPath
+from core.app_assets.storage import AppAssetStorage, AssetPath
 from extensions.storage.base_storage import BaseStorage
-from libs import rsa
+from extensions.storage.file_presign_storage import FilePresignStorage
 
 
 class DummyStorage(BaseStorage):
@@ -70,83 +70,96 @@ def test_asset_path_validation():
         AssetPath.draft(tenant_id=tenant_id, app_id=app_id, node_id="not-a-uuid")
 
 
-def test_storage_key_mapping():
-    tenant_id = str(uuid4())
-    app_id = str(uuid4())
-    node_id = str(uuid4())
-
-    storage = AppAssetStorage(DummyStorage(), redis_client=DummyRedis())
-    ref = AssetPath.draft(tenant_id, app_id, node_id)
-    assert storage.get_storage_key(ref) == ref.get_storage_key()
-
-
-def test_signature_verification(monkeypatch: pytest.MonkeyPatch):
-    tenant_id = str(uuid4())
-    app_id = str(uuid4())
-    resource_id = str(uuid4())
-    asset_path = AssetPath.draft(tenant_id, app_id, resource_id)
-
-    class _FakeKey:
-        def export_key(self) -> bytes:
-            return b"tenant-private-key"
-
-    def _fake_get_decrypt_decoding(_tenant_id: str) -> tuple[_FakeKey, None]:
-        return _FakeKey(), None
-
+def test_file_presign_signature_verification(monkeypatch: pytest.MonkeyPatch):
+    """Test FilePresignStorage signature creation and verification."""
+    monkeypatch.setattr(dify_config, "SECRET_KEY", "test-secret-key", raising=False)
     monkeypatch.setattr(dify_config, "FILES_ACCESS_TIMEOUT", 300, raising=False)
-    monkeypatch.setattr(rsa, "get_decrypt_decoding", _fake_get_decrypt_decoding)
 
-    expires_at = int(time.time()) + 120
-    nonce = "nonce"
-    sign = AppAssetSigner.create_download_signature(asset_path=asset_path, expires_at=expires_at, nonce=nonce)
+    filename = "test/path/file.txt"
+    timestamp = str(int(time.time()))
+    nonce = "test-nonce"
 
-    assert AppAssetSigner.verify_download_signature(
-        asset_path=asset_path,
-        expires_at=expires_at,
+    # Test download signature
+    sign = FilePresignStorage._create_signature("download", filename, timestamp, nonce)
+    assert FilePresignStorage.verify_signature(
+        filename=filename,
+        operation="download",
+        timestamp=timestamp,
         nonce=nonce,
         sign=sign,
     )
 
-    expired_at = int(time.time()) - 1
-    expired_sign = AppAssetSigner.create_download_signature(asset_path=asset_path, expires_at=expired_at, nonce=nonce)
-    assert not AppAssetSigner.verify_download_signature(
-        asset_path=asset_path,
-        expires_at=expired_at,
+    # Test upload signature
+    upload_sign = FilePresignStorage._create_signature("upload", filename, timestamp, nonce)
+    assert FilePresignStorage.verify_signature(
+        filename=filename,
+        operation="upload",
+        timestamp=timestamp,
+        nonce=nonce,
+        sign=upload_sign,
+    )
+
+    # Test expired signature
+    expired_timestamp = str(int(time.time()) - 400)
+    expired_sign = FilePresignStorage._create_signature("download", filename, expired_timestamp, nonce)
+    assert not FilePresignStorage.verify_signature(
+        filename=filename,
+        operation="download",
+        timestamp=expired_timestamp,
         nonce=nonce,
         sign=expired_sign,
     )
 
-    too_far = int(time.time()) + 3600
-    far_sign = AppAssetSigner.create_download_signature(asset_path=asset_path, expires_at=too_far, nonce=nonce)
-    assert not AppAssetSigner.verify_download_signature(
-        asset_path=asset_path,
-        expires_at=too_far,
+    # Test wrong signature
+    assert not FilePresignStorage.verify_signature(
+        filename=filename,
+        operation="download",
+        timestamp=timestamp,
         nonce=nonce,
-        sign=far_sign,
+        sign="wrong-signature",
     )
 
 
 def test_signed_proxy_url_generation(monkeypatch: pytest.MonkeyPatch):
+    """Test that AppAssetStorage generates correct proxy URLs when presign is not supported."""
     tenant_id = str(uuid4())
     app_id = str(uuid4())
     resource_id = str(uuid4())
     asset_path = AssetPath.draft(tenant_id, app_id, resource_id)
 
-    class _FakeKey:
-        def export_key(self) -> bytes:
-            return b"tenant-private-key"
-
-    def _fake_get_decrypt_decoding(_tenant_id: str) -> tuple[_FakeKey, None]:
-        return _FakeKey(), None
-
+    monkeypatch.setattr(dify_config, "SECRET_KEY", "test-secret-key", raising=False)
     monkeypatch.setattr(dify_config, "FILES_ACCESS_TIMEOUT", 300, raising=False)
-    monkeypatch.setattr(rsa, "get_decrypt_decoding", _fake_get_decrypt_decoding)
     monkeypatch.setattr(dify_config, "FILES_URL", "http://files.local", raising=False)
 
     storage = AppAssetStorage(DummyStorage(), redis_client=DummyRedis())
     url = storage.get_download_url(asset_path, expires_in=120)
 
-    assert url.startswith(f"http://files.local/files/app-assets/draft/{tenant_id}/{app_id}/{resource_id}/download?")
-    assert "expires_at=" in url
+    # URL should be a proxy URL since DummyStorage doesn't support presign
+    storage_key = asset_path.get_storage_key()
+    assert url.startswith("http://files.local/files/storage/")
+    assert "/download?" in url
+    assert "timestamp=" in url
+    assert "nonce=" in url
+    assert "sign=" in url
+
+
+def test_upload_url_generation(monkeypatch: pytest.MonkeyPatch):
+    """Test that AppAssetStorage generates correct upload URLs."""
+    tenant_id = str(uuid4())
+    app_id = str(uuid4())
+    resource_id = str(uuid4())
+    asset_path = AssetPath.draft(tenant_id, app_id, resource_id)
+
+    monkeypatch.setattr(dify_config, "SECRET_KEY", "test-secret-key", raising=False)
+    monkeypatch.setattr(dify_config, "FILES_ACCESS_TIMEOUT", 300, raising=False)
+    monkeypatch.setattr(dify_config, "FILES_URL", "http://files.local", raising=False)
+
+    storage = AppAssetStorage(DummyStorage(), redis_client=DummyRedis())
+    url = storage.get_upload_url(asset_path, expires_in=120)
+
+    # URL should be a proxy URL since DummyStorage doesn't support presign
+    assert url.startswith("http://files.local/files/storage/")
+    assert "/upload?" in url
+    assert "timestamp=" in url
     assert "nonce=" in url
     assert "sign=" in url

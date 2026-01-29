@@ -7,8 +7,8 @@ from uuid import UUID, uuid4
 
 from core.sandbox.entities.files import SandboxFileDownloadTicket, SandboxFileNode
 from core.sandbox.inspector.base import SandboxFileSource
-from core.sandbox.security.sandbox_file_signer import SandboxFileDownloadPath
 from core.sandbox.storage import sandbox_file_storage
+from core.sandbox.storage.sandbox_file_storage import SandboxFileDownloadPath
 from core.virtual_environment.__base.exec import CommandExecutionError
 from core.virtual_environment.__base.helpers import execute
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment

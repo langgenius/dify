@@ -18,7 +18,6 @@ from core.app_assets.storage import AppAssetStorage, AssetPath
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from extensions.storage.silent_storage import SilentStorage
 from models.app_asset import AppAssets
 from models.model import App
 
@@ -43,9 +42,12 @@ class AppAssetService:
 
         This method creates an AppAssetStorage each time it's called,
         ensuring storage.storage_runner is only accessed after init_app.
+
+        The storage is wrapped with FilePresignStorage for presign fallback support
+        and CachedPresignStorage for URL caching.
         """
         return AppAssetStorage(
-            storage=SilentStorage(storage.storage_runner),
+            storage=storage.storage_runner,
             redis_client=redis_client,
             cache_key_prefix="app_assets",
         )
