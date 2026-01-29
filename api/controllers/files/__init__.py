@@ -16,7 +16,7 @@ files_ns = Namespace("files", description="File operations", path="/")
 
 from . import (
     image_preview,
-    storage_proxy,
+    storage_files,
     tool_files,
     upload,
 )
@@ -28,7 +28,7 @@ __all__ = [
     "bp",
     "files_ns",
     "image_preview",
-    "storage_proxy",
+    "storage_files",
     "tool_files",
     "upload",
 ]
