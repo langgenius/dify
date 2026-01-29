@@ -39,7 +39,8 @@ const TryApp: FC<Props> = ({
     if (app && !isTrialApp && type !== TypeEnum.DETAIL)
       // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setType(TypeEnum.DETAIL)
-  }, [app, isTrialApp, type])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app, isTrialApp])
 
   return (
     <Modal
