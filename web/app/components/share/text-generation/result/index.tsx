@@ -105,10 +105,10 @@ const Result: FC<IResultProps> = ({
   const getCompletionRes = () => completionResRef.current
   const [workflowProcessData, doSetWorkflowProcessData] = useState<WorkflowProcess>()
   const workflowProcessDataRef = useRef<WorkflowProcess | undefined>(undefined)
-  const setWorkflowProcessData = (data: WorkflowProcess) => {
+  const setWorkflowProcessData = useCallback((data: WorkflowProcess | undefined) => {
     workflowProcessDataRef.current = data
     doSetWorkflowProcessData(data)
-  }
+  }, [])
   const getWorkflowProcessData = () => workflowProcessDataRef.current
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
   const [isStopping, setIsStopping] = useState(false)
@@ -269,6 +269,7 @@ const Result: FC<IResultProps> = ({
       rating: null,
     })
     setCompletionRes('')
+    setWorkflowProcessData(undefined)
     resetRunState()
 
     let res: string[] = []
