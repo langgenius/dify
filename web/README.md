@@ -132,6 +132,12 @@ pnpm analyze-component app/components/your-component/index.tsx
 
 This will help you determine the testing strategy. See [Test Documentation](./docs/test.md) for details.
 
+## Helpful Editor Extensions
+
+- [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
+- [TSSLint](https://marketplace.visualstudio.com/items?itemName=johnsoncodehk.vscode-tsslint)
+- [Typescript (Native Preview)](https://marketplace.visualstudio.com/items?itemName=TypeScriptTeam.native-preview)
+
 ## Documentation
 
 Visit <https://docs.dify.ai> to view the full documentation.
