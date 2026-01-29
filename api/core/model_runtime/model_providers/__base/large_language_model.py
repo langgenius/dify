@@ -283,7 +283,7 @@ class LargeLanguageModel(AIModel):
             # TODO
             raise self._transform_invoke_error(e)
 
-        if stream and isinstance(result, Generator):
+        if stream and not isinstance(result, LLMResult):
             return self._invoke_result_generator(
                 model=model,
                 result=result,
