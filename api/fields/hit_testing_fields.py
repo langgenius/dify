@@ -58,4 +58,5 @@ hit_testing_record_fields = {
     "score": fields.Float,
     "tsne_position": fields.Raw,
     "files": fields.List(fields.Nested(files_fields)),
+    "summary": fields.String,  # Summary content if retrieved via summary index
 }

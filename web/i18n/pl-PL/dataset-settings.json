@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Ustawienia pobierania",
   "form.save": "Zapisz",
   "form.searchModel": "Szukaj modelu",
+  "form.summaryAutoGen": "Automatyczne Generowanie Podsumowania",
+  "form.summaryAutoGenEnableTip": "Po włączeniu podsumowania będą generowane automatycznie dla nowo dodanych dokumentów. Istniejące dokumenty nadal mogą być podsumowywane ręcznie.",
+  "form.summaryAutoGenTip": "Podsumowania są generowane automatycznie dla nowo dodanych dokumentów. Istniejące dokumenty nadal mogą być podsumowywane ręcznie.",
+  "form.summaryInstructions": "Instrukcje",
+  "form.summaryInstructionsPlaceholder": "Opisz zasady lub styl dla automatycznie generowanych podsumowań…",
+  "form.summaryModel": "Model Podsumowania",
   "form.upgradeHighQualityTip": "Po uaktualnieniu do trybu wysokiej jakości powrót do trybu ekonomicznego nie jest dostępny",
   "title": "Ustawienia wiedzy"
 }

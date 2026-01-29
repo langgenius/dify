@@ -105,7 +105,6 @@ ignore_imports =
     core.workflow.nodes.loop.loop_node -> core.app.workflow.node_factory
     core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
     core.workflow.workflow_entry -> core.app.workflow.layers.observability
-    core.workflow.graph_engine.worker_management.worker_pool -> configs
     core.workflow.nodes.agent.agent_node -> core.model_manager
     core.workflow.nodes.agent.agent_node -> core.provider_manager
     core.workflow.nodes.agent.agent_node -> core.tools.tool_manager
@@ -228,6 +227,9 @@ ignore_imports =
     core.workflow.nodes.knowledge_index.entities -> core.rag.retrieval.retrieval_methods
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.retrieval.retrieval_methods
     core.workflow.nodes.knowledge_index.knowledge_index_node -> models.dataset
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> services.summary_index_service
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> tasks.generate_summary_index_task
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.processor.paragraph_index_processor
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.rag.retrieval.retrieval_methods
     core.workflow.nodes.llm.node -> models.dataset
     core.workflow.nodes.agent.agent_node -> core.tools.utils.message_transformer
