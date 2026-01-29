@@ -1880,14 +1880,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/settings/form/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/datasets/settings/permission-selector/index.tsx": {
     "react/no-missing-key": {
       "count": 1
