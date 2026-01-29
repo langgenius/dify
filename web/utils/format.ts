@@ -159,3 +159,17 @@ export const formatNumberAbbreviated = (num: number) => {
 export const formatToLocalTime = (time: Dayjs, local: Locale, format: string) => {
   return time.locale(localeMap[local] ?? 'en').format(format)
 }
+
+/**
+ * Get file extension from file name.
+ * @param fileName file name
+ * @example getFileExtension('document.pdf') will return 'pdf'
+ * @example getFileExtension('archive.tar.gz') will return 'gz'
+ */
+export const getFileExtension = (fileName: string): string => {
+  if (!fileName)
+    return ''
+
+  const arr = fileName.split('.')
+  return arr.length > 1 ? arr[arr.length - 1].toLowerCase() : ''
+}

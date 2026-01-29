@@ -1591,11 +1591,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/create/file-uploader/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/datasets/create/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 16
