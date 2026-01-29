@@ -55,6 +55,7 @@ export function useFileOperations({
   const downloadOps = useDownloadOperation({
     appId,
     nodeId,
+    fileName: node?.data.name,
     onClose,
   })
 

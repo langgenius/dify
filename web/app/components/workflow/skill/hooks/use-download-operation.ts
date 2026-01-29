@@ -1,21 +1,22 @@
 'use client'
 
-// Handles file download operation - opens download URL in new tab
-
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { consoleClient } from '@/service/client'
+import { downloadUrl } from '@/utils/download'
 
 type UseDownloadOperationOptions = {
   appId: string
   nodeId: string
+  fileName?: string
   onClose: () => void
 }
 
 export function useDownloadOperation({
   appId,
   nodeId,
+  fileName,
   onClose,
 }: UseDownloadOperationOptions) {
   const { t } = useTranslation('workflow')
@@ -25,7 +26,6 @@ export function useDownloadOperation({
     if (!nodeId || !appId)
       return
 
-    // Close menu immediately before any async operation
     onClose()
 
     setIsDownloading(true)
@@ -34,9 +34,7 @@ export function useDownloadOperation({
         params: { appId, nodeId },
       })
 
-      // Open download URL in new tab (consistent with UnsupportedFileDownload)
-      if (typeof window !== 'undefined')
-        window.open(download_url, '_blank', 'noopener,noreferrer')
+      downloadUrl({ url: download_url, fileName })
     }
     catch {
       Toast.notify({
@@ -47,7 +45,7 @@ export function useDownloadOperation({
     finally {
       setIsDownloading(false)
     }
-  }, [appId, nodeId, onClose, t])
+  }, [appId, nodeId, fileName, onClose, t])
 
   return {
     handleDownload,

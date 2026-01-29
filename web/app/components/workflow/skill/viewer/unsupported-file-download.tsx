@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
+import { downloadUrl as triggerDownloadUrl } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
 
 type UnsupportedFileDownloadProps = {
@@ -17,10 +18,10 @@ const UnsupportedFileDownload = ({ name, size, downloadUrl }: UnsupportedFileDow
   const fileSize = size ? formatFileSize(size) : ''
 
   const handleDownload = useCallback(() => {
-    if (!downloadUrl || typeof window === 'undefined')
+    if (!downloadUrl)
       return
-    window.open(downloadUrl, '_blank', 'noopener,noreferrer')
-  }, [downloadUrl])
+    triggerDownloadUrl({ url: downloadUrl, fileName: name })
+  }, [downloadUrl, name])
 
   return (
     <div className="flex h-full w-full items-center justify-center">
