@@ -12,6 +12,7 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
+import { useSkillCodeCollaboration } from '../collaboration/skills/use-skill-code-collaboration'
 import { useSkillMarkdownCollaboration } from '../collaboration/skills/use-skill-markdown-collaboration'
 import { START_TAB_ID } from './constants'
 import CodeFileEditor from './editor/code-file-editor'
@@ -62,7 +63,7 @@ const FileContentPanel = () => {
   const originalContent = fileContent?.content ?? ''
   const currentContent = draftContent !== undefined ? draftContent : originalContent
   const initialContentRegistryRef = useRef<Map<string, string>>(new Map())
-  const canInitCollaboration = Boolean(appId && fileTabId && isMarkdown && isEditable && !isLoading && !error)
+  const canInitCollaboration = Boolean(appId && fileTabId && isEditable && !isLoading && !error)
 
   if (canInitCollaboration && fileTabId && !initialContentRegistryRef.current.has(fileTabId))
     initialContentRegistryRef.current.set(fileTabId, currentContent)
@@ -155,10 +156,19 @@ const FileContentPanel = () => {
   const language = currentFileNode ? getFileLanguage(currentFileNode.name) : 'plaintext'
   const theme = appTheme === Theme.light ? 'light' : 'vs-dark'
 
-  const { handleCollaborativeChange } = useSkillMarkdownCollaboration({
+  const { handleCollaborativeChange: handleMarkdownCollaborativeChange } = useSkillMarkdownCollaboration({
     appId,
     fileId: fileTabId,
-    enabled: canInitCollaboration,
+    enabled: canInitCollaboration && isMarkdown,
+    initialContent: initialCollaborativeContent,
+    baselineContent: originalContent,
+    onLocalChange: handleEditorChange,
+    onLeaderSync: handleLeaderSync,
+  })
+  const { handleCollaborativeChange: handleCodeCollaborativeChange } = useSkillCodeCollaboration({
+    appId,
+    fileId: fileTabId,
+    enabled: canInitCollaboration && isCodeOrText,
     initialContent: initialCollaborativeContent,
     baselineContent: originalContent,
     onLocalChange: handleEditorChange,
@@ -210,7 +220,7 @@ const FileContentPanel = () => {
               key={fileTabId}
               instanceId={fileTabId || undefined}
               value={currentContent}
-              onChange={handleCollaborativeChange}
+              onChange={handleMarkdownCollaborativeChange}
               collaborationEnabled={canInitCollaboration}
             />
           )
@@ -222,7 +232,7 @@ const FileContentPanel = () => {
               language={language}
               theme={isMounted ? theme : 'default-theme'}
               value={currentContent}
-              onChange={handleEditorChange}
+              onChange={handleCodeCollaborativeChange}
               onMount={handleEditorDidMount}
             />
           )
