@@ -1,4 +1,6 @@
 import json
+import queue
+import threading
 import time
 import uuid
 from typing import Any
@@ -80,24 +82,45 @@ def _create_api_token(app: App) -> ApiToken:
 def _collect_sse_events(response, max_events: int = 2, timeout: float = 3.0) -> list[dict[str, Any]]:
     events: list[dict[str, Any]] = []
     buffer = ""
-    start_time = time.time()
-    for chunk in response.response:
-        if not chunk:
-            if time.time() - start_time > timeout:
+    chunks = queue.Queue()
+
+    def _reader() -> None:
+        try:
+            for chunk in response.response:
+                chunks.put(chunk)
+        finally:
+            chunks.put(None)
+
+    thread = threading.Thread(target=_reader, daemon=True)
+    thread.start()
+
+    deadline = time.time() + timeout
+    try:
+        while time.time() < deadline and len(events) < max_events:
+            remaining = deadline - time.time()
+            if remaining <= 0:
                 break
-            continue
-        buffer += chunk.decode("utf-8")
-        while "\n\n" in buffer:
-            block, buffer = buffer.split("\n\n", 1)
-            for line in block.splitlines():
-                if not line.startswith("data: "):
-                    continue
-                payload = line[len("data: ") :]
-                events.append(json.loads(payload))
-                if len(events) >= max_events:
-                    return events
-        if time.time() - start_time > timeout:
-            break
+            try:
+                chunk = chunks.get(timeout=min(0.1, remaining))
+            except queue.Empty:
+                continue
+            if chunk is None:
+                break
+            if not chunk:
+                continue
+            buffer += chunk.decode("utf-8")
+            while "\n\n" in buffer:
+                block, buffer = buffer.split("\n\n", 1)
+                for line in block.splitlines():
+                    if not line.startswith("data: "):
+                        continue
+                    payload = line[len("data: ") :]
+                    events.append(json.loads(payload))
+                    if len(events) >= max_events:
+                        break
+    finally:
+        response.close()
+
     return events
 
 
@@ -118,7 +141,7 @@ class TestSSEStartGateIntegration:
             payload = json.loads(payload_json)
             workflow_run_id = payload["workflow_run_id"]
             app_mode = AppMode.value_of(payload["app_mode"])
-            topic = MessageBasedAppGenerator.get_response_topic(app_mode, uuid.UUID(workflow_run_id))
+            topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
             events = [
                 {
                     "event": StreamEvent.WORKFLOW_STARTED.value,
@@ -140,7 +163,10 @@ class TestSSEStartGateIntegration:
             "user": "test-end-user",
         }
 
-        with patch("services.app_generate_service.workflow_base_app_execution_task.delay", side_effect=_fake_delay):
+        with (
+            patch("services.app_generate_service.SSE_TASK_START_FALLBACK_MS", 5_000),
+            patch("services.app_generate_service.workflow_base_app_execution_task.delay", side_effect=_fake_delay),
+        ):
             response = test_client_with_containers.post(
                 "/v1/workflows/run",
                 json=payload,
