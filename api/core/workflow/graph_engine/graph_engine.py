@@ -93,7 +93,6 @@ class GraphEngine:
         # Graph execution tracks the overall execution state
         self._graph_execution = cast("GraphExecution", self._graph_runtime_state.graph_execution)
         self._graph_execution.workflow_id = workflow_id
-        self._cleanup_mcp_sessions_enabled = cleanup_mcp_sessions
 
         # === Execution Queues ===
         self._ready_queue = cast(ReadyQueue, self._graph_runtime_state.ready_queue)
