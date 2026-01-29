@@ -2,7 +2,8 @@ import decimal
 import hashlib
 import logging
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from redis import RedisError
 
 from configs import dify_config
 from core.model_runtime.entities.common_entities import I18nObject
@@ -150,12 +151,34 @@ class AIModel(BaseModel):
         sorted_credentials = sorted(credentials.items()) if credentials else []
         cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
 
-        cached_schema_json = redis_client.get(cache_key)
+        cached_schema_json = None
+        try:
+            cached_schema_json = redis_client.get(cache_key)
+        except (RedisError, RuntimeError) as exc:
+            logger.warning(
+                "Failed to read plugin model schema cache for model %s: %s",
+                model,
+                str(exc),
+                exc_info=True,
+            )
         if cached_schema_json:
             try:
                 return AIModelEntity.model_validate_json(cached_schema_json)
-            except Exception:
-                logger.warning("Failed to validate cached plugin model schema for model %s", model)
+            except ValidationError:
+                logger.warning(
+                    "Failed to validate cached plugin model schema for model %s",
+                    model,
+                    exc_info=True,
+                )
+                try:
+                    redis_client.delete(cache_key)
+                except (RedisError, RuntimeError) as exc:
+                    logger.warning(
+                        "Failed to delete invalid plugin model schema cache for model %s: %s",
+                        model,
+                        str(exc),
+                        exc_info=True,
+                    )
 
         schema = plugin_model_manager.get_model_schema(
             tenant_id=self.tenant_id,
@@ -168,7 +191,15 @@ class AIModel(BaseModel):
         )
 
         if schema:
-            redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_SCHEMA_CACHE_TTL, schema.model_dump_json())
+            try:
+                redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_SCHEMA_CACHE_TTL, schema.model_dump_json())
+            except (RedisError, RuntimeError) as exc:
+                logger.warning(
+                    "Failed to write plugin model schema cache for model %s: %s",
+                    model,
+                    str(exc),
+                    exc_info=True,
+                )
 
         return schema
 
