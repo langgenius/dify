@@ -1338,6 +1338,7 @@ class DocumentGenerateSummaryApi(Resource):
 
         if not document_list:
             from werkzeug.exceptions import BadRequest
+
             raise BadRequest("document_list cannot be empty.")
 
         # Check if dataset configuration supports summary generation
