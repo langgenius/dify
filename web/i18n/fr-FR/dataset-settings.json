@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Paramètres de récupération",
   "form.save": "Enregistrer",
   "form.searchModel": "Rechercher un modèle",
+  "form.summaryAutoGen": "Génération Auto de Résumé",
+  "form.summaryAutoGenEnableTip": "Une fois activé, les résumés seront générés automatiquement pour les documents nouvellement ajoutés. Les documents existants peuvent toujours être résumés manuellement.",
+  "form.summaryAutoGenTip": "Les résumés sont générés automatiquement pour les documents nouvellement ajoutés. Les documents existants peuvent toujours être résumés manuellement.",
+  "form.summaryInstructions": "Instructions",
+  "form.summaryInstructionsPlaceholder": "Décrivez les règles ou le style pour les résumés générés automatiquement…",
+  "form.summaryModel": "Modèle de Résumé",
   "form.upgradeHighQualityTip": "Une fois la mise à niveau vers le mode Haute Qualité, il n’est pas possible de revenir au mode Économique",
   "title": "Paramètres de connaissance"
 }

@@ -657,16 +657,22 @@ class AccountTrialAppRecord(Base):
         return user
 
 
-class ExporleBanner(Base):
+class ExporleBanner(TypeBase):
     __tablename__ = "exporle_banners"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="exporler_banner_pkey"),)
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    content = mapped_column(sa.JSON, nullable=False)
-    link = mapped_column(String(255), nullable=False)
-    sort = mapped_column(sa.Integer, nullable=False)
-    status = mapped_column(sa.String(255), nullable=False, server_default=sa.text("'enabled'::character varying"))
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    language = mapped_column(String(255), nullable=False, server_default=sa.text("'en-US'::character varying"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
+    content: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
+    link: Mapped[str] = mapped_column(String(255), nullable=False)
+    sort: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    status: Mapped[str] = mapped_column(
+        sa.String(255), nullable=False, server_default=sa.text("'enabled'::character varying"), default="enabled"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    language: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'en-US'::character varying"), default="en-US"
+    )
 
 
 class OAuthProviderApp(TypeBase):
