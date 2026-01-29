@@ -97,6 +97,11 @@ class RedisConfig(BaseSettings):
         default=None,
     )
 
+    REDIS_CLUSTERS_USERNAME: str | None = Field(
+        description="Username for Redis Clusters authentication (if required)",
+        default=None,
+    )
+
     REDIS_CLUSTERS_PASSWORD: str | None = Field(
         description="Password for Redis Clusters authentication (if required)",
         default=None,
