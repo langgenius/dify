@@ -105,19 +105,15 @@ Open [http://localhost:6006](http://localhost:6006) with your browser to see the
 
 ## Lint Code
 
-If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
+If your IDE is VSCode, rename `.vscode/settings.example.json` to `.vscode/settings.json` for lint code setting.
+
+The follow the [Lint Documentation](./docs/lint.md) to lint the code.
 
 ## Test
 
 We use [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
 
-**📖 Complete Testing Guide**: See [web/docs/test.md](./docs/test.md) for detailed testing specifications, best practices, and examples.
-
-Run test:
-
-```bash
-pnpm test
-```
+**📖 Complete Testing Guide**: See [Test Documentation](./docs/test.md) for detailed testing specifications, best practices, and examples.
 
 ### Example Code
 
@@ -134,7 +130,7 @@ Before writing tests, use the script to analyze component complexity:
 pnpm analyze-component app/components/your-component/index.tsx
 ```
 
-This will help you determine the testing strategy. See [web/docs/test.md](./docs/test.md) for details.
+This will help you determine the testing strategy. See [Test Documentation](./docs/test.md) for details.
 
 ## Documentation
 

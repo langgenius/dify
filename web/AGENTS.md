@@ -1,6 +1,6 @@
 ## Frontend Workflow
 
-- Refer to the `./docs/test.md`, `./docs/lint.md`, and `./docs/type-check.md` for detailed frontend workflow instructions.
+- Refer to the `./docs/test.md` and `./docs/lint.md` for detailed frontend workflow instructions.
 
 ## Automated Test Generation
 
