@@ -351,7 +351,7 @@
   "modelProvider.card.quota": "QUOTA",
   "modelProvider.card.quotaExhausted": "Quota épuisé",
   "modelProvider.card.removeKey": "Supprimer la clé API",
-  "modelProvider.card.tip": "Les crédits de messages prennent en charge les modèles d'OpenAI. La priorité sera donnée au quota payant. Le quota gratuit sera utilisé après épuisement du quota payant.",
+  "modelProvider.card.tip": "Les crédits de messages prennent en charge les modèles de {{modelNames}}. La priorité sera donnée au quota payant. Le quota gratuit sera utilisé après épuisement du quota payant.",
   "modelProvider.card.tokens": "Jetons",
   "modelProvider.collapse": "Effondrer",
   "modelProvider.config": "Configuration",

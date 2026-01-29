@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 RETRY_TIMES_OF_ONE_PLUGIN_IN_ONE_TENANT = 3
 CACHE_REDIS_KEY_PREFIX = "plugin_autoupgrade_check_task:cached_plugin_manifests:"
-CACHE_REDIS_TTL = 60 * 15  # 15 minutes
+CACHE_REDIS_TTL = 60 * 60  # 1 hour
 
 
 def _get_redis_cache_key(plugin_id: str) -> str:

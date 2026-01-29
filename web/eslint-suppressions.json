@@ -822,7 +822,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 15
+      "count": 14
     }
   },
   "app/components/base/chat/chat/index.tsx": {
@@ -1083,11 +1083,6 @@
   "app/components/base/form/utils/secret-input/index.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/base/icons/icon-gallery.stories.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/base/icons/utils.ts": {
@@ -1787,25 +1782,12 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/detail/completed/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 6
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/detail/completed/new-child-segment.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/datasets/documents/detail/context.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2164,11 +2146,6 @@
       "count": 3
     }
   },
-  "app/components/header/account-setting/model-provider-page/utils.ts": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "app/components/header/account-setting/plugin-page/utils.ts": {
     "ts/no-explicit-any": {
       "count": 4
@@ -2298,11 +2275,6 @@
       "count": 8
     }
   },
-  "app/components/plugins/plugin-detail-panel/app-selector/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "app/components/plugins/plugin-detail-panel/datasource-action-list.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2367,26 +2339,6 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/log-viewer.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/tool-selector/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 15
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/tool-selector/reasoning-config-form.tsx": {
-    "ts/no-explicit-any": {
-      "count": 24
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/tool-selector/tool-credentials-form.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/tool-selector/tool-item.tsx": {
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -2688,19 +2640,6 @@
       "count": 1
     }
   },
-  "app/components/tools/mcp/mcp-service-card.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
-  "app/components/tools/mcp/modal.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 20
-    }
-  },
   "app/components/tools/mcp/provider-card.tsx": {
     "ts/no-explicit-any": {
       "count": 3
@@ -2724,16 +2663,6 @@
   "app/components/tools/types.ts": {
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "app/components/tools/utils/to-form-schema.ts": {
-    "ts/no-explicit-any": {
-      "count": 15
-    }
-  },
-  "app/components/tools/workflow-tool/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/workflow-app/components/workflow-children.tsx": {
@@ -4333,11 +4262,6 @@
   "service/share.ts": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "service/tools.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "service/use-apps.ts": {
