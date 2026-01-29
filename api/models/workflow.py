@@ -29,9 +29,9 @@ from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from core.workflow.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
 from core.workflow.enums import NodeType
-from core.workflow.graph.graph import NodeConfigDict, NodeConfigDictAdapter
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now

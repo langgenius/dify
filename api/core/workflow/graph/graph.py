@@ -3,10 +3,11 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import Protocol, TypedDict, cast, final
+from typing import Protocol, cast, final
 
-from pydantic import TypeAdapter, with_config
+from pydantic import TypeAdapter
 
+from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType
 from core.workflow.nodes.base.node import Node
 from libs.typing import is_str
@@ -16,21 +17,6 @@ from .validation import get_graph_validator
 
 logger = logging.getLogger(__name__)
 
-# TODO: Add EdgeConfigDict and GraphConfigDict
-
-
-@with_config(extra="allow")
-class NodeConfigData(TypedDict):
-    type: str
-
-
-@with_config(extra="allow")
-class NodeConfigDict(TypedDict):
-    id: str
-    data: NodeConfigData
-
-
-NodeConfigDictAdapter = TypeAdapter(NodeConfigDict)
 _ListNodeConfigDict = TypeAdapter(list[NodeConfigDict])
 
 

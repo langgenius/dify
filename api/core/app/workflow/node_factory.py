@@ -9,8 +9,9 @@ from core.helper.code_executor.code_executor import CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.enums import NodeType
-from core.workflow.graph.graph import NodeConfigDict, NodeFactory
+from core.workflow.graph.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.limits import CodeNodeLimits
