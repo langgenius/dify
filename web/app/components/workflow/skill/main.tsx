@@ -2,6 +2,9 @@
 
 import * as React from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useStore } from '@/app/components/workflow/store'
+import ArtifactContentPanel from './artifact-content-panel'
+import { isArtifactTab } from './constants'
 import ContentArea from './content-area'
 import ContentBody from './content-body'
 import FileContentPanel from './file-content-panel'
@@ -17,6 +20,13 @@ import SkillPageLayout from './skill-page-layout'
 const SkillAutoSaveManager = () => {
   useSkillAutoSave()
   return null
+}
+
+const ContentRouter = () => {
+  const activeTabId = useStore(s => s.activeTabId)
+  if (isArtifactTab(activeTabId))
+    return <ArtifactContentPanel />
+  return <FileContentPanel />
 }
 
 const SkillMain = () => {
@@ -36,7 +46,7 @@ const SkillMain = () => {
           <ContentArea>
             <FileTabs />
             <ContentBody>
-              <FileContentPanel />
+              <ContentRouter />
             </ContentBody>
           </ContentArea>
         </SkillPageLayout>

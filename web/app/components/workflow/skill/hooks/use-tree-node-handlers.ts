@@ -33,10 +33,12 @@ export function useTreeNodeHandlers({
   )
 
   const openFilePreview = useCallback(() => {
+    storeApi.getState().clearArtifactSelection()
     storeApi.getState().openTab(node.data.id, { pinned: false })
   }, [node.data.id, storeApi])
 
   const openFilePinned = useCallback(() => {
+    storeApi.getState().clearArtifactSelection()
     storeApi.getState().openTab(node.data.id, { pinned: true })
   }, [node.data.id, storeApi])
 
@@ -89,10 +91,13 @@ export function useTreeNodeHandlers({
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
-      if (isFolder)
+      if (isFolder) {
         node.toggle()
-      else
+      }
+      else {
+        storeApi.getState().clearArtifactSelection()
         storeApi.getState().openTab(node.data.id, { pinned: true })
+      }
     }
   }, [isFolder, node, storeApi])
 

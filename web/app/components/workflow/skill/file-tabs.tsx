@@ -6,10 +6,11 @@ import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
-import { START_TAB_ID } from './constants'
+import { getArtifactPath, isArtifactTab, START_TAB_ID } from './constants'
 import FileTabItem from './file-tab-item'
 import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
 import StartTabItem from './start-tab-item'
+import { getFileExtension } from './utils/file-utils'
 
 const FileTabs = () => {
   const { t } = useTranslation('workflow')
@@ -38,6 +39,8 @@ const FileTabs = () => {
   }, [storeApi])
 
   const closeTab = useCallback((fileId: string) => {
+    if (isArtifactTab(fileId))
+      storeApi.getState().clearArtifactSelection()
     storeApi.getState().closeTab(fileId)
     storeApi.getState().clearDraftContent(fileId)
     storeApi.getState().clearFileMetadata(fileId)
@@ -74,8 +77,11 @@ const FileTabs = () => {
           onClick={handleStartTabClick}
         />
         {openTabIds.map((fileId) => {
-          const node = nodeMap?.get(fileId)
-          const name = node?.name ?? fileId
+          const isArtifact = isArtifactTab(fileId)
+          const node = isArtifact ? undefined : nodeMap?.get(fileId)
+          const artifactFileName = isArtifact ? getArtifactPath(fileId).split('/').pop() ?? fileId : undefined
+          const name = isArtifact ? artifactFileName! : (node?.name ?? fileId)
+          const extension = isArtifact ? getFileExtension(artifactFileName!) : node?.extension
           const isActive = activeTabId === fileId
           const isDirty = dirtyContents.has(fileId) || dirtyMetadataIds.has(fileId)
           const isPreview = previewTabId === fileId
@@ -85,7 +91,7 @@ const FileTabs = () => {
               key={fileId}
               fileId={fileId}
               name={name}
-              extension={node?.extension}
+              extension={extension}
               isActive={isActive}
               isDirty={isDirty}
               isPreview={isPreview}

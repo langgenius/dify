@@ -6,6 +6,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FolderSpark from '@/app/components/base/icons/src/vender/workflow/FolderSpark'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useAppContext } from '@/context/app-context'
 import { useDownloadSandboxFile, useSandboxFilesTree } from '@/service/use-sandbox-file'
 import { cn } from '@/utils/classnames'
@@ -26,10 +27,16 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
   const { data: treeData, hasFiles, isLoading } = useSandboxFilesTree(sandboxId)
 
   const downloadMutation = useDownloadSandboxFile(sandboxId)
+  const storeApi = useWorkflowStore()
+  const selectedArtifactPath = useStore(s => s.selectedArtifactPath)
 
   const handleToggle = useCallback(() => {
     setIsExpanded(prev => !prev)
   }, [])
+
+  const handleSelect = useCallback((node: SandboxFileTreeNode) => {
+    storeApi.getState().selectArtifact(node.path)
+  }, [storeApi])
 
   const handleDownload = useCallback(async (node: SandboxFileTreeNode) => {
     try {
@@ -91,6 +98,8 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
                 <ArtifactsTree
                   data={treeData}
                   onDownload={handleDownload}
+                  onSelect={handleSelect}
+                  selectedPath={selectedArtifactPath ?? undefined}
                   isDownloading={downloadMutation.isPending}
                 />
               )

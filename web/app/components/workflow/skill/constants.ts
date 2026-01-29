@@ -28,6 +28,20 @@ export const NODE_MENU_TYPE = {
 
 export type NodeMenuType = (typeof NODE_MENU_TYPE)[keyof typeof NODE_MENU_TYPE]
 
+export const ARTIFACT_TAB_PREFIX = 'artifact:' as const
+
+export function isArtifactTab(tabId: string | null): boolean {
+  return tabId?.startsWith(ARTIFACT_TAB_PREFIX) ?? false
+}
+
+export function getArtifactPath(tabId: string): string {
+  return tabId.slice(ARTIFACT_TAB_PREFIX.length)
+}
+
+export function makeArtifactTabId(path: string): string {
+  return `${ARTIFACT_TAB_PREFIX}${path}`
+}
+
 export const SIDEBAR_MIN_WIDTH = 240
 export const SIDEBAR_MAX_WIDTH = 480
 export const SIDEBAR_DEFAULT_WIDTH = 320

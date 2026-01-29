@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand'
 import type { SkillEditorSliceShape } from './types'
 import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
+import { createArtifactSlice } from './artifact-slice'
 import { createClipboardSlice } from './clipboard-slice'
 import { createDirtySlice } from './dirty-slice'
 import { createFileOperationsMenuSlice } from './file-operations-menu-slice'
@@ -9,6 +10,7 @@ import { createMetadataSlice } from './metadata-slice'
 import { createTabSlice } from './tab-slice'
 import { createUploadSlice } from './upload-slice'
 
+export type { ArtifactSliceShape } from './artifact-slice'
 export type { ClipboardSliceShape } from './clipboard-slice'
 export type { DirtySliceShape } from './dirty-slice'
 export type { FileOperationsMenuSliceShape } from './file-operations-menu-slice'
@@ -26,6 +28,7 @@ export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...a
   ...createMetadataSlice(...args),
   ...createFileOperationsMenuSlice(...args),
   ...createUploadSlice(...args),
+  ...createArtifactSlice(...args),
 
   resetSkillEditor: () => {
     const [set] = args
@@ -48,6 +51,7 @@ export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...a
       fileTreeSearchTerm: '',
       uploadStatus: 'idle',
       uploadProgress: { uploaded: 0, total: 0, failed: 0 },
+      selectedArtifactPath: null,
     })
   },
 })

@@ -118,6 +118,12 @@ export type UploadSliceShape = {
   resetUpload: () => void
 }
 
+export type ArtifactSliceShape = {
+  selectedArtifactPath: string | null
+  selectArtifact: (path: string) => void
+  clearArtifactSelection: () => void
+}
+
 export type SkillEditorSliceShape
   = TabSliceShape
     & FileTreeSliceShape
@@ -126,6 +132,7 @@ export type SkillEditorSliceShape
     & MetadataSliceShape
     & FileOperationsMenuSliceShape
     & UploadSliceShape
+    & ArtifactSliceShape
     & {
       resetSkillEditor: () => void
     }
