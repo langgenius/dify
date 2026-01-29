@@ -8,10 +8,12 @@ import {
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import SearchLinesSparkle from '@/app/components/base/icons/src/vender/knowledge/SearchLinesSparkle'
 import { FileDownload01 } from '@/app/components/base/icons/src/vender/line/files'
 import Loading from '@/app/components/base/loading'
 import ArtifactsTree from '@/app/components/workflow/skill/file-tree/artifacts-tree'
 import { useAppContext } from '@/context/app-context'
+import { useDocLink } from '@/context/i18n'
 import { useDownloadSandboxFile, useSandboxFilesTree } from '@/service/use-sandbox-file'
 import { cn } from '@/utils/classnames'
 import InspectLayout from './inspect-layout'
@@ -27,6 +29,7 @@ const formatFileSize = (bytes: number | null): string => {
 
 const ArtifactsTab: FC<InspectHeaderProps> = (headerProps) => {
   const { t } = useTranslation('workflow')
+  const docLink = useDocLink()
   const { userProfile } = useAppContext()
   const sandboxId = userProfile?.id
 
@@ -66,11 +69,23 @@ const ArtifactsTab: FC<InspectHeaderProps> = (headerProps) => {
   if (!hasFiles) {
     return (
       <InspectLayout {...headerProps}>
-        <div className="flex h-full items-center justify-center p-2">
-          <div className="rounded-lg bg-background-section p-3">
-            <p className="system-xs-regular text-text-tertiary">
-              {t('skillSidebar.artifacts.emptyState')}
-            </p>
+        <div className="h-full p-2">
+          <div className="flex h-full flex-col gap-3 rounded-xl bg-background-section p-8">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
+              <SearchLinesSparkle className="h-5 w-5 text-text-accent" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <div className="system-sm-semibold text-text-secondary">{t('debug.variableInspect.tabArtifacts.emptyTitle')}</div>
+              <div className="system-xs-regular text-text-tertiary">{t('debug.variableInspect.tabArtifacts.emptyTip')}</div>
+              <a
+                className="system-xs-regular cursor-pointer text-text-accent"
+                href={docLink('/use-dify/debug/variable-inspect')}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t('debug.variableInspect.tabArtifacts.emptyLink')}
+              </a>
+            </div>
           </div>
         </div>
       </InspectLayout>
