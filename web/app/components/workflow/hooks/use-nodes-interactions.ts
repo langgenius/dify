@@ -1041,6 +1041,20 @@ export const useNodesInteractions = () => {
         }
       }
 
+      const nestedChildren = nodes.filter((node) => {
+        const parentNodeId = node.data.parent_node_id
+        if (parentNodeId === currentNode.id)
+          return true
+        if (!parentNodeId && node.id.startsWith(`${currentNode.id}_ext_`))
+          return true
+        return false
+      })
+      if (nestedChildren.length) {
+        nestedChildren.forEach((child) => {
+          handleNodeDelete(child.id)
+        })
+      }
+
       if (currentNode.data.type === BlockEnum.DataSource) {
         const { id } = currentNode
         const { ragPipelineVariables, setRagPipelineVariables }
@@ -2278,7 +2292,6 @@ export const useNodesInteractions = () => {
 
     if (bundledNodes.length) {
       bundledNodes.forEach(node => handleNodeDelete(node.id))
-
       return
     }
 
