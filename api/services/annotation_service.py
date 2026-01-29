@@ -216,13 +216,12 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
+        question = args.get("question")
+        if question is None:
+            raise ValueError("'question' is required")
+
         annotation = MessageAnnotation(
-            app_id=app.id,
-            content=args["answer"],
-            conversation_id=None,
-            message_id=None,
-            question=args["question"],
-            account_id=current_user.id,
+            app_id=app.id, content=args["answer"], question=question, account_id=current_user.id
         )
         db.session.add(annotation)
         db.session.commit()
@@ -231,7 +230,7 @@ class AppAnnotationService:
         if annotation_setting:
             add_annotation_to_index_task.delay(
                 annotation.id,
-                args["question"],
+                question,
                 current_tenant_id,
                 app_id,
                 annotation_setting.collection_binding_id,
@@ -256,8 +255,12 @@ class AppAnnotationService:
         if not annotation:
             raise NotFound("Annotation not found")
 
+        question = args.get("question")
+        if question is None:
+            raise ValueError("'question' is required")
+
         annotation.content = args["answer"]
-        annotation.question = args["question"]
+        annotation.question = question
 
         db.session.commit()
         # if annotation reply is enabled , add annotation to index

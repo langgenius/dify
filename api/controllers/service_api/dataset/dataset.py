@@ -2,7 +2,7 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import marshal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -25,6 +25,14 @@ from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 from services.tag_service import TagService
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+service_api_ns.schema_model(
+    DatasetPermissionEnum.__name__,
+    TypeAdapter(DatasetPermissionEnum).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 class DatasetCreatePayload(BaseModel):
@@ -87,6 +95,14 @@ class TagUnbindingPayload(BaseModel):
     target_id: str
 
 
+class DatasetListQuery(BaseModel):
+    page: int = Field(default=1, description="Page number")
+    limit: int = Field(default=20, description="Number of items per page")
+    keyword: str | None = Field(default=None, description="Search keyword")
+    include_all: bool = Field(default=False, description="Include all datasets")
+    tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
+
+
 register_schema_models(
     service_api_ns,
     DatasetCreatePayload,
@@ -96,6 +112,7 @@ register_schema_models(
     TagDeletePayload,
     TagBindingPayload,
     TagUnbindingPayload,
+    DatasetListQuery,
 )
 
 
@@ -113,15 +130,11 @@ class DatasetListApi(DatasetApiResource):
     )
     def get(self, tenant_id):
         """Resource for getting datasets."""
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
+        query = DatasetListQuery.model_validate(request.args.to_dict())
         # provider = request.args.get("provider", default="vendor")
-        search = request.args.get("keyword", default=None, type=str)
-        tag_ids = request.args.getlist("tag_ids")
-        include_all = request.args.get("include_all", default="false").lower() == "true"
 
         datasets, total = DatasetService.get_datasets(
-            page, limit, tenant_id, current_user, search, tag_ids, include_all
+            query.page, query.limit, tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
         )
         # check embedding setting
         provider_manager = ProviderManager()
@@ -147,7 +160,13 @@ class DatasetListApi(DatasetApiResource):
                     item["embedding_available"] = False
             else:
                 item["embedding_available"] = True
-        response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
+        response = {
+            "data": data,
+            "has_more": len(datasets) == query.limit,
+            "limit": query.limit,
+            "total": total,
+            "page": query.page,
+        }
         return response, 200
 
     @service_api_ns.expect(service_api_ns.models[DatasetCreatePayload.__name__])
