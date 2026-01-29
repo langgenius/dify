@@ -1,7 +1,7 @@
 """sandbox_providers
 
 Revision ID: aab323465866
-Revises: 9d77545f524e
+Revises: 788d3099ae3a
 Create Date: 2026-01-08 10:31:05.062722
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'aab323465866'
-down_revision = '9d77545f524e'
+down_revision = '788d3099ae3a'
 branch_labels = None
 depends_on = None
 
