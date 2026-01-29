@@ -242,6 +242,11 @@ class PluginConfig(BaseSettings):
         description="Maximum allowed size for plugin bundles in bytes",
         default=15728640 * 12,
     )
+    
+    PLUGIN_MODEL_SCHEMA_CACHE_TTL: PositiveInt = Field(
+    description="TTL in seconds for caching plugin model schemas in Redis",
+    default=24 * 60 * 60,
+    )
 
 
 class MarketplaceConfig(BaseSettings):

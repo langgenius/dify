@@ -6,6 +6,8 @@ from collections.abc import Sequence
 from threading import Lock
 
 import contexts
+from configs import dify_config
+from extensions.ext_redis import redis_client
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
 from core.model_runtime.model_providers.__base.ai_model import AIModel
@@ -174,27 +176,30 @@ class ModelProviderFactory:
         Get model schema
         """
         plugin_id, provider_name = self.get_plugin_id_and_provider_name_from_provider(provider)
-        cache_key = f"{self.tenant_id}:{plugin_id}:{provider_name}:{model_type.value}:{model}"
+        cache_key = f"plugin_model_schema:{self.tenant_id}:{plugin_id}:{provider_name}:{model_type.value}:{model}"
         # sort credentials
         sorted_credentials = sorted(credentials.items()) if credentials else []
         cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
 
-        with contexts.plugin_model_schema_lock:
-            if cache_key in contexts.plugin_model_schemas:
-                return contexts.plugin_model_schemas[cache_key]
+        cached_schema_json = redis_client.get(cache_key)
+        if cached_schema_json:
+            try:
+                return AIModelEntity.model_validate_json(cached_schema_json)
+            except Exception:
+                pass
 
-            schema = self.plugin_model_manager.get_model_schema(
-                tenant_id=self.tenant_id,
-                user_id="unknown",
-                plugin_id=plugin_id,
-                provider=provider_name,
-                model_type=model_type.value,
-                model=model,
-                credentials=credentials or {},
-            )
+        schema = self.plugin_model_manager.get_model_schema(
+            tenant_id=self.tenant_id,
+            user_id="unknown",
+            plugin_id=plugin_id,
+            provider=provider_name,
+            model_type=model_type.value,
+            model=model,
+            credentials=credentials or {},
+        )
 
-            if schema:
-                contexts.plugin_model_schemas[cache_key] = schema
+        if schema:
+            redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_SCHEMA_CACHE_TTL, schema.model_dump_json())
 
             return schema
 

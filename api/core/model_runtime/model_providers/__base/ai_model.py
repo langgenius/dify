@@ -3,7 +3,8 @@ import hashlib
 
 from pydantic import BaseModel, ConfigDict, Field
 
-import contexts
+from configs import dify_config
+
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 from core.model_runtime.entities.model_entities import (
@@ -14,6 +15,7 @@ from core.model_runtime.entities.model_entities import (
     PriceInfo,
     PriceType,
 )
+from extensions.ext_redis import redis_client
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -142,27 +144,30 @@ class AIModel(BaseModel):
         from core.plugin.impl.model import PluginModelClient
 
         plugin_model_manager = PluginModelClient()
-        cache_key = f"{self.tenant_id}:{self.plugin_id}:{self.provider_name}:{self.model_type.value}:{model}"
+        cache_key = f"plugin_model_schema:{self.tenant_id}:{self.plugin_id}:{self.provider_name}:{self.model_type.value}:{model}"
         # sort credentials
         sorted_credentials = sorted(credentials.items()) if credentials else []
         cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
 
-        with contexts.plugin_model_schema_lock:
-            if cache_key in contexts.plugin_model_schemas:
-                return contexts.plugin_model_schemas[cache_key]
+        cached_schema_json = redis_client.get(cache_key)
+        if cached_schema_json:
+            try:
+                return AIModelEntity.model_validate_json(cached_schema_json)
+            except Exception:
+                pass
 
-            schema = plugin_model_manager.get_model_schema(
-                tenant_id=self.tenant_id,
-                user_id="unknown",
-                plugin_id=self.plugin_id,
-                provider=self.provider_name,
-                model_type=self.model_type.value,
-                model=model,
-                credentials=credentials or {},
-            )
+        schema = plugin_model_manager.get_model_schema(
+            tenant_id=self.tenant_id,
+            user_id="unknown",
+            plugin_id=self.plugin_id,
+            provider=self.provider_name,
+            model_type=self.model_type.value,
+            model=model,
+            credentials=credentials or {},
+        )
 
-            if schema:
-                contexts.plugin_model_schemas[cache_key] = schema
+        if schema:
+            redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_SCHEMA_CACHE_TTL, schema.model_dump_json())
 
             return schema
 
