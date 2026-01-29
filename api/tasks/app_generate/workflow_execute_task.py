@@ -253,10 +253,12 @@ def _publish_streaming_response(
 
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)
-def chatflow_execute_task(payload: str) -> Generator[Mapping[str, Any] | str, None, None] | Mapping[str, Any] | None:
+def workflow_base_app_execution_task(
+    payload: str,
+) -> Generator[Mapping[str, Any] | str, None, None] | Mapping[str, Any] | None:
     exec_params = AppExecutionParams.model_validate_json(payload)
 
-    logger.info("chatflow_execute_task run with params: %s", exec_params)
+    logger.info("workflow_base_app_execution_task run with params: %s", exec_params)
 
     runner = _AppRunner(db.engine, exec_params=exec_params)
     return runner.run()
@@ -486,9 +488,4 @@ def _resume_workflow(
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE, name="resume_app_execution")
 def resume_app_execution(payload: dict[str, Any]) -> None:
-    _resume_app_execution(payload)
-
-
-@shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE, name="resume_chatflow_execution")
-def resume_chatflow_execution(payload: dict[str, Any]) -> None:
     _resume_app_execution(payload)

@@ -23,7 +23,7 @@ from models.workflow import Workflow, WorkflowRun
 from services.errors.app import QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import WorkflowService
-from tasks.app_generate.workflow_execute_task import AppExecutionParams, chatflow_execute_task
+from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_base_app_execution_task
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +142,7 @@ class AppGenerateService:
                     payload_json = payload.model_dump_json()
 
                 def on_subscribe():
-                    chatflow_execute_task.delay(payload_json)
+                    workflow_base_app_execution_task.delay(payload_json)
 
                 on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                 generator = AdvancedChatAppGenerator()
@@ -175,7 +175,7 @@ class AppGenerateService:
                         payload_json = payload.model_dump_json()
 
                     def on_subscribe():
-                        chatflow_execute_task.delay(payload_json)
+                        workflow_base_app_execution_task.delay(payload_json)
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                     return rate_limit.generate(
