@@ -22,7 +22,6 @@ class FakeSubscription:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
-        return None
 
     def close(self) -> None:
         self._closed = True

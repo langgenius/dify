@@ -290,7 +290,9 @@ class TestAppGenerateService:
 
         # Verify advanced chat generator was called
         mock_external_service_dependencies["advanced_chat_generator"].return_value.retrieve_events.assert_called_once()
-        mock_external_service_dependencies["advanced_chat_generator"].return_value.convert_to_event_stream.assert_called_once()
+        mock_external_service_dependencies[
+            "advanced_chat_generator"
+        ].return_value.convert_to_event_stream.assert_called_once()
 
     def test_generate_workflow_mode_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
