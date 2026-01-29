@@ -50,6 +50,7 @@ import {
 } from './hooks/use-workflow-init'
 import { parseAsViewType, WORKFLOW_VIEW_PARAM_KEY } from './search-params'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
+import { getSandboxMigrationDismissed, setSandboxMigrationDismissed } from './utils/sandbox-migration-storage'
 
 const SkillMain = dynamic(() => import('@/app/components/workflow/skill/main'), {
   ssr: false,
@@ -180,6 +181,10 @@ const WorkflowAppWithAdditionalContext = () => {
   const { setTriggerStatuses } = useTriggerStatusStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id
+  const handleCloseMigrationModal = useCallback(() => {
+    setSandboxMigrationDismissed(appId)
+    setShowMigrationModal(false)
+  }, [appId])
   const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
   const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
     staleTime: 5 * 60 * 1000, // 5 minutes cache
@@ -303,8 +308,9 @@ const WorkflowAppWithAdditionalContext = () => {
       return
     if (lastCheckedAppIdRef.current !== appId) {
       lastCheckedAppIdRef.current = appId
+      const dismissed = getSandboxMigrationDismissed(appId)
       // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
-      setShowMigrationModal(!sandboxEnabled)
+      setShowMigrationModal(!sandboxEnabled && !dismissed)
     }
   }, [appId, isDataReady, sandboxEnabled])
   const renderGraph = useCallback((headerLeftSlot: ReactNode) => {
@@ -362,7 +368,7 @@ const WorkflowAppWithAdditionalContext = () => {
       <CollaborationSession />
       <PlanUpgradeModal
         show={showMigrationModal}
-        onClose={() => setShowMigrationModal(false)}
+        onClose={handleCloseMigrationModal}
         title={t('sandboxMigrationModal.title', { ns: 'workflow' })}
         description={t('sandboxMigrationModal.description', { ns: 'workflow' })}
       />
