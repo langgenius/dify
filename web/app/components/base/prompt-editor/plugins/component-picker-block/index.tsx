@@ -326,6 +326,9 @@ const ComponentPicker = ({
                       onBlur={handleClose}
                       showManageInputField={workflowVariableBlock?.showManageInputField}
                       onManageInputField={workflowVariableBlock?.onManageInputField}
+                      hideSearch={useExternalSearch}
+                      externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
+                      enableKeyboardNavigation={useExternalSearch}
                       autoFocus={false}
                       isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
                     />
