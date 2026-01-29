@@ -196,8 +196,9 @@ class HumanInputFormRecipient(DefaultFieldsMixin, Base):
     # Token primarily used for authenticated resume links (email, etc.).
     access_token: Mapped[str | None] = mapped_column(
         sa.VARCHAR(_token_field_length),
-        nullable=True,
+        nullable=False,
         default=_generate_token,
+        unique=True,
     )
 
     delivery: Mapped[HumanInputDelivery] = relationship(
