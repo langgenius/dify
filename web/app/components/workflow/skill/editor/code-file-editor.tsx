@@ -12,6 +12,7 @@ type CodeFileEditorProps = {
   onMount: OnMount
   fileId?: string | null
   collaborationEnabled?: boolean
+  readOnly?: boolean
 }
 
 const CodeFileEditor = ({
@@ -22,12 +23,13 @@ const CodeFileEditor = ({
   onMount,
   fileId,
   collaborationEnabled,
+  readOnly,
 }: CodeFileEditorProps) => {
   const [editorInstance, setEditorInstance] = React.useState<Parameters<typeof onMount>[0] | null>(null)
   const { overlay } = useSkillCodeCursors({
     editor: editorInstance,
     fileId: fileId ?? null,
-    enabled: Boolean(collaborationEnabled && fileId),
+    enabled: Boolean(collaborationEnabled && fileId && !readOnly),
   })
   const handleMount = React.useCallback<OnMount>((editor, monaco) => {
     setEditorInstance(editor)
@@ -53,6 +55,7 @@ const CodeFileEditor = ({
           fontSize: 13,
           lineHeight: 20,
           padding: { top: 12, bottom: 12 },
+          readOnly,
         }}
         onMount={handleMount}
       />

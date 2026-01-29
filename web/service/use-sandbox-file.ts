@@ -53,6 +53,20 @@ export function useDownloadSandboxFile(sandboxId: string | undefined) {
   })
 }
 
+export function useSandboxFileDownloadUrl(
+  sandboxId: string | undefined,
+  path: string | undefined,
+) {
+  return useQuery({
+    queryKey: ['sandboxFileDownloadUrl', sandboxId, path],
+    queryFn: () => consoleClient.sandboxFile.downloadFile({
+      params: { sandboxId: sandboxId! },
+      body: { path: path! },
+    }),
+    enabled: !!sandboxId && !!path,
+  })
+}
+
 function buildTreeFromFlatList(nodes: SandboxFileNode[]): SandboxFileTreeNode[] {
   const nodeMap = new Map<string, SandboxFileTreeNode>()
   const roots: SandboxFileTreeNode[] = []

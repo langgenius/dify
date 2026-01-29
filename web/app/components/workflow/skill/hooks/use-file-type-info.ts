@@ -1,4 +1,3 @@
-import type { AppAssetTreeView } from '@/types/app-asset'
 import { useMemo } from 'react'
 import {
   getFileExtension,
@@ -19,9 +18,9 @@ export type FileTypeInfo = {
   isMediaFile: boolean
 }
 
-export function useFileTypeInfo(fileNode: AppAssetTreeView | undefined): FileTypeInfo {
+export function useFileTypeInfo(fileNode: { name: string, extension?: string | null } | undefined): FileTypeInfo {
   return useMemo(() => {
-    const ext = getFileExtension(fileNode?.name, fileNode?.extension)
+    const ext = getFileExtension(fileNode?.name, fileNode?.extension ?? undefined)
     const markdown = isMarkdownFile(ext)
     const image = isImageFile(ext)
     const video = isVideoFile(ext)

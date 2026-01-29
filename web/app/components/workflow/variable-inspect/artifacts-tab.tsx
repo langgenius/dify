@@ -11,9 +11,10 @@ import SearchLinesSparkle from '@/app/components/base/icons/src/vender/knowledge
 import { FileDownload01 } from '@/app/components/base/icons/src/vender/line/files'
 import Loading from '@/app/components/base/loading'
 import ArtifactsTree from '@/app/components/workflow/skill/file-tree/artifacts-tree'
+import ReadOnlyFilePreview from '@/app/components/workflow/skill/viewer/read-only-file-preview'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
-import { useDownloadSandboxFile, useSandboxFilesTree } from '@/service/use-sandbox-file'
+import { useDownloadSandboxFile, useSandboxFileDownloadUrl, useSandboxFilesTree } from '@/service/use-sandbox-file'
 import { cn } from '@/utils/classnames'
 import InspectLayout from './inspect-layout'
 import SplitPanel from './split-panel'
@@ -60,8 +61,11 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
     enabled: !!sandboxId,
   })
   const downloadMutation = useDownloadSandboxFile(sandboxId)
-
   const [selectedFile, setSelectedFile] = useState<SandboxFileTreeNode | null>(null)
+  const { data: downloadUrlData, isLoading: isDownloadUrlLoading } = useSandboxFileDownloadUrl(
+    sandboxId,
+    selectedFile?.path,
+  )
 
   const handleFileSelect = useCallback((node: SandboxFileTreeNode) => {
     if (node.node_type === 'file')
@@ -172,12 +176,25 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
           <div className="flex min-h-0 flex-1 flex-col">
             {file
               ? (
-                  <div className="grow overflow-auto p-2">
-                    <div className="flex h-full items-center justify-center rounded-xl bg-background-section">
-                      <p className="system-xs-regular text-text-tertiary">
-                        {t('debug.variableInspect.tabArtifacts.previewNotAvailable')}
-                      </p>
-                    </div>
+                  <div className="min-h-0 grow">
+                    {isDownloadUrlLoading
+                      ? <Loading type="area" />
+                      : downloadUrlData?.download_url
+                        ? (
+                            <ReadOnlyFilePreview
+                              downloadUrl={downloadUrlData.download_url}
+                              fileName={file.name}
+                              extension={file.extension}
+                              fileSize={file.size}
+                            />
+                          )
+                        : (
+                            <div className="flex h-full items-center justify-center rounded-xl bg-background-section">
+                              <p className="system-xs-regular text-text-tertiary">
+                                {t('debug.variableInspect.tabArtifacts.previewNotAvailable')}
+                              </p>
+                            </div>
+                          )}
                   </div>
                 )
               : (
