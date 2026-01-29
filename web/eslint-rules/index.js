@@ -10,7 +10,7 @@ import validI18nKeys from './rules/valid-i18n-keys.js'
 /** @type {import('eslint').ESLint.Plugin} */
 const plugin = {
   meta: {
-    name: 'dify-i18n',
+    name: 'dify',
     version: '1.0.0',
   },
   rules: {
