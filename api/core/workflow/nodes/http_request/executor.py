@@ -2,7 +2,7 @@ import base64
 import json
 import secrets
 import string
-from collections.abc import Mapping, Callable
+from collections.abc import Callable, Mapping
 from copy import deepcopy
 from typing import Any, Literal
 from urllib.parse import urlencode, urlparse
@@ -11,8 +11,8 @@ import httpx
 from json_repair import repair_json
 
 from configs import dify_config
-from core.file.file_manager import file_manager as default_file_manager
 from core.file.enums import FileTransferMethod
+from core.file.file_manager import file_manager as default_file_manager
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.runtime import VariablePool

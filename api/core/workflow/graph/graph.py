@@ -3,9 +3,9 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import Annotated, Protocol, TypedDict, cast, final
+from typing import Protocol, TypedDict, cast, final
 
-from pydantic import Field, TypeAdapter
+from pydantic import TypeAdapter
 
 from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType
 from core.workflow.nodes.base.node import Node
