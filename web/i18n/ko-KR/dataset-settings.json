@@ -39,6 +39,12 @@
   "form.retrievalSettings": "검색 설정",
   "form.save": "저장",
   "form.searchModel": "모델 검색",
+  "form.summaryAutoGen": "요약 자동 생성",
+  "form.summaryAutoGenEnableTip": "활성화하면 새로 추가된 문서에 대해 요약이 자동으로 생성됩니다. 기존 문서는 여전히 수동으로 요약할 수 있습니다.",
+  "form.summaryAutoGenTip": "새로 추가된 문서에 대해 요약이 자동으로 생성됩니다. 기존 문서는 여전히 수동으로 요약할 수 있습니다.",
+  "form.summaryInstructions": "지침",
+  "form.summaryInstructionsPlaceholder": "자동 생성 요약의 규칙이나 스타일을 설명하세요…",
+  "form.summaryModel": "요약 모델",
   "form.upgradeHighQualityTip": "고품질 모드로 업그레이드한 후에는 경제적 모드로 되돌릴 수 없습니다.",
   "title": "지식 설정"
 }
