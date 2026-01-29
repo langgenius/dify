@@ -2,17 +2,12 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import Protocol, cast
 
 import json_repair
 
-if TYPE_CHECKING:
-    from controllers.console.app.generator import (
-        RuleCodeGeneratePayload,
-        RuleGeneratePayload,
-        RuleStructuredOutputPayload,
-    )
-    from core.app.app_config.entities import ModelConfig
+from core.app.app_config.entities import ModelConfig
+from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.llm_generator.prompts import (
