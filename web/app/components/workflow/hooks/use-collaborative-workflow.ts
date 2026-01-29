@@ -1,5 +1,5 @@
 import type { Edge, Node } from '../types'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 
@@ -76,9 +76,9 @@ export const useCollaborativeWorkflow = () => {
     }
   }, [store, setNodes, setEdges])
 
-  return {
+  return useMemo(() => ({
     getState: collaborativeStore,
     setNodes,
     setEdges,
-  }
+  }), [collaborativeStore, setNodes, setEdges])
 }
