@@ -3,16 +3,32 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import Protocol, cast, final
+from typing import Annotated, Protocol, TypedDict, cast, final
+
+from pydantic import Field, TypeAdapter
 
 from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType
 from core.workflow.nodes.base.node import Node
-from libs.typing import is_str, is_str_dict
 
 from .edge import Edge
 from .validation import get_graph_validator
 
 logger = logging.getLogger(__name__)
+
+# TODO: Add EdgeConfigDict and GraphConfigDict 
+
+
+class NodeConfigData(TypedDict, total=False):
+    type: str
+
+
+class NodeConfigDict(TypedDict, total=False):
+    id: str
+    data: NodeConfigData
+
+
+NodeConfigDictAdapter = TypeAdapter(NodeConfigDict)
+_ListNodeConfigDict = TypeAdapter(list[NodeConfigDict])
 
 
 class NodeFactory(Protocol):
@@ -23,7 +39,7 @@ class NodeFactory(Protocol):
     allowing for different node creation strategies while maintaining type safety.
     """
 
-    def create_node(self, node_config: dict[str, object]) -> Node:
+    def create_node(self, node_config: NodeConfigDict) -> Node:
         """
         Create a Node instance from node configuration data.
 
@@ -63,28 +79,24 @@ class Graph:
         self.root_node = root_node
 
     @classmethod
-    def _parse_node_configs(cls, node_configs: list[dict[str, object]]) -> dict[str, dict[str, object]]:
+    def _parse_node_configs(cls, node_configs: list[NodeConfigDict]) -> dict[str, NodeConfigDict]:
         """
         Parse node configurations and build a mapping of node IDs to configs.
 
         :param node_configs: list of node configuration dictionaries
         :return: mapping of node ID to node config
         """
-        node_configs_map: dict[str, dict[str, object]] = {}
+        node_configs_map: dict[str, NodeConfigDict] = {}
 
         for node_config in node_configs:
-            node_id = node_config.get("id")
-            if not node_id or not isinstance(node_id, str):
-                continue
-
-            node_configs_map[node_id] = node_config
+            node_configs_map[node_config["id"]] = node_config
 
         return node_configs_map
 
     @classmethod
     def _find_root_node_id(
         cls,
-        node_configs_map: Mapping[str, Mapping[str, object]],
+        node_configs_map: Mapping[str, NodeConfigDict],
         edge_configs: Sequence[Mapping[str, object]],
         root_node_id: str | None = None,
     ) -> str:
@@ -113,10 +125,8 @@ class Graph:
         # Prefer START node if available
         start_node_id = None
         for nid in root_candidates:
-            node_data = node_configs_map[nid].get("data")
-            if not is_str_dict(node_data):
-                continue
-            node_type = node_data.get("type")
+            node_data = node_configs_map[nid]['data']
+            node_type = node_data['type']
             if not isinstance(node_type, str):
                 continue
             if NodeType(node_type).is_start_node:
@@ -149,7 +159,7 @@ class Graph:
             source = edge_config.get("source")
             target = edge_config.get("target")
 
-            if not is_str(source) or not is_str(target):
+            if not isinstance(source, str) or not isinstance(target, str):
                 continue
 
             # Create edge
@@ -157,7 +167,7 @@ class Graph:
             edge_counter += 1
 
             source_handle = edge_config.get("sourceHandle", "source")
-            if not is_str(source_handle):
+            if not isinstance(source_handle, str):
                 continue
 
             edge = Edge(
@@ -176,7 +186,7 @@ class Graph:
     @classmethod
     def _create_node_instances(
         cls,
-        node_configs_map: dict[str, dict[str, object]],
+        node_configs_map: dict[str, NodeConfigDict],
         node_factory: NodeFactory,
     ) -> dict[str, Node]:
         """
@@ -303,7 +313,7 @@ class Graph:
         node_configs = graph_config.get("nodes", [])
 
         edge_configs = cast(list[dict[str, object]], edge_configs)
-        node_configs = cast(list[dict[str, object]], node_configs)
+        node_configs = _ListNodeConfigDict.validate_python(node_configs)
 
         if not node_configs:
             raise ValueError("Graph must have at least one node")
