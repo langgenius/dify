@@ -86,7 +86,6 @@ def _patch_auth_and_router(temp_router):
     # This ensures that when 'controllers.console.feature' imports them, it gets the mocks.
     with (
         patch("controllers.fastopenapi.console_router", temp_router),
-        patch("extensions.ext_fastopenapi.console_router", temp_router),
         patch("controllers.console.wraps.setup_required", side_effect=noop),
         patch("libs.login.login_required", side_effect=noop),
         patch("controllers.console.wraps.account_initialization_required", side_effect=noop),
