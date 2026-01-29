@@ -31,4 +31,4 @@ exclude = [
 [rules]
 deprecated = "ignore"
 unused-ignore-comment = "ignore"
-possibly-missing-attribute = "ignore"
+# possibly-missing-attribute = "ignore"

@@ -1030,14 +1030,14 @@ class LLMNode(Node[LLMNodeData]):
         if typed_node_data.prompt_config:
             enable_jinja = False
 
-            if isinstance(prompt_template, list):
+            if isinstance(prompt_template, LLMNodeCompletionModelPromptTemplate):
+                if prompt_template.edition_type == "jinja2":
+                    enable_jinja = True
+            else:
                 for prompt in prompt_template:
                     if prompt.edition_type == "jinja2":
                         enable_jinja = True
                         break
-            else:
-                if prompt_template.edition_type == "jinja2":
-                    enable_jinja = True
 
             if enable_jinja:
                 for variable_selector in typed_node_data.prompt_config.jinja2_variables or []:
