@@ -73,6 +73,7 @@ class TestAppGenerateService:
             mock_advanced_chat_generator_instance.single_loop_generate.return_value = ["single_loop_response"]
             mock_advanced_chat_generator_instance.retrieve_events.return_value = ["advanced_chat_events"]
             mock_advanced_chat_generator_instance.convert_to_event_stream.return_value = ["advanced_chat_stream"]
+            mock_advanced_chat_generator.convert_to_event_stream.return_value = ["advanced_chat_stream"]
 
             mock_workflow_generator_instance = mock_workflow_generator.return_value
             mock_workflow_generator_instance.generate.return_value = ["workflow_response"]
@@ -96,6 +97,7 @@ class TestAppGenerateService:
             mock_global_dify_config.BILLING_ENABLED = False
             mock_global_dify_config.APP_MAX_ACTIVE_REQUESTS = 100
             mock_global_dify_config.APP_DAILY_RATE_LIMIT = 1000
+            mock_global_dify_config.HOSTED_POOL_CREDITS = 1000
 
             yield {
                 "billing_service": mock_billing_service,
