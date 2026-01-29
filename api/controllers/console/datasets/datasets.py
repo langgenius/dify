@@ -148,6 +148,7 @@ class DatasetUpdatePayload(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
     retrieval_model: dict[str, Any] | None = None
+    summary_index_setting: dict[str, Any] | None = None
     partial_member_list: list[dict[str, str]] | None = None
     external_retrieval_model: dict[str, Any] | None = None
     external_knowledge_id: str | None = None
@@ -288,7 +289,14 @@ class DatasetListApi(Resource):
     @enterprise_license_required
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        query = ConsoleDatasetListQuery.model_validate(request.args.to_dict())
+        # Convert query parameters to dict, handling list parameters correctly
+        query_params: dict[str, str | list[str]] = dict(request.args.to_dict())
+        # Handle ids and tag_ids as lists (Flask request.args.getlist returns list even for single value)
+        if "ids" in request.args:
+            query_params["ids"] = request.args.getlist("ids")
+        if "tag_ids" in request.args:
+            query_params["tag_ids"] = request.args.getlist("tag_ids")
+        query = ConsoleDatasetListQuery.model_validate(query_params)
         # provider = request.args.get("provider", default="vendor")
         if query.ids:
             datasets, total = DatasetService.get_datasets_by_ids(query.ids, current_tenant_id)
