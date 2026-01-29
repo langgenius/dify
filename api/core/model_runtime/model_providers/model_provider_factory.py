@@ -7,7 +7,6 @@ from threading import Lock
 
 import contexts
 from configs import dify_config
-from extensions.ext_redis import redis_client
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
 from core.model_runtime.model_providers.__base.ai_model import AIModel
@@ -20,6 +19,7 @@ from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
 from core.model_runtime.schema_validators.provider_credential_schema_validator import ProviderCredentialSchemaValidator
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from extensions.ext_redis import redis_client
 from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)
@@ -177,9 +177,9 @@ class ModelProviderFactory:
         """
         plugin_id, provider_name = self.get_plugin_id_and_provider_name_from_provider(provider)
         cache_key = (
-                    f"plugin_model_schema:{self.tenant_id}:{plugin_id}:"
-                    f"{provider_name}:{model_type.value}:{model}"
-                )        # sort credentials
+            f"plugin_model_schema:{self.tenant_id}:{plugin_id}:"
+            f"{provider_name}:{model_type.value}:{model}"
+        )  # sort credentials
         sorted_credentials = sorted(credentials.items()) if credentials else []
         cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
 
