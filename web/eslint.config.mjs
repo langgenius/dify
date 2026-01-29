@@ -23,7 +23,7 @@ export default antfu(
       },
     },
     nextjs: true,
-    ignores: ['public'],
+    ignores: ['public', 'types/doc-paths.ts'],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
@@ -131,6 +131,17 @@ export default antfu(
 
       'dify-i18n/valid-i18n-keys': 'error',
       'dify-i18n/no-extra-keys': 'error',
+      'dify-i18n/consistent-placeholders': 'error',
+    },
+  },
+  // package.json version prefix validation
+  {
+    files: ['**/package.json'],
+    plugins: {
+      'dify-i18n': difyI18n,
+    },
+    rules: {
+      'dify-i18n/no-version-prefix': 'error',
     },
   },
 )
