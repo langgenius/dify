@@ -44,7 +44,7 @@ class RagPipelineTransformService:
         doc_form = dataset.doc_form
         if not doc_form:
             return self._transform_to_empty_pipeline(dataset)
-        retrieval_model = dataset.retrieval_model
+        retrieval_model = RetrievalSetting.model_validate(dataset.retrieval_model) if dataset.retrieval_model else None
         pipeline_yaml = self._get_transform_yaml(doc_form, datasource_type, indexing_technique)
         # deal dependencies
         self._deal_dependencies(pipeline_yaml, dataset.tenant_id)
@@ -154,7 +154,12 @@ class RagPipelineTransformService:
         return node
 
     def _deal_knowledge_index(
-        self, dataset: Dataset, doc_form: str, indexing_technique: str | None, retrieval_model: dict, node: dict
+        self,
+        dataset: Dataset,
+        doc_form: str,
+        indexing_technique: str | None,
+        retrieval_model: RetrievalSetting | None,
+        node: dict,
     ):
         knowledge_configuration_dict = node.get("data", {})
         knowledge_configuration = KnowledgeConfiguration.model_validate(knowledge_configuration_dict)
@@ -163,10 +168,9 @@ class RagPipelineTransformService:
             knowledge_configuration.embedding_model = dataset.embedding_model
             knowledge_configuration.embedding_model_provider = dataset.embedding_model_provider
         if retrieval_model:
-            retrieval_setting = RetrievalSetting.model_validate(retrieval_model)
             if indexing_technique == "economy":
-                retrieval_setting.search_method = RetrievalMethod.KEYWORD_SEARCH
-            knowledge_configuration.retrieval_model = retrieval_setting
+                retrieval_model.search_method = RetrievalMethod.KEYWORD_SEARCH
+            knowledge_configuration.retrieval_model = retrieval_model
         else:
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
 

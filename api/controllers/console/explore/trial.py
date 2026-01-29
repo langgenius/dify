@@ -2,13 +2,14 @@ import logging
 from typing import Any, cast
 
 from flask import request
-from flask_restx import Resource, marshal, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
-from controllers.console import api
+from controllers.common.schema import get_or_create_model
+from controllers.console import api, console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -42,9 +43,21 @@ from core.errors.error import (
 from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
-from fields.app_fields import app_detail_fields_with_site
+from fields.app_fields import (
+    app_detail_fields_with_site,
+    deleted_tool_fields,
+    model_config_fields,
+    site_fields,
+    tag_fields,
+)
 from fields.dataset_fields import dataset_fields
-from fields.workflow_fields import workflow_fields
+from fields.member_fields import build_simple_account_model
+from fields.workflow_fields import (
+    conversation_variable_fields,
+    pipeline_variable_fields,
+    workflow_fields,
+    workflow_partial_fields,
+)
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import current_user
@@ -72,6 +85,36 @@ from services.message_service import MessageService
 from services.recommended_app_service import RecommendedAppService
 
 logger = logging.getLogger(__name__)
+
+
+model_config_model = get_or_create_model("TrialAppModelConfig", model_config_fields)
+workflow_partial_model = get_or_create_model("TrialWorkflowPartial", workflow_partial_fields)
+deleted_tool_model = get_or_create_model("TrialDeletedTool", deleted_tool_fields)
+tag_model = get_or_create_model("TrialTag", tag_fields)
+site_model = get_or_create_model("TrialSite", site_fields)
+
+app_detail_fields_with_site_copy = app_detail_fields_with_site.copy()
+app_detail_fields_with_site_copy["model_config"] = fields.Nested(
+    model_config_model, attribute="app_model_config", allow_null=True
+)
+app_detail_fields_with_site_copy["workflow"] = fields.Nested(workflow_partial_model, allow_null=True)
+app_detail_fields_with_site_copy["deleted_tools"] = fields.List(fields.Nested(deleted_tool_model))
+app_detail_fields_with_site_copy["tags"] = fields.List(fields.Nested(tag_model))
+app_detail_fields_with_site_copy["site"] = fields.Nested(site_model)
+app_detail_with_site_model = get_or_create_model("TrialAppDetailWithSite", app_detail_fields_with_site_copy)
+
+simple_account_model = build_simple_account_model(console_ns)
+conversation_variable_model = get_or_create_model("TrialConversationVariable", conversation_variable_fields)
+pipeline_variable_model = get_or_create_model("TrialPipelineVariable", pipeline_variable_fields)
+
+workflow_fields_copy = workflow_fields.copy()
+workflow_fields_copy["created_by"] = fields.Nested(simple_account_model, attribute="created_by_account")
+workflow_fields_copy["updated_by"] = fields.Nested(
+    simple_account_model, attribute="updated_by_account", allow_null=True
+)
+workflow_fields_copy["conversation_variables"] = fields.List(fields.Nested(conversation_variable_model))
+workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipeline_variable_model))
+workflow_model = get_or_create_model("TrialWorkflow", workflow_fields_copy)
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):
@@ -437,7 +480,7 @@ class TrialAppParameterApi(Resource):
 class AppApi(Resource):
     @trial_feature_enable
     @get_app_model_with_trial
-    @marshal_with(app_detail_fields_with_site)
+    @marshal_with(app_detail_with_site_model)
     def get(self, app_model):
         """Get app detail"""
 
@@ -450,7 +493,7 @@ class AppApi(Resource):
 class AppWorkflowApi(Resource):
     @trial_feature_enable
     @get_app_model_with_trial
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_model)
     def get(self, app_model):
         """Get workflow detail"""
         if not app_model.workflow_id:

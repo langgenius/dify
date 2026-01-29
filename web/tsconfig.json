@@ -19,7 +19,10 @@
       ]
     },
     "resolveJsonModule": true,
-    "types": ["vitest/globals", "node"],
+    "types": [
+      "vitest/globals",
+      "node"
+    ],
     "allowJs": true,
     "strict": true,
     "noEmit": true,
