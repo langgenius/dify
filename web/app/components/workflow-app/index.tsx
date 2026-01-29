@@ -172,6 +172,7 @@ const WorkflowAppWithAdditionalContext = () => {
   } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const notSupportMigration = true // wait for backend support
   const [showMigrationModal, setShowMigrationModal] = useState(false)
   const lastCheckedAppIdRef = useRef<string | null>(null)
 
@@ -365,7 +366,7 @@ const WorkflowAppWithAdditionalContext = () => {
     <>
       <CollaborationSession />
       <SandboxMigrationModal
-        show={showMigrationModal}
+        show={showMigrationModal && !notSupportMigration}
         onClose={handleCloseMigrationModal}
       />
       <WorkflowWithDefaultContext
