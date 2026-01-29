@@ -94,13 +94,25 @@ def mock_document_segments(document_ids):
 
 @pytest.fixture
 def mock_db_session():
-    """Mock database session."""
-    with patch("tasks.duplicate_document_indexing_task.db.session") as mock_session:
-        mock_query = MagicMock()
-        mock_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_session.scalars.return_value = MagicMock()
-        yield mock_session
+    """Mock database session via session_factory.create_session()."""
+    with patch("tasks.duplicate_document_indexing_task.session_factory") as mock_sf:
+        session = MagicMock()
+        # Allow tests to observe session.close() via context manager teardown
+        session.close = MagicMock()
+        cm = MagicMock()
+        cm.__enter__.return_value = session
+
+        def _exit_side_effect(*args, **kwargs):
+            session.close()
+
+        cm.__exit__.side_effect = _exit_side_effect
+        mock_sf.create_session.return_value = cm
+
+        query = MagicMock()
+        session.query.return_value = query
+        query.where.return_value = query
+        session.scalars.return_value = MagicMock()
+        yield session
 
 
 @pytest.fixture
@@ -200,8 +212,25 @@ class TestDuplicateDocumentIndexingTaskCore:
     ):
         """Test successful duplicate document indexing flow."""
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.side_effect = [mock_dataset] + mock_documents
-        mock_db_session.scalars.return_value.all.return_value = mock_document_segments
+        # Dataset via query.first()
+        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        # scalars() call sequence:
+        # 1) documents list
+        # 2..N) segments per document
+
+        def _scalars_side_effect(*args, **kwargs):
+            m = MagicMock()
+            # First call returns documents; subsequent calls return segments
+            if not hasattr(_scalars_side_effect, "_calls"):
+                _scalars_side_effect._calls = 0
+            if _scalars_side_effect._calls == 0:
+                m.all.return_value = mock_documents
+            else:
+                m.all.return_value = mock_document_segments
+            _scalars_side_effect._calls += 1
+            return m
+
+        mock_db_session.scalars.side_effect = _scalars_side_effect
 
         # Act
         _duplicate_document_indexing_task(dataset_id, document_ids)
@@ -264,8 +293,21 @@ class TestDuplicateDocumentIndexingTaskCore:
     ):
         """Test duplicate document indexing when billing limit is exceeded."""
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.side_effect = [mock_dataset] + mock_documents
-        mock_db_session.scalars.return_value.all.return_value = []  # No segments to clean
+        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+        # First scalars() -> documents; subsequent -> empty segments
+
+        def _scalars_side_effect(*args, **kwargs):
+            m = MagicMock()
+            if not hasattr(_scalars_side_effect, "_calls"):
+                _scalars_side_effect._calls = 0
+            if _scalars_side_effect._calls == 0:
+                m.all.return_value = mock_documents
+            else:
+                m.all.return_value = []
+            _scalars_side_effect._calls += 1
+            return m
+
+        mock_db_session.scalars.side_effect = _scalars_side_effect
         mock_features = mock_feature_service.get_features.return_value
         mock_features.billing.enabled = True
         mock_features.billing.subscription.plan = CloudPlan.TEAM
@@ -294,8 +336,20 @@ class TestDuplicateDocumentIndexingTaskCore:
     ):
         """Test duplicate document indexing when IndexingRunner raises an error."""
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.side_effect = [mock_dataset] + mock_documents
-        mock_db_session.scalars.return_value.all.return_value = []
+        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+
+        def _scalars_side_effect(*args, **kwargs):
+            m = MagicMock()
+            if not hasattr(_scalars_side_effect, "_calls"):
+                _scalars_side_effect._calls = 0
+            if _scalars_side_effect._calls == 0:
+                m.all.return_value = mock_documents
+            else:
+                m.all.return_value = []
+            _scalars_side_effect._calls += 1
+            return m
+
+        mock_db_session.scalars.side_effect = _scalars_side_effect
         mock_indexing_runner.run.side_effect = Exception("Indexing error")
 
         # Act
@@ -318,8 +372,20 @@ class TestDuplicateDocumentIndexingTaskCore:
     ):
         """Test duplicate document indexing when document is paused."""
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.side_effect = [mock_dataset] + mock_documents
-        mock_db_session.scalars.return_value.all.return_value = []
+        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+
+        def _scalars_side_effect(*args, **kwargs):
+            m = MagicMock()
+            if not hasattr(_scalars_side_effect, "_calls"):
+                _scalars_side_effect._calls = 0
+            if _scalars_side_effect._calls == 0:
+                m.all.return_value = mock_documents
+            else:
+                m.all.return_value = []
+            _scalars_side_effect._calls += 1
+            return m
+
+        mock_db_session.scalars.side_effect = _scalars_side_effect
         mock_indexing_runner.run.side_effect = DocumentIsPausedError("Document paused")
 
         # Act
@@ -343,8 +409,20 @@ class TestDuplicateDocumentIndexingTaskCore:
     ):
         """Test that duplicate document indexing cleans old segments."""
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.side_effect = [mock_dataset] + mock_documents
-        mock_db_session.scalars.return_value.all.return_value = mock_document_segments
+        mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
+
+        def _scalars_side_effect(*args, **kwargs):
+            m = MagicMock()
+            if not hasattr(_scalars_side_effect, "_calls"):
+                _scalars_side_effect._calls = 0
+            if _scalars_side_effect._calls == 0:
+                m.all.return_value = mock_documents
+            else:
+                m.all.return_value = mock_document_segments
+            _scalars_side_effect._calls += 1
+            return m
+
+        mock_db_session.scalars.side_effect = _scalars_side_effect
         mock_processor = mock_index_processor_factory.return_value.init_index_processor.return_value
 
         # Act
@@ -354,9 +432,9 @@ class TestDuplicateDocumentIndexingTaskCore:
         # Verify clean was called for each document
         assert mock_processor.clean.call_count == len(mock_documents)
 
-        # Verify segments were deleted
-        for segment in mock_document_segments:
-            mock_db_session.delete.assert_any_call(segment)
+        # Verify segments were deleted in batch (DELETE FROM document_segments)
+        execute_sqls = [" ".join(str(c[0][0]).split()) for c in mock_db_session.execute.call_args_list]
+        assert any("DELETE FROM document_segments" in sql for sql in execute_sqls)
 
 
 # ============================================================================

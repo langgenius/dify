@@ -5,12 +5,13 @@ import type { FC, PropsWithChildren } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { TanStackDevtoolsLoader } from '@/app/components/devtools/tanstack/loader'
+import { isServer } from '@/utils/client'
 import { makeQueryClient } from './query-client-server'
 
 let browserQueryClient: QueryClient | undefined
 
 function getQueryClient() {
-  if (typeof window === 'undefined') {
+  if (isServer) {
     return makeQueryClient()
   }
   if (!browserQueryClient)

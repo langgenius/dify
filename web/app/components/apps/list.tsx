@@ -1,5 +1,6 @@
 'use client'
 
+import type { FC } from 'react'
 import {
   RiApps2Line,
   RiDragDropLine,
@@ -12,7 +13,6 @@ import { useDebounceFn } from 'ahooks'
 import dynamic from 'next/dynamic'
 import {
   useRouter,
-  useSearchParams,
 } from 'next/navigation'
 import { parseAsString, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -54,11 +54,15 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
   ssr: false,
 })
 
-const List = () => {
+type Props = {
+  controlRefreshList?: number
+}
+const List: FC<Props> = ({
+  controlRefreshList = 0,
+}) => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useQueryState(
@@ -66,33 +70,6 @@ const List = () => {
     parseAsString.withDefault('all').withOptions({ history: 'push' }),
   )
 
-  // valid tabs for apps list; anything else should fallback to 'all'
-
-  // 1) Normalize legacy/incorrect query params like ?mode=discover -> ?category=all
-  useEffect(() => {
-    // avoid running on server
-    if (typeof window === 'undefined')
-      return
-    const mode = searchParams.get('mode')
-    if (!mode)
-      return
-    const url = new URL(window.location.href)
-    url.searchParams.delete('mode')
-    if (validTabs.has(mode)) {
-      // migrate to category key
-      url.searchParams.set('category', mode)
-    }
-    else {
-      url.searchParams.set('category', 'all')
-    }
-    router.replace(url.pathname + url.search)
-  }, [router, searchParams])
-
-  // 2) If category has an invalid value (e.g., 'discover'), reset to 'all'
-  useEffect(() => {
-    if (!validTabs.has(activeTab))
-      setActiveTab('all')
-  }, [activeTab, setActiveTab])
   const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
@@ -138,6 +115,13 @@ const List = () => {
     error,
     refetch,
   } = useInfiniteAppList(appListQueryParams, { enabled: !isCurrentWorkspaceDatasetOperator })
+
+  useEffect(() => {
+    if (controlRefreshList > 0) {
+      refetch()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlRefreshList])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
@@ -277,6 +261,9 @@ const List = () => {
             // No apps - show empty state
             return <Empty />
           })()}
+          {isFetchingNextPage && (
+            <AppCardSkeleton count={3} />
+          )}
         </div>
 
         {isCurrentWorkspaceEditor && (

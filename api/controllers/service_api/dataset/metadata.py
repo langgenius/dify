@@ -11,7 +11,9 @@ from controllers.service_api.wraps import DatasetApiResource, cloud_edition_bill
 from fields.dataset_fields import dataset_metadata_fields
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
+    DocumentMetadataOperation,
     MetadataArgs,
+    MetadataDetail,
     MetadataOperationData,
 )
 from services.metadata_service import MetadataService
@@ -22,7 +24,13 @@ class MetadataUpdatePayload(BaseModel):
 
 
 register_schema_model(service_api_ns, MetadataUpdatePayload)
-register_schema_models(service_api_ns, MetadataArgs, MetadataOperationData)
+register_schema_models(
+    service_api_ns,
+    MetadataArgs,
+    MetadataDetail,
+    DocumentMetadataOperation,
+    MetadataOperationData,
+)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata")

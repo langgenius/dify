@@ -121,7 +121,7 @@ const ConfigPromptItem: FC<Props> = ({
 
           <Tooltip
             popupContent={
-              <div className="max-w-[180px]">{payload.role && t(`${i18nPrefix}.roleDescription.${payload.role}`, { ns: 'workflow' })}</div>
+              <div className="max-w-[180px]">{!!payload.role && t(`${i18nPrefix}.roleDescription.${payload.role}`, { ns: 'workflow' })}</div>
             }
             triggerClassName="w-4 h-4"
           />
