@@ -10,6 +10,7 @@ from core.workflow.entities import GraphInitParams
 from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.command_channels.in_memory_channel import InMemoryChannel
+from core.workflow.graph_engine.config import GraphEngineConfig
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.graph_events import (
     GraphRunPausedEvent,
@@ -152,6 +153,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
         context=ContextConfig(enabled=False, variable_selector=None),
         vision=VisionConfig(enabled=False),
         reasoning_format="tagged",
+        structured_output_enabled=False,
     )
     llm_a_config = {"id": "llm_a", "data": llm_a_data.model_dump()}
     llm_a = MockLLMNode(
@@ -175,6 +177,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
         context=ContextConfig(enabled=False, variable_selector=None),
         vision=VisionConfig(enabled=False),
         reasoning_format="tagged",
+        structured_output_enabled=False,
     )
     llm_b_config = {"id": "llm_b", "data": llm_b_data.model_dump()}
     llm_b = MockLLMNode(
@@ -255,10 +258,12 @@ def test_pause_defers_ready_nodes_until_resume() -> None:
         graph=graph,
         graph_runtime_state=runtime_state,
         command_channel=InMemoryChannel(),
-        min_workers=2,
-        max_workers=2,
-        scale_up_threshold=1,
-        scale_down_idle_time=30.0,
+        config=GraphEngineConfig(
+            min_workers=2,
+            max_workers=2,
+            scale_up_threshold=1,
+            scale_down_idle_time=30.0,
+        ),
     )
 
     paused_events = list(engine.run())
@@ -286,10 +291,12 @@ def test_pause_defers_ready_nodes_until_resume() -> None:
         graph=resumed_graph,
         graph_runtime_state=resumed_state,
         command_channel=InMemoryChannel(),
-        min_workers=2,
-        max_workers=2,
-        scale_up_threshold=1,
-        scale_down_idle_time=30.0,
+        config=GraphEngineConfig(
+            min_workers=2,
+            max_workers=2,
+            scale_up_threshold=1,
+            scale_down_idle_time=30.0,
+        ),
     )
 
     resumed_events = list(resumed_engine.run())

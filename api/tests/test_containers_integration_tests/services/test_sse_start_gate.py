@@ -119,7 +119,9 @@ def _collect_sse_events(response, max_events: int = 2, timeout: float = 3.0) -> 
                     if len(events) >= max_events:
                         break
     finally:
-        response.close()
+        thread.join(timeout=0.2)
+        if not thread.is_alive():
+            response.close()
 
     return events
 

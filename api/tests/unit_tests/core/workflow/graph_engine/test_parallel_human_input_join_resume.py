@@ -8,6 +8,7 @@ from core.workflow.entities import GraphInitParams
 from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.command_channels.in_memory_channel import InMemoryChannel
+from core.workflow.graph_engine.config import GraphEngineConfig
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.graph_events import (
     GraphRunPausedEvent,
@@ -201,10 +202,12 @@ def _run_graph(graph: Graph, runtime_state: GraphRuntimeState) -> list[object]:
         graph=graph,
         graph_runtime_state=runtime_state,
         command_channel=InMemoryChannel(),
-        min_workers=2,
-        max_workers=2,
-        scale_up_threshold=1,
-        scale_down_idle_time=30.0,
+        config=GraphEngineConfig(
+            min_workers=2,
+            max_workers=2,
+            scale_up_threshold=1,
+            scale_down_idle_time=30.0,
+        ),
     )
     return list(engine.run())
 
