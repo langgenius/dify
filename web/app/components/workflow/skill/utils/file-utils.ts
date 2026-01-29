@@ -80,7 +80,7 @@ const BINARY_EXTENSIONS = [
 
 export function getFileExtension(name?: string, extension?: string): string {
   if (extension)
-    return extension.toLowerCase()
+    return extension.replace(/^\./, '').toLowerCase()
   if (!name)
     return ''
   return name.split('.').pop()?.toLowerCase() ?? ''
@@ -111,7 +111,7 @@ const EXTENSION_TO_ICON_TYPE = new Map<string, FileAppearanceTypeEnum>(
 )
 
 export function getFileIconType(name: string, ext?: string | null): FileAppearanceTypeEnum {
-  const extension = ext?.toLowerCase() ?? name.split('.').pop()?.toLowerCase() ?? ''
+  const extension = ext?.replace(/^\./, '').toLowerCase() ?? name.split('.').pop()?.toLowerCase() ?? ''
   return EXTENSION_TO_ICON_TYPE.get(extension) ?? FileAppearanceTypeEnum.document
 }
 
