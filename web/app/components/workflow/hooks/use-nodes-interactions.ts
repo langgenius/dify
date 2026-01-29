@@ -14,7 +14,6 @@ import type { LoopNodeType } from '../nodes/loop/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
-import type { RAGPipelineVariables } from '@/models/pipeline'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -224,6 +223,98 @@ function createGroupInboundEdges(params: {
   }
 
   return { realEdges, uiEdge }
+}
+
+type NodesMetaDataMap = Record<BlockEnum, { metaData?: { isUndeletable?: boolean } }>
+
+const buildNestedDeleteSet = (
+  rootIds: string[],
+  nodes: Node[],
+  nodesMetaDataMap?: NodesMetaDataMap,
+) => {
+  const childrenMap = new Map<string, Set<string>>()
+  const addChild = (parentId: string, childId: string) => {
+    const list = childrenMap.get(parentId)
+    if (list)
+      list.add(childId)
+    else
+      childrenMap.set(parentId, new Set([childId]))
+  }
+
+  nodes.forEach((node) => {
+    const parentNodeId = node.data.parent_node_id
+    if (parentNodeId) {
+      addChild(parentNodeId, node.id)
+      return
+    }
+
+    const extIndex = node.id.indexOf('_ext_')
+    if (extIndex > 0)
+      addChild(node.id.slice(0, extIndex), node.id)
+  })
+
+  const nodesMap = new Map(nodes.map(node => [node.id, node]))
+  const deleteSet = new Set(rootIds)
+  const queue = Array.from(new Set(rootIds))
+
+  while (queue.length) {
+    const currentId = queue.shift()!
+    const children = childrenMap.get(currentId)
+    if (!children)
+      continue
+    children.forEach((childId) => {
+      if (deleteSet.has(childId))
+        return
+      const childNode = nodesMap.get(childId)
+      if (!childNode)
+        return
+      const metaData = nodesMetaDataMap?.[childNode.data.type as BlockEnum]?.metaData
+      if (metaData?.isUndeletable)
+        return
+      deleteSet.add(childId)
+      queue.push(childId)
+    })
+  }
+
+  return deleteSet
+}
+
+const computeBatchDelete = (deleteSet: Set<string>, nodes: Node[], edges: Edge[]) => {
+  const edgesToRemove = edges.filter(
+    edge => deleteSet.has(edge.source) || deleteSet.has(edge.target),
+  )
+  const handleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
+    edgesToRemove.map(edge => ({ type: 'remove', edge })),
+    nodes,
+  )
+
+  const newNodes = nodes.reduce<Node[]>((acc, node) => {
+    if (deleteSet.has(node.id))
+      return acc
+
+    let data = node.data
+    const handleUpdate = handleIdsMap[node.id]
+    if (handleUpdate)
+      data = { ...data, ...handleUpdate }
+    if (data._children?.length) {
+      const nextChildren = data._children.filter(child => !deleteSet.has(child.nodeId))
+      if (nextChildren.length !== data._children.length)
+        data = { ...data, _children: nextChildren }
+    }
+
+    if (data === node.data)
+      acc.push(node)
+    else
+      acc.push({ ...node, data })
+
+    return acc
+  }, [])
+
+  const newEdges = edges.filter(
+    edge => !deleteSet.has(edge.source) && !deleteSet.has(edge.target),
+  )
+
+  return { newNodes, newEdges }
 }
 
 export const useNodesInteractions = () => {
@@ -941,14 +1032,73 @@ export const useNodesInteractions = () => {
 
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
 
+  const performBatchCascadeDelete = useCallback(
+    (deleteSet: Set<string>, initiatingNodeId: string) => {
+      const { nodes, edges, setNodes, setEdges } = collaborativeWorkflow.getState()
+      if (!deleteSet.size)
+        return
+
+      const nodesMap = new Map(nodes.map(node => [node.id, node]))
+      const filteredDeleteSet = new Set<string>()
+      deleteSet.forEach((id) => {
+        if (nodesMap.has(id))
+          filteredDeleteSet.add(id)
+      })
+      if (!filteredDeleteSet.size)
+        return
+
+      const dataSourceNodeIds = new Set<string>()
+      filteredDeleteSet.forEach((id) => {
+        const node = nodesMap.get(id)
+        if (!node)
+          return
+        deleteNodeInspectorVars(id)
+        if (node.data.type === BlockEnum.DataSource)
+          dataSourceNodeIds.add(id)
+        cleanupContextGenStorage(id, node.data)
+      })
+
+      if (dataSourceNodeIds.size) {
+        const { ragPipelineVariables, setRagPipelineVariables }
+          = workflowStore.getState()
+        if (ragPipelineVariables && setRagPipelineVariables) {
+          const newRagPipelineVariables = ragPipelineVariables.filter(
+            variable => !dataSourceNodeIds.has(variable.belong_to_node_id),
+          )
+          setRagPipelineVariables(newRagPipelineVariables)
+        }
+      }
+
+      const { newNodes, newEdges } = computeBatchDelete(filteredDeleteSet, nodes, edges)
+      setNodes(newNodes)
+      setEdges(newEdges)
+      handleSyncWorkflowDraft()
+
+      const initiatingNode = nodesMap.get(initiatingNodeId)
+      if (initiatingNode?.type === CUSTOM_NOTE_NODE) {
+        saveStateToHistory(WorkflowHistoryEvent.NoteDelete, { nodeId: initiatingNodeId })
+      }
+      else {
+        saveStateToHistory(WorkflowHistoryEvent.NodeDelete, { nodeId: initiatingNodeId })
+      }
+    },
+    [
+      collaborativeWorkflow,
+      deleteNodeInspectorVars,
+      workflowStore,
+      cleanupContextGenStorage,
+      handleSyncWorkflowDraft,
+      saveStateToHistory,
+    ],
+  )
+
   const handleNodeDelete = useCallback(
     (nodeId: string) => {
       if (getNodesReadOnly())
         return
 
-      const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
-      const currentNodeIndex = nodes.findIndex(node => node.id === nodeId)
-      const currentNode = nodes[currentNodeIndex]
+      const { nodes } = collaborativeWorkflow.getState()
+      const currentNode = nodes.find(node => node.id === nodeId)
 
       if (!currentNode)
         return
@@ -960,7 +1110,6 @@ export const useNodesInteractions = () => {
         return
       }
 
-      deleteNodeInspectorVars(nodeId)
       if (currentNode.data.type === BlockEnum.Iteration) {
         const iterationChildren = nodes.filter(
           node => node.parentId === currentNode.id,
@@ -1041,94 +1190,17 @@ export const useNodesInteractions = () => {
         }
       }
 
-      const nestedChildren = nodes.filter((node) => {
-        const parentNodeId = node.data.parent_node_id
-        if (parentNodeId === currentNode.id)
-          return true
-        if (!parentNodeId && node.id.startsWith(`${currentNode.id}_ext_`))
-          return true
-        return false
-      })
-      if (nestedChildren.length) {
-        nestedChildren.forEach((child) => {
-          handleNodeDelete(child.id)
-        })
-      }
-
-      if (currentNode.data.type === BlockEnum.DataSource) {
-        const { id } = currentNode
-        const { ragPipelineVariables, setRagPipelineVariables }
-          = workflowStore.getState()
-        if (ragPipelineVariables && setRagPipelineVariables) {
-          const newRagPipelineVariables: RAGPipelineVariables = []
-          ragPipelineVariables.forEach((variable) => {
-            if (variable.belong_to_node_id === id)
-              return
-            newRagPipelineVariables.push(variable)
-          })
-          setRagPipelineVariables(newRagPipelineVariables)
-        }
-      }
-
-      // Reason: remove context-generate caches for deleted nested-node params.
-      cleanupContextGenStorage(nodeId, currentNode.data)
-
-      const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges)
-      const nodesConnectedSourceOrTargetHandleIdsMap
-        = getNodesConnectedSourceOrTargetHandleIdsMap(
-          connectedEdges.map(edge => ({ type: 'remove', edge })),
-          nodes,
-        )
-      const newNodes = produce(nodes, (draft: Node[]) => {
-        draft.forEach((node) => {
-          if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
-            node.data = {
-              ...node.data,
-              ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
-            }
-          }
-
-          if (node.id === currentNode.parentId) {
-            node.data._children = node.data._children?.filter(
-              child => child.nodeId !== nodeId,
-            )
-          }
-        })
-        draft.splice(currentNodeIndex, 1)
-      })
-      setNodes(newNodes)
-      const newEdges = produce(edges, (draft) => {
-        return draft.filter(
-          edge =>
-            !connectedEdges.find(
-              connectedEdge => connectedEdge.id === edge.id,
-            ),
-        )
-      })
-      setEdges(newEdges)
-      handleSyncWorkflowDraft()
-
-      if (currentNode.type === CUSTOM_NOTE_NODE) {
-        saveStateToHistory(WorkflowHistoryEvent.NoteDelete, {
-          nodeId: currentNode.id,
-        })
-      }
-      else {
-        saveStateToHistory(WorkflowHistoryEvent.NodeDelete, {
-          nodeId: currentNode.id,
-        })
-      }
+      const deleteSet = buildNestedDeleteSet([nodeId], nodes, nodesMetaDataMap)
+      performBatchCascadeDelete(deleteSet, nodeId)
     },
     [
       getNodesReadOnly,
       collaborativeWorkflow,
       handleSyncWorkflowDraft,
-      saveStateToHistory,
       workflowStore,
       t,
       nodesMetaDataMap,
-      deleteNodeInspectorVars,
-      cleanupContextGenStorage,
+      performBatchCascadeDelete,
     ],
   )
 
