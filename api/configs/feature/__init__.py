@@ -262,7 +262,7 @@ class PluginConfig(BaseSettings):
 
     PLUGIN_MODEL_SCHEMA_CACHE_TTL: PositiveInt = Field(
         description="TTL in seconds for caching plugin model schemas in Redis",
-        default=24 * 60 * 60,
+        default=60 * 60,
     )
 
 
