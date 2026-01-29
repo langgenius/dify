@@ -1054,6 +1054,8 @@
   "publishLimit.startNodeDesc": "You’ve reached the limit of 2 triggers per workflow for this plan. Upgrade to publish this workflow.",
   "publishLimit.startNodeTitlePrefix": "Upgrade to",
   "publishLimit.startNodeTitleSuffix": "unlock unlimited triggers per workflow",
+  "sandboxMigrationModal.description": "This will create a separate copy of your app, without affecting the original.",
+  "sandboxMigrationModal.title": "Upgrade to filesystem-based agents",
   "sidebar.exportWarning": "Export Current Saved Version",
   "sidebar.exportWarningDesc": "This will export the current saved version of your workflow. If you have unsaved changes in the editor, please save them first by using the export option in the workflow canvas.",
   "singleRun.back": "Back",

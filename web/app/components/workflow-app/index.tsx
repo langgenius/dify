@@ -13,10 +13,12 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FeaturesProvider } from '@/app/components/base/features'
 import Loading from '@/app/components/base/loading'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { useCollaboration } from '@/app/components/workflow/collaboration'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
@@ -170,6 +172,9 @@ const WorkflowAppWithAdditionalContext = () => {
   } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const { t } = useTranslation()
+  const [showMigrationModal, setShowMigrationModal] = useState(false)
+  const lastCheckedAppIdRef = useRef<string | null>(null)
 
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()
@@ -291,6 +296,17 @@ const WorkflowAppWithAdditionalContext = () => {
   }, [replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
 
   const isDataReady = !(!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id)
+  const sandboxEnabled = data?.features?.sandbox?.enabled === true
+
+  useEffect(() => {
+    if (!isDataReady || !appId)
+      return
+    if (lastCheckedAppIdRef.current !== appId) {
+      lastCheckedAppIdRef.current = appId
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      setShowMigrationModal(!sandboxEnabled)
+    }
+  }, [appId, isDataReady, sandboxEnabled])
   const renderGraph = useCallback((headerLeftSlot: ReactNode) => {
     if (!isDataReady)
       return null
@@ -344,6 +360,12 @@ const WorkflowAppWithAdditionalContext = () => {
   return (
     <>
       <CollaborationSession />
+      <PlanUpgradeModal
+        show={showMigrationModal}
+        onClose={() => setShowMigrationModal(false)}
+        title={t('sandboxMigrationModal.title', { ns: 'workflow' })}
+        description={t('sandboxMigrationModal.description', { ns: 'workflow' })}
+      />
       <WorkflowWithDefaultContext
         edges={edgesData}
         nodes={nodesData}

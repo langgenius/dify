@@ -1024,6 +1024,8 @@
   "publishLimit.startNodeDesc": "目前方案最多允許 2 個開始節點，升級後才能發布此工作流程。",
   "publishLimit.startNodeTitlePrefix": "升級以",
   "publishLimit.startNodeTitleSuffix": "解鎖無限開始節點",
+  "sandboxMigrationModal.description": "這將建立您的應用程式的獨立副本，不會影響原應用程式。",
+  "sandboxMigrationModal.title": "升級到基於檔案系統的智能體",
   "sidebar.exportWarning": "導出當前保存的版本",
   "sidebar.exportWarningDesc": "這將導出當前保存的工作流程版本。如果您在編輯器中有未保存的更改，請先通過使用工作流程畫布中的導出選項來保存它們。",
   "singleRun.back": "返回",
