@@ -13,12 +13,10 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FeaturesProvider } from '@/app/components/base/features'
 import Loading from '@/app/components/base/loading'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { useCollaboration } from '@/app/components/workflow/collaboration'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
@@ -42,6 +40,7 @@ import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
 import { useFeatures } from '../base/features/hooks'
 import ViewPicker from '../workflow/view-picker'
+import SandboxMigrationModal from './components/sandbox-migration-modal'
 import WorkflowAppMain from './components/workflow-main'
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
 import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
@@ -173,7 +172,6 @@ const WorkflowAppWithAdditionalContext = () => {
   } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
-  const { t } = useTranslation()
   const [showMigrationModal, setShowMigrationModal] = useState(false)
   const lastCheckedAppIdRef = useRef<string | null>(null)
 
@@ -366,11 +364,9 @@ const WorkflowAppWithAdditionalContext = () => {
   return (
     <>
       <CollaborationSession />
-      <PlanUpgradeModal
+      <SandboxMigrationModal
         show={showMigrationModal}
         onClose={handleCloseMigrationModal}
-        title={t('sandboxMigrationModal.title', { ns: 'workflow' })}
-        description={t('sandboxMigrationModal.description', { ns: 'workflow' })}
       />
       <WorkflowWithDefaultContext
         edges={edgesData}
