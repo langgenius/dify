@@ -179,8 +179,10 @@ describe('RetryButton (IndexFailed)', () => {
         }, false),
       )
 
-      // Delay the response to test loading state
-      mockRetryErrorDocs.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve({ result: 'success' }), 100)))
+      let resolveRetry: ((value: { result: 'success' }) => void) | undefined
+      mockRetryErrorDocs.mockImplementation(() => new Promise((resolve) => {
+        resolveRetry = resolve
+      }))
 
       render(<RetryButton datasetId="test-dataset" />)
 
@@ -192,6 +194,11 @@ describe('RetryButton (IndexFailed)', () => {
         const button = screen.getByText(/retry/i)
         expect(button).toHaveClass('cursor-not-allowed')
         expect(button).toHaveClass('text-text-disabled')
+      })
+
+      resolveRetry?.({ result: 'success' })
+      await waitFor(() => {
+        expect(mockRefetch).toHaveBeenCalled()
       })
     })
   })
