@@ -177,11 +177,6 @@
       "count": 1
     }
   },
-  "app/components/app/annotation/batch-add-annotation-modal/csv-downloader.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/app/annotation/batch-add-annotation-modal/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -197,11 +192,6 @@
   },
   "app/components/app/annotation/edit-annotation-modal/index.spec.tsx": {
     "test/prefer-hooks-in-order": {
-      "count": 1
-    }
-  },
-  "app/components/app/annotation/header-opts/index.spec.tsx": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -2576,12 +2566,7 @@
   },
   "app/components/share/text-generation/run-batch/csv-reader/index.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/share/text-generation/run-batch/csv-reader/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/share/text-generation/run-once/index.tsx": {
