@@ -7,18 +7,18 @@ response streaming sessions and ensures ordered streaming of responses.
 
 import logging
 from collections import deque
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from threading import RLock
-from typing import Literal, TypeAlias, final
+from typing import Any, Literal, Protocol, TypeAlias, final, TYPE_CHECKING
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
 from core.workflow.enums import NodeExecutionType, NodeState
-from core.workflow.graph import Graph
 from core.workflow.graph_events import NodeRunStreamChunkEvent, NodeRunSucceededEvent
 from core.workflow.nodes.base.template import TextSegment, VariableSegment
 from core.workflow.runtime import VariablePool
+from core.workflow.runtime.graph_runtime_state import GraphProtocol
 
 from .path import Path
 from .session import ResponseSession
@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 # Type definitions
 NodeID: TypeAlias = str
 EdgeID: TypeAlias = str
+
 
 
 class ResponseSessionState(BaseModel):
@@ -75,7 +76,7 @@ class ResponseStreamCoordinator:
     Ensures ordered streaming of responses based on upstream node outputs and constants.
     """
 
-    def __init__(self, variable_pool: "VariablePool", graph: "Graph") -> None:
+    def __init__(self, variable_pool: "VariablePool", graph: GraphProtocol) -> None:
         """
         Initialize coordinator with variable pool.
 

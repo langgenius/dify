@@ -106,12 +106,11 @@ class ResponseStreamCoordinatorProtocol(Protocol):
 class GraphProtocol(Protocol):
     """Structural interface required from graph instances attached to the runtime state."""
 
-    nodes: Mapping[str, object]
-    edges: Mapping[str, object]
-    root_node: object
+    nodes: Mapping[str, Any]
+    edges: Mapping[str, Any]
+    root_node: Any
 
-    def get_outgoing_edges(self, node_id: str) -> Sequence[object]: ...
-
+    def get_outgoing_edges(self, node_id: str) -> Sequence[Any]: ...
 
 @dataclass(slots=True)
 class _GraphRuntimeStateSnapshot:
