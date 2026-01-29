@@ -11,6 +11,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
+import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Switch from '@/app/components/base/switch'
 import { useNodeCurdKit } from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useTheme from '@/hooks/use-theme'
@@ -47,7 +48,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
   promptTemplateKey,
 }) => {
   const isDisabled = readonly || !enabled
-  const { i18n } = useTranslation()
+  const { i18n, t } = useTranslation()
   const appId = useAppStore(s => s.appDetail?.id)
   const { handleNodeDataUpdate } = useNodeCurdKit<LLMNodeType>(nodeId)
   const { theme } = useTheme()
@@ -71,7 +72,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
     ]
   }, [appId, nodeId, promptTemplateKey])
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey,
     queryFn: () => consoleClient.workflowDraft.nodeSkills({
       params: {
@@ -213,6 +214,10 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
     }))
   }, [])
 
+  const isQueryEnabled = !!appId && !!nodeId
+  const isInitialLoading = isQueryEnabled && isLoading && !data
+  const showNoData = !isInitialLoading && providers.length === 0
+
   const renderProviderIcon = useCallback((providerId: string) => {
     const icon = providerIcons.get(providerId)
     if (!icon || iconErrorMap[providerId])
@@ -240,7 +245,26 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
 
   return (
     <div className={cn('flex flex-col gap-2', isDisabled && 'opacity-50')}>
-      {providers.map((provider) => {
+      {isInitialLoading && [0, 1].map(index => (
+        <div
+          key={`loading-provider-${index}`}
+          className="flex flex-col gap-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-bg p-1 shadow-xs"
+        >
+          <SkeletonRow className="w-full rounded-lg p-1">
+            <SkeletonRectangle className="h-6 w-6 animate-pulse rounded-md" />
+            <SkeletonRectangle className="h-3 w-32 animate-pulse" />
+            <SkeletonRectangle className="ml-auto h-6 w-6 animate-pulse rounded-md" />
+          </SkeletonRow>
+        </div>
+      ))}
+      {showNoData && (
+        <div className="flex items-center justify-center rounded-lg border border-components-panel-border-subtle bg-components-panel-bg p-3 text-text-tertiary">
+          <span className={cn('system-xs-regular capitalize')}>
+            {t('noData', { ns: 'common' })}
+          </span>
+        </div>
+      )}
+      {!isInitialLoading && providers.map((provider) => {
         const isOpen = openMap[provider.id] ?? false
         return (
           <div
