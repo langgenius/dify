@@ -10,6 +10,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
 import { cn } from '@/utils/classnames'
+import { downloadUrl } from '@/utils/download'
 import Button from '../../base/button'
 import Gdpr from '../../base/icons/src/public/common/Gdpr'
 import Iso from '../../base/icons/src/public/common/Iso'
@@ -47,9 +48,7 @@ const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
     mutationFn: async () => {
       try {
         const ret = await getDocDownloadUrl(doc_name)
-        const a = document.createElement('a')
-        a.href = ret.url
-        a.click()
+        downloadUrl({ url: ret.url })
         Toast.notify({
           type: 'success',
           message: t('operation.downloadSuccess', { ns: 'common' }),

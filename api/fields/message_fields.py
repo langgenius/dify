@@ -36,6 +36,7 @@ class RetrieverResource(ResponseModel):
     segment_position: int | None = None
     index_node_hash: str | None = None
     content: str | None = None
+    summary: str | None = None
     created_at: int | None = None
 
     @field_validator("created_at", mode="before")
