@@ -1,7 +1,6 @@
 'use client'
 
 import type { Emoji } from '@/app/components/tools/types'
-import { RiArrowLeftSLine, RiCloseLine } from '@remixicon/react'
 import AppIcon from '@/app/components/base/app-icon'
 
 type ToolHeaderProps = {
@@ -71,7 +70,7 @@ const ToolHeader = ({
                   onBack()
                 }}
               >
-                <RiArrowLeftSLine className="h-4 w-4" />
+                <span className="i-ri-arrow-left-s-line h-4 w-4" />
               </button>
             )}
             {renderHeaderIcon()}
@@ -89,7 +88,7 @@ const ToolHeader = ({
               onClose()
             }}
           >
-            <RiCloseLine className="h-4 w-4" />
+            <span className="i-ri-close-line h-4 w-4" />
           </button>
         </div>
       </div>

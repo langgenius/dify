@@ -47,6 +47,7 @@ def delete_segment_from_index_task(
             doc_form = dataset_document.doc_form
 
             # Proceed with index cleanup using the index_node_ids directly
+            # For actual deletion, we should delete summaries (not just disable them)
             index_processor = IndexProcessorFactory(doc_form).init_index_processor()
             index_processor.clean(
                 dataset,
@@ -54,6 +55,7 @@ def delete_segment_from_index_task(
                 with_keywords=True,
                 delete_child_chunks=True,
                 precomputed_child_node_ids=child_node_ids,
+                delete_summaries=True,  # Actually delete summaries when segment is deleted
             )
             if dataset.is_multimodal:
                 # delete segment attachment binding

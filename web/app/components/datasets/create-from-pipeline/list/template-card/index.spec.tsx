@@ -23,9 +23,10 @@ vi.mock('@/app/components/base/toast', () => ({
   },
 }))
 
-// Mock downloadFile utility
-vi.mock('@/utils/format', () => ({
-  downloadFile: vi.fn(),
+// Mock download utilities
+vi.mock('@/utils/download', () => ({
+  downloadBlob: vi.fn(),
+  downloadUrl: vi.fn(),
 }))
 
 // Capture Confirm callbacks
@@ -502,8 +503,8 @@ describe('TemplateCard', () => {
       })
     })
 
-    it('should call downloadFile on successful export', async () => {
-      const { downloadFile } = await import('@/utils/format')
+    it('should call downloadBlob on successful export', async () => {
+      const { downloadBlob } = await import('@/utils/download')
       mockExportPipelineDSL.mockImplementation((_id, callbacks) => {
         callbacks.onSuccess({ data: 'yaml_content' })
         return Promise.resolve()
@@ -514,7 +515,7 @@ describe('TemplateCard', () => {
       fireEvent.click(exportButton)
 
       await waitFor(() => {
-        expect(downloadFile).toHaveBeenCalledWith(expect.objectContaining({
+        expect(downloadBlob).toHaveBeenCalledWith(expect.objectContaining({
           fileName: 'Test Pipeline.pipeline',
         }))
       })

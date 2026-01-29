@@ -1,8 +1,8 @@
 import json
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from enum import StrEnum
-from typing import Any, Literal, TypeVar, cast, overload
+from typing import Any, TypeVar, cast
 
 import json_repair
 from pydantic import BaseModel, TypeAdapter, ValidationError
@@ -14,13 +14,9 @@ from core.model_manager import ModelInstance
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import (
     LLMResult,
-    LLMResultChunk,
-    LLMResultChunkDelta,
-    LLMResultChunkWithStructuredOutput,
     LLMResultWithStructuredOutput,
 )
 from core.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
     PromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
@@ -52,7 +48,6 @@ TOOL_CALL_FEATURES = {ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL, Mode
 T = TypeVar("T", bound=BaseModel)
 
 
-@overload
 def invoke_llm_with_structured_output(
     *,
     provider: str,
@@ -63,58 +58,10 @@ def invoke_llm_with_structured_output(
     model_parameters: Mapping | None = None,
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
-    stream: Literal[True],
     user: str | None = None,
     callbacks: list[Callback] | None = None,
     tenant_id: str | None = None,
-) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
-@overload
-def invoke_llm_with_structured_output(
-    *,
-    provider: str,
-    model_schema: AIModelEntity,
-    model_instance: ModelInstance,
-    prompt_messages: Sequence[PromptMessage],
-    json_schema: Mapping[str, Any],
-    model_parameters: Mapping | None = None,
-    tools: Sequence[PromptMessageTool] | None = None,
-    stop: list[str] | None = None,
-    stream: Literal[False],
-    user: str | None = None,
-    callbacks: list[Callback] | None = None,
-    tenant_id: str | None = None,
-) -> LLMResultWithStructuredOutput: ...
-@overload
-def invoke_llm_with_structured_output(
-    *,
-    provider: str,
-    model_schema: AIModelEntity,
-    model_instance: ModelInstance,
-    prompt_messages: Sequence[PromptMessage],
-    json_schema: Mapping[str, Any],
-    model_parameters: Mapping | None = None,
-    tools: Sequence[PromptMessageTool] | None = None,
-    stop: list[str] | None = None,
-    stream: bool = True,
-    user: str | None = None,
-    callbacks: list[Callback] | None = None,
-    tenant_id: str | None = None,
-) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
-def invoke_llm_with_structured_output(
-    *,
-    provider: str,
-    model_schema: AIModelEntity,
-    model_instance: ModelInstance,
-    prompt_messages: Sequence[PromptMessage],
-    json_schema: Mapping[str, Any],
-    model_parameters: Mapping | None = None,
-    tools: Sequence[PromptMessageTool] | None = None,
-    stop: list[str] | None = None,
-    stream: bool = True,
-    user: str | None = None,
-    callbacks: list[Callback] | None = None,
-    tenant_id: str | None = None,
-) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
+) -> LLMResultWithStructuredOutput:
     """
     Invoke large language model with structured output.
 
@@ -129,7 +76,6 @@ def invoke_llm_with_structured_output(
     :param model_parameters: model parameters
     :param tools: tools for tool calling
     :param stop: stop words
-    :param stream: is stream response
     :param user: unique user id
     :param callbacks: callbacks
     :param tenant_id: tenant ID for file reference conversion. When provided and
@@ -165,91 +111,33 @@ def invoke_llm_with_structured_output(
         model_parameters=model_parameters_with_json_schema,
         tools=tools,
         stop=stop,
-        stream=stream,
+        stream=False,
         user=user,
         callbacks=callbacks,
     )
 
-    if isinstance(llm_result, LLMResult):
-        # Non-streaming result
-        structured_output = _extract_structured_output(llm_result)
+    # Non-streaming result
+    structured_output = _extract_structured_output(llm_result)
 
-        # Fill missing fields with default values
-        structured_output = fill_defaults_from_schema(structured_output, json_schema)
+    # Fill missing fields with default values
+    structured_output = fill_defaults_from_schema(structured_output, json_schema)
 
-        # Convert file references if tenant_id is provided
-        if tenant_id is not None:
-            structured_output = convert_file_refs_in_output(
-                output=structured_output,
-                json_schema=json_schema,
-                tenant_id=tenant_id,
-            )
-
-        return LLMResultWithStructuredOutput(
-            structured_output=structured_output,
-            model=llm_result.model,
-            message=llm_result.message,
-            usage=llm_result.usage,
-            system_fingerprint=llm_result.system_fingerprint,
-            prompt_messages=llm_result.prompt_messages,
+    # Convert file references if tenant_id is provided
+    if tenant_id is not None:
+        structured_output = convert_file_refs_in_output(
+            output=structured_output,
+            json_schema=json_schema,
+            tenant_id=tenant_id,
         )
-    else:
 
-        def generator() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
-            result_text: str = ""
-            tool_call_args: dict[str, str] = {}  # tool_call_id -> arguments
-            prompt_messages: Sequence[PromptMessage] = []
-            system_fingerprint: str | None = None
-
-            for event in llm_result:
-                if isinstance(event, LLMResultChunk):
-                    prompt_messages = event.prompt_messages
-                    system_fingerprint = event.system_fingerprint
-
-                    # Collect text content
-                    result_text += event.delta.message.get_text_content()
-                    # Collect tool call arguments
-                    if event.delta.message.tool_calls:
-                        for tool_call in event.delta.message.tool_calls:
-                            call_id = tool_call.id or ""
-                            if tool_call.function.arguments:
-                                tool_call_args[call_id] = tool_call_args.get(call_id, "") + tool_call.function.arguments
-
-                yield LLMResultChunkWithStructuredOutput(
-                    model=model_schema.model,
-                    prompt_messages=prompt_messages,
-                    system_fingerprint=system_fingerprint,
-                    delta=event.delta,
-                )
-
-            # Extract structured output: prefer tool call, fallback to text
-            structured_output = _extract_structured_output_from_stream(result_text, tool_call_args)
-
-            # Fill missing fields with default values
-            structured_output = fill_defaults_from_schema(structured_output, json_schema)
-
-            # Convert file references if tenant_id is provided
-            if tenant_id is not None:
-                structured_output = convert_file_refs_in_output(
-                    output=structured_output,
-                    json_schema=json_schema,
-                    tenant_id=tenant_id,
-                )
-
-            yield LLMResultChunkWithStructuredOutput(
-                structured_output=structured_output,
-                model=model_schema.model,
-                prompt_messages=prompt_messages,
-                system_fingerprint=system_fingerprint,
-                delta=LLMResultChunkDelta(
-                    index=0,
-                    message=AssistantPromptMessage(content=""),
-                    usage=None,
-                    finish_reason=None,
-                ),
-            )
-
-        return generator()
+    return LLMResultWithStructuredOutput(
+        structured_output=structured_output,
+        model=llm_result.model,
+        message=llm_result.message,
+        usage=llm_result.usage,
+        system_fingerprint=llm_result.system_fingerprint,
+        prompt_messages=llm_result.prompt_messages,
+    )
 
 
 def invoke_llm_with_pydantic_model(
@@ -262,7 +150,6 @@ def invoke_llm_with_pydantic_model(
     model_parameters: Mapping | None = None,
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
-    stream: bool = True,  # Some model plugin implementations don't support stream=False
     user: str | None = None,
     callbacks: list[Callback] | None = None,
     tenant_id: str | None = None,
@@ -281,36 +168,6 @@ def invoke_llm_with_pydantic_model(
     """
     json_schema = _schema_from_pydantic(output_model)
 
-    if stream:
-        result_generator = invoke_llm_with_structured_output(
-            provider=provider,
-            model_schema=model_schema,
-            model_instance=model_instance,
-            prompt_messages=prompt_messages,
-            json_schema=json_schema,
-            model_parameters=model_parameters,
-            tools=tools,
-            stop=stop,
-            stream=True,
-            user=user,
-            callbacks=callbacks,
-            tenant_id=tenant_id,
-        )
-
-        # Consume the generator to get the final chunk with structured_output
-        last_chunk: LLMResultChunkWithStructuredOutput | None = None
-        for chunk in result_generator:
-            last_chunk = chunk
-
-        if last_chunk is None:
-            raise OutputParserError("No chunks received from LLM")
-
-        structured_output = last_chunk.structured_output
-        if structured_output is None:
-            raise OutputParserError("Structured output is empty")
-
-        return _validate_structured_output(output_model, structured_output)
-
     result = invoke_llm_with_structured_output(
         provider=provider,
         model_schema=model_schema,
@@ -320,7 +177,6 @@ def invoke_llm_with_pydantic_model(
         model_parameters=model_parameters,
         tools=tools,
         stop=stop,
-        stream=False,
         user=user,
         callbacks=callbacks,
         tenant_id=tenant_id,
@@ -416,7 +272,7 @@ def _parse_tool_call_arguments(arguments: str) -> Mapping[str, Any]:
         repaired = json_repair.loads(arguments)
         if not isinstance(repaired, dict):
             raise OutputParserError(f"Failed to parse tool call arguments: {arguments}")
-        return cast(dict, repaired)
+        return repaired
 
 
 def _get_default_value_for_type(type_name: str | list[str] | None) -> Any:

@@ -148,7 +148,8 @@ class DockerDemuxer:
         to periodically check for errors and closed state instead of blocking forever.
         """
         if self._error:
-            raise TransportEOFError(f"Demuxer error: {self._error}") from self._error
+            error = cast(BaseException, self._error)
+            raise TransportEOFError(f"Demuxer error: {error}") from error
 
         while True:
             try:
@@ -163,7 +164,8 @@ class DockerDemuxer:
                 if self._closed:
                     raise TransportEOFError("Demuxer closed")
                 if self._error:
-                    raise TransportEOFError(f"Demuxer error: {self._error}") from self._error
+                    error = cast(BaseException, self._error)
+                    raise TransportEOFError(f"Demuxer error: {error}") from error
                 # No error, continue waiting
 
     def close(self) -> None:
@@ -292,6 +294,8 @@ class DockerDaemonEnvironment(VirtualEnvironment):
     @classmethod
     def validate(cls, options: Mapping[str, Any]) -> None:
         # Import Docker SDK lazily so it is loaded after gevent monkey-patching.
+        import docker.errors
+
         import docker
 
         docker_sock = options.get(cls.OptionsKey.DOCKER_SOCK, cls._DEFAULT_DOCKER_SOCK)
@@ -364,6 +368,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         NOTE: I guess nobody will use more than 5 different docker sockets in practice....
         """
         import docker
+
         return docker.DockerClient(base_url=docker_sock)
 
     @classmethod
@@ -373,6 +378,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         Get the Docker low-level API client.
         """
         import docker
+
         return docker.APIClient(base_url=docker_sock)
 
     def get_docker_sock(self) -> str:
@@ -431,6 +437,12 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         return self._container_path(path)
 
     def upload_file(self, path: str, content: BytesIO) -> None:
+        """Upload a file to the container.
+
+        Files and intermediate directories are created with world-writable permissions
+        (0o777 for directories, 0o666 for files) to avoid permission issues when the container
+        runs as a non-root user but Docker's put_archive creates files as root.
+        """
         container = self._get_container()
         normalized = PurePosixPath(path)
 
@@ -442,6 +454,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
             with tarfile.open(fileobj=tar_stream, mode="w") as tar:
                 tar_info = tarfile.TarInfo(name=file_name)
                 tar_info.size = len(payload)
+                tar_info.mode = 0o666
                 tar.addfile(tar_info, BytesIO(payload))
             tar_stream.seek(0)
             container.put_archive(parent_dir, tar_stream.read())  # pyright: ignore[reportUnknownMemberType] #
@@ -454,8 +467,18 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         payload = content.getvalue()
         tar_stream = BytesIO()
         with tarfile.open(fileobj=tar_stream, mode="w") as tar:
+            # Add intermediate directories with proper permissions
+            for i in range(len(relative_path.parts) - 1):
+                dir_path = PurePosixPath(*relative_path.parts[: i + 1])
+                dir_info = tarfile.TarInfo(name=dir_path.as_posix() + "/")
+                dir_info.type = tarfile.DIRTYPE
+                dir_info.mode = 0o777
+                tar.addfile(dir_info)
+
+            # Add the file
             tar_info = tarfile.TarInfo(name=relative_path.as_posix())
             tar_info.size = len(payload)
+            tar_info.mode = 0o666
             tar.addfile(tar_info, BytesIO(payload))
         tar_stream.seek(0)
         container.put_archive(self._working_dir, tar_stream.read())  # pyright: ignore[reportUnknownMemberType] #
@@ -479,7 +502,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
             return BytesIO(extracted.read())
 
     def list_files(self, directory_path: str, limit: int) -> Sequence[FileState]:
-        import docker
+        import docker.errors
 
         container = self._get_container()
         container_path = self._container_path(directory_path)
@@ -525,7 +548,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         pass
 
     def release_environment(self) -> None:
-        import docker
+        import docker.errors
 
         try:
             container = self._get_container()

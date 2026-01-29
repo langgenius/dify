@@ -3,7 +3,6 @@
 // Icon rendering for tree nodes (folder/file icons with dirty indicator)
 
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
-import { RiFolderLine, RiFolderOpenLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import { cn } from '@/utils/classnames'
@@ -41,8 +40,8 @@ export const TreeNodeIcon = ({
         )}
       >
         {isOpen
-          ? <RiFolderOpenLine className="size-4 text-text-accent" aria-hidden="true" />
-          : <RiFolderLine className="size-4 text-text-secondary" aria-hidden="true" />}
+          ? <span className="i-ri-folder-open-line size-4 text-text-accent" aria-hidden="true" />
+          : <span className="i-ri-folder-line size-4 text-text-secondary" aria-hidden="true" />}
       </button>
     )
   }

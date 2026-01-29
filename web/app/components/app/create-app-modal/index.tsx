@@ -2,8 +2,7 @@
 
 import type { AppIconSelection } from '../../base/app-icon-picker'
 import type { RuntimeMode } from '@/types/app'
-
-import { RiArrowRightLine, RiArrowRightSLine, RiCheckLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
+import { RiArrowRightLine, RiArrowRightSLine, RiCheckLine, RiExchange2Fill } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -32,6 +31,7 @@ import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import AppIconPicker from '../../base/app-icon-picker'
+import ShortcutsName from '../../workflow/shortcuts-name'
 
 type CreateAppProps = {
   onSuccess: () => void
@@ -342,10 +342,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
                 <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
                   <span>{t('newApp.Create', { ns: 'app' })}</span>
-                  <div className="flex gap-0.5">
-                    <RiCommandLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
-                    <RiCornerDownLeftLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
-                  </div>
+                  <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
                 </Button>
               </div>
             </div>

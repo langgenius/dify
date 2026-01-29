@@ -1,32 +1,62 @@
+"""Service for exporting and importing App Bundles (DSL + assets).
+
+Bundle structure:
+    bundle.zip/
+        {app_name}.yml          # DSL file
+        manifest.json           # Asset manifest (required for import)
+        {app_name}/             # Asset files
+            folder/file.txt
+            ...
+
+Import flow (sandbox-based):
+    1. prepare_import: Frontend gets upload URL, stores import_id in Redis
+    2. Frontend uploads zip to storage
+    3. confirm_import: Sandbox downloads zip, extracts, uploads assets via presigned URLs
+
+Manifest format (schema_version 1.0):
+    - app_assets.tree: Full AppAssetFileTree for 100% ID restoration
+    - files: node_id -> path mapping for file nodes
+    - integrity.file_count: Basic validation
+"""
+
 from __future__ import annotations
 
-import io
+import json
 import logging
 import re
-import zipfile
+from dataclasses import dataclass
 from uuid import uuid4
 
-import yaml
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_bundle_entities import (
-    BUNDLE_DSL_FILENAME_PATTERN,
-    BUNDLE_MAX_SIZE,
+    MANIFEST_FILENAME,
     BundleExportResult,
     BundleFormatError,
-    ZipSecurityError,
+    BundleManifest,
 )
-from core.app_assets.storage import AssetPath
-from core.app_bundle import SourceZipExtractor
-from core.zip_sandbox import SandboxDownloadItem, ZipSandbox
+from core.app_assets.storage import AppAssetStorage, AssetPath, BundleImportZipPath
+from core.zip_sandbox import SandboxDownloadItem, SandboxUploadItem, ZipSandbox
 from extensions.ext_database import db
-from models import Account, App
+from extensions.ext_redis import redis_client
+from models.account import Account
+from models.model import App
 
 from .app_asset_package_service import AppAssetPackageService
 from .app_asset_service import AppAssetService
 from .app_dsl_service import AppDslService, Import
 
 logger = logging.getLogger(__name__)
+
+_IMPORT_REDIS_PREFIX = "app_bundle:import:"
+_IMPORT_TTL_SECONDS = 3600  # 1 hour
+
+
+@dataclass
+class ImportPrepareResult:
+    import_id: str
+    upload_url: str
 
 
 class AppBundleService:
@@ -38,14 +68,10 @@ class AppBundleService:
         marked_name: str = "",
         marked_comment: str = "",
     ):
-        """
-        Publish App Bundle (workflow + assets).
-        Coordinates WorkflowService and AppAssetService publishing in a single transaction.
-        """
+        """Publish App Bundle (workflow + assets) in a single transaction."""
         from models.workflow import Workflow
         from services.workflow_service import WorkflowService
 
-        # 1. Publish workflow
         workflow: Workflow = WorkflowService().publish_workflow(
             session=session,
             app_model=app_model,
@@ -53,16 +79,15 @@ class AppBundleService:
             marked_name=marked_name,
             marked_comment=marked_comment,
         )
-
-        # 2. Publish assets (bound to workflow_id)
         AppAssetPackageService.publish(
             session=session,
             app_model=app_model,
             account_id=account.id,
             workflow_id=workflow.id,
         )
-
         return workflow
+
+    # ========== Export ==========
 
     @staticmethod
     def export_bundle(
@@ -73,14 +98,14 @@ class AppBundleService:
         workflow_id: str | None = None,
         expires_in: int = 10 * 60,
     ) -> BundleExportResult:
-        """Export bundle and return a temporary download URL.
-
-        Uses sandbox VM to build the ZIP, avoiding memory pressure in API process.
-        """
+        """Export bundle with manifest.json and return a temporary download URL."""
         tenant_id = app_model.tenant_id
         app_id = app_model.id
         safe_name = AppBundleService._sanitize_filename(app_model.name)
-        filename = f"{safe_name}.zip"
+
+        dsl_filename = f"{safe_name}.yml"
+        app_assets = AppAssetService.get_assets_by_version(tenant_id, app_id, workflow_id)
+        manifest = BundleManifest.from_tree(app_assets.asset_tree, dsl_filename)
 
         export_id = uuid4().hex
         export_path = AssetPath.bundle_export_zip(tenant_id, app_id, export_id)
@@ -95,147 +120,170 @@ class AppBundleService:
 
         with ZipSandbox(tenant_id=tenant_id, user_id=account_id, app_id="app-bundle-export") as zs:
             zs.write_file(f"bundle_root/{safe_name}.yml", dsl_content.encode("utf-8"))
+            zs.write_file(f"bundle_root/{MANIFEST_FILENAME}", manifest.model_dump_json(indent=2).encode("utf-8"))
 
-            # Published assets: use stored source zip and unzip into <safe_name>/...
             if workflow_id is not None:
                 source_zip_path = AssetPath.source_zip(tenant_id, app_id, workflow_id)
                 source_url = asset_storage.get_download_url(source_zip_path, expires_in)
                 zs.download_archive(source_url, path="tmp/source_assets.zip")
                 zs.unzip(archive_path="tmp/source_assets.zip", dest_dir=f"bundle_root/{safe_name}")
             else:
-                # Draft assets: download individual files and place under <safe_name>/...
                 asset_items = AppAssetService.get_draft_assets(tenant_id, app_id)
-                asset_urls = asset_storage.get_download_urls(
-                    [AssetPath.draft(tenant_id, app_id, a.asset_id) for a in asset_items], expires_in
-                )
-                zs.download_items(
-                    [
-                        SandboxDownloadItem(url=url, path=f"{safe_name}/{a.path}")
-                        for a, url in zip(asset_items, asset_urls, strict=True)
-                    ],
-                    dest_dir="bundle_root",
-                )
+                if asset_items:
+                    asset_urls = asset_storage.get_download_urls(
+                        [AssetPath.draft(tenant_id, app_id, a.asset_id) for a in asset_items], expires_in
+                    )
+                    zs.download_items(
+                        [
+                            SandboxDownloadItem(url=url, path=f"{safe_name}/{a.path}")
+                            for a, url in zip(asset_items, asset_urls, strict=True)
+                        ],
+                        dest_dir="bundle_root",
+                    )
 
             archive = zs.zip(src="bundle_root", include_base=False)
             zs.upload(archive, upload_url)
 
         download_url = asset_storage.get_download_url(export_path, expires_in)
-        return BundleExportResult(download_url=download_url, filename=filename)
+        return BundleExportResult(download_url=download_url, filename=f"{safe_name}.zip")
+
+    # ========== Import ==========
 
     @staticmethod
-    def import_bundle(
+    def prepare_import(tenant_id: str, account_id: str) -> ImportPrepareResult:
+        """Prepare import: generate import_id and upload URL."""
+        import_id = uuid4().hex
+        import_path = AssetPath.bundle_import_zip(tenant_id, import_id)
+        asset_storage = AppAssetService.get_storage()
+        upload_url = asset_storage.get_import_upload_url(import_path, _IMPORT_TTL_SECONDS)
+
+        redis_client.setex(
+            f"{_IMPORT_REDIS_PREFIX}{import_id}",
+            _IMPORT_TTL_SECONDS,
+            json.dumps({"tenant_id": tenant_id, "account_id": account_id}),
+        )
+
+        return ImportPrepareResult(import_id=import_id, upload_url=upload_url)
+
+    @staticmethod
+    def confirm_import(
+        import_id: str,
         account: Account,
-        zip_bytes: bytes,
+        *,
         name: str | None = None,
         description: str | None = None,
         icon_type: str | None = None,
         icon: str | None = None,
         icon_background: str | None = None,
     ) -> Import:
-        if len(zip_bytes) > BUNDLE_MAX_SIZE:
-            raise BundleFormatError(f"Bundle size exceeds limit: {BUNDLE_MAX_SIZE} bytes")
+        """Confirm import: download zip in sandbox, extract, and upload assets."""
+        redis_key = f"{_IMPORT_REDIS_PREFIX}{import_id}"
+        redis_data = redis_client.get(redis_key)
+        if not redis_data:
+            raise BundleFormatError("Import session expired or not found")
 
-        dsl_content, assets_prefix = AppBundleService._extract_dsl_from_bundle(zip_bytes)
+        import_meta = json.loads(redis_data)
+        tenant_id: str = import_meta["tenant_id"]
 
-        with Session(db.engine) as session:
-            dsl_service = AppDslService(session)
-            import_result = dsl_service.import_app(
+        if tenant_id != account.current_tenant_id:
+            raise BundleFormatError("Import session tenant mismatch")
+
+        import_path = AssetPath.bundle_import_zip(tenant_id, import_id)
+        asset_storage = AppAssetService.get_storage()
+
+        try:
+            result = AppBundleService.import_bundle(
+                tenant_id=tenant_id,
                 account=account,
-                import_mode="yaml-content",
-                yaml_content=dsl_content,
+                import_path=import_path,
+                asset_storage=asset_storage,
                 name=name,
                 description=description,
                 icon_type=icon_type,
                 icon=icon,
                 icon_background=icon_background,
-                app_id=None,
             )
-            session.commit()
+        finally:
+            redis_client.delete(redis_key)
+            asset_storage.delete_import_zip(import_path)
 
-        if import_result.app_id and assets_prefix:
-            AppBundleService._import_assets_from_bundle(
-                zip_bytes=zip_bytes,
-                assets_prefix=assets_prefix,
-                app_id=import_result.app_id,
-                account_id=account.id,
-            )
+        return result
+
+    @staticmethod
+    def import_bundle(
+        *,
+        tenant_id: str,
+        account: Account,
+        import_path: BundleImportZipPath,
+        asset_storage: AppAssetStorage,
+        name: str | None,
+        description: str | None,
+        icon_type: str | None,
+        icon: str | None,
+        icon_background: str | None,
+    ) -> Import:
+        """Execute import in sandbox."""
+        download_url = asset_storage.get_import_download_url(import_path, _IMPORT_TTL_SECONDS)
+
+        with ZipSandbox(tenant_id=tenant_id, user_id=account.id, app_id="app-bundle-import") as zs:
+            zs.download_archive(download_url, path="import.zip")
+            zs.unzip(archive_path="import.zip", dest_dir="bundle")
+
+            manifest_bytes = zs.read_file(f"bundle/{MANIFEST_FILENAME}")
+            try:
+                manifest = BundleManifest.model_validate_json(manifest_bytes)
+            except ValidationError as e:
+                raise BundleFormatError(f"Invalid manifest.json: {e}") from e
+
+            dsl_content = zs.read_file(f"bundle/{manifest.dsl_filename}").decode("utf-8")
+
+            with Session(db.engine) as session:
+                dsl_service = AppDslService(session)
+                import_result = dsl_service.import_app(
+                    account=account,
+                    import_mode="yaml-content",
+                    yaml_content=dsl_content,
+                    name=name,
+                    description=description,
+                    icon_type=icon_type,
+                    icon=icon,
+                    icon_background=icon_background,
+                    app_id=None,
+                )
+                session.commit()
+
+            if not import_result.app_id:
+                return import_result
+
+            app_id = import_result.app_id
+            tree = manifest.app_assets.tree
+
+            upload_items: list[SandboxUploadItem] = []
+            for file_entry in manifest.files:
+                asset_path = AssetPath.draft(tenant_id, app_id, file_entry.node_id)
+                file_upload_url = asset_storage.get_upload_url(asset_path, _IMPORT_TTL_SECONDS)
+                src_path = f"{manifest.assets_prefix}/{file_entry.path}"
+                upload_items.append(SandboxUploadItem(path=src_path, url=file_upload_url))
+
+            if upload_items:
+                zs.upload_items(upload_items, src_dir="bundle")
+
+            # Tree sizes are already set from manifest; no need to update
+            app_model = db.session.query(App).filter(App.id == app_id).first()
+            if app_model:
+                AppAssetService.set_draft_assets(
+                    app_model=app_model,
+                    account_id=account.id,
+                    new_tree=tree,
+                )
 
         return import_result
 
-    @staticmethod
-    def _extract_dsl_from_bundle(zip_bytes: bytes) -> tuple[str, str | None]:
-        dsl_content: str | None = None
-        dsl_filename: str | None = None
-
-        with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
-            for info in zf.infolist():
-                if info.is_dir():
-                    continue
-                if BUNDLE_DSL_FILENAME_PATTERN.match(info.filename):
-                    if dsl_content is not None:
-                        raise BundleFormatError("Multiple DSL files found in bundle")
-                    dsl_content = zf.read(info).decode("utf-8")
-                    dsl_filename = info.filename
-
-        if dsl_content is None or dsl_filename is None:
-            raise BundleFormatError("No DSL file (*.yml or *.yaml) found in bundle root")
-
-        yaml.safe_load(dsl_content)
-
-        assets_prefix = dsl_filename.rsplit(".", 1)[0]
-        has_assets = AppBundleService._check_assets_prefix_exists(zip_bytes, assets_prefix)
-
-        return dsl_content, assets_prefix if has_assets else None
-
-    @staticmethod
-    def _check_assets_prefix_exists(zip_bytes: bytes, prefix: str) -> bool:
-        with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
-            for info in zf.infolist():
-                if info.filename.startswith(f"{prefix}/"):
-                    return True
-        return False
-
-    @staticmethod
-    def _import_assets_from_bundle(
-        zip_bytes: bytes,
-        assets_prefix: str,
-        app_id: str,
-        account_id: str,
-    ) -> None:
-        app_model = db.session.query(App).filter(App.id == app_id).first()
-        if not app_model:
-            logger.warning("App not found for asset import: %s", app_id)
-            return
-
-        asset_storage = AppAssetService.get_storage()
-        extractor = SourceZipExtractor(asset_storage)
-        try:
-            folders, files = extractor.extract_entries(
-                zip_bytes,
-                expected_prefix=f"{assets_prefix}/",
-            )
-        except ZipSecurityError as e:
-            logger.warning("Zip security error during asset import: %s", e)
-            return
-
-        if not folders and not files:
-            return
-
-        new_tree = extractor.build_tree_and_save(
-            folders=folders,
-            files=files,
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-        )
-
-        AppAssetService.set_draft_assets(
-            app_model=app_model,
-            account_id=account_id,
-            new_tree=new_tree,
-        )
+    # ========== Helpers ==========
 
     @staticmethod
     def _sanitize_filename(name: str) -> str:
+        """Sanitize app name for use as filename."""
         safe = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
         safe = safe.strip(". ")
         return safe[:100] if safe else "app"

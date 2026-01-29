@@ -1,11 +1,9 @@
 'use client'
 
 import type { SandboxFileTreeNode } from '@/types/sandbox-file'
-import { RiArrowDownSLine, RiArrowRightSLine, RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import FolderSpark from '@/app/components/base/icons/src/vender/workflow/FolderSpark'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useAppContext } from '@/context/app-context'
 import { useDownloadSandboxFile, useSandboxFilesTree } from '@/service/use-sandbox-file'
@@ -26,7 +24,7 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
 
   const { data: treeData, hasFiles, isLoading } = useSandboxFilesTree(sandboxId)
 
-  const downloadMutation = useDownloadSandboxFile(sandboxId)
+  const { mutateAsync: fetchDownloadUrl, isPending: isDownloading } = useDownloadSandboxFile(sandboxId)
   const storeApi = useWorkflowStore()
   const selectedArtifactPath = useStore(s => s.selectedArtifactPath)
 
@@ -40,13 +38,13 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
 
   const handleDownload = useCallback(async (node: SandboxFileTreeNode) => {
     try {
-      const ticket = await downloadMutation.mutateAsync(node.path)
+      const ticket = await fetchDownloadUrl(node.path)
       downloadUrl({ url: ticket.download_url, fileName: node.name })
     }
     catch (error) {
       console.error('Download failed:', error)
     }
-  }, [downloadMutation])
+  }, [fetchDownloadUrl])
 
   const showBlueDot = !isExpanded && hasFiles
   const showSpinner = isLoading
@@ -67,7 +65,7 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
         >
           <div className="flex flex-1 items-center gap-1 py-0.5">
             <div className="flex size-5 items-center justify-center">
-              <FolderSpark className="size-4 text-text-secondary" aria-hidden="true" />
+              <span className="i-custom-vender-workflow-folder-spark size-4 text-text-secondary" aria-hidden="true" />
             </div>
             <span className="system-sm-semibold uppercase text-text-secondary">
               {t('skillSidebar.artifacts.title')}
@@ -76,15 +74,15 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
 
           <div className="relative flex items-center">
             {showSpinner
-              ? <RiLoader2Line className="size-3.5 animate-spin text-text-tertiary" aria-hidden="true" />
+              ? <span className="i-ri-loader-2-line size-3.5 animate-spin text-text-tertiary" aria-hidden="true" />
               : (
                   <>
                     {showBlueDot && (
                       <div className="absolute -left-2 size-[7px] rounded-full border border-white bg-state-accent-solid" />
                     )}
                     {isExpanded
-                      ? <RiArrowDownSLine className="size-4 text-text-tertiary" aria-hidden="true" />
-                      : <RiArrowRightSLine className="size-4 text-text-tertiary" aria-hidden="true" />}
+                      ? <span className="i-ri-arrow-down-s-line size-4 text-text-tertiary" aria-hidden="true" />
+                      : <span className="i-ri-arrow-right-s-line size-4 text-text-tertiary" aria-hidden="true" />}
                   </>
                 )}
           </div>
@@ -100,7 +98,7 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
                   onDownload={handleDownload}
                   onSelect={handleSelect}
                   selectedPath={selectedArtifactPath ?? undefined}
-                  isDownloading={downloadMutation.isPending}
+                  isDownloading={isDownloading}
                 />
               )
             : (

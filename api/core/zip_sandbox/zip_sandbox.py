@@ -27,8 +27,18 @@ from .strategy import ZipStrategy
 
 @dataclass(frozen=True)
 class SandboxDownloadItem:
+    """Item for downloading: URL -> sandbox path."""
+
     url: str
     path: str
+
+
+@dataclass(frozen=True)
+class SandboxUploadItem:
+    """Item for uploading: sandbox path -> URL."""
+
+    path: str
+    url: str
 
 
 @dataclass(frozen=True)
@@ -210,25 +220,6 @@ class ZipSandbox:
 
     # ========== Download operations ==========
 
-    def download(self, urls: list[str], *, dest_dir: str = ".") -> list[str]:
-        if not urls:
-            return []
-
-        dest_dir = self._normalize_path(dest_dir)
-        paths = [self._dest_path_for_url(dest_dir, u) for u in urls]
-
-        p = pipeline(self.vm)
-        p.add(["mkdir", "-p", dest_dir], error_message="Failed to create download directory")
-        for url, out_path in zip(urls, paths, strict=True):
-            p.add(["curl", "-fsSL", url, "-o", out_path], error_message="Failed to download file")
-
-        try:
-            p.execute(timeout=self._DEFAULT_TIMEOUT_SECONDS, raise_on_error=True)
-        except Exception as exc:
-            raise RuntimeError(str(exc)) from exc
-
-        return paths
-
     def download_items(self, items: list[SandboxDownloadItem], *, dest_dir: str = ".") -> list[str]:
         if not items:
             return []
@@ -284,6 +275,32 @@ class ZipSandbox:
                 error_message="Failed to upload file from sandbox",
             )
         except CommandExecutionError as exc:
+            raise RuntimeError(str(exc)) from exc
+
+    def upload_items(self, items: list[SandboxUploadItem], *, src_dir: str = ".") -> None:
+        """Upload multiple files from sandbox to target URLs.
+
+        Args:
+            items: List of SandboxUploadItem(path, url)
+            src_dir: Base directory containing the files
+        """
+        if not items:
+            return
+
+        src_dir = self._normalize_path(src_dir)
+        p = pipeline(self.vm)
+
+        for item in items:
+            rel = self._normalize_path(item.path)
+            src_path = posixpath.join(src_dir, rel) if src_dir not in ("", ".") else rel
+            p.add(
+                ["curl", "-fsSL", "-X", "PUT", "-T", src_path, item.url],
+                error_message=f"Failed to upload {item.path}",
+            )
+
+        try:
+            p.execute(timeout=self._DEFAULT_TIMEOUT_SECONDS, raise_on_error=True)
+        except Exception as exc:
             raise RuntimeError(str(exc)) from exc
 
     # ========== Archive operations ==========

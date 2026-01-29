@@ -1,5 +1,1 @@
-from .source_zip_extractor import SourceZipExtractor
-
-__all__ = [
-    "SourceZipExtractor",
-]
+# App bundle utilities - manifest-driven import/export handled by AppBundleService

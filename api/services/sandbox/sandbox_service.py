@@ -10,6 +10,7 @@ from core.sandbox.initializer.draft_app_assets_initializer import DraftAppAssets
 from core.sandbox.initializer.skill_initializer import SkillInitializer
 from core.sandbox.sandbox import Sandbox
 from core.sandbox.storage.archive_storage import ArchiveSandboxStorage
+from extensions.ext_storage import storage
 from services.app_asset_package_service import AppAssetPackageService
 from services.app_asset_service import AppAssetService
 
@@ -30,7 +31,7 @@ class SandboxService:
         if not assets:
             raise ValueError(f"No assets found for tid={tenant_id}, app_id={app_id}")
 
-        storage = ArchiveSandboxStorage(tenant_id, workflow_execution_id)
+        archive_storage = ArchiveSandboxStorage(tenant_id, workflow_execution_id, storage.storage_runner)
         sandbox = (
             SandboxBuilder(tenant_id, SandboxType(sandbox_provider.provider_type))
             .options(sandbox_provider.config)
@@ -40,7 +41,7 @@ class SandboxService:
             .initializer(AppAssetsInitializer(tenant_id, app_id, assets.id))
             .initializer(DifyCliInitializer(tenant_id, user_id, app_id, assets.id))
             .initializer(SkillInitializer(tenant_id, user_id, app_id, assets.id))
-            .storage(storage, assets.id)
+            .storage(archive_storage, assets.id)
             .build()
         )
 
@@ -49,8 +50,8 @@ class SandboxService:
 
     @classmethod
     def delete_draft_storage(cls, tenant_id: str, user_id: str) -> None:
-        storage = ArchiveSandboxStorage(tenant_id, SandboxBuilder.draft_id(user_id))
-        storage.delete()
+        archive_storage = ArchiveSandboxStorage(tenant_id, SandboxBuilder.draft_id(user_id), storage.storage_runner)
+        archive_storage.delete()
 
     @classmethod
     def create_draft(
@@ -66,7 +67,9 @@ class SandboxService:
 
         AppAssetPackageService.build_assets(tenant_id, app_id, assets)
         sandbox_id = SandboxBuilder.draft_id(user_id)
-        storage = ArchiveSandboxStorage(tenant_id, sandbox_id, exclude_patterns=[AppAssets.PATH])
+        archive_storage = ArchiveSandboxStorage(
+            tenant_id, sandbox_id, storage.storage_runner, exclude_patterns=[AppAssets.PATH]
+        )
 
         sandbox = (
             SandboxBuilder(tenant_id, SandboxType(sandbox_provider.provider_type))
@@ -77,7 +80,7 @@ class SandboxService:
             .initializer(DraftAppAssetsInitializer(tenant_id, app_id, assets.id))
             .initializer(DifyCliInitializer(tenant_id, user_id, app_id, assets.id))
             .initializer(SkillInitializer(tenant_id, user_id, app_id, assets.id))
-            .storage(storage, assets.id)
+            .storage(archive_storage, assets.id)
             .build()
         )
 
@@ -98,7 +101,9 @@ class SandboxService:
 
         AppAssetPackageService.build_assets(tenant_id, app_id, assets)
         sandbox_id = SandboxBuilder.draft_id(user_id)
-        storage = ArchiveSandboxStorage(tenant_id, sandbox_id, exclude_patterns=[AppAssets.PATH])
+        archive_storage = ArchiveSandboxStorage(
+            tenant_id, sandbox_id, storage.storage_runner, exclude_patterns=[AppAssets.PATH]
+        )
 
         sandbox = (
             SandboxBuilder(tenant_id, SandboxType(sandbox_provider.provider_type))
@@ -109,7 +114,7 @@ class SandboxService:
             .initializer(DraftAppAssetsInitializer(tenant_id, app_id, assets.id))
             .initializer(DifyCliInitializer(tenant_id, user_id, app_id, assets.id))
             .initializer(SkillInitializer(tenant_id, user_id, app_id, assets.id))
-            .storage(storage, assets.id)
+            .storage(archive_storage, assets.id)
             .build()
         )
 

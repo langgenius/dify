@@ -51,7 +51,7 @@ class AppImportPayload(BaseModel):
     app_id: str | None = Field(None)
 
 
-class AppImportBundlePayload(BaseModel):
+class AppImportBundleConfirmPayload(BaseModel):
     name: str | None = None
     description: str | None = None
     icon_type: str | None = None
@@ -149,15 +149,38 @@ class AppImportCheckDependenciesApi(Resource):
         return result.model_dump(mode="json"), 200
 
 
-@console_ns.route("/apps/imports-bundle")
-class AppImportBundleApi(Resource):
+@console_ns.route("/apps/imports-bundle/prepare")
+class AppImportBundlePrepareApi(Resource):
+    """Step 1: Get upload URL for bundle import."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    def post(self):
+        from services.app_bundle_service import AppBundleService
+
+        current_user, current_tenant_id = current_account_with_tenant()
+
+        result = AppBundleService.prepare_import(
+            tenant_id=current_tenant_id,
+            account_id=current_user.id,
+        )
+
+        return {"import_id": result.import_id, "upload_url": result.upload_url}, 200
+
+
+@console_ns.route("/apps/imports-bundle/<string:import_id>/confirm")
+class AppImportBundleConfirmApi(Resource):
+    """Step 2: Confirm bundle import after upload."""
+
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(app_import_model)
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
-    def post(self):
+    def post(self, import_id: str):
         from flask import request
 
         from core.app.entities.app_bundle_entities import BundleFormatError
@@ -165,22 +188,12 @@ class AppImportBundleApi(Resource):
 
         current_user, _ = current_account_with_tenant()
 
-        if "file" not in request.files:
-            return {"error": "No file provided"}, 400
-
-        file = request.files["file"]
-        if not file.filename or not file.filename.endswith(".zip"):
-            return {"error": "Invalid file format, expected .zip"}, 400
-
-        zip_bytes = file.read()
-
-        form_data = request.form.to_dict()
-        args = AppImportBundlePayload.model_validate(form_data)
+        args = AppImportBundleConfirmPayload.model_validate(request.get_json() or {})
 
         try:
-            result = AppBundleService.import_bundle(
+            result = AppBundleService.confirm_import(
+                import_id=import_id,
                 account=current_user,
-                zip_bytes=zip_bytes,
                 name=args.name,
                 description=args.description,
                 icon_type=args.icon_type,

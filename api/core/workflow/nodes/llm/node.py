@@ -522,7 +522,6 @@ class LLMNode(Node[LLMNodeData]):
                 json_schema=output_schema,
                 model_parameters=node_data_model.completion_params,
                 stop=list(stop or []),
-                stream=False,
                 user=user_id,
                 tenant_id=tenant_id,
             )
@@ -1093,6 +1092,8 @@ class LLMNode(Node[LLMNodeData]):
                         if "content" not in item:
                             raise InvalidContextStructureError(f"Invalid context structure: {item}")
 
+                        if item.get("summary"):
+                            context_str += item["summary"] + "\n"
                         context_str += item["content"] + "\n"
 
                         retriever_resource = self._convert_to_original_retriever_resource(item)
@@ -1154,6 +1155,7 @@ class LLMNode(Node[LLMNodeData]):
                 page=metadata.get("page"),
                 doc_metadata=metadata.get("doc_metadata"),
                 files=context_dict.get("files"),
+                summary=context_dict.get("summary"),
             )
 
             return source
@@ -1915,6 +1917,7 @@ class LLMNode(Node[LLMNodeData]):
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
         result: LLMGenerationData | None = None
 
+        # FIXME(Mairuis): Async processing for bash session.
         with SandboxBashSession(sandbox=sandbox, node_id=self.id, tools=tool_dependencies) as session:
             prompt_files = self._extract_prompt_files(variable_pool)
             model_features = self._get_model_features(model_instance)

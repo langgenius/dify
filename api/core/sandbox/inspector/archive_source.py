@@ -7,9 +7,9 @@ from uuid import UUID, uuid4
 
 from core.sandbox.entities.files import SandboxFileDownloadTicket, SandboxFileNode
 from core.sandbox.inspector.base import SandboxFileSource
-from core.sandbox.security.archive_signer import SandboxArchivePath, SandboxArchiveSigner
-from core.sandbox.security.sandbox_file_signer import SandboxFileDownloadPath
 from core.sandbox.storage import sandbox_file_storage
+from core.sandbox.storage.archive_storage import SandboxArchivePath
+from core.sandbox.storage.sandbox_file_storage import SandboxFileDownloadPath
 from core.virtual_environment.__base.exec import CommandExecutionError
 from core.virtual_environment.__base.helpers import execute
 from extensions.ext_storage import storage
@@ -68,15 +68,14 @@ print(json.dumps(entries))
 
     def _get_archive_download_url(self) -> str:
         """Get a pre-signed download URL for the sandbox archive."""
+        from extensions.storage.file_presign_storage import FilePresignStorage
+
         archive_path = SandboxArchivePath(tenant_id=UUID(self._tenant_id), sandbox_id=UUID(self._sandbox_id))
         storage_key = archive_path.get_storage_key()
         if not storage.exists(storage_key):
             raise ValueError("Sandbox archive not found")
-        return SandboxArchiveSigner.build_signed_url(
-            archive_path=archive_path,
-            expires_in=self._EXPORT_EXPIRES_IN_SECONDS,
-            action=SandboxArchiveSigner.OPERATION_DOWNLOAD,
-        )
+        presign_storage = FilePresignStorage(storage.storage_runner)
+        return presign_storage.get_download_url(storage_key, self._EXPORT_EXPIRES_IN_SECONDS)
 
     def _create_zip_sandbox(self) -> ZipSandbox:
         """Create a ZipSandbox instance for archive operations."""
