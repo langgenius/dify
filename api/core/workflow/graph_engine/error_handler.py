@@ -326,7 +326,7 @@ class ErrorHandler:
 
         # Create exception event with metadata indicating which fallback model to use
         # Using NodeRunExceptionEvent for consistency with other error strategies
-        metadata = event.node_run_result.metadata.copy() if event.node_run_result.metadata else {}
+        metadata = dict(event.node_run_result.metadata) if event.node_run_result.metadata else {}
         metadata[WorkflowNodeExecutionMetadataKey.FALLBACK_MODEL_INDEX] = next_model_index
         metadata[WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY] = ErrorStrategyEnum.FALLBACK_MODEL
 
