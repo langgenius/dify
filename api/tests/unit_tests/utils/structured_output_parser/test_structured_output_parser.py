@@ -492,7 +492,6 @@ def test_structured_output_with_pydantic_model_non_streaming():
         model_instance=model_instance,
         prompt_messages=prompt_messages,
         output_model=ExampleOutput,
-        stream=False,
     )
 
     assert isinstance(result, ExampleOutput)
@@ -532,8 +531,7 @@ def test_structured_output_with_pydantic_model_streaming():
         model_schema=model_schema,
         model_instance=model_instance,
         prompt_messages=[UserPromptMessage(content="Return a JSON object with name.")],
-        output_model=ExampleOutput,
-        stream=True,
+        output_model=ExampleOutput
     )
 
     assert isinstance(result, ExampleOutput)
@@ -555,8 +553,7 @@ def test_structured_output_with_pydantic_model_validation_error():
             model_schema=model_schema,
             model_instance=model_instance,
             prompt_messages=[UserPromptMessage(content="test")],
-            output_model=ExampleOutput,
-            stream=False,
+            output_model=ExampleOutput
         )
 
 
