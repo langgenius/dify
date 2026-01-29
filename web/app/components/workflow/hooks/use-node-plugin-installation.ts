@@ -39,10 +39,15 @@ const NOOP_INSTALLATION: InstallationState = {
 }
 
 const useToolInstallation = (data: ToolNodeType, enabled: boolean): InstallationState => {
-  const builtInQuery = useAllBuiltInTools(enabled)
-  const customQuery = useAllCustomTools(enabled)
-  const workflowQuery = useAllWorkflowTools(enabled)
-  const mcpQuery = useAllMCPTools(enabled)
+  const isBuiltIn = enabled && data.provider_type === CollectionType.builtIn
+  const isCustom = enabled && data.provider_type === CollectionType.custom
+  const isWorkflow = enabled && data.provider_type === CollectionType.workflow
+  const isMcp = enabled && data.provider_type === CollectionType.mcp
+
+  const builtInQuery = useAllBuiltInTools(isBuiltIn)
+  const customQuery = useAllCustomTools(isCustom)
+  const workflowQuery = useAllWorkflowTools(isWorkflow)
+  const mcpQuery = useAllMCPTools(isMcp)
   const invalidateTools = useInvalidToolsByType(enabled ? data.provider_type : undefined)
 
   const collectionInfo = useMemo(() => {
@@ -89,11 +94,12 @@ const useToolInstallation = (data: ToolNodeType, enabled: boolean): Installation
   const isLoading = collectionInfo?.isLoading ?? false
   const isResolved = !!collectionInfo && !isLoading
 
+  const { plugin_id, provider_id, provider_name } = data
   const matchedCollection = useMemo(() => {
     if (!collection || !collection.length)
       return undefined
-    return matchToolInCollection(collection, data)
-  }, [collection, data])
+    return matchToolInCollection(collection, { plugin_id, provider_id, provider_name })
+  }, [collection, plugin_id, provider_id, provider_name])
 
   const uniqueIdentifier = data.plugin_unique_identifier || data.plugin_id || data.provider_id
   const canInstall = Boolean(data.plugin_unique_identifier)
@@ -122,11 +128,12 @@ const useTriggerInstallation = (data: PluginTriggerNodeType, enabled: boolean): 
   const triggerProviders = triggerPluginsQuery.data
   const isLoading = triggerPluginsQuery.isLoading
 
+  const { plugin_id, provider_id, provider_name } = data
   const matchedProvider = useMemo(() => {
     if (!triggerProviders || !triggerProviders.length)
       return undefined
-    return matchTriggerProvider(triggerProviders, data)
-  }, [data, triggerProviders])
+    return matchTriggerProvider(triggerProviders, { plugin_id, provider_id, provider_name })
+  }, [plugin_id, provider_id, provider_name, triggerProviders])
 
   const uniqueIdentifier = data.plugin_unique_identifier || data.plugin_id || data.provider_id
   const canInstall = Boolean(data.plugin_unique_identifier)
@@ -151,11 +158,12 @@ const useDataSourceInstallation = (data: DataSourceNodeType, _enabled: boolean):
   const dataSourceList = useStore(s => s.dataSourceList)
   const invalidateDataSourceList = useInvalidDataSourceList()
 
+  const { plugin_unique_identifier, plugin_id, provider_name } = data
   const matchedPlugin = useMemo(() => {
     if (!dataSourceList || !dataSourceList.length)
       return undefined
-    return matchDataSource(dataSourceList, data)
-  }, [data, dataSourceList])
+    return matchDataSource(dataSourceList, { plugin_unique_identifier, plugin_id, provider_name })
+  }, [dataSourceList, plugin_id, plugin_unique_identifier, provider_name])
 
   const uniqueIdentifier = data.plugin_unique_identifier || data.plugin_id
   const canInstall = Boolean(data.plugin_unique_identifier)
