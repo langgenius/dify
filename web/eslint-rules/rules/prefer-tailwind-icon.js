@@ -9,114 +9,51 @@ const DEFAULT_PROP_MAPPINGS = {
 }
 
 /**
+ * Convert PascalCase/camelCase to kebab-case
+ * @param {string} name
+ * @returns {string} The kebab-case string
+ */
+function camelToKebab(name) {
+  return name
+    .replace(/([a-z])(\d)/g, '$1-$2')
+    .replace(/(\d)([a-z])/gi, '$1-$2')
+    .replace(/([a-z])([A-Z])/g, '$1-$2')
+    .toLowerCase()
+}
+
+/**
  * Default icon library configurations
+ *
+ * Config options:
+ * - pattern: string | RegExp - Pattern to match import source
+ * - prefix: string | ((match: RegExpMatchArray) => string) - Icon class prefix
+ * - suffix: string | ((match: RegExpMatchArray) => string) - Icon class suffix
+ * - extractSubPath: boolean - Extract subdirectory path and add to prefix
+ * - iconFilter: (name: string) => boolean - Filter which imports to process
+ * - stripPrefix: string - Prefix to remove from icon name before transform
+ * - stripSuffix: string - Suffix to remove from icon name before transform
  */
 const DEFAULT_ICON_CONFIGS = [
   {
-    // @/app/components/base/icons/src/public/*
-    pattern: '@/app/components/base/icons/src/public',
-    prefix: 'i-custom-public-',
-    iconFilter: () => true,
-    transformName: (iconName) => {
-      // iconify flattens the directory structure, so subdirectory is not part of the icon name
-      // Robot -> robot
-      return iconName
-        .replace(/([a-z])(\d)/g, '$1-$2')
-        .replace(/(\d)([a-z])/gi, '$1-$2')
-        .replace(/([a-z])([A-Z])/g, '$1-$2')
-        .toLowerCase()
-    },
-  },
-  {
-    // @/app/components/base/icons/src/vender/*
-    pattern: '@/app/components/base/icons/src/vender',
-    prefix: 'i-custom-vender-',
-    iconFilter: () => true,
-    transformName: (iconName) => {
-      // iconify flattens the directory structure, so subdirectory is not part of the icon name
-      // CheckCircle -> check-circle
-      return iconName
-        .replace(/([a-z])(\d)/g, '$1-$2')
-        .replace(/(\d)([a-z])/gi, '$1-$2')
-        .replace(/([a-z])([A-Z])/g, '$1-$2')
-        .toLowerCase()
-    },
+    // @/app/components/base/icons/src/public/* and vender/*
+    pattern: /^@\/app\/components\/base\/icons\/src\/(public|vender)/,
+    prefix: match => `i-custom-${match[1]}-`,
+    extractSubPath: true,
   },
   {
     // @remixicon/react
     pattern: '@remixicon/react',
     prefix: 'i-ri-',
     iconFilter: name => name.startsWith('Ri'),
-    transformName: (iconName) => {
-      // RiApps2AddLine -> apps-2-add-line
-      const withoutPrefix = iconName.slice(2) // Remove 'Ri'
-      return withoutPrefix
-        .replace(/([a-z])(\d)/g, '$1-$2')
-        .replace(/(\d)([a-z])/gi, '$1-$2')
-        .replace(/([a-z])([A-Z])/g, '$1-$2')
-        .toLowerCase()
-    },
+    stripPrefix: 'Ri',
   },
   {
-    // @heroicons/react/20/solid
-    pattern: '@heroicons/react/20/solid',
+    // @heroicons/react/{size}/{variant}
+    pattern: /^@heroicons\/react\/(\d+)\/(solid|outline)$/,
     prefix: 'i-heroicons-',
-    suffix: '-20-solid',
+    suffix: match => `-${match[1]}-${match[2]}`,
     iconFilter: name => name.endsWith('Icon'),
-    transformName: (iconName) => {
-      // ChevronDownIcon -> chevron-down
-      const withoutSuffix = iconName.slice(0, -4) // Remove 'Icon'
-      return withoutSuffix
-        .replace(/([a-z])(\d)/g, '$1-$2')
-        .replace(/(\d)([a-z])/gi, '$1-$2')
-        .replace(/([a-z])([A-Z])/g, '$1-$2')
-        .toLowerCase()
-    },
-  },
-  {
-    // @heroicons/react/24/solid
-    pattern: '@heroicons/react/24/solid',
-    prefix: 'i-heroicons-',
-    suffix: '-24-solid',
-    iconFilter: name => name.endsWith('Icon'),
-    transformName: (iconName) => {
-      const withoutSuffix = iconName.slice(0, -4)
-      return withoutSuffix
-        .replace(/([a-z])(\d)/g, '$1-$2')
-        .replace(/(\d)([a-z])/gi, '$1-$2')
-        .replace(/([a-z])([A-Z])/g, '$1-$2')
-        .toLowerCase()
-    },
-  },
-  {
-    // @heroicons/react/24/outline
-    pattern: '@heroicons/react/24/outline',
-    prefix: 'i-heroicons-',
-    suffix: '-24-outline',
-    iconFilter: name => name.endsWith('Icon'),
-    transformName: (iconName) => {
-      const withoutSuffix = iconName.slice(0, -4)
-      return withoutSuffix
-        .replace(/([a-z])(\d)/g, '$1-$2')
-        .replace(/(\d)([a-z])/gi, '$1-$2')
-        .replace(/([a-z])([A-Z])/g, '$1-$2')
-        .toLowerCase()
-    },
-  },
-  {
-    // @heroicons/react/20/outline
-    pattern: '@heroicons/react/20/outline',
-    prefix: 'i-heroicons-',
-    suffix: '-20-outline',
-    iconFilter: name => name.endsWith('Icon'),
-    transformName: (iconName) => {
-      const withoutSuffix = iconName.slice(0, -4)
-      return withoutSuffix
-        .replace(/([a-z])(\d)/g, '$1-$2')
-        .replace(/(\d)([a-z])/gi, '$1-$2')
-        .replace(/([a-z])([A-Z])/g, '$1-$2')
-        .toLowerCase()
-    },
+    stripSuffix: 'Icon',
   },
 ]
 
@@ -124,7 +61,7 @@ const DEFAULT_ICON_CONFIGS = [
  * Convert pixel value to Tailwind class
  * @param {number} pixels
  * @param {string} classPrefix - e.g., 'size', 'w', 'h'
- * @returns {string}
+ * @returns {string} The Tailwind class string
  */
 function pixelToClass(pixels, classPrefix) {
   const units = pixels / 4
@@ -132,15 +69,67 @@ function pixelToClass(pixels, classPrefix) {
 }
 
 /**
+ * Match source against config pattern
+ * @param {string} source - The import source path
+ * @param {object} config - The icon config
+ * @returns {{ matched: boolean, match: RegExpMatchArray | null, basePath: string }} Match result
+ */
+function matchPattern(source, config) {
+  const { pattern } = config
+  if (pattern instanceof RegExp) {
+    const match = source.match(pattern)
+    if (match) {
+      return { matched: true, match, basePath: match[0] }
+    }
+    return { matched: false, match: null, basePath: '' }
+  }
+  // String pattern: exact match or prefix match
+  if (source === pattern || source.startsWith(`${pattern}/`)) {
+    return { matched: true, match: null, basePath: pattern }
+  }
+  return { matched: false, match: null, basePath: '' }
+}
+
+/**
  * Get icon class from config
  * @param {string} iconName
  * @param {object} config
- * @param {string} [source] - The import source path
- * @returns {string}
+ * @param {string} source - The import source path
+ * @param {RegExpMatchArray | null} match - The regex match result
+ * @returns {string} The full Tailwind icon class string
  */
-function getIconClass(iconName, config, source) {
-  const transformed = config.transformName(iconName, source)
-  return `${config.prefix}${transformed}${config.suffix || ''}`
+function getIconClass(iconName, config, source, match) {
+  // Strip prefix/suffix from icon name if configured
+  let name = iconName
+  if (config.stripPrefix && name.startsWith(config.stripPrefix)) {
+    name = name.slice(config.stripPrefix.length)
+  }
+  if (config.stripSuffix && name.endsWith(config.stripSuffix)) {
+    name = name.slice(0, -config.stripSuffix.length)
+  }
+
+  // Transform name (use custom or default camelToKebab)
+  const transformed = config.transformName ? config.transformName(name, source) : camelToKebab(name)
+
+  // Get prefix (can be string or function)
+  const prefix = typeof config.prefix === 'function' ? config.prefix(match) : config.prefix
+
+  // Get suffix (can be string or function)
+  const suffix = typeof config.suffix === 'function' ? config.suffix(match) : (config.suffix || '')
+
+  // Extract subdirectory path after the pattern to include in prefix (only if extractSubPath is enabled)
+  let subPrefix = ''
+  if (config.extractSubPath) {
+    const basePath = match ? match[0] : config.pattern
+    if (source.startsWith(`${basePath}/`)) {
+      const subPath = source.slice(basePath.length + 1)
+      if (subPath) {
+        subPrefix = `${subPath.replace(/\//g, '-')}-`
+      }
+    }
+  }
+
+  return `${prefix}${subPrefix}${transformed}${suffix}`
 }
 
 /** @type {import('eslint').Rule.RuleModule} */
@@ -163,6 +152,7 @@ export default {
                 pattern: { type: 'string' },
                 prefix: { type: 'string' },
                 suffix: { type: 'string' },
+                extractSubPath: { type: 'boolean' },
               },
               required: ['pattern', 'prefix'],
             },
@@ -188,7 +178,7 @@ export default {
     const iconConfigs = options.libraries || DEFAULT_ICON_CONFIGS
     const propMappings = options.propMappings || DEFAULT_PROP_MAPPINGS
 
-    // Track imports: localName -> { node, importedName, config, source, used }
+    // Track imports: localName -> { node, importedName, config, source, match, used }
     const iconImports = new Map()
 
     return {
@@ -196,12 +186,21 @@ export default {
         const source = node.source.value
 
         // Find matching config
-        const config = iconConfigs.find(c => source === c.pattern || source.startsWith(`${c.pattern}/`))
-        if (!config)
+        let matchedConfig = null
+        let matchResult = null
+        for (const config of iconConfigs) {
+          const result = matchPattern(source, config)
+          if (result.matched) {
+            matchedConfig = config
+            matchResult = result.match
+            break
+          }
+        }
+        if (!matchedConfig)
           return
 
         // Use default filter if not provided (for user-configured libraries)
-        const iconFilter = config.iconFilter || (() => true)
+        const iconFilter = matchedConfig.iconFilter || (() => true)
 
         for (const specifier of node.specifiers) {
           if (specifier.type === 'ImportSpecifier') {
@@ -213,8 +212,9 @@ export default {
                 node: specifier,
                 importedName,
                 localName,
-                config,
+                config: matchedConfig,
                 source,
+                match: matchResult,
                 used: false,
               })
             }
@@ -234,7 +234,7 @@ export default {
 
         iconInfo.used = true
 
-        const iconClass = getIconClass(iconInfo.importedName, iconInfo.config, iconInfo.source)
+        const iconClass = getIconClass(iconInfo.importedName, iconInfo.config, iconInfo.source, iconInfo.match)
 
         // Find className attribute
         const classNameAttr = node.attributes.find(
@@ -362,7 +362,7 @@ export default {
               continue
             }
 
-            const iconClass = getIconClass(iconInfo.importedName, iconInfo.config, iconInfo.source)
+            const iconClass = getIconClass(iconInfo.importedName, iconInfo.config, iconInfo.source, iconInfo.match)
             context.report({
               node: iconInfo.node,
               messageId: 'preferTailwindIconImport',

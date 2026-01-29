@@ -93,13 +93,33 @@ function getIconSetFromDir(dir: string, prefix: string) {
 function getCollectionsFromSubDirs(baseDir: string, prefixBase: string): Record<string, IconifyJSON> {
   const collections: Record<string, IconifyJSON> = {}
 
-  // Read all subdirectories
+  function processDir(dir: string, prefix: string): void {
+    const entries = fs.readdirSync(dir, { withFileTypes: true })
+    const subDirs = entries.filter(e => e.isDirectory())
+    const svgFiles = entries.filter(e => e.isFile() && e.name.endsWith('.svg'))
+
+    // Process SVG files in current directory if any
+    if (svgFiles.length > 0) {
+      collections[prefix] = getIconSetFromDir(dir, prefix)
+    }
+
+    // Recurse into subdirectories if any
+    if (subDirs.length > 0) {
+      for (const subDir of subDirs) {
+        const subDirPath = path.join(dir, subDir.name)
+        const subPrefix = `${prefix}-${subDir.name}`
+        processDir(subDirPath, subPrefix)
+      }
+    }
+  }
+
+  // Read top-level subdirectories and process each
   const entries = fs.readdirSync(baseDir, { withFileTypes: true })
   for (const entry of entries) {
     if (entry.isDirectory()) {
       const subDirPath = path.join(baseDir, entry.name)
       const prefix = `${prefixBase}-${entry.name}`
-      collections[prefix] = getIconSetFromDir(subDirPath, prefix)
+      processDir(subDirPath, prefix)
     }
   }
 
