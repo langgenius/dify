@@ -151,13 +151,7 @@ def _build_graph(runtime_state: GraphRuntimeState) -> Graph:
     )
 
     return (
-        Graph.new()
-        .add_root(start_node)
-        .add_node(tool_a)
-        .add_node(tool_b)
-        .add_node(tool_c)
-        .add_node(end_node)
-        .build()
+        Graph.new().add_root(start_node).add_node(tool_a).add_node(tool_b).add_node(tool_c).add_node(end_node).build()
     )
 
 
