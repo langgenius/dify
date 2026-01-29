@@ -22,6 +22,7 @@ from uuid import UUID
 from extensions.storage.base_storage import BaseStorage
 from extensions.storage.cached_presign_storage import CachedPresignStorage
 from extensions.storage.file_presign_storage import FilePresignStorage
+from extensions.storage.silent_storage import SilentStorage
 
 _ASSET_BASE = "app_assets"
 _SILENT_STORAGE_NOT_FOUND = b"File Not Found"
@@ -200,13 +201,12 @@ class AppAssetStorage:
 
     _storage: CachedPresignStorage
 
-    def __init__(self, storage: BaseStorage, *, redis_client: Any, cache_key_prefix: str = "app_assets") -> None:
+    def __init__(self, storage: BaseStorage) -> None:
         # Wrap with FilePresignStorage for fallback support, then CachedPresignStorage for caching
-        presign_storage = FilePresignStorage(storage)
+        presign_storage = FilePresignStorage(SilentStorage(storage))
         self._storage = CachedPresignStorage(
             storage=presign_storage,
-            redis_client=redis_client,
-            cache_key_prefix=cache_key_prefix,
+            cache_key_prefix="app_assets",
         )
 
     @property

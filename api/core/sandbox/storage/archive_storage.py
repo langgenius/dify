@@ -3,7 +3,7 @@
 This module provides storage operations for sandbox workspace archives (tar.gz),
 enabling state persistence across sandbox sessions.
 
-Storage key format: sandbox/{tenant_id}/{sandbox_id}.tar.gz
+Storage key format: sandbox_archives/{tenant_id}/{sandbox_id}.tar.gz
 
 All presign operations use the unified FilePresignStorage wrapper, which automatically
 falls back to Dify's file proxy when the underlying storage doesn't support presigned URLs.
@@ -19,7 +19,9 @@ from core.virtual_environment.__base.exec import PipelineExecutionError
 from core.virtual_environment.__base.helpers import pipeline
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from extensions.storage.base_storage import BaseStorage
+from extensions.storage.cached_presign_storage import CachedPresignStorage
 from extensions.storage.file_presign_storage import FilePresignStorage
+from extensions.storage.silent_storage import SilentStorage
 
 from .sandbox_storage import SandboxStorage
 
@@ -42,7 +44,7 @@ class SandboxArchivePath:
     sandbox_id: UUID
 
     def get_storage_key(self) -> str:
-        return f"sandbox/{self.tenant_id}/{self.sandbox_id}.tar.gz"
+        return f"sandbox_archives/{self.tenant_id}/{self.sandbox_id}.tar.gz"
 
 
 class ArchiveSandboxStorage(SandboxStorage):
@@ -55,7 +57,7 @@ class ArchiveSandboxStorage(SandboxStorage):
     _tenant_id: str
     _sandbox_id: str
     _exclude_patterns: list[str]
-    _storage: FilePresignStorage
+    _storage: BaseStorage
 
     def __init__(
         self,
@@ -68,7 +70,10 @@ class ArchiveSandboxStorage(SandboxStorage):
         self._sandbox_id = sandbox_id
         self._exclude_patterns = exclude_patterns or []
         # Wrap with FilePresignStorage for presign fallback support
-        self._storage = FilePresignStorage(storage)
+        self._storage = CachedPresignStorage(
+            storage=FilePresignStorage(SilentStorage(storage)),
+            cache_key_prefix="sandbox_archives",
+        )
 
     @property
     def _archive_path(self) -> SandboxArchivePath:

@@ -1,8 +1,8 @@
 """Storage wrapper that caches presigned download URLs."""
 
 import logging
-from typing import Any
 
+from extensions.ext_redis import redis_client
 from extensions.storage.base_storage import BaseStorage
 from extensions.storage.storage_wrapper import StorageWrapper
 
@@ -17,7 +17,7 @@ class CachedPresignStorage(StorageWrapper):
 
     Example:
         cached_storage = CachedPresignStorage(
-            storage=FilePresignStorage(base_storage),
+            storage=FilePresignStorage(SilentStorage(base_storage)),
             redis_client=redis_client,
             cache_key_prefix="app_asset:draft_download",
         )
@@ -30,7 +30,6 @@ class CachedPresignStorage(StorageWrapper):
     def __init__(
         self,
         storage: BaseStorage,
-        redis_client: Any,
         cache_key_prefix: str = "presign_cache",
     ):
         super().__init__(storage)

@@ -19,11 +19,10 @@ class TestCachedPresignStorage:
         return Mock()
 
     @pytest.fixture
-    def cached_storage(self, mock_storage, mock_redis):
+    def cached_storage(self, mock_storage):
         """Create CachedPresignStorage with mocks."""
         return CachedPresignStorage(
             storage=mock_storage,
-            redis_client=mock_redis,
             cache_key_prefix="test_prefix",
         )
 
@@ -196,11 +195,10 @@ class TestCachedPresignStorage:
         assert result == "https://cached-url.com"
         assert isinstance(result, str)
 
-    def test_default_cache_key_prefix(self, mock_storage, mock_redis):
+    def test_default_cache_key_prefix(self, mock_storage):
         """Test default cache key prefix is used when not specified."""
         storage = CachedPresignStorage(
             storage=mock_storage,
-            redis_client=mock_redis,
         )
         key = storage._cache_key("file.txt")
         assert key == "presign_cache:file.txt"

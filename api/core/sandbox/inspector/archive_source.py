@@ -9,10 +9,11 @@ from core.sandbox.entities.files import SandboxFileDownloadTicket, SandboxFileNo
 from core.sandbox.inspector.base import SandboxFileSource
 from core.sandbox.storage import sandbox_file_storage
 from core.sandbox.storage.archive_storage import SandboxArchivePath
-from core.sandbox.storage.sandbox_file_storage import SandboxFileDownloadPath
+from core.sandbox.storage.sandbox_file_storage import SandboxFilePath
 from core.virtual_environment.__base.exec import CommandExecutionError
 from core.virtual_environment.__base.helpers import execute
 from extensions.ext_storage import storage
+from extensions.storage.silent_storage import SilentStorage
 
 if TYPE_CHECKING:
     from core.zip_sandbox import ZipSandbox
@@ -74,7 +75,7 @@ print(json.dumps(entries))
         storage_key = archive_path.get_storage_key()
         if not storage.exists(storage_key):
             raise ValueError("Sandbox archive not found")
-        presign_storage = FilePresignStorage(storage.storage_runner)
+        presign_storage = FilePresignStorage(SilentStorage(storage.storage_runner))
         return presign_storage.get_download_url(storage_key, self._EXPORT_EXPIRES_IN_SECONDS)
 
     def _create_zip_sandbox(self) -> ZipSandbox:
@@ -190,7 +191,7 @@ raise SystemExit(2)
             if kind == "file":
                 # Download file content from sandbox
                 file_data = zs.read_file(target_path)
-                export_path = SandboxFileDownloadPath(
+                export_path = SandboxFilePath(
                     tenant_id=UUID(self._tenant_id),
                     sandbox_id=UUID(self._sandbox_id),
                     export_id=export_id,
@@ -201,7 +202,7 @@ raise SystemExit(2)
                 # Create tar.gz archive of the directory
                 tar_file = zs.tar(target_path, include_base=True, compress=True)
                 tar_data = zs.read_file(tar_file.path)
-                export_path = SandboxFileDownloadPath(
+                export_path = SandboxFilePath(
                     tenant_id=UUID(self._tenant_id),
                     sandbox_id=UUID(self._sandbox_id),
                     export_id=export_id,

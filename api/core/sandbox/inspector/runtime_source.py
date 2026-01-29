@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 from core.sandbox.entities.files import SandboxFileDownloadTicket, SandboxFileNode
 from core.sandbox.inspector.base import SandboxFileSource
 from core.sandbox.storage import sandbox_file_storage
-from core.sandbox.storage.sandbox_file_storage import SandboxFileDownloadPath
+from core.sandbox.storage.sandbox_file_storage import SandboxFilePath
 from core.virtual_environment.__base.exec import CommandExecutionError
 from core.virtual_environment.__base.helpers import execute
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
@@ -115,7 +115,7 @@ print(json.dumps(entries))
         export_name = os.path.basename(path.rstrip("/")) or "workspace"
         filename = f"{export_name}.tar.gz" if kind == "dir" else (os.path.basename(path) or "file")
         export_id = uuid4().hex
-        export_path = SandboxFileDownloadPath(
+        export_path = SandboxFilePath(
             tenant_id=UUID(self._tenant_id),
             sandbox_id=UUID(self._sandbox_id),
             export_id=export_id,

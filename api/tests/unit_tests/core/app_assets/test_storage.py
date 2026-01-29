@@ -167,7 +167,7 @@ def test_upload_ticket_url_generation(monkeypatch: pytest.MonkeyPatch):
         assert len(token) == 36  # UUID format
 
 
-def test_storage_ticket_dataclass():
+def test_storage_ticket_pydantic():
     """Test StorageTicket serialization and deserialization."""
     ticket = StorageTicket(
         op="download",
@@ -175,14 +175,17 @@ def test_storage_ticket_dataclass():
         filename="file.txt",
     )
 
-    data = ticket.to_dict()
+    data = ticket.model_dump()
     assert data == {
         "op": "download",
         "storage_key": "path/to/file.txt",
         "filename": "file.txt",
+        "max_bytes": None,
     }
 
-    restored = StorageTicket.from_dict(data)
+    # Test JSON serialization
+    json_str = ticket.model_dump_json()
+    restored = StorageTicket.model_validate_json(json_str)
     assert restored.op == ticket.op
     assert restored.storage_key == ticket.storage_key
     assert restored.filename == ticket.filename
@@ -195,8 +198,9 @@ def test_storage_ticket_dataclass():
         max_bytes=1024,
     )
 
-    upload_data = upload_ticket.to_dict()
+    upload_data = upload_ticket.model_dump()
     assert upload_data["max_bytes"] == 1024
 
-    restored_upload = StorageTicket.from_dict(upload_data)
+    upload_json = upload_ticket.model_dump_json()
+    restored_upload = StorageTicket.model_validate_json(upload_json)
     assert restored_upload.max_bytes == 1024

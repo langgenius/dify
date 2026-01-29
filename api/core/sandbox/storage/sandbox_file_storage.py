@@ -18,10 +18,11 @@ from uuid import UUID
 from extensions.storage.base_storage import BaseStorage
 from extensions.storage.cached_presign_storage import CachedPresignStorage
 from extensions.storage.file_presign_storage import FilePresignStorage
+from extensions.storage.silent_storage import SilentStorage
 
 
 @dataclass(frozen=True)
-class SandboxFileDownloadPath:
+class SandboxFilePath:
     """Path for sandbox file exports."""
 
     tenant_id: UUID
@@ -30,7 +31,7 @@ class SandboxFileDownloadPath:
     filename: str
 
     def get_storage_key(self) -> str:
-        return f"sandbox_file_downloads/{self.tenant_id}/{self.sandbox_id}/{self.export_id}/{self.filename}"
+        return f"sandbox_files/{self.tenant_id}/{self.sandbox_id}/{self.export_id}/{self.filename}"
 
 
 class SandboxFileStorage:
@@ -50,21 +51,20 @@ class SandboxFileStorage:
 
     def __init__(self, storage: BaseStorage, *, redis_client: Any) -> None:
         # Wrap with FilePresignStorage for fallback support, then CachedPresignStorage for caching
-        presign_storage = FilePresignStorage(storage)
+        presign_storage = FilePresignStorage(SilentStorage(storage))
         self._storage = CachedPresignStorage(
             storage=presign_storage,
-            redis_client=redis_client,
-            cache_key_prefix="sandbox_file_downloads",
+            cache_key_prefix="sandbox_files",
         )
 
-    def save(self, download_path: SandboxFileDownloadPath, content: bytes) -> None:
-        self._storage.save(download_path.get_storage_key(), content)
+    def save(self, file_path: SandboxFilePath, content: bytes) -> None:
+        self._storage.save(file_path.get_storage_key(), content)
 
-    def get_download_url(self, download_path: SandboxFileDownloadPath, expires_in: int = 3600) -> str:
-        return self._storage.get_download_url(download_path.get_storage_key(), expires_in)
+    def get_download_url(self, file_path: SandboxFilePath, expires_in: int = 3600) -> str:
+        return self._storage.get_download_url(file_path.get_storage_key(), expires_in)
 
-    def get_upload_url(self, download_path: SandboxFileDownloadPath, expires_in: int = 3600) -> str:
-        return self._storage.get_upload_url(download_path.get_storage_key(), expires_in)
+    def get_upload_url(self, file_path: SandboxFilePath, expires_in: int = 3600) -> str:
+        return self._storage.get_upload_url(file_path.get_storage_key(), expires_in)
 
 
 class _LazySandboxFileStorage:

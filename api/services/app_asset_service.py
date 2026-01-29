@@ -48,8 +48,6 @@ class AppAssetService:
         """
         return AppAssetStorage(
             storage=storage.storage_runner,
-            redis_client=redis_client,
-            cache_key_prefix="app_assets",
         )
 
     @staticmethod

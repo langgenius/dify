@@ -14,7 +14,7 @@ Usage:
     url = StorageTicketService.create_upload_url("path/to/file.txt", expires_in=300, max_bytes=10*1024*1024)
 
 URL format:
-    {FILES_URL}/files/storage-tickets/{token}
+    {FILES_URL}/files/storage-files/{token}
 
 The token is validated by looking up the Redis key, which contains:
     - op: "download" or "upload"
@@ -23,10 +23,11 @@ The token is validated by looking up the Redis key, which contains:
     - filename: suggested filename for Content-Disposition header
 """
 
-import json
 import logging
-from dataclasses import dataclass
+from typing import Literal
 from uuid import uuid4
+
+from pydantic import BaseModel
 
 from configs import dify_config
 from extensions.ext_redis import redis_client
@@ -39,31 +40,13 @@ DEFAULT_UPLOAD_TTL = 300  # 5 minutes
 DEFAULT_MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100MB
 
 
-@dataclass
-class StorageTicket:
+class StorageTicket(BaseModel):
     """Represents a storage access ticket."""
 
-    op: str  # "download" or "upload"
+    op: Literal["download", "upload"]
     storage_key: str
     max_bytes: int | None = None  # upload only
     filename: str | None = None  # suggested filename for download
-
-    def to_dict(self) -> dict:
-        data = {"op": self.op, "storage_key": self.storage_key}
-        if self.max_bytes is not None:
-            data["max_bytes"] = str(self.max_bytes)
-        if self.filename is not None:
-            data["filename"] = self.filename
-        return data
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "StorageTicket":
-        return cls(
-            op=data["op"],
-            storage_key=data["storage_key"],
-            max_bytes=data.get("max_bytes"),
-            filename=data.get("filename"),
-        )
 
 
 class StorageTicketService:
@@ -133,7 +116,7 @@ class StorageTicketService:
                 return None
             if isinstance(data, bytes):
                 data = data.decode("utf-8")
-            return StorageTicket.from_dict(json.loads(data))
+            return StorageTicket.model_validate_json(data)
         except Exception:
             logger.warning("Failed to retrieve storage ticket: %s", token, exc_info=True)
             return None
@@ -143,7 +126,7 @@ class StorageTicketService:
         """Store a ticket in Redis and return the token."""
         token = str(uuid4())
         key = cls._ticket_key(token)
-        value = json.dumps(ticket.to_dict())
+        value = ticket.model_dump_json()
         redis_client.setex(key, ttl, value)
         return token
 
