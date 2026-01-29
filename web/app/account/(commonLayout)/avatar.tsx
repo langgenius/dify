@@ -10,9 +10,11 @@ import { resetUser } from '@/app/components/base/amplitude/utils'
 import Avatar from '@/app/components/base/avatar'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import PremiumBadge from '@/app/components/base/premium-badge'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useLogout } from '@/service/use-common'
+import { storage } from '@/utils/storage'
 
 export type IAppSelector = {
   isMobile: boolean
@@ -28,7 +30,7 @@ export default function AppSelector() {
   const handleLogout = async () => {
     await logout()
 
-    localStorage.removeItem('setup_status')
+    storage.remove(STORAGE_KEYS.CONFIG.SETUP_STATUS)
     resetUser()
     // Tokens are now stored in cookies and cleared by backend
 

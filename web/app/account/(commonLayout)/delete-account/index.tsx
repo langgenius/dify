@@ -2,7 +2,9 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CustomDialog from '@/app/components/base/dialog'
-import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { STORAGE_KEYS } from '@/config/storage-keys'
+import { storage } from '@/utils/storage'
 import CheckEmail from './components/check-email'
 import FeedBack from './components/feed-back'
 import VerifyEmail from './components/verify-email'
@@ -21,7 +23,7 @@ export default function DeleteAccount(props: DeleteAccountProps) {
   const handleEmailCheckSuccess = useCallback(async () => {
     try {
       setShowVerifyEmail(true)
-      localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+      storage.set(STORAGE_KEYS.UI.COUNTDOWN_LEFT_TIME, COUNT_DOWN_TIME_MS)
     }
     catch (error) { console.error(error) }
   }, [])

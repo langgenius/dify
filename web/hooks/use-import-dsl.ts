@@ -12,7 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useToastContext } from '@/app/components/base/toast'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useSelector } from '@/context/app-context'
 import { DSLImportStatus } from '@/models/app'
 import {
@@ -20,6 +20,7 @@ import {
   importDSLConfirm,
 } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
+import { storage } from '@/utils/storage'
 
 type DSLPayload = {
   mode: DSLImportMode
@@ -83,7 +84,7 @@ export const useImportDSL = () => {
           children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('newApp.appCreateDSLWarning', { ns: 'app' }),
         })
         onSuccess?.()
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        storage.set(STORAGE_KEYS.APP.NEED_REFRESH_LIST, '1')
         await handleCheckPluginDependencies(app_id)
         getRedirection(isCurrentWorkspaceEditor, { id: app_id, mode: app_mode }, push)
       }
@@ -137,7 +138,7 @@ export const useImportDSL = () => {
           message: t('newApp.appCreated', { ns: 'app' }),
         })
         await handleCheckPluginDependencies(app_id)
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        storage.set(STORAGE_KEYS.APP.NEED_REFRESH_LIST, '1')
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {

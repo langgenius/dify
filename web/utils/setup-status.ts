@@ -1,10 +1,10 @@
 import type { SetupStatusResponse } from '@/models/common'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { fetchSetupStatus } from '@/service/common'
-
-const SETUP_STATUS_KEY = 'setup_status'
+import { storage } from './storage'
 
 const isSetupStatusCached = (): boolean =>
-  localStorage.getItem(SETUP_STATUS_KEY) === 'finished'
+  storage.get<string>(STORAGE_KEYS.CONFIG.SETUP_STATUS) === 'finished'
 
 export const fetchSetupStatusWithCache = async (): Promise<SetupStatusResponse> => {
   if (isSetupStatusCached())
@@ -13,9 +13,9 @@ export const fetchSetupStatusWithCache = async (): Promise<SetupStatusResponse> 
   const status = await fetchSetupStatus()
 
   if (status.step === 'finished')
-    localStorage.setItem(SETUP_STATUS_KEY, 'finished')
+    storage.set(STORAGE_KEYS.CONFIG.SETUP_STATUS, 'finished')
   else
-    localStorage.removeItem(SETUP_STATUS_KEY)
+    storage.remove(STORAGE_KEYS.CONFIG.SETUP_STATUS)
 
   return status
 }

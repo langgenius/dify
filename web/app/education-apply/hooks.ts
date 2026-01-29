@@ -10,14 +10,15 @@ import {
   useState,
 } from 'react'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
+import { storage } from '@/utils/storage'
 import {
   EDUCATION_RE_VERIFY_ACTION,
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
-  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from './constants'
 
 dayjs.extend(utc)
@@ -133,7 +134,7 @@ const useEducationReverifyNotice = ({
 export const useEducationInit = () => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const setShowEducationExpireNoticeModal = useModalContextSelector(s => s.setShowEducationExpireNoticeModal)
-  const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+  const educationVerifying = storage.get<string>(STORAGE_KEYS.EDUCATION.VERIFYING)
   const searchParams = useSearchParams()
   const educationVerifyAction = searchParams.get('action')
 
@@ -156,7 +157,7 @@ export const useEducationInit = () => {
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
 
       if (educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
-        localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
+        storage.set(STORAGE_KEYS.EDUCATION.VERIFYING, 'yes')
     }
     if (educationVerifyAction === EDUCATION_RE_VERIFY_ACTION)
       handleVerify()

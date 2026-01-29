@@ -2,6 +2,8 @@
 import { useCountDown } from 'ahooks'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { STORAGE_KEYS } from '@/config/storage-keys'
+import { storage } from '@/utils/storage'
 
 export const COUNT_DOWN_TIME_MS = 59000
 export const COUNT_DOWN_KEY = 'leftTime'
@@ -12,23 +14,23 @@ type CountdownProps = {
 
 export default function Countdown({ onResend }: CountdownProps) {
   const { t } = useTranslation()
-  const [leftTime, setLeftTime] = useState(() => Number(localStorage.getItem(COUNT_DOWN_KEY) || COUNT_DOWN_TIME_MS))
+  const [leftTime, setLeftTime] = useState(() => storage.getNumber(STORAGE_KEYS.UI.COUNTDOWN_LEFT_TIME, COUNT_DOWN_TIME_MS))
   const [time] = useCountDown({
     leftTime,
     onEnd: () => {
       setLeftTime(0)
-      localStorage.removeItem(COUNT_DOWN_KEY)
+      storage.remove(STORAGE_KEYS.UI.COUNTDOWN_LEFT_TIME)
     },
   })
 
   const resend = async function () {
     setLeftTime(COUNT_DOWN_TIME_MS)
-    localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+    storage.set(STORAGE_KEYS.UI.COUNTDOWN_LEFT_TIME, COUNT_DOWN_TIME_MS)
     onResend?.()
   }
 
   useEffect(() => {
-    localStorage.setItem(COUNT_DOWN_KEY, `${time}`)
+    storage.set(STORAGE_KEYS.UI.COUNTDOWN_LEFT_TIME, time)
   }, [time])
 
   return (

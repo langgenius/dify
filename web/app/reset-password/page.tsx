@@ -9,10 +9,12 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { emailRegex } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { sendResetPasswordCode } from '@/service/common'
-import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../components/signin/countdown'
+import { storage } from '@/utils/storage'
+import { COUNT_DOWN_TIME_MS } from '../components/signin/countdown'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -40,7 +42,7 @@ export default function CheckCode() {
       setIsLoading(true)
       const res = await sendResetPasswordCode(email, locale)
       if (res.result === 'success') {
-        localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+        storage.set(STORAGE_KEYS.UI.COUNTDOWN_LEFT_TIME, COUNT_DOWN_TIME_MS)
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data))
         params.set('email', encodeURIComponent(email))

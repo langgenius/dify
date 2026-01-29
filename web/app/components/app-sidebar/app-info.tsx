@@ -22,7 +22,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import ContentDialog from '@/app/components/base/content-dialog'
 import { ToastContext } from '@/app/components/base/toast'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
@@ -31,6 +31,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import AppIcon from '../base/app-icon'
 import AppOperations from './app-operations'
 
@@ -128,7 +129,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         type: 'success',
         message: t('newApp.appCreated', { ns: 'app' }),
       })
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      storage.set(STORAGE_KEYS.APP.NEED_REFRESH_LIST, '1')
       onPlanInfoChanged()
       getRedirection(true, newApp, replace)
     }

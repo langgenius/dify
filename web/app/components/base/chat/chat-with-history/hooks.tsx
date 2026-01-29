@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { useToastContext } from '@/app/components/base/toast'
 import { InputVarType } from '@/app/components/workflow/types'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import { changeLanguage } from '@/i18n-config/client'
@@ -41,6 +42,7 @@ import {
   useShareConversations,
 } from '@/service/use-share'
 import { TransferMethod } from '@/types/app'
+import { storage } from '@/utils/storage'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { CONVERSATION_ID_INFO } from '../constants'
 import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams, getRawUserVariablesFromUrlParams } from '../utils'
@@ -128,27 +130,15 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
   const [sidebarCollapseState, setSidebarCollapseState] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      try {
-        const localState = localStorage.getItem('webappSidebarCollapse')
-        return localState === 'collapsed'
-      }
-      catch {
-        // localStorage may be disabled in private browsing mode or by security settings
-        // fallback to default value
-        return false
-      }
+      const localState = storage.get<string>(STORAGE_KEYS.APP.SIDEBAR_COLLAPSE)
+      return localState === 'collapsed'
     }
     return false
   })
   const handleSidebarCollapse = useCallback((state: boolean) => {
     if (appId) {
       setSidebarCollapseState(state)
-      try {
-        localStorage.setItem('webappSidebarCollapse', state ? 'collapsed' : 'expanded')
-      }
-      catch {
-        // localStorage may be disabled, continue without persisting state
-      }
+      storage.set(STORAGE_KEYS.APP.SIDEBAR_COLLAPSE, state ? 'collapsed' : 'expanded')
     }
   }, [appId, setSidebarCollapseState])
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {

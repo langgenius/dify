@@ -5,6 +5,8 @@ import type {
   WorkflowRunningData,
 } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
+import { STORAGE_KEYS } from '@/config/storage-keys'
+import { storage } from '@/utils/storage'
 
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
@@ -63,10 +65,10 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setSelection: selection => set(() => ({ selection })),
   bundleNodeSize: null,
   setBundleNodeSize: bundleNodeSize => set(() => ({ bundleNodeSize })),
-  controlMode: localStorage.getItem('workflow-operation-mode') === 'pointer' ? 'pointer' : 'hand',
+  controlMode: storage.get<'pointer' | 'hand'>(STORAGE_KEYS.WORKFLOW.OPERATION_MODE) === 'pointer' ? 'pointer' : 'hand',
   setControlMode: (controlMode) => {
     set(() => ({ controlMode }))
-    localStorage.setItem('workflow-operation-mode', controlMode)
+    storage.set(STORAGE_KEYS.WORKFLOW.OPERATION_MODE, controlMode)
   },
   mousePosition: { pageX: 0, pageY: 0, elementX: 0, elementY: 0 },
   setMousePosition: mousePosition => set(() => ({ mousePosition })),

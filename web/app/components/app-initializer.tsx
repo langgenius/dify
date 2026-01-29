@@ -7,12 +7,15 @@ import { parseAsString, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useState } from 'react'
 import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
-  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
+import { LEGACY_KEY_MIGRATIONS, STORAGE_KEYS } from '@/config/storage-keys'
 import { sendGAEvent } from '@/utils/gtag'
 import { fetchSetupStatusWithCache } from '@/utils/setup-status'
+import { storage } from '@/utils/storage'
 import { resolvePostLoginRedirect } from '../signin/utils/post-login-redirect'
 import { trackEvent } from './base/amplitude'
+
+storage.runMigrations(LEGACY_KEY_MIGRATIONS)
 
 type AppInitializerProps = {
   children: ReactNode
@@ -75,7 +78,7 @@ export const AppInitializer = ({
       }
 
       if (action === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
-        localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
+        storage.set(STORAGE_KEYS.EDUCATION.VERIFYING, 'yes')
 
       try {
         const isFinished = await isSetupFinished()

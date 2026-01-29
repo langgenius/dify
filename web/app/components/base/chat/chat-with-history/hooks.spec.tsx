@@ -11,8 +11,9 @@ import {
   generationConversationName,
 } from '@/service/share'
 import { shareQueryKeys } from '@/service/use-share'
-import { CONVERSATION_ID_INFO } from '../constants'
 import { useChatWithHistory } from './hooks'
+
+const CONVERSATION_ID_INFO_KEY = 'v1:conversationIdInfo'
 
 vi.mock('@/hooks/use-app-favicon', () => ({
   useAppFavicon: vi.fn(),
@@ -120,14 +121,14 @@ const setConversationIdInfo = (appId: string, conversationId: string) => {
       'DEFAULT': conversationId,
     },
   }
-  localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify(value))
+  localStorage.setItem(CONVERSATION_ID_INFO_KEY, JSON.stringify(value))
 }
 
 // Scenario: useChatWithHistory integrates share queries for conversations and chat list.
 describe('useChatWithHistory', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.removeItem(CONVERSATION_ID_INFO)
+    localStorage.removeItem(CONVERSATION_ID_INFO_KEY)
     mockStoreState.appInfo = {
       app_id: 'app-1',
       custom_config: null,
@@ -144,7 +145,7 @@ describe('useChatWithHistory', () => {
   })
 
   afterEach(() => {
-    localStorage.removeItem(CONVERSATION_ID_INFO)
+    localStorage.removeItem(CONVERSATION_ID_INFO_KEY)
   })
 
   // Scenario: share query results populate conversation lists and trigger chat list fetch.
@@ -268,7 +269,7 @@ describe('useChatWithHistory', () => {
 
       // Assert
       await waitFor(() => {
-        const storedValue = localStorage.getItem(CONVERSATION_ID_INFO)
+        const storedValue = localStorage.getItem(CONVERSATION_ID_INFO_KEY)
         const parsed = storedValue ? JSON.parse(storedValue) : {}
         const storedUserId = parsed['app-1']?.['user-1']
         const storedDefaultId = parsed['app-1']?.DEFAULT

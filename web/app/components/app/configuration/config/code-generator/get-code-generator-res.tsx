@@ -17,8 +17,10 @@ import Toast from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
+import { storage } from '@/utils/storage'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
 import IdeaOutput from '../automatic/idea-output'
 import InstructionEditor from '../automatic/instruction-editor-in-workflow'
@@ -62,9 +64,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     presence_penalty: 0,
     frequency_penalty: 0,
   }
-  const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
-    : null
+  const localModel = storage.get<Model>(STORAGE_KEYS.CONFIG.AUTO_GEN_MODEL)
   const [model, setModel] = React.useState<Model>(localModel || {
     name: '',
     provider: '',
@@ -115,7 +115,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       mode: newValue.mode as ModelModeType,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+    storage.set(STORAGE_KEYS.CONFIG.AUTO_GEN_MODEL, newModel)
   }, [model, setModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
@@ -124,7 +124,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       completion_params: newParams as CompletionParams,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+    storage.set(STORAGE_KEYS.CONFIG.AUTO_GEN_MODEL, newModel)
   }, [model, setModel])
 
   const onGenerate = async () => {
@@ -168,9 +168,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
 
   useEffect(() => {
     if (defaultModel) {
-      const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
-        : null
+      const localModel = storage.get<Model>(STORAGE_KEYS.CONFIG.AUTO_GEN_MODEL)
       if (localModel) {
         setModel({
           ...localModel,

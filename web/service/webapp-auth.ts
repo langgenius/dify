@@ -1,28 +1,29 @@
-import { ACCESS_TOKEN_LOCAL_STORAGE_NAME, PASSPORT_LOCAL_STORAGE_NAME } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
+import { storage } from '@/utils/storage'
 import { getPublic, postPublic } from './base'
 
 export function setWebAppAccessToken(token: string) {
-  localStorage.setItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME, token)
+  storage.set(STORAGE_KEYS.AUTH.ACCESS_TOKEN, token)
 }
 
 export function setWebAppPassport(shareCode: string, token: string) {
-  localStorage.setItem(PASSPORT_LOCAL_STORAGE_NAME(shareCode), token)
+  storage.set(`passport-${shareCode}`, token)
 }
 
 export function getWebAppAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME) || ''
+  return storage.get<string>(STORAGE_KEYS.AUTH.ACCESS_TOKEN) || ''
 }
 
 export function getWebAppPassport(shareCode: string) {
-  return localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME(shareCode)) || ''
+  return storage.get<string>(`passport-${shareCode}`) || ''
 }
 
 export function clearWebAppAccessToken() {
-  localStorage.removeItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)
+  storage.remove(STORAGE_KEYS.AUTH.ACCESS_TOKEN)
 }
 
 export function clearWebAppPassport(shareCode: string) {
-  localStorage.removeItem(PASSPORT_LOCAL_STORAGE_NAME(shareCode))
+  storage.remove(`passport-${shareCode}`)
 }
 
 type isWebAppLogin = {
@@ -31,8 +32,6 @@ type isWebAppLogin = {
 }
 
 export async function webAppLoginStatus(shareCode: string, userId?: string) {
-  // always need to check login to prevent passport from being outdated
-  // check remotely, the access token could be in cookie (enterprise SSO redirected with https)
   const params = new URLSearchParams({ app_code: shareCode })
   if (userId)
     params.append('user_id', userId)

@@ -17,13 +17,14 @@ import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { deleteApp, switchApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import AppIconPicker from '../../base/app-icon-picker'
 
 type SwitchAppModalProps = {
@@ -73,7 +74,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         setAppDetail()
       if (removeOriginal)
         await deleteApp(appDetail.id)
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      storage.set(STORAGE_KEYS.APP.NEED_REFRESH_LIST, '1')
       getRedirection(
         isCurrentWorkspaceEditor,
         {

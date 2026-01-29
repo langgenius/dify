@@ -26,7 +26,7 @@ const createPanelWidthManager = (storageKey: string) => {
 
 describe('Workflow Panel Width Persistence', () => {
   describe('Node Panel Width Management', () => {
-    const storageKey = 'workflow-node-panel-width'
+    const storageKey = 'v1:workflow-node-panel-width'
 
     it('should save user resize to localStorage', () => {
       const manager = createPanelWidthManager(storageKey)
@@ -74,7 +74,7 @@ describe('Workflow Panel Width Persistence', () => {
 
   describe('Bug Scenario Reproduction', () => {
     it('should reproduce original bug behavior (for comparison)', () => {
-      const storageKey = 'workflow-node-panel-width'
+      const storageKey = 'v1:workflow-node-panel-width'
 
       // Original buggy behavior - always saves regardless of source
       const buggyUpdate = (width: number) => {
@@ -89,7 +89,7 @@ describe('Workflow Panel Width Persistence', () => {
     })
 
     it('should verify fix prevents localStorage pollution', () => {
-      const storageKey = 'workflow-node-panel-width'
+      const storageKey = 'v1:workflow-node-panel-width'
       const manager = createPanelWidthManager(storageKey)
 
       localStorage.setItem(storageKey, '500') // User preference
@@ -101,7 +101,7 @@ describe('Workflow Panel Width Persistence', () => {
 
   describe('Edge Cases', () => {
     it('should handle multiple rapid operations correctly', () => {
-      const manager = createPanelWidthManager('workflow-node-panel-width')
+      const manager = createPanelWidthManager('v1:workflow-node-panel-width')
 
       // Rapid system adjustments
       manager.updateWidth(300, 'system')
@@ -112,12 +112,12 @@ describe('Workflow Panel Width Persistence', () => {
       manager.updateWidth(550, 'user')
 
       expect(localStorage.setItem).toHaveBeenCalledTimes(1)
-      expect(localStorage.setItem).toHaveBeenCalledWith('workflow-node-panel-width', '550')
+      expect(localStorage.setItem).toHaveBeenCalledWith('v1:workflow-node-panel-width', '550')
     })
 
     it('should handle corrupted localStorage gracefully', () => {
-      localStorage.setItem('workflow-node-panel-width', '150') // Below minimum
-      const manager = createPanelWidthManager('workflow-node-panel-width')
+      localStorage.setItem('v1:workflow-node-panel-width', '150') // Below minimum
+      const manager = createPanelWidthManager('v1:workflow-node-panel-width')
 
       const storedWidth = manager.getStoredWidth()
       expect(storedWidth).toBe(150) // Returns raw value
@@ -125,13 +125,13 @@ describe('Workflow Panel Width Persistence', () => {
       // User can correct the preference
       const correctedWidth = manager.updateWidth(500, 'user')
       expect(correctedWidth).toBe(500)
-      expect(localStorage.getItem('workflow-node-panel-width')).toBe('500')
+      expect(localStorage.getItem('v1:workflow-node-panel-width')).toBe('500')
     })
   })
 
   describe('TypeScript Type Safety', () => {
     it('should enforce source parameter type', () => {
-      const manager = createPanelWidthManager('workflow-node-panel-width')
+      const manager = createPanelWidthManager('v1:workflow-node-panel-width')
 
       // Valid source values
       manager.updateWidth(500, 'user')

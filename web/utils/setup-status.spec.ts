@@ -19,7 +19,7 @@ describe('setup-status utilities', () => {
   describe('fetchSetupStatusWithCache', () => {
     describe('when cache exists', () => {
       it('should return cached finished status without API call', async () => {
-        localStorage.setItem('setup_status', 'finished')
+        localStorage.setItem('v1:setup_status', 'finished')
 
         const result = await fetchSetupStatusWithCache()
 
@@ -28,11 +28,11 @@ describe('setup-status utilities', () => {
       })
 
       it('should not modify localStorage when returning cached value', async () => {
-        localStorage.setItem('setup_status', 'finished')
+        localStorage.setItem('v1:setup_status', 'finished')
 
         await fetchSetupStatusWithCache()
 
-        expect(localStorage.getItem('setup_status')).toBe('finished')
+        expect(localStorage.getItem('v1:setup_status')).toBe('finished')
       })
     })
 
@@ -45,7 +45,7 @@ describe('setup-status utilities', () => {
 
         expect(mockFetchSetupStatus).toHaveBeenCalledTimes(1)
         expect(result).toEqual(apiResponse)
-        expect(localStorage.getItem('setup_status')).toBe('finished')
+        expect(localStorage.getItem('v1:setup_status')).toBe('finished')
       })
 
       it('should call API and remove cache when not finished', async () => {
@@ -56,24 +56,24 @@ describe('setup-status utilities', () => {
 
         expect(mockFetchSetupStatus).toHaveBeenCalledTimes(1)
         expect(result).toEqual(apiResponse)
-        expect(localStorage.getItem('setup_status')).toBeNull()
+        expect(localStorage.getItem('v1:setup_status')).toBeNull()
       })
 
       it('should clear stale cache when API returns not_started', async () => {
-        localStorage.setItem('setup_status', 'some_invalid_value')
+        localStorage.setItem('v1:setup_status', 'some_invalid_value')
         const apiResponse: SetupStatusResponse = { step: 'not_started' }
         mockFetchSetupStatus.mockResolvedValue(apiResponse)
 
         const result = await fetchSetupStatusWithCache()
 
         expect(result).toEqual(apiResponse)
-        expect(localStorage.getItem('setup_status')).toBeNull()
+        expect(localStorage.getItem('v1:setup_status')).toBeNull()
       })
     })
 
     describe('cache edge cases', () => {
       it('should call API when cache value is empty string', async () => {
-        localStorage.setItem('setup_status', '')
+        localStorage.setItem('v1:setup_status', '')
         const apiResponse: SetupStatusResponse = { step: 'finished' }
         mockFetchSetupStatus.mockResolvedValue(apiResponse)
 
@@ -84,7 +84,7 @@ describe('setup-status utilities', () => {
       })
 
       it('should call API when cache value is not "finished"', async () => {
-        localStorage.setItem('setup_status', 'not_started')
+        localStorage.setItem('v1:setup_status', 'not_started')
         const apiResponse: SetupStatusResponse = { step: 'finished' }
         mockFetchSetupStatus.mockResolvedValue(apiResponse)
 
@@ -132,7 +132,7 @@ describe('setup-status utilities', () => {
 
         await expect(fetchSetupStatusWithCache()).rejects.toThrow()
 
-        expect(localStorage.getItem('setup_status')).toBeNull()
+        expect(localStorage.getItem('v1:setup_status')).toBeNull()
       })
     })
   })

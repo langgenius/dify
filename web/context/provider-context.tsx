@@ -19,6 +19,7 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ZENDESK_FIELD_IDS } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import {
   useModelListByType,
@@ -28,6 +29,7 @@ import {
 import {
   useEducationStatus,
 } from '@/service/use-education'
+import { storage } from '@/utils/storage'
 
 export type ProviderContextState = {
   modelProviders: ModelProvider[]
@@ -200,7 +202,7 @@ export const ProviderContextProvider = ({
 
   const { t } = useTranslation()
   useEffect(() => {
-    if (localStorage.getItem('anthropic_quota_notice') === 'true')
+    if (storage.get<string>(STORAGE_KEYS.UI.ANTHROPIC_QUOTA_NOTICE) === 'true')
       return
 
     if (dayjs().isAfter(dayjs('2025-03-17')))
@@ -216,7 +218,7 @@ export const ProviderContextProvider = ({
             message: t('provider.anthropicHosted.trialQuotaTip', { ns: 'common' }),
             duration: 60000,
             onClose: () => {
-              localStorage.setItem('anthropic_quota_notice', 'true')
+              storage.set(STORAGE_KEYS.UI.ANTHROPIC_QUOTA_NOTICE, 'true')
             },
           })
         }

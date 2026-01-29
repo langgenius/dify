@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next'
 import Avatar from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import { Triangle } from '@/app/components/base/icons/src/public/education'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import { useLogout } from '@/service/use-common'
+import { storage } from '@/utils/storage'
 
 const UserInfo = () => {
   const router = useRouter()
@@ -15,7 +17,7 @@ const UserInfo = () => {
   const handleLogout = async () => {
     await logout()
 
-    localStorage.removeItem('setup_status')
+    storage.remove(STORAGE_KEYS.CONFIG.SETUP_STATUS)
     // Tokens are now stored in cookies and cleared by backend
 
     router.push('/signin')

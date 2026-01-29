@@ -11,8 +11,9 @@ import {
   generationConversationName,
 } from '@/service/share'
 import { shareQueryKeys } from '@/service/use-share'
-import { CONVERSATION_ID_INFO } from '../constants'
 import { useEmbeddedChatbot } from './hooks'
+
+const CONVERSATION_ID_INFO_KEY = 'v1:conversationIdInfo'
 
 vi.mock('@/i18n-config/client', () => ({
   changeLanguage: vi.fn().mockResolvedValue(undefined),
@@ -113,7 +114,7 @@ const createConversationData = (overrides: Partial<AppConversationData> = {}): A
 describe('useEmbeddedChatbot', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.removeItem(CONVERSATION_ID_INFO)
+    localStorage.removeItem(CONVERSATION_ID_INFO_KEY)
     mockStoreState.appInfo = {
       app_id: 'app-1',
       custom_config: null,
@@ -131,7 +132,7 @@ describe('useEmbeddedChatbot', () => {
   })
 
   afterEach(() => {
-    localStorage.removeItem(CONVERSATION_ID_INFO)
+    localStorage.removeItem(CONVERSATION_ID_INFO_KEY)
   })
 
   // Scenario: share query results populate conversation lists and trigger chat list fetch.
@@ -251,7 +252,7 @@ describe('useEmbeddedChatbot', () => {
 
       // Assert
       await waitFor(() => {
-        const storedValue = localStorage.getItem(CONVERSATION_ID_INFO)
+        const storedValue = localStorage.getItem(CONVERSATION_ID_INFO_KEY)
         const parsed = storedValue ? JSON.parse(storedValue) : {}
         const storedUserId = parsed['app-1']?.['embedded-user-1']
         const storedDefaultId = parsed['app-1']?.DEFAULT

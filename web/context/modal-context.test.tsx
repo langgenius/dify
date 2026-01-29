@@ -130,7 +130,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
       expect(setItemSpy.mock.calls.length).toBeGreaterThan(0)
     })
     const [key, value] = setItemSpy.mock.calls[0]
-    expect(key).toContain('trigger-events-limit-dismissed-workspace-1-professional-3000-')
+    expect(key).toContain('v1:trigger-events-limit-dismissed-workspace-1-professional-3000-')
     expect(value).toBe('1')
   })
 

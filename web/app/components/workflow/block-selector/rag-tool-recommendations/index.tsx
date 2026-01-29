@@ -10,8 +10,10 @@ import { Trans, useTranslation } from 'react-i18next'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useRAGRecommendedPlugins } from '@/service/use-tools'
 import { isServer } from '@/utils/client'
+import { storage } from '@/utils/storage'
 import { getMarketplaceUrl } from '@/utils/var'
 import List from './list'
 
@@ -20,8 +22,6 @@ type RAGToolRecommendationsProps = {
   onSelect: OnSelectBlock
   onTagsChange: Dispatch<SetStateAction<string[]>>
 }
-
-const STORAGE_KEY = 'workflow_rag_recommendations_collapsed'
 
 const RAGToolRecommendations = ({
   viewType,
@@ -32,14 +32,14 @@ const RAGToolRecommendations = ({
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     if (isServer)
       return false
-    const stored = window.localStorage.getItem(STORAGE_KEY)
+    const stored = storage.get<string>(STORAGE_KEYS.WORKFLOW.RAG_RECOMMENDATIONS_COLLAPSED)
     return stored === 'true'
   })
 
   useEffect(() => {
     if (isServer)
       return
-    const stored = window.localStorage.getItem(STORAGE_KEY)
+    const stored = storage.get<string>(STORAGE_KEYS.WORKFLOW.RAG_RECOMMENDATIONS_COLLAPSED)
     if (stored !== null)
       setIsCollapsed(stored === 'true')
   }, [])
@@ -47,7 +47,7 @@ const RAGToolRecommendations = ({
   useEffect(() => {
     if (isServer)
       return
-    window.localStorage.setItem(STORAGE_KEY, String(isCollapsed))
+    storage.set(STORAGE_KEYS.WORKFLOW.RAG_RECOMMENDATIONS_COLLAPSED, String(isCollapsed))
   }, [isCollapsed])
 
   const {

@@ -13,13 +13,14 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import { useToastContext } from '@/app/components/base/toast'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import {
   useEducationAdd,
   useInvalidateEducationStatus,
 } from '@/service/use-education'
+import { storage } from '@/utils/storage'
 import DifyLogo from '../components/base/logo/dify-logo'
 import RoleSelector from './role-selector'
 import SearchInput from './search-input'
@@ -47,7 +48,7 @@ const EducationApplyAge = () => {
     setShowModal(undefined)
     onPlanInfoChanged()
     updateEducationStatus()
-    localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+    storage.remove(STORAGE_KEYS.EDUCATION.VERIFYING)
     router.replace('/')
   }
 

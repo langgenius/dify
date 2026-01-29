@@ -4,13 +4,14 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { trackEvent } from '@/app/components/base/amplitude'
 
 import { ToastContext } from '@/app/components/base/toast'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { createApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import CreateAppModal from './index'
+
+const NEED_REFRESH_APP_LIST_KEY_PREFIXED = 'v1:needRefreshAppList'
 
 vi.mock('ahooks', () => ({
   useDebounceFn: (fn: (...args: any[]) => any) => {
@@ -142,7 +143,7 @@ describe('CreateAppModal', () => {
     expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
     expect(onSuccess).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
-    await waitFor(() => expect(mockSetItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1'))
+    await waitFor(() => expect(mockSetItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY_PREFIXED, '1'))
     await waitFor(() => expect(mockGetRedirection).toHaveBeenCalledWith(true, mockApp, mockPush))
   })
 
