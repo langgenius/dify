@@ -351,7 +351,7 @@
   "modelProvider.card.quota": "CUOTA",
   "modelProvider.card.quotaExhausted": "Cuota agotada",
   "modelProvider.card.removeKey": "Eliminar CLAVE API",
-  "modelProvider.card.tip": "Créditos de mensajes admite modelos de OpenAI. Se dará prioridad a la cuota pagada. La cuota gratuita se utilizará después de que se agote la cuota pagada.",
+  "modelProvider.card.tip": "Créditos de mensajes admite modelos de {{modelNames}}. Se dará prioridad a la cuota pagada. La cuota gratuita se utilizará después de que se agote la cuota pagada.",
   "modelProvider.card.tokens": "Tokens",
   "modelProvider.collapse": "Colapsar",
   "modelProvider.config": "Configurar",

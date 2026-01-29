@@ -1,9 +1,7 @@
-import react from '@vitejs/plugin-react'
-import tsconfigPaths from 'vite-tsconfig-paths'
-import { defineConfig } from 'vitest/config'
+import { defineConfig, mergeConfig } from 'vitest/config'
+import viteConfig from './vite.config'
 
-export default defineConfig({
-  plugins: [tsconfigPaths(), react()],
+export default mergeConfig(viteConfig, defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
@@ -13,4 +11,4 @@ export default defineConfig({
       reporter: ['text', 'json', 'json-summary'],
     },
   },
-})
+}))

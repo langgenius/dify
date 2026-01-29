@@ -351,7 +351,7 @@
   "modelProvider.card.quota": "سهمیه",
   "modelProvider.card.quotaExhausted": "سهمیه تمام شده",
   "modelProvider.card.removeKey": "حذف کلید API",
-  "modelProvider.card.tip": "اعتبار پیام از مدل‌های OpenAI پشتیبانی می‌کند. اولویت به سهمیه پرداخت شده داده می‌شود. سهمیه رایگان پس از اتمام سهمیه پرداخت شده استفاده خواهد شد.",
+  "modelProvider.card.tip": "اعتبار پیام از مدل‌های {{modelNames}} پشتیبانی می‌کند. اولویت به سهمیه پرداخت شده داده می‌شود. سهمیه رایگان پس از اتمام سهمیه پرداخت شده استفاده خواهد شد.",
   "modelProvider.card.tokens": "توکن‌ها",
   "modelProvider.collapse": "جمع کردن",
   "modelProvider.config": "پیکربندی",
