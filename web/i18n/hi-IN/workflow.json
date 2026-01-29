@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "वार्तालाप चर",
   "chatVariable.storedContent": "संग्रहीत सामग्री",
   "chatVariable.updatedAt": "अपडेट किया गया ",
+  "comments.actions.addComment": "टिप्पणी जोड़ें",
   "comments.actions.deleteReply": "जवाब हटाएं",
   "comments.actions.editReply": "जवाब संपादित करें",
   "comments.aria.closeComment": "टिप्पणी बंद करें",

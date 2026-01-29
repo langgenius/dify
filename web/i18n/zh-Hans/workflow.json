@@ -107,6 +107,7 @@
   "chatVariable.panelTitle": "会话变量",
   "chatVariable.storedContent": "存储内容",
   "chatVariable.updatedAt": "更新时间 ",
+  "comments.actions.addComment": "添加评论",
   "comments.actions.deleteReply": "删除回复",
   "comments.actions.editReply": "编辑回复",
   "comments.aria.closeComment": "关闭评论",

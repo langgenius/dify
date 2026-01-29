@@ -25,6 +25,9 @@ export const useWorkflowComment = () => {
   const controlMode = useStore(s => s.controlMode)
   const pendingComment = useStore(s => s.pendingComment)
   const setPendingComment = useStore(s => s.setPendingComment)
+  const isCommentQuickAdd = useStore(s => s.isCommentQuickAdd)
+  const setCommentQuickAdd = useStore(s => s.setCommentQuickAdd)
+  const isCommentPlacing = useStore(s => s.isCommentPlacing)
   const setActiveCommentId = useStore(s => s.setActiveCommentId)
   const activeCommentId = useStore(s => s.activeCommentId)
   const comments = useStore(s => s.comments)
@@ -204,21 +207,29 @@ export const useWorkflowComment = () => {
       collaborationManager.emitCommentsUpdate(appId)
 
       setPendingComment(null)
+      setCommentQuickAdd(false)
     }
     catch (error) {
       console.error('Failed to create comment:', error)
       setPendingComment(null)
+      setCommentQuickAdd(false)
     }
-  }, [appId, pendingComment, setPendingComment, reactflow, comments, setComments, userProfile, setCommentDetailCache, mentionableUsers])
+  }, [appId, pendingComment, setPendingComment, setCommentQuickAdd, reactflow, comments, setComments, userProfile, setCommentDetailCache, mentionableUsers])
 
   const handleCommentCancel = useCallback(() => {
     setPendingComment(null)
-  }, [setPendingComment])
+    setCommentQuickAdd(false)
+  }, [setPendingComment, setCommentQuickAdd])
 
   useEffect(() => {
-    if (controlMode !== ControlMode.Comment)
+    if (controlMode !== ControlMode.Comment && !isCommentQuickAdd)
       setPendingComment(null)
-  }, [controlMode, setPendingComment])
+  }, [controlMode, isCommentQuickAdd, setPendingComment])
+
+  useEffect(() => {
+    if (!pendingComment && !isCommentPlacing && isCommentQuickAdd)
+      setCommentQuickAdd(false)
+  }, [isCommentPlacing, isCommentQuickAdd, pendingComment, setCommentQuickAdd])
 
   const handleCommentIconClick = useCallback(async (comment: WorkflowCommentList) => {
     setPendingComment(null)

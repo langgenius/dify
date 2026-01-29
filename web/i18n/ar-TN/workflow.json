@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "متغيرات المحادثة",
   "chatVariable.storedContent": "المحتوى المخزن",
   "chatVariable.updatedAt": "تم التحديث في ",
+  "comments.actions.addComment": "أضف تعليقًا",
   "comments.actions.deleteReply": "حذف الرد",
   "comments.actions.editReply": "تعديل الرد",
   "comments.aria.closeComment": "إغلاق التعليق",

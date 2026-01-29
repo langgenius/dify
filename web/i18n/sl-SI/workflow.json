@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "Pogovor Spremenljivke",
   "chatVariable.storedContent": "Shranjena vsebina",
   "chatVariable.updatedAt": "Posodobljeno ob",
+  "comments.actions.addComment": "Dodaj komentar",
   "comments.actions.deleteReply": "Delete reply",
   "comments.actions.editReply": "Edit reply",
   "comments.aria.closeComment": "Close comment",

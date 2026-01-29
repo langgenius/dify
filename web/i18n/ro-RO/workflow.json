@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "Variabile de Conversație",
   "chatVariable.storedContent": "Conținut stocat",
   "chatVariable.updatedAt": "Actualizat la ",
+  "comments.actions.addComment": "Adaugă comentariu",
   "comments.actions.deleteReply": "Delete reply",
   "comments.actions.editReply": "Edit reply",
   "comments.aria.closeComment": "Close comment",

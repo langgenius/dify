@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "Variables de Conversación",
   "chatVariable.storedContent": "Contenido almacenado",
   "chatVariable.updatedAt": "Actualizado el ",
+  "comments.actions.addComment": "Añadir comentario",
   "comments.actions.deleteReply": "Eliminar respuesta",
   "comments.actions.editReply": "Editar respuesta",
   "comments.aria.closeComment": "Cerrar comentario",

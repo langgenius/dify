@@ -10,6 +10,8 @@ type CommentInputProps = {
   position: { x: number, y: number }
   onSubmit: (content: string, mentionedUserIds: string[]) => void
   onCancel: () => void
+  autoFocus?: boolean
+  disabled?: boolean
   onPositionChange?: (position: {
     pageX: number
     pageY: number
@@ -18,7 +20,14 @@ type CommentInputProps = {
   }) => void
 }
 
-export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, onCancel, onPositionChange }) => {
+export const CommentInput: FC<CommentInputProps> = memo(({
+  position,
+  onSubmit,
+  onCancel,
+  autoFocus = true,
+  disabled = false,
+  onPositionChange,
+}) => {
   const [content, setContent] = useState('')
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
@@ -124,7 +133,10 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
 
   return (
     <div
-      className="absolute z-[60] w-96"
+      className={cn(
+        'absolute z-[60] w-96',
+        disabled && 'pointer-events-none opacity-80',
+      )}
       style={{
         left: position.x,
         top: position.y,
@@ -162,7 +174,8 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
               onChange={setContent}
               onSubmit={handleMentionSubmit}
               placeholder={t('comments.placeholder.add', { ns: 'workflow' })}
-              autoFocus
+              autoFocus={autoFocus}
+              disabled={disabled}
               className="relative"
             />
           </div>

@@ -174,6 +174,37 @@ export type WorkflowProps = {
   myUserId?: string | null
   onlineUsers?: OnlineUser[]
 }
+
+const CommentPlacementPreview = memo(({
+  onSubmit,
+  onCancel,
+}: {
+  onSubmit: (content: string, mentionedUserIds: string[]) => void
+  onCancel: () => void
+}) => {
+  const isCommentPlacing = useStore(s => s.isCommentPlacing)
+  const pendingComment = useStore(s => s.pendingComment)
+  const mousePosition = useStore(s => s.mousePosition)
+
+  if (!isCommentPlacing || pendingComment)
+    return null
+
+  return (
+    <CommentInput
+      position={{
+        x: mousePosition.elementX,
+        y: mousePosition.elementY,
+      }}
+      onSubmit={onSubmit}
+      onCancel={onCancel}
+      autoFocus={false}
+      disabled
+    />
+  )
+})
+
+CommentPlacementPreview.displayName = 'CommentPlacementPreview'
+
 export const Workflow: FC<WorkflowProps> = memo(({
   nodes: originalNodes,
   edges: originalEdges,
@@ -288,8 +319,11 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const showUserCursors = useStore(s => s.showUserCursors)
   const showResolvedComments = useStore(s => s.showResolvedComments)
   const isCommentPreviewHovering = useStore(s => s.isCommentPreviewHovering)
+  const isCommentPlacing = useStore(s => s.isCommentPlacing)
+  const setCommentPlacing = useStore(s => s.setCommentPlacing)
+  const setCommentQuickAdd = useStore(s => s.setCommentQuickAdd)
   const setPendingCommentState = useStore(s => s.setPendingComment)
-  const isCommentInputActive = Boolean(pendingComment)
+  const isCommentInputActive = Boolean(pendingComment) || isCommentPlacing
   const { t } = useTranslation()
   const visibleComments = useMemo(() => {
     if (showResolvedComments)
@@ -344,6 +378,12 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const handlePendingCommentPositionChange = useCallback((position: NonNullable<WorkflowSliceShape['pendingComment']>) => {
     setPendingCommentState(position)
   }, [setPendingCommentState])
+
+  const handleCommentPlacementCancel = useCallback(() => {
+    setPendingCommentState(null)
+    setCommentPlacing(false)
+    setCommentQuickAdd(false)
+  }, [setCommentPlacing, setCommentQuickAdd, setPendingCommentState])
 
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
@@ -611,6 +651,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
       {controlMode === ControlMode.Comment && isMouseOverCanvas && (
         <CommentCursor />
       )}
+      <CommentPlacementPreview
+        onSubmit={handleCommentSubmit}
+        onCancel={handleCommentPlacementCancel}
+      />
       {pendingComment && (
         <CommentInput
           position={{

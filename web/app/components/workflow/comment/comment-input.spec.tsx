@@ -9,6 +9,7 @@ type MentionInputProps = {
   onSubmit: (content: string, mentionedUserIds: string[]) => void
   placeholder?: string
   autoFocus?: boolean
+  disabled?: boolean
   className?: string
 }
 

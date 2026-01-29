@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "Variabel Percakapan",
   "chatVariable.storedContent": "Konten yang disimpan",
   "chatVariable.updatedAt": "Diperbarui pada",
+  "comments.actions.addComment": "Tambahkan komentar",
   "comments.actions.deleteReply": "Hapus balasan",
   "comments.actions.editReply": "Edit balasan",
   "comments.aria.closeComment": "Tutup komentar",

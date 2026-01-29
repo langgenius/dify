@@ -5,6 +5,7 @@ import { CommentCursor } from './cursor'
 
 const mockState = {
   controlMode: ControlMode.Pointer,
+  isCommentPlacing: false,
   mousePosition: {
     elementX: 10,
     elementY: 20,

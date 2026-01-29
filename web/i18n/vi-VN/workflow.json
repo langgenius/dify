@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "Biến Hội Thoại",
   "chatVariable.storedContent": "Nội dung đã lưu",
   "chatVariable.updatedAt": "Cập nhật lúc ",
+  "comments.actions.addComment": "Thêm bình luận",
   "comments.actions.deleteReply": "Delete reply",
   "comments.actions.editReply": "Edit reply",
   "comments.aria.closeComment": "Close comment",

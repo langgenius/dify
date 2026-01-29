@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "会話変数",
   "chatVariable.storedContent": "保存内容",
   "chatVariable.updatedAt": "最終更新：",
+  "comments.actions.addComment": "コメントを追加",
   "comments.actions.deleteReply": "返信を削除",
   "comments.actions.editReply": "返信を編集",
   "comments.aria.closeComment": "コメントを閉じる",

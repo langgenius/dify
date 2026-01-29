@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "Переменные разговора",
   "chatVariable.storedContent": "Сохраненный контент",
   "chatVariable.updatedAt": "Обновлено в ",
+  "comments.actions.addComment": "Добавить комментарий",
   "comments.actions.deleteReply": "Delete reply",
   "comments.actions.editReply": "Edit reply",
   "comments.aria.closeComment": "Close comment",

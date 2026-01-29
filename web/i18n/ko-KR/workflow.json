@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "대화 변수",
   "chatVariable.storedContent": "저장된 내용",
   "chatVariable.updatedAt": "업데이트 시간: ",
+  "comments.actions.addComment": "댓글 추가",
   "comments.actions.deleteReply": "답글 삭제",
   "comments.actions.editReply": "답글 편집",
   "comments.aria.closeComment": "댓글 닫기",
