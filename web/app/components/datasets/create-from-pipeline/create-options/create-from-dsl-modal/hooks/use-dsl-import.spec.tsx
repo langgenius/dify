@@ -1029,7 +1029,7 @@ describe('useDSLImport', () => {
       })
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('datasets/confirm-dataset-id/pipeline')
+        expect(mockPush).toHaveBeenCalledWith('/datasets/confirm-dataset-id/pipeline')
       })
 
       vi.useRealTimers()

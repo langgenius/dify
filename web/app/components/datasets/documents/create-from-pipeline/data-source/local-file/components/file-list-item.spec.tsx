@@ -103,8 +103,8 @@ describe('FileListItem', () => {
     it('should render file size', () => {
       render(<FileListItem {...defaultProps} />)
 
-      // 100KB (102400 bytes) is >= 10KB threshold so displays in MB
-      expect(screen.getByText('0.10MB')).toBeInTheDocument()
+      // 100KB (102400 bytes) formatted with formatFileSize
+      expect(screen.getByText('100.00 KB')).toBeInTheDocument()
     })
 
     it('should render delete button', () => {
@@ -277,7 +277,7 @@ describe('FileListItem', () => {
       })
       render(<FileListItem {...defaultProps} fileItem={fileItem} />)
 
-      expect(screen.getByText('5.00KB')).toBeInTheDocument()
+      expect(screen.getByText('5.00 KB')).toBeInTheDocument()
     })
 
     it('should display size in MB for larger files', () => {
@@ -286,7 +286,7 @@ describe('FileListItem', () => {
       })
       render(<FileListItem {...defaultProps} fileItem={fileItem} />)
 
-      expect(screen.getByText('5.00MB')).toBeInTheDocument()
+      expect(screen.getByText('5.00 MB')).toBeInTheDocument()
     })
 
     it('should display size at threshold (10KB)', () => {
@@ -295,7 +295,7 @@ describe('FileListItem', () => {
       })
       render(<FileListItem {...defaultProps} fileItem={fileItem} />)
 
-      expect(screen.getByText('0.01MB')).toBeInTheDocument()
+      expect(screen.getByText('10.00 KB')).toBeInTheDocument()
     })
   })
 
