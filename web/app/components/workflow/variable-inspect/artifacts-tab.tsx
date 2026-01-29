@@ -61,7 +61,7 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
   const { data: treeData, hasFiles, isLoading } = useSandboxFilesTree(sandboxId, {
     enabled: !!sandboxId,
   })
-  const downloadMutation = useDownloadSandboxFile(sandboxId)
+  const { mutateAsync: fetchDownloadUrl, isPending: isDownloading } = useDownloadSandboxFile(sandboxId)
   const [selectedFile, setSelectedFile] = useState<SandboxFileTreeNode | null>(null)
   const { data: downloadUrlData, isLoading: isDownloadUrlLoading } = useSandboxFileDownloadUrl(
     sandboxId,
@@ -73,16 +73,20 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
       setSelectedFile(node)
   }, [])
 
-  const { mutateAsync: downloadFile } = downloadMutation
-  const handleDownload = useCallback(async (node: SandboxFileTreeNode) => {
+  const handleTreeDownload = useCallback(async (node: SandboxFileTreeNode) => {
     try {
-      const ticket = await downloadFile(node.path)
+      const ticket = await fetchDownloadUrl(node.path)
       downloadUrl({ url: ticket.download_url, fileName: node.name })
     }
     catch (error) {
       console.error('Download failed:', error)
     }
-  }, [downloadFile])
+  }, [fetchDownloadUrl])
+
+  const handleSelectedFileDownload = useCallback(() => {
+    if (downloadUrlData?.download_url && selectedFile)
+      downloadUrl({ url: downloadUrlData.download_url, fileName: selectedFile.name })
+  }, [downloadUrlData, selectedFile])
 
   if (isLoading) {
     return (
@@ -119,10 +123,10 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
         <div className="h-full overflow-y-auto py-1">
           <ArtifactsTree
             data={treeData}
-            onDownload={handleDownload}
+            onDownload={handleTreeDownload}
             onSelect={handleFileSelect}
             selectedPath={selectedFile?.path}
-            isDownloading={downloadMutation.isPending}
+            isDownloading={isDownloading}
           />
         </div>
       )}
@@ -160,8 +164,8 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <ActionButton
-                      onClick={() => handleDownload(file)}
-                      disabled={downloadMutation.isPending}
+                      onClick={handleSelectedFileDownload}
+                      disabled={!downloadUrlData?.download_url}
                       aria-label={`Download ${file.name}`}
                     >
                       <FileDownload01 className="h-4 w-4" />

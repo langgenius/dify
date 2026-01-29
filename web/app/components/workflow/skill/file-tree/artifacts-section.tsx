@@ -26,7 +26,7 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
 
   const { data: treeData, hasFiles, isLoading } = useSandboxFilesTree(sandboxId)
 
-  const downloadMutation = useDownloadSandboxFile(sandboxId)
+  const { mutateAsync: fetchDownloadUrl, isPending: isDownloading } = useDownloadSandboxFile(sandboxId)
   const storeApi = useWorkflowStore()
   const selectedArtifactPath = useStore(s => s.selectedArtifactPath)
 
@@ -40,13 +40,13 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
 
   const handleDownload = useCallback(async (node: SandboxFileTreeNode) => {
     try {
-      const ticket = await downloadMutation.mutateAsync(node.path)
+      const ticket = await fetchDownloadUrl(node.path)
       downloadUrl({ url: ticket.download_url, fileName: node.name })
     }
     catch (error) {
       console.error('Download failed:', error)
     }
-  }, [downloadMutation])
+  }, [fetchDownloadUrl])
 
   const showBlueDot = !isExpanded && hasFiles
   const showSpinner = isLoading
@@ -100,7 +100,7 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
                   onDownload={handleDownload}
                   onSelect={handleSelect}
                   selectedPath={selectedArtifactPath ?? undefined}
-                  isDownloading={downloadMutation.isPending}
+                  isDownloading={isDownloading}
                 />
               )
             : (

@@ -3,10 +3,7 @@ import type {
   SandboxFileNode,
   SandboxFileTreeNode,
 } from '@/types/sandbox-file'
-import {
-  useMutation,
-  useQuery,
-} from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { consoleClient, consoleQuery } from '@/service/client'
 
@@ -39,20 +36,6 @@ export function useGetSandboxFiles(
   })
 }
 
-export function useDownloadSandboxFile(sandboxId: string | undefined) {
-  return useMutation({
-    mutationKey: consoleQuery.sandboxFile.downloadFile.mutationKey(),
-    mutationFn: (path: string) => {
-      if (!sandboxId)
-        throw new Error('sandboxId is required')
-      return consoleClient.sandboxFile.downloadFile({
-        params: { sandboxId },
-        body: { path },
-      })
-    },
-  })
-}
-
 export function useSandboxFileDownloadUrl(
   sandboxId: string | undefined,
   path: string | undefined,
@@ -64,6 +47,19 @@ export function useSandboxFileDownloadUrl(
       body: { path: path! },
     }),
     enabled: !!sandboxId && !!path,
+  })
+}
+
+export function useDownloadSandboxFile(sandboxId: string | undefined) {
+  return useMutation({
+    mutationFn: (path: string) => {
+      if (!sandboxId)
+        throw new Error('sandboxId is required')
+      return consoleClient.sandboxFile.downloadFile({
+        params: { sandboxId },
+        body: { path },
+      })
+    },
   })
 }
 
