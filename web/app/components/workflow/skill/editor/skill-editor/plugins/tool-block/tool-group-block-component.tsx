@@ -3,7 +3,6 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { RiAlertFill, RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -650,7 +649,7 @@ const ToolGroupBlockComponent = ({
             }}
           >
             <span className="sr-only">{t('operation.close', { ns: 'common' })}</span>
-            <RiCloseLine className="h-4 w-4" />
+            <span className="i-ri-close-line h-4 w-4" />
           </button>
         </div>
         {providerDescription && (
@@ -741,7 +740,7 @@ const ToolGroupBlockComponent = ({
                               setExpandedToolId(item.configId)
                             }}
                           >
-                            <RiEqualizer2Line className="size-3.5" />
+                            <span className="i-ri-equalizer-2-line size-3.5" />
                             <span className="system-xs-medium">{t('operation.settings', { ns: 'common' })}</span>
                           </button>
                           <div className="mx-1 h-3 w-px bg-divider-regular "></div>
@@ -798,7 +797,7 @@ const ToolGroupBlockComponent = ({
           ? (
               <span className="system-2xs-medium-uppercase flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning">
                 {authBadgeLabel}
-                <RiAlertFill className="h-3 w-3" />
+                <span className="i-ri-alert-fill h-3 w-3" />
               </span>
             )
           : (

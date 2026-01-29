@@ -2,13 +2,11 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { RiAlertFill } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Modal from '@/app/components/base/modal'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -492,7 +490,7 @@ const ToolBlockComponent = ({
       {needAuthorization && (
         <div className="flex min-h-[200px] flex-1 flex-col items-center justify-center px-4 py-6 text-text-tertiary">
           <div className="flex h-9 w-9 items-center justify-center rounded-full border border-divider-subtle">
-            <InfoCircle className="h-4 w-4 text-text-tertiary" />
+            <span className="i-custom-vender-line-general-info-circle h-4 w-4 text-text-tertiary" />
           </div>
           <div className="system-xs-regular mt-3 text-text-tertiary">
             {t('skillEditor.authorizationRequired', { ns: 'workflow' })}
@@ -536,7 +534,7 @@ const ToolBlockComponent = ({
         {needAuthorization && (
           <span className="system-2xs-medium-uppercase flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning">
             {authBadgeLabel}
-            <RiAlertFill className="h-3 w-3" />
+            <span className="i-ri-alert-fill h-3 w-3" />
           </span>
         )}
       </span>
