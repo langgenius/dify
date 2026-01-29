@@ -104,6 +104,7 @@ class DifyCliToolConfig(BaseModel):
 
 class DifyCliToolReference(BaseModel):
     id: str
+    tool_type: str
     tool_name: str
     tool_provider: str
     credential_id: str | None = None
@@ -113,6 +114,7 @@ class DifyCliToolReference(BaseModel):
     def create_from_tool_reference(cls, reference: ToolReference) -> DifyCliToolReference:
         return cls(
             id=reference.uuid,
+            tool_type=reference.type.value,
             tool_name=reference.tool_name,
             tool_provider=reference.provider,
             credential_id=reference.credential_id,

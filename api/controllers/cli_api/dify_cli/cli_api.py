@@ -3,7 +3,7 @@ from flask_restx import Resource
 from pydantic import BaseModel
 
 from controllers.cli_api import cli_api_ns
-from controllers.cli_api.plugin.wraps import get_cli_user_tenant, plugin_data
+from controllers.cli_api.dify_cli.wraps import get_cli_user_tenant, plugin_data
 from controllers.cli_api.wraps import cli_api_only
 from controllers.console.wraps import setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -29,12 +29,13 @@ from models.model import EndUser, Tenant
 
 
 class FetchToolItem(BaseModel):
+    tool_type: str
     tool_provider: str
     tool_name: str
     credential_id: str | None = None
 
 
-class RequestFetchToolsBatch(BaseModel):
+class FetchToolBatchRequest(BaseModel):
     tools: list[FetchToolItem]
 
 
@@ -44,7 +45,13 @@ class CliInvokeLLMApi(Resource):
     @get_cli_user_tenant
     @setup_required
     @plugin_data(payload_type=RequestInvokeLLM)
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeLLM):
+    def post(
+        self,
+        user_model: Account | EndUser,
+        tenant_model: Tenant,
+        payload: RequestInvokeLLM,
+        cli_context: CliContext,
+    ):
         def generator():
             response = PluginModelBackwardsInvocation.invoke_llm(user_model.id, tenant_model, payload)
             return PluginModelBackwardsInvocation.convert_to_event_stream(response)
@@ -74,7 +81,7 @@ class CliInvokeToolApi(Resource):
             credential_id=payload.credential_id,
         )
         if cli_context.tool_access and not cli_context.tool_access.is_allowed(request):
-            abort(403)
+            abort(403, description=f"Access denied for tool: {payload.provider}/{payload.tool}")
 
         def generator():
             return PluginToolBackwardsInvocation.convert_to_event_stream(
@@ -98,7 +105,13 @@ class CliInvokeAppApi(Resource):
     @get_cli_user_tenant
     @setup_required
     @plugin_data(payload_type=RequestInvokeApp)
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
+    def post(
+        self,
+        user_model: Account | EndUser,
+        tenant_model: Tenant,
+        payload: RequestInvokeApp,
+        cli_context: CliContext,
+    ):
         response = PluginAppBackwardsInvocation.invoke_app(
             app_id=payload.app_id,
             user_id=user_model.id,
@@ -119,7 +132,13 @@ class CliUploadFileRequestApi(Resource):
     @get_cli_user_tenant
     @setup_required
     @plugin_data(payload_type=RequestRequestUploadFile)
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestRequestUploadFile):
+    def post(
+        self,
+        user_model: Account | EndUser,
+        tenant_model: Tenant,
+        payload: RequestRequestUploadFile,
+        cli_context: CliContext,
+    ):
         url = get_signed_file_url_for_plugin(
             filename=payload.filename,
             mimetype=payload.mimetype,
@@ -134,20 +153,27 @@ class CliFetchToolsBatchApi(Resource):
     @cli_api_only
     @get_cli_user_tenant
     @setup_required
-    @plugin_data(payload_type=RequestFetchToolsBatch)
+    @plugin_data(payload_type=FetchToolBatchRequest)
     def post(
         self,
         user_model: Account | EndUser,
         tenant_model: Tenant,
-        payload: RequestFetchToolsBatch,
+        payload: FetchToolBatchRequest,
         cli_context: CliContext,
     ):
         tools: list[dict] = []
 
         for item in payload.tools:
-            provider_type = _resolve_provider_type(cli_context, item.tool_provider, item.tool_name)
-            if provider_type is None:
-                continue
+            provider_type = ToolProviderType.value_of(item.tool_type)
+
+            request = ToolInvocationRequest(
+                tool_type=provider_type,
+                provider=item.tool_provider,
+                tool_name=item.tool_name,
+                credential_id=item.credential_id,
+            )
+            if cli_context.tool_access and not cli_context.tool_access.is_allowed(request):
+                abort(403, description=f"Access denied for tool: {item.tool_provider}/{item.tool_name}")
 
             try:
                 tool_runtime = ToolManager.get_tool_runtime(
@@ -164,11 +190,3 @@ class CliFetchToolsBatchApi(Resource):
                 continue
 
         return BaseBackwardsInvocationResponse(data={"tools": tools}).model_dump()
-
-
-def _resolve_provider_type(cli_context: CliContext, tool_provider: str, tool_name: str) -> ToolProviderType | None:
-    if cli_context.tool_access and cli_context.tool_access.allowed_tools:
-        for tool_id, tool_desc in cli_context.tool_access.allowed_tools.items():
-            if tool_desc.provider == tool_provider and tool_desc.tool_name == tool_name:
-                return tool_desc.tool_type
-    return None

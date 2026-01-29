@@ -15,7 +15,7 @@ api = ExternalApi(
 # Create namespace
 cli_api_ns = Namespace("cli_api", description="CLI API operations", path="/")
 
-from .plugin import plugin as _plugin
+from .dify_cli import cli_api as _plugin
 
 api.add_namespace(cli_api_ns)
 

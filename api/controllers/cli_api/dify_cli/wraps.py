@@ -114,6 +114,7 @@ def get_cli_user_tenant(view_func: Callable[P, R]):
 
 def plugin_data(view: Callable[P, R] | None = None, *, payload_type: type[BaseModel]):
     def decorator(view_func: Callable[P, R]):
+        @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs):
             try:
                 data = request.get_json()
