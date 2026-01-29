@@ -509,30 +509,11 @@ class DocumentListApi(DatasetApiResource):
         )
         documents = paginated_documents.items
 
-        # Check if dataset has summary index enabled
-        has_summary_index = dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True
-
-        # Filter documents that need summary calculation
-        documents_need_summary = [doc for doc in documents if doc.need_summary is True]
-        document_ids_need_summary = [str(doc.id) for doc in documents_need_summary]
-
-        # Calculate summary_index_status for documents that need summary (only if dataset summary index is enabled)
-        summary_status_map: dict[str, str | None] = {}
-        if has_summary_index and document_ids_need_summary:
-            summary_status_map = SummaryIndexService.get_documents_summary_index_status(
-                document_ids=document_ids_need_summary,
-                dataset_id=dataset_id,
-                tenant_id=tenant_id,
-            )
-
-        # Add summary_index_status to each document
-        for document in documents:
-            if has_summary_index and document.need_summary is True:
-                # Get status from map, default to None (not queued yet)
-                document.summary_index_status = summary_status_map.get(str(document.id))  # type: ignore[assignment]
-            else:
-                # Return null if summary index is not enabled or document doesn't need summary
-                document.summary_index_status = None  # type: ignore[assignment]
+        DocumentService.enrich_documents_with_summary_index_status(
+            documents=documents,
+            dataset=dataset,
+            tenant_id=tenant_id,
+        )
 
         response = {
             "data": marshal(documents, document_fields),

@@ -24,7 +24,13 @@ from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file
 from extensions.ext_database import db
-from models.dataset import ChildChunk, Dataset, DocumentSegment, SegmentAttachmentBinding
+from models.dataset import (
+    ChildChunk,
+    Dataset,
+    DocumentSegment,
+    DocumentSegmentSummary,
+    SegmentAttachmentBinding,
+)
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
 from services.external_knowledge_service import ExternalDatasetService
@@ -524,8 +530,6 @@ class RetrievalService:
 
                 # Batch query summaries for segments retrieved via summary (only enabled summaries)
                 if summary_segment_ids:
-                    from models.dataset import DocumentSegmentSummary
-
                     summaries = (
                         session.query(DocumentSegmentSummary)
                         .filter(

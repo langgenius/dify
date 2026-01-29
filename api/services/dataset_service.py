@@ -1397,6 +1397,50 @@ class DocumentService:
         return file_helpers.get_signed_file_url(upload_file_id=upload_file.id, as_attachment=True)
 
     @staticmethod
+    def enrich_documents_with_summary_index_status(
+        documents: Sequence[Document],
+        dataset: Dataset,
+        tenant_id: str,
+    ) -> None:
+        """
+        Enrich documents with summary_index_status based on dataset summary index settings.
+
+        This method calculates and sets the summary_index_status for each document that needs summary.
+        Documents that don't need summary or when summary index is disabled will have status set to None.
+
+        Args:
+            documents: List of Document instances to enrich
+            dataset: Dataset instance containing summary_index_setting
+            tenant_id: Tenant ID for summary status lookup
+        """
+        # Check if dataset has summary index enabled
+        has_summary_index = dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True
+
+        # Filter documents that need summary calculation
+        documents_need_summary = [doc for doc in documents if doc.need_summary is True]
+        document_ids_need_summary = [str(doc.id) for doc in documents_need_summary]
+
+        # Calculate summary_index_status for documents that need summary (only if dataset summary index is enabled)
+        summary_status_map: dict[str, str | None] = {}
+        if has_summary_index and document_ids_need_summary:
+            from services.summary_index_service import SummaryIndexService
+
+            summary_status_map = SummaryIndexService.get_documents_summary_index_status(
+                document_ids=document_ids_need_summary,
+                dataset_id=dataset.id,
+                tenant_id=tenant_id,
+            )
+
+        # Add summary_index_status to each document
+        for document in documents:
+            if has_summary_index and document.need_summary is True:
+                # Get status from map, default to None (not queued yet)
+                document.summary_index_status = summary_status_map.get(str(document.id))  # type: ignore[assignment]
+            else:
+                # Return null if summary index is not enabled or document doesn't need summary
+                document.summary_index_status = None  # type: ignore[assignment]
+
+    @staticmethod
     def prepare_document_batch_download_zip(
         *,
         dataset_id: str,
