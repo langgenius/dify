@@ -1,3 +1,5 @@
+import type { IconifyJSON } from '@iconify/types'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
@@ -13,10 +15,10 @@ const _dirname = typeof __dirname !== 'undefined'
   : path.dirname(fileURLToPath(import.meta.url))
 
 // https://iconify.design/docs/articles/cleaning-up-icons/
-function getCollections(dir: string) {
+function getIconSetFromDir(dir: string, prefix: string) {
   // Import icons
   const iconSet = importDirectorySync(dir, {
-    includeSubDirs: true,
+    prefix,
     ignoreImportErrors: 'warn',
   })
 
@@ -86,6 +88,22 @@ function getCollections(dir: string) {
 
   // Export
   return iconSet.export()
+}
+
+function getCollectionsFromSubDirs(baseDir: string, prefixBase: string): Record<string, IconifyJSON> {
+  const collections: Record<string, IconifyJSON> = {}
+
+  // Read all subdirectories
+  const entries = fs.readdirSync(baseDir, { withFileTypes: true })
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      const subDirPath = path.join(baseDir, entry.name)
+      const prefix = `${prefixBase}-${entry.name}`
+      collections[prefix] = getIconSetFromDir(subDirPath, prefix)
+    }
+  }
+
+  return collections
 }
 
 const config = {
@@ -235,8 +253,8 @@ const config = {
     tailwindTypography,
     iconsPlugin({
       collections: {
-        'custom-public': getCollections(path.resolve(_dirname, 'app/components/base/icons/assets/public')),
-        'custom-vender': getCollections(path.resolve(_dirname, 'app/components/base/icons/assets/vender')),
+        ...getCollectionsFromSubDirs(path.resolve(_dirname, 'app/components/base/icons/assets/public'), 'custom-public'),
+        ...getCollectionsFromSubDirs(path.resolve(_dirname, 'app/components/base/icons/assets/vender'), 'custom-vender'),
         ...getIconCollections(['heroicons', 'ri']),
       },
       extraProperties: {

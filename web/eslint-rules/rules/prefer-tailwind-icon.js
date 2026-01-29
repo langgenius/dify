@@ -13,6 +13,36 @@ const DEFAULT_PROP_MAPPINGS = {
  */
 const DEFAULT_ICON_CONFIGS = [
   {
+    // @/app/components/base/icons/src/public/*
+    pattern: '@/app/components/base/icons/src/public',
+    prefix: 'i-custom-public-',
+    iconFilter: () => true,
+    transformName: (iconName) => {
+      // iconify flattens the directory structure, so subdirectory is not part of the icon name
+      // Robot -> robot
+      return iconName
+        .replace(/([a-z])(\d)/g, '$1-$2')
+        .replace(/(\d)([a-z])/gi, '$1-$2')
+        .replace(/([a-z])([A-Z])/g, '$1-$2')
+        .toLowerCase()
+    },
+  },
+  {
+    // @/app/components/base/icons/src/vender/*
+    pattern: '@/app/components/base/icons/src/vender',
+    prefix: 'i-custom-vender-',
+    iconFilter: () => true,
+    transformName: (iconName) => {
+      // iconify flattens the directory structure, so subdirectory is not part of the icon name
+      // CheckCircle -> check-circle
+      return iconName
+        .replace(/([a-z])(\d)/g, '$1-$2')
+        .replace(/(\d)([a-z])/gi, '$1-$2')
+        .replace(/([a-z])([A-Z])/g, '$1-$2')
+        .toLowerCase()
+    },
+  },
+  {
     // @remixicon/react
     pattern: '@remixicon/react',
     prefix: 'i-ri-',
@@ -105,10 +135,11 @@ function pixelToClass(pixels, classPrefix) {
  * Get icon class from config
  * @param {string} iconName
  * @param {object} config
+ * @param {string} [source] - The import source path
  * @returns {string}
  */
-function getIconClass(iconName, config) {
-  const transformed = config.transformName(iconName)
+function getIconClass(iconName, config, source) {
+  const transformed = config.transformName(iconName, source)
   return `${config.prefix}${transformed}${config.suffix || ''}`
 }
 
@@ -203,7 +234,7 @@ export default {
 
         iconInfo.used = true
 
-        const iconClass = getIconClass(iconInfo.importedName, iconInfo.config)
+        const iconClass = getIconClass(iconInfo.importedName, iconInfo.config, iconInfo.source)
 
         // Find className attribute
         const classNameAttr = node.attributes.find(
@@ -331,7 +362,7 @@ export default {
               continue
             }
 
-            const iconClass = getIconClass(iconInfo.importedName, iconInfo.config)
+            const iconClass = getIconClass(iconInfo.importedName, iconInfo.config, iconInfo.source)
             context.report({
               node: iconInfo.node,
               messageId: 'preferTailwindIconImport',
