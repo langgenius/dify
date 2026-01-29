@@ -200,7 +200,7 @@ class ModelProviderFactory:
         if schema:
             redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_SCHEMA_CACHE_TTL, schema.model_dump_json())
 
-            return schema
+        return schema
 
     def get_models(
         self,
