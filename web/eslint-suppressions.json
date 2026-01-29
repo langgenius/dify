@@ -1669,14 +1669,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/components/list.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 4
