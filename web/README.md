@@ -115,6 +115,12 @@ We use [Vitest](https://vitest.dev/) and [React Testing Library](https://testing
 
 **📖 Complete Testing Guide**: See [web/testing/testing.md](./testing/testing.md) for detailed testing specifications, best practices, and examples.
 
+Run test:
+
+```bash
+pnpm test
+```
+
 ### Example Code
 
 If you are not familiar with writing tests, refer to:
