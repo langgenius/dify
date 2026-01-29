@@ -90,7 +90,7 @@ class GraphEngine:
         self._graph_execution.workflow_id = workflow_id
 
         # === Execution Queues ===
-        self._ready_queue = cast(ReadyQueue, self._graph_runtime_state.ready_queue)
+        self._ready_queue = self._graph_runtime_state.ready_queue
 
         # Queue for events generated during execution
         self._event_queue: queue.Queue[GraphNodeEventBase] = queue.Queue()

@@ -4,7 +4,7 @@ Proxy requests to avoid SSRF
 
 import logging
 import time
-from typing import Any, TypeAlias, cast
+from typing import Any, TypeAlias
 
 import httpx
 from pydantic import TypeAdapter, ValidationError
