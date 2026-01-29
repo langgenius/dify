@@ -147,10 +147,7 @@ class AIModel(BaseModel):
         from core.plugin.impl.model import PluginModelClient
 
         plugin_model_manager = PluginModelClient()
-        cache_key = (
-                    f"plugin_model_schema:{self.tenant_id}:{self.plugin_id}:"
-                    f"{self.provider_name}:{self.model_type.value}:{model}"
-                )        # sort credentials
+        cache_key = f"{self.tenant_id}:{self.plugin_id}:{self.provider_name}:{self.model_type.value}:{model}"       # sort credentials
         sorted_credentials = sorted(credentials.items()) if credentials else []
         cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
 
