@@ -236,27 +236,6 @@ def _extract_structured_output(llm_result: LLMResult) -> Mapping[str, Any]:
     return _parse_structured_output(content)
 
 
-def _extract_structured_output_from_stream(
-    result_text: str,
-    tool_call_args: dict[str, str],
-) -> Mapping[str, Any]:
-    """
-    Extract structured output from streaming collected data.
-    First tries to parse from collected tool call arguments, then falls back to text content.
-    """
-    # Try to parse from tool call arguments first
-    if tool_call_args:
-        # Use the first non-empty tool call arguments
-        for arguments in tool_call_args.values():
-            if arguments.strip():
-                return _parse_tool_call_arguments(arguments)
-
-    # Fallback to text content parsing
-    if not result_text:
-        raise OutputParserError("No tool call arguments and no text content to parse")
-    return _parse_structured_output(result_text)
-
-
 def _parse_tool_call_arguments(arguments: str) -> Mapping[str, Any]:
     """Parse JSON from tool call arguments."""
     if not arguments:
