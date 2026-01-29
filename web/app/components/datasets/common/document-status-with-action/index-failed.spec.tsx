@@ -1,6 +1,6 @@
 import type { ErrorDocsResponse } from '@/models/datasets'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { retryErrorDocs } from '@/service/datasets'
 import { useDatasetErrorDocs } from '@/service/knowledge/use-dataset'
 import RetryButton from './index-failed'
@@ -18,6 +18,11 @@ vi.mock('@/service/datasets', () => ({
 
 const mockUseDatasetErrorDocs = vi.mocked(useDatasetErrorDocs)
 const mockRetryErrorDocs = vi.mocked(retryErrorDocs)
+
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
 
 // Helper to create mock query result
 const createMockQueryResult = (
@@ -139,6 +144,11 @@ describe('RetryButton (IndexFailed)', () => {
           document_ids: ['doc1', 'doc2'],
         })
       })
+
+      // Wait for all state updates to complete
+      await waitFor(() => {
+        expect(mockRefetch).toHaveBeenCalled()
+      })
     })
 
     it('should refetch error docs after successful retry', async () => {
@@ -202,8 +212,13 @@ describe('RetryButton (IndexFailed)', () => {
       const retryButton = screen.getByText(/retry/i)
       fireEvent.click(retryButton)
 
+      // Wait for retry to complete and state to update
       await waitFor(() => {
-        // Button should still be visible after failed retry
+        expect(mockRetryErrorDocs).toHaveBeenCalled()
+      })
+
+      // Button should still be visible after failed retry
+      await waitFor(() => {
         expect(screen.getByText(/retry/i)).toBeInTheDocument()
       })
     })
@@ -274,6 +289,11 @@ describe('RetryButton (IndexFailed)', () => {
           datasetId: 'test-dataset',
           document_ids: [],
         })
+      })
+
+      // Wait for all state updates to complete
+      await waitFor(() => {
+        expect(mockRefetch).toHaveBeenCalled()
       })
     })
   })

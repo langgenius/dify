@@ -2586,11 +2586,6 @@
       "count": 2
     }
   },
-  "app/components/share/text-generation/run-once/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "app/components/share/text-generation/run-once/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
