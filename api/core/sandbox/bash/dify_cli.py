@@ -5,12 +5,10 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.session.cli_api import CliApiSession
 from core.skill.entities import ToolDependencies, ToolReference
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
-from core.tools.tool_manager import ToolManager
 from core.virtual_environment.__base.entities import Arch, OperatingSystem
 
 from ..entities import DifyCli
@@ -138,20 +136,6 @@ class DifyCliConfig(BaseModel):
 
         cli_api_url = dify_config.CLI_API_URL
 
-        tools: list[DifyCliToolConfig] = []
-        for dependency in tool_deps.dependencies:
-            tool = DifyCliToolConfig.create_from_tool(
-                ToolManager.get_tool_runtime(
-                    tenant_id=tenant_id,
-                    provider_type=dependency.type,
-                    provider_id=dependency.provider,
-                    tool_name=dependency.tool_name,
-                    invoke_from=InvokeFrom.AGENT,
-                )
-            )
-            tool.enabled = dependency.enabled
-            tools.append(tool)
-
         return cls(
             env=DifyCliEnvConfig(
                 files_url=dify_config.FILES_URL,
@@ -160,7 +144,7 @@ class DifyCliConfig(BaseModel):
                 cli_api_secret=session.secret,
             ),
             tool_references=[DifyCliToolReference.create_from_tool_reference(ref) for ref in tool_deps.references],
-            tools=tools,
+            tools=[],
         )
 
 

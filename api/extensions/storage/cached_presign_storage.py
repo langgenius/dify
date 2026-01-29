@@ -17,8 +17,7 @@ class CachedPresignStorage(StorageWrapper):
 
     Example:
         cached_storage = CachedPresignStorage(
-            storage=FilePresignStorage(SilentStorage(base_storage)),
-            redis_client=redis_client,
+            storage=FilePresignStorage(base_storage),
             cache_key_prefix="app_asset:draft_download",
         )
         url = cached_storage.get_download_url("path/to/file.txt", expires_in=3600)

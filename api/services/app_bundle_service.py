@@ -36,10 +36,11 @@ from core.app.entities.app_bundle_entities import (
     BundleFormatError,
     BundleManifest,
 )
-from core.app_assets.storage import AppAssetStorage, AssetPath, BundleImportZipPath
+from core.app_assets.storage import AssetPaths
 from core.zip_sandbox import SandboxDownloadItem, SandboxUploadItem, ZipSandbox
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from extensions.storage.cached_presign_storage import CachedPresignStorage
 from models.account import Account
 from models.model import App
 
@@ -108,9 +109,9 @@ class AppBundleService:
         manifest = BundleManifest.from_tree(app_assets.asset_tree, dsl_filename)
 
         export_id = uuid4().hex
-        export_path = AssetPath.bundle_export_zip(tenant_id, app_id, export_id)
+        export_key = AssetPaths.bundle_export(tenant_id, app_id, export_id)
         asset_storage = AppAssetService.get_storage()
-        upload_url = asset_storage.get_upload_url(export_path, expires_in)
+        upload_url = asset_storage.get_upload_url(export_key, expires_in)
 
         dsl_content = AppDslService.export_dsl(
             app_model=app_model,
@@ -123,15 +124,15 @@ class AppBundleService:
             zs.write_file(f"bundle_root/{MANIFEST_FILENAME}", manifest.model_dump_json(indent=2).encode("utf-8"))
 
             if workflow_id is not None:
-                source_zip_path = AssetPath.source_zip(tenant_id, app_id, workflow_id)
-                source_url = asset_storage.get_download_url(source_zip_path, expires_in)
+                source_key = AssetPaths.source_zip(tenant_id, app_id, workflow_id)
+                source_url = asset_storage.get_download_url(source_key, expires_in)
                 zs.download_archive(source_url, path="tmp/source_assets.zip")
                 zs.unzip(archive_path="tmp/source_assets.zip", dest_dir=f"bundle_root/{safe_name}")
             else:
                 asset_items = AppAssetService.get_draft_assets(tenant_id, app_id)
                 if asset_items:
                     asset_urls = asset_storage.get_download_urls(
-                        [AssetPath.draft(tenant_id, app_id, a.asset_id) for a in asset_items], expires_in
+                        [AssetPaths.draft(tenant_id, app_id, a.asset_id) for a in asset_items], expires_in
                     )
                     zs.download_items(
                         [
@@ -144,7 +145,7 @@ class AppBundleService:
             archive = zs.zip(src="bundle_root", include_base=False)
             zs.upload(archive, upload_url)
 
-        download_url = asset_storage.get_download_url(export_path, expires_in)
+        download_url = asset_storage.get_download_url(export_key, expires_in)
         return BundleExportResult(download_url=download_url, filename=f"{safe_name}.zip")
 
     # ========== Import ==========
@@ -153,9 +154,9 @@ class AppBundleService:
     def prepare_import(tenant_id: str, account_id: str) -> ImportPrepareResult:
         """Prepare import: generate import_id and upload URL."""
         import_id = uuid4().hex
-        import_path = AssetPath.bundle_import_zip(tenant_id, import_id)
+        import_key = AssetPaths.bundle_import(tenant_id, import_id)
         asset_storage = AppAssetService.get_storage()
-        upload_url = asset_storage.get_import_upload_url(import_path, _IMPORT_TTL_SECONDS)
+        upload_url = asset_storage.get_upload_url(import_key, _IMPORT_TTL_SECONDS)
 
         redis_client.setex(
             f"{_IMPORT_REDIS_PREFIX}{import_id}",
@@ -188,14 +189,14 @@ class AppBundleService:
         if tenant_id != account.current_tenant_id:
             raise BundleFormatError("Import session tenant mismatch")
 
-        import_path = AssetPath.bundle_import_zip(tenant_id, import_id)
+        import_key = AssetPaths.bundle_import(tenant_id, import_id)
         asset_storage = AppAssetService.get_storage()
 
         try:
             result = AppBundleService.import_bundle(
                 tenant_id=tenant_id,
                 account=account,
-                import_path=import_path,
+                import_key=import_key,
                 asset_storage=asset_storage,
                 name=name,
                 description=description,
@@ -205,7 +206,10 @@ class AppBundleService:
             )
         finally:
             redis_client.delete(redis_key)
-            asset_storage.delete_import_zip(import_path)
+            try:
+                asset_storage.delete(import_key)
+            except Exception:  # noqa: S110
+                pass
 
         return result
 
@@ -214,8 +218,8 @@ class AppBundleService:
         *,
         tenant_id: str,
         account: Account,
-        import_path: BundleImportZipPath,
-        asset_storage: AppAssetStorage,
+        import_key: str,
+        asset_storage: CachedPresignStorage,
         name: str | None,
         description: str | None,
         icon_type: str | None,
@@ -223,7 +227,7 @@ class AppBundleService:
         icon_background: str | None,
     ) -> Import:
         """Execute import in sandbox."""
-        download_url = asset_storage.get_import_download_url(import_path, _IMPORT_TTL_SECONDS)
+        download_url = asset_storage.get_download_url(import_key, _IMPORT_TTL_SECONDS)
 
         with ZipSandbox(tenant_id=tenant_id, user_id=account.id, app_id="app-bundle-import") as zs:
             zs.download_archive(download_url, path="import.zip")
@@ -260,8 +264,8 @@ class AppBundleService:
 
             upload_items: list[SandboxUploadItem] = []
             for file_entry in manifest.files:
-                asset_path = AssetPath.draft(tenant_id, app_id, file_entry.node_id)
-                file_upload_url = asset_storage.get_upload_url(asset_path, _IMPORT_TTL_SECONDS)
+                key = AssetPaths.draft(tenant_id, app_id, file_entry.node_id)
+                file_upload_url = asset_storage.get_upload_url(key, _IMPORT_TTL_SECONDS)
                 src_path = f"{manifest.assets_prefix}/{file_entry.path}"
                 upload_items.append(SandboxUploadItem(path=src_path, url=file_upload_url))
 

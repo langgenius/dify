@@ -1,7 +1,7 @@
 import logging
 
 from core.app_assets.constants import AppAssetsAttrs
-from core.app_assets.storage import AssetPath
+from core.app_assets.storage import AssetPaths
 from core.sandbox.entities import AppAssets
 from core.sandbox.sandbox import Sandbox
 from core.sandbox.services import AssetDownloadService
@@ -13,8 +13,7 @@ from .base import AsyncSandboxInitializer
 
 logger = logging.getLogger(__name__)
 
-DRAFT_ASSETS_DOWNLOAD_TIMEOUT = 60 * 10
-DRAFT_ASSETS_EXPIRES_IN = 60 * 10
+_TIMEOUT = 600  # 10 minutes
 
 
 class DraftAppAssetsInitializer(AsyncSandboxInitializer):
@@ -24,7 +23,6 @@ class DraftAppAssetsInitializer(AsyncSandboxInitializer):
         self._assets_id = assets_id
 
     def initialize(self, sandbox: Sandbox) -> None:
-        # Load published app assets and unzip the artifact bundle.
         vm = sandbox.vm
         build_id = self._assets_id
         tree = sandbox.attrs.get(AppAssetsAttrs.FILE_TREE)
@@ -33,19 +31,19 @@ class DraftAppAssetsInitializer(AsyncSandboxInitializer):
         if not nodes:
             return
         # FIXME(Mairuis): should be more graceful
-        refs = [
-            AssetPath.resolved(self._tenant_id, self._app_id, build_id, node.id)
+        keys = [
+            AssetPaths.resolved(self._tenant_id, self._app_id, build_id, node.id)
             if node.extension == "md"
-            else AssetPath.draft(self._tenant_id, self._app_id, node.id)
+            else AssetPaths.draft(self._tenant_id, self._app_id, node.id)
             for node in nodes
         ]
-        urls = asset_storage.get_download_urls(refs, DRAFT_ASSETS_EXPIRES_IN)
+        urls = asset_storage.get_download_urls(keys, _TIMEOUT)
         items = [AssetDownloadItem(path=tree.get_path(node.id).lstrip("/"), url=url) for node, url in zip(nodes, urls)]
         script = AssetDownloadService.build_download_script(items, AppAssets.PATH)
         pipeline(vm).add(
             ["sh", "-c", script],
             error_message="Failed to download draft assets",
-        ).execute(timeout=DRAFT_ASSETS_DOWNLOAD_TIMEOUT, raise_on_error=True)
+        ).execute(timeout=_TIMEOUT, raise_on_error=True)
 
         logger.info(
             "Draft app assets initialized for app_id=%s, assets_id=%s",

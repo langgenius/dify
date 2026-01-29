@@ -1,6 +1,6 @@
 from core.app.entities.app_asset_entities import AppAssetFileTree, AppAssetNode
-from core.app_assets.entities import AssetItem, FileAsset
-from core.app_assets.storage import AssetPath
+from core.app_assets.entities import AssetItem
+from core.app_assets.storage import AssetPaths
 
 from .base import BuildContext
 
@@ -19,12 +19,12 @@ class FileBuilder:
 
     def build(self, tree: AppAssetFileTree, ctx: BuildContext) -> list[AssetItem]:
         return [
-            FileAsset(
+            AssetItem(
                 asset_id=node.id,
                 path=path,
                 file_name=node.name,
                 extension=node.extension or "",
-                storage_key=AssetPath.draft(ctx.tenant_id, ctx.app_id, node.id).get_storage_key(),
+                storage_key=AssetPaths.draft(ctx.tenant_id, ctx.app_id, node.id),
             )
             for node, path in self._nodes
         ]

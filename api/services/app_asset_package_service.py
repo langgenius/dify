@@ -17,8 +17,8 @@ from core.app.entities.app_asset_entities import AppAssetFileTree
 from core.app_assets.builder import AssetBuildPipeline, BuildContext
 from core.app_assets.builder.file_builder import FileBuilder
 from core.app_assets.builder.skill_builder import SkillBuilder
-from core.app_assets.entities.assets import AssetItem, FileAsset
-from core.app_assets.storage import AssetPath
+from core.app_assets.entities.assets import AssetItem
+from core.app_assets.storage import AssetPaths
 from core.zip_sandbox import SandboxDownloadItem, ZipSandbox
 from models.app_asset import AppAssets
 from models.model import App
@@ -62,12 +62,12 @@ class AppAssetPackageService:
         """Convert file tree to asset items for packaging."""
         files = file_tree.walk_files()
         return [
-            FileAsset(
+            AssetItem(
                 asset_id=f.id,
                 path=file_tree.get_path(f.id),
                 file_name=f.name,
                 extension=f.extension,
-                storage_key=AssetPath.draft(tenant_id, app_id, f.id).get_storage_key(),
+                storage_key=AssetPaths.draft(tenant_id, app_id, f.id),
             )
             for f in files
         ]
@@ -98,8 +98,8 @@ class AppAssetPackageService:
             return
 
         asset_storage = AppAssetService.get_storage()
-        asset_paths = [AssetPath.draft(tenant_id, app_id, asset.asset_id) for asset in assets]
-        download_urls = asset_storage.get_download_urls(asset_paths)
+        keys = [AssetPaths.draft(tenant_id, app_id, asset.asset_id) for asset in assets]
+        download_urls = asset_storage.get_download_urls(keys)
         download_items = [
             SandboxDownloadItem(url=url, path=asset.path) for asset, url in zip(assets, download_urls, strict=True)
         ]
@@ -139,8 +139,8 @@ class AppAssetPackageService:
         ctx = BuildContext(tenant_id=tenant_id, app_id=app_id, build_id=publish_id)
         built_assets = AssetBuildPipeline([SkillBuilder(storage=asset_storage), FileBuilder()]).build_all(tree, ctx)
 
-        runtime_zip_path = AssetPath.build_zip(tenant_id, app_id, publish_id)
-        runtime_upload_url = asset_storage.get_upload_url(runtime_zip_path)
+        runtime_zip_key = AssetPaths.build_zip(tenant_id, app_id, publish_id)
+        runtime_upload_url = asset_storage.get_upload_url(runtime_zip_key)
         AppAssetPackageService.package_and_upload(
             assets=built_assets,
             upload_url=runtime_upload_url,
@@ -150,8 +150,8 @@ class AppAssetPackageService:
         )
 
         source_items = AppAssetService.get_draft_assets(tenant_id, app_id)
-        source_zip_path = AssetPath.source_zip(tenant_id, app_id, workflow_id)
-        source_upload_url = asset_storage.get_upload_url(source_zip_path)
+        source_key = AssetPaths.source_zip(tenant_id, app_id, workflow_id)
+        source_upload_url = asset_storage.get_upload_url(source_key)
         AppAssetPackageService.package_and_upload(
             assets=source_items,
             upload_url=source_upload_url,
@@ -176,8 +176,8 @@ class AppAssetPackageService:
         ).build_all(tree, ctx)
 
         user_id = getattr(assets, "updated_by", None) or getattr(assets, "created_by", None) or "system"
-        zip_path = AssetPath.build_zip(tenant_id, app_id, assets.id)
-        upload_url = asset_storage.get_upload_url(zip_path)
+        key = AssetPaths.build_zip(tenant_id, app_id, assets.id)
+        upload_url = asset_storage.get_upload_url(key)
         AppAssetPackageService.package_and_upload(
             assets=built_assets,
             upload_url=upload_url,

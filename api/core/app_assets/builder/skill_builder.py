@@ -4,11 +4,12 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 from core.app.entities.app_asset_entities import AppAssetFileTree, AppAssetNode
-from core.app_assets.entities import AssetItem, FileAsset
-from core.app_assets.storage import AppAssetStorage, AssetPath, AssetPathBase
+from core.app_assets.entities import AssetItem
+from core.app_assets.storage import AssetPaths
 from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
 from core.skill.skill_compiler import SkillCompiler
+from extensions.storage.cached_presign_storage import CachedPresignStorage
 
 from .base import BuildContext
 
@@ -25,7 +26,6 @@ class _LoadedSkill:
 class _CompiledSkill:
     node: AppAssetNode
     path: str
-    ref: AssetPathBase
     storage_key: str
     content_bytes: bytes
 
@@ -34,9 +34,9 @@ class _CompiledSkill:
 class SkillBuilder:
     _nodes: list[tuple[AppAssetNode, str]]
     _max_workers: int
-    _storage: AppAssetStorage
+    _storage: CachedPresignStorage
 
-    def __init__(self, storage: AppAssetStorage, max_workers: int = 8) -> None:
+    def __init__(self, storage: CachedPresignStorage, max_workers: int = 8) -> None:
         self._nodes = []
         self._max_workers = max_workers
         self._storage = storage
@@ -70,13 +70,11 @@ class SkillBuilder:
             artifact = artifact_set.get(skill.node.id)
             if artifact is None:
                 continue
-            resolved_ref = AssetPath.resolved(ctx.tenant_id, ctx.app_id, ctx.build_id, skill.node.id)
             to_upload.append(
                 _CompiledSkill(
                     node=skill.node,
                     path=skill.path,
-                    ref=resolved_ref,
-                    storage_key=resolved_ref.get_storage_key(),
+                    storage_key=AssetPaths.resolved(ctx.tenant_id, ctx.app_id, ctx.build_id, skill.node.id),
                     content_bytes=artifact.content.encode("utf-8"),
                 )
             )
@@ -84,9 +82,9 @@ class SkillBuilder:
         # 5. Upload all compiled skills (parallel IO)
         self._upload_all(to_upload)
 
-        # 6. Return FileAssets
+        # 6. Return AssetItems
         return [
-            FileAsset(
+            AssetItem(
                 asset_id=s.node.id,
                 path=s.path,
                 file_name=s.node.name,
@@ -99,8 +97,8 @@ class SkillBuilder:
     def _load_all(self, ctx: BuildContext) -> list[_LoadedSkill]:
         def load_one(node: AppAssetNode, path: str) -> _LoadedSkill:
             try:
-                draft_ref = AssetPath.draft(ctx.tenant_id, ctx.app_id, node.id)
-                data = json.loads(self._storage.load(draft_ref))
+                key = AssetPaths.draft(ctx.tenant_id, ctx.app_id, node.id)
+                data = json.loads(self._storage.load_once(key))
                 content = ""
                 metadata: dict[str, Any] = {}
                 if isinstance(data, dict):
@@ -121,7 +119,7 @@ class SkillBuilder:
 
     def _upload_all(self, skills: list[_CompiledSkill]) -> None:
         def upload_one(skill: _CompiledSkill) -> None:
-            self._storage.save(skill.ref, skill.content_bytes)
+            self._storage.save(skill.storage_key, skill.content_bytes)
 
         with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
             futures = [executor.submit(upload_one, skill) for skill in skills]

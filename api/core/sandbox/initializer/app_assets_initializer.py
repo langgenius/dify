@@ -1,6 +1,6 @@
 import logging
 
-from core.app_assets.storage import AssetPath
+from core.app_assets.storage import AssetPaths
 from core.sandbox.sandbox import Sandbox
 from core.virtual_environment.__base.helpers import pipeline
 
@@ -24,8 +24,8 @@ class AppAssetsInitializer(AsyncSandboxInitializer):
         # Load published app assets and unzip the artifact bundle.
         vm = sandbox.vm
         asset_storage = AppAssetService.get_storage()
-        zip_ref = AssetPath.build_zip(self._tenant_id, self._app_id, self._assets_id)
-        download_url = asset_storage.get_download_url(zip_ref)
+        key = AssetPaths.build_zip(self._tenant_id, self._app_id, self._assets_id)
+        download_url = asset_storage.get_download_url(key)
 
         (
             pipeline(vm)

@@ -1,13 +1,13 @@
 from .constants import AppAssetsAttrs
 from .entities import (
     AssetItem,
-    FileAsset,
     SkillAsset,
 )
+from .storage import AssetPaths
 
 __all__ = [
     "AppAssetsAttrs",
     "AssetItem",
-    "FileAsset",
+    "AssetPaths",
     "SkillAsset",
 ]

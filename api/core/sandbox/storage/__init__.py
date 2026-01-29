@@ -1,14 +1,11 @@
-from .archive_storage import ArchiveSandboxStorage, SandboxArchivePath
+from .archive_storage import ArchiveSandboxStorage
 from .noop_storage import NoopSandboxStorage
-from .sandbox_file_storage import SandboxFilePath, SandboxFileStorage, sandbox_file_storage
+from .sandbox_file_storage import SandboxFilePaths
 from .sandbox_storage import SandboxStorage
 
 __all__ = [
     "ArchiveSandboxStorage",
     "NoopSandboxStorage",
-    "SandboxArchivePath",
-    "SandboxFilePath",
-    "SandboxFileStorage",
+    "SandboxFilePaths",
     "SandboxStorage",
-    "sandbox_file_storage",
 ]

@@ -3,17 +3,14 @@ from __future__ import annotations
 import json
 import os
 from typing import TYPE_CHECKING
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from core.sandbox.entities.files import SandboxFileDownloadTicket, SandboxFileNode
 from core.sandbox.inspector.base import SandboxFileSource
-from core.sandbox.storage import sandbox_file_storage
-from core.sandbox.storage.archive_storage import SandboxArchivePath
-from core.sandbox.storage.sandbox_file_storage import SandboxFilePath
+from core.sandbox.storage import SandboxFilePaths
 from core.virtual_environment.__base.exec import CommandExecutionError
 from core.virtual_environment.__base.helpers import execute
 from extensions.ext_storage import storage
-from extensions.storage.silent_storage import SilentStorage
 
 if TYPE_CHECKING:
     from core.zip_sandbox import ZipSandbox
@@ -71,11 +68,10 @@ print(json.dumps(entries))
         """Get a pre-signed download URL for the sandbox archive."""
         from extensions.storage.file_presign_storage import FilePresignStorage
 
-        archive_path = SandboxArchivePath(tenant_id=UUID(self._tenant_id), sandbox_id=UUID(self._sandbox_id))
-        storage_key = archive_path.get_storage_key()
+        storage_key = f"sandbox_archives/{self._tenant_id}/{self._sandbox_id}.tar.gz"
         if not storage.exists(storage_key):
             raise ValueError("Sandbox archive not found")
-        presign_storage = FilePresignStorage(SilentStorage(storage.storage_runner))
+        presign_storage = FilePresignStorage(storage.storage_runner)
         return presign_storage.get_download_url(storage_key, self._EXPORT_EXPIRES_IN_SECONDS)
 
     def _create_zip_sandbox(self) -> ZipSandbox:
@@ -188,29 +184,33 @@ raise SystemExit(2)
             if kind not in ("dir", "file"):
                 raise ValueError("File not found in sandbox archive")
 
+            from services.sandbox.sandbox_file_service import SandboxFileService
+
+            sandbox_storage = SandboxFileService.get_storage()
+
             if kind == "file":
                 # Download file content from sandbox
                 file_data = zs.read_file(target_path)
-                export_path = SandboxFilePath(
-                    tenant_id=UUID(self._tenant_id),
-                    sandbox_id=UUID(self._sandbox_id),
-                    export_id=export_id,
-                    filename=os.path.basename(path) or "file",
+                export_key = SandboxFilePaths.export(
+                    self._tenant_id,
+                    self._sandbox_id,
+                    export_id,
+                    os.path.basename(path) or "file",
                 )
-                sandbox_file_storage.save(export_path, file_data)
+                sandbox_storage.save(export_key, file_data)
             else:
                 # Create tar.gz archive of the directory
                 tar_file = zs.tar(target_path, include_base=True, compress=True)
                 tar_data = zs.read_file(tar_file.path)
-                export_path = SandboxFilePath(
-                    tenant_id=UUID(self._tenant_id),
-                    sandbox_id=UUID(self._sandbox_id),
-                    export_id=export_id,
-                    filename=f"{export_name}.tar.gz",
+                export_key = SandboxFilePaths.export(
+                    self._tenant_id,
+                    self._sandbox_id,
+                    export_id,
+                    f"{export_name}.tar.gz",
                 )
-                sandbox_file_storage.save(export_path, tar_data)
+                sandbox_storage.save(export_key, tar_data)
 
-        download_url = sandbox_file_storage.get_download_url(export_path, expires_in=self._EXPORT_EXPIRES_IN_SECONDS)
+            download_url = sandbox_storage.get_download_url(export_key, self._EXPORT_EXPIRES_IN_SECONDS)
         return SandboxFileDownloadTicket(
             download_url=download_url,
             expires_in=self._EXPORT_EXPIRES_IN_SECONDS,

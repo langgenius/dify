@@ -1,10 +1,12 @@
 from flask import abort
 from flask_restx import Resource
+from pydantic import BaseModel
 
 from controllers.cli_api import cli_api_ns
 from controllers.cli_api.plugin.wraps import get_cli_user_tenant, plugin_data
 from controllers.cli_api.wraps import cli_api_only
 from controllers.console.wraps import setup_required
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.helpers import get_signed_file_url_for_plugin
 from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocationResponse
@@ -16,12 +18,24 @@ from core.plugin.entities.request import (
     RequestInvokeTool,
     RequestRequestUploadFile,
 )
+from core.sandbox.bash.dify_cli import DifyCliToolConfig
 from core.session.cli_api import CliContext
 from core.skill.entities import ToolInvocationRequest
 from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.tool_manager import ToolManager
 from libs.helper import length_prefixed_response
-from models import Account, Tenant
-from models.model import EndUser
+from models.account import Account
+from models.model import EndUser, Tenant
+
+
+class FetchToolItem(BaseModel):
+    tool_provider: str
+    tool_name: str
+    credential_id: str | None = None
+
+
+class RequestFetchToolsBatch(BaseModel):
+    tools: list[FetchToolItem]
 
 
 @cli_api_ns.route("/invoke/llm")
@@ -106,7 +120,6 @@ class CliUploadFileRequestApi(Resource):
     @setup_required
     @plugin_data(payload_type=RequestRequestUploadFile)
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestRequestUploadFile):
-        # generate signed url
         url = get_signed_file_url_for_plugin(
             filename=payload.filename,
             mimetype=payload.mimetype,
@@ -116,42 +129,46 @@ class CliUploadFileRequestApi(Resource):
         return BaseBackwardsInvocationResponse(data={"url": url}).model_dump()
 
 
-@cli_api_ns.route("/fetch/tools/list")
-class CliFetchToolsListApi(Resource):
+@cli_api_ns.route("/fetch/tools/batch")
+class CliFetchToolsBatchApi(Resource):
     @cli_api_only
     @get_cli_user_tenant
     @setup_required
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant):
-        from sqlalchemy.orm import Session
+    @plugin_data(payload_type=RequestFetchToolsBatch)
+    def post(
+        self,
+        user_model: Account | EndUser,
+        tenant_model: Tenant,
+        payload: RequestFetchToolsBatch,
+        cli_context: CliContext,
+    ):
+        tools: list[dict] = []
 
-        from extensions.ext_database import db
-        from services.tools.api_tools_manage_service import ApiToolManageService
-        from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-        from services.tools.mcp_tools_manage_service import MCPToolManageService
-        from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+        for item in payload.tools:
+            provider_type = _resolve_provider_type(cli_context, item.tool_provider, item.tool_name)
+            if provider_type is None:
+                continue
 
-        providers = []
+            try:
+                tool_runtime = ToolManager.get_tool_runtime(
+                    tenant_id=tenant_model.id,
+                    provider_type=provider_type,
+                    provider_id=item.tool_provider,
+                    tool_name=item.tool_name,
+                    invoke_from=InvokeFrom.AGENT,
+                    credential_id=item.credential_id,
+                )
+                tool_config = DifyCliToolConfig.create_from_tool(tool_runtime)
+                tools.append(tool_config.model_dump())
+            except Exception:
+                continue
 
-        # Get builtin tools
-        builtin_providers = BuiltinToolManageService.list_builtin_tools(user_model.id, tenant_model.id)
-        for provider in builtin_providers:
-            providers.append(provider.to_dict())
+        return BaseBackwardsInvocationResponse(data={"tools": tools}).model_dump()
 
-        # Get API tools
-        api_providers = ApiToolManageService.list_api_tools(tenant_model.id)
-        for provider in api_providers:
-            providers.append(provider.to_dict())
 
-        # Get workflow tools
-        workflow_providers = WorkflowToolManageService.list_tenant_workflow_tools(user_model.id, tenant_model.id)
-        for provider in workflow_providers:
-            providers.append(provider.to_dict())
-
-        # Get MCP tools
-        with Session(db.engine) as session:
-            mcp_service = MCPToolManageService(session)
-            mcp_providers = mcp_service.list_providers(tenant_id=tenant_model.id, for_list=True)
-            for provider in mcp_providers:
-                providers.append(provider.to_dict())
-
-        return BaseBackwardsInvocationResponse(data={"providers": providers}).model_dump()
+def _resolve_provider_type(cli_context: CliContext, tool_provider: str, tool_name: str) -> ToolProviderType | None:
+    if cli_context.tool_access and cli_context.tool_access.allowed_tools:
+        for tool_id, tool_desc in cli_context.tool_access.allowed_tools.items():
+            if tool_desc.provider == tool_provider and tool_desc.tool_name == tool_name:
+                return tool_desc.tool_type
+    return None

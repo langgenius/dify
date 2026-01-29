@@ -1,8 +1,7 @@
-from .assets import AssetItem, FileAsset
+from .assets import AssetItem
 from .skill import SkillAsset
 
 __all__ = [
     "AssetItem",
-    "FileAsset",
     "SkillAsset",
 ]

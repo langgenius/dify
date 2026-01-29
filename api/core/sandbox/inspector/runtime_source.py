@@ -3,12 +3,11 @@ from __future__ import annotations
 import json
 import logging
 import os
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from core.sandbox.entities.files import SandboxFileDownloadTicket, SandboxFileNode
 from core.sandbox.inspector.base import SandboxFileSource
-from core.sandbox.storage import sandbox_file_storage
-from core.sandbox.storage.sandbox_file_storage import SandboxFilePath
+from core.sandbox.storage import SandboxFilePaths
 from core.virtual_environment.__base.exec import CommandExecutionError
 from core.virtual_environment.__base.helpers import execute
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
@@ -110,19 +109,22 @@ print(json.dumps(entries))
         return entries
 
     def download_file(self, *, path: str) -> SandboxFileDownloadTicket:
+        from services.sandbox.sandbox_file_service import SandboxFileService
+
         kind = self._detect_path_kind(path)
 
         export_name = os.path.basename(path.rstrip("/")) or "workspace"
         filename = f"{export_name}.tar.gz" if kind == "dir" else (os.path.basename(path) or "file")
         export_id = uuid4().hex
-        export_path = SandboxFilePath(
-            tenant_id=UUID(self._tenant_id),
-            sandbox_id=UUID(self._sandbox_id),
-            export_id=export_id,
-            filename=filename,
+        export_key = SandboxFilePaths.export(
+            self._tenant_id,
+            self._sandbox_id,
+            export_id,
+            filename,
         )
 
-        upload_url = sandbox_file_storage.get_upload_url(export_path, expires_in=self._EXPORT_EXPIRES_IN_SECONDS)
+        sandbox_storage = SandboxFileService.get_storage()
+        upload_url = sandbox_storage.get_upload_url(export_key, self._EXPORT_EXPIRES_IN_SECONDS)
 
         if kind == "dir":
             archive_path = f"/tmp/{export_id}.tar.gz"
@@ -163,7 +165,7 @@ print(json.dumps(entries))
             except CommandExecutionError as exc:
                 raise RuntimeError(str(exc)) from exc
 
-        download_url = sandbox_file_storage.get_download_url(export_path, expires_in=self._EXPORT_EXPIRES_IN_SECONDS)
+        download_url = sandbox_storage.get_download_url(export_key, self._EXPORT_EXPIRES_IN_SECONDS)
         return SandboxFileDownloadTicket(
             download_url=download_url,
             expires_in=self._EXPORT_EXPIRES_IN_SECONDS,
