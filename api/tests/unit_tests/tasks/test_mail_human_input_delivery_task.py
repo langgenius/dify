@@ -39,9 +39,8 @@ def _build_job(recipient_count: int = 1) -> task_module._EmailDeliveryJob:
 
     return task_module._EmailDeliveryJob(
         form_id="form-1",
-        workflow_run_id="run-1",
-        subject="Subject for {{ form_token }}",
-        body="Body for {{ form_link }}",
+        subject="Subject",
+        body="Body for {{#url}}",
         form_content="content",
         recipients=recipients,
     )
@@ -51,13 +50,7 @@ def test_dispatch_human_input_email_task_sends_to_each_recipient(monkeypatch: py
     mail = _DummyMail()
     form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id=None)
 
-    def fake_render(template: str, substitutions: dict[str, str]) -> str:
-        return template.replace("{{ form_token }}", substitutions["form_token"]).replace(
-            "{{ form_link }}", substitutions["form_link"]
-        )
-
     monkeypatch.setattr(task_module, "mail", mail)
-    monkeypatch.setattr(task_module, "render_email_template", fake_render)
     monkeypatch.setattr(
         task_module.FeatureService,
         "get_features",
@@ -73,7 +66,7 @@ def test_dispatch_human_input_email_task_sends_to_each_recipient(monkeypatch: py
     )
 
     assert len(mail.sent) == 2
-    assert all(payload["subject"].startswith("Subject for token-") for payload in mail.sent)
+    assert all(payload["subject"] == "Subject" for payload in mail.sent)
     assert all("Body for" in payload["html"] for payload in mail.sent)
 
 
@@ -103,7 +96,6 @@ def test_dispatch_human_input_email_task_replaces_body_variables(monkeypatch: py
     form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id="run-1")
     job = task_module._EmailDeliveryJob(
         form_id="form-1",
-        workflow_run_id="run-1",
         subject="Subject",
         body="Body {{#node1.value#}}",
         form_content="content",
@@ -114,7 +106,6 @@ def test_dispatch_human_input_email_task_replaces_body_variables(monkeypatch: py
     variable_pool.add(["node1", "value"], "OK")
 
     monkeypatch.setattr(task_module, "mail", mail)
-    monkeypatch.setattr(task_module, "render_email_template", lambda template, _substitutions: template)
     monkeypatch.setattr(
         task_module.FeatureService,
         "get_features",

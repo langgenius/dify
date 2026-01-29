@@ -12,13 +12,14 @@ import core.workflow.nodes.human_input.entities  # noqa: F401
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels.in_memory_channel import InMemoryChannel
-from core.workflow.graph_engine.entities.commands import PauseCommand
 from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphRunPausedEvent,
@@ -26,13 +27,11 @@ from core.workflow.graph_events import (
     GraphRunSucceededEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.node_events import NodeRunResult
+from core.workflow.node_events import NodeRunResult, PauseRequestedEvent
 from core.workflow.nodes.base.entities import BaseNodeData, OutputVariableEntity, RetryConfig
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
 from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.start.start_node import StartNode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 
@@ -48,7 +47,7 @@ if "core.ops.ops_trace_manager" not in sys.modules:
 
 
 class _StubToolNodeData(BaseNodeData):
-    pass
+    pause_on: bool = False
 
 
 class _StubToolNode(Node[_StubToolNodeData]):
@@ -80,79 +79,86 @@ class _StubToolNode(Node[_StubToolNodeData]):
         return self._node_data
 
     def _run(self):
-        return NodeRunResult(
+        if self.node_data.pause_on:
+            yield PauseRequestedEvent(reason=SchedulingPause(message="test pause"))
+            return
+
+        result = NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             outputs={"value": f"{self.id}-done"},
         )
+        yield self._convert_node_run_result_to_graph_node_event(result)
 
 
 def _patch_tool_node(mocker):
-    from core.workflow.nodes import node_factory
+    original_create_node = DifyNodeFactory.create_node
 
-    custom_mapping = dict(node_factory.NODE_TYPE_CLASSES_MAPPING)
-    custom_versions = dict(custom_mapping[NodeType.TOOL])
-    custom_versions[node_factory.LATEST_VERSION] = _StubToolNode
-    custom_mapping[NodeType.TOOL] = custom_versions
-    mocker.patch("core.workflow.nodes.node_factory.NODE_TYPE_CLASSES_MAPPING", custom_mapping)
+    def _patched_create_node(self, node_config: dict[str, object]) -> Node:
+        node_data = node_config.get("data", {})
+        if isinstance(node_data, dict) and node_data.get("type") == NodeType.TOOL.value:
+            return _StubToolNode(
+                id=str(node_config["id"]),
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+            )
+        return original_create_node(self, node_config)
+
+    mocker.patch.object(DifyNodeFactory, "create_node", _patched_create_node)
 
 
-def _build_graph(runtime_state: GraphRuntimeState) -> Graph:
+def _node_data(node_type: NodeType, data: BaseNodeData) -> dict[str, object]:
+    node_data = data.model_dump()
+    node_data["type"] = node_type.value
+    return node_data
+
+
+def _build_graph_config(*, pause_on: str | None) -> dict[str, object]:
+    start_data = StartNodeData(title="start", variables=[])
+    tool_data_a = _StubToolNodeData(title="tool", pause_on=pause_on == "tool_a")
+    tool_data_b = _StubToolNodeData(title="tool", pause_on=pause_on == "tool_b")
+    tool_data_c = _StubToolNodeData(title="tool", pause_on=pause_on == "tool_c")
+    end_data = EndNodeData(
+        title="end",
+        outputs=[OutputVariableEntity(variable="result", value_selector=["tool_c", "value"])],
+        desc=None,
+    )
+
+    nodes = [
+        {"id": "start", "data": _node_data(NodeType.START, start_data)},
+        {"id": "tool_a", "data": _node_data(NodeType.TOOL, tool_data_a)},
+        {"id": "tool_b", "data": _node_data(NodeType.TOOL, tool_data_b)},
+        {"id": "tool_c", "data": _node_data(NodeType.TOOL, tool_data_c)},
+        {"id": "end", "data": _node_data(NodeType.END, end_data)},
+    ]
+    edges = [
+        {"source": "start", "target": "tool_a"},
+        {"source": "tool_a", "target": "tool_b"},
+        {"source": "tool_b", "target": "tool_c"},
+        {"source": "tool_c", "target": "end"},
+    ]
+    return {"nodes": nodes, "edges": edges}
+
+
+def _build_graph(runtime_state: GraphRuntimeState, *, pause_on: str | None) -> Graph:
+    graph_config = _build_graph_config(pause_on=pause_on)
     params = GraphInitParams(
         tenant_id="tenant",
         app_id="app",
         workflow_id="workflow",
-        graph_config={},
+        graph_config=graph_config,
         user_id="user",
         user_from="account",
         invoke_from="service-api",
         call_depth=0,
     )
 
-    start_data = StartNodeData(title="start", variables=[])
-    start_node = StartNode(
-        id="start",
-        config={"id": "start", "data": start_data.model_dump()},
+    node_factory = DifyNodeFactory(
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )
 
-    tool_data = _StubToolNodeData(title="tool")
-    tool_a = _StubToolNode(
-        id="tool_a",
-        config={"id": "tool_a", "data": tool_data.model_dump()},
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
-    )
-
-    tool_b = _StubToolNode(
-        id="tool_b",
-        config={"id": "tool_b", "data": tool_data.model_dump()},
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
-    )
-
-    tool_c = _StubToolNode(
-        id="tool_c",
-        config={"id": "tool_c", "data": tool_data.model_dump()},
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
-    )
-
-    end_data = EndNodeData(
-        title="end",
-        outputs=[OutputVariableEntity(variable="result", value_selector=["tool_c", "value"])],
-        desc=None,
-    )
-    end_node = EndNode(
-        id="end",
-        config={"id": "end", "data": end_data.model_dump()},
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
-    )
-
-    return (
-        Graph.new().add_root(start_node).add_node(tool_a).add_node(tool_b).add_node(tool_c).add_node(end_node).build()
-    )
+    return Graph.init(graph_config=graph_config, node_factory=node_factory)
 
 
 def _build_runtime_state(run_id: str) -> GraphRuntimeState:
@@ -167,7 +173,7 @@ def _build_runtime_state(run_id: str) -> GraphRuntimeState:
 
 def _run_with_optional_pause(runtime_state: GraphRuntimeState, *, pause_on: str | None) -> list[GraphEngineEvent]:
     command_channel = InMemoryChannel()
-    graph = _build_graph(runtime_state)
+    graph = _build_graph(runtime_state, pause_on=pause_on)
     engine = GraphEngine(
         workflow_id="workflow",
         graph=graph,
@@ -177,9 +183,6 @@ def _run_with_optional_pause(runtime_state: GraphRuntimeState, *, pause_on: str 
 
     events: list[GraphEngineEvent] = []
     for event in engine.run():
-        if isinstance(event, NodeRunSucceededEvent) and pause_on and event.node_id == pause_on:
-            command_channel.send_command(PauseCommand(reason="test pause"))
-            engine._command_processor.process_commands()  # type: ignore[attr-defined]
         events.append(event)
     return events
 
@@ -270,7 +273,9 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker):
     assert resumed_state.outputs == baseline_outputs
 
 
-def test_resume_emits_resumption_start_reason() -> None:
+def test_resume_emits_resumption_start_reason(mocker) -> None:
+    _patch_tool_node(mocker)
+
     paused_state = _build_runtime_state("resume-reason")
     paused_events = _run_with_optional_pause(paused_state, pause_on="tool_a")
     initial_start = next(event for event in paused_events if isinstance(event, GraphRunStartedEvent))
