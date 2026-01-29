@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 # TODO: Add EdgeConfigDict and GraphConfigDict 
 
 
-class NodeConfigData(TypedDict, total=False):
+class NodeConfigData(TypedDict):
     type: str
 
 
-class NodeConfigDict(TypedDict, total=False):
+class NodeConfigDict(TypedDict):
     id: str
     data: NodeConfigData
 
