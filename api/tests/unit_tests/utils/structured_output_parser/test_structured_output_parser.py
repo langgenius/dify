@@ -312,7 +312,6 @@ def test_structured_output_parser():
                         model_instance=model_instance,
                         prompt_messages=prompt_messages,
                         json_schema=case["json_schema"],
-                        stream=case["stream"],
                     )
                     # Consume the generator to trigger the error
                     list(result_generator)
@@ -323,7 +322,6 @@ def test_structured_output_parser():
                         model_instance=model_instance,
                         prompt_messages=prompt_messages,
                         json_schema=case["json_schema"],
-                        stream=case["stream"],
                     )
         else:
             # Test successful cases
@@ -338,7 +336,6 @@ def test_structured_output_parser():
                     model_instance=model_instance,
                     prompt_messages=prompt_messages,
                     json_schema=case["json_schema"],
-                    stream=case["stream"],
                     model_parameters={"temperature": 0.7, "max_tokens": 100},
                     user="test_user",
                 )
@@ -418,7 +415,6 @@ def test_parse_structured_output_edge_cases():
             model_instance=model_instance,
             prompt_messages=prompt_messages,
             json_schema=testcase_list_with_dict["json_schema"],
-            stream=testcase_list_with_dict["stream"],
         )
 
         assert isinstance(result, LLMResultWithStructuredOutput)
@@ -456,7 +452,6 @@ def test_model_specific_schema_preparation():
         model_instance=model_instance,
         prompt_messages=prompt_messages,
         json_schema=gemini_case["json_schema"],
-        stream=gemini_case["stream"],
     )
 
     assert isinstance(result, LLMResultWithStructuredOutput)

@@ -114,46 +114,32 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model_instance=model_instance,
             prompt_messages=payload.prompt_messages,
             json_schema=payload.structured_output_schema,
+            model_parameters=payload.completion_params,
             tools=payload.tools,
             stop=payload.stop,
-            stream=True if payload.stream is None else payload.stream,
-            user=user_id,
-            model_parameters=payload.completion_params,
+            user=user_id
         )
 
-        if isinstance(response, Generator):
+        if response.usage:
+            llm_utils.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
 
-            def handle() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
-                for chunk in response:
-                    if chunk.delta.usage:
-                        llm_utils.deduct_llm_quota(
-                            tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage
-                        )
-                    chunk.prompt_messages = []
-                    yield chunk
+        def handle_non_streaming(
+            response: LLMResultWithStructuredOutput,
+        ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
+            yield LLMResultChunkWithStructuredOutput(
+                model=response.model,
+                prompt_messages=[],
+                system_fingerprint=response.system_fingerprint,
+                structured_output=response.structured_output,
+                delta=LLMResultChunkDelta(
+                    index=0,
+                    message=response.message,
+                    usage=response.usage,
+                    finish_reason="",
+                ),
+            )
 
-            return handle()
-        else:
-            if response.usage:
-                llm_utils.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
-
-            def handle_non_streaming(
-                response: LLMResultWithStructuredOutput,
-            ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
-                yield LLMResultChunkWithStructuredOutput(
-                    model=response.model,
-                    prompt_messages=[],
-                    system_fingerprint=response.system_fingerprint,
-                    structured_output=response.structured_output,
-                    delta=LLMResultChunkDelta(
-                        index=0,
-                        message=response.message,
-                        usage=response.usage,
-                        finish_reason="",
-                    ),
-                )
-
-            return handle_non_streaming(response)
+        return handle_non_streaming(response)
 
     @classmethod
     def invoke_text_embedding(cls, user_id: str, tenant: Tenant, payload: RequestInvokeTextEmbedding):
