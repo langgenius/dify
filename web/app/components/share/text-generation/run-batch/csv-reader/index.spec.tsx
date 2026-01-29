@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import CSVReader from './index'
 import { parseCSV } from '@/utils/csv'
+import CSVReader from './index'
 
 vi.mock('@/utils/csv', () => ({
   parseCSV: vi.fn(),
