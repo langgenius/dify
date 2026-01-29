@@ -34,7 +34,7 @@ function Confirm({
   const docLink = useDocLink()
   const dialogRef = useRef<HTMLDivElement>(null)
   const [isVisible, setIsVisible] = useState(isShow)
-  const eduDocLink = docLink('/getting-started/dify-for-education')
+  const eduDocLink = docLink('/use-dify/workspace/subscription-management#dify-for-education')
 
   const handleClick = () => {
     window.open(eduDocLink, '_blank', 'noopener,noreferrer')

@@ -131,7 +131,7 @@ class BillingService:
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
         url = f"{cls.base_url}{endpoint}"
-        response = httpx.request(method, url, json=json, params=params, headers=headers)
+        response = httpx.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
         if method == "GET" and response.status_code != httpx.codes.OK:
             raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
         if method == "PUT":
@@ -143,6 +143,9 @@ class BillingService:
                 raise ValueError("Invalid arguments.")
         if method == "POST" and response.status_code != httpx.codes.OK:
             raise ValueError(f"Unable to send request to {url}. Please try again later or contact support.")
+        if method == "DELETE" and response.status_code != httpx.codes.OK:
+            logger.error("billing_service: DELETE response: %s %s", response.status_code, response.text)
+            raise ValueError(f"Unable to process delete request {url}. Please try again later or contact support.")
         return response.json()
 
     @staticmethod
@@ -165,7 +168,7 @@ class BillingService:
     def delete_account(cls, account_id: str):
         """Delete account."""
         params = {"account_id": account_id}
-        return cls._send_request("DELETE", "/account/", params=params)
+        return cls._send_request("DELETE", "/account", params=params)
 
     @classmethod
     def is_email_in_freeze(cls, email: str) -> bool:

@@ -152,6 +152,8 @@ export const formatNumberAbbreviated = (num: number) => {
         : `${formatted}${units[unitIndex].symbol}`
     }
   }
+  // Fallback: if no threshold matched, return the number string
+  return num.toString()
 }
 
 export const formatToLocalTime = (time: Dayjs, local: Locale, format: string) => {

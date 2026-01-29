@@ -14,13 +14,14 @@ import TagFilter from '@/app/components/base/tag-management/filter'
 // Hooks
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
-import { useAppContext } from '@/context/app-context'
+import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
-
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 // Components
 import ExternalAPIPanel from '../external-api/external-api-panel'
+import ServiceApi from '../extra-info/service-api'
 import DatasetFooter from './dataset-footer'
 import Datasets from './datasets'
 
@@ -58,6 +59,9 @@ const List = () => {
       return router.replace('/apps')
   }, [currentWorkspace, router])
 
+  const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
+  const { data: apiBaseInfo } = useDatasetApiBaseUrl()
+
   return (
     <div className="scroll-container relative flex grow flex-col overflow-y-auto bg-background-body">
       <div className="sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pb-2 pt-4">
@@ -81,6 +85,11 @@ const List = () => {
             onChange={e => handleKeywordsChange(e.target.value)}
             onClear={() => handleKeywordsChange('')}
           />
+          {
+            isCurrentWorkspaceManager && (
+              <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
+            )
+          }
           <div className="h-4 w-[1px] bg-divider-regular" />
           <Button
             className="shadows-shadow-xs gap-0.5"
@@ -96,7 +105,6 @@ const List = () => {
       {showTagManagementModal && (
         <TagManagementModal type="knowledge" show={showTagManagementModal} />
       )}
-
       {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} />}
     </div>
   )

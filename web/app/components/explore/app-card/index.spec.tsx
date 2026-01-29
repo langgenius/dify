@@ -10,6 +10,7 @@ vi.mock('../../app/type-selector', () => ({
 }))
 
 const createApp = (overrides?: Partial<App>): App => ({
+  can_trial: true,
   app_id: 'app-id',
   description: 'App description',
   copyright: '2024',

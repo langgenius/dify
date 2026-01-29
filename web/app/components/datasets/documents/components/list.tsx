@@ -30,11 +30,13 @@ import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '
 import useTimestamp from '@/hooks/use-timestamp'
 import { ChunkingMode, DataSourceType, DocumentActionType } from '@/models/datasets'
 import { DatasourceType } from '@/models/pipeline'
-import { useDocumentArchive, useDocumentBatchRetryIndex, useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
+import { useDocumentArchive, useDocumentBatchRetryIndex, useDocumentDelete, useDocumentDisable, useDocumentDownloadZip, useDocumentEnable, useDocumentSummary } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { cn } from '@/utils/classnames'
+import { downloadBlob } from '@/utils/download'
 import { formatNumber } from '@/utils/format'
 import BatchAction from '../detail/completed/common/batch-action'
+import SummaryStatus from '../detail/completed/common/summary-status'
 import StatusItem from '../status-item'
 import s from '../style.module.css'
 import Operations from './operations'
@@ -218,10 +220,12 @@ const DocumentList: FC<IDocumentListProps> = ({
       onSelectedIdChange(uniq([...selectedIds, ...localDocs.map(doc => doc.id)]))
   }, [isAllSelected, localDocs, onSelectedIdChange, selectedIds])
   const { mutateAsync: archiveDocument } = useDocumentArchive()
+  const { mutateAsync: generateSummary } = useDocumentSummary()
   const { mutateAsync: enableDocument } = useDocumentEnable()
   const { mutateAsync: disableDocument } = useDocumentDisable()
   const { mutateAsync: deleteDocument } = useDocumentDelete()
   const { mutateAsync: retryIndexDocument } = useDocumentBatchRetryIndex()
+  const { mutateAsync: requestDocumentsZip, isPending: isDownloadingZip } = useDocumentDownloadZip()
 
   const handleAction = (actionName: DocumentActionType) => {
     return async () => {
@@ -229,6 +233,9 @@ const DocumentList: FC<IDocumentListProps> = ({
       switch (actionName) {
         case DocumentActionType.archive:
           opApi = archiveDocument
+          break
+        case DocumentActionType.summary:
+          opApi = generateSummary
           break
         case DocumentActionType.enable:
           opApi = enableDocument
@@ -299,6 +306,39 @@ const DocumentList: FC<IDocumentListProps> = ({
   const isOnlineDrive = useCallback((dataSourceType: DataSourceType | DatasourceType) => {
     return dataSourceType === DatasourceType.onlineDrive
   }, [])
+
+  const downloadableSelectedIds = useMemo(() => {
+    const selectedSet = new Set(selectedIds)
+    return localDocs
+      .filter(doc => selectedSet.has(doc.id) && doc.data_source_type === DataSourceType.FILE)
+      .map(doc => doc.id)
+  }, [localDocs, selectedIds])
+
+  /**
+   * Generate a random ZIP filename for bulk document downloads.
+   * We intentionally avoid leaking dataset info in the exported archive name.
+   */
+  const generateDocsZipFileName = useCallback((): string => {
+    // Prefer UUID for uniqueness; fall back to time+random when unavailable.
+    const randomPart = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
+    return `${randomPart}-docs.zip`
+  }, [])
+
+  const handleBatchDownload = useCallback(async () => {
+    if (isDownloadingZip)
+      return
+
+    // Download as a single ZIP to avoid browser caps on multiple automatic downloads.
+    const [e, blob] = await asyncRunSafe(requestDocumentsZip({ datasetId, documentIds: downloadableSelectedIds }))
+    if (e || !blob) {
+      Toast.notify({ type: 'error', message: t('actionMsg.downloadUnsuccessfully', { ns: 'common' }) })
+      return
+    }
+
+    downloadBlob({ data: blob, fileName: generateDocsZipFileName() })
+  }, [datasetId, downloadableSelectedIds, generateDocsZipFileName, isDownloadingZip, requestDocumentsZip, t])
 
   return (
     <div className="relative mt-3 flex h-full w-full flex-col">
@@ -409,6 +449,13 @@ const DocumentList: FC<IDocumentListProps> = ({
                       >
                         <span className="grow-1 truncate text-sm">{doc.name}</span>
                       </Tooltip>
+                      {
+                        doc.summary_index_status && (
+                          <div className="ml-1 hidden shrink-0 group-hover:flex">
+                            <SummaryStatus status={doc.summary_index_status} />
+                          </div>
+                        )
+                      }
                       <div className="hidden shrink-0 group-hover:ml-auto group-hover:flex">
                         <Tooltip
                           popupContent={t('list.table.rename', { ns: 'datasetDocuments' })}
@@ -461,8 +508,10 @@ const DocumentList: FC<IDocumentListProps> = ({
           className="absolute bottom-16 left-0 z-20"
           selectedIds={selectedIds}
           onArchive={handleAction(DocumentActionType.archive)}
+          onBatchSummary={handleAction(DocumentActionType.summary)}
           onBatchEnable={handleAction(DocumentActionType.enable)}
           onBatchDisable={handleAction(DocumentActionType.disable)}
+          onBatchDownload={downloadableSelectedIds.length > 0 ? handleBatchDownload : undefined}
           onBatchDelete={handleAction(DocumentActionType.delete)}
           onEditMetadata={showEditModal}
           onBatchReIndex={hasErrorDocumentsSelected ? handleBatchReIndex : undefined}
@@ -472,7 +521,7 @@ const DocumentList: FC<IDocumentListProps> = ({
         />
       )}
       {/* Show Pagination only if the total is more than the limit */}
-      {pagination.total && (
+      {!!pagination.total && (
         <Pagination
           {...pagination}
           className="w-full shrink-0"

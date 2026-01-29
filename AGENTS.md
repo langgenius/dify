@@ -12,12 +12,8 @@ The codebase is split into:
 
 ## Backend Workflow
 
+- Read `api/AGENTS.md` for details
 - Run backend CLI commands through `uv run --project api <command>`.
-
-- Before submission, all backend modifications must pass local checks: `make lint`, `make type-check`, and `uv run --project api --dev dev/pytest/pytest_unit_tests.sh`.
-
-- Use Makefile targets for linting and formatting; `make lint` and `make type-check` cover the required checks.
-
 - Integration tests are CI-only and are not expected to run in the local environment.
 
 ## Frontend Workflow
@@ -28,6 +24,30 @@ pnpm lint:fix
 pnpm type-check:tsgo
 pnpm test
 ```
+
+### Frontend Linting
+
+ESLint is used for frontend code quality. Available commands:
+
+```bash
+# Lint all files (report only)
+pnpm lint
+
+# Lint and auto-fix issues
+pnpm lint:fix
+
+# Lint specific files or directories
+pnpm lint:fix app/components/base/button/
+pnpm lint:fix app/components/base/button/index.tsx
+
+# Lint quietly (errors only, no warnings)
+pnpm lint:quiet
+
+# Check code complexity
+pnpm lint:complexity
+```
+
+**Important**: Always run `pnpm lint:fix` before committing. The pre-commit hook runs `lint-staged` which only lints staged files.
 
 ## Testing & Quality Practices
 
