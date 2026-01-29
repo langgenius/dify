@@ -23,7 +23,7 @@ const ShortcutsName = ({
           <div
             key={key}
             className={cn(
-              'system-kbd flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray capitalize',
+              'system-kbd flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 capitalize',
               textColor === 'secondary' && 'text-text-tertiary',
             )}
           >
