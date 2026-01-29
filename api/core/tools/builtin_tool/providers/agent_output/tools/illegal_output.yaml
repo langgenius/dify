@@ -1,0 +1,18 @@
+identity:
+  name: illegal_output
+  author: Dify
+  label:
+    en_US: Illegal Output
+description:
+  human:
+    en_US: Internal tool for output protocol violations.
+  llm: Use this tool to correct output protocol violations.
+parameters:
+  - name: raw
+    type: string
+    required: true
+    label:
+      en_US: Raw Output
+    human_description:
+      en_US: Raw model output that violated the protocol.
+    form: llm
