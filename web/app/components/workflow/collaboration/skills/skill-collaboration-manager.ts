@@ -55,6 +55,8 @@ class SkillCollaborationManager {
   private cursorEmitter = new EventEmitter()
   private fileEmitter = new EventEmitter()
   private fileSavedGlobalKey = 'skill_file_saved:all'
+  private treeEmitter = new EventEmitter()
+  private treeUpdateKey = 'skill_tree_update:all'
 
   private handleSkillUpdate = (payload: SkillUpdatePayload) => {
     if (!payload || !payload.file_id || !payload.update)
@@ -94,6 +96,11 @@ class SkillCollaborationManager {
       if (!fileId)
         return
       this.fileEmitter.emit(this.fileSavedGlobalKey, data)
+      return
+    }
+
+    if (update.type === 'skill_tree_update') {
+      this.treeEmitter.emit(this.treeUpdateKey, update.data)
       return
     }
 
@@ -157,6 +164,7 @@ class SkillCollaborationManager {
       this.cursorByFile.clear()
       this.cursorEmitter.removeAllListeners()
       this.fileEmitter.removeAllListeners()
+      this.treeEmitter.removeAllListeners()
     }
 
     this.appId = appId
@@ -278,6 +286,12 @@ class SkillCollaborationManager {
     return this.fileEmitter.on(this.fileSavedGlobalKey, callback)
   }
 
+  onTreeUpdate(appId: string, callback: (payload: Record<string, unknown>) => void): () => void {
+    if (appId)
+      this.ensureSocket(appId)
+    return this.treeEmitter.on(this.treeUpdateKey, callback)
+  }
+
   isLeader(fileId: string): boolean {
     return this.leaderByFile.get(fileId) || false
   }
@@ -315,6 +329,21 @@ class SkillCollaborationManager {
     emitWithAuthGuard(this.socket, 'collaboration_event', {
       type: 'skill_file_saved',
       data: { file_id: fileId, content, metadata },
+      timestamp: Date.now(),
+    })
+  }
+
+  emitTreeUpdate(appId: string, payload: Record<string, unknown> = {}): void {
+    if (!appId)
+      return
+
+    const socket = this.ensureSocket(appId)
+    if (!socket || !socket.connected)
+      return
+
+    emitWithAuthGuard(socket, 'collaboration_event', {
+      type: 'skill_tree_update',
+      data: payload,
       timestamp: Date.now(),
     })
   }

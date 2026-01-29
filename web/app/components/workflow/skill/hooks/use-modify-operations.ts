@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { useDeleteAppAssetNode } from '@/service/use-app-asset'
 import { getAllDescendantFileIds } from '../utils/tree-utils'
+import { useSkillTreeUpdateEmitter } from './use-skill-tree-collaboration'
 
 type UseModifyOperationsOptions = {
   nodeId: string
@@ -35,6 +36,7 @@ export function useModifyOperations({
   const { t } = useTranslation('workflow')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const deleteNode = useDeleteAppAssetNode()
+  const emitTreeUpdate = useSkillTreeUpdateEmitter()
 
   const handleRename = useCallback(() => {
     if (treeRef?.current) {
@@ -59,6 +61,7 @@ export function useModifyOperations({
         : []
 
       await deleteNode.mutateAsync({ appId, nodeId })
+      emitTreeUpdate()
 
       descendantFileIds.forEach((fileId) => {
         storeApi.getState().closeTab(fileId)
@@ -90,7 +93,7 @@ export function useModifyOperations({
       setShowDeleteConfirm(false)
       onClose()
     }
-  }, [appId, nodeId, node?.data?.node_type, deleteNode, storeApi, treeData?.children, onClose, t])
+  }, [appId, nodeId, node?.data?.node_type, deleteNode, storeApi, treeData?.children, onClose, t, emitTreeUpdate])
 
   const handleDeleteCancel = useCallback(() => {
     setShowDeleteConfirm(false)

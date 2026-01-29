@@ -11,6 +11,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useUploadFileWithPresignedUrl } from '@/service/use-app-asset'
 import { ROOT_ID } from '../constants'
 import { prepareSkillUploadFile } from '../utils/skill-upload-utils'
+import { useSkillTreeUpdateEmitter } from './use-skill-tree-collaboration'
 
 type FileDropTarget = {
   folderId: string | null
@@ -23,6 +24,7 @@ export function useFileDrop() {
   const appId = appDetail?.id || ''
   const storeApi = useWorkflowStore()
   const uploadFile = useUploadFileWithPresignedUrl()
+  const emitTreeUpdate = useSkillTreeUpdateEmitter()
 
   const handleDragOver = useCallback((e: React.DragEvent, target: FileDropTarget) => {
     e.preventDefault()
@@ -90,6 +92,7 @@ export function useFileDrop() {
         ),
       )
 
+      emitTreeUpdate()
       Toast.notify({
         type: 'success',
         message: t('skillSidebar.menu.filesUploaded', { count: files.length }),
@@ -101,7 +104,7 @@ export function useFileDrop() {
         message: t('skillSidebar.menu.uploadError'),
       })
     }
-  }, [appId, uploadFile, t, storeApi])
+  }, [appId, uploadFile, t, storeApi, emitTreeUpdate])
 
   return {
     handleDragOver,

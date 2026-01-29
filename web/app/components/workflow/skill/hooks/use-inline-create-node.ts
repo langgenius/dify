@@ -14,6 +14,7 @@ import {
 } from '@/service/use-app-asset'
 import { getFileExtension, isTextLikeFile } from '../utils/file-utils'
 import { createDraftTreeNode, insertDraftTreeNode } from '../utils/tree-utils'
+import { useSkillTreeUpdateEmitter } from './use-skill-tree-collaboration'
 
 type UseInlineCreateNodeOptions = {
   treeRef: React.RefObject<TreeApi<TreeNodeData> | null>
@@ -38,6 +39,7 @@ export function useInlineCreateNode({
   const uploadFile = useUploadFileWithPresignedUrl()
   const createFolder = useCreateAppAssetFolder()
   const renameNode = useRenameAppAssetNode()
+  const emitTreeUpdate = useSkillTreeUpdateEmitter()
 
   const pendingCreateId = pendingCreateNode?.id ?? null
   const pendingCreateType = pendingCreateNode?.nodeType ?? null
@@ -71,6 +73,7 @@ export function useInlineCreateNode({
               parent_id: pendingCreateParentId,
             },
           })
+          emitTreeUpdate()
           Toast.notify({
             type: 'success',
             message: t('skillSidebar.menu.folderCreated'),
@@ -84,6 +87,7 @@ export function useInlineCreateNode({
             file,
             parentId: pendingCreateParentId,
           })
+          emitTreeUpdate()
           const extension = getFileExtension(trimmedName, createdFile.extension)
           if (isTextLikeFile(extension))
             storeApi.getState().openTab(createdFile.id, { pinned: true })
@@ -110,6 +114,7 @@ export function useInlineCreateNode({
       nodeId: id,
       payload: { name },
     }).then(() => {
+      emitTreeUpdate()
       Toast.notify({
         type: 'success',
         message: t('skillSidebar.menu.renamed'),
@@ -130,6 +135,7 @@ export function useInlineCreateNode({
     renameNode,
     storeApi,
     t,
+    emitTreeUpdate,
   ])
 
   const searchMatch = useCallback(

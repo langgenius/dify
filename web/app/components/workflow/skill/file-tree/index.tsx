@@ -24,6 +24,7 @@ import { usePasteOperation } from '../hooks/use-paste-operation'
 import { useRootFileDrop } from '../hooks/use-root-file-drop'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
 import { useSkillShortcuts } from '../hooks/use-skill-shortcuts'
+import { useSkillTreeCollaboration } from '../hooks/use-skill-tree-collaboration'
 import { useSyncTreeWithActiveTab } from '../hooks/use-sync-tree-with-active-tab'
 import { isDescendantOf } from '../utils/tree-utils'
 import DragActionTooltip from './drag-action-tooltip'
@@ -106,6 +107,8 @@ const FileTree = ({ className }: FileTreeProps) => {
   const storeApi = useWorkflowStore()
 
   const treeChildren = treeData?.children ?? emptyTreeNodes
+
+  useSkillTreeCollaboration()
 
   const {
     handleRootDragEnter,

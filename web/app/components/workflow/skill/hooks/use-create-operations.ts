@@ -10,6 +10,7 @@ import {
   useUploadFileWithPresignedUrl,
 } from '@/service/use-app-asset'
 import { prepareSkillUploadFile } from '../utils/skill-upload-utils'
+import { useSkillTreeUpdateEmitter } from './use-skill-tree-collaboration'
 
 type UseCreateOperationsOptions = {
   parentId: string | null
@@ -34,6 +35,7 @@ export function useCreateOperations({
   const createFolder = useCreateAppAssetFolder()
   const uploadFile = useUploadFileWithPresignedUrl()
   const batchUpload = useBatchUpload()
+  const emitTreeUpdate = useSkillTreeUpdateEmitter()
 
   const handleNewFile = useCallback(() => {
     storeApi.getState().startCreateNode('file', parentId)
@@ -80,10 +82,12 @@ export function useCreateOperations({
       storeApi.getState().setUploadStatus('partial_error')
     }
     finally {
+      if (progress.uploaded > 0)
+        emitTreeUpdate()
       e.target.value = ''
       onClose()
     }
-  }, [appId, uploadFile, onClose, parentId, storeApi])
+  }, [appId, uploadFile, onClose, parentId, storeApi, emitTreeUpdate])
 
   const handleFolderChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -152,6 +156,7 @@ export function useCreateOperations({
 
       storeApi.getState().setUploadStatus('success')
       storeApi.getState().setUploadProgress({ uploaded: files.length, total: files.length, failed: 0 })
+      emitTreeUpdate()
     }
     catch {
       storeApi.getState().setUploadStatus('partial_error')
@@ -160,7 +165,7 @@ export function useCreateOperations({
       e.target.value = ''
       onClose()
     }
-  }, [appId, batchUpload, onClose, parentId, storeApi])
+  }, [appId, batchUpload, onClose, parentId, storeApi, emitTreeUpdate])
 
   return {
     fileInputRef,

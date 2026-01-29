@@ -11,6 +11,7 @@ import Toast from '@/app/components/base/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useMoveAppAssetNode } from '@/service/use-app-asset'
 import { findNodeById, getTargetFolderIdFromSelection, toApiParentId } from '../utils/tree-utils'
+import { useSkillTreeUpdateEmitter } from './use-skill-tree-collaboration'
 
 type UsePasteOperationOptions = {
   treeRef: RefObject<TreeApi<TreeNodeData> | null>
@@ -33,6 +34,7 @@ export function usePasteOperation({
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
   const moveNode = useMoveAppAssetNode()
+  const emitTreeUpdate = useSkillTreeUpdateEmitter()
   const isPastingRef = useRef(false)
 
   const handlePaste = useCallback(async () => {
@@ -84,6 +86,7 @@ export function usePasteOperation({
         )
 
         storeApi.getState().clearClipboard()
+        emitTreeUpdate()
 
         Toast.notify({
           type: 'success',
@@ -100,7 +103,7 @@ export function usePasteOperation({
         isPastingRef.current = false
       }
     }
-  }, [appId, moveNode, storeApi, t, treeData?.children, treeRef])
+  }, [appId, moveNode, storeApi, t, treeData?.children, treeRef, emitTreeUpdate])
 
   useEffect(() => {
     if (!enabled)
