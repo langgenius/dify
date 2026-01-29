@@ -3,7 +3,7 @@ import type { ContextGenerateChatMessage } from '../hooks/use-context-generate'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import type { Model } from '@/types/app'
-import { RiArrowDownSLine, RiArrowRightLine, RiSendPlaneLine, RiSparklingLine } from '@remixicon/react'
+import { RiArrowRightLine, RiSendPlaneLine } from '@remixicon/react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -74,10 +74,7 @@ const ChatView = ({
                 assistantIndex += 1
               const versionMeta = message.role === 'assistant' ? versionOptions[assistantIndex] : null
               const isSelected = versionMeta?.index === currentVersionIndex
-              const showThoughtProcess = message.role === 'assistant' && message.content !== defaultAssistantMessage
-              const durationLabel = message.role === 'assistant' && message.durationMs
-                ? `${(message.durationMs / 1000).toFixed(1)}s`
-                : null
+              const assistantContent = message.content || defaultAssistantMessage
               return (
                 <div
                   key={`${message.role}-${index}`}
@@ -91,24 +88,8 @@ const ChatView = ({
                       )
                     : (
                         <div className="flex w-full flex-col items-start gap-2">
-                          {showThoughtProcess && (
-                            <div className="flex w-full items-center gap-1 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-2 px-2 py-2 text-[13px] text-text-secondary">
-                              <div className="flex h-5 w-5 items-center justify-center">
-                                <RiSparklingLine className="h-4 w-4 text-text-secondary" />
-                              </div>
-                              <span className="flex-1 truncate">
-                                {message.content}
-                              </span>
-                              {durationLabel && (
-                                <span className="text-xs text-text-tertiary">
-                                  {durationLabel}
-                                </span>
-                              )}
-                              <RiArrowDownSLine className="h-4 w-4 -rotate-90 text-text-secondary" />
-                            </div>
-                          )}
                           <div className="whitespace-pre-wrap px-2 text-sm leading-5 text-text-primary">
-                            {showThoughtProcess ? defaultAssistantMessage : message.content}
+                            {assistantContent}
                           </div>
                           {versionMeta && (
                             <button
