@@ -125,20 +125,33 @@ class NestedNodeGraphService:
             "position": {"x": 0, "y": 0},
             "data": {
                 "type": NodeType.LLM.value,
+                # BaseNodeData fields
                 "title": f"NestedNode: {parameter_schema.name}",
                 "desc": f"Extract {parameter_schema.name} from conversation context",
+                "version": "1",
+                "error_strategy": None,
+                "default_value": None,
+                "retry_config": {"max_retries": 0},
                 "parent_node_id": parent_node_id,
+                # LLMNodeData fields
                 "model": model_config,
                 "prompt_template": prompt_template,
+                "prompt_config": {"jinja2_variables": []},
+                "memory": None,
                 "context": {
                     "enabled": False,
                     "variable_selector": None,
                 },
                 "vision": {
                     "enabled": False,
+                    "configs": {
+                        "variable_selector": ["sys", "files"],
+                        "detail": "high",
+                    },
                 },
-                "memory": None,
                 "structured_output_enabled": True,
                 "structured_output": structured_output,
+                "computer_use": False,
+                "tool_settings": [],
             },
         }
