@@ -258,9 +258,9 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
         </div>
       ))}
       {showNoData && (
-        <div className="flex items-center justify-center rounded-lg border border-components-panel-border-subtle bg-components-panel-bg p-3 text-text-tertiary">
-          <span className={cn('system-xs-regular capitalize')}>
-            {t('noData', { ns: 'common' })}
+        <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">
+          <span className="system-xs-regular text-center">
+            {t('nodes.llm.computerUse.referenceToolsEmpty', { ns: 'workflow' })}
           </span>
         </div>
       )}

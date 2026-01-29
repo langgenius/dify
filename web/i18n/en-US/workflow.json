@@ -672,6 +672,7 @@
   "nodes.llm.addMessage": "Add Message",
   "nodes.llm.advancedSettings": "Advanced Settings",
   "nodes.llm.computerUse.referenceTools": "Reference Tools",
+  "nodes.llm.computerUse.referenceToolsEmpty": "Tools referenced in the prompt will appear here",
   "nodes.llm.computerUse.title": "Computer Use",
   "nodes.llm.computerUse.tooltip": "Manage the runtime filesystem and tool access for your agent.",
   "nodes.llm.context": "context",

@@ -647,6 +647,7 @@
   "nodes.listFilter.selectVariableKeyPlaceholder": "Select sub variable key（選擇子變數鍵）",
   "nodes.llm.addContext": "新增上下文",
   "nodes.llm.addMessage": "新增消息",
+  "nodes.llm.computerUse.referenceToolsEmpty": "提示詞中引用的工具會顯示在這裡",
   "nodes.llm.context": "上下文",
   "nodes.llm.contextBlock": "上下文區塊",
   "nodes.llm.contextMissing": "缺少前序節點「{{nodeName}}」的上下文，請先選擇上下文變數。",
