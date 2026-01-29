@@ -227,6 +227,9 @@ ignore_imports =
     core.workflow.nodes.knowledge_index.entities -> core.rag.retrieval.retrieval_methods
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.retrieval.retrieval_methods
     core.workflow.nodes.knowledge_index.knowledge_index_node -> models.dataset
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> services.summary_index_service
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> tasks.generate_summary_index_task
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.processor.paragraph_index_processor
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.rag.retrieval.retrieval_methods
     core.workflow.nodes.llm.node -> models.dataset
     core.workflow.nodes.agent.agent_node -> core.tools.utils.message_transformer
