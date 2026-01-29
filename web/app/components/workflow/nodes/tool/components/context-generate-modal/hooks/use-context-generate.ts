@@ -150,7 +150,7 @@ type UseContextGenerateResult = {
   handleCompletionParamsChange: (newParams: FormValue) => void
   handleGenerate: () => Promise<void>
   handleReset: () => void
-  handleFetchSuggestedQuestions: () => Promise<void>
+  handleFetchSuggestedQuestions: (options?: { force?: boolean }) => Promise<void>
   abortSuggestedQuestions: () => void
   resetSuggestions: () => void
   defaultAssistantMessage: string
@@ -364,12 +364,13 @@ const useContextGenerate = ({
     clearVersions()
   }, [clearVersions, isGenerating, setPromptMessages])
 
-  const handleFetchSuggestedQuestions = useCallback(async () => {
+  const handleFetchSuggestedQuestions = useCallback(async (options?: { force?: boolean }) => {
+    const forceFetch = options?.force
     if (!toolNodeId || !paramKey)
       return
     if (!modelConfig.name || !modelConfig.provider)
       return
-    if (hasFetchedSuggestions || isFetchingSuggestions || !isInitView)
+    if (!forceFetch && (hasFetchedSuggestions || isFetchingSuggestions || !isInitView))
       return
 
     setFetchingSuggestionsTrue()

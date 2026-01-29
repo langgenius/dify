@@ -131,6 +131,13 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
     onClose()
   }, [abortSuggestedQuestions, onClose, resetSuggestions])
 
+  const handleResetWithSuggestions = useCallback(() => {
+    abortSuggestedQuestions()
+    handleReset()
+    resetSuggestions()
+    void handleFetchSuggestedQuestions({ force: true })
+  }, [abortSuggestedQuestions, handleFetchSuggestedQuestions, handleReset, resetSuggestions])
+
   useImperativeHandle(ref, () => ({
     onOpen: () => {
       void handleFetchSuggestedQuestions()
@@ -223,7 +230,7 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
           inputValue={inputValue}
           onInputChange={setInputValue}
           onGenerate={handleGenerate}
-          onReset={handleReset}
+          onReset={handleResetWithSuggestions}
           suggestedQuestions={suggestedQuestions}
           hasFetchedSuggestions={hasFetchedSuggestions}
           model={model}

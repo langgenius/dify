@@ -11,6 +11,7 @@ import type { PluginDefaultValue } from '../block-selector/types'
 import type { GroupHandler, GroupMember, GroupNodeData } from '../nodes/group/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
+import type { ToolNodeType } from '../nodes/tool/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
@@ -33,15 +34,18 @@ import {
   X_OFFSET,
   Y_OFFSET,
 } from '../constants'
+import { useHooksStore } from '../hooks-store'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
+import { VarKindType } from '../nodes/_base/types'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import { useNodeLoopInteractions } from '../nodes/loop/use-interactions'
+import { buildContextGenStorageKey, clearContextGenStorage } from '../nodes/tool/components/context-generate-modal/utils/storage'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { useWorkflowStore } from '../store'
-import { BlockEnum, ControlMode, isTriggerNode } from '../types'
 
+import { BlockEnum, ControlMode, isTriggerNode } from '../types'
 import {
   generateNewNode,
   genNewNodeTitleFromOld,
@@ -242,9 +246,36 @@ export const useNodesInteractions = () => {
     y: number
   })
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
+  const configsMap = useHooksStore(s => s.configsMap)
 
   const { saveStateToHistory } = useWorkflowHistory()
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
+
+  const clearContextGenStorageByParam = useCallback((toolNodeId: string, paramKey: string) => {
+    if (!toolNodeId || !paramKey)
+      return
+    const storageKey = buildContextGenStorageKey(configsMap?.flowId, toolNodeId, paramKey)
+    clearContextGenStorage(storageKey)
+  }, [configsMap?.flowId])
+
+  const cleanupContextGenStorage = useCallback((nodeId: string, nodeData?: Node['data']) => {
+    const extSeparator = '_ext_'
+    const extIndex = nodeId.indexOf(extSeparator)
+    if (extIndex > 0) {
+      const toolNodeId = nodeId.slice(0, extIndex)
+      const paramKey = nodeId.slice(extIndex + extSeparator.length)
+      clearContextGenStorageByParam(toolNodeId, paramKey)
+    }
+
+    if (nodeData?.type !== BlockEnum.Tool)
+      return
+
+    const toolParams = (nodeData as ToolNodeType).tool_parameters || {}
+    Object.entries(toolParams).forEach(([paramKey, param]) => {
+      if (param?.type === VarKindType.nested_node)
+        clearContextGenStorageByParam(nodeId, paramKey)
+    })
+  }, [clearContextGenStorageByParam])
 
   const handleNodeDragStart = useCallback<NodeDragHandler>(
     (_, node) => {
@@ -1027,6 +1058,9 @@ export const useNodesInteractions = () => {
         }
       }
 
+      // Reason: remove context-generate caches for deleted nested-node params.
+      cleanupContextGenStorage(nodeId, currentNode.data)
+
       const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges)
       const nodesConnectedSourceOrTargetHandleIdsMap
         = getNodesConnectedSourceOrTargetHandleIdsMap(
@@ -1082,6 +1116,7 @@ export const useNodesInteractions = () => {
       t,
       nodesMetaDataMap,
       deleteNodeInspectorVars,
+      cleanupContextGenStorage,
     ],
   )
 
