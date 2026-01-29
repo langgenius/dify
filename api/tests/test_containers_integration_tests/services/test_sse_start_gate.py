@@ -140,7 +140,7 @@ class TestSSEStartGateIntegration:
             "user": "test-end-user",
         }
 
-        with patch("services.app_generate_service.chatflow_execute_task.delay", side_effect=_fake_delay):
+        with patch("services.app_generate_service.workflow_base_app_execution_task.delay", side_effect=_fake_delay):
             response = test_client_with_containers.post(
                 "/v1/workflows/run",
                 json=payload,

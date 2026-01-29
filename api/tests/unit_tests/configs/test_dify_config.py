@@ -217,7 +217,7 @@ def test_pubsub_redis_url_required_when_default_unavailable(monkeypatch: pytest.
     monkeypatch.setenv("REDIS_HOST", "")
 
     with pytest.raises(ValueError, match="PUBSUB_REDIS_URL must be set"):
-        DifyConfig()
+        _ = DifyConfig().normalized_pubsub_redis_url
 
 
 @pytest.mark.parametrize(

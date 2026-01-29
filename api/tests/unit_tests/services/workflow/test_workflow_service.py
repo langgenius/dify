@@ -180,8 +180,8 @@ class TestWorkflowService:
         )
         node = MagicMock()
         node.node_data = node_data
-        node._render_form_content_before_submission.return_value = "<p>preview</p>"
-        node._render_form_content_with_outputs.return_value = "<p>rendered</p>"
+        node.render_form_content_before_submission.return_value = "<p>preview</p>"
+        node.render_form_content_with_outputs.return_value = "<p>rendered</p>"
 
         service._build_human_input_variable_pool = MagicMock(return_value=MagicMock())  # type: ignore[method-assign]
         service._build_human_input_node = MagicMock(return_value=node)  # type: ignore[method-assign]
@@ -236,8 +236,8 @@ class TestWorkflowService:
             manual_inputs={"#node-0.result#": "LLM output"},
         )
 
-        node._render_form_content_with_outputs.assert_called_once()
-        called_args = node._render_form_content_with_outputs.call_args.args
+        node.render_form_content_with_outputs.assert_called_once()
+        called_args = node.render_form_content_with_outputs.call_args.args
         assert called_args[0] == "<p>preview</p>"
         assert called_args[2] == node_data.outputs_field_names()
         rendered_outputs = called_args[1]

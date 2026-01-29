@@ -71,7 +71,7 @@ class _FakeService:
     def __init__(self, _session_factory, form_repository=None):
         self.enqueued: list[str] = []
 
-    def _enqueue_resume(self, workflow_run_id: str | None) -> None:
+    def enqueue_resume(self, workflow_run_id: str | None) -> None:
         if workflow_run_id is not None:
             self.enqueued.append(workflow_run_id)
 

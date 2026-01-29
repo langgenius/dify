@@ -1,4 +1,5 @@
 import queue
+import threading
 from datetime import datetime
 
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
@@ -64,6 +65,7 @@ def test_dispatcher_drains_events_when_paused() -> None:
         event_handler=handler,
         execution_coordinator=coordinator,
         event_emitter=None,
+        stop_event=threading.Event(),
     )
 
     dispatcher._dispatcher_loop()

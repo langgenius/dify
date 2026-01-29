@@ -1,5 +1,6 @@
 """Unit tests for DifyAPISQLAlchemyWorkflowRunRepository implementation."""
 
+import secrets
 from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
@@ -494,18 +495,19 @@ class TestBuildHumanInputRequiredReason:
             node_id="node-1",
             message="",
         )
+        access_token = secrets.token_urlsafe(8)
         backstage_recipient = HumanInputFormRecipient(
             form_id="form-1",
             delivery_id="delivery-1",
             recipient_type=RecipientType.BACKSTAGE,
             recipient_payload=BackstageRecipientPayload().model_dump_json(),
-            access_token="backstage-token",
+            access_token=access_token,
         )
 
         reason = _build_human_input_required_reason(reason_model, form_model, [backstage_recipient])
 
         assert isinstance(reason, HumanInputRequired)
-        assert reason.form_token == "backstage-token"
+        assert reason.form_token == access_token
         assert reason.node_title == "Ask Name"
         assert reason.form_content == "content"
         assert reason.inputs[0].output_variable_name == "name"

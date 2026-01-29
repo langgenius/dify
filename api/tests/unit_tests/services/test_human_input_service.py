@@ -17,6 +17,7 @@ from core.workflow.nodes.human_input.entities import (
 from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus
 from models.human_input import RecipientType
 from services.human_input_service import Form, FormExpiredError, HumanInputService, InvalidFormDataError
+from tasks.app_generate.workflow_execute_task import WORKFLOW_BASED_APP_EXECUTION_QUEUE
 
 
 @pytest.fixture
@@ -87,7 +88,7 @@ def test_enqueue_resume_dispatches_task_for_workflow(mocker, mock_session_factor
 
     resume_task.apply_async.assert_called_once()
     call_kwargs = resume_task.apply_async.call_args.kwargs
-    assert call_kwargs["queue"] == "chatflow_execute"
+    assert call_kwargs["queue"] == WORKFLOW_BASED_APP_EXECUTION_QUEUE
     assert call_kwargs["kwargs"]["payload"]["workflow_run_id"] == "workflow-run-id"
 
 
@@ -129,7 +130,7 @@ def test_enqueue_resume_dispatches_task_for_advanced_chat(mocker, mock_session_f
 
     resume_task.apply_async.assert_called_once()
     call_kwargs = resume_task.apply_async.call_args.kwargs
-    assert call_kwargs["queue"] == "chatflow_execute"
+    assert call_kwargs["queue"] == WORKFLOW_BASED_APP_EXECUTION_QUEUE
     assert call_kwargs["kwargs"]["payload"]["workflow_run_id"] == "workflow-run-id"
 
 
@@ -178,7 +179,7 @@ def test_submit_form_by_token_calls_repository_and_enqueue(sample_form_record, m
     repo.get_by_token.return_value = sample_form_record
     repo.mark_submitted.return_value = sample_form_record
     service = HumanInputService(session_factory, form_repository=repo)
-    enqueue_spy = mocker.patch.object(service, "_enqueue_resume")
+    enqueue_spy = mocker.patch.object(service, "enqueue_resume")
 
     service.submit_form_by_token(
         recipient_type=RecipientType.STANDALONE_WEB_APP,
@@ -210,7 +211,7 @@ def test_submit_form_by_token_skips_enqueue_for_delivery_test(sample_form_record
     repo.get_by_token.return_value = test_record
     repo.mark_submitted.return_value = test_record
     service = HumanInputService(session_factory, form_repository=repo)
-    enqueue_spy = mocker.patch.object(service, "_enqueue_resume")
+    enqueue_spy = mocker.patch.object(service, "enqueue_resume")
 
     service.submit_form_by_token(
         recipient_type=RecipientType.STANDALONE_WEB_APP,
@@ -228,7 +229,7 @@ def test_submit_form_by_token_passes_submission_user_id(sample_form_record, mock
     repo.get_by_token.return_value = sample_form_record
     repo.mark_submitted.return_value = sample_form_record
     service = HumanInputService(session_factory, form_repository=repo)
-    enqueue_spy = mocker.patch.object(service, "_enqueue_resume")
+    enqueue_spy = mocker.patch.object(service, "enqueue_resume")
 
     service.submit_form_by_token(
         recipient_type=RecipientType.STANDALONE_WEB_APP,

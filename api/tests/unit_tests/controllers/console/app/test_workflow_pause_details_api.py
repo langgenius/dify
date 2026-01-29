@@ -50,7 +50,7 @@ class _PauseEntity:
 def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     account = _make_account()
     _patch_console_guards(monkeypatch, account)
-    monkeypatch.setattr(workflow_run_module.dify_config, "CONSOLE_WEB_URL", "https://console.example.com")
+    monkeypatch.setattr(workflow_run_module.dify_config, "APP_WEB_URL", "https://web.example.com")
 
     workflow_run = Mock(spec=WorkflowRun)
     workflow_run.status = WorkflowExecutionStatus.PAUSED
@@ -86,6 +86,6 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
     assert response["paused_nodes"][0]["pause_type"]["type"] == "human_input"
     assert (
         response["paused_nodes"][0]["pause_type"]["backstage_input_url"]
-        == "https://console.example.com/form/backstage-token"
+        == "https://web.example.com/form/backstage-token"
     )
     assert "pending_human_inputs" not in response

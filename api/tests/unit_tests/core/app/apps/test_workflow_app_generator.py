@@ -153,7 +153,7 @@ def test_resume_path_runs_worker_with_runtime_state(mocker):
     session.__enter__.return_value = session
     session.__exit__.return_value = False
     session.scalar.side_effect = [workflow, end_user, app_record]
-    mocker.patch("core.app.apps.workflow.app_generator.Session", return_value=session)
+    mocker.patch("core.app.apps.workflow.app_generator.session_factory", return_value=session)
 
     runner_instance = MagicMock()
 

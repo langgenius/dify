@@ -76,14 +76,14 @@ def register_external_error_handlers(api: Api):
 
     _ = handle_http_exception
 
-    # @api.errorhandler(ValueError)
-    # def handle_value_error(e: ValueError):
-    #     got_request_exception.send(current_app, exception=e)
-    #     status_code = 400
-    #     data = {"code": "invalid_param", "message": str(e), "status": status_code}
-    #     return data, status_code
+    @api.errorhandler(ValueError)
+    def handle_value_error(e: ValueError):
+        got_request_exception.send(current_app, exception=e)
+        status_code = 400
+        data = {"code": "invalid_param", "message": str(e), "status": status_code}
+        return data, status_code
 
-    # _ = handle_value_error
+    _ = handle_value_error
 
     @api.errorhandler(AppInvokeQuotaExceededError)
     def handle_quota_exceeded(e: AppInvokeQuotaExceededError):

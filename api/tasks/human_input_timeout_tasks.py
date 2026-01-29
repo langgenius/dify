@@ -108,6 +108,6 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
         except Exception:
             logger.exception(
                 "Failed to handle timeout for form_id=%s workflow_run_id=%s",
-                getattr(form_model, "id", None),
-                getattr(form_model, "workflow_run_id", None),
+                form_model.id,
+                form_model.workflow_run_id,
             )

@@ -11,7 +11,6 @@ from pydantic import ValidationError
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app import wraps as app_wraps
-from controllers.web.error import InvalidArgumentError
 from libs import login as login_lib
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.model import AppMode
@@ -212,7 +211,7 @@ def test_human_input_delivery_test_maps_validation_error(app: Flask, monkeypatch
         method="POST",
         json={"delivery_method_id": "bad"},
     ):
-        with pytest.raises(InvalidArgumentError):
+        with pytest.raises(ValueError):
             workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
 
 

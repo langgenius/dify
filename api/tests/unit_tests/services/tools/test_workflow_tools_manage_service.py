@@ -35,6 +35,12 @@ class DummySession:
     def __init__(self) -> None:
         self.added: list[object] = []
 
+    def __enter__(self) -> "DummySession":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
     def add(self, obj) -> None:
         self.added.append(obj)
 
@@ -93,7 +99,6 @@ def test_create_workflow_tool_rejects_human_input_nodes(monkeypatch):
     mock_from_db = MagicMock()
     monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", mock_from_db)
     mock_invalidate = MagicMock()
-    monkeypatch.setattr(workflow_tools_manage_service.ToolProviderListCache, "invalidate_cache", mock_invalidate)
 
     parameters = [{"name": "input", "description": "input", "form": "form"}]
 
@@ -118,16 +123,16 @@ def test_create_workflow_tool_success(monkeypatch):
     workflow = DummyWorkflow(graph_dict={"nodes": [{"id": "node_1", "data": {"type": "start"}}]})
     app = SimpleNamespace(workflow=workflow)
 
+    fake_db = MagicMock()
     fake_session = _build_fake_session(app)
-    monkeypatch.setattr(workflow_tools_manage_service.db, "session", fake_session)
+    fake_db.session = fake_session
+    monkeypatch.setattr(workflow_tools_manage_service, "db", fake_db)
 
     dummy_session = DummySession()
-    monkeypatch.setattr(workflow_tools_manage_service, "session_factory", DummySessionFactory(dummy_session))
+    monkeypatch.setattr(workflow_tools_manage_service, "Session", lambda *_, **__: dummy_session)
 
     mock_from_db = MagicMock()
     monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", mock_from_db)
-    mock_invalidate = MagicMock()
-    monkeypatch.setattr(workflow_tools_manage_service.ToolProviderListCache, "invalidate_cache", mock_invalidate)
 
     parameters = [{"name": "input", "description": "input", "form": "form"}]
     icon = {"type": "emoji", "emoji": "tool"}
@@ -151,4 +156,3 @@ def test_create_workflow_tool_success(monkeypatch):
     assert created_provider.icon == json.dumps(icon)
     assert created_provider.version == workflow.version
     mock_from_db.assert_called_once()
-    mock_invalidate.assert_called_once_with("tenant-id")
