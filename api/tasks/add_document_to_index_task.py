@@ -118,6 +118,19 @@ def add_document_to_index_task(dataset_document_id: str):
             )
             session.commit()
 
+            # Enable summary indexes for all segments in this document
+            from services.summary_index_service import SummaryIndexService
+
+            segment_ids_list = [segment.id for segment in segments]
+            if segment_ids_list:
+                try:
+                    SummaryIndexService.enable_summaries_for_segments(
+                        dataset=dataset,
+                        segment_ids=segment_ids_list,
+                    )
+                except Exception as e:
+                    logger.warning("Failed to enable summaries for document %s: %s", dataset_document.id, str(e))
+
             end_at = time.perf_counter()
             logger.info(
                 click.style(f"Document added to index: {dataset_document.id} latency: {end_at - start_at}", fg="green")

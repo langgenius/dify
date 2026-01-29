@@ -29,6 +29,7 @@ import {
 } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import ShortcutsName from '../../workflow/shortcuts-name'
 import DSLConfirmModal from './dsl-confirm-modal'
 import Uploader from './uploader'
 
@@ -327,8 +328,10 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
               disabled={buttonDisabled}
               variant="primary"
               onClick={handleCreateApp}
+              className="gap-1"
             >
-              {t('newApp.import', { ns: 'app' })}
+              <span>{t('newApp.import', { ns: 'app' })}</span>
+              <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
             </Button>
           </div>
         </div>
