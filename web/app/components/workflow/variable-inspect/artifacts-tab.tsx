@@ -16,6 +16,7 @@ import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { useDownloadSandboxFile, useSandboxFileDownloadUrl, useSandboxFilesTree } from '@/service/use-sandbox-file'
 import { cn } from '@/utils/classnames'
+import { downloadUrl } from '@/utils/download'
 import InspectLayout from './inspect-layout'
 import SplitPanel from './split-panel'
 
@@ -76,7 +77,7 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
   const handleDownload = useCallback(async (node: SandboxFileTreeNode) => {
     try {
       const ticket = await downloadFile(node.path)
-      window.open(ticket.download_url, '_blank')
+      downloadUrl({ url: ticket.download_url, fileName: node.name })
     }
     catch (error) {
       console.error('Download failed:', error)

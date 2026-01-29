@@ -9,6 +9,7 @@ import FolderSpark from '@/app/components/base/icons/src/vender/workflow/FolderS
 import { useAppContext } from '@/context/app-context'
 import { useDownloadSandboxFile, useSandboxFilesTree } from '@/service/use-sandbox-file'
 import { cn } from '@/utils/classnames'
+import { downloadUrl } from '@/utils/download'
 import ArtifactsTree from './artifacts-tree'
 
 type ArtifactsSectionProps = {
@@ -33,7 +34,7 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
   const handleDownload = useCallback(async (node: SandboxFileTreeNode) => {
     try {
       const ticket = await downloadMutation.mutateAsync(node.path)
-      window.open(ticket.download_url, '_blank')
+      downloadUrl({ url: ticket.download_url, fileName: node.name })
     }
     catch (error) {
       console.error('Download failed:', error)
