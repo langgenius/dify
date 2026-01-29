@@ -31,6 +31,7 @@
   "list.action.pause": "Zaustavi",
   "list.action.resume": "Nadaljuj",
   "list.action.settings": "Nastavitve segmenta",
+  "list.action.summary": "Ustvari povzetek",
   "list.action.sync": "Sinhroniziraj",
   "list.action.unarchive": "Razveljavi arhiviranje",
   "list.action.uploadFile": "Naloži novo datoteko",
@@ -75,6 +76,9 @@
   "list.status.indexing": "Indeksiranje",
   "list.status.paused": "Zaustavljeno",
   "list.status.queuing": "V čakalni vrsti",
+  "list.summary.generating": "Ustvarjanje...",
+  "list.summary.generatingSummary": "Ustvarjanje povzetka",
+  "list.summary.ready": "Povzetek pripravljen",
   "list.table.header.action": "DEJANJE",
   "list.table.header.chunkingMode": "NAČIN KOŠČENJA",
   "list.table.header.fileName": "IME DATOTEKE",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "REZULTAT",
   "segment.searchResults_other": "REZULTATI",
   "segment.searchResults_zero": "REZULTAT",
+  "segment.summary": "POVZETEK",
+  "segment.summaryPlaceholder": "Napišite kratek povzetek za boljše iskanje…",
   "segment.vectorHash": "Vektorski hash: "
 }
