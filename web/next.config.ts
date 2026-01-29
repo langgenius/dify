@@ -5,6 +5,7 @@ import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 
 const isDev = process.env.NODE_ENV === 'development'
+const enableProdSourceMaps = process.env.ENABLE_PROD_SOURCEMAP === 'true'
 const withMDX = createMDX({
   extension: /\.mdx?$/,
   options: {
@@ -49,7 +50,7 @@ const nextConfig: NextConfig = {
 
     return config
   },
-  productionBrowserSourceMaps: false, // enable browser source map generation during the production build
+  productionBrowserSourceMaps: enableProdSourceMaps, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   // https://nextjs.org/docs/messages/next-image-unconfigured-host
