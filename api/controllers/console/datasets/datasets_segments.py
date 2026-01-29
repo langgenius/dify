@@ -90,6 +90,7 @@ register_schema_models(
     ChildChunkCreatePayload,
     ChildChunkUpdatePayload,
     ChildChunkBatchUpdatePayload,
+    ChildChunkUpdateArgs,
 )
 
 

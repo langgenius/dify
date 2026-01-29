@@ -2,7 +2,7 @@
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Member } from '@/models/common'
-import type { IconInfo } from '@/models/datasets'
+import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { AppIconType, RetrievalConfig } from '@/types/app'
 import { RiAlertFill } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -33,6 +33,7 @@ import RetrievalSettings from '../../external-knowledge-base/create/RetrievalSet
 import ChunkStructure from '../chunk-structure'
 import IndexMethod from '../index-method'
 import PermissionSelector from '../permission-selector'
+import SummaryIndexSetting from '../summary-index-setting'
 import { checkShowMultiModalTip } from '../utils'
 
 const rowClass = 'flex gap-x-1'
@@ -76,6 +77,12 @@ const Form = () => {
           model: '',
         },
   )
+  const [summaryIndexSetting, setSummaryIndexSetting] = useState(currentDataset?.summary_index_setting)
+  const handleSummaryIndexSettingChange = useCallback((payload: SummaryIndexSettingType) => {
+    setSummaryIndexSetting((prev) => {
+      return { ...prev, ...payload }
+    })
+  }, [])
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: membersData } = useMembers()
@@ -167,6 +174,7 @@ const Form = () => {
             },
           }),
           keyword_number: keywordNumber,
+          summary_index_setting: summaryIndexSetting,
         },
       } as any
       if (permission === DatasetPermission.partialMembers) {
@@ -348,6 +356,23 @@ const Form = () => {
           </div>
         </div>
       )}
+      {
+        indexMethod === IndexingType.QUALIFIED
+        && [ChunkingMode.text, ChunkingMode.parentChild].includes(currentDataset?.doc_form as ChunkingMode)
+        && (
+          <>
+            <Divider
+              type="horizontal"
+              className="my-1 h-px bg-divider-subtle"
+            />
+            <SummaryIndexSetting
+              entry="dataset-settings"
+              summaryIndexSetting={summaryIndexSetting}
+              onSummaryIndexSettingChange={handleSummaryIndexSettingChange}
+            />
+          </>
+        )
+      }
       {/* Retrieval Method Config */}
       {currentDataset?.provider === 'external'
         ? (
