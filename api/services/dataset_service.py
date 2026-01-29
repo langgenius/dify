@@ -1435,10 +1435,10 @@ class DocumentService:
         for document in documents:
             if has_summary_index and document.need_summary is True:
                 # Get status from map, default to None (not queued yet)
-                document.summary_index_status = summary_status_map.get(str(document.id))  # type: ignore[assignment]
+                document.summary_index_status = summary_status_map.get(str(document.id))  # type: ignore[attr-defined]
             else:
                 # Return null if summary index is not enabled or document doesn't need summary
-                document.summary_index_status = None  # type: ignore[assignment]
+                document.summary_index_status = None  # type: ignore[attr-defined]
 
     @staticmethod
     def prepare_document_batch_download_zip(

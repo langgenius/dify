@@ -105,13 +105,14 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
         logger.exception("Failed to generate summary index for document %s", document_id)
         # Update document segments with error status if needed
         if segment_ids:
+            error_message = f"Summary generation failed: {str(e)}"
             with session_factory.create_session() as session:
                 session.query(DocumentSegment).filter(
                     DocumentSegment.id.in_(segment_ids),
                     DocumentSegment.dataset_id == dataset_id,
                 ).update(
                     {
-                        DocumentSegment.error: f"Summary generation failed: {str(e)}",
+                        DocumentSegment.error: error_message,
                     },
                     synchronize_session=False,
                 )

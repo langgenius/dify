@@ -35,6 +35,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
+from core.workflow.nodes.llm import llm_utils
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from libs import helper
@@ -447,8 +448,6 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         usage = result.usage
 
         # Deduct quota for summary generation (same as workflow nodes)
-        from core.workflow.nodes.llm import llm_utils
-
         try:
             llm_utils.deduct_llm_quota(tenant_id=tenant_id, model_instance=model_instance, usage=usage)
         except Exception as e:
