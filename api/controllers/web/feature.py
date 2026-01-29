@@ -17,5 +17,15 @@ class SystemFeatureApi(Resource):
 
         Returns:
             dict: System feature configuration object
+
+        This endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,
+        except it is intended for use by the web app, instead of the console dashboard.
+
+        NOTE: This endpoint is unauthenticated by design, as it provides system features
+        data required for webapp initialization.
+
+        Authentication would create circular dependency (can't authenticate without webapp loading).
+
+        Only non-sensitive configuration data should be returned by this endpoint.
         """
         return FeatureService.get_system_features().model_dump()

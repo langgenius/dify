@@ -44,7 +44,7 @@ const Processing = ({
             <div className="system-xl-semibold text-text-secondary">{t('stepThree.sideTipTitle', { ns: 'datasetCreation' })}</div>
             <div className="system-sm-regular text-text-tertiary">{t('stepThree.sideTipContent', { ns: 'datasetCreation' })}</div>
             <a
-              href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
+              href={docLink('/use-dify/knowledge/knowledge-pipeline/authorize-data-source')}
               target="_blank"
               rel="noreferrer noopener"
               className="system-sm-regular text-text-accent"

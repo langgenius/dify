@@ -965,6 +965,16 @@ class MailConfig(BaseSettings):
         default=None,
     )
 
+    ENABLE_TRIAL_APP: bool = Field(
+        description="Enable trial app",
+        default=False,
+    )
+
+    ENABLE_EXPLORE_BANNER: bool = Field(
+        description="Enable explore banner",
+        default=False,
+    )
+
 
 class RagEtlConfig(BaseSettings):
     """
@@ -1297,6 +1307,10 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: PositiveInt = Field(
         description="Retention days for sandbox expired workflow_run records and message records",
         default=30,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL: PositiveInt = Field(
+        description="Lock TTL for sandbox expired records clean task in seconds",
+        default=90000,
     )
 
 

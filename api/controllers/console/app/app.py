@@ -1,4 +1,3 @@
-import re
 import uuid
 from datetime import datetime
 from typing import Any, Literal, TypeAlias
@@ -10,9 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
-from controllers.common.schema import register_schema_models
+from controllers.common.helpers import FileInfo
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
+from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -23,17 +24,35 @@ from controllers.console.wraps import (
 )
 from core.file import helpers as file_helpers
 from core.ops.ops_trace_manager import OpsTraceManager
-from core.workflow.enums import NodeType
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.workflow.enums import NodeType, WorkflowExecutionStatus
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
-from models import App, Workflow
+from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.knowledge_entities.knowledge_entities import (
+    DataSource,
+    InfoList,
+    NotionIcon,
+    NotionInfo,
+    NotionPage,
+    PreProcessingRule,
+    RerankingModel,
+    Rule,
+    Segmentation,
+    WebsiteInfo,
+    WeightKeywordSetting,
+    WeightModel,
+    WeightVectorSetting,
+)
 from services.feature_service import FeatureService
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+
+register_enum_models(console_ns, IconType)
 
 
 class AppListQuery(BaseModel):
@@ -68,48 +87,6 @@ class AppListQuery(BaseModel):
             raise ValueError("Invalid UUID format in tag_ids.") from exc
 
 
-# XSS prevention: patterns that could lead to XSS attacks
-# Includes: script tags, iframe tags, javascript: protocol, SVG with onload, etc.
-_XSS_PATTERNS = [
-    r"<script[^>]*>.*?</script>",  # Script tags
-    r"<iframe\b[^>]*?(?:/>|>.*?</iframe>)",  # Iframe tags (including self-closing)
-    r"javascript:",  # JavaScript protocol
-    r"<svg[^>]*?\s+onload\s*=[^>]*>",  # SVG with onload handler (attribute-aware, flexible whitespace)
-    r"<.*?on\s*\w+\s*=",  # Event handlers like onclick, onerror, etc.
-    r"<object\b[^>]*(?:\s*/>|>.*?</object\s*>)",  # Object tags (opening tag)
-    r"<embed[^>]*>",  # Embed tags (self-closing)
-    r"<link[^>]*>",  # Link tags with javascript
-]
-
-
-def _validate_xss_safe(value: str | None, field_name: str = "Field") -> str | None:
-    """
-    Validate that a string value doesn't contain potential XSS payloads.
-
-    Args:
-        value: The string value to validate
-        field_name: Name of the field for error messages
-
-    Returns:
-        The original value if safe
-
-    Raises:
-        ValueError: If the value contains XSS patterns
-    """
-    if value is None:
-        return None
-
-    value_lower = value.lower()
-    for pattern in _XSS_PATTERNS:
-        if re.search(pattern, value_lower, re.DOTALL | re.IGNORECASE):
-            raise ValueError(
-                f"{field_name} contains invalid characters or patterns. "
-                "HTML tags, JavaScript, and other potentially dangerous content are not allowed."
-            )
-
-    return value
-
-
 class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
@@ -117,11 +94,6 @@ class CreateAppPayload(BaseModel):
     icon_type: str | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
-
-    @field_validator("name", "description", mode="before")
-    @classmethod
-    def validate_xss_safe(cls, value: str | None, info) -> str | None:
-        return _validate_xss_safe(value, info.field_name)
 
 
 class UpdateAppPayload(BaseModel):
@@ -133,11 +105,6 @@ class UpdateAppPayload(BaseModel):
     use_icon_as_answer_icon: bool | None = Field(default=None, description="Use icon as answer icon")
     max_active_requests: int | None = Field(default=None, description="Maximum active requests")
 
-    @field_validator("name", "description", mode="before")
-    @classmethod
-    def validate_xss_safe(cls, value: str | None, info) -> str | None:
-        return _validate_xss_safe(value, info.field_name)
-
 
 class CopyAppPayload(BaseModel):
     name: str | None = Field(default=None, description="Name for the copied app")
@@ -145,11 +112,6 @@ class CopyAppPayload(BaseModel):
     icon_type: str | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
-
-    @field_validator("name", "description", mode="before")
-    @classmethod
-    def validate_xss_safe(cls, value: str | None, info) -> str | None:
-        return _validate_xss_safe(value, info.field_name)
 
 
 class AppExportQuery(BaseModel):
@@ -209,7 +171,7 @@ def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str |
     if icon is None or icon_type is None:
         return None
     icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
-    if icon_type_value.lower() != IconType.IMAGE.value:
+    if icon_type_value.lower() != IconType.IMAGE:
         return None
     return file_helpers.get_signed_file_url(icon)
 
@@ -449,6 +411,8 @@ class AppExportResponse(ResponseModel):
     data: str
 
 
+register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
+
 register_schema_models(
     console_ns,
     AppListQuery,
@@ -472,6 +436,22 @@ register_schema_models(
     AppDetailWithSite,
     AppPagination,
     AppExportResponse,
+    Segmentation,
+    PreProcessingRule,
+    Rule,
+    WeightVectorSetting,
+    WeightKeywordSetting,
+    WeightModel,
+    RerankingModel,
+    InfoList,
+    NotionInfo,
+    FileInfo,
+    WebsiteInfo,
+    NotionPage,
+    NotionIcon,
+    RerankingModel,
+    DataSource,
+    LoadBalancingPayload,
 )
 
 
