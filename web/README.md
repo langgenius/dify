@@ -105,7 +105,7 @@ Open [http://localhost:6006](http://localhost:6006) with your browser to see the
 
 ## Lint Code
 
-If your IDE is VSCode, rename `.vscode/settings.example.json` to `.vscode/settings.json` for lint code setting.
+If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
 
 Then follow the [Lint Documentation](./docs/lint.md) to lint the code.
 
@@ -113,7 +113,7 @@ Then follow the [Lint Documentation](./docs/lint.md) to lint the code.
 
 We use [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
 
-**📖 Complete Testing Guide**: See [Test Documentation](./docs/test.md) for detailed testing specifications, best practices, and examples.
+**📖 Complete Testing Guide**: See [web/testing/testing.md](./testing/testing.md) for detailed testing specifications, best practices, and examples.
 
 ### Example Code
 
@@ -130,13 +130,7 @@ Before writing tests, use the script to analyze component complexity:
 pnpm analyze-component app/components/your-component/index.tsx
 ```
 
-This will help you determine the testing strategy. See [Test Documentation](./docs/test.md) for details.
-
-## Helpful Editor Extensions
-
-- [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
-- [TSSLint](https://marketplace.visualstudio.com/items?itemName=johnsoncodehk.vscode-tsslint)
-- [Typescript (Native Preview)](https://marketplace.visualstudio.com/items?itemName=TypeScriptTeam.native-preview)
+This will help you determine the testing strategy. See [web/testing/testing.md](./testing/testing.md) for details.
 
 ## Documentation
 
