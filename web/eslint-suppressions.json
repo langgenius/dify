@@ -4318,11 +4318,6 @@
       "count": 10
     }
   },
-  "testing/testing.md": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "types/app.ts": {
     "ts/no-explicit-any": {
       "count": 1
