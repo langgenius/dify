@@ -40,6 +40,10 @@ This command lints the entire project and is intended for final verification bef
 
 ## Type Check
 
+You should be able to see suggestions from TypeScript in your editor for all open files.
+
+However, it can be useful to run the TypeScript 7 command-line (tsgo) to type check all files:
+
 ```sh
 pnpm type-check:tsgo
 ```
