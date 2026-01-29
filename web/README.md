@@ -111,7 +111,7 @@ If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscod
 
 We use [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
 
-**📖 Complete Testing Guide**: See [web/testing/testing.md](./testing/testing.md) for detailed testing specifications, best practices, and examples.
+**📖 Complete Testing Guide**: See [web/docs/test.md](./docs/test.md) for detailed testing specifications, best practices, and examples.
 
 Run test:
 
@@ -134,7 +134,7 @@ Before writing tests, use the script to analyze component complexity:
 pnpm analyze-component app/components/your-component/index.tsx
 ```
 
-This will help you determine the testing strategy. See [web/testing/testing.md](./testing/testing.md) for details.
+This will help you determine the testing strategy. See [web/docs/test.md](./docs/test.md) for details.
 
 ## Documentation
 
