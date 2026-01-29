@@ -1337,7 +1337,8 @@ class DocumentGenerateSummaryApi(Resource):
         document_list = payload.document_list
 
         if not document_list:
-            raise ValueError("document_list cannot be empty.")
+            from werkzeug.exceptions import BadRequest
+            raise BadRequest("document_list cannot be empty.")
 
         # Check if dataset configuration supports summary generation
         if dataset.indexing_technique != "high_quality":
