@@ -126,7 +126,7 @@ export const VersionHistoryPanel = ({
         })
         break
       case VersionHistoryContextMenuOptions.exportDSL:
-        handleExportDSL?.(false, item.id)
+        handleExportDSL?.(false, item.id, item.features?.sandbox?.enabled === true)
         break
     }
   }, [t, handleExportDSL])

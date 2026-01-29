@@ -27,12 +27,13 @@ import { webSocketClient } from '@/app/components/workflow/collaboration/core/we
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { copyApp, deleteApp, exportAppConfig, fetchAppDetail, updateAppInfo } from '@/service/apps'
+import { copyApp, deleteApp, exportAppBundle, exportAppConfig, fetchAppDetail, updateAppInfo } from '@/service/apps'
 import { useInvalidateAppList } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import { downloadBlob } from '@/utils/download'
 import AppIcon from '../base/app-icon'
 import AppOperations from './app-operations'
 
@@ -78,6 +79,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const [showExportWarning, setShowExportWarning] = useState(false)
+  const [exportSandboxed, setExportSandboxed] = useState(false)
 
   const emitAppMetaUpdate = useCallback(() => {
     if (!appDetail?.id)
@@ -153,21 +155,23 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     }
   }
 
-  const onExport = async (include = false) => {
+  const onExport = async (include = false, sandboxed = false) => {
     if (!appDetail)
       return
     try {
+      if (sandboxed) {
+        await exportAppBundle({
+          appID: appDetail.id,
+          include,
+        })
+        return
+      }
       const { data } = await exportAppConfig({
         appID: appDetail.id,
         include,
       })
-      const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      const url = URL.createObjectURL(file)
-      a.href = url
-      a.download = `${appDetail.name}.yml`
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob({ data: file, fileName: `${appDetail.name}.yaml` })
     }
     catch {
       notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
@@ -178,7 +182,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     if (!appDetail)
       return
     if (appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.ADVANCED_CHAT) {
-      onExport()
+      onExport(false, false)
       return
     }
 
@@ -192,11 +196,13 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
+      const sandboxed = workflowDraft.features?.sandbox?.enabled === true
       if (list.length === 0) {
-        onExport()
+        onExport(false, sandboxed)
         return
       }
       setSecretEnvList(list)
+      setExportSandboxed(sandboxed)
     }
     catch {
       notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
@@ -490,7 +496,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       {secretEnvList.length > 0 && (
         <DSLExportConfirmModal
           envList={secretEnvList}
-          onConfirm={onExport}
+          onConfirm={include => onExport(include, exportSandboxed)}
           onClose={() => setSecretEnvList([])}
         />
       )}

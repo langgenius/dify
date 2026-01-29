@@ -61,7 +61,7 @@ export type CommonHooksFnMap = {
   availableNodesMetaData?: AvailableNodesMetaData
   getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string, traceUrl: string }
   exportCheck?: () => Promise<void>
-  handleExportDSL?: (include?: boolean, flowId?: string) => Promise<void>
+  handleExportDSL?: (include?: boolean, flowId?: string, sandboxed?: boolean) => Promise<void>
   fetchInspectVars: (params: { passInVars?: boolean, vars?: VarInInspect[], passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>, passedInSchemaTypeDefinitions?: SchemaTypeDefinition[] }) => Promise<void>
   hasNodeInspectVars: (nodeId: string) => boolean
   hasSetInspectVar: (nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => boolean

@@ -73,6 +73,7 @@ type WorkflowChildrenProps = {
 const WorkflowChildren = ({ headerLeftSlot }: WorkflowChildrenProps) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
+  const [exportSandboxed, setExportSandboxed] = useState(false)
   const showFeaturesPanel = useStore(s => s.showFeaturesPanel)
   const showImportDSLModal = useStore(s => s.showImportDSLModal)
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
@@ -93,8 +94,10 @@ const WorkflowChildren = ({ headerLeftSlot }: WorkflowChildrenProps) => {
   } = useDSL()
 
   eventEmitter?.useSubscription((v: any) => {
-    if (v.type === DSL_EXPORT_CHECK)
+    if (v.type === DSL_EXPORT_CHECK) {
       setSecretEnvList(v.payload.data as EnvironmentVariable[])
+      setExportSandboxed(v.payload.sandboxed || false)
+    }
   })
 
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
@@ -188,7 +191,7 @@ const WorkflowChildren = ({ headerLeftSlot }: WorkflowChildrenProps) => {
         secretEnvList.length > 0 && (
           <DSLExportConfirmModal
             envList={secretEnvList}
-            onConfirm={handleExportDSL!}
+            onConfirm={include => handleExportDSL!(include, undefined, exportSandboxed)}
             onClose={() => setSecretEnvList([])}
           />
         )

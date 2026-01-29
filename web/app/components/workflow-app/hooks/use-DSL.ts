@@ -9,8 +9,9 @@ import {
   DSL_EXPORT_CHECK,
 } from '@/app/components/workflow/constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { exportAppConfig } from '@/service/apps'
+import { exportAppBundle, exportAppConfig } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { downloadBlob } from '@/utils/download'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const useDSL = () => {
@@ -22,7 +23,7 @@ export const useDSL = () => {
 
   const appDetail = useAppStore(s => s.appDetail)
 
-  const handleExportDSL = useCallback(async (include = false, workflowId?: string) => {
+  const handleExportDSL = useCallback(async (include = false, workflowId?: string, sandboxed = false) => {
     if (!appDetail)
       return
 
@@ -32,18 +33,23 @@ export const useDSL = () => {
     try {
       setExporting(true)
       await doSyncWorkflowDraft()
-      const { data } = await exportAppConfig({
-        appID: appDetail.id,
-        include,
-        workflowID: workflowId,
-      })
-      const a = document.createElement('a')
-      const file = new Blob([data], { type: 'application/yaml' })
-      const url = URL.createObjectURL(file)
-      a.href = url
-      a.download = `${appDetail.name}.yml`
-      a.click()
-      URL.revokeObjectURL(url)
+
+      if (sandboxed) {
+        await exportAppBundle({
+          appID: appDetail.id,
+          include,
+          workflowID: workflowId,
+        })
+      }
+      else {
+        const { data } = await exportAppConfig({
+          appID: appDetail.id,
+          include,
+          workflowID: workflowId,
+        })
+        const file = new Blob([data], { type: 'application/yaml' })
+        downloadBlob({ data: file, fileName: `${appDetail.name}.yaml` })
+      }
     }
     catch {
       notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
@@ -58,15 +64,17 @@ export const useDSL = () => {
       return
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail?.id}/workflows/draft`)
+      const sandboxed = workflowDraft.features?.sandbox?.enabled === true
       const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
       if (list.length === 0) {
-        handleExportDSL()
+        handleExportDSL(false, undefined, sandboxed)
         return
       }
       eventEmitter?.emit({
         type: DSL_EXPORT_CHECK,
         payload: {
           data: list,
+          sandboxed,
         },
       } as any)
     }
