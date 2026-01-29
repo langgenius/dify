@@ -1918,6 +1918,7 @@ class LLMNode(Node[LLMNodeData]):
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
         result: LLMGenerationData | None = None
 
+        # FIXME(Mairuis): Async processing for bash session.
         with SandboxBashSession(sandbox=sandbox, node_id=self.id, tools=tool_dependencies) as session:
             prompt_files = self._extract_prompt_files(variable_pool)
             model_features = self._get_model_features(model_instance)

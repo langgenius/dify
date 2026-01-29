@@ -157,6 +157,41 @@ export const importDSLConfirm = ({ import_id }: { import_id: string }): Promise<
   return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} })
 }
 
+export type ImportBundlePrepareResponse = {
+  import_id: string
+  upload_url: string
+}
+
+export const prepareImportBundle = (): Promise<ImportBundlePrepareResponse> => {
+  return post<ImportBundlePrepareResponse>('apps/imports-bundle/prepare', { body: {} })
+}
+
+export const confirmImportBundle = ({
+  import_id,
+  name,
+  description,
+  icon_type,
+  icon,
+  icon_background,
+}: {
+  import_id: string
+  name?: string
+  description?: string
+  icon_type?: string
+  icon?: string
+  icon_background?: string
+}): Promise<DSLImportResponse> => {
+  return post<DSLImportResponse>(`apps/imports-bundle/${import_id}/confirm`, {
+    body: {
+      name,
+      description,
+      icon_type,
+      icon,
+      icon_background,
+    },
+  })
+}
+
 export const importAppBundle = async ({
   file,
   name,
@@ -172,37 +207,27 @@ export const importAppBundle = async ({
   icon?: string
   icon_background?: string
 }): Promise<DSLImportResponse> => {
-  const { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } = await import('@/config')
-  const Cookies = (await import('js-cookie')).default
+  // Step 1: Prepare import and get upload URL
+  const { import_id, upload_url } = await prepareImportBundle()
 
-  const formData = new FormData()
-  formData.append('file', file)
-  if (name)
-    formData.append('name', name)
-  if (description)
-    formData.append('description', description)
-  if (icon_type)
-    formData.append('icon_type', icon_type)
-  if (icon)
-    formData.append('icon', icon)
-  if (icon_background)
-    formData.append('icon_background', icon_background)
-
-  const response = await fetch(`${API_PREFIX}/apps/imports-bundle`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-    },
-    body: formData,
+  // Step 2: Upload file to presigned URL
+  const uploadResponse = await fetch(upload_url, {
+    method: 'PUT',
+    body: file,
   })
 
-  if (!response.ok) {
-    const errorData = await response.json()
-    throw new Error(errorData.error || 'Import bundle failed')
-  }
+  if (!uploadResponse.ok)
+    throw new Error('Failed to upload bundle file')
 
-  return response.json()
+  // Step 3: Confirm import
+  return confirmImportBundle({
+    import_id,
+    name,
+    description,
+    icon_type,
+    icon,
+    icon_background,
+  })
 }
 
 export const switchApp = ({ appID, name, icon_type, icon, icon_background }: { appID: string, name: string, icon_type: AppIconType, icon: string, icon_background?: string | null }): Promise<{ new_app_id: string }> => {

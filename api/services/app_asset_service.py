@@ -55,6 +55,22 @@ class AppAssetService:
         return redis_client.lock(f"app_asset:lock:{app_id}", timeout=AppAssetService._LOCK_TIMEOUT_SECONDS)
 
     @staticmethod
+    def get_assets_by_version(tenant_id: str, app_id: str, workflow_id: str | None = None) -> AppAssets:
+        """Get asset tree by workflow_id (published) or draft if workflow_id is None."""
+        with Session(db.engine) as session:
+            version = workflow_id or AppAssets.VERSION_DRAFT
+            assets = (
+                session.query(AppAssets)
+                .filter(
+                    AppAssets.tenant_id == tenant_id,
+                    AppAssets.app_id == app_id,
+                    AppAssets.version == version,
+                )
+                .first()
+            )
+            return assets or AppAssets(tenant_id=tenant_id, app_id=app_id, version=version)
+
+    @staticmethod
     def get_draft_assets(tenant_id: str, app_id: str) -> list[AssetItem]:
         with Session(db.engine) as session:
             assets = (

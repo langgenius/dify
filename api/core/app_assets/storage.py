@@ -152,6 +152,20 @@ class _BundleExportZipAssetPath(SignedAssetPath):
         return [self.asset_type, self.tenant_id, self.app_id, self.resource_id]
 
 
+@dataclass(frozen=True)
+class BundleImportZipPath:
+    """Path for temporary import zip files. Not signed, uses direct presign URLs only."""
+
+    tenant_id: str
+    import_id: str
+
+    def __post_init__(self) -> None:
+        _require_uuid(self.tenant_id, "tenant_id")
+
+    def get_storage_key(self) -> str:
+        return f"{_ASSET_BASE}/{self.tenant_id}/imports/{self.import_id}.zip"
+
+
 class AssetPath:
     @staticmethod
     def draft(tenant_id: str, app_id: str, node_id: str) -> SignedAssetPath:
@@ -176,6 +190,10 @@ class AssetPath:
     @staticmethod
     def bundle_export_zip(tenant_id: str, app_id: str, export_id: str) -> SignedAssetPath:
         return _BundleExportZipAssetPath(tenant_id=tenant_id, app_id=app_id, resource_id=export_id)
+
+    @staticmethod
+    def bundle_import_zip(tenant_id: str, import_id: str) -> BundleImportZipPath:
+        return BundleImportZipPath(tenant_id=tenant_id, import_id=import_id)
 
     @staticmethod
     def from_components(
@@ -385,6 +403,23 @@ class AppAssetStorage:
             pass
 
         return self._generate_signed_proxy_upload_url(asset_path, expires_in)
+
+    def get_import_upload_url(self, path: BundleImportZipPath, expires_in: int = 3600) -> str:
+        """Get upload URL for import zip (direct presign, no proxy fallback)."""
+        return self._storage.get_upload_url(path.get_storage_key(), expires_in)
+
+    def get_import_download_url(self, path: BundleImportZipPath, expires_in: int = 3600) -> str:
+        """Get download URL for import zip (direct presign, no proxy fallback)."""
+        return self._storage.get_download_url(path.get_storage_key(), expires_in)
+
+    def delete_import_zip(self, path: BundleImportZipPath) -> None:
+        """Delete import zip file. Errors are logged but not raised."""
+        try:
+            self._storage.delete(path.get_storage_key())
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).debug("Failed to delete import zip: %s", path.get_storage_key())
 
     def _generate_signed_proxy_download_url(self, asset_path: SignedAssetPath, expires_in: int) -> str:
         expires_in = min(expires_in, dify_config.FILES_ACCESS_TIMEOUT)

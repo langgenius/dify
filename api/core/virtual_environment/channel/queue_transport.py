@@ -1,3 +1,5 @@
+from queue import Empty, Queue
+
 from core.virtual_environment.channel.exec import TransportEOFError
 from core.virtual_environment.channel.transport import TransportReadCloser
 
@@ -26,8 +28,6 @@ class QueueTransportReadCloser(TransportReadCloser):
         """
         A write handler that writes data to a queue.
         """
-
-        from queue import Queue
 
         def __init__(self, queue: Queue[bytes | None]) -> None:
             self.queue = queue
@@ -70,7 +70,6 @@ class QueueTransportReadCloser(TransportReadCloser):
 
         NEVER USE IT IN A MULTI-THREADED CONTEXT WITHOUT PROPER SYNCHRONIZATION.
         """
-        from queue import Empty
 
         if n <= 0:
             return b""
