@@ -276,15 +276,14 @@ class HumanInputFormRepositoryImpl:
         external_emails: Sequence[str],
     ) -> list[HumanInputFormRecipient]:
         recipient_models: list[HumanInputFormRecipient] = []
-        seen: set[tuple[str | None, str]] = set()
+        seen_emails: set[str] = set()
 
         for member in members:
             if not member.email:
                 continue
-            key = (member.user_id, member.email)
-            if key in seen:
+            if member.email in seen_emails:
                 continue
-            seen.add(key)
+            seen_emails.add(member.email)
             payload = EmailMemberRecipientPayload(user_id=member.user_id, email=member.email)
             recipient_models.append(
                 HumanInputFormRecipient.new(
@@ -297,10 +296,9 @@ class HumanInputFormRepositoryImpl:
         for email in external_emails:
             if not email:
                 continue
-            key = (None, email)
-            if key in seen:
+            if email in seen_emails:
                 continue
-            seen.add(key)
+            seen_emails.add(email)
             recipient_models.append(
                 HumanInputFormRecipient.new(
                     form_id=form_id,

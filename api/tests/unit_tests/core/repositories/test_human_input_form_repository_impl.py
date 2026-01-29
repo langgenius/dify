@@ -194,6 +194,36 @@ class TestHumanInputFormRepositoryImplHelpers:
         assert len(recipients) == 1
         assert len(created) == 1
 
+    def test_build_email_recipients_prefers_member_over_external_by_email(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        repo = _build_repository()
+        session_stub = object()
+        _patch_recipient_factory(monkeypatch)
+
+        def fake_query(self, session, restrict_to_user_ids):  # type: ignore[no-untyped-def]
+            assert session is session_stub
+            assert restrict_to_user_ids == ["member-1"]
+            return [_WorkspaceMemberInfo(user_id="member-1", email="shared@example.com")]
+
+        monkeypatch.setattr(HumanInputFormRepositoryImpl, "_query_workspace_members_by_ids", fake_query)
+
+        recipients = repo._build_email_recipients(
+            session=session_stub,
+            form_id="form-id",
+            delivery_id="delivery-id",
+            recipients_config=EmailRecipients(
+                whole_workspace=False,
+                items=[
+                    MemberRecipient(user_id="member-1"),
+                    ExternalRecipient(email="shared@example.com"),
+                ],
+            ),
+        )
+
+        assert len(recipients) == 1
+        assert recipients[0].recipient_type == RecipientType.EMAIL_MEMBER
+
     def test_delivery_method_to_model_includes_external_recipients_with_whole_workspace(
         self,
         monkeypatch: pytest.MonkeyPatch,
