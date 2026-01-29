@@ -31,10 +31,11 @@ export const useInvalidateAllToolProviders = () => {
 }
 
 const useAllBuiltInToolsKey = [NAME_SPACE, 'builtIn']
-export const useAllBuiltInTools = () => {
+export const useAllBuiltInTools = (enabled = true) => {
   return useQuery<ToolWithProvider[]>({
     queryKey: useAllBuiltInToolsKey,
     queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/builtin'),
+    enabled,
   })
 }
 
@@ -43,10 +44,11 @@ export const useInvalidateAllBuiltInTools = () => {
 }
 
 const useAllCustomToolsKey = [NAME_SPACE, 'customTools']
-export const useAllCustomTools = () => {
+export const useAllCustomTools = (enabled = true) => {
   return useQuery<ToolWithProvider[]>({
     queryKey: useAllCustomToolsKey,
     queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/api'),
+    enabled,
   })
 }
 
@@ -55,10 +57,11 @@ export const useInvalidateAllCustomTools = () => {
 }
 
 const useAllWorkflowToolsKey = [NAME_SPACE, 'workflowTools']
-export const useAllWorkflowTools = () => {
+export const useAllWorkflowTools = (enabled = true) => {
   return useQuery<ToolWithProvider[]>({
     queryKey: useAllWorkflowToolsKey,
     queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/workflow'),
+    enabled,
   })
 }
 
@@ -67,10 +70,11 @@ export const useInvalidateAllWorkflowTools = () => {
 }
 
 const useAllMCPToolsKey = [NAME_SPACE, 'MCPTools']
-export const useAllMCPTools = () => {
+export const useAllMCPTools = (enabled = true) => {
   return useQuery<ToolWithProvider[]>({
     queryKey: useAllMCPToolsKey,
     queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/mcp'),
+    enabled,
   })
 }
 

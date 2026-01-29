@@ -16,11 +16,11 @@ import {
   useAllTriggerPlugins,
   useInvalidateAllTriggerPlugins,
 } from '@/service/use-triggers'
-import { canFindTool } from '@/utils'
 import { useStore } from '../store'
 import { BlockEnum } from '../types'
+import { matchDataSource, matchToolInCollection, matchTriggerProvider } from '../utils/plugin-install-check'
 
-type InstallationState = {
+export type InstallationState = {
   isChecking: boolean
   isMissing: boolean
   uniqueIdentifier?: string
@@ -29,14 +29,25 @@ type InstallationState = {
   shouldDim: boolean
 }
 
-const useToolInstallation = (data: ToolNodeType): InstallationState => {
-  const builtInQuery = useAllBuiltInTools()
-  const customQuery = useAllCustomTools()
-  const workflowQuery = useAllWorkflowTools()
-  const mcpQuery = useAllMCPTools()
-  const invalidateTools = useInvalidToolsByType(data.provider_type)
+const NOOP_INSTALLATION: InstallationState = {
+  isChecking: false,
+  isMissing: false,
+  uniqueIdentifier: undefined,
+  canInstall: false,
+  onInstallSuccess: () => undefined,
+  shouldDim: false,
+}
+
+const useToolInstallation = (data: ToolNodeType, enabled: boolean): InstallationState => {
+  const builtInQuery = useAllBuiltInTools(enabled)
+  const customQuery = useAllCustomTools(enabled)
+  const workflowQuery = useAllWorkflowTools(enabled)
+  const mcpQuery = useAllMCPTools(enabled)
+  const invalidateTools = useInvalidToolsByType(enabled ? data.provider_type : undefined)
 
   const collectionInfo = useMemo(() => {
+    if (!enabled)
+      return undefined
     switch (data.provider_type) {
       case CollectionType.builtIn:
         return {
@@ -62,6 +73,7 @@ const useToolInstallation = (data: ToolNodeType): InstallationState => {
         return undefined
     }
   }, [
+    enabled,
     builtInQuery.data,
     builtInQuery.isLoading,
     customQuery.data,
@@ -80,17 +92,8 @@ const useToolInstallation = (data: ToolNodeType): InstallationState => {
   const matchedCollection = useMemo(() => {
     if (!collection || !collection.length)
       return undefined
-
-    return collection.find((toolWithProvider) => {
-      if (data.plugin_id && toolWithProvider.plugin_id === data.plugin_id)
-        return true
-      if (canFindTool(toolWithProvider.id, data.provider_id))
-        return true
-      if (toolWithProvider.name === data.provider_name)
-        return true
-      return false
-    })
-  }, [collection, data.plugin_id, data.provider_id, data.provider_name])
+    return matchToolInCollection(collection, data)
+  }, [collection, data])
 
   const uniqueIdentifier = data.plugin_unique_identifier || data.plugin_id || data.provider_id
   const canInstall = Boolean(data.plugin_unique_identifier)
@@ -112,8 +115,8 @@ const useToolInstallation = (data: ToolNodeType): InstallationState => {
   }
 }
 
-const useTriggerInstallation = (data: PluginTriggerNodeType): InstallationState => {
-  const triggerPluginsQuery = useAllTriggerPlugins()
+const useTriggerInstallation = (data: PluginTriggerNodeType, enabled: boolean): InstallationState => {
+  const triggerPluginsQuery = useAllTriggerPlugins(enabled)
   const invalidateTriggers = useInvalidateAllTriggerPlugins()
 
   const triggerProviders = triggerPluginsQuery.data
@@ -122,18 +125,8 @@ const useTriggerInstallation = (data: PluginTriggerNodeType): InstallationState 
   const matchedProvider = useMemo(() => {
     if (!triggerProviders || !triggerProviders.length)
       return undefined
-
-    return triggerProviders.find(provider =>
-      provider.name === data.provider_name
-      || provider.id === data.provider_id
-      || (data.plugin_id && provider.plugin_id === data.plugin_id),
-    )
-  }, [
-    data.plugin_id,
-    data.provider_id,
-    data.provider_name,
-    triggerProviders,
-  ])
+    return matchTriggerProvider(triggerProviders, data)
+  }, [data, triggerProviders])
 
   const uniqueIdentifier = data.plugin_unique_identifier || data.plugin_id || data.provider_id
   const canInstall = Boolean(data.plugin_unique_identifier)
@@ -154,24 +147,15 @@ const useTriggerInstallation = (data: PluginTriggerNodeType): InstallationState 
   }
 }
 
-const useDataSourceInstallation = (data: DataSourceNodeType): InstallationState => {
+const useDataSourceInstallation = (data: DataSourceNodeType, _enabled: boolean): InstallationState => {
   const dataSourceList = useStore(s => s.dataSourceList)
   const invalidateDataSourceList = useInvalidDataSourceList()
 
   const matchedPlugin = useMemo(() => {
     if (!dataSourceList || !dataSourceList.length)
       return undefined
-
-    return dataSourceList.find((item) => {
-      if (data.plugin_unique_identifier && item.plugin_unique_identifier === data.plugin_unique_identifier)
-        return true
-      if (data.plugin_id && item.plugin_id === data.plugin_id)
-        return true
-      if (data.provider_name && item.provider === data.provider_name)
-        return true
-      return false
-    })
-  }, [data.plugin_id, data.plugin_unique_identifier, data.provider_name, dataSourceList])
+    return matchDataSource(dataSourceList, data)
+  }, [data, dataSourceList])
 
   const uniqueIdentifier = data.plugin_unique_identifier || data.plugin_id
   const canInstall = Boolean(data.plugin_unique_identifier)
@@ -195,25 +179,19 @@ const useDataSourceInstallation = (data: DataSourceNodeType): InstallationState 
 }
 
 export const useNodePluginInstallation = (data: CommonNodeType): InstallationState => {
-  const toolInstallation = useToolInstallation(data as ToolNodeType)
-  const triggerInstallation = useTriggerInstallation(data as PluginTriggerNodeType)
-  const dataSourceInstallation = useDataSourceInstallation(data as DataSourceNodeType)
+  const isTool = data.type === BlockEnum.Tool
+  const isTrigger = data.type === BlockEnum.TriggerPlugin
+  const isDataSource = data.type === BlockEnum.DataSource
 
-  switch (data.type as BlockEnum) {
-    case BlockEnum.Tool:
-      return toolInstallation
-    case BlockEnum.TriggerPlugin:
-      return triggerInstallation
-    case BlockEnum.DataSource:
-      return dataSourceInstallation
-    default:
-      return {
-        isChecking: false,
-        isMissing: false,
-        uniqueIdentifier: undefined,
-        canInstall: false,
-        onInstallSuccess: () => undefined,
-        shouldDim: false,
-      }
-  }
+  const toolInstallation = useToolInstallation(data as ToolNodeType, isTool)
+  const triggerInstallation = useTriggerInstallation(data as PluginTriggerNodeType, isTrigger)
+  const dataSourceInstallation = useDataSourceInstallation(data as DataSourceNodeType, isDataSource)
+
+  if (isTool)
+    return toolInstallation
+  if (isTrigger)
+    return triggerInstallation
+  if (isDataSource)
+    return dataSourceInstallation
+  return NOOP_INSTALLATION
 }

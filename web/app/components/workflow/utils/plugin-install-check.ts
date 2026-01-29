@@ -7,6 +7,49 @@ import { CollectionType } from '@/app/components/tools/types'
 import { canFindTool } from '@/utils'
 import { BlockEnum } from '../types'
 
+export const PLUGIN_DEPENDENT_TYPES: BlockEnum[] = [
+  BlockEnum.Tool,
+  BlockEnum.DataSource,
+  BlockEnum.TriggerPlugin,
+]
+
+export function isPluginDependentNode(type: string): boolean {
+  return PLUGIN_DEPENDENT_TYPES.includes(type as BlockEnum)
+}
+
+export function matchToolInCollection(
+  collection: ToolWithProvider[],
+  data: { plugin_id?: string, provider_id?: string, provider_name?: string },
+): ToolWithProvider | undefined {
+  return collection.find(t =>
+    (data.plugin_id && t.plugin_id === data.plugin_id)
+    || canFindTool(t.id, data.provider_id)
+    || t.name === data.provider_name,
+  )
+}
+
+export function matchTriggerProvider(
+  providers: TriggerWithProvider[],
+  data: { provider_name?: string, provider_id?: string, plugin_id?: string },
+): TriggerWithProvider | undefined {
+  return providers.find(p =>
+    p.name === data.provider_name
+    || p.id === data.provider_id
+    || (data.plugin_id && p.plugin_id === data.plugin_id),
+  )
+}
+
+export function matchDataSource(
+  list: ToolWithProvider[],
+  data: { plugin_unique_identifier?: string, plugin_id?: string, provider_name?: string },
+): ToolWithProvider | undefined {
+  return list.find(item =>
+    (data.plugin_unique_identifier && item.plugin_unique_identifier === data.plugin_unique_identifier)
+    || (data.plugin_id && item.plugin_id === data.plugin_id)
+    || (data.provider_name && item.provider === data.provider_name),
+  )
+}
+
 export type PluginInstallCheckContext = {
   builtInTools?: ToolWithProvider[]
   customTools?: ToolWithProvider[]
@@ -32,34 +75,19 @@ export function isNodePluginMissing(
       const collection = collectionMap[toolData.provider_type]
       if (!collection)
         return false
-      const matched = collection.find(t =>
-        (toolData.plugin_id && t.plugin_id === toolData.plugin_id)
-        || canFindTool(t.id, toolData.provider_id)
-        || t.name === toolData.provider_name,
-      )
-      return !matched && Boolean(toolData.plugin_unique_identifier)
+      return !matchToolInCollection(collection, toolData) && Boolean(toolData.plugin_unique_identifier)
     }
     case BlockEnum.TriggerPlugin: {
       const triggerData = data as PluginTriggerNodeType
       if (!context.triggerPlugins)
         return false
-      const matched = context.triggerPlugins.find(p =>
-        p.name === triggerData.provider_name
-        || p.id === triggerData.provider_id
-        || (triggerData.plugin_id && p.plugin_id === triggerData.plugin_id),
-      )
-      return !matched && Boolean(triggerData.plugin_unique_identifier)
+      return !matchTriggerProvider(context.triggerPlugins, triggerData) && Boolean(triggerData.plugin_unique_identifier)
     }
     case BlockEnum.DataSource: {
       const dsData = data as DataSourceNodeType
       if (!context.dataSourceList)
         return false
-      const matched = context.dataSourceList.find(item =>
-        (dsData.plugin_unique_identifier && item.plugin_unique_identifier === dsData.plugin_unique_identifier)
-        || (dsData.plugin_id && item.plugin_id === dsData.plugin_id)
-        || (dsData.provider_name && item.provider === dsData.provider_name),
-      )
-      return !matched && Boolean(dsData.plugin_unique_identifier)
+      return !matchDataSource(context.dataSourceList, dsData) && Boolean(dsData.plugin_unique_identifier)
     }
     default:
       return false
