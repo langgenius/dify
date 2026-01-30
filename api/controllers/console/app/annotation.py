@@ -363,7 +363,7 @@ def list_annotations(app_id: UUID, query: AnnotationListQuery) -> AnnotationList
 @cloud_edition_billing_resource_check("annotation")
 @edit_permission_required
 def create_annotation(app_id: UUID, payload: CreateAnnotationPayload) -> AnnotationItem:
-    annotation = AppAnnotationService.up_insert_app_annotation_from_message(payload, str(app_id))
+    annotation = AppAnnotationService.up_insert_app_annotation_from_message(payload.model_dump(), str(app_id))
     return _annotation_to_response(annotation)
 
 
