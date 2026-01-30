@@ -7,9 +7,9 @@ from collections.abc import Sequence
 from enum import StrEnum
 from typing import Any, Union
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from core.workflow.enums import ErrorStrategy
+from core.workflow.enums import ErrorStrategy, NodeType
 
 from .exc import DefaultValueTypeError
 
@@ -168,7 +168,10 @@ class DefaultValue(BaseModel):
 
 
 class BaseNodeData(ABC, BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     title: str
+    type: NodeType
     desc: str | None = None
     version: str = "1"
     error_strategy: ErrorStrategy | None = None

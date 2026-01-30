@@ -115,10 +115,7 @@ class Graph:
         start_node_id = None
         for nid in root_candidates:
             node_data = node_configs_map[nid]["data"]
-            node_type = node_data["type"]
-            if not isinstance(node_type, str):
-                continue
-            if NodeType(node_type).is_start_node:
+            if node_data.type.is_start_node:
                 start_node_id = nid
                 break
 

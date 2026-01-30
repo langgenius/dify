@@ -646,7 +646,7 @@ class WorkflowService:
 
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
-        node_data = node_config.get("data", {})
+        node_data = node_config["data"]
         if node_type.is_start_node:
             with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
@@ -656,7 +656,7 @@ class WorkflowService:
                     workflow=draft_workflow,
                 )
                 if node_type is NodeType.START:
-                    start_data = StartNodeData.model_validate(node_data)
+                    start_data = StartNodeData.model_validate(node_data, from_attributes=True)
                     user_inputs = _rebuild_file_for_user_inputs_in_start_node(
                         tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
                     )
