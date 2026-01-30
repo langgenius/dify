@@ -25,6 +25,15 @@ import {
 } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
 import { useWorkflowStore } from '../../store'
+import { normalizeJsonSchemaType } from './output-schema-utils'
+
+const formatDisplayType = (output: Record<string, unknown>): string => {
+  const normalizedType = normalizeJsonSchemaType(output) || 'Unknown'
+  if (normalizedType === 'Unknown')
+    return 'Unknown'
+
+  return normalizedType.slice(0, 1).toLocaleUpperCase() + normalizedType.slice(1)
+}
 
 const useConfig = (id: string, payload: ToolNodeType) => {
   const workflowStore = useWorkflowStore()
@@ -247,20 +256,13 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         })
       }
       else {
+        const normalizedType = normalizeJsonSchemaType(output)
         res.push({
           name: outputKey,
           type:
-            output.type === 'array'
-              ? `Array[${output.items?.type
-                ? output.items.type.slice(0, 1).toLocaleUpperCase()
-                + output.items.type.slice(1)
-                : 'Unknown'
-              }]`
-              : `${output.type
-                ? output.type.slice(0, 1).toLocaleUpperCase()
-                + output.type.slice(1)
-                : 'Unknown'
-              }`,
+            normalizedType === 'array'
+              ? `Array[${output.items ? formatDisplayType(output.items) : 'Unknown'}]`
+              : formatDisplayType(output),
           description: output.description,
         })
       }
