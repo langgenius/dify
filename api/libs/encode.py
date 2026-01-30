@@ -59,16 +59,16 @@ def safe_decode(data: bytes | bytearray) -> str:
                 return best_decoded
 
     try:
-        return data.decode('utf-8')
+        return data.decode("utf-8")
     except UnicodeDecodeError:
         return str(best)
 
 
 def _count_chinese_chars(text: str) -> int:
     """Count Chinese characters (CJK Unified Ideographs)."""
-    return sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+    return sum(1 for c in text if "\u4e00" <= c <= "\u9fff")
 
 
 def _count_korean_chars(text: str) -> int:
     """Count Korean Hangul characters."""
-    return sum(1 for c in text if '\uac00' <= c <= '\ud7af')
+    return sum(1 for c in text if "\uac00" <= c <= "\ud7af")
