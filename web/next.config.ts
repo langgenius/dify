@@ -63,6 +63,14 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  async rewrites() {
+    return [
+      {
+        source: '/serwist/:path*',
+        destination: '/:path*',
+      },
+    ]
+  },
   output: 'standalone',
   compiler: {
     removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
