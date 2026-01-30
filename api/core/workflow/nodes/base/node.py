@@ -1,5 +1,4 @@
 from __future__ import annotations
-from sqlalchemy.sql.operators import from_
 
 import importlib
 import logging
@@ -298,8 +297,6 @@ class Node(Generic[NodeDataT]):
         if isinstance(self, TriggerEventNode):
             start_event.provider_id = getattr(self.node_data, "provider_id", "")
             start_event.provider_type = getattr(self.node_data, "provider_type", "")
-
-        from typing import cast
 
         from core.workflow.nodes.agent.agent_node import AgentNode
         from core.workflow.nodes.agent.entities import AgentNodeData

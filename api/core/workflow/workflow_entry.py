@@ -12,6 +12,7 @@ from core.app.workflow.node_factory import DifyNodeFactory
 from core.file.models import File
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
@@ -25,7 +26,6 @@ from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
-from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
 from models.enums import UserFrom
