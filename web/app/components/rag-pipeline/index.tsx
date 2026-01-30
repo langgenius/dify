@@ -1,5 +1,7 @@
+import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { useMemo } from 'react'
+import { FeaturesProvider } from '@/app/components/base/features'
 import Loading from '@/app/components/base/loading'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
@@ -34,6 +36,13 @@ const RagPipeline = () => {
     return []
   }, [data])
 
+  const initialFeatures: FeaturesData = useMemo(() => {
+    const features = data?.features || {}
+    return {
+      sandbox: features.sandbox || { enabled: false },
+    }
+  }, [data?.features])
+
   if (!data || isLoading) {
     return (
       <div className="relative flex h-full w-full items-center justify-center">
@@ -51,11 +60,13 @@ const RagPipeline = () => {
       edges={edgesData}
       nodes={processedNodes}
     >
-      <RagPipelineMain
-        edges={edgesData}
-        nodes={processedNodes}
-        viewport={viewport}
-      />
+      <FeaturesProvider features={initialFeatures}>
+        <RagPipelineMain
+          edges={edgesData}
+          nodes={processedNodes}
+          viewport={viewport}
+        />
+      </FeaturesProvider>
     </WorkflowWithDefaultContext>
   )
 }

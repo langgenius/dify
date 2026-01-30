@@ -64,6 +64,12 @@ vi.mock('@/app/components/workflow/context', () => ({
   ),
 }))
 
+vi.mock('@/app/components/workflow/store', () => ({
+  useStore: (selector: (state: { fileUploadConfig?: Record<string, unknown> }) => unknown) => {
+    return selector({ fileUploadConfig: undefined })
+  },
+}))
+
 // Type assertions for mocked functions
 const mockUseDatasetDetailContextWithSelector = vi.mocked(useDatasetDetailContextWithSelector)
 const mockUsePipelineInit = vi.mocked(usePipelineInit)
