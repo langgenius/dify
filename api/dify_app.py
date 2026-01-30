@@ -74,6 +74,9 @@ class _SyncAppContext:
             return self._context
         raise RuntimeError("Use 'async with' when entering app context inside an event loop.")
 
+    async def __aenter__(self) -> Any:
+        return await self._context.__aenter__()
+
     def __exit__(self, exc_type, exc, tb) -> Any:
         try:
             asyncio.get_running_loop()
@@ -89,6 +92,9 @@ class _SyncAppContext:
             _run_sync(appcontext_popped.send_async(self._context.app, _sync_wrapper=self._context.app.ensure_async))
             return None
         raise RuntimeError("Use 'async with' when exiting app context inside an event loop.")
+
+    async def __aexit__(self, exc_type, exc, tb) -> Any:
+        return await self._context.__aexit__(exc_type, exc, tb)
 
 
 class _SyncRequestContext:
@@ -113,6 +119,9 @@ class _SyncRequestContext:
             return self._context
         raise RuntimeError("Use 'async with' when entering request context inside an event loop.")
 
+    async def __aenter__(self) -> Any:
+        return await self._context.__aenter__()
+
     def __exit__(self, exc_type, exc, tb) -> Any:
         try:
             asyncio.get_running_loop()
@@ -132,6 +141,9 @@ class _SyncRequestContext:
                 self._app_ctx.__exit__(exc_type, exc, tb)
             return None
         raise RuntimeError("Use 'async with' when exiting request context inside an event loop.")
+
+    async def __aexit__(self, exc_type, exc, tb) -> Any:
+        return await self._context.__aexit__(exc_type, exc, tb)
 
 
 def _run_sync(coro: Any) -> Any:
