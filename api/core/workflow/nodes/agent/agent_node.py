@@ -27,7 +27,6 @@ from core.tools.entities.tool_entities import (
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.variables.segments import ArrayFileSegment, StringSegment
-from core.variables.variables import StringVariable
 from core.workflow.enums import (
     NodeType,
     SystemVariableKey,
@@ -210,12 +209,7 @@ class AgentNode(Node[AgentNodeData]):
                     parameter_value = str(agent_input.value)
                 segment_group = variable_pool.convert_template(parameter_value)
                 if parameter.type == "array[tools]":
-                    for i, segment in enumerate(segment_group.value):
-                        if isinstance(segment, StringVariable):
-                            # use json.dumps() to uniformly and safely escape strings,
-                            # and use [1:-1] to remove the surrounding quotes after conversion.
-                            new_text = json.dumps(segment.text, ensure_ascii=False)[1:-1]
-                            segment_group.value[i] = StringVariable(value=new_text, name=segment.name)
+                    segment_group.escape_string_variables()
                 parameter_value = segment_group.log if for_log else segment_group.text
                 # variable_pool.convert_template returns a string,
                 # so we need to convert it back to a dictionary
