@@ -1,14 +1,18 @@
 import json
 import logging
-from collections.abc import Mapping
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.nodes import NodeType
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate, VisualConfig
+from core.workflow.nodes.trigger_schedule.entities import (
+    ScheduleConfig,
+    SchedulePlanUpdate,
+    TriggerScheduleNodeData,
+    VisualConfig,
+)
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
@@ -176,26 +180,26 @@ class ScheduleService:
         return next_run_at
 
     @staticmethod
-    def to_schedule_config(node_config: Mapping[str, Any]) -> ScheduleConfig:
+    def to_schedule_config(node_config: NodeConfigDict) -> ScheduleConfig:
         """
         Converts user-friendly visual schedule settings to cron expression.
         Maintains consistency with frontend UI expectations while supporting croniter's extended syntax.
         """
-        node_data = node_config.get("data", {})
-        mode = node_data.get("mode", "visual")
-        timezone = node_data.get("timezone", "UTC")
-        node_id = node_config.get("id", "start")
+        node_data = TriggerScheduleNodeData.model_validate(node_config["data"], from_attributes=True)
+        mode = node_data.mode
+        timezone = node_data.timezone
+        node_id = node_config["id"]
 
         cron_expression = None
         if mode == "cron":
-            cron_expression = node_data.get("cron_expression")
+            cron_expression = node_data.cron_expression
             if not cron_expression:
                 raise ScheduleConfigError("Cron expression is required for cron mode")
         elif mode == "visual":
-            frequency = str(node_data.get("frequency"))
+            frequency = str(node_data.frequency or "")
             if not frequency:
                 raise ScheduleConfigError("Frequency is required for visual mode")
-            visual_config = VisualConfig(**node_data.get("visual_config", {}))
+            visual_config = VisualConfig.model_validate(node_data.visual_config or {})
             cron_expression = ScheduleService.visual_to_cron(frequency=frequency, visual_config=visual_config)
             if not cron_expression:
                 raise ScheduleConfigError("Cron expression is required for visual mode")
@@ -239,19 +243,21 @@ class ScheduleService:
             if node_data.get("type") != NodeType.TRIGGER_SCHEDULE.value:
                 continue
 
-            mode = node_data.get("mode", "visual")
-            timezone = node_data.get("timezone", "UTC")
             node_id = node.get("id", "start")
+            trigger_data = TriggerScheduleNodeData.model_validate(node_data)
+            mode = trigger_data.mode
+            timezone = trigger_data.timezone
 
             cron_expression = None
             if mode == "cron":
-                cron_expression = node_data.get("cron_expression")
+                cron_expression = trigger_data.cron_expression
                 if not cron_expression:
                     raise ScheduleConfigError("Cron expression is required for cron mode")
             elif mode == "visual":
-                frequency = node_data.get("frequency")
-                visual_config_dict = node_data.get("visual_config", {})
-                visual_config = VisualConfig(**visual_config_dict)
+                frequency = trigger_data.frequency
+                if not frequency:
+                    raise ScheduleConfigError("Frequency is required for visual mode")
+                visual_config = VisualConfig.model_validate(trigger_data.visual_config or {})
                 cron_expression = ScheduleService.visual_to_cron(frequency, visual_config)
             else:
                 raise ScheduleConfigError(f"Invalid schedule mode: {mode}")
