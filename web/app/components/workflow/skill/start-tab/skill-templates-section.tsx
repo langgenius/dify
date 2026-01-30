@@ -77,13 +77,15 @@ const SkillTemplatesSection = () => {
   }, [searchQuery])
 
   return (
-    <section className="flex flex-col gap-3 px-6 py-2">
-      <SectionHeader
-        title={t('skill.startTab.templatesTitle')}
-        description={t('skill.startTab.templatesDesc')}
-      />
-      <TemplateSearch onChange={setSearchQuery} />
-      <div className="grid grid-cols-3 gap-3">
+    <section className="flex flex-col gap-3">
+      <div className="sticky top-0 z-10 flex flex-col gap-3 bg-components-panel-bg px-6 pb-1 pt-2">
+        <SectionHeader
+          title={t('skill.startTab.templatesTitle')}
+          description={t('skill.startTab.templatesDesc')}
+        />
+        <TemplateSearch onChange={setSearchQuery} />
+      </div>
+      <div className="grid grid-cols-3 gap-3 px-6">
         {filtered.map(entry => (
           <TemplateCard
             key={entry.id}
