@@ -420,7 +420,7 @@ class Document(Base):
     doc_metadata = mapped_column(AdjustedJSON, nullable=True)
     doc_form = mapped_column(String(255), nullable=False, server_default=sa.text("'text_model'"))
     doc_language = mapped_column(String(255), nullable=True)
-    need_summary: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
+    need_summary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
     DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
 
