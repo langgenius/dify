@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import sys
 from typing import Any, TypeVar
 
-import sys
-
 from quart import Quart
-from quart.testing import QuartClient
 from quart.ctx import AppContext as QuartAppContext
 from quart.ctx import RequestContext as QuartRequestContext
 from quart.ctx import _cv_app, _cv_request, appcontext_popped, appcontext_pushed
+from quart.testing import QuartClient
 from quart.wrappers.request import Request as QuartRequest
 from quart.wrappers.response import Response as QuartResponse
 
@@ -71,11 +70,7 @@ class _SyncAppContext:
             asyncio.get_running_loop()
         except RuntimeError:
             self._token = _cv_app.set(self._context)
-            _run_sync(
-                appcontext_pushed.send_async(
-                    self._context.app, _sync_wrapper=self._context.app.ensure_async
-                )
-            )
+            _run_sync(appcontext_pushed.send_async(self._context.app, _sync_wrapper=self._context.app.ensure_async))
             return self._context
         raise RuntimeError("Use 'async with' when entering app context inside an event loop.")
 
@@ -90,14 +85,8 @@ class _SyncAppContext:
             ctx = _cv_app.get()
             _cv_app.reset(self._token)
             if ctx is not self._context:
-                raise AssertionError(
-                    f"Popped wrong app context. ({ctx!r} instead of {self._context!r})"
-                )
-            _run_sync(
-                appcontext_popped.send_async(
-                    self._context.app, _sync_wrapper=self._context.app.ensure_async
-                )
-            )
+                raise AssertionError(f"Popped wrong app context. ({ctx!r} instead of {self._context!r})")
+            _run_sync(appcontext_popped.send_async(self._context.app, _sync_wrapper=self._context.app.ensure_async))
             return None
         raise RuntimeError("Use 'async with' when exiting app context inside an event loop.")
 
@@ -138,9 +127,7 @@ class _SyncRequestContext:
             ctx = _cv_request.get()
             _cv_request.reset(self._token)
             if ctx is not self._context:
-                raise AssertionError(
-                    f"Popped wrong request context. ({ctx!r} instead of {self._context!r})"
-                )
+                raise AssertionError(f"Popped wrong request context. ({ctx!r} instead of {self._context!r})")
             if self._app_ctx is not None:
                 self._app_ctx.__exit__(exc_type, exc, tb)
             return None
