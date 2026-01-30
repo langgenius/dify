@@ -83,31 +83,8 @@ vi.mock('@/app/components/workflow/constants', () => ({
 // ============================================================================
 
 describe('useDSL', () => {
-  let mockLink: { href: string, download: string, click: ReturnType<typeof vi.fn>, style: Record<string, unknown>, remove: ReturnType<typeof vi.fn> }
-  let originalCreateElement: typeof document.createElement
-
   beforeEach(() => {
     vi.clearAllMocks()
-
-    // Create a proper mock link element
-    mockLink = {
-      href: '',
-      download: '',
-      click: vi.fn(),
-      style: {},
-      remove: vi.fn(),
-    }
-
-    // Save original and mock selectively - only intercept 'a' elements
-    originalCreateElement = document.createElement.bind(document)
-    document.createElement = vi.fn((tagName: string) => {
-      if (tagName === 'a') {
-        return mockLink as unknown as HTMLElement
-      }
-      return originalCreateElement(tagName)
-    }) as typeof document.createElement
-
-    vi.spyOn(document.body, 'appendChild').mockImplementation(node => node)
 
     // Default store state
     mockWorkflowStoreGetState.mockReturnValue({
