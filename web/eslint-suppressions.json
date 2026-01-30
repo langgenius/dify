@@ -182,6 +182,11 @@
       "count": 1
     }
   },
+  "app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/app/annotation/batch-add-annotation-modal/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1

@@ -85,8 +85,6 @@ vi.mock('@/app/components/workflow/constants', () => ({
 describe('useDSL', () => {
   let mockLink: { href: string, download: string, click: ReturnType<typeof vi.fn>, style: Record<string, unknown>, remove: ReturnType<typeof vi.fn> }
   let originalCreateElement: typeof document.createElement
-  let mockCreateObjectURL: ReturnType<typeof vi.spyOn>
-  let mockRevokeObjectURL: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -109,8 +107,6 @@ describe('useDSL', () => {
       return originalCreateElement(tagName)
     }) as typeof document.createElement
 
-    mockCreateObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test-url')
-    mockRevokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => { })
     vi.spyOn(document.body, 'appendChild').mockImplementation(node => node)
 
     // Default store state
