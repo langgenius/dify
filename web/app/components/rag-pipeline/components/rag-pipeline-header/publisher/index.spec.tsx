@@ -131,8 +131,6 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     isAllowPublishAsCustomKnowledgePipelineTemplate: mockIsAllowPublishAsCustomKnowledgePipelineTemplate(),
   }),
-  useProviderContextSelector: <T,>(selector: (s: { isAllowPublishAsCustomKnowledgePipelineTemplate: boolean }) => T): T =>
-    selector({ isAllowPublishAsCustomKnowledgePipelineTemplate: mockIsAllowPublishAsCustomKnowledgePipelineTemplate() }),
 }))
 
 // Mock toast context

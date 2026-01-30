@@ -249,7 +249,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     })
 
     return list
-  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, language, dataSourceList, triggerPlugins, getToolIcon, strategyProviders, getCheckData, t, map])
+  }, [nodes, nodesExtraData, edges, buildInTools, customTools, workflowTools, language, dataSourceList, getToolIcon, strategyProviders, getCheckData, t, map, shouldCheckStartNode])
 
   return needWarningNodes
 }
@@ -419,7 +419,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [store, workflowStore, getNodesAvailableVarList, shouldCheckStartNode, nodesExtraData, notify, t, updateDatasetsDetail, buildInTools, customTools, workflowTools, language, getCheckData, strategyProviders])
+  }, [store, notify, t, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData, workflowStore, buildInTools, customTools, workflowTools, shouldCheckStartNode])
 
   return {
     handleCheckBeforePublish,

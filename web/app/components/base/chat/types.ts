@@ -5,7 +5,7 @@ import type {
   ModelConfig,
   VisionSettings,
 } from '@/types/app'
-import type { HumanInputFilledFormData, HumanInputFormData, NodeTracing } from '@/types/workflow'
+import type { NodeTracing } from '@/types/workflow'
 
 export type {
   Inputs,
@@ -67,8 +67,6 @@ export type WorkflowProcess = {
   expand?: boolean // for UI
   resultText?: string
   files?: FileEntity[]
-  humanInputFormDataList?: HumanInputFormData[]
-  humanInputFilledFormDataList?: HumanInputFilledFormData[]
 }
 
 export type ChatItem = IChatItem & {
