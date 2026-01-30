@@ -31,6 +31,7 @@
   "list.action.pause": "Duraklat",
   "list.action.resume": "Devam Et",
   "list.action.settings": "Segment ayarları",
+  "list.action.summary": "Özet oluştur",
   "list.action.sync": "Senkronize et",
   "list.action.unarchive": "Arşivden Çıkar",
   "list.action.uploadFile": "Yeni dosya yükle",
@@ -75,6 +76,9 @@
   "list.status.indexing": "Dizine Ekleniyor",
   "list.status.paused": "Durduruldu",
   "list.status.queuing": "Kuyrukta",
+  "list.summary.generating": "Oluşturuluyor...",
+  "list.summary.generatingSummary": "Özet oluşturuluyor",
+  "list.summary.ready": "Özet hazır",
   "list.table.header.action": "EYLEM",
   "list.table.header.chunkingMode": "PARÇALAMA MODU",
   "list.table.header.fileName": "DOSYA ADI",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "SONUÇ",
   "segment.searchResults_other": "SONUÇ -LARI",
   "segment.searchResults_zero": "SONUÇ",
+  "segment.summary": "ÖZET",
+  "segment.summaryPlaceholder": "Daha iyi arama için kısa bir özet yazın…",
   "segment.vectorHash": "Vektör hash: "
 }

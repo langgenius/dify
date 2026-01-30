@@ -14,6 +14,7 @@ from collections.abc import Generator
 from typing import TYPE_CHECKING, cast, final
 
 from core.workflow.context import capture_current_context
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
@@ -37,6 +38,7 @@ from .command_processing import (
     PauseCommandHandler,
     UpdateVariablesCommandHandler,
 )
+from .config import GraphEngineConfig
 from .entities.commands import AbortCommand, PauseCommand, UpdateVariablesCommand
 from .error_handler import ErrorHandler
 from .event_management import EventHandler, EventManager
@@ -55,6 +57,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+_DEFAULT_CONFIG = GraphEngineConfig()
+
+
 @final
 class GraphEngine:
     """
@@ -70,10 +75,7 @@ class GraphEngine:
         graph: Graph,
         graph_runtime_state: GraphRuntimeState,
         command_channel: CommandChannel,
-        min_workers: int | None = None,
-        max_workers: int | None = None,
-        scale_up_threshold: int | None = None,
-        scale_down_idle_time: float | None = None,
+        config: GraphEngineConfig = _DEFAULT_CONFIG,
     ) -> None:
         """Initialize the graph engine with all subsystems and dependencies."""
         # stop event
@@ -85,17 +87,11 @@ class GraphEngine:
         self._graph_runtime_state.stop_event = self._stop_event
         self._graph_runtime_state.configure(graph=cast("GraphProtocol", graph))
         self._command_channel = command_channel
+        self._config = config
 
         # Graph execution tracks the overall execution state
         self._graph_execution = cast("GraphExecution", self._graph_runtime_state.graph_execution)
         self._graph_execution.workflow_id = workflow_id
-
-        # === Worker Management Parameters ===
-        # Parameters for dynamic worker pool scaling
-        self._min_workers = min_workers
-        self._max_workers = max_workers
-        self._scale_up_threshold = scale_up_threshold
-        self._scale_down_idle_time = scale_down_idle_time
 
         # === Execution Queues ===
         self._ready_queue = cast(ReadyQueue, self._graph_runtime_state.ready_queue)
@@ -167,10 +163,7 @@ class GraphEngine:
             graph=self._graph,
             layers=self._layers,
             execution_context=execution_context,
-            min_workers=self._min_workers,
-            max_workers=self._max_workers,
-            scale_up_threshold=self._scale_up_threshold,
-            scale_down_idle_time=self._scale_down_idle_time,
+            config=self._config,
             stop_event=self._stop_event,
         )
 
@@ -246,7 +239,9 @@ class GraphEngine:
                 self._graph_execution.paused = False
                 self._graph_execution.pause_reasons = []
 
-            start_event = GraphRunStartedEvent()
+            start_event = GraphRunStartedEvent(
+                reason=WorkflowStartReason.RESUMPTION if is_resume else WorkflowStartReason.INITIAL,
+            )
             self._event_manager.notify_layers(start_event)
             yield start_event
 
@@ -315,15 +310,17 @@ class GraphEngine:
         for layer in self._layers:
             try:
                 layer.on_graph_start()
-            except Exception as e:
-                logger.warning("Layer %s failed on_graph_start: %s", layer.__class__.__name__, e)
+            except Exception:
+                logger.exception("Layer %s failed on_graph_start", layer.__class__.__name__)
 
     def _start_execution(self, *, resume: bool = False) -> None:
         """Start execution subsystems."""
         self._stop_event.clear()
         paused_nodes: list[str] = []
+        deferred_nodes: list[str] = []
         if resume:
             paused_nodes = self._graph_runtime_state.consume_paused_nodes()
+            deferred_nodes = self._graph_runtime_state.consume_deferred_nodes()
 
         # Start worker pool (it calculates initial workers internally)
         self._worker_pool.start()
@@ -339,7 +336,11 @@ class GraphEngine:
             self._state_manager.enqueue_node(root_node.id)
             self._state_manager.start_execution(root_node.id)
         else:
-            for node_id in paused_nodes:
+            seen_nodes: set[str] = set()
+            for node_id in paused_nodes + deferred_nodes:
+                if node_id in seen_nodes:
+                    continue
+                seen_nodes.add(node_id)
                 self._state_manager.enqueue_node(node_id)
                 self._state_manager.start_execution(node_id)
 
@@ -357,8 +358,8 @@ class GraphEngine:
         for layer in self._layers:
             try:
                 layer.on_graph_end(self._graph_execution.error)
-            except Exception as e:
-                logger.warning("Layer %s failed on_graph_end: %s", layer.__class__.__name__, e)
+            except Exception:
+                logger.exception("Layer %s failed on_graph_end", layer.__class__.__name__)
 
     # Public property accessors for attributes that need external access
     @property

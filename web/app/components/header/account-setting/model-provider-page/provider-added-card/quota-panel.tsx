@@ -61,6 +61,9 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   const providerMap = useMemo(() => new Map(
     providers.map(p => [p.provider, p.preferred_provider_type]),
   ), [providers])
+  const installedProvidersMap = useMemo(() => new Map(
+    providers.map(p => [p.provider, p.custom_configuration.available_credentials]),
+  ), [providers])
   const { formatTime } = useTimestamp()
   const {
     plugins: allPlugins,
@@ -73,8 +76,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   const selectedPluginIdRef = useRef<string | null>(null)
 
   const handleIconClick = useCallback((key: ModelProviderQuotaGetPaid) => {
-    const providerType = providerMap.get(key)
-    if (!providerType && allPlugins) {
+    const isInstalled = providerMap.get(key)
+    if (!isInstalled && allPlugins) {
       const pluginId = providerKeyToPluginId[key]
       const plugin = allPlugins.find(p => p.plugin_id === pluginId)
       if (plugin) {
@@ -131,13 +134,14 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
         <div className="flex items-center gap-1">
           {allProviders.filter(({ key }) => trial_models.includes(key)).map(({ key, Icon }) => {
             const providerType = providerMap.get(key)
-            const usingQuota = providerType === PreferredProviderTypeEnum.system
+            const isConfigured = (installedProvidersMap.get(key)?.length ?? 0) > 0 // means the provider is configured API key
             const getTooltipKey = () => {
-              if (usingQuota)
-                return 'modelProvider.card.modelSupported'
-              if (providerType === PreferredProviderTypeEnum.custom)
+              // if provider type is not set, it means the provider is not installed
+              if (!providerType)
+                return 'modelProvider.card.modelNotSupported'
+              if (isConfigured && providerType === PreferredProviderTypeEnum.custom)
                 return 'modelProvider.card.modelAPI'
-              return 'modelProvider.card.modelNotSupported'
+              return 'modelProvider.card.modelSupported'
             }
             return (
               <Tooltip
@@ -149,7 +153,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
                   onClick={() => handleIconClick(key)}
                 >
                   <Icon className="h-6 w-6 rounded-lg" />
-                  {!usingQuota && (
+                  {!providerType && (
                     <div className="absolute inset-0 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge opacity-30" />
                   )}
                 </div>
