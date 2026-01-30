@@ -480,4 +480,4 @@ const useButtonState = () => {
 ### Related Skills
 
 - `frontend-testing` - For testing refactored components
-- `web/testing/testing.md` - Testing specification
+- `web/docs/test.md` - Testing specification

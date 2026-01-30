@@ -4,14 +4,16 @@ from flask_restx import Resource, marshal_with
 from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import register_schema_model, register_schema_models
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from fields.dataset_fields import dataset_metadata_fields
 from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
+    DocumentMetadataOperation,
     MetadataArgs,
+    MetadataDetail,
     MetadataOperationData,
 )
 from services.metadata_service import MetadataService
@@ -21,8 +23,9 @@ class MetadataUpdatePayload(BaseModel):
     name: str
 
 
-register_schema_models(console_ns, MetadataArgs, MetadataOperationData)
-register_schema_model(console_ns, MetadataUpdatePayload)
+register_schema_models(
+    console_ns, MetadataArgs, MetadataOperationData, MetadataUpdatePayload, DocumentMetadataOperation, MetadataDetail
+)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata")

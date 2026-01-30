@@ -33,6 +33,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import { downloadBlob } from '@/utils/download'
 import { formatTime } from '@/utils/time'
 import { basePath } from '@/utils/var'
 
@@ -161,13 +162,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         appID: app.id,
         include,
       })
-      const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      const url = URL.createObjectURL(file)
-      a.href = url
-      a.download = `${app.name}.yml`
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob({ data: file, fileName: `${app.name}.yml` })
     }
     catch {
       notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
@@ -346,7 +342,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       dateFormat: `${t('segment.dateTimeFormat', { ns: 'datasetDocuments' })}`,
     })
     return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
-  }, [app.updated_at, app.created_at])
+  }, [app.updated_at, app.created_at, t])
 
   return (
     <>

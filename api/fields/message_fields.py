@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from core.file import File
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
 
@@ -36,6 +37,7 @@ class RetrieverResource(ResponseModel):
     segment_position: int | None = None
     index_node_hash: str | None = None
     content: str | None = None
+    summary: str | None = None
     created_at: int | None = None
 
     @field_validator("created_at", mode="before")
@@ -60,6 +62,7 @@ class MessageListItem(ResponseModel):
     message_files: list[MessageFile]
     status: str
     error: str | None = None
+    extra_contents: list[ExecutionExtraContentDomainModel]
 
     @field_validator("inputs", mode="before")
     @classmethod

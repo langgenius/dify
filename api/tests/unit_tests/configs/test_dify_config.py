@@ -164,6 +164,62 @@ def test_db_extras_options_merging(monkeypatch: pytest.MonkeyPatch):
     assert "timezone=UTC" in options
 
 
+def test_pubsub_redis_url_default(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("REDIS_HOST", "redis.example.com")
+    monkeypatch.setenv("REDIS_PORT", "6380")
+    monkeypatch.setenv("REDIS_USERNAME", "user")
+    monkeypatch.setenv("REDIS_PASSWORD", "pass@word")
+    monkeypatch.setenv("REDIS_DB", "2")
+    monkeypatch.setenv("REDIS_USE_SSL", "true")
+
+    config = DifyConfig()
+
+    assert config.normalized_pubsub_redis_url == "rediss://user:pass%40word@redis.example.com:6380/2"
+    assert config.PUBSUB_REDIS_CHANNEL_TYPE == "pubsub"
+
+
+def test_pubsub_redis_url_override(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("PUBSUB_REDIS_URL", "redis://pubsub-host:6381/5")
+
+    config = DifyConfig()
+
+    assert config.normalized_pubsub_redis_url == "redis://pubsub-host:6381/5"
+
+
+def test_pubsub_redis_url_required_when_default_unavailable(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("REDIS_HOST", "")
+
+    with pytest.raises(ValueError, match="PUBSUB_REDIS_URL must be set"):
+        _ = DifyConfig().normalized_pubsub_redis_url
+
+
 @pytest.mark.parametrize(
     ("broker_url", "expected_host", "expected_port", "expected_username", "expected_password", "expected_db"),
     [
