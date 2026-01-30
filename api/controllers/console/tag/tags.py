@@ -95,14 +95,14 @@ def create_tag(payload: TagBasePayload) -> TagResponse:
 @account_initialization_required
 def update_tag(tag_id: UUID, payload: TagBasePayload) -> TagResponse:
     current_user, _ = current_account_with_tenant()
-    tag_id = str(tag_id)
+    tag_id_str = str(tag_id)
     # The role of the current user in the ta table must be admin, owner, or editor
     if not (current_user.has_edit_permission or current_user.is_dataset_editor):
         raise Forbidden()
 
-    tag = TagService.update_tags(payload.model_dump(), tag_id)
+    tag = TagService.update_tags(payload.model_dump(), tag_id_str)
 
-    binding_count = TagService.get_tag_binding_count(tag_id)
+    binding_count = TagService.get_tag_binding_count(tag_id_str)
 
     return TagResponse(id=tag.id, name=tag.name, type=tag.type, binding_count=binding_count)
 
@@ -117,9 +117,9 @@ def update_tag(tag_id: UUID, payload: TagBasePayload) -> TagResponse:
 @account_initialization_required
 @edit_permission_required
 def delete_tag(tag_id: UUID) -> None:
-    tag_id = str(tag_id)
+    tag_id_str = str(tag_id)
 
-    TagService.delete_tag(tag_id)
+    TagService.delete_tag(tag_id_str)
 
 
 @console_router.post(
@@ -132,7 +132,7 @@ def delete_tag(tag_id: UUID) -> None:
 @account_initialization_required
 def create_tag_binding(payload: TagBindingPayload) -> TagBindingResult:
     current_user, _ = current_account_with_tenant()
-    # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+    # The role of the current user in the tag table must be admin, owner, editor, or dataset_operator
     if not (current_user.has_edit_permission or current_user.is_dataset_editor):
         raise Forbidden()
 
@@ -151,7 +151,7 @@ def create_tag_binding(payload: TagBindingPayload) -> TagBindingResult:
 @account_initialization_required
 def delete_tag_binding(payload: TagBindingRemovePayload) -> TagBindingResult:
     current_user, _ = current_account_with_tenant()
-    # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+    # The role of the current user in the tag table must be admin, owner, editor, or dataset_operator
     if not (current_user.has_edit_permission or current_user.is_dataset_editor):
         raise Forbidden()
 
