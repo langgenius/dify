@@ -6,7 +6,7 @@ import threading
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, ClassVar, Protocol
 
 from pydantic.json import pydantic_encoder
 
@@ -110,7 +110,7 @@ class NodeProtocol(Protocol):
     id: str
     state: NodeState
     execution_type: NodeExecutionType
-    node_type: NodeType
+    node_type: ClassVar[NodeType]
 
     def blocks_variable_output(self, variable_selectors: set[tuple[str, ...]]) -> bool: ...
 
