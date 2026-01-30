@@ -42,8 +42,13 @@ export const useGotoAnythingResults = (
 
   const defaultLocale = useGetLanguage()
 
+  // Use action keys as stable cache key instead of the full Actions object
+  // (Actions contains functions which are not serializable)
+  const actionKeys = useMemo(() => Object.keys(Actions).sort(), [Actions])
+
   const { data: searchResults = [], isLoading, isError, error } = useQuery(
     {
+      // eslint-disable-next-line @tanstack/query/exhaustive-deps -- Actions intentionally excluded: contains non-serializable functions; actionKeys provides stable representation
       queryKey: [
         'goto-anything',
         'search-result',
@@ -52,7 +57,7 @@ export const useGotoAnythingResults = (
         isWorkflowPage,
         isRagPipelinePage,
         defaultLocale,
-        Actions,
+        actionKeys,
       ],
       queryFn: async () => {
         const query = searchQueryDebouncedValue.toLowerCase()

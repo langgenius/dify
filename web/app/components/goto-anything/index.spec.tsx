@@ -200,6 +200,7 @@ describe('GotoAnything', () => {
     })
 
     it('should reset search query when modal opens', async () => {
+      const user = userEvent.setup()
       render(<GotoAnything />)
 
       // Open modal first time
@@ -210,7 +211,7 @@ describe('GotoAnything', () => {
 
       // Type something
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, 'test')
+      await user.type(input, 'test')
 
       // Close modal
       triggerKeyPress('esc')
@@ -229,6 +230,7 @@ describe('GotoAnything', () => {
 
   describe('search functionality', () => {
     it('should navigate to selected result', async () => {
+      const user = userEvent.setup()
       mockQueryResult = {
         data: [{
           id: 'app-1',
@@ -252,15 +254,16 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, 'app')
+      await user.type(input, 'app')
 
       const result = await screen.findByText('Sample App')
-      await userEvent.click(result)
+      await user.click(result)
 
       expect(routerPush).toHaveBeenCalledWith('/apps/1')
     })
 
     it('should clear selection when typing without prefix', async () => {
+      const user = userEvent.setup()
       render(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
@@ -269,7 +272,7 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, 'test query')
+      await user.type(input, 'test query')
 
       // Should not throw and input should have value
       expect(input).toHaveValue('test query')
@@ -278,6 +281,7 @@ describe('GotoAnything', () => {
 
   describe('empty states', () => {
     it('should show loading state', async () => {
+      const user = userEvent.setup()
       mockQueryResult = {
         data: [],
         isLoading: true,
@@ -293,7 +297,7 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, 'search')
+      await user.type(input, 'search')
 
       // Loading state shows in both EmptyState (spinner) and Footer
       const searchingTexts = screen.getAllByText('app.gotoAnything.searching')
@@ -301,6 +305,7 @@ describe('GotoAnything', () => {
     })
 
     it('should show error state', async () => {
+      const user = userEvent.setup()
       const testError = new Error('Search failed')
       mockQueryResult = {
         data: [],
@@ -317,7 +322,7 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, 'search')
+      await user.type(input, 'search')
 
       expect(screen.getByText('app.gotoAnything.searchFailed')).toBeInTheDocument()
     })
@@ -334,6 +339,7 @@ describe('GotoAnything', () => {
     })
 
     it('should show no results state when search returns empty', async () => {
+      const user = userEvent.setup()
       mockQueryResult = {
         data: [],
         isLoading: false,
@@ -349,7 +355,7 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, 'nonexistent')
+      await user.type(input, 'nonexistent')
 
       expect(screen.getByText('app.gotoAnything.noResults')).toBeInTheDocument()
     })
@@ -357,6 +363,7 @@ describe('GotoAnything', () => {
 
   describe('plugin installation', () => {
     it('should open plugin installer when selecting plugin result', async () => {
+      const user = userEvent.setup()
       mockQueryResult = {
         data: [{
           id: 'plugin-1',
@@ -383,15 +390,16 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, 'plugin')
+      await user.type(input, 'plugin')
 
       const pluginItem = await screen.findByText('Plugin Item')
-      await userEvent.click(pluginItem)
+      await user.click(pluginItem)
 
       expect(await screen.findByTestId('install-modal')).toHaveTextContent('Plugin Item')
     })
 
     it('should close plugin installer via close button', async () => {
+      const user = userEvent.setup()
       mockQueryResult = {
         data: [{
           id: 'plugin-1',
@@ -418,13 +426,13 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, 'plugin')
+      await user.type(input, 'plugin')
 
       const pluginItem = await screen.findByText('Plugin Item')
-      await userEvent.click(pluginItem)
+      await user.click(pluginItem)
 
       const closeBtn = await screen.findByTestId('close-install')
-      await userEvent.click(closeBtn)
+      await user.click(closeBtn)
 
       await waitFor(() => {
         expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
@@ -432,6 +440,7 @@ describe('GotoAnything', () => {
     })
 
     it('should close plugin installer on success', async () => {
+      const user = userEvent.setup()
       mockQueryResult = {
         data: [{
           id: 'plugin-1',
@@ -458,13 +467,13 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, 'plugin')
+      await user.type(input, 'plugin')
 
       const pluginItem = await screen.findByText('Plugin Item')
-      await userEvent.click(pluginItem)
+      await user.click(pluginItem)
 
       const successBtn = await screen.findByTestId('success-install')
-      await userEvent.click(successBtn)
+      await user.click(successBtn)
 
       await waitFor(() => {
         expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
@@ -474,6 +483,7 @@ describe('GotoAnything', () => {
 
   describe('slash command handling', () => {
     it('should execute direct slash command on Enter', async () => {
+      const user = userEvent.setup()
       const executeMock = vi.fn()
       mockFindCommand = {
         mode: 'direct',
@@ -489,13 +499,14 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, '/theme')
-      await userEvent.keyboard('{Enter}')
+      await user.type(input, '/theme')
+      await user.keyboard('{Enter}')
 
       expect(executeMock).toHaveBeenCalled()
     })
 
     it('should NOT execute unavailable slash command', async () => {
+      const user = userEvent.setup()
       const executeMock = vi.fn()
       mockFindCommand = {
         mode: 'direct',
@@ -511,13 +522,14 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, '/theme')
-      await userEvent.keyboard('{Enter}')
+      await user.type(input, '/theme')
+      await user.keyboard('{Enter}')
 
       expect(executeMock).not.toHaveBeenCalled()
     })
 
     it('should NOT execute non-direct mode slash command on Enter', async () => {
+      const user = userEvent.setup()
       const executeMock = vi.fn()
       mockFindCommand = {
         mode: 'submenu',
@@ -532,13 +544,14 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, '/language')
-      await userEvent.keyboard('{Enter}')
+      await user.type(input, '/language')
+      await user.keyboard('{Enter}')
 
       expect(executeMock).not.toHaveBeenCalled()
     })
 
     it('should close modal after executing direct slash command', async () => {
+      const user = userEvent.setup()
       mockFindCommand = {
         mode: 'direct',
         execute: vi.fn(),
@@ -553,8 +566,8 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, '/theme')
-      await userEvent.keyboard('{Enter}')
+      await user.type(input, '/theme')
+      await user.keyboard('{Enter}')
 
       await waitFor(() => {
         expect(screen.queryByPlaceholderText('app.gotoAnything.searchPlaceholder')).not.toBeInTheDocument()
@@ -564,6 +577,7 @@ describe('GotoAnything', () => {
 
   describe('result navigation', () => {
     it('should handle knowledge result navigation', async () => {
+      const user = userEvent.setup()
       mockQueryResult = {
         data: [{
           id: 'kb-1',
@@ -587,15 +601,16 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, 'knowledge')
+      await user.type(input, 'knowledge')
 
       const result = await screen.findByText('Knowledge Base')
-      await userEvent.click(result)
+      await user.click(result)
 
       expect(routerPush).toHaveBeenCalledWith('/datasets/kb-1')
     })
 
     it('should NOT navigate when result has no path', async () => {
+      const user = userEvent.setup()
       mockQueryResult = {
         data: [{
           id: 'item-1',
@@ -619,10 +634,10 @@ describe('GotoAnything', () => {
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
-      await userEvent.type(input, 'no path')
+      await user.type(input, 'no path')
 
       const result = await screen.findByText('No Path Item')
-      await userEvent.click(result)
+      await user.click(result)
 
       expect(routerPush).not.toHaveBeenCalled()
     })

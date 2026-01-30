@@ -22,32 +22,38 @@ vi.mock('@/app/components/workflow/shortcuts-name', () => ({
   ),
 }))
 
-type MockInputProps = {
-  ref?: RefObject<HTMLInputElement | null>
-  value?: string
-  placeholder?: string
-  onChange?: (e: ChangeEvent<HTMLInputElement>) => void
-  onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void
-  className?: string
-  wrapperClassName?: string
-  autoFocus?: boolean
-}
+vi.mock('@/app/components/base/input', async () => {
+  const { forwardRef } = await import('react')
 
-vi.mock('@/app/components/base/input', () => ({
-  default: ({ ref, value, placeholder, onChange, onKeyDown, className, wrapperClassName, autoFocus }: MockInputProps) => (
-    <input
-      ref={ref}
-      value={value}
-      placeholder={placeholder}
-      onChange={onChange}
-      onKeyDown={onKeyDown}
-      className={className}
-      data-wrapper-class={wrapperClassName}
-      autoFocus={autoFocus}
-      data-testid="search-input"
-    />
-  ),
-}))
+  type MockInputProps = {
+    value?: string
+    placeholder?: string
+    onChange?: (e: ChangeEvent<HTMLInputElement>) => void
+    onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void
+    className?: string
+    wrapperClassName?: string
+    autoFocus?: boolean
+  }
+
+  const MockInput = forwardRef<HTMLInputElement, MockInputProps>(
+    ({ value, placeholder, onChange, onKeyDown, className, wrapperClassName, autoFocus }, ref) => (
+      <input
+        ref={ref}
+        value={value}
+        placeholder={placeholder}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+        className={className}
+        data-wrapper-class={wrapperClassName}
+        autoFocus={autoFocus}
+        data-testid="search-input"
+      />
+    ),
+  )
+  MockInput.displayName = 'MockInput'
+
+  return { default: MockInput }
+})
 
 describe('SearchInput', () => {
   const defaultProps = {
