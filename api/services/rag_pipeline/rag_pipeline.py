@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
+from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import DatasourceNodeRunPayload
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import (
@@ -490,11 +491,9 @@ class RagPipelineService:
         self,
         pipeline: Pipeline,
         node_id: str,
-        user_inputs: dict,
+        payload: DatasourceNodeRunPayload,
         account: Account,
-        datasource_type: str,
         is_published: bool,
-        credential_id: str | None = None,
     ) -> Generator[Mapping[str, Any], None, None]:
         """
         Run published workflow datasource
@@ -534,13 +533,13 @@ class RagPipelineService:
                         # extract variable path and try to get value from user inputs
                         full_path = match.group(1)
                         last_part = full_path.split(".")[-1]
-                        variables_map[key] = user_inputs.get(last_part, param_value)
+                        variables_map[key] = payload.inputs.model_dump().get(last_part, param_value)
                     else:
                         variables_map[key] = param_value
                 elif isinstance(param_value, list) and param_value:
                     # handle list type parameter value, check if the last element is in user inputs
                     last_part = param_value[-1]
-                    variables_map[key] = user_inputs.get(last_part, param_value)
+                    variables_map[key] = payload.inputs.model_dump().get(last_part, param_value)
                 else:
                     # other type directly use original value
                     variables_map[key] = param_value
@@ -551,24 +550,24 @@ class RagPipelineService:
                 provider_id=f"{datasource_node_data.get('plugin_id')}/{datasource_node_data.get('provider_name')}",
                 datasource_name=datasource_node_data.get("datasource_name"),
                 tenant_id=pipeline.tenant_id,
-                datasource_type=DatasourceProviderType(datasource_type),
+                datasource_type=DatasourceProviderType(payload.datasource_type),
             )
             datasource_provider_service = DatasourceProviderService()
             credentials = datasource_provider_service.get_datasource_credentials(
                 tenant_id=pipeline.tenant_id,
                 provider=datasource_node_data.get("provider_name"),
                 plugin_id=datasource_node_data.get("plugin_id"),
-                credential_id=credential_id,
+                credential_id=payload.credential_id,
             )
             if credentials:
                 datasource_runtime.runtime.credentials = credentials
-            match datasource_type:
+            match payload.datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
                     online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
                         datasource_runtime.get_online_document_pages(
                             user_id=account.id,
-                            datasource_parameters=user_inputs,
+                            datasource_parameters=payload.inputs,
                             provider_type=datasource_runtime.datasource_provider_type(),
                         )
                     )
@@ -594,10 +593,10 @@ class RagPipelineService:
                         datasource_runtime.online_drive_browse_files(
                             user_id=account.id,
                             request=OnlineDriveBrowseFilesRequest(
-                                bucket=user_inputs.get("bucket"),
-                                prefix=user_inputs.get("prefix", ""),
-                                max_keys=user_inputs.get("max_keys", 20),
-                                next_page_parameters=user_inputs.get("next_page_parameters"),
+                                bucket=payload.inputs.bucket,
+                                prefix=payload.inputs.prefix,
+                                max_keys=payload.inputs.max_keys,
+                                next_page_parameters=payload.inputs.next_page_parameters,
                             ),
                             provider_type=datasource_runtime.datasource_provider_type(),
                         )

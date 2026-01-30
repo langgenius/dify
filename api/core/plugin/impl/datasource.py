@@ -177,7 +177,7 @@ class PluginDatasourceManager(BasePluginClient):
         datasource_provider: str,
         datasource_name: str,
         credentials: dict[str, Any],
-        datasource_parameters: Mapping[str, Any],
+        datasource_parameters: OnlineDriveBrowseFilesRequest,
         provider_type: str,
     ) -> Generator[OnlineDocumentPagesMessage, None, None]:
         """
@@ -196,7 +196,7 @@ class PluginDatasourceManager(BasePluginClient):
                     "provider": datasource_provider_id.provider_name,
                     "datasource": datasource_name,
                     "credentials": credentials,
-                    "datasource_parameters": datasource_parameters,
+                    "datasource_parameters": datasource_parameters.model_dump(),
                 },
             },
             headers={
