@@ -51,7 +51,7 @@ def upgrade():
             batch_op.add_column(sa.Column('summary_index_setting', models.types.AdjustedJSON(), nullable=True))
 
         with op.batch_alter_table('documents', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('need_summary', sa.Boolean(), server_default=sa.text('false'), nullable=True))
+            batch_op.add_column(sa.Column('need_summary', sa.Boolean(), server_default=sa.text('false'), nullable=False))
     else:
         # MySQL: Use compatible syntax
         op.create_table(
@@ -83,7 +83,7 @@ def upgrade():
             batch_op.add_column(sa.Column('summary_index_setting', models.types.AdjustedJSON(), nullable=True))
 
         with op.batch_alter_table('documents', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('need_summary', sa.Boolean(), server_default=sa.text('false'), nullable=True))
+            batch_op.add_column(sa.Column('need_summary', sa.Boolean(), server_default=sa.text('false'), nullable=False))
 
     # ### end Alembic commands ###
 
