@@ -24,15 +24,16 @@ export function parseCSV(
   options?: {
     header?: boolean
     skipEmptyLines?: boolean
-    complete?: (results: Papa.ParseResult<string[]>) => void
   },
-): void {
-  const { header = false, skipEmptyLines = true, complete } = options || {}
+): Promise<Papa.ParseResult<string[]>> {
+  const { header = false, skipEmptyLines = true } = options || {}
 
-  // eslint-disable-next-line ts/no-explicit-any
-  Papa.parse(file as any, {
-    header,
-    skipEmptyLines,
-    complete,
+  return new Promise((resolve, reject) => {
+    Papa.parse(file, {
+      header,
+      skipEmptyLines,
+      complete: resolve,
+      error: reject,
+    })
   })
 }

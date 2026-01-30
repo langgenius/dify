@@ -1,5 +1,4 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
 import { parseCSV } from '@/utils/csv'
 import CSVReader from './index'
 
@@ -10,8 +9,10 @@ vi.mock('@/utils/csv', () => ({
 describe('CSVReader', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(parseCSV).mockImplementation((_file, options) => {
-      options?.complete?.({ data: [['row1', 'row2']] } as any)
+    vi.mocked(parseCSV).mockResolvedValue({
+      data: [['row1', 'row2']],
+      errors: [],
+      meta: {} as unknown as Papa.ParseMeta,
     })
   })
 

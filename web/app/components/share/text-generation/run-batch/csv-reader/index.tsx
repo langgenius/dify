@@ -19,13 +19,10 @@ const CSVReader: FC<Props> = ({
   const [acceptedFile, setAcceptedFile] = useState<File | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const handleFile = useCallback((file: File) => {
+  const handleFile = useCallback(async (file: File) => {
     setAcceptedFile(file)
-    parseCSV(file, {
-      complete: (results) => {
-        onParsed(results.data as string[][])
-      },
-    })
+    const results = await parseCSV(file)
+    onParsed(results.data)
   }, [onParsed])
 
   const handleDrop = useCallback((event: React.DragEvent) => {
