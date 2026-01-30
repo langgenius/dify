@@ -5,7 +5,7 @@ from uuid import UUID
 import httpx
 import pytest
 
-import controllers.common.helpers as helpers
+from controllers.common import helpers
 from controllers.common.helpers import FileInfo, guess_file_info_from_response
 
 
@@ -52,7 +52,20 @@ class TestGuessFileInfoFromResponse:
         assert info.extension == ".csv"
         assert info.mimetype == "text/csv"
 
-    def test_generated_filename_when_missing(self):
+    @pytest.mark.parametrize(
+        "magic_available, expected_ext",
+        [
+            (True, "txt"),
+            (False, "bin"),
+        ],
+    )
+    def test_generated_filename_when_missing(self, monkeypatch, magic_available, expected_ext):
+        if magic_available:
+            if helpers.magic is None:
+                pytest.skip("python-magic is not installed, cannot run 'magic_available=True' test variant")
+        else:
+            monkeypatch.setattr(helpers, "magic", None)
+
         response = make_response(
             url="https://example.com/",
             content=b"Hello World",
@@ -62,7 +75,7 @@ class TestGuessFileInfoFromResponse:
 
         name, ext = info.filename.split(".")
         UUID(name)  # validates UUID
-        assert ext == "txt"
+        assert ext == expected_ext
 
     def test_mimetype_from_header_when_unknown(self):
         headers = {"Content-Type": "application/json"}
