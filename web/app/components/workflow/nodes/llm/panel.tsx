@@ -94,8 +94,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         handleModelChanged(model)
       }
     })()
-  }, [handleCompletionParamsChange, handleModelChanged, inputs.model.completion_params, t])
-
+  }, [inputs.model.completion_params])
   return (
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
