@@ -1,4 +1,5 @@
 import Papa from 'papaparse'
+import { downloadBlob } from './download'
 
 export function downloadCSV(
   data: Record<string, string>[] | string[][],
@@ -15,12 +16,7 @@ export function downloadCSV(
   })
 
   const blob = new Blob([bom ? '\uFEFF' : '', csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${filename}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
+  downloadBlob({ data: blob, fileName: `${filename}.csv` })
 }
 
 export function parseCSV(
