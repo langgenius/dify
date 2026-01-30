@@ -21,10 +21,12 @@ const Tab: FC<Props> = ({
   disableTry,
 }) => {
   const { t } = useTranslation()
-  const tabs = [
-    { id: TypeEnum.TRY, name: t('tryApp.tabHeader.try', { ns: 'explore' }), disabled: disableTry },
-    { id: TypeEnum.DETAIL, name: t('tryApp.tabHeader.detail', { ns: 'explore' }) },
-  ]
+  const tabs = React.useMemo(() => {
+    return [
+      !disableTry ? { id: TypeEnum.TRY, name: t('tryApp.tabHeader.try', { ns: 'explore' }) } : null,
+      { id: TypeEnum.DETAIL, name: t('tryApp.tabHeader.detail', { ns: 'explore' }) },
+    ].filter(item => item !== null) as { id: TypeEnum, name: string }[]
+  }, [t, disableTry])
   return (
     <TabHeader
       items={tabs}
