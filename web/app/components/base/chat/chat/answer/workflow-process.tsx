@@ -3,7 +3,6 @@ import {
   RiArrowRightSLine,
   RiErrorWarningFill,
   RiLoader2Line,
-  RiPauseCircleFill,
 } from '@remixicon/react'
 import {
   useEffect,
@@ -35,8 +34,6 @@ const WorkflowProcessItem = ({
   const running = data.status === WorkflowRunningStatus.Running
   const succeeded = data.status === WorkflowRunningStatus.Succeeded
   const failed = data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
-  const paused = data.status === WorkflowRunningStatus.Paused
-  const latestNode = data.tracing[data.tracing.length - 1]
 
   useEffect(() => {
     setCollapse(!expand)
@@ -53,10 +50,7 @@ const WorkflowProcessItem = ({
         running && !collapse && 'bg-background-section-burn',
         succeeded && !collapse && 'bg-state-success-hover',
         failed && !collapse && 'bg-state-destructive-hover',
-        paused && !collapse && 'bg-state-warning-hover',
-        collapse && !failed && !paused && 'bg-workflow-process-bg',
-        collapse && paused && 'bg-workflow-process-paused-bg',
-        collapse && failed && 'bg-workflow-process-failed-bg',
+        collapse && 'bg-workflow-process-bg',
       )}
     >
       <div
@@ -78,13 +72,8 @@ const WorkflowProcessItem = ({
             <RiErrorWarningFill className="mr-1 h-3.5 w-3.5 shrink-0 text-text-destructive" />
           )
         }
-        {
-          paused && (
-            <RiPauseCircleFill className="mr-1 h-3.5 w-3.5 shrink-0 text-text-warning-secondary" />
-          )
-        }
         <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
-          {!collapse ? t('common.workflowProcess', { ns: 'workflow' }) : latestNode?.title}
+          {t('common.workflowProcess', { ns: 'workflow' })}
         </div>
         <RiArrowRightSLine className={cn('ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')} />
       </div>

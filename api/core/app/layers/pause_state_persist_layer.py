@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Annotated, Literal, Self, TypeAlias
 
 from pydantic import BaseModel, Field
@@ -51,14 +50,6 @@ class WorkflowResumptionContext(BaseModel):
 
     def get_generate_entity(self) -> WorkflowAppGenerateEntity | AdvancedChatAppGenerateEntity:
         return self.generate_entity.entity
-
-
-@dataclass(frozen=True)
-class PauseStateLayerConfig:
-    """Configuration container for instantiating pause persistence layers."""
-
-    session_factory: Engine | sessionmaker[Session]
-    state_owner_user_id: str
 
 
 class PauseStatePersistenceLayer(GraphEngineLayer):

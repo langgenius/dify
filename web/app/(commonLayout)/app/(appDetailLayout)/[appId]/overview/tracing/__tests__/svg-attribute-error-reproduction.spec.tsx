@@ -8,6 +8,7 @@ describe('SVG Attribute Error Reproduction', () => {
   // Capture console errors
   const originalError = console.error
   let errorMessages: string[] = []
+
   beforeEach(() => {
     errorMessages = []
     console.error = vi.fn((message) => {
