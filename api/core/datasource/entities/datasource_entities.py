@@ -359,10 +359,10 @@ class OnlineDriveBrowseFilesRequest(BaseModel):
     Get online drive file list request
     """
 
-    bucket: str | None = Field(None, description="The file bucket")
-    prefix: str = Field(..., description="The parent folder ID")
+    bucket: str = Field("", description="The file bucket")
+    prefix: str = Field("", description="The parent folder ID")
     max_keys: int = Field(20, description="Page size for pagination")
-    next_page_parameters: dict | None = Field(None, description="Parameters for fetching the next page")
+    next_page_parameters: dict = Field(default_factory=dict, description="Parameters for fetching the next page")
 
 
 class OnlineDriveBrowseFilesResponse(BaseModel):

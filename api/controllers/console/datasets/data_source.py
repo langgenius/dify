@@ -1,3 +1,4 @@
+from core.datasource.entities.datasource_entities import OnlineDriveBrowseFilesRequest
 import json
 from collections.abc import Generator
 from typing import Any, cast
@@ -46,7 +47,7 @@ class NotionEstimatePayload(BaseModel):
 class DataSourceNotionListQuery(BaseModel):
     dataset_id: str | None = Field(default=None, description="Dataset ID")
     credential_id: str = Field(..., description="Credential ID", min_length=1)
-    datasource_parameters: dict[str, Any] | None = Field(default=None, description="Datasource parameters JSON string")
+    datasource_parameters: OnlineDriveBrowseFilesRequest = Field(default_factory=OnlineDriveBrowseFilesRequest, description="Datasource parameters JSON string")
 
 
 class DataSourceNotionPreviewQuery(BaseModel):
@@ -198,9 +199,6 @@ class DataSourceNotionListApi(Resource):
 
         query = DataSourceNotionListQuery.model_validate(request.args.to_dict())
 
-        # Get datasource_parameters from query string (optional, for GitHub and other datasources)
-        datasource_parameters = query.datasource_parameters or {}
-
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=current_tenant_id,
@@ -248,7 +246,7 @@ class DataSourceNotionListApi(Resource):
             online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
                 datasource_runtime.get_online_document_pages(
                     user_id=current_user.id,
-                    datasource_parameters=datasource_parameters,
+                    datasource_parameters=query.datasource_parameters,
                     provider_type=datasource_runtime.datasource_provider_type(),
                 )
             )
