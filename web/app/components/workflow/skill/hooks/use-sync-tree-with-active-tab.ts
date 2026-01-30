@@ -25,14 +25,14 @@ export function useSyncTreeWithActiveTab({
   const storeApi = useWorkflowStore()
 
   useEffect(() => {
-    if (!activeTabId || activeTabId === START_TAB_ID)
+    if (!activeTabId)
       return
 
     const tree = treeRef.current
     if (!tree)
       return
 
-    if (isArtifactTab(activeTabId)) {
+    if (activeTabId === START_TAB_ID || isArtifactTab(activeTabId)) {
       requestAnimationFrame(() => {
         tree.deselectAll()
       })
