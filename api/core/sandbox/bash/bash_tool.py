@@ -68,7 +68,10 @@ class SandboxBashTool(Tool):
                 ),
                 llm="Execute bash commands in current working directory. "
                 "Use this tool to run shell commands, scripts, or interact with the system. "
-                "The command will be executed in the current working directory.",
+                "The command will be executed in the current working directory. "
+                "IMPORTANT: If you generate any output files (images, documents, etc.) that need to be "
+                "returned or referenced later, you MUST save them to the 'output/' directory "
+                "(e.g., 'mkdir -p output && cp result.png output/'). Only files in output/ will be collected.",
             ),
         )
 

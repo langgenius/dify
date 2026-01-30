@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import cast
+from typing import Any, cast
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -216,6 +216,7 @@ def build_context(
     prompt_messages: Sequence[PromptMessage],
     assistant_response: str,
     generation_data: LLMGenerationData | None = None,
+    files: Sequence[Any] | None = None,
 ) -> list[PromptMessage]:
     """
     Build context from prompt messages and assistant response.
@@ -229,24 +230,58 @@ def build_context(
         prompt_messages: Initial prompt messages (user query, etc.)
         assistant_response: Final assistant response text
         generation_data: Optional generation data containing trace for tool-enabled runs
+        files: Optional list of File objects generated during execution
     """
 
     context_messages: list[PromptMessage] = [
         _truncate_multimodal_content(m) for m in prompt_messages if m.role != PromptMessageRole.SYSTEM
     ]
 
+    # Build file description suffix if files were generated
+    file_suffix = ""
+    if files:
+        file_descriptions = _build_file_descriptions(files)
+        if file_descriptions:
+            file_suffix = f"\n\n{file_descriptions}"
+
     # For tool-enabled runs, reconstruct messages from trace
     if generation_data and generation_data.trace:
-        context_messages.extend(_build_messages_from_trace(generation_data, assistant_response))
+        context_messages.extend(_build_messages_from_trace(generation_data, assistant_response, file_suffix))
     else:
-        context_messages.append(AssistantPromptMessage(content=assistant_response))
+        context_messages.append(AssistantPromptMessage(content=assistant_response + file_suffix))
 
     return context_messages
+
+
+def _build_file_descriptions(files: Sequence[Any]) -> str:
+    """
+    Build a text description of generated files for inclusion in context.
+
+    The description includes file_id which can be used by subsequent nodes
+    to reference the files via structured output.
+    """
+    if not files:
+        return ""
+
+    descriptions: list[str] = ["[Generated Files]"]
+    for file in files:
+        # Get file attributes (File is a Pydantic model)
+        file_id = getattr(file, "id", None) or getattr(file, "related_id", None)
+        filename = getattr(file, "filename", "unknown")
+        file_type = getattr(file, "type", "unknown")
+        if hasattr(file_type, "value"):
+            file_type = file_type.value
+
+        if file_id:
+            descriptions.append(f"- {filename} (id: {file_id}, type: {file_type})")
+
+    return "\n".join(descriptions)
 
 
 def _build_messages_from_trace(
     generation_data: LLMGenerationData,
     assistant_response: str,
+    file_suffix: str = "",
 ) -> list[PromptMessage]:
     """
     Build assistant and tool messages from trace segments.
@@ -254,7 +289,7 @@ def _build_messages_from_trace(
     Processes trace in order to reconstruct the conversation flow:
     - Model segments with tool_calls -> AssistantPromptMessage with tool_calls
     - Tool segments -> ToolPromptMessage with result
-    - Final response -> AssistantPromptMessage with assistant_response
+    - Final response -> AssistantPromptMessage with assistant_response (with optional file_suffix)
     """
     from core.workflow.nodes.llm.entities import ModelTraceSegment, ToolTraceSegment
 
@@ -290,8 +325,8 @@ def _build_messages_from_trace(
                 )
             )
 
-    # Add final assistant response as the authoritative text
-    messages.append(AssistantPromptMessage(content=assistant_response))
+    # Add final assistant response as the authoritative text (with file info if present)
+    messages.append(AssistantPromptMessage(content=assistant_response + file_suffix))
 
     return messages
 

@@ -383,16 +383,7 @@ class LLMNode(Node[LLMNodeData]):
                     if tool.enabled
                 ]
 
-            # Unified outputs building
-            outputs = {
-                "text": clean_text,
-                "reasoning_content": reasoning_content,
-                "usage": jsonable_encoder(usage),
-                "finish_reason": finish_reason,
-                "context": llm_utils.build_context(prompt_messages, clean_text, generation_data),
-            }
-
-            # Build generation field
+            # Build generation field and determine files_to_output first
             if generation_data:
                 # Use generation_data from tool invocation (supports multi-turn)
                 generation = {
@@ -419,6 +410,15 @@ class LLMNode(Node[LLMNodeData]):
                     "sequence": sequence,
                 }
                 files_to_output = self._file_outputs
+
+            # Unified outputs building (files passed to context for subsequent node reference)
+            outputs = {
+                "text": clean_text,
+                "reasoning_content": reasoning_content,
+                "usage": jsonable_encoder(usage),
+                "finish_reason": finish_reason,
+                "context": llm_utils.build_context(prompt_messages, clean_text, generation_data, files=files_to_output),
+            }
 
             outputs["generation"] = generation
             if files_to_output:
@@ -1921,6 +1921,7 @@ class LLMNode(Node[LLMNodeData]):
         tool_dependencies: ToolDependencies | None,
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
         result: LLMGenerationData | None = None
+        sandbox_output_files: list[File] = []
 
         # FIXME(Mairuis): Async processing for bash session.
         with SandboxBashSession(sandbox=sandbox, node_id=self.id, tools=tool_dependencies) as session:
@@ -1961,8 +1962,25 @@ class LLMNode(Node[LLMNodeData]):
 
             result = yield from self._process_tool_outputs(outputs)
 
+            # Collect output files from sandbox before session ends
+            # Files are saved as ToolFiles with valid tool_file_id for later reference
+            sandbox_output_files = session.collect_output_files()
+
         if result is None:
             raise LLMNodeError("SandboxSession exited unexpectedly")
+
+        # Merge sandbox output files into result
+        if sandbox_output_files:
+            result = LLMGenerationData(
+                text=result.text,
+                reasoning_contents=result.reasoning_contents,
+                tool_calls=result.tool_calls,
+                sequence=result.sequence,
+                usage=result.usage,
+                finish_reason=result.finish_reason,
+                files=result.files + sandbox_output_files,
+                trace=result.trace,
+            )
 
         return result
 
