@@ -112,6 +112,7 @@ ignore = [
 
 ]
 "controllers/console/explore/trial.py" = ["TID251"]
+"controllers/console/human_input_form.py" = ["TID251"]
 
 [lint.pyflakes]
 allowed-unused-imports = [
