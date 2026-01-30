@@ -32,7 +32,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 
 logger = logging.getLogger(__name__)
 
-WORKFLOW_BASED_APP_EXECUTION_QUEUE = "workflow_base_app_execution"
+WORKFLOW_BASED_APP_EXECUTION_QUEUE = "workflow_based_app_execution"
 
 
 class _UserType(StrEnum):
@@ -253,12 +253,12 @@ def _publish_streaming_response(
 
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)
-def workflow_base_app_execution_task(
+def workflow_based_app_execution_task(
     payload: str,
 ) -> Generator[Mapping[str, Any] | str, None, None] | Mapping[str, Any] | None:
     exec_params = AppExecutionParams.model_validate_json(payload)
 
-    logger.info("workflow_base_app_execution_task run with params: %s", exec_params)
+    logger.info("workflow_based_app_execution_task run with params: %s", exec_params)
 
     runner = _AppRunner(db.engine, exec_params=exec_params)
     return runner.run()
