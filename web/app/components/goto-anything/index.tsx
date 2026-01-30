@@ -319,22 +319,17 @@ const GotoAnything: FC<Props> = ({
                     if (!e.target.value.startsWith('@') && !e.target.value.startsWith('/'))
                       clearSelection()
                   }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const query = searchQuery.trim()
-                      // Check if it's a complete slash command
-                      if (query.startsWith('/')) {
-                        const commandName = query.substring(1).split(' ')[0]
-                        const handler = slashCommandRegistry.findCommand(commandName)
-
-                        // If it's a direct mode command, execute immediately
-                        const isAvailable = handler?.isAvailable?.() ?? true
-                        if (handler?.mode === 'direct' && handler.execute && isAvailable) {
-                          e.preventDefault()
-                          handler.execute()
-                          setShow(false)
-                          setSearchQuery('')
-                        }
+                  onPressEnter={(e) => {
+                    const query = searchQuery.trim()
+                    if (query.startsWith('/')) {
+                      const commandName = query.substring(1).split(' ')[0]
+                      const handler = slashCommandRegistry.findCommand(commandName)
+                      const isAvailable = handler?.isAvailable?.() ?? true
+                      if (handler?.mode === 'direct' && handler.execute && isAvailable) {
+                        e.preventDefault()
+                        handler.execute()
+                        setShow(false)
+                        setSearchQuery('')
                       }
                     }
                   }}
