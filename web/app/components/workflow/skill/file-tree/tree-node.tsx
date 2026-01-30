@@ -2,6 +2,7 @@
 
 import type { NodeRendererProps } from 'react-arborist'
 import type { TreeNodeData } from '../type'
+import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -170,7 +171,7 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
             )}
             aria-label={t('skillSidebar.menu.moreActions')}
           >
-            <span className="i-ri-more-fill size-4 text-text-tertiary" aria-hidden="true" />
+            <RiMoreFill className="size-4 text-text-tertiary" aria-hidden="true" />
           </button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[100]">

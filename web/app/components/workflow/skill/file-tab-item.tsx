@@ -1,6 +1,7 @@
 'use client'
 
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
+import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -94,7 +95,7 @@ const FileTabItem = ({
         aria-label={t('operation.close', { ns: 'common' })}
         onClick={handleClose}
       >
-        <span className="i-ri-close-line size-4" aria-hidden="true" />
+        <RiCloseLine className="size-4" aria-hidden="true" />
       </button>
     </div>
   )

@@ -1,5 +1,12 @@
 'use client'
 
+import {
+  RiAddLine,
+  RiFileAddLine,
+  RiFolderAddLine,
+  RiFolderUploadLine,
+  RiUploadLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,13 +25,13 @@ import { useSkillAssetTreeData } from './hooks/use-skill-asset-tree'
 import { getTargetFolderIdFromSelection } from './utils/tree-utils'
 
 type MenuItemProps = {
-  icon: string
+  icon: React.ElementType
   label: string
   onClick: () => void
   disabled?: boolean
 }
 
-const MenuItem = ({ icon, label, onClick, disabled }: MenuItemProps) => (
+const MenuItem = ({ icon: Icon, label, onClick, disabled }: MenuItemProps) => (
   <button
     type="button"
     onClick={onClick}
@@ -35,7 +42,7 @@ const MenuItem = ({ icon, label, onClick, disabled }: MenuItemProps) => (
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
     )}
   >
-    <span className={cn(icon, 'size-4 text-text-tertiary')} aria-hidden="true" />
+    <Icon className="size-4 text-text-tertiary" aria-hidden="true" />
     <span className="system-sm-regular text-text-secondary">
       {label}
     </span>
@@ -93,7 +100,7 @@ const SidebarSearchAdd = () => {
             className="!size-6 shrink-0 !p-1"
             aria-label={t('operation.add', { ns: 'common' })}
           >
-            <span className="i-ri-add-line size-4" aria-hidden="true" />
+            <RiAddLine className="size-4" aria-hidden="true" />
           </Button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[30]">
@@ -115,13 +122,13 @@ const SidebarSearchAdd = () => {
             />
 
             <MenuItem
-              icon="i-ri-file-add-line"
+              icon={RiFileAddLine}
               label={t('skillSidebar.menu.newFile')}
               onClick={handleNewFile}
               disabled={isLoading}
             />
             <MenuItem
-              icon="i-ri-folder-add-line"
+              icon={RiFolderAddLine}
               label={t('skillSidebar.menu.newFolder')}
               onClick={handleNewFolder}
               disabled={isLoading}
@@ -130,13 +137,13 @@ const SidebarSearchAdd = () => {
             <div className="my-1 h-px bg-divider-subtle" />
 
             <MenuItem
-              icon="i-ri-upload-line"
+              icon={RiUploadLine}
               label={t('skillSidebar.menu.uploadFile')}
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
             />
             <MenuItem
-              icon="i-ri-folder-upload-line"
+              icon={RiFolderUploadLine}
               label={t('skillSidebar.menu.uploadFolder')}
               onClick={() => folderInputRef.current?.click()}
               disabled={isLoading}

@@ -3,10 +3,21 @@
 import type { NodeApi, TreeApi } from 'react-arborist'
 import type { NodeMenuType } from '../constants'
 import type { TreeNodeData } from '../type'
+import {
+  RiClipboardLine,
+  RiDeleteBinLine,
+  RiEdit2Line,
+  RiFileAddLine,
+  RiFolderAddLine,
+  RiFolderUploadLine,
+  RiScissorsLine,
+  RiUploadLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
+import { Download02 } from '@/app/components/base/icons/src/vender/solid/general'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { NODE_MENU_TYPE } from '../constants'
@@ -108,13 +119,13 @@ const NodeMenu = ({
           />
 
           <MenuItem
-            icon="i-ri-file-add-line"
+            icon={RiFileAddLine}
             label={t('skillSidebar.menu.newFile')}
             onClick={handleNewFile}
             disabled={isLoading}
           />
           <MenuItem
-            icon="i-ri-folder-add-line"
+            icon={RiFolderAddLine}
             label={t('skillSidebar.menu.newFolder')}
             onClick={handleNewFolder}
             disabled={isLoading}
@@ -123,13 +134,13 @@ const NodeMenu = ({
           <div className="my-1 h-px bg-divider-subtle" />
 
           <MenuItem
-            icon="i-ri-upload-line"
+            icon={RiUploadLine}
             label={t('skillSidebar.menu.uploadFile')}
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
           />
           <MenuItem
-            icon="i-ri-folder-upload-line"
+            icon={RiFolderUploadLine}
             label={t('skillSidebar.menu.uploadFolder')}
             onClick={() => folderInputRef.current?.click()}
             disabled={isLoading}
@@ -142,7 +153,7 @@ const NodeMenu = ({
       {!isFolder && (
         <>
           <MenuItem
-            icon="i-custom-vender-solid-general-download-02"
+            icon={Download02}
             label={t('skillSidebar.menu.download')}
             onClick={handleDownload}
             disabled={isLoading}
@@ -154,7 +165,7 @@ const NodeMenu = ({
       {!isRoot && (
         <>
           <MenuItem
-            icon="i-ri-scissors-line"
+            icon={RiScissorsLine}
             label={t('skillSidebar.menu.cut')}
             kbd={KBD_CUT}
             onClick={handleCut}
@@ -165,7 +176,7 @@ const NodeMenu = ({
 
       {isFolder && hasClipboard && (
         <MenuItem
-          icon="i-ri-clipboard-line"
+          icon={RiClipboardLine}
           label={t('skillSidebar.menu.paste')}
           kbd={KBD_PASTE}
           onClick={handlePaste}
@@ -177,13 +188,13 @@ const NodeMenu = ({
         <>
           <div className="my-1 h-px bg-divider-subtle" />
           <MenuItem
-            icon="i-ri-edit-2-line"
+            icon={RiEdit2Line}
             label={t('skillSidebar.menu.rename')}
             onClick={handleRename}
             disabled={isLoading}
           />
           <MenuItem
-            icon="i-ri-delete-bin-line"
+            icon={RiDeleteBinLine}
             label={t('skillSidebar.menu.delete')}
             onClick={handleDeleteClick}
             disabled={isLoading}

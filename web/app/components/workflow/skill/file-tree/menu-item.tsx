@@ -50,14 +50,14 @@ const labelVariants = cva('system-sm-regular text-text-secondary', {
 })
 
 export type MenuItemProps = {
-  icon: string
+  icon: React.ElementType
   label: string
   kbd?: readonly string[]
   onClick: React.MouseEventHandler<HTMLButtonElement>
   disabled?: boolean
 } & VariantProps<typeof menuItemVariants>
 
-const MenuItem = ({ icon, label, kbd, onClick, disabled, variant }: MenuItemProps) => {
+const MenuItem = ({ icon: Icon, label, kbd, onClick, disabled, variant }: MenuItemProps) => {
   const handleClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
     onClick(event)
@@ -70,7 +70,7 @@ const MenuItem = ({ icon, label, kbd, onClick, disabled, variant }: MenuItemProp
       disabled={disabled}
       className={cn(menuItemVariants({ variant }))}
     >
-      <span className={cn(icon, iconVariants({ variant }))} aria-hidden="true" />
+      <Icon className={cn(iconVariants({ variant }))} aria-hidden="true" />
       <span className={cn(labelVariants({ variant }), 'flex-1 text-left')}>{label}</span>
       {kbd && kbd.length > 0 && <ShortcutsName keys={kbd} textColor="secondary" />}
     </button>

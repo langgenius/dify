@@ -1,5 +1,6 @@
 'use client'
 
+import { RiSearchLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -16,7 +17,7 @@ const TemplateSearch = ({
 
   return (
     <div className="flex shrink-0 items-center gap-0.5 rounded-md bg-components-input-bg-normal p-2">
-      <span className="i-ri-search-line size-4 shrink-0 text-text-placeholder" aria-hidden="true" />
+      <RiSearchLine className="size-4 shrink-0 text-text-placeholder" aria-hidden="true" />
       <input
         type="text"
         name="template-search"

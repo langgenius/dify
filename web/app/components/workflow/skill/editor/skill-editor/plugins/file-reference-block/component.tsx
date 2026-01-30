@@ -2,6 +2,7 @@ import type { LexicalNode } from 'lexical'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import type { TreeNodeData } from '@/app/components/workflow/skill/type'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { RiFolderLine } from '@remixicon/react'
 import { $getNodeByKey } from 'lexical'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -63,7 +64,7 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
         >
           <span className="flex items-center justify-center p-px">
             {isFolder
-              ? <span className="i-ri-folder-line size-[14px] text-text-accent" aria-hidden="true" />
+              ? <RiFolderLine className="size-[14px] text-text-accent" aria-hidden="true" />
               : (
                   <FileTypeIcon
                     type={(iconType || 'document') as FileAppearanceType}

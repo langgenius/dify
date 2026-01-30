@@ -2,6 +2,7 @@
 
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import type { SandboxFileTreeNode } from '@/types/sandbox-file'
+import { RiDownloadLine, RiFolderLine, RiFolderOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
@@ -83,8 +84,8 @@ const ArtifactsTreeNode = ({
           {isFolder
             ? (
                 isExpanded
-                  ? <span className="i-ri-folder-open-line size-4 text-text-accent" aria-hidden="true" />
-                  : <span className="i-ri-folder-line size-4 text-text-secondary" aria-hidden="true" />
+                  ? <RiFolderOpenLine className="size-4 text-text-accent" aria-hidden="true" />
+                  : <RiFolderLine className="size-4 text-text-secondary" aria-hidden="true" />
               )
             : <FileTypeIcon type={fileIconType as FileAppearanceType} size="sm" />}
         </div>
@@ -106,7 +107,7 @@ const ArtifactsTreeNode = ({
             )}
             aria-label={`Download ${node.name}`}
           >
-            <span className="i-ri-download-line size-3.5 text-text-tertiary" />
+            <RiDownloadLine className="size-3.5 text-text-tertiary" />
           </button>
         )}
       </div>

@@ -4,6 +4,7 @@ import type { MoveHandler, NodeApi, NodeRendererProps, TreeApi } from 'react-arb
 import type { TreeNodeData } from '../type'
 import type { OpensObject } from '@/app/components/workflow/store/workflow/skill-editor/file-tree-slice'
 import type { AppAssetTreeView } from '@/types/app-asset'
+import { RiDragDropLine } from '@remixicon/react'
 import { useIsMutating } from '@tanstack/react-query'
 import { useSize } from 'ahooks'
 import * as React from 'react'
@@ -11,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Tree } from 'react-arborist'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import SearchMenu from '@/app/components/base/icons/src/vender/knowledge/SearchMenu'
 import Loading from '@/app/components/base/loading'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
@@ -79,7 +81,7 @@ const DropTip = () => {
   const { t } = useTranslation('workflow')
   return (
     <div className="flex shrink-0 items-center justify-center gap-2 py-4 text-text-quaternary">
-      <span className="i-ri-drag-drop-line size-4" aria-hidden="true" />
+      <RiDragDropLine className="size-4" aria-hidden="true" />
       <span className="system-xs-regular">
         {t('skillSidebar.dropTip')}
       </span>
@@ -346,7 +348,7 @@ const FileTree = ({ className }: FileTreeProps) => {
     return (
       <div className={cn('flex min-h-[150px] flex-1 flex-col overflow-y-auto', className)}>
         <div className="flex flex-1 flex-col items-center justify-center gap-2 pb-20">
-          <span className="i-custom-vender-knowledge-search-menu size-8 text-text-tertiary" aria-hidden="true" />
+          <SearchMenu className="size-8 text-text-tertiary" aria-hidden="true" />
           <span className="system-xs-regular text-text-secondary">
             {t('skillSidebar.searchNoResults')}
           </span>

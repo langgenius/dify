@@ -1,6 +1,9 @@
+import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Check } from '@/app/components/base/icons/src/vender/line/general'
+import { TableCells } from '@/app/components/base/icons/src/vender/solid/development'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -37,7 +40,7 @@ const TableSelector = ({
   if (isSingleTable) {
     return (
       <div className="inline-flex items-center gap-1 rounded-[6px] px-1.5 py-1 text-text-secondary">
-        <span className="i-custom-vender-solid-development-table-cells h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
+        <TableCells className="h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
         <span className={cn('system-sm-medium min-w-0 max-w-[220px] truncate', isPlaceholder && 'text-text-tertiary')}>
           {label}
         </span>
@@ -67,11 +70,11 @@ const TableSelector = ({
               isLoading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-state-base-hover',
             )}
           >
-            <span className="i-custom-vender-solid-development-table-cells h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
+            <TableCells className="h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
             <span className={cn('system-sm-medium min-w-0 max-w-[220px] truncate', isPlaceholder && 'text-text-tertiary')}>
               {label}
             </span>
-            <span className="i-ri-arrow-down-s-line h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
+            <RiArrowDownSLine className="h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
           </button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-20">
@@ -90,10 +93,10 @@ const TableSelector = ({
                   setOpen(false)
                 }}
               >
-                <span className="i-custom-vender-solid-development-table-cells h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
+                <TableCells className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
                 <span className="flex-1 truncate px-1">{item.name}</span>
                 {item.value === selectedTable && (
-                  <span className="i-custom-vender-line-general-check h-4 w-4 shrink-0 text-text-accent" aria-hidden="true" />
+                  <Check className="h-4 w-4 shrink-0 text-text-accent" aria-hidden="true" />
                 )}
               </button>
             ))}

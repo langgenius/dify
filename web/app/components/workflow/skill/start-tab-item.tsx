@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Home from '@/app/components/base/icons/src/vender/workflow/Home'
 import { cn } from '@/utils/classnames'
 
 type StartTabItemProps = {
@@ -31,8 +32,8 @@ const StartTabItem = ({
         onClick={onClick}
       >
         <div className="flex size-5 shrink-0 items-center justify-center">
-          <span className={cn(
-            'i-custom-vender-workflow-home size-4',
+          <Home className={cn(
+            'size-4',
             isActive ? 'text-text-secondary' : 'text-text-tertiary',
           )}
           />
