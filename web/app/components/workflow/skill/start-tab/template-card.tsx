@@ -1,7 +1,7 @@
 'use client'
 
 import type { SkillTemplateSummary } from './templates/types'
-import { RiAddLine } from '@remixicon/react'
+import { RiAddLine, RiCheckLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -10,12 +10,13 @@ import Button from '@/app/components/base/button'
 
 type TemplateCardProps = {
   template: SkillTemplateSummary
+  added?: boolean
   disabled?: boolean
   loading?: boolean
   onUse: (template: SkillTemplateSummary) => void
 }
 
-const TemplateCard = ({ template, disabled, loading, onUse }: TemplateCardProps) => {
+const TemplateCard = ({ template, added, disabled, loading, onUse }: TemplateCardProps) => {
   const { t } = useTranslation('workflow')
 
   return (
@@ -51,17 +52,31 @@ const TemplateCard = ({ template, disabled, loading, onUse }: TemplateCardProps)
             )
           : <div className="h-[18px]" />}
         <div className="pointer-events-none absolute inset-0 flex items-end px-4 pb-4 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
-          <Button
-            variant="primary"
-            size="medium"
-            className="w-full"
-            disabled={disabled}
-            loading={loading}
-            onClick={() => onUse(template)}
-          >
-            <RiAddLine className="mr-0.5 h-4 w-4" />
-            {t('skill.startTab.useThisSkill')}
-          </Button>
+          {added
+            ? (
+                <Button
+                  variant="secondary"
+                  size="medium"
+                  className="w-full"
+                  disabled
+                >
+                  <RiCheckLine className="mr-0.5 h-4 w-4" />
+                  {t('skill.startTab.skillAdded')}
+                </Button>
+              )
+            : (
+                <Button
+                  variant="primary"
+                  size="medium"
+                  className="w-full"
+                  disabled={disabled}
+                  loading={loading}
+                  onClick={() => onUse(template)}
+                >
+                  <RiAddLine className="mr-0.5 h-4 w-4" />
+                  {t('skill.startTab.useThisSkill')}
+                </Button>
+              )}
         </div>
       </div>
     </div>

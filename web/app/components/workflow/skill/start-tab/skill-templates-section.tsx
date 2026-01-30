@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useBatchUpload } from '@/service/use-app-asset'
+import { useExistingSkillNames } from '../hooks/use-skill-asset-tree'
 import { useSkillTreeUpdateEmitter } from '../hooks/use-skill-tree-collaboration'
 import CategoryTabs from './category-tabs'
 import SectionHeader from './section-header'
@@ -30,9 +31,13 @@ const SkillTemplatesSection = () => {
   const emitTreeUpdateRef = useRef(emitTreeUpdate)
   emitTreeUpdateRef.current = emitTreeUpdate
 
+  const { data: existingNames } = useExistingSkillNames()
+  const existingNamesRef = useRef(existingNames)
+  existingNamesRef.current = existingNames
+
   const handleUse = useCallback(async (summary: SkillTemplateSummary) => {
     const entry = SKILL_TEMPLATES.find(e => e.id === summary.id)
-    if (!entry || !appId)
+    if (!entry || !appId || existingNamesRef.current?.has(summary.name))
       return
 
     setLoadingId(summary.id)
@@ -94,6 +99,7 @@ const SkillTemplatesSection = () => {
           <TemplateCard
             key={entry.id}
             template={entry}
+            added={existingNames?.has(entry.name) ?? false}
             disabled={loadingId !== null}
             loading={loadingId === entry.id}
             onUse={handleUse}

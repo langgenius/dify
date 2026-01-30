@@ -1070,6 +1070,7 @@
   "skill.startTab.importSkill": "导入 Skill",
   "skill.startTab.importSkillDesc": "从 skill.zip 文件导入",
   "skill.startTab.searchPlaceholder": "搜索…",
+  "skill.startTab.skillAdded": "已添加",
   "skill.startTab.templatesComingSoon": "模板即将推出…",
   "skill.startTab.templatesDesc": "选择模板来快速构建你的 Agent 能力",
   "skill.startTab.templatesTitle": "Skill 模板",

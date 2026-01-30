@@ -35,3 +35,23 @@ export function useSkillAssetNodeMap() {
     },
   })
 }
+
+/**
+ * Hook to get the set of root-level folder names in the skill asset tree.
+ * Useful for checking whether a skill template has already been added.
+ */
+export function useExistingSkillNames() {
+  const appId = useSkillAppId()
+  return useGetAppAssetTree(appId, {
+    select: (data: AppAssetTreeResponse): Set<string> => {
+      if (!data?.children)
+        return new Set()
+      const names = new Set<string>()
+      for (const node of data.children) {
+        if (node.node_type === 'folder')
+          names.add(node.name)
+      }
+      return names
+    },
+  })
+}
