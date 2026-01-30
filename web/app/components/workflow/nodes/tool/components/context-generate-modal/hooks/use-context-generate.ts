@@ -2,7 +2,7 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import type { ToolParameter } from '@/app/components/tools/types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import type { Node, NodeOutPutVar, Var } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type {
   ContextGenerateAvailableVar,
   ContextGenerateCodeContext,
@@ -39,8 +39,7 @@ export const normalizeCodeLanguage = (value?: string) => {
   return CodeLanguage.python3
 }
 
-// FIXME: Implement buildValueSelector function
-const buildValueSelector = (nodeId: string, variable: Var): string[] => {
+const buildValueSelector = (nodeId: string, variable: Var): ValueSelector => {
   if (!nodeId)
     return variable.variable.split('.')
   const isSys = variable.variable.startsWith('sys.')
