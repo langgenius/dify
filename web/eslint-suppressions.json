@@ -1784,9 +1784,12 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/detail/metadata/hooks/use-metadata-editor.ts": {
+  "app/components/datasets/documents/detail/metadata/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
+    },
+    "ts/no-explicit-any": {
+      "count": 2
     }
   },
   "app/components/datasets/documents/detail/new-segment.tsx": {
