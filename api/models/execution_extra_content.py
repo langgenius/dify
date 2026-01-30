@@ -7,7 +7,7 @@ from .base import Base, DefaultFieldsMixin
 from .types import EnumText, StringUUID
 
 if TYPE_CHECKING:
-    from human_input import HumanInputForm
+    from .human_input import HumanInputForm
 
 
 class ExecutionContentType(StrEnum):

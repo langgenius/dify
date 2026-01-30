@@ -12,6 +12,7 @@ from controllers.web import api
 from controllers.web.error import InvalidArgumentError, NotFoundError
 from controllers.web.wraps import WebApiResource
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
@@ -70,6 +71,7 @@ class WorkflowEventsApi(WebApiResource):
         else:
             app_mode = AppMode.value_of(app_model.mode)
             msg_generator = MessageGenerator()
+            generator: BaseAppGenerator
             if app_mode == AppMode.ADVANCED_CHAT:
                 generator = AdvancedChatAppGenerator()
             elif app_mode == AppMode.WORKFLOW:
