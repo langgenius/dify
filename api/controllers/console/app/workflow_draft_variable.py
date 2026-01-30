@@ -519,6 +519,7 @@ class ConversationVariableCollectionApi(Resource):
             variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
         ]
 
+        current_user, _ = current_account_with_tenant()
         workflow_service.update_draft_workflow_conversation_variables(
             app_model=app_model,
             account=current_user,
