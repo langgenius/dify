@@ -75,7 +75,6 @@ def build_agent_output_tools(
         raw_tool.entity.parameters = [data_parameter]
 
         def invoke_tool(
-            self,
             user_id: str,
             tool_parameters: dict[str, Any],
             conversation_id: str | None = None,
@@ -95,7 +94,6 @@ def build_agent_output_tools(
         raw_tool = get_tool_runtime(FINAL_STRUCTURED_OUTPUT_TOOL)
 
         def invoke_tool(
-            self,
             user_id: str,
             tool_parameters: dict[str, Any],
             conversation_id: str | None = None,
