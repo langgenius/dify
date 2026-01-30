@@ -83,7 +83,11 @@ const SkillTemplatesSection = () => {
           title={t('skill.startTab.templatesTitle')}
           description={t('skill.startTab.templatesDesc')}
         />
-        <TemplateSearch onChange={setSearchQuery} />
+        <div className="flex w-full items-start gap-1">
+          {/* TODO: replace with CategoryTabs once marketplace API provides tag/category data */}
+          <div className="flex-1" />
+          <TemplateSearch onChange={setSearchQuery} />
+        </div>
       </div>
       <div className="grid grid-cols-3 gap-3 px-6">
         {filtered.map(entry => (
