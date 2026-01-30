@@ -47,6 +47,15 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
+vi.mock('@/app/components/workflow/utils', () => ({
+  getKeyboardKeyNameBySystem: (key: string) => key,
+}))
+
+// Mock ShortcutsName to avoid polluting button accessible names
+vi.mock('@/app/components/workflow/shortcuts-name', () => ({
+  default: () => null,
+}))
+
 const mockNotify = vi.fn()
 const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()

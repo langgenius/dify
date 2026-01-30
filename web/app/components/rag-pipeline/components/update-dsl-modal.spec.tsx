@@ -134,19 +134,20 @@ vi.mock('@/app/components/workflow/constants', () => ({
   WORKFLOW_DATA_UPDATE: 'WORKFLOW_DATA_UPDATE',
 }))
 
-// Mock FileReader
+// Mock FileReader - synchronous to avoid timing issues in tests
 class MockFileReader {
   result: string | null = null
   onload: ((e: { target: { result: string | null } }) => void) | null = null
 
   readAsText(_file: File) {
-    // Simulate async file reading
-    setTimeout(() => {
-      this.result = 'test file content'
-      if (this.onload) {
+    // Call onload synchronously to avoid race conditions in tests
+    this.result = 'test file content'
+    // Use queueMicrotask instead of setTimeout to ensure it runs before other timers
+    // but still allows React state updates to complete
+    queueMicrotask(() => {
+      if (this.onload)
         this.onload({ target: { result: this.result } })
-      }
-    }, 0)
+    })
   }
 }
 

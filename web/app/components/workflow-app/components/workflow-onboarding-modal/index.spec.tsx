@@ -33,6 +33,11 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
+// Mock workflow utils for ShortcutsName component
+vi.mock('@/app/components/workflow/utils', () => ({
+  getKeyboardKeyNameBySystem: (key: string) => key,
+}))
+
 // Mock StartNodeSelectionPanel (using real component would be better for integration,
 // but for this test we'll mock to control behavior)
 vi.mock('./start-node-selection-panel', () => ({
@@ -551,8 +556,10 @@ describe('WorkflowOnboardingModal', () => {
 
       // Assert
       const escKey = screen.getByText('workflow.onboarding.escTip.key')
-      expect(escKey.closest('kbd')).toBeInTheDocument()
-      expect(escKey.closest('kbd')).toHaveClass('system-kbd')
+      // ShortcutsName renders a div with system-kbd class, not a kbd element
+      const kbdContainer = escKey.closest('.system-kbd')
+      expect(kbdContainer).toBeInTheDocument()
+      expect(kbdContainer).toHaveClass('system-kbd')
     })
 
     it('should have descriptive text for ESC functionality', () => {
