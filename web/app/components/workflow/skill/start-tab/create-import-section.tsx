@@ -7,7 +7,9 @@ import { useTranslation } from 'react-i18next'
 import ActionCard from './action-card'
 import CreateBlankSkillModal from './create-blank-skill-modal'
 
-const ImportSkillModal = dynamic(() => import('./import-skill-modal'))
+const ImportSkillModal = dynamic(() => import('./import-skill-modal'), {
+  ssr: false,
+})
 
 const CreateImportSection = () => {
   const { t } = useTranslation('workflow')
