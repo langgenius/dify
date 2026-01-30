@@ -4191,16 +4191,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/variable-inspect/group.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/variable-inspect/left.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/workflow/variable-inspect/listening.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -4208,7 +4198,7 @@
   },
   "app/components/workflow/variable-inspect/right.tsx": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/workflow/variable-inspect/trigger.tsx": {
@@ -4227,7 +4217,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 8
+      "count": 7
     }
   },
   "app/components/workflow/workflow-history-store.tsx": {
