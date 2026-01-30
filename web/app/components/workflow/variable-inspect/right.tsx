@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { SplitRightProps } from './split-panel'
-import type { VarInspectValue } from './types'
+import type { VarInspectValue } from './value-types'
 import type { currentVarType } from './variables-tab'
 import type { GenRes } from '@/service/debug'
 import {

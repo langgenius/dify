@@ -1,4 +1,5 @@
-import type { VarInspectValue } from './types'
+import type { VarInspectValue } from './value-types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { VarInInspect } from '@/types/workflow'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
@@ -46,6 +47,20 @@ const jsonValueTypes = new Set<VarType>([
 ])
 const fileValueTypes = new Set<VarType>([VarType.file, VarType.arrayFile])
 
+type EditorState = {
+  textValue: string | number
+  jsonValue: string
+  fileValue: FileEntity[]
+}
+
+const formatFileValue = (value: VarInInspect, isSysFiles: boolean): FileEntity[] => {
+  if (value.value_type === VarType.file)
+    return value.value ? getProcessedFilesFromResponse([value.value]) : []
+  if (value.value_type === VarType.arrayFile || (value.type === VarInInspectType.system && isSysFiles))
+    return value.value && value.value.length > 0 ? getProcessedFilesFromResponse(value.value) : []
+  return []
+}
+
 const ValueContent = ({
   currentVar,
   handleValueChange,
@@ -70,47 +85,48 @@ const ValueContent = ({
     return CHUNK_SCHEMA_TYPES.includes(currentVar.schemaType)
   }, [currentVar.schemaType])
 
-  const formatFileValue = (value: VarInInspect) => {
-    if (value.value_type === VarType.file)
-      return value.value ? getProcessedFilesFromResponse([value.value]) : []
-    if (value.value_type === VarType.arrayFile || (value.type === VarInInspectType.system && currentVar.name === 'files'))
-      return value.value && value.value.length > 0 ? getProcessedFilesFromResponse(value.value) : []
-    return []
-  }
+  const initialEditorState = useMemo<EditorState>(() => {
+    const textValue = showTextEditor
+      ? (
+          currentVar.value_type === VarType.number
+            ? JSON.stringify(currentVar.value)
+            : (currentVar.value || '')
+        )
+      : ''
+    const jsonValue = showJSONEditor
+      ? (currentVar.value != null ? JSON.stringify(currentVar.value, null, 2) : '')
+      : ''
+    const fileValue = showFileEditor
+      ? formatFileValue(currentVar, isSysFiles)
+      : []
+    return {
+      textValue,
+      jsonValue,
+      fileValue,
+    }
+  }, [currentVar, isSysFiles, showFileEditor, showJSONEditor, showTextEditor])
 
-  const [value, setValue] = useState<any>()
-  const [json, setJson] = useState('')
+  const [editorState, setEditorState] = useState<EditorState>(initialEditorState)
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
-  const [fileValue, setFileValue] = useState<any>(() => formatFileValue(currentVar))
+  const { textValue, jsonValue, fileValue } = editorState
 
   const { run: debounceValueChange } = useDebounceFn(handleValueChange, { wait: 500 })
 
-  // update default value when id changed
+  // update default value when id or value changed
   useEffect(() => {
-    if (showTextEditor) {
-      if (currentVar.value_type === VarType.number)
-        return setValue(JSON.stringify(currentVar.value))
-      if (!currentVar.value)
-        return setValue('')
-      setValue(currentVar.value)
-    }
-    if (showJSONEditor)
-      setJson(currentVar.value != null ? JSON.stringify(currentVar.value, null, 2) : '')
-
-    if (showFileEditor)
-      setFileValue(formatFileValue(currentVar))
-  }, [currentVar.id, currentVar.value])
+    setEditorState(initialEditorState)
+  }, [initialEditorState])
 
   const handleTextChange = (value: string) => {
     if (isTruncated)
       return
     if (currentVar.value_type === VarType.string)
-      setValue(value)
+      setEditorState(prev => ({ ...prev, textValue: value }))
 
     if (currentVar.value_type === VarType.number) {
       if (/^-?\d+(\.)?(\d+)?$/.test(value))
-        setValue(Number.parseFloat(value))
+        setEditorState(prev => ({ ...prev, textValue: Number.parseFloat(value) }))
     }
     const newValue = currentVar.value_type === VarType.number ? Number.parseFloat(value) : value
     debounceValueChange(currentVar.id, newValue)
@@ -156,25 +172,27 @@ const ValueContent = ({
   const handleEditorChange = (value: string) => {
     if (isTruncated)
       return
-    setJson(value)
+    setEditorState(prev => ({ ...prev, jsonValue: value }))
     if (jsonValueValidate(value, currentVar.value_type)) {
       const parsed = JSON.parse(value)
       debounceValueChange(currentVar.id, parsed)
     }
   }
 
-  const fileValueValidate = (fileList: any[]) => fileList.every(file => file.upload_file_id)
+  type ProcessedFile = ReturnType<typeof getProcessedFiles>[number]
+  const fileValueValidate = (fileList: ProcessedFile[]) => fileList.every(file => file.upload_file_id)
 
-  const handleFileChange = (value: any[]) => {
-    setFileValue(value)
+  const handleFileChange = (value: FileEntity[]) => {
+    setEditorState(prev => ({ ...prev, fileValue: value }))
+    const processedFiles = getProcessedFiles(value)
     // check every file upload progress
     // invoke update api after every file uploaded
-    if (!fileValueValidate(value))
+    if (!fileValueValidate(processedFiles))
       return
     if (currentVar.value_type === VarType.file)
-      debounceValueChange(currentVar.id, value[0])
+      debounceValueChange(currentVar.id, processedFiles[0])
     if (currentVar.value_type === VarType.arrayFile || isSysFiles)
-      debounceValueChange(currentVar.id, value)
+      debounceValueChange(currentVar.id, processedFiles)
   }
 
   // get editor height
@@ -182,9 +200,12 @@ const ValueContent = ({
     if (contentContainerRef.current && errorMessageRef.current) {
       const errorMessageObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
-          const { inlineSize } = entry.borderBoxSize[0]
-          const height = (contentContainerRef.current as any).clientHeight - inlineSize
-          setEditorHeight(height)
+          const borderBoxSize = Array.isArray(entry.borderBoxSize)
+            ? entry.borderBoxSize[0]
+            : entry.borderBoxSize
+          const errorHeight = borderBoxSize?.blockSize ?? entry.contentRect.height
+          const containerHeight = contentContainerRef.current?.clientHeight ?? 0
+          setEditorHeight(Math.max(containerHeight - errorHeight, 0))
         }
       })
       errorMessageObserver.observe(errorMessageRef.current)
@@ -209,7 +230,7 @@ const ValueContent = ({
                     <DisplayContent
                       previewType={PreviewType.Markdown}
                       varType={currentVar.value_type}
-                      mdString={value as any}
+                      mdString={typeof textValue === 'string' ? textValue : String(textValue)}
                       readonly={textEditorDisabled}
                       handleTextChange={handleTextChange}
                       className={cn(isTruncated && 'pt-[36px]')}
@@ -220,7 +241,7 @@ const ValueContent = ({
                       readOnly={textEditorDisabled}
                       disabled={textEditorDisabled || isTruncated}
                       className={cn('h-full', isTruncated && 'pt-[48px]')}
-                      value={value as any}
+                      value={textValue}
                       onChange={e => handleTextChange(e.target.value)}
                     />
                   )
@@ -232,7 +253,6 @@ const ValueContent = ({
             <BoolValue
               value={currentVar.value as boolean}
               onChange={(newValue) => {
-                setValue(newValue)
                 debounceValueChange(currentVar.id, newValue)
               }}
             />
@@ -248,7 +268,6 @@ const ValueContent = ({
                   onChange={(newValue) => {
                     const newArray = [...(currentVar.value as boolean[])]
                     newArray[i] = newValue
-                    setValue(newArray)
                     debounceValueChange(currentVar.id, newArray)
                   }}
                 />
@@ -263,7 +282,7 @@ const ValueContent = ({
                   previewType={PreviewType.Chunks}
                   varType={currentVar.value_type}
                   schemaType={currentVar.schemaType ?? ''}
-                  jsonString={json ?? '{}'}
+                  jsonString={jsonValue ?? '{}'}
                   readonly={JSONEditorDisabled}
                   handleEditorChange={handleEditorChange}
                 />
@@ -273,7 +292,7 @@ const ValueContent = ({
                   readonly={JSONEditorDisabled || isTruncated}
                   className="overflow-y-auto"
                   hideTopMenu
-                  schema={json}
+                  schema={jsonValue}
                   onUpdate={handleEditorChange}
                   isTruncated={isTruncated}
                 />
@@ -283,7 +302,7 @@ const ValueContent = ({
           <div className="max-w-[460px]">
             <FileUploaderInAttachmentWrapper
               value={fileValue}
-              onChange={files => handleFileChange(getProcessedFiles(files))}
+              onChange={handleFileChange}
               fileConfig={{
                 allowed_file_types: [
                   SupportUploadFileTypes.image,
