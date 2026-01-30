@@ -1,7 +1,7 @@
 from sqlalchemy import select
 
+from core.db.session_factory import session_factory
 from events.app_event import app_model_config_was_updated
-from extensions.ext_database import db
 from models.dataset import AppDatasetJoin
 from models.model import AppModelConfig
 
@@ -15,30 +15,31 @@ def handle(sender, **kwargs):
 
     dataset_ids = get_dataset_ids_from_model_config(app_model_config)
 
-    app_dataset_joins = db.session.scalars(select(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id)).all()
+    with session_factory.create_session() as session:
+        app_dataset_joins = session.scalars(select(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id)).all()
 
-    removed_dataset_ids: set[str] = set()
-    if not app_dataset_joins:
-        added_dataset_ids = dataset_ids
-    else:
-        old_dataset_ids: set[str] = set()
-        old_dataset_ids.update(app_dataset_join.dataset_id for app_dataset_join in app_dataset_joins)
+        removed_dataset_ids: set[str] = set()
+        if not app_dataset_joins:
+            added_dataset_ids = dataset_ids
+        else:
+            old_dataset_ids: set[str] = set()
+            old_dataset_ids.update(app_dataset_join.dataset_id for app_dataset_join in app_dataset_joins)
 
-        added_dataset_ids = dataset_ids - old_dataset_ids
-        removed_dataset_ids = old_dataset_ids - dataset_ids
+            added_dataset_ids = dataset_ids - old_dataset_ids
+            removed_dataset_ids = old_dataset_ids - dataset_ids
 
-    if removed_dataset_ids:
-        for dataset_id in removed_dataset_ids:
-            db.session.query(AppDatasetJoin).where(
-                AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id
-            ).delete()
+        if removed_dataset_ids:
+            for dataset_id in removed_dataset_ids:
+                session.query(AppDatasetJoin).where(
+                    AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id
+                ).delete()
 
-    if added_dataset_ids:
-        for dataset_id in added_dataset_ids:
-            app_dataset_join = AppDatasetJoin(app_id=app.id, dataset_id=dataset_id)
-            db.session.add(app_dataset_join)
+        if added_dataset_ids:
+            for dataset_id in added_dataset_ids:
+                app_dataset_join = AppDatasetJoin(app_id=app.id, dataset_id=dataset_id)
+                session.add(app_dataset_join)
 
-    db.session.commit()
+        session.commit()
 
 
 def get_dataset_ids_from_model_config(app_model_config: AppModelConfig) -> set[str]:
