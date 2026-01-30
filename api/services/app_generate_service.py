@@ -16,8 +16,6 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
 from core.app.features.rate_limiting.rate_limit import rate_limit_context
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
-from core.db import session_factory
 from enums.quota_type import QuotaType, unlimited
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
@@ -191,10 +189,6 @@ class AppGenerateService:
                         request_id,
                     )
 
-                pause_config = PauseStateLayerConfig(
-                    session_factory=session_factory.get_session_maker(),
-                    state_owner_user_id=workflow.created_by,
-                )
                 return rate_limit.generate(
                     WorkflowAppGenerator.convert_to_event_stream(
                         WorkflowAppGenerator().generate(
@@ -206,7 +200,6 @@ class AppGenerateService:
                             streaming=False,
                             root_node_id=root_node_id,
                             call_depth=0,
-                            pause_state_config=pause_config,
                         ),
                     ),
                     request_id,

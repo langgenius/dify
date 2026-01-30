@@ -239,7 +239,7 @@ class HumanInputService:
         logger.warning("App mode %s does not support resume for workflow run %s", app.mode, workflow_run_id)
 
     def _is_globally_expired(self, form: Form, *, now: datetime | None = None) -> bool:
-        global_timeout_seconds = dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS
+        global_timeout_seconds = dify_config.HITL_GLOBAL_TIMEOUT_SECONDS
         if global_timeout_seconds <= 0:
             return False
         if form.workflow_run_id is None:

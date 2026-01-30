@@ -61,7 +61,7 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
     form_repo = HumanInputFormSubmissionRepository(session_factory)
     service = HumanInputService(session_factory, form_repository=form_repo)
     now = naive_utc_now()
-    global_timeout_seconds = dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS
+    global_timeout_seconds = dify_config.HITL_GLOBAL_TIMEOUT_SECONDS
 
     with session_factory() as session:
         global_deadline = now - timedelta(seconds=global_timeout_seconds) if global_timeout_seconds > 0 else None
