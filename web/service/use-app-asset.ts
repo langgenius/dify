@@ -312,7 +312,7 @@ export const useBatchUpload = () => {
       files: Map<string, File>
       parentId?: string | null
       onProgress?: (uploaded: number, total: number) => void
-    }): Promise<void> => {
+    }): Promise<BatchUploadNodeOutput[]> => {
       const response = await consoleClient.appAsset.batchUpload({
         params: { appId },
         body: { children: tree, parent_id: parentId },
@@ -348,6 +348,8 @@ export const useBatchUpload = () => {
           onProgress?.(completed, total)
         }),
       )
+
+      return response.children
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({
