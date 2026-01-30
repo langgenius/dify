@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.11.4"
+version = "1.12.0"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
@@ -31,7 +31,7 @@ dependencies = [
     "gunicorn~=23.0.0",
     "httpx[socks]~=0.27.0",
     "jieba==0.42.1",
-    "json-repair>=0.41.1",
+    "json-repair>=0.55.1",
     "jsonschema>=4.25.1",
     "langfuse~=2.51.3",
     "langsmith~=0.1.77",
@@ -40,7 +40,7 @@ dependencies = [
     "numpy~=1.26.4",
     "openpyxl~=3.1.5",
     "opik~=1.8.72",
-    "litellm==1.77.1", # Pinned to avoid madoka dependency issue
+    "litellm==1.77.1",                                  # Pinned to avoid madoka dependency issue
     "opentelemetry-api==1.27.0",
     "opentelemetry-distro==0.48b0",
     "opentelemetry-exporter-otlp==1.27.0",
@@ -64,7 +64,7 @@ dependencies = [
     "pandas[excel,output-formatting,performance]~=2.2.2",
     "psycogreen~=1.0.2",
     "psycopg2-binary~=2.9.6",
-    "pycryptodome==3.19.1",
+    "pycryptodome==3.23.0",
     "pydantic~=2.11.4",
     "pydantic-extra-types~=2.10.3",
     "pydantic-settings~=2.11.0",
@@ -175,6 +175,7 @@ dev = [
     # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
     "sseclient-py>=1.8.0",
     "pytest-timeout>=2.4.0",
+    "pytest-xdist>=3.8.0",
 ]
 
 ############################################################
@@ -229,3 +230,23 @@ vdb = [
     "mo-vector~=0.1.13",
     "mysql-connector-python>=9.3.0",
 ]
+
+[tool.mypy]
+
+[[tool.mypy.overrides]]
+# targeted ignores for current type-check errors
+# TODO(QuantumGhost): suppress type errors in HITL related code.
+# fix the type error later
+module = [
+    "configs.middleware.cache.redis_pubsub_config",
+    "extensions.ext_redis",
+    "tasks.workflow_execution_tasks",
+    "core.workflow.nodes.base.node",
+    "services.human_input_delivery_test_service",
+    "core.app.apps.advanced_chat.app_generator",
+    "controllers.console.human_input_form",
+    "controllers.console.app.workflow_run",
+    "repositories.sqlalchemy_api_workflow_node_execution_repository",
+    "extensions.logstore.repositories.logstore_api_workflow_run_repository",
+]
+ignore_errors = true

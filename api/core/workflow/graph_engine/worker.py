@@ -17,7 +17,7 @@ from typing_extensions import override
 from core.workflow.context import IExecutionContext
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent
+from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, is_node_result_event
 from core.workflow.nodes.base.node import Node
 
 from .ready_queue import ReadyQueue
@@ -131,6 +131,7 @@ class Worker(threading.Thread):
         node.ensure_execution_id()
 
         error: Exception | None = None
+        result_event: GraphNodeEventBase | None = None
 
         # Execute the node with preserved context if execution context is provided
         if self._execution_context is not None:
@@ -140,22 +141,26 @@ class Worker(threading.Thread):
                     node_events = node.run()
                     for event in node_events:
                         self._event_queue.put(event)
+                        if is_node_result_event(event):
+                            result_event = event
                 except Exception as exc:
                     error = exc
                     raise
                 finally:
-                    self._invoke_node_run_end_hooks(node, error)
+                    self._invoke_node_run_end_hooks(node, error, result_event)
         else:
             self._invoke_node_run_start_hooks(node)
             try:
                 node_events = node.run()
                 for event in node_events:
                     self._event_queue.put(event)
+                    if is_node_result_event(event):
+                        result_event = event
             except Exception as exc:
                 error = exc
                 raise
             finally:
-                self._invoke_node_run_end_hooks(node, error)
+                self._invoke_node_run_end_hooks(node, error, result_event)
 
     def _invoke_node_run_start_hooks(self, node: Node) -> None:
         """Invoke on_node_run_start hooks for all layers."""
@@ -166,11 +171,13 @@ class Worker(threading.Thread):
                 # Silently ignore layer errors to prevent disrupting node execution
                 continue
 
-    def _invoke_node_run_end_hooks(self, node: Node, error: Exception | None) -> None:
+    def _invoke_node_run_end_hooks(
+        self, node: Node, error: Exception | None, result_event: GraphNodeEventBase | None = None
+    ) -> None:
         """Invoke on_node_run_end hooks for all layers."""
         for layer in self._layers:
             try:
-                layer.on_node_run_end(node, error)
+                layer.on_node_run_end(node, error, result_event)
             except Exception:
                 # Silently ignore layer errors to prevent disrupting node execution
                 continue
