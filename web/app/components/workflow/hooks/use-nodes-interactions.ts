@@ -52,6 +52,7 @@ import {
   getNodeCustomTypeByNodeDataType,
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getTopLeftNodePosition,
+  parseNestedNodeId,
 } from '../utils'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 import { useAutoGenerateWebhookUrl } from './use-auto-generate-webhook-url'
@@ -350,13 +351,9 @@ export const useNodesInteractions = () => {
   }, [configsMap?.flowId])
 
   const cleanupContextGenStorage = useCallback((nodeId: string, nodeData?: Node['data']) => {
-    const extSeparator = '_ext_'
-    const extIndex = nodeId.indexOf(extSeparator)
-    if (extIndex > 0) {
-      const toolNodeId = nodeId.slice(0, extIndex)
-      const paramKey = nodeId.slice(extIndex + extSeparator.length)
-      clearContextGenStorageByParam(toolNodeId, paramKey)
-    }
+    const parsed = parseNestedNodeId(nodeId)
+    if (parsed)
+      clearContextGenStorageByParam(parsed.parentId, parsed.paramKey)
 
     if (nodeData?.type !== BlockEnum.Tool)
       return

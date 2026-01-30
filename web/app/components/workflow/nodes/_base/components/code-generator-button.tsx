@@ -14,6 +14,7 @@ import { cn } from '@/utils/classnames'
 import { useHooksStore } from '../../../hooks-store'
 import { useStore } from '../../../store'
 import { BlockEnum } from '../../../types'
+import { parseNestedNodeId } from '../../../utils'
 import ContextGenerateModal from '../../tool/components/context-generate-modal'
 
 type Props = {
@@ -40,23 +41,11 @@ const CodeGenerateBtn: FC<Props> = ({
   }, [onGenerated, showAutomaticFalse])
   const configsMap = useHooksStore(s => s.configsMap)
 
-  const parseExtractorNodeId = useCallback((id: string) => {
-    const marker = '_ext_'
-    const index = id.lastIndexOf(marker)
-    if (index < 0)
-      return null
-    const parentId = id.slice(0, index)
-    const paramKey = id.slice(index + marker.length)
-    if (!parentId || !paramKey)
-      return null
-    return { parentId, paramKey }
-  }, [])
-
   const contextGenerateConfig = useMemo(() => {
     const targetNode = nodes.find(node => node.id === nodeId)
     const isCodeNode = targetNode?.data?.type === BlockEnum.Code
     const parentNodeId = (targetNode?.data as { parent_node_id?: string })?.parent_node_id
-    const parsed = parseExtractorNodeId(nodeId)
+    const parsed = parseNestedNodeId(nodeId)
     if (!isCodeNode || !parentNodeId || !parsed?.paramKey)
       return null
     return {
@@ -64,7 +53,7 @@ const CodeGenerateBtn: FC<Props> = ({
       paramKey: parsed.paramKey,
       codeNodeId: nodeId,
     }
-  }, [nodeId, nodes, parseExtractorNodeId])
+  }, [nodeId, nodes])
 
   const handleOpenAutomatic = useCallback(() => {
     showAutomaticTrue()
