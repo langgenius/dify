@@ -4,7 +4,7 @@ import pytest
 from faker import Faker
 from werkzeug.exceptions import NotFound
 
-from models import Account
+from models import Account, App, Conversation
 from models.model import MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.app_service import AppService
@@ -115,7 +115,7 @@ class TestAnnotationService:
             tenant_id,
         )
 
-    def _create_test_conversation(self, app, account, fake):
+    def _create_test_conversation(self, app: App, account: Account, fake: Faker):
         """
         Helper method to create a test conversation with all required fields.
         """
@@ -145,7 +145,7 @@ class TestAnnotationService:
         db.session.flush()
         return conversation
 
-    def _create_test_message(self, app, conversation, account, fake):
+    def _create_test_message(self, app: App, conversation: Conversation, account: Account, fake: Faker):
         """
         Helper method to create a test message with all required fields.
         """

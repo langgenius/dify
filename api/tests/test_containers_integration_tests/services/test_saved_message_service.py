@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 from faker import Faker
 
+from models import App
 from models.model import EndUser, Message
 from models.web import SavedMessage
 from services.app_service import AppService
@@ -85,7 +86,7 @@ class TestSavedMessageService:
 
         return app, account
 
-    def _create_test_end_user(self, db_session_with_containers, app):
+    def _create_test_end_user(self, db_session_with_containers, app: App):
         """
         Helper method to create a test end user for testing.
 

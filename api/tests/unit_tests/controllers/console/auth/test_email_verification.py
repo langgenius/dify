@@ -143,7 +143,7 @@ class TestEmailCodeLoginSendEmailApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
-    def test_send_email_code_ip_rate_limited(self, mock_is_ip_limit, mock_db, app):
+    def test_send_email_code_ip_rate_limited(self, mock_is_ip_limit, mock_db, app: Flask):
         """
         Test email code sending blocked by IP rate limit.
 
@@ -164,7 +164,7 @@ class TestEmailCodeLoginSendEmailApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
-    def test_send_email_code_frozen_account(self, mock_get_user, mock_is_ip_limit, mock_db, app):
+    def test_send_email_code_frozen_account(self, mock_get_user, mock_is_ip_limit, mock_db, app: Flask):
         """
         Test email code sending to frozen account.
 
@@ -361,7 +361,7 @@ class TestEmailCodeLoginApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    def test_email_code_login_invalid_token(self, mock_get_data, mock_db, app):
+    def test_email_code_login_invalid_token(self, mock_get_data, mock_db, app: Flask):
         """
         Test email code login with invalid token.
 
@@ -384,7 +384,7 @@ class TestEmailCodeLoginApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    def test_email_code_login_email_mismatch(self, mock_get_data, mock_db, app):
+    def test_email_code_login_email_mismatch(self, mock_get_data, mock_db, app: Flask):
         """
         Test email code login with mismatched email.
 
@@ -407,7 +407,7 @@ class TestEmailCodeLoginApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    def test_email_code_login_wrong_code(self, mock_get_data, mock_db, app):
+    def test_email_code_login_wrong_code(self, mock_get_data, mock_db, app: Flask):
         """
         Test email code login with incorrect code.
 
