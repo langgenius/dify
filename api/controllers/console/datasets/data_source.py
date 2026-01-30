@@ -1,4 +1,3 @@
-from core.datasource.entities.datasource_entities import OnlineDriveBrowseFilesRequest
 import json
 from collections.abc import Generator
 from typing import Any, cast
@@ -11,7 +10,11 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import get_or_create_model, register_schema_model
-from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
+from core.datasource.entities.datasource_entities import (
+    DatasourceProviderType,
+    OnlineDocumentPagesMessage,
+    OnlineDriveBrowseFilesRequest,
+)
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
 from core.rag.extractor.entity.datasource_type import DatasourceType
@@ -47,7 +50,9 @@ class NotionEstimatePayload(BaseModel):
 class DataSourceNotionListQuery(BaseModel):
     dataset_id: str | None = Field(default=None, description="Dataset ID")
     credential_id: str = Field(..., description="Credential ID", min_length=1)
-    datasource_parameters: OnlineDriveBrowseFilesRequest = Field(default_factory=OnlineDriveBrowseFilesRequest, description="Datasource parameters JSON string")
+    datasource_parameters: OnlineDriveBrowseFilesRequest = Field(
+        default_factory=OnlineDriveBrowseFilesRequest, description="Datasource parameters JSON string"
+    )
 
 
 class DataSourceNotionPreviewQuery(BaseModel):

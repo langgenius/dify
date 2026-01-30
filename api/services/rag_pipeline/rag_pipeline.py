@@ -5,7 +5,7 @@ import threading
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Union, cast
+from typing import TYPE_CHECKING, Any, Union, cast
 from uuid import uuid4
 
 from flask_login import current_user
@@ -14,7 +14,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
-from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import DatasourceNodeRunPayload
+
+if TYPE_CHECKING:
+    from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import DatasourceNodeRunPayload
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import (
