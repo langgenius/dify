@@ -4216,11 +4216,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/variable-inspect/utils.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/workflow/variable-inspect/value-content.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 5
