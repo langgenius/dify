@@ -18,7 +18,7 @@ import {
   useStore,
   useWorkflowStore,
 } from '../../store'
-import { BlockEnum, WorkflowRunningStatus } from '../../types'
+import { BlockEnum } from '../../types'
 import ConversationVariableModal from './conversation-variable-modal'
 import Empty from './empty'
 import { useChat } from './hooks'
@@ -84,9 +84,7 @@ const ChatWrapper = (
     suggestedQuestions,
     handleSend,
     handleRestart,
-    handleSwitchSibling,
-    handleSubmitHumanInputForm,
-    getHumanInputNodeData,
+    setTargetMessageId,
   } = useChat(
     config,
     {
@@ -122,22 +120,6 @@ const ChatWrapper = (
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
     doSend(editedQuestion ? editedQuestion.message : question.content, editedQuestion ? editedQuestion.files : question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
   }, [chatList, doSend])
-
-  const doSwitchSibling = useCallback((siblingMessageId: string) => {
-    handleSwitchSibling(siblingMessageId, {
-      onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
-    })
-  }, [handleSwitchSibling, appDetail])
-
-  const doHumanInputFormSubmit = useCallback(async (formToken: string, formData: any) => {
-    // Handle human input form submission
-    await handleSubmitHumanInputForm(formToken, formData)
-  }, [handleSubmitHumanInputForm])
-
-  const inputDisabled = useMemo(() => {
-    const latestMessage = chatList[chatList.length - 1]
-    return latestMessage?.isAnswer && (latestMessage.workflowProcess?.status === WorkflowRunningStatus.Paused)
-  }, [chatList])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
@@ -186,8 +168,6 @@ const ChatWrapper = (
         inputsForm={(startVariables || []) as any}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
-        onHumanInputFormSubmit={doHumanInputFormSubmit}
-        getHumanInputNodeData={getHumanInputNodeData}
         chatNode={(
           <>
             {showInputsFieldsPanel && <UserInput />}
@@ -202,9 +182,7 @@ const ChatWrapper = (
         suggestedQuestions={suggestedQuestions}
         showPromptLog
         chatAnswerContainerInner="!pr-2"
-        switchSibling={doSwitchSibling}
-        inputDisabled={inputDisabled}
-        hideAvatar
+        switchSibling={setTargetMessageId}
       />
       {showConversationVariableModal && (
         <ConversationVariableModal

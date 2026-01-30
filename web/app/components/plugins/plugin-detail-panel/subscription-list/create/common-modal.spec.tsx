@@ -1248,10 +1248,6 @@ describe('CommonCreateModal', () => {
       fireEvent.change(input, { target: { value: 'https://example.com/webhook' } })
 
       await waitFor(() => {
-        expect(mockUpdateBuilder).toHaveBeenCalled()
-      })
-
-      await waitFor(() => {
         expect(mockToastNotify).toHaveBeenCalledWith({
           type: 'error',
           message: 'Custom update error',

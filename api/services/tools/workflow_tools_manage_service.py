@@ -64,8 +64,6 @@ class WorkflowToolManageService:
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_app_id}")
 
-        WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
-
         workflow_tool_provider = WorkflowToolProvider(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -154,8 +152,6 @@ class WorkflowToolManageService:
         workflow: Workflow | None = app.workflow
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_tool_provider.app_id}")
-
-        WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
 
         workflow_tool_provider.name = name
         workflow_tool_provider.label = label
