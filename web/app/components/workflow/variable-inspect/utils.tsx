@@ -14,6 +14,27 @@ type Json = Literal | { [key: string]: Json } | Json[]
 const jsonSchema: z.ZodType<Json> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]))
 const arrayJsonSchema: z.ZodType<Json[]> = z.lazy(() => z.array(jsonSchema))
 
+type JsonSchemaType = 'array[string]' | 'array[number]' | 'object' | 'array[object]' | 'array[message]'
+type JsonSchemaValue = Json | Json[] | string[] | number[]
+
+const isJsonSchemaType = (value: string): value is JsonSchemaType => {
+  return value === 'array[string]'
+    || value === 'array[number]'
+    || value === 'object'
+    || value === 'array[object]'
+    || value === 'array[message]'
+}
+
+const validateKnownJSONSchema = (schema: unknown, type: JsonSchemaType): z.SafeParseReturnType<unknown, JsonSchemaValue> => {
+  if (type === 'array[string]')
+    return arrayStringSchemaParttern.safeParse(schema)
+  if (type === 'array[number]')
+    return arrayNumberSchemaParttern.safeParse(schema)
+  if (type === 'object')
+    return jsonSchema.safeParse(schema)
+  return arrayJsonSchema.safeParse(schema)
+}
+
 const toEnvVarType = (valueType: EnvironmentVariable['value_type']): VarInInspect['value_type'] => {
   switch (valueType) {
     case 'number':
@@ -43,25 +64,9 @@ export const toEnvVarInInspect = (envVar: EnvironmentVariable): VarInInspect => 
 }
 
 export const validateJSONSchema = (schema: unknown, type: string): z.SafeParseReturnType<unknown, unknown> => {
-  if (type === 'array[string]') {
-    const result = arrayStringSchemaParttern.safeParse(schema)
-    return result
-  }
-  else if (type === 'array[number]') {
-    const result = arrayNumberSchemaParttern.safeParse(schema)
-    return result
-  }
-  else if (type === 'object') {
-    const result = jsonSchema.safeParse(schema)
-    return result
-  }
-  else if (type === 'array[object]' || type === 'array[message]') {
-    const result = arrayJsonSchema.safeParse(schema)
-    return result
-  }
-  else {
+  if (!isJsonSchemaType(type))
     return z.unknown().safeParse(schema)
-  }
+  return validateKnownJSONSchema(schema, type)
 }
 
 export const formatVarTypeLabel = (valueType?: string) => {
