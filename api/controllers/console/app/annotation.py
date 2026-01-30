@@ -414,7 +414,9 @@ def export_annotations(app_id: UUID) -> AnnotationExportResponse:
 @cloud_edition_billing_resource_check("annotation")
 @edit_permission_required
 def update_annotation(app_id: UUID, annotation_id: UUID, payload: UpdateAnnotationPayload) -> AnnotationItem:
-    annotation = AppAnnotationService.update_app_annotation_directly(payload.model_dump(), str(app_id), str(annotation_id))
+    annotation = AppAnnotationService.update_app_annotation_directly(
+        payload.model_dump(), str(app_id), str(annotation_id)
+    )
     return _annotation_to_response(annotation)
 
 
