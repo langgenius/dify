@@ -5,6 +5,7 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod, FileType
 from core.variables import FileVariable, StringVariable
+from core.workflow.enums import NodeType
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.trigger_webhook.entities import (
@@ -63,6 +64,7 @@ def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) 
 def test_webhook_node_basic_initialization():
     """Test basic webhook node initialization and configuration."""
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook",
         method=Method.POST,
         content_type=ContentType.JSON,
@@ -110,6 +112,7 @@ def test_webhook_node_default_config():
 def test_webhook_node_run_with_headers():
     """Test webhook node execution with header extraction."""
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook",
         headers=[
             WebhookParameter(name="Authorization", required=True),
@@ -145,6 +148,7 @@ def test_webhook_node_run_with_headers():
 def test_webhook_node_run_with_query_params():
     """Test webhook node execution with query parameter extraction."""
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook",
         params=[
             WebhookParameter(name="page", required=True),
@@ -180,6 +184,7 @@ def test_webhook_node_run_with_query_params():
 def test_webhook_node_run_with_body_params():
     """Test webhook node execution with body parameter extraction."""
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook",
         body=[
             WebhookBodyParameter(name="message", type="string", required=True),
@@ -240,6 +245,7 @@ def test_webhook_node_run_with_file_params():
     )
 
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook",
         body=[
             WebhookBodyParameter(name="upload", type="file", required=True),
@@ -292,6 +298,7 @@ def test_webhook_node_run_mixed_parameters():
     )
 
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook",
         headers=[WebhookParameter(name="Authorization", required=True)],
         params=[WebhookParameter(name="version", required=False)],
@@ -335,6 +342,7 @@ def test_webhook_node_run_mixed_parameters():
 def test_webhook_node_run_empty_webhook_data():
     """Test webhook node execution with empty webhook data."""
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook",
         headers=[WebhookParameter(name="Authorization", required=False)],
         params=[WebhookParameter(name="page", required=False)],
@@ -359,6 +367,7 @@ def test_webhook_node_run_empty_webhook_data():
 def test_webhook_node_run_case_insensitive_headers():
     """Test webhook node header extraction is case-insensitive."""
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook",
         headers=[
             WebhookParameter(name="Content-Type", required=True),
@@ -394,7 +403,7 @@ def test_webhook_node_run_case_insensitive_headers():
 
 def test_webhook_node_variable_pool_user_inputs():
     """Test that webhook node uses user_inputs from variable pool correctly."""
-    data = WebhookData(title="Test Webhook")
+    data = WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test Webhook")
 
     # Add some additional variables to the pool
     variable_pool = VariablePool(
@@ -424,6 +433,7 @@ def test_webhook_node_variable_pool_user_inputs():
 def test_webhook_node_different_methods(method):
     """Test webhook node with different HTTP methods."""
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook",
         method=method,
     )
@@ -449,10 +459,10 @@ def test_webhook_node_different_methods(method):
 
 def test_webhook_data_content_type_field():
     """Test that content_type accepts both raw strings and enum values."""
-    data1 = WebhookData(title="Test", content_type="application/json")
+    data1 = WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test", content_type="application/json")
     assert data1.content_type == ContentType.JSON
 
-    data2 = WebhookData(title="Test", content_type=ContentType.FORM_DATA)
+    data2 = WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test", content_type=ContentType.FORM_DATA)
     assert data2.content_type == ContentType.FORM_DATA
 
 
@@ -479,7 +489,7 @@ def test_webhook_parameter_models():
 
 def test_webhook_data_field_defaults():
     """Test webhook data model field defaults."""
-    data = WebhookData(title="Minimal Webhook")
+    data = WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Minimal Webhook")
 
     assert data.method == Method.GET
     assert data.content_type == ContentType.JSON

@@ -5,7 +5,7 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod, FileType
 from core.variables import ArrayFileSegment
-from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.nodes.list_operator.entities import (
     ExtractConfig,
     FilterBy,
@@ -23,6 +23,7 @@ from models.enums import UserFrom
 @pytest.fixture
 def list_operator_node():
     config = {
+        "type": NodeType.LIST_OPERATOR,
         "variable": ["test_variable"],
         "filter_by": FilterBy(
             enabled=True,

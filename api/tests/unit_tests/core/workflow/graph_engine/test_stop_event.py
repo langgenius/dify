@@ -63,7 +63,7 @@ class TestStopEventPropagation:
 
         start_node = StartNode(
             id="start",
-            config={"id": "start", "data": {"title": "start", "variables": []}},
+            config={"id": "start", "data": {"type": "start", "title": "start", "variables": []}},
             graph_init_params=GraphInitParams(
                 tenant_id="test_tenant",
                 app_id="test_app",
@@ -111,7 +111,7 @@ class TestStopEventPropagation:
 
         start_node = StartNode(
             id="start",
-            config={"id": "start", "data": {"title": "start", "variables": []}},
+            config={"id": "start", "data": {"type": "start", "title": "start", "variables": []}},
             graph_init_params=GraphInitParams(
                 tenant_id="test_tenant",
                 app_id="test_app",
@@ -195,7 +195,7 @@ class TestNodeStopCheck:
 
         answer_node = AnswerNode(
             id="answer",
-            config={"id": "answer", "data": {"title": "answer", "answer": "{{#start.result#}}"}},
+            config={"id": "answer", "data": {"type": "answer", "title": "answer", "answer": "{{#start.result#}}"}},
             graph_init_params=GraphInitParams(
                 tenant_id="test_tenant",
                 app_id="test_app",
@@ -225,7 +225,7 @@ class TestNodeStopCheck:
         # Create a simple node
         answer_node = AnswerNode(
             id="answer",
-            config={"id": "answer", "data": {"title": "answer", "answer": "hello"}},
+            config={"id": "answer", "data": {"type": "answer", "title": "answer", "answer": "hello"}},
             graph_init_params=GraphInitParams(
                 tenant_id="test_tenant",
                 app_id="test_app",
@@ -276,7 +276,7 @@ class TestStopEventIntegration:
         # Create start and answer nodes
         start_node = StartNode(
             id="start",
-            config={"id": "start", "data": {"title": "start", "variables": []}},
+            config={"id": "start", "data": {"type": "start", "title": "start", "variables": []}},
             graph_init_params=GraphInitParams(
                 tenant_id="test_tenant",
                 app_id="test_app",
@@ -292,7 +292,7 @@ class TestStopEventIntegration:
 
         answer_node = AnswerNode(
             id="answer",
-            config={"id": "answer", "data": {"title": "answer", "answer": "hello"}},
+            config={"id": "answer", "data": {"type": "answer", "title": "answer", "answer": "hello"}},
             graph_init_params=GraphInitParams(
                 tenant_id="test_tenant",
                 app_id="test_app",
@@ -343,7 +343,7 @@ class TestStopEventIntegration:
         for i in range(3):
             answer_node = AnswerNode(
                 id=f"answer_{i}",
-                config={"id": f"answer_{i}", "data": {"title": f"answer_{i}", "answer": f"test{i}"}},
+                config={"id": f"answer_{i}", "data": {"type": "answer", "title": f"answer_{i}", "answer": f"test{i}"}},
                 graph_init_params=GraphInitParams(
                     tenant_id="test_tenant",
                     app_id="test_app",
@@ -447,7 +447,7 @@ class TestStopEventResumeBehavior:
 
         start_node = StartNode(
             id="start",
-            config={"id": "start", "data": {"title": "start", "variables": []}},
+            config={"id": "start", "data": {"type": "start", "title": "start", "variables": []}},
             graph_init_params=GraphInitParams(
                 tenant_id="test_tenant",
                 app_id="test_app",

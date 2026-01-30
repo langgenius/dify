@@ -9,6 +9,7 @@ import pytest
 
 from core.model_runtime.entities import LLMMode
 from core.variables.types import SegmentType
+from core.workflow.enums import NodeType
 from core.workflow.nodes.llm import ModelConfig, VisionConfig
 from core.workflow.nodes.parameter_extractor.entities import ParameterConfig, ParameterExtractorNodeData
 from core.workflow.nodes.parameter_extractor.exc import (
@@ -315,6 +316,7 @@ class TestValidateResult:
         helper = TestParameterExtractorNodeMethods()
 
         node_data = ParameterExtractorNodeData(
+            type=NodeType.PARAMETER_EXTRACTOR,
             title="Test Node",
             model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode=LLMMode.CHAT, completion_params={}),
             query=["test_query"],
@@ -332,6 +334,7 @@ class TestValidateResult:
         helper = TestParameterExtractorNodeMethods()
 
         node_data = ParameterExtractorNodeData(
+            type=NodeType.PARAMETER_EXTRACTOR,
             title="Test Node",
             model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode=LLMMode.CHAT, completion_params={}),
             query=["test_query"],
@@ -553,6 +556,7 @@ class TestTransformResult:
         helper = TestParameterExtractorNodeMethods()
 
         node_data = ParameterExtractorNodeData(
+            type=NodeType.PARAMETER_EXTRACTOR,
             title="Test Node",
             model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode=LLMMode.CHAT, completion_params={}),
             query=["test_query"],

@@ -4,7 +4,6 @@ from enum import StrEnum
 from pydantic import BaseModel, Field, field_validator
 
 from core.variables.types import SegmentType
-from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 
 _WEBHOOK_ALLOWED_TYPES = frozenset(
@@ -77,7 +76,6 @@ class WebhookData(BaseNodeData):
     class SyncMode(StrEnum):
         SYNC = "async"  # only support
 
-    type: NodeType = NodeType.TRIGGER_WEBHOOK
     method: Method = Method.GET
     content_type: ContentType = Field(default=ContentType.JSON)
     headers: Sequence[WebhookParameter] = Field(default_factory=list)

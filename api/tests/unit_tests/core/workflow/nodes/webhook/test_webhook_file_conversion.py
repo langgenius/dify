@@ -9,6 +9,7 @@ when passing files to downstream LLM nodes.
 from unittest.mock import Mock, patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.enums import NodeType
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.trigger_webhook.entities import (
@@ -101,6 +102,7 @@ def test_webhook_node_file_conversion_to_file_variable():
     file_dict = create_test_file_dict("uploaded_image.jpg")
 
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook with File",
         method=Method.POST,
         content_type=ContentType.FORM_DATA,
@@ -175,6 +177,7 @@ def test_webhook_node_file_conversion_to_file_variable():
 def test_webhook_node_file_conversion_with_missing_files():
     """Test webhook node file conversion with missing file parameter."""
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook with Missing File",
         method=Method.POST,
         content_type=ContentType.FORM_DATA,
@@ -210,6 +213,7 @@ def test_webhook_node_file_conversion_with_missing_files():
 def test_webhook_node_file_conversion_with_none_file():
     """Test webhook node file conversion with None file value."""
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook with None File",
         method=Method.POST,
         content_type=ContentType.FORM_DATA,
@@ -247,6 +251,7 @@ def test_webhook_node_file_conversion_with_none_file():
 def test_webhook_node_file_conversion_with_non_dict_file():
     """Test webhook node file conversion with non-dict file value."""
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook with Non-Dict File",
         method=Method.POST,
         content_type=ContentType.FORM_DATA,
@@ -286,6 +291,7 @@ def test_webhook_node_file_conversion_mixed_parameters():
     file_dict = create_test_file_dict("mixed_test.jpg")
 
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook Mixed Parameters",
         method=Method.POST,
         content_type=ContentType.FORM_DATA,
@@ -359,6 +365,7 @@ def test_webhook_node_different_file_types():
     image_dict = create_test_file_dict("image.jpg", "image")
 
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook Different File Types",
         method=Method.POST,
         content_type=ContentType.FORM_DATA,
@@ -421,6 +428,7 @@ def test_webhook_node_different_file_types():
 def test_webhook_node_file_conversion_with_non_dict_wrapper():
     """Test webhook node file conversion when the file wrapper is not a dict."""
     data = WebhookData(
+        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook with Non-dict File Wrapper",
         method=Method.POST,
         content_type=ContentType.FORM_DATA,

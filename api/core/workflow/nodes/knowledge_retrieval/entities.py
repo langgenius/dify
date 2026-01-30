@@ -113,7 +113,6 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     Knowledge retrieval Node Data.
     """
 
-    type: str = "knowledge-retrieval"
     query_variable_selector: list[str] | None | str = None
     query_attachment_selector: list[str] | None | str = None
     dataset_ids: list[str]
