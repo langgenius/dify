@@ -24,6 +24,7 @@ import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
 import { HeaderShell } from '@/app/components/workflow/header'
+import OnlineUsers from '@/app/components/workflow/header/online-users'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import {
@@ -133,6 +134,9 @@ const WorkflowViewContent = ({
       <div className="flex w-full items-center justify-between">
         <div className="flex items-center gap-2">
           {viewPicker}
+        </div>
+        <div className="flex items-center gap-2">
+          <OnlineUsers />
         </div>
       </div>
     </HeaderShell>
