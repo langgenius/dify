@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import Tag from '.'
 
 const COLORS: Array<NonNullable<React.ComponentProps<typeof Tag>['color']>> = ['green', 'yellow', 'red', 'gray']

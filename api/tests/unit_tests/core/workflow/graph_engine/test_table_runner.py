@@ -32,7 +32,7 @@ from core.variables import (
 )
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine
+from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_events import (
     GraphEngineEvent,
@@ -309,10 +309,12 @@ class TableTestRunner:
                 graph=graph,
                 graph_runtime_state=graph_runtime_state,
                 command_channel=InMemoryChannel(),
-                min_workers=self.graph_engine_min_workers,
-                max_workers=self.graph_engine_max_workers,
-                scale_up_threshold=self.graph_engine_scale_up_threshold,
-                scale_down_idle_time=self.graph_engine_scale_down_idle_time,
+                config=GraphEngineConfig(
+                    min_workers=self.graph_engine_min_workers,
+                    max_workers=self.graph_engine_max_workers,
+                    scale_up_threshold=self.graph_engine_scale_up_threshold,
+                    scale_down_idle_time=self.graph_engine_scale_down_idle_time,
+                ),
             )
 
             # Execute and collect events

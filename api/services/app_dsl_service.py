@@ -44,7 +44,7 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
-CURRENT_DSL_VERSION = "0.5.0"
+CURRENT_DSL_VERSION = "0.6.0"
 
 
 class ImportMode(StrEnum):
@@ -428,10 +428,10 @@ class AppDslService:
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
-        if icon_type_value in [IconType.EMOJI.value, IconType.IMAGE.value, IconType.LINK.value]:
+        if icon_type_value in [IconType.EMOJI, IconType.IMAGE, IconType.LINK]:
             icon_type = icon_type_value
         else:
-            icon_type = IconType.EMOJI.value
+            icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
 
         if app:

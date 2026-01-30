@@ -7,15 +7,16 @@ from typing import Any
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.workflow.layers.observability import ObservabilityLayer
 from core.app.workflow.node_factory import DifyNodeFactory
 from core.file.models import File
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine
+from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
 from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer, ObservabilityLayer
+from core.workflow.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from core.workflow.nodes import NodeType
@@ -80,6 +81,12 @@ class WorkflowEntry:
             graph=graph,
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
+            config=GraphEngineConfig(
+                min_workers=dify_config.GRAPH_ENGINE_MIN_WORKERS,
+                max_workers=dify_config.GRAPH_ENGINE_MAX_WORKERS,
+                scale_up_threshold=dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD,
+                scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
+            ),
         )
 
         # Add debug logging layer when in debug mode
@@ -276,7 +283,7 @@ class WorkflowEntry:
 
         # init variable pool
         variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+            system_variables=SystemVariable.default(),
             user_inputs={},
             environment_variables=[],
         )
