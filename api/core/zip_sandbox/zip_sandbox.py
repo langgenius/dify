@@ -132,7 +132,7 @@ class ZipSandbox:
         self._sandbox.wait_ready(timeout=60)
         self._vm = self._sandbox.vm
 
-        SandboxManager.register(self._sandbox_id, self._vm)
+        SandboxManager.register(self._sandbox_id, self._sandbox)
 
     def _stop(self) -> None:
         if self._vm is None:

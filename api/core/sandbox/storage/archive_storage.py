@@ -11,6 +11,7 @@ from extensions.storage.base_storage import BaseStorage
 from extensions.storage.cached_presign_storage import CachedPresignStorage
 from extensions.storage.file_presign_storage import FilePresignStorage
 
+from .sandbox_file_storage import SandboxFilePaths
 from .sandbox_storage import SandboxStorage
 
 logger = logging.getLogger(__name__)
@@ -24,13 +25,14 @@ class ArchiveSandboxStorage(SandboxStorage):
     def __init__(
         self,
         tenant_id: str,
+        app_id: str,
         sandbox_id: str,
         storage: BaseStorage,
         exclude_patterns: list[str] | None = None,
     ):
         self._sandbox_id = sandbox_id
         self._exclude_patterns = exclude_patterns or []
-        self._storage_key = f"sandbox_archives/{tenant_id}/{sandbox_id}.tar.gz"
+        self._storage_key = SandboxFilePaths.archive(tenant_id, app_id, sandbox_id)
         self._storage = CachedPresignStorage(
             storage=FilePresignStorage(storage),
             cache_key_prefix="sandbox_archives",

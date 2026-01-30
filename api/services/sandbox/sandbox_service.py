@@ -31,7 +31,7 @@ class SandboxService:
         if not assets:
             raise ValueError(f"No assets found for tid={tenant_id}, app_id={app_id}")
 
-        archive_storage = ArchiveSandboxStorage(tenant_id, workflow_execution_id, storage.storage_runner)
+        archive_storage = ArchiveSandboxStorage(tenant_id, app_id, workflow_execution_id, storage.storage_runner)
         sandbox = (
             SandboxBuilder(tenant_id, SandboxType(sandbox_provider.provider_type))
             .options(sandbox_provider.config)
@@ -49,8 +49,10 @@ class SandboxService:
         return sandbox
 
     @classmethod
-    def delete_draft_storage(cls, tenant_id: str, user_id: str) -> None:
-        archive_storage = ArchiveSandboxStorage(tenant_id, SandboxBuilder.draft_id(user_id), storage.storage_runner)
+    def delete_draft_storage(cls, tenant_id: str, app_id: str, user_id: str) -> None:
+        archive_storage = ArchiveSandboxStorage(
+            tenant_id, app_id, SandboxBuilder.draft_id(user_id), storage.storage_runner
+        )
         archive_storage.delete()
 
     @classmethod
@@ -65,10 +67,12 @@ class SandboxService:
         if not assets:
             raise ValueError(f"No assets found for tid={tenant_id}, app_id={app_id}")
 
+        SandboxService.delete_draft_storage(tenant_id, app_id, user_id)
+
         AppAssetPackageService.build_assets(tenant_id, app_id, assets)
         sandbox_id = SandboxBuilder.draft_id(user_id)
         archive_storage = ArchiveSandboxStorage(
-            tenant_id, sandbox_id, storage.storage_runner, exclude_patterns=[AppAssets.PATH]
+            tenant_id, app_id, sandbox_id, storage.storage_runner, exclude_patterns=[AppAssets.PATH]
         )
 
         sandbox = (
@@ -102,7 +106,7 @@ class SandboxService:
         AppAssetPackageService.build_assets(tenant_id, app_id, assets)
         sandbox_id = SandboxBuilder.draft_id(user_id)
         archive_storage = ArchiveSandboxStorage(
-            tenant_id, sandbox_id, storage.storage_runner, exclude_patterns=[AppAssets.PATH]
+            tenant_id, app_id, sandbox_id, storage.storage_runner, exclude_patterns=[AppAssets.PATH]
         )
 
         sandbox = (

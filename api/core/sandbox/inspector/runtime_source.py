@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class SandboxFileRuntimeSource(SandboxFileSource):
-    def __init__(self, *, tenant_id: str, sandbox_id: str, runtime: VirtualEnvironment):
-        super().__init__(tenant_id=tenant_id, sandbox_id=sandbox_id)
+    def __init__(self, *, tenant_id: str, app_id: str, sandbox_id: str, runtime: VirtualEnvironment):
+        super().__init__(tenant_id=tenant_id, app_id=app_id, sandbox_id=sandbox_id)
         self._runtime = runtime
 
     def exists(self) -> bool:
@@ -122,6 +122,7 @@ print(json.dumps(entries))
         export_id = uuid4().hex
         export_key = SandboxFilePaths.export(
             self._tenant_id,
+            self._app_id,
             self._sandbox_id,
             export_id,
             filename,

@@ -2,10 +2,9 @@ import time
 from collections.abc import Mapping
 from io import BytesIO
 from typing import Any
+from unittest.mock import MagicMock
 
-import pytest
-
-from core.sandbox import SandboxManager
+from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.entities import (
     Arch,
     CommandStatus,
@@ -24,7 +23,9 @@ from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 
 
-class FakeSandbox(VirtualEnvironment):
+class FakeVirtualEnvironment(VirtualEnvironment):
+    """Fake VirtualEnvironment for testing CommandNode execution."""
+
     def __init__(
         self,
         *,
@@ -98,17 +99,39 @@ class FakeSandbox(VirtualEnvironment):
     def validate(cls, options: Mapping[str, Any]) -> None:
         pass
 
+    @classmethod
+    def get_config_schema(cls) -> list[BasicProviderConfig]:
+        return []
 
-@pytest.fixture(autouse=True)
-def clean_sandbox_manager():
-    SandboxManager.clear()
-    yield
-    SandboxManager.clear()
+
+def _make_mock_sandbox(vm: VirtualEnvironment) -> MagicMock:
+    """Create a mock Sandbox wrapping a VirtualEnvironment for testing."""
+    sandbox = MagicMock()
+    sandbox.vm = vm
+    sandbox.tenant_id = "test-tenant"
+    sandbox.app_id = "test-app"
+    sandbox.user_id = "test-user"
+    sandbox.assets_id = "test-assets"
+    sandbox.wait_ready = MagicMock()  # No-op for tests
+    return sandbox
 
 
 def _make_node(
-    *, command: str, working_directory: str = "", workflow_execution_id: str = "test-workflow-exec-id"
+    *,
+    command: str,
+    working_directory: str = "",
+    workflow_execution_id: str = "test-workflow-exec-id",
+    vm: FakeVirtualEnvironment | None = None,
 ) -> CommandNode:
+    """Create a CommandNode for testing.
+
+    Args:
+        command: The shell command to execute.
+        working_directory: Optional working directory for command execution.
+        workflow_execution_id: Identifier for the workflow execution.
+        vm: Optional FakeVirtualEnvironment. If provided, a mock Sandbox
+            wrapping this VM will be set on the runtime state.
+    """
     system_variables = SystemVariable(workflow_execution_id=workflow_execution_id)
     variable_pool = VariablePool(system_variables=system_variables, user_inputs={})
     runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
@@ -122,6 +145,10 @@ def _make_node(
         invoke_from="debugger",
         call_depth=0,
     )
+
+    if vm is not None:
+        sandbox = _make_mock_sandbox(vm)
+        runtime_state.set_sandbox(sandbox)
 
     return CommandNode(
         id="node-instance",
@@ -139,16 +166,13 @@ def _make_node(
 
 
 def test_command_node_success_executes_in_sandbox():
-    workflow_execution_id = "test-exec-success"
+    vm = FakeVirtualEnvironment(stdout=b"ok\n", stderr=b"")
     node = _make_node(
         command="echo {{#pre_node_id.number#}}",
         working_directory="dir-{{#pre_node_id.number#}}",
-        workflow_execution_id=workflow_execution_id,
+        vm=vm,
     )
     node.graph_runtime_state.variable_pool.add(("pre_node_id", "number"), 42)
-
-    sandbox = FakeSandbox(stdout=b"ok\n", stderr=b"")
-    SandboxManager.register(workflow_execution_id, sandbox)
 
     result = node._run()  # pyright: ignore[reportPrivateUsage]
 
@@ -157,20 +181,19 @@ def test_command_node_success_executes_in_sandbox():
     assert result.outputs["stderr"] == ""
     assert result.outputs["exit_code"] == 0
 
-    assert sandbox.last_execute_command is not None
-    assert sandbox.last_execute_command == ["echo", "42"]
-    assert sandbox.last_execute_cwd == "dir-42"
+    assert vm.last_execute_command is not None
+    # CommandNode wraps commands in bash -c
+    assert vm.last_execute_command == ["bash", "-c", "echo 42"]
+    assert vm.last_execute_cwd == "dir-42"
 
 
 def test_command_node_nonzero_exit_code_returns_failed_result():
-    workflow_execution_id = "test-exec-nonzero"
-    node = _make_node(command="false", workflow_execution_id=workflow_execution_id)
-    sandbox = FakeSandbox(
+    vm = FakeVirtualEnvironment(
         stdout=b"out",
         stderr=b"err",
         statuses=[CommandStatus(status=CommandStatus.Status.COMPLETED, exit_code=2)],
     )
-    SandboxManager.register(workflow_execution_id, sandbox)
+    node = _make_node(command="false", vm=vm)
 
     result = node._run()  # pyright: ignore[reportPrivateUsage]
 
@@ -184,15 +207,13 @@ def test_command_node_timeout_returns_failed_result_and_closes_transports(monkey
 
     monkeypatch.setattr(command_node_module, "COMMAND_NODE_TIMEOUT_SECONDS", 1)
 
-    workflow_execution_id = "test-exec-timeout"
-    node = _make_node(command="sleep 10", workflow_execution_id=workflow_execution_id)
-    sandbox = FakeSandbox(
+    vm = FakeVirtualEnvironment(
         stdout=b"",
         stderr=b"",
         statuses=[CommandStatus(status=CommandStatus.Status.RUNNING, exit_code=None)] * 1000,
         close_streams=False,
     )
-    SandboxManager.register(workflow_execution_id, sandbox)
+    node = _make_node(command="sleep 10", vm=vm)
 
     result = node._run()  # pyright: ignore[reportPrivateUsage]
 
@@ -202,8 +223,7 @@ def test_command_node_timeout_returns_failed_result_and_closes_transports(monkey
 
 
 def test_command_node_no_sandbox_returns_failed():
-    workflow_execution_id = "test-exec-no-sandbox"
-    node = _make_node(command="echo hello", workflow_execution_id=workflow_execution_id)
+    node = _make_node(command="echo hello")
 
     result = node._run()  # pyright: ignore[reportPrivateUsage]
 

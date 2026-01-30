@@ -7,7 +7,7 @@
 
 /**
  * Sandbox file node from API (flat format)
- * Returned by GET /sandboxes/{sandbox_id}/files
+ * Returned by GET /apps/{app_id}/sandbox/files
  */
 export type SandboxFileNode = {
   /** Relative path (POSIX format), e.g. "folder/file.txt" */
@@ -23,7 +23,7 @@ export type SandboxFileNode = {
 }
 
 /**
- * Download ticket returned by POST /sandboxes/{sandbox_id}/files/download
+ * Download ticket returned by POST /apps/{app_id}/sandbox/files/download
  */
 export type SandboxFileDownloadTicket = {
   /** Signed download URL */

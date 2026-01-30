@@ -269,7 +269,7 @@ class WorkflowVariableCollectionApi(Resource):
     @_api_prerequisite
     def delete(self, app_model: App):
         current_user, _ = current_account_with_tenant()
-        SandboxService.delete_draft_storage(app_model.tenant_id, current_user.id)
+        SandboxService.delete_draft_storage(app_model.tenant_id, app_model.id, current_user.id)
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )

@@ -15,7 +15,7 @@ type UseGetSandboxFilesOptions = {
 }
 
 export function useGetSandboxFiles(
-  sandboxId: string | undefined,
+  appId: string | undefined,
   options?: UseGetSandboxFilesOptions,
 ) {
   const query: SandboxFileListQuery = {
@@ -25,38 +25,38 @@ export function useGetSandboxFiles(
 
   return useQuery({
     queryKey: consoleQuery.sandboxFile.listFiles.queryKey({
-      input: { params: { sandboxId: sandboxId! }, query },
+      input: { params: { appId: appId! }, query },
     }),
     queryFn: () => consoleClient.sandboxFile.listFiles({
-      params: { sandboxId: sandboxId! },
+      params: { appId: appId! },
       query,
     }),
-    enabled: !!sandboxId && (options?.enabled ?? true),
+    enabled: !!appId && (options?.enabled ?? true),
     refetchInterval: options?.refetchInterval,
   })
 }
 
 export function useSandboxFileDownloadUrl(
-  sandboxId: string | undefined,
+  appId: string | undefined,
   path: string | undefined,
 ) {
   return useQuery({
-    queryKey: ['sandboxFileDownloadUrl', sandboxId, path],
+    queryKey: ['sandboxFileDownloadUrl', appId, path],
     queryFn: () => consoleClient.sandboxFile.downloadFile({
-      params: { sandboxId: sandboxId! },
+      params: { appId: appId! },
       body: { path: path! },
     }),
-    enabled: !!sandboxId && !!path,
+    enabled: !!appId && !!path,
   })
 }
 
-export function useDownloadSandboxFile(sandboxId: string | undefined) {
+export function useDownloadSandboxFile(appId: string | undefined) {
   return useMutation({
     mutationFn: (path: string) => {
-      if (!sandboxId)
-        throw new Error('sandboxId is required')
+      if (!appId)
+        throw new Error('appId is required')
       return consoleClient.sandboxFile.downloadFile({
-        params: { sandboxId },
+        params: { appId },
         body: { path },
       })
     },
@@ -103,10 +103,10 @@ function buildTreeFromFlatList(nodes: SandboxFileNode[]): SandboxFileTreeNode[] 
 }
 
 export function useSandboxFilesTree(
-  sandboxId: string | undefined,
+  appId: string | undefined,
   options?: UseGetSandboxFilesOptions,
 ) {
-  const { data, isLoading, error, refetch } = useGetSandboxFiles(sandboxId, {
+  const { data, isLoading, error, refetch } = useGetSandboxFiles(appId, {
     ...options,
     recursive: true,
   })

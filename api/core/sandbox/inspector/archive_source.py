@@ -68,7 +68,9 @@ print(json.dumps(entries))
         """Get a pre-signed download URL for the sandbox archive."""
         from extensions.storage.file_presign_storage import FilePresignStorage
 
-        storage_key = f"sandbox_archives/{self._tenant_id}/{self._sandbox_id}.tar.gz"
+        storage_key = SandboxFilePaths.archive(self._tenant_id, self._app_id, self._sandbox_id)
+        if not storage.exists(storage_key):
+            raise ValueError("Sandbox archive not found")
         presign_storage = FilePresignStorage(storage.storage_runner)
         return presign_storage.get_download_url(storage_key, self._EXPORT_EXPIRES_IN_SECONDS)
 
@@ -76,11 +78,11 @@ print(json.dumps(entries))
         """Create a ZipSandbox instance for archive operations."""
         from core.zip_sandbox import ZipSandbox
 
-        return ZipSandbox(tenant_id=self._tenant_id, user_id="system", app_id="sandbox-archive-browser")
+        return ZipSandbox(tenant_id=self._tenant_id, user_id="system", app_id=self._app_id)
 
     def exists(self) -> bool:
         """Check if the sandbox archive exists in storage."""
-        storage_key = f"sandbox_archives/{self._tenant_id}/{self._sandbox_id}.tar.gz"
+        storage_key = SandboxFilePaths.archive(self._tenant_id, self._app_id, self._sandbox_id)
         return storage.exists(storage_key)
 
     def list_files(self, *, path: str, recursive: bool) -> list[SandboxFileNode]:
@@ -195,6 +197,7 @@ raise SystemExit(2)
                 file_data = zs.read_file(target_path)
                 export_key = SandboxFilePaths.export(
                     self._tenant_id,
+                    self._app_id,
                     self._sandbox_id,
                     export_id,
                     os.path.basename(path) or "file",
@@ -206,6 +209,7 @@ raise SystemExit(2)
                 tar_data = zs.read_file(tar_file.path)
                 export_key = SandboxFilePaths.export(
                     self._tenant_id,
+                    self._app_id,
                     self._sandbox_id,
                     export_id,
                     f"{export_name}.tar.gz",

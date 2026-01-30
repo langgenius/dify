@@ -51,20 +51,28 @@ sandbox_file_node_model = console_ns.model("SandboxFileNode", SANDBOX_FILE_NODE_
 sandbox_file_download_ticket_model = console_ns.model("SandboxFileDownloadTicket", SANDBOX_FILE_DOWNLOAD_TICKET_FIELDS)
 
 
-@console_ns.route("/sandboxes/<string:sandbox_id>/files")
+@console_ns.route("/apps/<string:app_id>/sandbox/files")
 class SandboxFilesApi(Resource):
+    """List sandbox files for the current user.
+
+    The sandbox_id is derived from the current user's ID, as each user has
+    their own sandbox workspace per app.
+    """
+
     @setup_required
     @login_required
     @account_initialization_required
     @console_ns.expect(console_ns.models[SandboxFileListQuery.__name__])
     @console_ns.marshal_list_with(sandbox_file_node_model)
-    def get(self, sandbox_id: str):
+    def get(self, app_id: str):
         args = SandboxFileListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
-        _, tenant_id = current_account_with_tenant()
+        account, tenant_id = current_account_with_tenant()
+        sandbox_id = account.id
         return [
             e.__dict__
             for e in SandboxFileService.list_files(
                 tenant_id=tenant_id,
+                app_id=app_id,
                 sandbox_id=sandbox_id,
                 path=args.path,
                 recursive=args.recursive,
@@ -72,15 +80,24 @@ class SandboxFilesApi(Resource):
         ]
 
 
-@console_ns.route("/sandboxes/<string:sandbox_id>/files/download")
+@console_ns.route("/apps/<string:app_id>/sandbox/files/download")
 class SandboxFileDownloadApi(Resource):
+    """Download a sandbox file for the current user.
+
+    The sandbox_id is derived from the current user's ID, as each user has
+    their own sandbox workspace per app.
+    """
+
     @setup_required
     @login_required
     @account_initialization_required
     @console_ns.expect(console_ns.models[SandboxFileDownloadRequest.__name__])
     @console_ns.marshal_with(sandbox_file_download_ticket_model)
-    def post(self, sandbox_id: str):
+    def post(self, app_id: str):
         payload = SandboxFileDownloadRequest.model_validate(console_ns.payload or {})
-        _, tenant_id = current_account_with_tenant()
-        res = SandboxFileService.download_file(tenant_id=tenant_id, sandbox_id=sandbox_id, path=payload.path)
+        account, tenant_id = current_account_with_tenant()
+        sandbox_id = account.id
+        res = SandboxFileService.download_file(
+            tenant_id=tenant_id, app_id=app_id, sandbox_id=sandbox_id, path=payload.path
+        )
         return res.__dict__

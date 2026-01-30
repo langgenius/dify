@@ -10,8 +10,9 @@ from core.sandbox.manager import SandboxManager
 
 
 class SandboxFileBrowser:
-    def __init__(self, *, tenant_id: str, sandbox_id: str):
+    def __init__(self, *, tenant_id: str, app_id: str, sandbox_id: str):
         self._tenant_id = tenant_id
+        self._app_id = app_id
         self._sandbox_id = sandbox_id
 
     @staticmethod
@@ -30,10 +31,19 @@ class SandboxFileBrowser:
         return "." if normalized in (".", "") else normalized
 
     def _backend(self) -> SandboxFileSource:
-        runtime = SandboxManager.get(self._sandbox_id)
-        if runtime is not None:
-            return SandboxFileRuntimeSource(tenant_id=self._tenant_id, sandbox_id=self._sandbox_id, runtime=runtime)
-        return SandboxFileArchiveSource(tenant_id=self._tenant_id, sandbox_id=self._sandbox_id)
+        sandbox = SandboxManager.get(self._sandbox_id)
+        if sandbox is not None:
+            return SandboxFileRuntimeSource(
+                tenant_id=self._tenant_id,
+                app_id=self._app_id,
+                sandbox_id=self._sandbox_id,
+                runtime=sandbox.vm,
+            )
+        return SandboxFileArchiveSource(
+            tenant_id=self._tenant_id,
+            app_id=self._app_id,
+            sandbox_id=self._sandbox_id,
+        )
 
     def exists(self) -> bool:
         """Check if the sandbox source exists and is available."""

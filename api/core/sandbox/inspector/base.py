@@ -10,8 +10,9 @@ class SandboxFileSource(abc.ABC):
     _UPLOAD_TIMEOUT_SECONDS = 60 * 10
     _EXPORT_EXPIRES_IN_SECONDS = 60 * 10
 
-    def __init__(self, *, tenant_id: str, sandbox_id: str):
+    def __init__(self, *, tenant_id: str, app_id: str, sandbox_id: str):
         self._tenant_id = tenant_id
+        self._app_id = app_id
         self._sandbox_id = sandbox_id
 
     @abc.abstractmethod
