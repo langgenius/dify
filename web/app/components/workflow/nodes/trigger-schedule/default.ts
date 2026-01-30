@@ -110,7 +110,7 @@ const validateVisualConfig = (payload: ScheduleTriggerNodeType, t: any): string 
 const metaData = genNodeMetaData({
   sort: 2,
   type: BlockEnum.TriggerSchedule,
-  helpLinkUri: 'schedule-trigger',
+  helpLinkUri: 'trigger/schedule-trigger',
   isStart: true,
 })
 
