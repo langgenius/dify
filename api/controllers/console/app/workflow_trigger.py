@@ -1,7 +1,7 @@
 import logging
 
-from flask import request
-from flask_restx import Resource, fields, marshal_with
+from quart import request
+from quart_restx import Resource, fields, marshal_with
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session

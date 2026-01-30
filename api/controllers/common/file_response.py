@@ -2,7 +2,7 @@ import os
 from email.message import Message
 from urllib.parse import quote
 
-from flask import Response
+from quart import Response
 
 HTML_MIME_TYPES = frozenset({"text/html", "application/xhtml+xml"})
 HTML_EXTENSIONS = frozenset({"html", "htm"})

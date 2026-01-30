@@ -1,6 +1,6 @@
 from typing import Literal
 
-from flask import request
+from quart import request
 from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound

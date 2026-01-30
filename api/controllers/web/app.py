@@ -1,7 +1,7 @@
 import logging
 
-from flask import request
-from flask_restx import Resource
+from quart import request
+from quart_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import Unauthorized
 

@@ -2,7 +2,7 @@ import urllib.parse
 from typing import Any
 
 import httpx
-from flask_login import current_user
+from quart_login import current_user
 from sqlalchemy import select
 
 from extensions.ext_database import db

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
-from flask import current_app
+from quart import current_app
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from enum import StrEnum, auto
 from typing import Any, Protocol
 
-from flask import render_template
+from quart import render_template
 from pydantic import BaseModel, Field
 
 from extensions.ext_mail import mail

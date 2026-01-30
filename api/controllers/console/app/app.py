@@ -2,8 +2,8 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal, TypeAlias
 
-from flask import request
-from flask_restx import Resource
+from quart import request
+from quart_restx import Resource
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session

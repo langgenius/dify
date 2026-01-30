@@ -1,6 +1,6 @@
 import logging
 
-from flask_restx import Resource
+from quart_restx import Resource
 
 from controllers.console.wraps import (
     account_initialization_required,

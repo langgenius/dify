@@ -1,5 +1,5 @@
-from flask import request
-from flask_restx import Resource
+from quart import request
+from quart_restx import Resource
 
 from controllers.console import api
 from controllers.console.explore.wraps import explore_banner_enabled

@@ -1,7 +1,7 @@
 import json
 from enum import StrEnum
 
-from flask_restx import Resource, marshal_with
+from quart_restx import Resource, marshal_with
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound
 
@@ -15,7 +15,7 @@ from models.model import AppMCPServer
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
-# Register model for flask_restx to avoid dict type issues in Swagger
+# Register model for quart_restx to avoid dict type issues in Swagger
 app_server_model = console_ns.model("AppServer", app_server_fields)
 
 

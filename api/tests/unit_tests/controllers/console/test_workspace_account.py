@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, g
+from quart import Quart as Flask, g
 
 from controllers.console.workspace.account import (
     AccountDeleteUpdateFeedbackApi,

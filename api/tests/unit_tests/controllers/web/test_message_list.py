@@ -9,10 +9,10 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from flask import Flask
-from flask.views import MethodView
+from quart import Quart as Flask
+from quart.views import MethodView
 
-# Ensure flask_restx.api finds MethodView during import.
+# Ensure quart_restx.api finds MethodView during import.
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
@@ -28,7 +28,7 @@ def _load_controller_module():
     module_name = f"{parent_module_name}.message"
 
     if parent_module_name not in sys.modules:
-        from flask_restx import Namespace
+        from quart_restx import Namespace
 
         stub = ModuleType(parent_module_name)
         stub.__file__ = "controllers/web/__init__.py"

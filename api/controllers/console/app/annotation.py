@@ -1,7 +1,7 @@
 from typing import Any, Literal
 
-from flask import abort, make_response, request
-from flask_restx import Resource, fields, marshal, marshal_with
+from quart import abort, make_response, request
+from quart_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field, field_validator
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError

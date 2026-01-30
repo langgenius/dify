@@ -12,7 +12,7 @@ import base64
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from quart import Quart as Flask
 
 from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError
 from controllers.console.auth.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi

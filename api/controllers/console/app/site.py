@@ -1,6 +1,6 @@
 from typing import Literal
 
-from flask_restx import Resource, marshal_with
+from quart_restx import Resource, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import NotFound
 
@@ -53,7 +53,7 @@ console_ns.schema_model(
     AppSiteUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
 
-# Register model for flask_restx to avoid dict type issues in Swagger
+# Register model for quart_restx to avoid dict type issues in Swagger
 app_site_model = console_ns.model("AppSite", app_site_fields)
 
 

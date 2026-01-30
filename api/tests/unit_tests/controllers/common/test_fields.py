@@ -2,7 +2,7 @@ import builtins
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from flask.views import MethodView as FlaskMethodView
+from quart.views import MethodView as FlaskMethodView
 
 _NEEDS_METHOD_VIEW_CLEANUP = False
 if not hasattr(builtins, "MethodView"):

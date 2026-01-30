@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
-from flask import Flask
+from quart import Quart as Flask
 from werkzeug.datastructures import FileStorage
 
 from models.enums import AppTriggerStatus, AppTriggerType

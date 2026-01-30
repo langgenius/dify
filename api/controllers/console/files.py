@@ -1,7 +1,7 @@
 from typing import Literal
 
-from flask import request
-from flask_restx import Resource
+from quart import request
+from quart_restx import Resource
 from werkzeug.exceptions import Forbidden
 
 import services

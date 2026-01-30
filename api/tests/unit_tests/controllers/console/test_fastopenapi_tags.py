@@ -6,8 +6,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
-from flask.views import MethodView
+from quart import Quart as Flask
+from quart.views import MethodView
 
 from extensions import ext_fastopenapi
 from extensions.ext_database import db

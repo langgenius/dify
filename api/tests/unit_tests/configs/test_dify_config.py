@@ -1,7 +1,7 @@
 import os
 
 import pytest
-from flask import Flask
+from quart import Quart as Flask
 from packaging.version import Version
 from yarl import URL
 

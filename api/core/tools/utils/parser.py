@@ -5,7 +5,7 @@ from json.decoder import JSONDecodeError
 from typing import Any
 
 import httpx
-from flask import request
+from quart import request
 from yaml import YAMLError, safe_load
 
 from core.tools.entities.common_entities import I18nObject

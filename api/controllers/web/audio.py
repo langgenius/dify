@@ -1,7 +1,7 @@
 import logging
 
-from flask import request
-from flask_restx import fields, marshal_with
+from quart import request
+from quart_restx import fields, marshal_with
 from pydantic import BaseModel, field_validator
 from werkzeug.exceptions import InternalServerError
 

@@ -1,5 +1,5 @@
-from flask import request
-from flask_restx import Resource, fields, marshal
+from quart import request
+from quart_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 

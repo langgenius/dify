@@ -1,7 +1,7 @@
 from typing import Any, Union
 
-from flask import Response
-from flask_restx import Resource
+from quart import Response
+from quart_restx import Resource
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 

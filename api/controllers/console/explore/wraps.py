@@ -2,8 +2,8 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
-from flask import abort
-from flask_restx import Resource
+from quart import abort
+from quart_restx import Resource
 from werkzeug.exceptions import NotFound
 
 from controllers.console.explore.error import AppAccessDeniedError, TrialAppLimitExceeded, TrialAppNotAllowed

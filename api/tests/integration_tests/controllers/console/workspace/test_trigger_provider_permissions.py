@@ -4,7 +4,7 @@ import uuid
 from unittest import mock
 
 import pytest
-from flask.testing import FlaskClient
+from quart.testing import QuartClient as FlaskClient
 
 from controllers.console.workspace import trigger_providers as trigger_providers_api
 from libs.datetime_utils import naive_utc_now

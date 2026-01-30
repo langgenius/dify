@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 import pytest
-from flask.testing import FlaskClient
+from quart.testing import QuartClient as FlaskClient
 
 from controllers.console.app import completion as completion_api
 from controllers.console.app import message as message_api

@@ -4,6 +4,7 @@ import gevent
 from sqlalchemy import event
 from sqlalchemy.pool import Pool
 
+from configs import dify_config
 from dify_app import DifyApp
 from models.engine import db
 
@@ -54,9 +55,11 @@ def init_app(app: DifyApp):
     db.init_app(app)
     _setup_gevent_compatibility()
 
-    # Eagerly build the engine so pool_size/max_overflow/etc. come from config
-    try:
-        with app.app_context():
-            _ = db.engine  # triggers engine creation with the configured options
-    except Exception:
-        logger.exception("Failed to initialize SQLAlchemy engine during app startup")
+    async def _init_engine() -> None:
+        try:
+            async with app.app_context():
+                _ = db.engine  # triggers engine creation with the configured options
+        except Exception:
+            logger.exception("Failed to initialize SQLAlchemy engine during app startup")
+
+    app.before_serving(_init_engine)

@@ -2,8 +2,8 @@ import logging
 from typing import Any, Literal
 
 from dateutil.parser import isoparse
-from flask import request
-from flask_restx import Namespace, Resource, fields
+from quart import request
+from quart_restx import Namespace, Resource, fields
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound

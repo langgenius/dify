@@ -1,8 +1,8 @@
 import logging
 
 import httpx
-from flask import current_app, redirect, request
-from flask_restx import Resource, fields
+from quart import current_app, redirect, request
+from quart_restx import Resource, fields
 
 from configs import dify_config
 from libs.login import login_required

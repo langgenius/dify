@@ -2,7 +2,7 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from quart import Quart as Flask
 from sqlalchemy import create_engine
 
 # Getting the absolute path of the current file's directory

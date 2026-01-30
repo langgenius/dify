@@ -1,4 +1,4 @@
-from flask_restx import Resource, marshal
+from quart_restx import Resource, marshal
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden

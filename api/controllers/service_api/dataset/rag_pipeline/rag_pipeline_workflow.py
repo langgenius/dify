@@ -3,7 +3,7 @@ import uuid
 from collections.abc import Generator
 from typing import Any
 
-from flask import request
+from quart import request
 from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden
 

@@ -5,7 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import yaml
-from flask_login import current_user
+from quart_login import current_user
 
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
-from flask_login import current_user
+from quart_login import current_user
 
 from core.helper import encrypter
 from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp

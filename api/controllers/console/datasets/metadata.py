@@ -1,6 +1,6 @@
 from typing import Literal
 
-from flask_restx import Resource, marshal_with
+from quart_restx import Resource, marshal_with
 from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
 

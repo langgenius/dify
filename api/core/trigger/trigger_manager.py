@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from threading import Lock
 from typing import Any
 
-from flask import Request
+from quart import Request
 
 import contexts
 from configs import dify_config

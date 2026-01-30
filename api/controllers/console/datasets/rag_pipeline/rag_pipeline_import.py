@@ -1,5 +1,5 @@
-from flask import request
-from flask_restx import Resource, fields, marshal_with  # type: ignore
+from quart import request
+from quart_restx import Resource, fields, marshal_with  # type: ignore
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 

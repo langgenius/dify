@@ -1,7 +1,7 @@
 from typing import Any
 
-from flask import request
-from flask_restx import Resource, fields
+from quart import request
+from quart_restx import Resource, fields
 from pydantic import BaseModel, Field
 
 from controllers.console import console_ns

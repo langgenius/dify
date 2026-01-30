@@ -2,7 +2,7 @@ from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from quart import Quart as Flask
 from werkzeug.datastructures import FileStorage
 
 from services.trigger.webhook_service import WebhookService

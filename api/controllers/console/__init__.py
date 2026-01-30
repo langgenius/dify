@@ -1,7 +1,7 @@
 from importlib import import_module
 
-from flask import Blueprint
-from flask_restx import Namespace
+from quart import Blueprint
+from quart_restx import Namespace
 
 from libs.external_api import ExternalApi
 

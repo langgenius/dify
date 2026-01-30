@@ -1,6 +1,6 @@
 from typing import Literal
 
-from flask import request
+from quart import request
 from pydantic import BaseModel, Field, field_validator
 
 from configs import dify_config

@@ -1,4 +1,4 @@
-from flask_restx import Resource
+from quart_restx import Resource
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.fields import Site as SiteResponse

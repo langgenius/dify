@@ -1,7 +1,7 @@
 import uuid
 
-from flask import request
-from flask_restx import Resource, marshal
+from quart import request
+from quart_restx import Resource, marshal
 from pydantic import BaseModel, Field
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.dialects.postgresql import JSONB

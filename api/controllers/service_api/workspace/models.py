@@ -1,5 +1,5 @@
-from flask_login import current_user
-from flask_restx import Resource
+from quart_login import current_user
+from quart_restx import Resource
 
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_dataset_token

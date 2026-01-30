@@ -1,4 +1,4 @@
-from flask_restx import Resource, fields, marshal_with
+from quart_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -23,7 +23,7 @@ from services.feature_service import FeatureService
 
 from .. import console_ns
 
-# Register models for flask_restx to avoid dict type issues in Swagger
+# Register models for quart_restx to avoid dict type issues in Swagger
 # Register base model first
 leaked_dependency_model = console_ns.model("LeakedDependency", leaked_dependency_fields)
 

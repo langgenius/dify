@@ -9,7 +9,7 @@ from typing import Any
 
 import click
 from celery import shared_task  # type: ignore
-from flask import current_app, g
+from quart import current_app, g
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config

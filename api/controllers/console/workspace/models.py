@@ -1,8 +1,8 @@
 import logging
 from typing import Any, cast
 
-from flask import request
-from flask_restx import Resource
+from quart import request
+from quart_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from controllers.common.schema import register_enum_models, register_schema_models

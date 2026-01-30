@@ -1,4 +1,4 @@
-from flask_restx import Resource
+from quart_restx import Resource
 from pydantic import BaseModel, Field
 
 from libs.login import current_account_with_tenant, login_required

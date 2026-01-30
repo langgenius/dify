@@ -2,8 +2,8 @@ import io
 from collections.abc import Mapping
 from typing import Any, Literal
 
-from flask import request, send_file
-from flask_restx import Resource
+from quart import request, send_file
+from quart_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 

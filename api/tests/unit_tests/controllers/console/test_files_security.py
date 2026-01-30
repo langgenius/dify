@@ -3,7 +3,7 @@ import io
 from unittest.mock import patch
 
 import pytest
-from flask.views import MethodView
+from quart.views import MethodView
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import (
@@ -26,7 +26,7 @@ class TestFileUploadSecurity:
     # Test 1: Basic file validation
     def test_should_validate_file_presence(self):
         """Test that missing file is detected"""
-        from flask import Flask, request
+        from quart import Quart as Flask, request
 
         app = Flask(__name__)
 
@@ -38,7 +38,7 @@ class TestFileUploadSecurity:
 
     def test_should_validate_multiple_files(self):
         """Test that multiple files are rejected"""
-        from flask import Flask, request
+        from quart import Quart as Flask, request
 
         app = Flask(__name__)
 
@@ -55,7 +55,7 @@ class TestFileUploadSecurity:
 
     def test_should_validate_empty_filename(self):
         """Test that empty filename is rejected"""
-        from flask import Flask, request
+        from quart import Quart as Flask, request
 
         app = Flask(__name__)
 

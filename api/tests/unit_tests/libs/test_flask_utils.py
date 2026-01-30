@@ -2,8 +2,8 @@ import contextvars
 import threading
 
 import pytest
-from flask import Flask
-from flask_login import LoginManager, UserMixin, current_user, login_user
+from quart import Quart as Flask
+from quart_login import LoginManager, UserMixin, current_user, login_user
 
 from libs.flask_utils import preserve_flask_contexts
 
@@ -102,7 +102,7 @@ def test_current_user_accessible_with_preserve_flask_contexts(login_app: Flask, 
             try:
                 # Use preserve_flask_contexts to access current_user in a different thread
                 with preserve_flask_contexts(login_app, context_vars):
-                    from flask_login import current_user
+                    from quart_login import current_user
 
                     if current_user:
                         result["user_accessible"] = True

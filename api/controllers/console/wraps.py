@@ -6,7 +6,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
-from flask import abort, request
+from quart import abort, request
 
 from configs import dify_config
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError

@@ -2,8 +2,8 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
-from flask import jsonify, request
-from flask_restx import Resource
+from quart import jsonify, request
+from quart_restx import Resource
 from pydantic import BaseModel
 from werkzeug.exceptions import BadRequest, NotFound
 

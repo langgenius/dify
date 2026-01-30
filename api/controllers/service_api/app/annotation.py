@@ -1,8 +1,8 @@
 from typing import Literal
 
-from flask import request
-from flask_restx import Namespace, Resource, fields
-from flask_restx.api import HTTPStatus
+from quart import request
+from quart_restx import Namespace, Resource, fields
+from quart_restx.api import HTTPStatus
 from pydantic import BaseModel, Field
 
 from controllers.common.schema import register_schema_models

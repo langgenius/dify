@@ -2,8 +2,8 @@ import json
 from typing import Self
 from uuid import UUID
 
-from flask import request
-from flask_restx import marshal
+from quart import request
+from quart_restx import marshal
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import desc, select
 from werkzeug.exceptions import Forbidden, NotFound

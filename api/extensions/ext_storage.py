@@ -2,8 +2,6 @@ import logging
 from collections.abc import Callable, Generator
 from typing import Literal, Union, overload
 
-from flask import Flask
-
 from configs import dify_config
 from dify_app import DifyApp
 from extensions.storage.base_storage import BaseStorage
@@ -13,10 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class Storage:
-    def init_app(self, app: Flask):
+    def init_app(self, app: DifyApp):
         storage_factory = self.get_storage_factory(dify_config.STORAGE_TYPE)
-        with app.app_context():
-            self.storage_runner = storage_factory()
+        self.storage_runner = storage_factory()
 
     @staticmethod
     def get_storage_factory(storage_type: str) -> Callable[[], BaseStorage]:

@@ -1,4 +1,4 @@
-from flask import Flask
+from quart import Quart as Flask
 from pydantic import BaseModel
 
 from configs import dify_config

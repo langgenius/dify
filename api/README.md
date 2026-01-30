@@ -105,8 +105,8 @@ These commands assume you start from the repository root.
 
    ```bash
    cd api
-   uv run flask db upgrade
-   uv run flask run --host 0.0.0.0 --port=5001 --debug
+   uv run quart db upgrade
+   uv run quart run --host 0.0.0.0 --port=5001 --debug
    ```
 
 1. Start Dify [web](../web) service (in a new terminal).

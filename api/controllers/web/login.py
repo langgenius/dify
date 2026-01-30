@@ -1,5 +1,5 @@
-from flask import make_response, request
-from flask_restx import Resource
+from quart import make_response, request
+from quart_restx import Resource
 from jwt import InvalidTokenError
 from pydantic import BaseModel, Field, field_validator
 

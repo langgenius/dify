@@ -3,7 +3,7 @@ import threading
 import time
 from typing import Any
 
-from flask import Flask, current_app
+from quart import Quart as Flask, current_app
 from pydantic import BaseModel, ConfigDict
 
 from configs import dify_config

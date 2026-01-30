@@ -3,5 +3,8 @@ from extensions.ext_database import db
 
 
 def init_app(app):
-    with app.app_context():
-        configure_session_factory(db.engine)
+    async def _init_session_factory() -> None:
+        async with app.app_context():
+            configure_session_factory(db.engine)
+
+    app.before_serving(_init_session_factory)

@@ -1,8 +1,8 @@
 import io
 from typing import Any, Literal
 
-from flask import request, send_file
-from flask_restx import Resource
+from quart import request, send_file
+from quart_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from controllers.console import console_ns

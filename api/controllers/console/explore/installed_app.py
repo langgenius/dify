@@ -1,8 +1,8 @@
 import logging
 from typing import Any
 
-from flask import request
-from flask_restx import Resource, fields, marshal_with
+from quart import request
+from quart_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound

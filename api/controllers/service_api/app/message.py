@@ -2,8 +2,8 @@ import logging
 from typing import Literal
 from uuid import UUID
 
-from flask import request
-from flask_restx import Resource
+from quart import request
+from quart_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 

@@ -13,8 +13,8 @@ from collections.abc import Generator
 from pathlib import Path
 
 import pytest
-from flask import Flask
-from flask.testing import FlaskClient
+from quart import Quart as Flask
+from quart.testing import QuartClient as FlaskClient
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 from testcontainers.core.container import DockerContainer

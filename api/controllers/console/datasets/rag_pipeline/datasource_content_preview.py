@@ -1,4 +1,4 @@
-from flask_restx import (  # type: ignore
+from quart_restx import (  # type: ignore
     Resource,  # type: ignore
 )
 from pydantic import BaseModel

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Union
 
 import httpx
 import qdrant_client
-from flask import current_app
+from quart import current_app
 from httpx import DigestAuth
 from pydantic import BaseModel
 from qdrant_client.http import models as rest

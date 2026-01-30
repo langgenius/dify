@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
-from flask import request
-from flask_login import UserMixin  # type: ignore[import-untyped]
+from quart import request
+from quart_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 

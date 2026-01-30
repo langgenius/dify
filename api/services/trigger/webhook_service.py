@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 import orjson
-from flask import request
+from quart import request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session

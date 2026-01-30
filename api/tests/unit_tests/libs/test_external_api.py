@@ -1,5 +1,5 @@
-from flask import Blueprint, Flask
-from flask_restx import Resource
+from quart import Blueprint, Flask
+from quart_restx import Resource
 from werkzeug.exceptions import BadRequest, Unauthorized
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_NAME_REFRESH_TOKEN

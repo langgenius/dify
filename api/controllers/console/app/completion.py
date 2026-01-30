@@ -1,8 +1,8 @@
 import logging
 from typing import Any, Literal
 
-from flask import request
-from flask_restx import Resource
+from quart import request
+from quart_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 

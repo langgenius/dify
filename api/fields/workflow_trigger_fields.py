@@ -1,4 +1,4 @@
-from flask_restx import fields
+from quart_restx import fields
 
 trigger_fields = {
     "id": fields.String,

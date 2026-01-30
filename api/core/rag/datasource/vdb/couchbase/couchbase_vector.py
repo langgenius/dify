@@ -13,7 +13,7 @@ from couchbase.management.search import SearchIndex  # type: ignore
 # needed for options -- cluster, timeout, SQL++ (N1QL) query, etc.
 from couchbase.options import ClusterOptions, SearchOptions  # type: ignore
 from couchbase.vector_search import VectorQuery, VectorSearch  # type: ignore
-from flask import current_app
+from quart import current_app
 from pydantic import BaseModel, model_validator
 
 from core.rag.datasource.vdb.vector_base import BaseVector

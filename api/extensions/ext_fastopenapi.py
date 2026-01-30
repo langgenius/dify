@@ -1,5 +1,5 @@
-from fastopenapi.routers import FlaskRouter
-from flask_cors import CORS
+from fastopenapi.routers import QuartRouter
+from quart_cors import cors
 
 from configs import dify_config
 from controllers.fastopenapi import console_router
@@ -15,7 +15,7 @@ def init_app(app: DifyApp) -> None:
     redoc_url = f"{DOCS_PREFIX}/redoc" if docs_enabled else None
     openapi_url = f"{DOCS_PREFIX}/openapi.json" if docs_enabled else None
 
-    router = FlaskRouter(
+    router = QuartRouter(
         app=app,
         docs_url=docs_url,
         redoc_url=redoc_url,
@@ -37,12 +37,12 @@ def init_app(app: DifyApp) -> None:
     _ = setup
 
     router.include_router(console_router, prefix="/console/api")
-    CORS(
+    cors(
         app,
-        resources={r"/console/api/.*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
-        supports_credentials=True,
+        allow_origin=dify_config.CONSOLE_CORS_ALLOW_ORIGINS,
+        allow_credentials=True,
         allow_headers=list(AUTHENTICATED_HEADERS),
-        methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
+        allow_methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
         expose_headers=list(EXPOSED_HEADERS),
     )
     app.extensions["fastopenapi"] = router

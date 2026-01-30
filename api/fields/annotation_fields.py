@@ -1,4 +1,4 @@
-from flask_restx import Namespace, fields
+from quart_restx import Namespace, fields
 
 from libs.helper import TimestampField
 

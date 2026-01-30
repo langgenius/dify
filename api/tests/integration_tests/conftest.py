@@ -5,8 +5,8 @@ import secrets
 from collections.abc import Generator
 
 import pytest
-from flask import Flask
-from flask.testing import FlaskClient
+from quart import Quart as Flask
+from quart.testing import QuartClient as FlaskClient
 from sqlalchemy.orm import Session
 
 from app_factory import create_app

@@ -3,7 +3,7 @@ import json
 from collections.abc import Mapping
 from typing import Any, Literal
 
-from flask import Response
+from quart import Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.entities.provider_entities import BasicProviderConfig

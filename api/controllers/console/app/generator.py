@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from flask_restx import Resource
+from quart_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.console import console_ns

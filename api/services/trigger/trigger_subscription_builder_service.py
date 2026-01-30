@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Any
 
-from flask import Request, Response
+from quart import Request, Response
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse

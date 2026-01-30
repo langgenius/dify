@@ -2,7 +2,7 @@
 
 import uuid
 
-from flask.testing import FlaskClient
+from quart.testing import QuartClient as FlaskClient
 
 
 class TestFeedbackApiBasic:

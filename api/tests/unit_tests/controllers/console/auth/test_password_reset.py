@@ -11,7 +11,7 @@ This module tests the password reset mechanism including:
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from quart import Quart as Flask
 
 from controllers.console.auth.error import (
     EmailCodeError,

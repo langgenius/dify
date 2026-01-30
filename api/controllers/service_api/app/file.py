@@ -1,6 +1,6 @@
-from flask import request
-from flask_restx import Resource
-from flask_restx.api import HTTPStatus
+from quart import request
+from quart_restx import Resource
+from quart_restx.api import HTTPStatus
 
 import services
 from controllers.common.errors import (

@@ -1,6 +1,6 @@
 import logging
 
-from flask import request
+from quart import request
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 

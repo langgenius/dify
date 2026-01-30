@@ -1,7 +1,7 @@
 from urllib.parse import quote
 
-from flask import Response, request
-from flask_restx import Resource
+from quart import Response, request
+from quart_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 

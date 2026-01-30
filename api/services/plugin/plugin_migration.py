@@ -11,7 +11,7 @@ from uuid import uuid4
 import click
 import sqlalchemy as sa
 import tqdm
-from flask import Flask, current_app
+from quart import Quart as Flask, current_app
 from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity

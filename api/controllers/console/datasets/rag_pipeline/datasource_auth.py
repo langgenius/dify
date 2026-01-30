@@ -1,7 +1,7 @@
 from typing import Any
 
-from flask import make_response, redirect, request
-from flask_restx import Resource
+from quart import make_response, redirect, request
+from quart_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 

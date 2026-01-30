@@ -1,5 +1,5 @@
-from flask import abort, jsonify, request
-from flask_restx import Resource
+from quart import abort, jsonify, request
+from quart_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
 

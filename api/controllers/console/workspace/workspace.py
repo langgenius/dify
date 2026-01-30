@@ -1,7 +1,7 @@
 import logging
 
-from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with
+from quart import request
+from quart_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized

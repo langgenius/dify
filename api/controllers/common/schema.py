@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from flask_restx import Namespace
+from quart_restx import Namespace
 from pydantic import BaseModel, TypeAdapter
 
 from controllers.console import console_ns

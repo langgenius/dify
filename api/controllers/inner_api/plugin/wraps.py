@@ -2,8 +2,8 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
-from flask import current_app, request
-from flask_login import user_logged_in
+from quart import current_app, request
+from quart_login import user_logged_in
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 

@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from flask_restx import marshal
+from quart_restx import marshal
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 

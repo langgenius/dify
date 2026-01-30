@@ -3,8 +3,8 @@ import logging
 from collections.abc import Sequence
 from typing import Any
 
-from flask import abort, request
-from flask_restx import Resource, fields, marshal_with
+from quart import abort, request
+from quart_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 LISTENING_RETRY_IN = 2000
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
-# Register models for flask_restx to avoid dict type issues in Swagger
+# Register models for quart_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
 
 # Base models

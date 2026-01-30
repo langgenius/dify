@@ -1,7 +1,7 @@
 import threading
 from typing import Any
 
-from flask import Flask, current_app
+from quart import Quart as Flask, current_app
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 

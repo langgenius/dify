@@ -1,8 +1,8 @@
 from typing import Any
 
-import flask_login
-from flask import make_response, request
-from flask_restx import Resource
+import quart_login as flask_login
+from quart import make_response, request
+from quart_restx import Resource
 from pydantic import BaseModel, Field
 
 import services

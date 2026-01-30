@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 import httpx
 import pytest
-from flask import Flask
-from flask.views import MethodView
+from quart import Quart as Flask
+from quart.views import MethodView
 
 from extensions import ext_fastopenapi
 

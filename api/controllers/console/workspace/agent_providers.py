@@ -1,4 +1,4 @@
-from flask_restx import Resource, fields
+from quart_restx import Resource, fields
 
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required

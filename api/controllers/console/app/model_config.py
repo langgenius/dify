@@ -1,8 +1,8 @@
 import json
 from typing import cast
 
-from flask import request
-from flask_restx import Resource, fields
+from quart import request
+from quart_restx import Resource, fields
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model

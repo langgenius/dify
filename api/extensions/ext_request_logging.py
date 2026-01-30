@@ -1,14 +1,15 @@
+import asyncio
+import inspect
 import json
 import logging
 import time
 
-import flask
 import werkzeug.http
-from flask import Flask, g
-from flask.signals import request_finished, request_started
+from quart import g, has_request_context, request
 
 from configs import dify_config
 from core.helper.trace_id_helper import get_trace_id_from_otel_context
+from dify_app import DifyApp
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ def _is_content_type_json(content_type: str) -> bool:
     return content_type_no_option.lower() == "application/json"
 
 
-def _log_request_started(_sender, **_extra):
+def _log_request_started() -> None:
     """Log the start of a request."""
     # Record start time for access logging
     g.__request_started_ts = time.perf_counter()
@@ -28,7 +29,6 @@ def _log_request_started(_sender, **_extra):
     if not logger.isEnabledFor(logging.DEBUG):
         return
 
-    request = flask.request
     if not (_is_content_type_json(request.content_type) and request.data):
         logger.debug("Received Request %s -> %s", request.method, request.path)
         return
@@ -46,16 +46,16 @@ def _log_request_started(_sender, **_extra):
     )
 
 
-def _log_request_finished(_sender, response, **_extra):
+def _log_request_finished(response) -> None:
     """Log the end of a request.
 
-    Safe to call with or without an active Flask request context.
+    Safe to call with or without an active Quart request context.
     """
     if response is None:
         return
 
     # Always emit a compact access line at INFO with trace_id so it can be grepped
-    has_ctx = flask.has_request_context()
+    has_ctx = has_request_context()
     start_ts = getattr(g, "__request_started_ts", None) if has_ctx else None
     duration_ms = None
     if start_ts is not None:
@@ -63,8 +63,8 @@ def _log_request_finished(_sender, response, **_extra):
 
     # Request attributes are available only when a request context exists
     if has_ctx:
-        req_method = flask.request.method
-        req_path = flask.request.path
+        req_method = request.method
+        req_path = request.path
     else:
         req_method = "-"
         req_path = "-"
@@ -87,6 +87,11 @@ def _log_request_finished(_sender, response, **_extra):
         return
 
     response_data = response.get_data(as_text=True)
+    if inspect.isawaitable(response_data):
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            response_data = asyncio.run(response_data)
     try:
         json_data = json.loads(response_data)
     except (TypeError, ValueError):
@@ -101,9 +106,14 @@ def _log_request_finished(_sender, response, **_extra):
     )
 
 
-def init_app(app: Flask):
+def init_app(app: DifyApp):
     """Initialize the request logging extension."""
     if not dify_config.ENABLE_REQUEST_LOGGING:
         return
-    request_started.connect(_log_request_started, app)
-    request_finished.connect(_log_request_finished, app)
+    app.before_request(_log_request_started)
+
+    def _after_request(response):  # pyright: ignore[reportUnusedFunction]
+        _log_request_finished(response)
+        return response
+
+    app.after_request(_after_request)

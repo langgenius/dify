@@ -13,7 +13,7 @@ from uuid import uuid4
 import yaml  # type: ignore
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
-from flask_login import current_user
+from quart_login import current_user
 from packaging import version
 from pydantic import BaseModel, Field
 from sqlalchemy import select

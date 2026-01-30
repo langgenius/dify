@@ -1,7 +1,7 @@
 import os
 from typing import Literal
 
-from flask import session
+from quart import session
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session

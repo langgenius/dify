@@ -1,8 +1,8 @@
 import logging
 from typing import Any, cast
 
-from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with, reqparse
+from quart import request
+from quart_restx import Resource, fields, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services

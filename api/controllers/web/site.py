@@ -1,4 +1,4 @@
-from flask_restx import fields, marshal_with
+from quart_restx import fields, marshal_with
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config

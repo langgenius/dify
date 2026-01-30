@@ -1,7 +1,7 @@
 from typing import Any, Literal, cast
 
-from flask import request
-from flask_restx import marshal
+from quart import request
+from quart_restx import marshal
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from werkzeug.exceptions import Forbidden, NotFound
 

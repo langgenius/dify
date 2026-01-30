@@ -1,4 +1,4 @@
-from flask import request
+from quart import request
 
 import services
 from controllers.common.errors import (

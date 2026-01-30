@@ -5,7 +5,7 @@ from typing import Any
 
 import click
 from celery import shared_task
-from flask import render_template_string
+from quart import render_template_string
 from jinja2.runtime import Context
 from jinja2.sandbox import ImmutableSandboxedEnvironment
 

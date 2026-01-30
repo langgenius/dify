@@ -1,4 +1,4 @@
-from flask import request
+from quart import request
 from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import NotFound
 

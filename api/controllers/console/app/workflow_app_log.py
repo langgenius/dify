@@ -1,8 +1,8 @@
 from datetime import datetime
 
 from dateutil.parser import isoparse
-from flask import request
-from flask_restx import Resource, marshal_with
+from quart import request
+from quart_restx import Resource, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
@@ -62,7 +62,7 @@ console_ns.schema_model(
     WorkflowAppLogQuery.__name__, WorkflowAppLogQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
 
-# Register model for flask_restx to avoid dict type issues in Swagger
+# Register model for quart_restx to avoid dict type issues in Swagger
 workflow_app_log_pagination_model = build_workflow_app_log_pagination_model(console_ns)
 workflow_archived_log_pagination_model = build_workflow_archived_log_pagination_model(console_ns)
 

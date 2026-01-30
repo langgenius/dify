@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING, Annotated, Any, Optional, Union, cast
 from uuid import UUID
 from zoneinfo import available_timezones
 
-from flask import Response, stream_with_context
-from flask_restx import fields
+from quart import Response, stream_with_context
+from quart_restx import fields
 from pydantic import BaseModel
 from pydantic.functional_validators import AfterValidator
 

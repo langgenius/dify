@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Any
 
-from flask import current_app
+from quart import current_app
 
 from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import (
     ElasticSearchConfig,

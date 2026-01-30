@@ -1,8 +1,8 @@
 import logging
 from typing import Literal
 
-from flask import request
-from flask_restx import Resource, fields, marshal_with
+from quart import request
+from quart_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, select
 from werkzeug.exceptions import InternalServerError, NotFound
@@ -98,7 +98,7 @@ reg(ChatMessagesQuery)
 reg(MessageFeedbackPayload)
 reg(FeedbackExportQuery)
 
-# Register models for flask_restx to avoid dict type issues in Swagger
+# Register models for quart_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
 
 # Base models

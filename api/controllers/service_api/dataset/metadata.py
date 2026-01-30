@@ -1,7 +1,7 @@
 from typing import Literal
 
-from flask_login import current_user
-from flask_restx import marshal
+from quart_login import current_user
+from quart_restx import marshal
 from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
 

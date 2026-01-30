@@ -4,7 +4,7 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from flask import Request, Response
+from quart import Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session

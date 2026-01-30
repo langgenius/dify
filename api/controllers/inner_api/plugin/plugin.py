@@ -1,4 +1,4 @@
-from flask_restx import Resource
+from quart_restx import Resource
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns

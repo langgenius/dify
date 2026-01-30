@@ -1,8 +1,8 @@
 from mimetypes import guess_extension
 
-from flask import request
-from flask_restx import Resource
-from flask_restx.api import HTTPStatus
+from quart import request
+from quart_restx import Resource
+from quart_restx.api import HTTPStatus
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 

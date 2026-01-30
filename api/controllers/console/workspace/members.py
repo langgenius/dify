@@ -1,7 +1,7 @@
 from urllib import parse
 
-from flask import abort, request
-from flask_restx import Resource, fields, marshal_with
+from quart import abort, request
+from quart_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 
 import services

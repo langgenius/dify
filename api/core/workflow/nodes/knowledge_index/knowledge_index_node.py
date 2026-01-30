@@ -5,7 +5,7 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from flask import current_app
+from quart import current_app
 from sqlalchemy import func, select
 
 from core.app.entities.app_invoke_entities import InvokeFrom

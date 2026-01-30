@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Generator, Mapping
 from typing import Any, Literal, Union, overload
 
-from flask import Flask, current_app
+from quart import Quart as Flask, current_app
 from pydantic import ValidationError
 
 from configs import dify_config

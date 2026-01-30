@@ -1,7 +1,7 @@
 from typing import Any
 
-from flask import request
-from flask_restx import marshal
+from quart import request
+from quart_restx import marshal
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound
 

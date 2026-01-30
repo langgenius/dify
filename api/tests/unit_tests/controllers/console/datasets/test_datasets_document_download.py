@@ -16,7 +16,7 @@ from typing import Any
 from zipfile import ZipFile
 
 import pytest
-from flask import Flask
+from quart import Quart as Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 

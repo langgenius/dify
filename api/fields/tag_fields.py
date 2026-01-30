@@ -1,4 +1,4 @@
-from flask_restx import Namespace, fields
+from quart_restx import Namespace, fields
 
 dataset_tag_fields = {
     "id": fields.String,

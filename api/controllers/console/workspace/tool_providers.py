@@ -2,8 +2,8 @@ import io
 import logging
 from urllib.parse import urlparse
 
-from flask import make_response, redirect, request, send_file
-from flask_restx import (
+from quart import make_response, redirect, request, send_file
+from quart_restx import (
     Resource,
     reqparse,
 )

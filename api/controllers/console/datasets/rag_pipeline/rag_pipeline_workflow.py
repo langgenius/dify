@@ -3,8 +3,8 @@ import logging
 from typing import Any, Literal, cast
 from uuid import UUID
 
-from flask import abort, request
-from flask_restx import Resource, marshal_with, reqparse  # type: ignore
+from quart import abort, request
+from quart_restx import Resource, marshal_with, reqparse  # type: ignore
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound

@@ -1,4 +1,4 @@
-from flask_restx import Resource, fields
+from quart_restx import Resource, fields
 
 from controllers.common.schema import register_schema_model
 from fields.hit_testing_fields import (
@@ -22,14 +22,14 @@ register_schema_model(console_ns, HitTestingPayload)
 
 
 def _get_or_create_model(model_name: str, field_def):
-    """Get or create a flask_restx model to avoid dict type issues in Swagger."""
+    """Get or create a quart_restx model to avoid dict type issues in Swagger."""
     existing = console_ns.models.get(model_name)
     if existing is None:
         existing = console_ns.model(model_name, field_def)
     return existing
 
 
-# Register models for flask_restx to avoid dict type issues in Swagger
+# Register models for quart_restx to avoid dict type issues in Swagger
 document_model = _get_or_create_model("HitTestingDocument", document_fields)
 
 segment_fields_copy = segment_fields.copy()

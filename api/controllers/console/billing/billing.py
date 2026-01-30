@@ -1,8 +1,8 @@
 import base64
 from typing import Literal
 
-from flask import request
-from flask_restx import Resource, fields
+from quart import request
+from quart_restx import Resource, fields
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
 

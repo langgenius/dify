@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Generator, Mapping
 from typing import Any, Literal, Union, overload
 
-from flask import Flask, copy_current_request_context, current_app
+from quart import Quart as Flask, copy_current_request_context, current_app
 from pydantic import ValidationError
 from sqlalchemy import select
 

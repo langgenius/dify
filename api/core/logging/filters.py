@@ -3,7 +3,7 @@
 import contextlib
 import logging
 
-import flask
+from quart import has_request_context
 
 from core.logging.context import get_request_id, get_trace_id
 
@@ -50,7 +50,7 @@ class TraceContextFilter(logging.Filter):
 class IdentityContextFilter(logging.Filter):
     """
     Filter that adds user identity context to log records.
-    Extracts tenant_id, user_id, and user_type from Flask-Login current_user.
+        Extracts tenant_id, user_id, and user_type from Quart-Login current_user.
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
@@ -63,9 +63,9 @@ class IdentityContextFilter(logging.Filter):
     def _extract_identity(self) -> dict[str, str]:
         """Extract identity from current_user if in request context."""
         try:
-            if not flask.has_request_context():
+            if not has_request_context():
                 return {}
-            from flask_login import current_user
+            from quart_login import current_user
 
             # Check if user is authenticated using the proxy
             if not current_user.is_authenticated:

@@ -1,7 +1,7 @@
 from typing import Any, cast
 
-from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with
+from quart import request
+from quart_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
@@ -57,7 +57,7 @@ from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
-# Register models for flask_restx to avoid dict type issues in Swagger
+# Register models for quart_restx to avoid dict type issues in Swagger
 dataset_base_model = get_or_create_model("DatasetBase", dataset_fields)
 
 tag_model = get_or_create_model("Tag", tag_fields)

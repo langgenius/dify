@@ -3,8 +3,8 @@ from datetime import UTC, datetime
 from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
-from flask import request
-from flask_restx import Resource
+from quart import request
+from quart_restx import Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized

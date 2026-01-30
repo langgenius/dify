@@ -7,8 +7,8 @@ from typing import Any, Literal, cast
 from uuid import UUID
 
 import sqlalchemy as sa
-from flask import request, send_file
-from flask_restx import Resource, fields, marshal, marshal_with
+from quart import request, send_file
+from quart_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
@@ -73,7 +73,7 @@ logger = logging.getLogger(__name__)
 DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
 
 
-# Register models for flask_restx to avoid dict type issues in Swagger
+# Register models for quart_restx to avoid dict type issues in Swagger
 dataset_model = get_or_create_model("Dataset", dataset_fields)
 
 document_metadata_model = get_or_create_model("DocumentMetadata", document_metadata_fields)

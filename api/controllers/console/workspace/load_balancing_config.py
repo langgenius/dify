@@ -1,4 +1,4 @@
-from flask_restx import Resource
+from quart_restx import Resource
 from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden
 

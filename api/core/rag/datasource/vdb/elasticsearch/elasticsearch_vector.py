@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 from elasticsearch import ConnectionError as ElasticsearchConnectionError
 from elasticsearch import Elasticsearch
-from flask import current_app
+from quart import current_app
 from packaging.version import parse as parse_version
 from pydantic import BaseModel, model_validator
 

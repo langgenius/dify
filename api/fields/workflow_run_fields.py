@@ -1,4 +1,4 @@
-from flask_restx import Namespace, fields
+from quart_restx import Namespace, fields
 
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields

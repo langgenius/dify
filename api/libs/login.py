@@ -4,8 +4,8 @@ from collections.abc import Callable
 from functools import wraps
 from typing import TYPE_CHECKING, Any
 
-from flask import current_app, g, has_request_context, request
-from flask_login.config import EXEMPT_METHODS
+from quart import current_app, g, has_request_context, request
+from quart_login.config import EXEMPT_METHODS
 from werkzeug.local import LocalProxy
 
 from configs import dify_config

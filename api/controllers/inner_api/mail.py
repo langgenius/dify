@@ -1,6 +1,6 @@
 from typing import Any
 
-from flask_restx import Resource
+from quart_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.schema import register_schema_model

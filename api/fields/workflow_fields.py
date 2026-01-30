@@ -1,4 +1,4 @@
-from flask_restx import fields
+from quart_restx import fields
 
 from core.helper import encrypter
 from core.variables import SecretVariable, SegmentType, VariableBase

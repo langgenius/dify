@@ -2,7 +2,7 @@ import json
 import os
 import threading
 
-from flask import Response
+from quart import Response
 
 from configs import dify_config
 from dify_app import DifyApp
