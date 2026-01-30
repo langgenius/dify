@@ -1,11 +1,25 @@
-from typing import Any, Literal
+"""
+Console app annotation endpoints (FastOpenAPI).
 
-from flask import abort, make_response, request
-from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel, Field, field_validator
+Notes:
+- These routes are registered on `controllers.fastopenapi.console_router` and are intended for the
+  FastOpenAPI PoC router mounted at `/console/api`.
+- FastOpenAPI's current Flask adapter always returns `jsonify(result), status_code`, so endpoints
+  should return Pydantic models / dicts / lists (not Flask `Response` objects). This means we
+  can't set custom response headers (e.g. for export responses) from these handlers.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, Literal
+from uuid import UUID
+
+from flask import abort, request
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_serializer
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
-from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
     annotation_import_concurrency_limit,
@@ -14,17 +28,56 @@ from controllers.console.wraps import (
     edit_permission_required,
     setup_required,
 )
+from controllers.fastopenapi import console_router
 from extensions.ext_redis import redis_client
-from fields.annotation_fields import (
-    annotation_fields,
-    annotation_hit_history_fields,
-    build_annotation_model,
-)
 from libs.helper import uuid_value
 from libs.login import login_required
 from services.annotation_service import AppAnnotationService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+if TYPE_CHECKING:
+    from models.model import AppAnnotationHitHistory, MessageAnnotation
+
+
+def _to_timestamp(value: datetime | int | None) -> int | None:
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    if isinstance(value, int):
+        return value
+    return None
+
+
+def _annotation_to_response(annotation: MessageAnnotation) -> AnnotationItem:
+    created_at = _to_timestamp(annotation.created_at)
+    if created_at is None:
+        created_at = 0
+    return AnnotationItem(
+        id=annotation.id,
+        question=annotation.question,
+        answer=annotation.content,
+        hit_count=annotation.hit_count,
+        created_at=created_at,
+    )
+
+
+def _hit_history_to_response(hit: AppAnnotationHitHistory) -> AnnotationHitHistoryItem:
+    created_at = _to_timestamp(hit.created_at)
+    if created_at is None:
+        created_at = 0
+    return AnnotationHitHistoryItem(
+        id=hit.id,
+        source=hit.source,
+        score=hit.score,
+        question=hit.question,
+        created_at=created_at,
+        match=hit.annotation_question,
+        response=hit.annotation_content,
+    )
+
+
+def _normalize_job_id(value: Any) -> str:
+    if isinstance(value, (bytes, bytearray)):
+        return value.decode()
+    return str(value)
 
 
 class AnnotationReplyPayload(BaseModel):
@@ -65,382 +118,402 @@ class UpdateAnnotationPayload(BaseModel):
     annotation_reply: dict[str, Any] | None = None
 
 
-class AnnotationReplyStatusQuery(BaseModel):
-    action: Literal["enable", "disable"]
+class PaginationQuery(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number")
+    limit: int = Field(default=20, ge=1, description="Page size")
 
 
-class AnnotationFilePayload(BaseModel):
-    message_id: str = Field(..., description="Message ID")
+class ResponseModel(BaseModel):
+    """
+    FastOpenAPI serializes Pydantic models via `model_dump()` without `exclude_none=True`.
+    Default to excluding `None` fields to keep legacy response shapes (e.g. return only `{"enabled": false}`).
+    """
 
-    @field_validator("message_id")
-    @classmethod
-    def validate_message_id(cls, value: str) -> str:
-        return uuid_value(value)
-
-
-def reg(model: type[BaseModel]) -> None:
-    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(AnnotationReplyPayload)
-reg(AnnotationSettingUpdatePayload)
-reg(AnnotationListQuery)
-reg(CreateAnnotationPayload)
-reg(UpdateAnnotationPayload)
-reg(AnnotationReplyStatusQuery)
-reg(AnnotationFilePayload)
-
-
-@console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>")
-class AnnotationReplyActionApi(Resource):
-    @console_ns.doc("annotation_reply_action")
-    @console_ns.doc(description="Enable or disable annotation reply for an app")
-    @console_ns.doc(params={"app_id": "Application ID", "action": "Action to perform (enable/disable)"})
-    @console_ns.expect(console_ns.models[AnnotationReplyPayload.__name__])
-    @console_ns.response(200, "Action completed successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_resource_check("annotation")
-    @edit_permission_required
-    def post(self, app_id, action: Literal["enable", "disable"]):
-        app_id = str(app_id)
-        args = AnnotationReplyPayload.model_validate(console_ns.payload)
-        if action == "enable":
-            result = AppAnnotationService.enable_app_annotation(args.model_dump(), app_id)
-        elif action == "disable":
-            result = AppAnnotationService.disable_app_annotation(app_id)
-        return result, 200
-
-
-@console_ns.route("/apps/<uuid:app_id>/annotation-setting")
-class AppAnnotationSettingDetailApi(Resource):
-    @console_ns.doc("get_annotation_setting")
-    @console_ns.doc(description="Get annotation settings for an app")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Annotation settings retrieved successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    def get(self, app_id):
-        app_id = str(app_id)
-        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app_id)
-        return result, 200
-
-
-@console_ns.route("/apps/<uuid:app_id>/annotation-settings/<uuid:annotation_setting_id>")
-class AppAnnotationSettingUpdateApi(Resource):
-    @console_ns.doc("update_annotation_setting")
-    @console_ns.doc(description="Update annotation settings for an app")
-    @console_ns.doc(params={"app_id": "Application ID", "annotation_setting_id": "Annotation setting ID"})
-    @console_ns.expect(console_ns.models[AnnotationSettingUpdatePayload.__name__])
-    @console_ns.response(200, "Settings updated successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    def post(self, app_id, annotation_setting_id):
-        app_id = str(app_id)
-        annotation_setting_id = str(annotation_setting_id)
-
-        args = AnnotationSettingUpdatePayload.model_validate(console_ns.payload)
-
-        result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, args.model_dump())
-        return result, 200
-
-
-@console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>/status/<uuid:job_id>")
-class AnnotationReplyActionStatusApi(Resource):
-    @console_ns.doc("get_annotation_reply_action_status")
-    @console_ns.doc(description="Get status of annotation reply action job")
-    @console_ns.doc(params={"app_id": "Application ID", "job_id": "Job ID", "action": "Action type"})
-    @console_ns.response(200, "Job status retrieved successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_resource_check("annotation")
-    @edit_permission_required
-    def get(self, app_id, job_id, action):
-        job_id = str(job_id)
-        app_annotation_job_key = f"{action}_app_annotation_job_{str(job_id)}"
-        cache_result = redis_client.get(app_annotation_job_key)
-        if cache_result is None:
-            raise ValueError("The job does not exist.")
-
-        job_status = cache_result.decode()
-        error_msg = ""
-        if job_status == "error":
-            app_annotation_error_key = f"{action}_app_annotation_error_{str(job_id)}"
-            error_msg = redis_client.get(app_annotation_error_key).decode()
-
-        return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
-
-
-@console_ns.route("/apps/<uuid:app_id>/annotations")
-class AnnotationApi(Resource):
-    @console_ns.doc("list_annotations")
-    @console_ns.doc(description="Get annotations for an app with pagination")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AnnotationListQuery.__name__])
-    @console_ns.response(200, "Annotations retrieved successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    def get(self, app_id):
-        args = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        page = args.page
-        limit = args.limit
-        keyword = args.keyword
-
-        app_id = str(app_id)
-        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(app_id, page, limit, keyword)
-        response = {
-            "data": marshal(annotation_list, annotation_fields),
-            "has_more": len(annotation_list) == limit,
-            "limit": limit,
-            "total": total,
-            "page": page,
-        }
-        return response, 200
-
-    @console_ns.doc("create_annotation")
-    @console_ns.doc(description="Create a new annotation for an app")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[CreateAnnotationPayload.__name__])
-    @console_ns.response(201, "Annotation created successfully", build_annotation_model(console_ns))
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_resource_check("annotation")
-    @marshal_with(annotation_fields)
-    @edit_permission_required
-    def post(self, app_id):
-        app_id = str(app_id)
-        args = CreateAnnotationPayload.model_validate(console_ns.payload)
-        data = args.model_dump(exclude_none=True)
-        annotation = AppAnnotationService.up_insert_app_annotation_from_message(data, app_id)
-        return annotation
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    def delete(self, app_id):
-        app_id = str(app_id)
-
-        # Use request.args.getlist to get annotation_ids array directly
-        annotation_ids = request.args.getlist("annotation_id")
-
-        # If annotation_ids are provided, handle batch deletion
-        if annotation_ids:
-            # Check if any annotation_ids contain empty strings or invalid values
-            if not all(annotation_id.strip() for annotation_id in annotation_ids if annotation_id):
-                return {
-                    "code": "bad_request",
-                    "message": "annotation_ids are required if the parameter is provided.",
-                }, 400
-
-            result = AppAnnotationService.delete_app_annotations_in_batch(app_id, annotation_ids)
-            return result, 204
-        # If no annotation_ids are provided, handle clearing all annotations
-        else:
-            AppAnnotationService.clear_all_annotations(app_id)
-            return {"result": "success"}, 204
-
-
-@console_ns.route("/apps/<uuid:app_id>/annotations/export")
-class AnnotationExportApi(Resource):
-    @console_ns.doc("export_annotations")
-    @console_ns.doc(description="Export all annotations for an app with CSV injection protection")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(
-        200,
-        "Annotations exported successfully",
-        console_ns.model("AnnotationList", {"data": fields.List(fields.Nested(build_annotation_model(console_ns)))}),
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+        serialize_by_alias=True,
+        protected_namespaces=(),
     )
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    def get(self, app_id):
-        app_id = str(app_id)
-        annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
-        response_data = {"data": marshal(annotation_list, annotation_fields)}
 
-        # Create response with secure headers for CSV export
-        response = make_response(response_data, 200)
-        response.headers["Content-Type"] = "application/json; charset=utf-8"
-        response.headers["X-Content-Type-Options"] = "nosniff"
+    @model_serializer(mode="wrap")
+    def _serialize(self, handler):
+        def prune_none(value: Any) -> Any:
+            if isinstance(value, dict):
+                return {k: prune_none(v) for k, v in value.items() if v is not None}
+            if isinstance(value, list):
+                return [prune_none(v) for v in value]
+            return value
 
-        return response
+        return prune_none(handler(self))
 
 
-@console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
-class AnnotationUpdateDeleteApi(Resource):
-    @console_ns.doc("update_delete_annotation")
-    @console_ns.doc(description="Update or delete an annotation")
-    @console_ns.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
-    @console_ns.response(200, "Annotation updated successfully", build_annotation_model(console_ns))
-    @console_ns.response(204, "Annotation deleted successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.expect(console_ns.models[UpdateAnnotationPayload.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_resource_check("annotation")
-    @edit_permission_required
-    @marshal_with(annotation_fields)
-    def post(self, app_id, annotation_id):
-        app_id = str(app_id)
-        annotation_id = str(annotation_id)
-        args = UpdateAnnotationPayload.model_validate(console_ns.payload)
-        annotation = AppAnnotationService.update_app_annotation_directly(
-            args.model_dump(exclude_none=True), app_id, annotation_id
+class EmbeddingModel(ResponseModel):
+    embedding_provider_name: str | None = Field(default=None, description="Embedding provider name")
+    embedding_model_name: str | None = Field(default=None, description="Embedding model name")
+
+
+class AnnotationSettingResponse(ResponseModel):
+    enabled: bool = Field(description="Whether annotation reply is enabled")
+    id: str | None = Field(default=None, description="Annotation setting ID")
+    score_threshold: float | None = Field(default=None, description="Score threshold")
+    embedding_model: EmbeddingModel | None = Field(default=None, description="Embedding model configuration")
+
+
+class AnnotationJobStatusResponse(ResponseModel):
+    job_id: str = Field(description="Job ID")
+    job_status: str = Field(description="Job status")
+    error_msg: str | None = Field(default=None, description="Error message, if any")
+
+
+class AnnotationBatchImportResponse(ResponseModel):
+    job_id: str | None = Field(default=None, description="Job ID")
+    job_status: str | None = Field(default=None, description="Job status")
+    record_count: int | None = Field(default=None, description="Imported record count, if applicable")
+    error_msg: str | None = Field(default=None, description="Error message, if any")
+
+
+class AnnotationItem(ResponseModel):
+    id: str = Field(description="Annotation ID")
+    question: str = Field(description="Annotation question")
+    answer: str = Field(description="Annotation answer/content")
+    hit_count: int = Field(description="Hit count")
+    created_at: int = Field(description="Created timestamp (seconds)")
+
+
+class AnnotationListResponse(ResponseModel):
+    data: list[AnnotationItem] = Field(description="Annotations")
+    has_more: bool = Field(description="Whether there are more results")
+    limit: int = Field(description="Page size")
+    total: int = Field(description="Total count")
+    page: int = Field(description="Current page")
+
+
+class AnnotationExportResponse(ResponseModel):
+    data: list[AnnotationItem] = Field(description="Annotations")
+
+
+class AnnotationHitHistoryItem(ResponseModel):
+    id: str = Field(description="Hit history ID")
+    source: str = Field(description="Source")
+    score: float = Field(description="Match score")
+    question: str = Field(description="User question")
+    created_at: int = Field(description="Created timestamp (seconds)")
+    match: str = Field(description="Matched annotation question")
+    response: str = Field(description="Matched annotation response/content")
+
+
+class AnnotationHitHistoryListResponse(ResponseModel):
+    data: list[AnnotationHitHistoryItem] = Field(description="Hit histories")
+    has_more: bool = Field(description="Whether there are more results")
+    limit: int = Field(description="Page size")
+    total: int = Field(description="Total count")
+    page: int = Field(description="Current page")
+
+
+@console_router.post(
+    "/apps/<uuid:app_id>/annotation-reply/<string:action>",
+    response_model=AnnotationJobStatusResponse,
+    tags=["console"],
+)
+@setup_required
+@login_required
+@account_initialization_required
+@cloud_edition_billing_resource_check("annotation")
+@edit_permission_required
+def annotation_reply_action(
+    app_id: UUID,
+    action: Literal["enable", "disable"],
+    payload: AnnotationReplyPayload,
+) -> AnnotationJobStatusResponse:
+    app_id_str = str(app_id)
+    if action == "enable":
+        result = AppAnnotationService.enable_app_annotation(payload.model_dump(), app_id_str)
+    else:
+        result = AppAnnotationService.disable_app_annotation(app_id_str)
+
+    job_id = _normalize_job_id(result.get("job_id"))
+    return AnnotationJobStatusResponse(job_id=job_id, job_status=str(result.get("job_status", "")))
+
+
+@console_router.get(
+    "/apps/<uuid:app_id>/annotation-setting",
+    response_model=AnnotationSettingResponse,
+    tags=["console"],
+)
+@setup_required
+@login_required
+@account_initialization_required
+@edit_permission_required
+def get_annotation_setting(app_id: UUID) -> AnnotationSettingResponse:
+    result = AppAnnotationService.get_app_annotation_setting_by_app_id(str(app_id))
+    embedding_model = result.get("embedding_model") if isinstance(result, dict) else None
+    if isinstance(embedding_model, dict) and not embedding_model:
+        result["embedding_model"] = None
+    return AnnotationSettingResponse.model_validate(result)
+
+
+@console_router.post(
+    "/apps/<uuid:app_id>/annotation-settings/<uuid:annotation_setting_id>",
+    response_model=AnnotationSettingResponse,
+    tags=["console"],
+)
+@setup_required
+@login_required
+@account_initialization_required
+@edit_permission_required
+def update_annotation_setting(
+    app_id: UUID,
+    annotation_setting_id: UUID,
+    payload: AnnotationSettingUpdatePayload,
+) -> AnnotationSettingResponse:
+    result = AppAnnotationService.update_app_annotation_setting(
+        str(app_id),
+        str(annotation_setting_id),
+        payload.model_dump(),
+    )
+    embedding_model = result.get("embedding_model") if isinstance(result, dict) else None
+    if isinstance(embedding_model, dict) and not embedding_model:
+        result["embedding_model"] = None
+    return AnnotationSettingResponse.model_validate(result)
+
+
+@console_router.get(
+    "/apps/<uuid:app_id>/annotation-reply/<string:action>/status/<uuid:job_id>",
+    response_model=AnnotationJobStatusResponse,
+    tags=["console"],
+)
+@setup_required
+@login_required
+@account_initialization_required
+@cloud_edition_billing_resource_check("annotation")
+@edit_permission_required
+def get_annotation_reply_action_status(app_id: UUID, job_id: UUID, action: str) -> AnnotationJobStatusResponse:
+    _ = app_id
+    job_id_str = str(job_id)
+    app_annotation_job_key = f"{action}_app_annotation_job_{job_id_str}"
+    cache_result = redis_client.get(app_annotation_job_key)
+    if cache_result is None:
+        raise NotFound("The job does not exist.")
+
+    job_status = cache_result.decode()
+    error_msg = ""
+    if job_status == "error":
+        app_annotation_error_key = f"{action}_app_annotation_error_{job_id_str}"
+        error_msg_bytes = redis_client.get(app_annotation_error_key)
+        if error_msg_bytes is not None:
+            error_msg = error_msg_bytes.decode()
+
+    return AnnotationJobStatusResponse(job_id=job_id_str, job_status=job_status, error_msg=error_msg)
+
+
+@console_router.get(
+    "/apps/<uuid:app_id>/annotations",
+    response_model=AnnotationListResponse,
+    tags=["console"],
+)
+@setup_required
+@login_required
+@account_initialization_required
+@edit_permission_required
+def list_annotations(app_id: UUID, query: AnnotationListQuery) -> AnnotationListResponse:
+    annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
+        str(app_id),
+        query.page,
+        query.limit,
+        query.keyword,
+    )
+    items = [_annotation_to_response(annotation) for annotation in annotation_list]
+    return AnnotationListResponse(
+        data=items,
+        has_more=len(items) == query.limit,
+        limit=query.limit,
+        total=total or 0,
+        page=query.page,
+    )
+
+
+@console_router.post(
+    "/apps/<uuid:app_id>/annotations",
+    response_model=AnnotationItem,
+    tags=["console"],
+    status_code=201,
+)
+@setup_required
+@login_required
+@account_initialization_required
+@cloud_edition_billing_resource_check("annotation")
+@edit_permission_required
+def create_annotation(app_id: UUID, payload: CreateAnnotationPayload) -> AnnotationItem:
+    data = payload.model_dump(exclude_none=True)
+    annotation = AppAnnotationService.up_insert_app_annotation_from_message(data, str(app_id))
+    return _annotation_to_response(annotation)
+
+
+@console_router.delete(
+    "/apps/<uuid:app_id>/annotations",
+    tags=["console"],
+    status_code=204,
+)
+@setup_required
+@login_required
+@account_initialization_required
+@edit_permission_required
+def delete_annotations(app_id: UUID) -> dict[str, Any] | None:
+    app_id_str = str(app_id)
+
+    annotation_ids = request.args.getlist("annotation_id")
+    if annotation_ids:
+        if not all(annotation_id.strip() for annotation_id in annotation_ids if annotation_id):
+            raise BadRequest("annotation_ids are required if the parameter is provided.")
+        return AppAnnotationService.delete_app_annotations_in_batch(app_id_str, annotation_ids)
+
+    return AppAnnotationService.clear_all_annotations(app_id_str)
+
+
+@console_router.get(
+    "/apps/<uuid:app_id>/annotations/export",
+    response_model=AnnotationExportResponse,
+    tags=["console"],
+)
+@setup_required
+@login_required
+@account_initialization_required
+@edit_permission_required
+def export_annotations(app_id: UUID) -> AnnotationExportResponse:
+    annotation_list = AppAnnotationService.export_annotation_list_by_app_id(str(app_id))
+    return AnnotationExportResponse(data=[_annotation_to_response(annotation) for annotation in annotation_list])
+
+
+@console_router.post(
+    "/apps/<uuid:app_id>/annotations/<uuid:annotation_id>",
+    response_model=AnnotationItem,
+    tags=["console"],
+)
+@setup_required
+@login_required
+@account_initialization_required
+@cloud_edition_billing_resource_check("annotation")
+@edit_permission_required
+def update_annotation(app_id: UUID, annotation_id: UUID, payload: UpdateAnnotationPayload) -> AnnotationItem:
+    data = payload.model_dump(exclude_none=True)
+    annotation = AppAnnotationService.update_app_annotation_directly(data, str(app_id), str(annotation_id))
+    return _annotation_to_response(annotation)
+
+
+@console_router.delete(
+    "/apps/<uuid:app_id>/annotations/<uuid:annotation_id>",
+    tags=["console"],
+    status_code=204,
+)
+@setup_required
+@login_required
+@account_initialization_required
+@edit_permission_required
+def delete_annotation(app_id: UUID, annotation_id: UUID) -> dict[str, str] | None:
+    AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id))
+    return {"result": "success"}
+
+
+@console_router.post(
+    "/apps/<uuid:app_id>/annotations/batch-import",
+    response_model=AnnotationBatchImportResponse,
+    tags=["console"],
+)
+@setup_required
+@login_required
+@account_initialization_required
+@cloud_edition_billing_resource_check("annotation")
+@annotation_import_rate_limit
+@annotation_import_concurrency_limit
+@edit_permission_required
+def batch_import_annotations(app_id: UUID) -> AnnotationBatchImportResponse:
+    from configs import dify_config
+
+    if "file" not in request.files:
+        raise NoFileUploadedError()
+    if len(request.files) > 1:
+        raise TooManyFilesError()
+
+    file = request.files["file"]
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise BadRequest("Invalid file type. Only CSV files are allowed")
+
+    file.seek(0, 2)
+    file_size = file.tell()
+    file.seek(0)
+
+    max_size_bytes = dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT * 1024 * 1024
+    if file_size > max_size_bytes:
+        abort(
+            413,
+            f"File size exceeds maximum limit of {dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT}MB. "
+            f"Please reduce the file size and try again.",
         )
-        return annotation
 
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    def delete(self, app_id, annotation_id):
-        app_id = str(app_id)
-        annotation_id = str(annotation_id)
-        AppAnnotationService.delete_app_annotation(app_id, annotation_id)
-        return {"result": "success"}, 204
+    if file_size == 0:
+        raise BadRequest("The uploaded file is empty")
+
+    result = AppAnnotationService.batch_import_app_annotations(str(app_id), file)
+    if "job_id" in result:
+        result["job_id"] = _normalize_job_id(result.get("job_id"))
+    return AnnotationBatchImportResponse.model_validate(result)
 
 
-@console_ns.route("/apps/<uuid:app_id>/annotations/batch-import")
-class AnnotationBatchImportApi(Resource):
-    @console_ns.doc("batch_import_annotations")
-    @console_ns.doc(description="Batch import annotations from CSV file with rate limiting and security checks")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Batch import started successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(400, "No file uploaded or too many files")
-    @console_ns.response(413, "File too large")
-    @console_ns.response(429, "Too many requests or concurrent imports")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_resource_check("annotation")
-    @annotation_import_rate_limit
-    @annotation_import_concurrency_limit
-    @edit_permission_required
-    def post(self, app_id):
-        from configs import dify_config
+@console_router.get(
+    "/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>",
+    response_model=AnnotationJobStatusResponse,
+    tags=["console"],
+)
+@setup_required
+@login_required
+@account_initialization_required
+@cloud_edition_billing_resource_check("annotation")
+@edit_permission_required
+def get_batch_import_status(app_id: UUID, job_id: UUID) -> AnnotationJobStatusResponse:
+    _ = app_id
+    job_id_str = str(job_id)
+    indexing_cache_key = f"app_annotation_batch_import_{job_id_str}"
+    cache_result = redis_client.get(indexing_cache_key)
+    if cache_result is None:
+        raise NotFound("The job does not exist.")
 
-        app_id = str(app_id)
+    job_status = cache_result.decode()
+    error_msg = ""
+    if job_status == "error":
+        indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{job_id_str}"
+        error_msg_bytes = redis_client.get(indexing_error_msg_key)
+        if error_msg_bytes is not None:
+            error_msg = error_msg_bytes.decode()
 
-        # check file
-        if "file" not in request.files:
-            raise NoFileUploadedError()
-
-        if len(request.files) > 1:
-            raise TooManyFilesError()
-
-        # get file from request
-        file = request.files["file"]
-
-        # check file type
-        if not file.filename or not file.filename.lower().endswith(".csv"):
-            raise ValueError("Invalid file type. Only CSV files are allowed")
-
-        # Check file size before processing
-        file.seek(0, 2)  # Seek to end of file
-        file_size = file.tell()
-        file.seek(0)  # Reset to beginning
-
-        max_size_bytes = dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT * 1024 * 1024
-        if file_size > max_size_bytes:
-            abort(
-                413,
-                f"File size exceeds maximum limit of {dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT}MB. "
-                f"Please reduce the file size and try again.",
-            )
-
-        if file_size == 0:
-            raise ValueError("The uploaded file is empty")
-
-        return AppAnnotationService.batch_import_app_annotations(app_id, file)
+    return AnnotationJobStatusResponse(job_id=job_id_str, job_status=job_status, error_msg=error_msg)
 
 
-@console_ns.route("/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>")
-class AnnotationBatchImportStatusApi(Resource):
-    @console_ns.doc("get_batch_import_status")
-    @console_ns.doc(description="Get status of batch import job")
-    @console_ns.doc(params={"app_id": "Application ID", "job_id": "Job ID"})
-    @console_ns.response(200, "Job status retrieved successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_resource_check("annotation")
-    @edit_permission_required
-    def get(self, app_id, job_id):
-        job_id = str(job_id)
-        indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
-        cache_result = redis_client.get(indexing_cache_key)
-        if cache_result is None:
-            raise ValueError("The job does not exist.")
-        job_status = cache_result.decode()
-        error_msg = ""
-        if job_status == "error":
-            indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{str(job_id)}"
-            error_msg = redis_client.get(indexing_error_msg_key).decode()
-
-        return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
-
-
-@console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>/hit-histories")
-class AnnotationHitHistoryListApi(Resource):
-    @console_ns.doc("list_annotation_hit_histories")
-    @console_ns.doc(description="Get hit histories for an annotation")
-    @console_ns.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
-    @console_ns.expect(
-        console_ns.parser()
-        .add_argument("page", type=int, location="args", default=1, help="Page number")
-        .add_argument("limit", type=int, location="args", default=20, help="Page size")
+@console_router.get(
+    "/apps/<uuid:app_id>/annotations/<uuid:annotation_id>/hit-histories",
+    response_model=AnnotationHitHistoryListResponse,
+    tags=["console"],
+)
+@setup_required
+@login_required
+@account_initialization_required
+@edit_permission_required
+def list_annotation_hit_histories(
+    app_id: UUID,
+    annotation_id: UUID,
+    query: PaginationQuery,
+) -> AnnotationHitHistoryListResponse:
+    hit_histories, total = AppAnnotationService.get_annotation_hit_histories(
+        str(app_id),
+        str(annotation_id),
+        query.page,
+        query.limit,
     )
-    @console_ns.response(
-        200,
-        "Hit histories retrieved successfully",
-        console_ns.model(
-            "AnnotationHitHistoryList",
-            {
-                "data": fields.List(
-                    fields.Nested(console_ns.model("AnnotationHitHistoryItem", annotation_hit_history_fields))
-                )
-            },
-        ),
+    items = [_hit_history_to_response(hit) for hit in hit_histories]
+    return AnnotationHitHistoryListResponse(
+        data=items,
+        has_more=len(items) == query.limit,
+        limit=query.limit,
+        total=total or 0,
+        page=query.page,
     )
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    def get(self, app_id, annotation_id):
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        app_id = str(app_id)
-        annotation_id = str(annotation_id)
-        annotation_hit_history_list, total = AppAnnotationService.get_annotation_hit_histories(
-            app_id, annotation_id, page, limit
-        )
-        response = {
-            "data": marshal(annotation_hit_history_list, annotation_hit_history_fields),
-            "has_more": len(annotation_hit_history_list) == limit,
-            "limit": limit,
-            "total": total,
-            "page": page,
-        }
-        return response

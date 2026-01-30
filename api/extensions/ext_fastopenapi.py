@@ -30,11 +30,13 @@ def init_app(app: DifyApp) -> None:
     import controllers.console.init_validate as init_validate_module
     import controllers.console.ping as ping_module
     from controllers.console import remote_files, setup
+    from controllers.console.app import annotation as annotation_module
 
     _ = init_validate_module
     _ = ping_module
     _ = remote_files
     _ = setup
+    _ = annotation_module
 
     router.include_router(console_router, prefix="/console/api")
     CORS(
