@@ -134,21 +134,19 @@ vi.mock('@/app/components/workflow/constants', () => ({
   WORKFLOW_DATA_UPDATE: 'WORKFLOW_DATA_UPDATE',
 }))
 
-// Mock FileReader - synchronous for predictable test behavior
+// Mock FileReader
 class MockFileReader {
   result: string | null = null
   onload: ((e: { target: { result: string | null } }) => void) | null = null
 
   readAsText(_file: File) {
-    // Call synchronously to ensure content is available immediately after reading
-    this.result = 'test file content'
-    // Use Promise.resolve to ensure we're after the current synchronous execution
-    // but before the next event loop tick, allowing React state updates to be batched
-    Promise.resolve().then(() => {
+    // Simulate async file reading with setTimeout for predictable test behavior
+    setTimeout(() => {
+      this.result = 'test file content'
       if (this.onload) {
         this.onload({ target: { result: this.result } })
       }
-    })
+    }, 0)
   }
 }
 
