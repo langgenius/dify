@@ -53,6 +53,7 @@ export type UseSegmentListDataReturn = {
     answer: string,
     keywords: string[],
     attachments: FileEntity[],
+    summary?: string,
     needRegenerate?: boolean,
   ) => Promise<void>
   resetList: () => void
@@ -248,6 +249,7 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
     answer: string,
     keywords: string[],
     attachments: FileEntity[],
+    summary?: string,
     needRegenerate = false,
   ) => {
     const params: SegmentUpdater = { content: '', attachment_ids: [] }
@@ -285,6 +287,8 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
       params.attachment_ids = attachments.map(item => item.uploadedId!)
     }
 
+    params.summary = summary ?? ''
+
     if (needRegenerate)
       params.regenerate_child_chunks = needRegenerate
 
@@ -302,6 +306,7 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
           sign_content: res.data.sign_content,
           keywords: res.data.keywords,
           attachments: res.data.attachments,
+          summary: res.data.summary,
           word_count: res.data.word_count,
           hit_count: res.data.hit_count,
           enabled: res.data.enabled,
