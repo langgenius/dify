@@ -351,7 +351,7 @@
   },
   "app/components/app/configuration/config/automatic/instruction-editor.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/app/configuration/config/automatic/prompt-res-in-workflow.tsx": {
@@ -3215,7 +3215,7 @@
   },
   "app/components/workflow/nodes/_base/components/prompt/editor.tsx": {
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/workflow/nodes/_base/components/readonly-input-with-select-var.tsx": {
@@ -4197,11 +4197,6 @@
     }
   },
   "app/components/workflow/variable-inspect/right.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/variable-inspect/trigger.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
