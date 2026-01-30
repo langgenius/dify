@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { RiSparklingFill, RiTerminalBoxLine } from '@remixicon/react'
 import { useState } from 'react'
 import TabSliderNew from '.'
