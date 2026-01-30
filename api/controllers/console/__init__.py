@@ -115,6 +115,12 @@ from .explore import (
     trial,
 )
 
+# Import evaluation controllers
+from .evaluation import evaluation
+
+# Import snippet controllers
+from .snippets import snippet_workflow
+
 # Import tag controllers
 from .tag import tags
 
@@ -128,6 +134,7 @@ from .workspace import (
     model_providers,
     models,
     plugin,
+    snippets,
     tool_providers,
     trigger_providers,
     workspace,
@@ -165,6 +172,7 @@ __all__ = [
     "datasource_content_preview",
     "email_register",
     "endpoint",
+    "evaluation",
     "extension",
     "external",
     "feature",
@@ -197,6 +205,8 @@ __all__ = [
     "saved_message",
     "setup",
     "site",
+    "snippet_workflow",
+    "snippets",
     "spec",
     "statistic",
     "tags",

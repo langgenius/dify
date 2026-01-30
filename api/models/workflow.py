@@ -65,6 +65,7 @@ class WorkflowType(StrEnum):
     WORKFLOW = "workflow"
     CHAT = "chat"
     RAG_PIPELINE = "rag-pipeline"
+    SNIPPET = "snippet"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowType":

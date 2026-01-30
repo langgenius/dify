@@ -79,6 +79,7 @@ from .provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from .snippet import CustomizedSnippet, SnippetType
 from .source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from .task import CeleryTask, CeleryTaskSet
 from .tools import (
@@ -138,6 +139,7 @@ __all__ = [
     "Conversation",
     "ConversationVariable",
     "CreatorUserRole",
+    "CustomizedSnippet",
     "DataSourceApiKeyAuthBinding",
     "DataSourceOauthBinding",
     "Dataset",
@@ -179,6 +181,7 @@ __all__ = [
     "RecommendedApp",
     "SavedMessage",
     "Site",
+    "SnippetType",
     "Tag",
     "TagBinding",
     "Tenant",
