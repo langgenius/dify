@@ -5,6 +5,7 @@ import pytest
 from faker import Faker
 from pydantic import ValidationError
 
+from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow as WorkflowModel
 from services.account_service import AccountService, TenantService
