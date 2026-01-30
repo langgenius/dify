@@ -37,8 +37,8 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   onApply,
   crossAxisOffset,
 }) => {
-  const localModel = localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL)
-    ? JSON.parse(localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL) as string) as Model
+  const localModel = localStorage.getItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL)
+    ? JSON.parse(localStorage.getItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL) as string) as Model
     : null
   const [open, setOpen] = useState(false)
   const [view, setView] = useState(GeneratorView.promptEditor)
@@ -61,8 +61,8 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
 
   useEffect(() => {
     if (defaultModel) {
-      const localModel = localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL)
-        ? JSON.parse(localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL) || '')
+      const localModel = localStorage.getItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL)
+        ? JSON.parse(localStorage.getItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL) || '')
         : null
       if (localModel) {
         setModel(localModel)
@@ -96,7 +96,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
       mode: newValue.mode as ModelModeType,
     }
     setModel(newModel)
-    localStorage.setItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
+    localStorage.setItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
   }, [model, setModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
@@ -105,7 +105,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
       completion_params: newParams as CompletionParams,
     }
     setModel(newModel)
-    localStorage.setItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
+    localStorage.setItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
   }, [model, setModel])
 
   const { mutateAsync: generateStructuredOutputRules, isPending: isGenerating } = useGenerateStructuredOutputRules()

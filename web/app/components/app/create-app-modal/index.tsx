@@ -22,6 +22,7 @@ import Textarea from '@/app/components/base/textarea'
 import { ToastContext } from '@/app/components/base/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
@@ -46,8 +47,6 @@ type RuntimeOption = {
   description: string
   recommended?: boolean
 }
-
-const WORKFLOW_RUNTIME_STORAGE_KEY_PREFIX = 'workflow:sandbox-runtime:'
 
 function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
   const { t } = useTranslation()
@@ -99,7 +98,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       })
 
       if (runtimeMode === 'sandboxed' && (appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT))
-        localStorage.setItem(`${WORKFLOW_RUNTIME_STORAGE_KEY_PREFIX}${app.id}`, '1')
+        localStorage.setItem(`${STORAGE_KEYS.LOCAL.WORKFLOW.SANDBOX_RUNTIME_PREFIX}${app.id}`, '1')
 
       // Track app creation success
       trackEvent('create_app', {

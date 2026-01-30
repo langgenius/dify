@@ -13,7 +13,7 @@ type SidebarProps = PropsWithChildren
 
 const Sidebar = ({ children }: SidebarProps) => {
   const { run: persistWidth } = useDebounceFn(
-    (width: number) => storage.set(STORAGE_KEYS.SKILL.SIDEBAR_WIDTH, width),
+    (width: number) => storage.set(STORAGE_KEYS.LOCAL.SKILL.SIDEBAR_WIDTH, width),
     { wait: 200 },
   )
 
@@ -32,7 +32,7 @@ const Sidebar = ({ children }: SidebarProps) => {
   return (
     <aside
       ref={containerRef}
-      style={{ width: storage.getNumber(STORAGE_KEYS.SKILL.SIDEBAR_WIDTH, SIDEBAR_DEFAULT_WIDTH) }}
+      style={{ width: storage.getNumber(STORAGE_KEYS.LOCAL.SKILL.SIDEBAR_WIDTH, SIDEBAR_DEFAULT_WIDTH) }}
       className="relative flex h-full shrink-0 flex-col gap-px overflow-hidden rounded-[10px] border border-components-panel-border-subtle bg-components-panel-bg"
     >
       {children}

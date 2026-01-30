@@ -12,6 +12,7 @@ import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import {
   fetchNodesDefaultConfigs,
@@ -85,7 +86,7 @@ export const useWorkflowInit = () => {
             const nodesData = isAdvancedChat ? nodesTemplate : []
             const edgesData = isAdvancedChat ? edgesTemplate : []
 
-            const runtimeStorageKey = `workflow:sandbox-runtime:${appDetail.id}`
+            const runtimeStorageKey = `${STORAGE_KEYS.LOCAL.WORKFLOW.SANDBOX_RUNTIME_PREFIX}${appDetail.id}`
             const enableSandboxRuntime = localStorage.getItem(runtimeStorageKey) === '1'
             if (enableSandboxRuntime)
               localStorage.removeItem(runtimeStorageKey)

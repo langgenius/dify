@@ -272,7 +272,7 @@ const useContextGenerate = ({
   const [inputValue, setInputValue] = useState('')
   const [isGenerating, { setTrue: setGeneratingTrue, setFalse: setGeneratingFalse }] = useBoolean(false)
   const [modelOverride, setModelOverride] = useState<Model | null>(() => {
-    const stored = localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL)
+    const stored = localStorage.getItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL)
     if (!stored)
       return null
     const parsed = JSON.parse(stored) as Model
@@ -328,7 +328,7 @@ const useContextGenerate = ({
       mode: newValue.mode as ModelModeType,
     }
     setModelOverride(newModel)
-    localStorage.setItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
+    localStorage.setItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
   }, [model])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
@@ -337,7 +337,7 @@ const useContextGenerate = ({
       completion_params: newParams as CompletionParams,
     }
     setModelOverride(newModel)
-    localStorage.setItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
+    localStorage.setItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
   }, [model])
 
   const promptMessageCount = promptMessages?.length ?? 0

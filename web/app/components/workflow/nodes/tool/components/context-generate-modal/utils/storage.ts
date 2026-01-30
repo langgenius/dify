@@ -1,5 +1,5 @@
 // Storage key prefix used by useContextGenData
-const CONTEXT_GEN_PREFIX = 'context-gen-'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 
 export const CONTEXT_GEN_STORAGE_SUFFIX = {
   versions: 'versions',
@@ -24,7 +24,7 @@ export const buildContextGenStorageKey = (
 }
 
 const buildContextGenStorageKeyWithPrefix = (storageKey: string, suffix: ContextGenStorageSuffix): string => {
-  return `${CONTEXT_GEN_PREFIX}${storageKey}-${suffix}`
+  return `${STORAGE_KEYS.SESSION.CONTEXT_GENERATE.PREFIX}${storageKey}-${suffix}`
 }
 
 export const getContextGenStorageKey = (storageKey: string, suffix: ContextGenStorageSuffix): string => {
