@@ -14,7 +14,7 @@ import {
   validateSchemaAgainstDraft7,
 } from '@/app/components/workflow/nodes/llm/utils'
 import { useStore } from '@/app/components/workflow/store'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { SupportUploadFileTypes, VarType } from '@/app/components/workflow/types'
 import {
   validateJSONSchema,
 } from '@/app/components/workflow/variable-inspect/utils'
@@ -34,6 +34,17 @@ type Props = {
   isTruncated: boolean
 }
 
+const textValueTypes = new Set<VarType>([VarType.secret, VarType.string, VarType.number])
+const jsonValueTypes = new Set<VarType>([
+  VarType.object,
+  VarType.arrayString,
+  VarType.arrayNumber,
+  VarType.arrayObject,
+  VarType.arrayMessage,
+  VarType.arrayAny,
+])
+const fileValueTypes = new Set<VarType>([VarType.file, VarType.arrayFile])
+
 const ValueContent = ({
   currentVar,
   handleValueChange,
@@ -42,22 +53,14 @@ const ValueContent = ({
   const contentContainerRef = useRef<HTMLDivElement>(null)
   const errorMessageRef = useRef<HTMLDivElement>(null)
   const [editorHeight, setEditorHeight] = useState(0)
-  const showTextEditor = currentVar.value_type === 'secret' || currentVar.value_type === 'string' || currentVar.value_type === 'number'
+  const showTextEditor = textValueTypes.has(currentVar.value_type)
   const showBoolEditor = typeof currentVar.value === 'boolean'
   const showBoolArrayEditor = Array.isArray(currentVar.value) && currentVar.value.every(v => typeof v === 'boolean')
   const isSysFiles = currentVar.type === VarInInspectType.system && currentVar.name === 'files'
-  // FIXME: use enum to instead hardcode string
-  const showJSONEditor = !isSysFiles && (
-    currentVar.value_type === 'object'
-    || currentVar.value_type === 'array[string]'
-    || currentVar.value_type === 'array[number]'
-    || currentVar.value_type === 'array[object]'
-    || currentVar.value_type === 'array[message]'
-    || currentVar.value_type === 'array[any]'
-  )
-  const showFileEditor = isSysFiles || currentVar.value_type === 'file' || currentVar.value_type === 'array[file]'
+  const showJSONEditor = !isSysFiles && jsonValueTypes.has(currentVar.value_type)
+  const showFileEditor = isSysFiles || fileValueTypes.has(currentVar.value_type)
   const textEditorDisabled = currentVar.type === VarInInspectType.environment || (currentVar.type === VarInInspectType.system && currentVar.name !== 'query' && currentVar.name !== 'files')
-  const JSONEditorDisabled = currentVar.value_type === 'array[any]'
+  const JSONEditorDisabled = currentVar.value_type === VarType.arrayAny
   const fileUploadConfig = useStore(s => s.fileUploadConfig)
 
   const hasChunks = useMemo(() => {
@@ -67,9 +70,9 @@ const ValueContent = ({
   }, [currentVar.schemaType])
 
   const formatFileValue = (value: VarInInspect) => {
-    if (value.value_type === 'file')
+    if (value.value_type === VarType.file)
       return value.value ? getProcessedFilesFromResponse([value.value]) : []
-    if (value.value_type === 'array[file]' || (value.type === VarInInspectType.system && currentVar.name === 'files'))
+    if (value.value_type === VarType.arrayFile || (value.type === VarInInspectType.system && currentVar.name === 'files'))
       return value.value && value.value.length > 0 ? getProcessedFilesFromResponse(value.value) : []
     return []
   }
@@ -85,7 +88,7 @@ const ValueContent = ({
   // update default value when id changed
   useEffect(() => {
     if (showTextEditor) {
-      if (currentVar.value_type === 'number')
+      if (currentVar.value_type === VarType.number)
         return setValue(JSON.stringify(currentVar.value))
       if (!currentVar.value)
         return setValue('')
@@ -101,14 +104,14 @@ const ValueContent = ({
   const handleTextChange = (value: string) => {
     if (isTruncated)
       return
-    if (currentVar.value_type === 'string')
+    if (currentVar.value_type === VarType.string)
       setValue(value)
 
-    if (currentVar.value_type === 'number') {
+    if (currentVar.value_type === VarType.number) {
       if (/^-?\d+(\.)?(\d+)?$/.test(value))
         setValue(Number.parseFloat(value))
     }
-    const newValue = currentVar.value_type === 'number' ? Number.parseFloat(value) : value
+    const newValue = currentVar.value_type === VarType.number ? Number.parseFloat(value) : value
     debounceValueChange(currentVar.id, newValue)
   }
 
@@ -167,9 +170,9 @@ const ValueContent = ({
     // invoke update api after every file uploaded
     if (!fileValueValidate(value))
       return
-    if (currentVar.value_type === 'file')
+    if (currentVar.value_type === VarType.file)
       debounceValueChange(currentVar.id, value[0])
-    if (currentVar.value_type === 'array[file]' || isSysFiles)
+    if (currentVar.value_type === VarType.arrayFile || isSysFiles)
       debounceValueChange(currentVar.id, value)
   }
 
@@ -200,7 +203,7 @@ const ValueContent = ({
           <>
             {isTruncated && <LargeDataAlert className="absolute left-3 right-3 top-1" />}
             {
-              currentVar.value_type === 'string'
+              currentVar.value_type === VarType.string
                 ? (
                     <DisplayContent
                       previewType={PreviewType.Markdown}
@@ -294,7 +297,7 @@ const ValueContent = ({
                   ...FILE_EXTS[SupportUploadFileTypes.video],
                 ],
                 allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-                number_limits: currentVar.value_type === 'file' ? 1 : fileUploadConfig?.workflow_file_upload_limit || 5,
+                number_limits: currentVar.value_type === VarType.file ? 1 : fileUploadConfig?.workflow_file_upload_limit || 5,
                 fileUploadConfig,
                 preview_config: {
                   mode: PreviewMode.NewPage,
