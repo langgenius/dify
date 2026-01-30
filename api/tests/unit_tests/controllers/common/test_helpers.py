@@ -53,7 +53,7 @@ class TestGuessFileInfoFromResponse:
         assert info.mimetype == "text/csv"
 
     @pytest.mark.parametrize(
-        "magic_available, expected_ext",
+        ("magic_available", "expected_ext"),
         [
             (True, "txt"),
             (False, "bin"),
@@ -74,7 +74,7 @@ class TestGuessFileInfoFromResponse:
         info = guess_file_info_from_response(response)
 
         name, ext = info.filename.split(".")
-        UUID(name)  # validates UUID
+        UUID(name)
         assert ext == expected_ext
 
     def test_mimetype_from_header_when_unknown(self):
@@ -147,7 +147,7 @@ class TestGuessFileInfoFromResponse:
 
 class TestMagicImportWarnings:
     @pytest.mark.parametrize(
-        "platform_name, expected_message",
+        ("platform_name", "expected_message"),
         [
             ("Windows", "pip install python-magic-bin"),
             ("Darwin", "brew install libmagic"),
@@ -161,16 +161,13 @@ class TestMagicImportWarnings:
         platform_name,
         expected_message,
     ):
-        # Remove cached module
         sys.modules.pop("magic", None)
 
-        # Force ImportError for magic
         monkeypatch.setitem(sys.modules, "magic", None)
 
-        # Mock platform.system()
         monkeypatch.setattr(helpers.platform, "system", lambda: platform_name)
 
-        with pytest.warns(UserWarning) as warning:
+        with pytest.warns(UserWarning, match="To use python-magic") as warning:
             importlib.reload(helpers)
 
         assert expected_message in str(warning[0].message)
