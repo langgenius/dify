@@ -1,3 +1,4 @@
+import type { VersionOption } from '../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolParameter } from '@/app/components/tools/types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
@@ -25,9 +26,11 @@ import { useGetLanguage } from '@/context/i18n'
 import { languages } from '@/i18n-config/language'
 import { fetchContextGenerateSuggestedQuestions, generateContext } from '@/service/debug'
 import { AppModeEnum } from '@/types/app'
+import { CONTEXT_GEN_STORAGE_SUFFIX, getContextGenStorageKey } from '../utils/storage'
 import useContextGenData from './use-context-gen-data'
 
 export type ContextGenerateChatMessage = ContextGenerateMessage & {
+  id?: string
   durationMs?: number
 }
 
@@ -37,6 +40,10 @@ export const normalizeCodeLanguage = (value?: string) => {
   if (value === CodeLanguage.python3)
     return CodeLanguage.python3
   return CodeLanguage.python3
+}
+
+const createChatMessageId = () => {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 const buildValueSelector = (nodeId: string, variable: Var): ValueSelector => {
@@ -128,11 +135,6 @@ type UseContextGenerateOptions = {
   availableNodes?: Node[]
 }
 
-type VersionOption = {
-  index: number
-  label: string
-}
-
 type UseContextGenerateResult = {
   versions: ContextGenerateResponse[]
   current: ContextGenerateResponse | undefined
@@ -180,7 +182,7 @@ const useContextGenerate = ({
   })
 
   const [promptMessages, setPromptMessages] = useSessionStorageState<ContextGenerateChatMessage[]>(
-    `${storageKey}-messages`,
+    getContextGenStorageKey(storageKey, CONTEXT_GEN_STORAGE_SUFFIX.messages),
     { defaultValue: [] },
   )
 
@@ -449,7 +451,7 @@ const useContextGenerate = ({
     if (!toolNodeId || !paramKey)
       return
 
-    const userMessage: ContextGenerateChatMessage = { role: 'user', content: trimmed }
+    const userMessage: ContextGenerateChatMessage = { role: 'user', content: trimmed, id: createChatMessageId() }
     const nextMessages: ContextGenerateChatMessage[] = [...(promptMessages ?? []), userMessage]
     setPromptMessages(nextMessages)
     setInputValue('')
@@ -485,6 +487,7 @@ const useContextGenerate = ({
         role: 'assistant',
         content: assistantMessage,
         durationMs,
+        id: createChatMessageId(),
       }
       setPromptMessages([...nextMessages, assistantEntry])
       addVersion(response)

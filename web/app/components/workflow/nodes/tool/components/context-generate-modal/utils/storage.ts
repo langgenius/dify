@@ -1,9 +1,18 @@
 // Storage key prefix used by useContextGenData
 const CONTEXT_GEN_PREFIX = 'context-gen-'
 
+export const CONTEXT_GEN_STORAGE_SUFFIX = {
+  versions: 'versions',
+  versionIndex: 'version-index',
+  messages: 'messages',
+  suggestedQuestions: 'suggested-questions',
+  suggestedQuestionsFetched: 'suggested-questions-fetched',
+} as const
+
+export type ContextGenStorageSuffix = typeof CONTEXT_GEN_STORAGE_SUFFIX[keyof typeof CONTEXT_GEN_STORAGE_SUFFIX]
+
 /**
  * Build storage key from flowId, toolNodeId, and paramKey.
- * Mirrors the logic in context-generate-modal/index.tsx.
  */
 export const buildContextGenStorageKey = (
   flowId: string | undefined,
@@ -14,13 +23,21 @@ export const buildContextGenStorageKey = (
   return segments.join('-')
 }
 
+const buildContextGenStorageKeyWithPrefix = (storageKey: string, suffix: ContextGenStorageSuffix): string => {
+  return `${CONTEXT_GEN_PREFIX}${storageKey}-${suffix}`
+}
+
+export const getContextGenStorageKey = (storageKey: string, suffix: ContextGenStorageSuffix): string => {
+  return buildContextGenStorageKeyWithPrefix(storageKey, suffix)
+}
+
 export const getContextGenStorageKeys = (storageKey: string): string[] => {
   return [
-    `${CONTEXT_GEN_PREFIX}${storageKey}-versions`,
-    `${CONTEXT_GEN_PREFIX}${storageKey}-version-index`,
-    `${storageKey}-messages`,
-    `${storageKey}-suggested-questions`,
-    `${storageKey}-suggested-questions-fetched`,
+    getContextGenStorageKey(storageKey, CONTEXT_GEN_STORAGE_SUFFIX.versions),
+    getContextGenStorageKey(storageKey, CONTEXT_GEN_STORAGE_SUFFIX.versionIndex),
+    getContextGenStorageKey(storageKey, CONTEXT_GEN_STORAGE_SUFFIX.messages),
+    getContextGenStorageKey(storageKey, CONTEXT_GEN_STORAGE_SUFFIX.suggestedQuestions),
+    getContextGenStorageKey(storageKey, CONTEXT_GEN_STORAGE_SUFFIX.suggestedQuestionsFetched),
   ]
 }
 

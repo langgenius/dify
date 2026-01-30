@@ -18,6 +18,7 @@ export const useAnthropicCheckPay = () => {
 
   useEffect(() => {
     if (providerName === 'anthropic' && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setConfirm({
         type: paymentResult === 'succeeded' ? 'info' : 'warning',
         title: paymentResult === 'succeeded' ? t('actionMsg.paySucceeded', { ns: 'common' }) : t('actionMsg.payCancelled', { ns: 'common' }),
@@ -37,6 +38,7 @@ export const useBillingPay = () => {
 
   useEffect(() => {
     if (paymentType === 'billing' && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setConfirm({
         type: paymentResult === 'succeeded' ? 'info' : 'warning',
         title: paymentResult === 'succeeded' ? t('actionMsg.paySucceeded', { ns: 'common' }) : t('actionMsg.payCancelled', { ns: 'common' }),
@@ -64,12 +66,14 @@ export const useCheckNotion = () => {
   useEffect(() => {
     if (type === 'notion') {
       if (notionError) {
+        // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
         setConfirm({
           type: 'warning',
           title: notionError,
         })
       }
       else if (notionCode) {
+        // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
         setCanBinding(true)
       }
     }

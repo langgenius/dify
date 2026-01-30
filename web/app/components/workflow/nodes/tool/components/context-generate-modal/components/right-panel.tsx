@@ -1,4 +1,5 @@
 import type { PointerEvent, RefObject } from 'react'
+import type { VersionOption } from '../types'
 import type { ContextGenerateResponse } from '@/service/debug'
 import { RiArrowDownSLine, RiCheckLine, RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
 import { useCallback, useMemo, useState } from 'react'
@@ -12,11 +13,6 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { cn } from '@/utils/classnames'
-
-type VersionOption = {
-  index: number
-  label: string
-}
 
 type DisplayOutputData = {
   variables: ContextGenerateResponse['variables']
@@ -83,9 +79,12 @@ const RightPanel = ({
       setVersionMenuOpen(value => !value)
   }, [versionOptions.length])
 
-  const codeLanguageLabel = displayCodeLanguage === CodeLanguage.javascript
-    ? t('nodes.tool.contextGenerate.codeLanguage.javascript', { ns: 'workflow' })
-    : t('nodes.tool.contextGenerate.codeLanguage.python3', { ns: 'workflow' })
+  const codeLanguageLabel = useMemo(() => {
+    return t(`nodes.tool.contextGenerate.codeLanguage.${displayCodeLanguage}`, {
+      ns: 'workflow',
+      defaultValue: displayCodeLanguage,
+    })
+  }, [displayCodeLanguage, t])
 
   const emptyPanelClassName = cn(
     'flex h-full flex-col',

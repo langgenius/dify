@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { ContextGenerateChatMessage } from '../hooks/use-context-generate'
+import type { VersionOption } from '../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import type { Model } from '@/types/app'
@@ -11,11 +12,6 @@ import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { CodeAssistant } from '@/app/components/base/icons/src/vender/line/general'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { cn } from '@/utils/classnames'
-
-type VersionOption = {
-  index: number
-  label: string
-}
 
 type ChatViewProps = {
   promptMessages: ContextGenerateChatMessage[]
@@ -81,9 +77,10 @@ const ChatView = ({
             const versionMeta = assistantVersionMap[index]
             const isSelected = versionMeta?.index === currentVersionIndex
             const assistantContent = message.content || defaultAssistantMessage
+            const messageKey = message.id || `${message.role}-${index}`
             return (
               <div
-                key={`${message.role}-${index}`}
+                key={messageKey}
                 className={cn('flex w-full', message.role === 'user' ? 'justify-end' : 'justify-start')}
               >
                 {message.role === 'user'
@@ -164,7 +161,7 @@ const ChatView = ({
             <Button
               variant="primary"
               size="small"
-              className="!h-8 !w-8 shrink-0 !rounded-lg !px-0"
+              className="ml-auto !h-8 !w-8 shrink-0 !rounded-lg !px-0"
               disabled={!inputValue.trim() || isGenerating}
               onClick={onGenerate}
             >

@@ -14,6 +14,7 @@ import LeftPanel from './components/left-panel'
 import RightPanel from './components/right-panel'
 import useContextGenerate, { normalizeCodeLanguage } from './hooks/use-context-generate'
 import useResizablePanels from './hooks/use-resizable-panels'
+import { buildContextGenStorageKey } from './utils/storage'
 
 type Props = {
   isShow: boolean
@@ -69,8 +70,7 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
 
   const flowId = configsMap?.flowId || ''
   const storageKey = useMemo(() => {
-    const segments = [flowId || 'unknown', toolNodeId, paramKey].filter(Boolean)
-    return segments.join('-')
+    return buildContextGenStorageKey(flowId, toolNodeId, paramKey)
   }, [flowId, paramKey, toolNodeId])
 
   const codeNode = useMemo(() => {

@@ -1,4 +1,5 @@
 import type { ContextGenerateChatMessage } from '../hooks/use-context-generate'
+import type { VersionOption } from '../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import type { Model } from '@/types/app'
@@ -13,11 +14,6 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import { renderI18nObject } from '@/i18n-config'
 import { cn } from '@/utils/classnames'
 import ChatView from './chat-view'
-
-type VersionOption = {
-  index: number
-  label: string
-}
 
 type LeftPanelProps = {
   isInitView: boolean
