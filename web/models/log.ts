@@ -93,7 +93,7 @@ export type MessageContent = {
 
 export type CompletionConversationGeneralDetail = {
   id: string
-  status: 'normal' | 'finished' | 'paused'
+  status: 'normal' | 'finished'
   from_source: 'api' | 'console'
   from_end_user_id: string
   from_end_user_session_id: string
@@ -366,23 +366,4 @@ export type AgentLogDetailResponse = {
   meta: AgentLogMeta
   iterations: AgentIteration[]
   files: AgentLogFile[]
-}
-
-export type PauseType = {
-  type: 'human_input'
-  form_id: string
-  backstage_input_url: string
-} | {
-  type: 'breakpoint'
-}
-
-export type PauseDetail = {
-  node_id: string
-  node_title: string
-  pause_type: PauseType
-}
-
-export type WorkflowPausedDetailsResponse = {
-  paused_at: string
-  paused_nodes: PauseDetail[]
 }
