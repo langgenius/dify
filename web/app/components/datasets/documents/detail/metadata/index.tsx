@@ -73,17 +73,15 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate }) => {
           <>
             <TypeIcon iconName={metadataMap[metadataParams.documentType || 'book'].iconName || ''} className={s.iconShow} />
             {metadataMap[metadataParams.documentType || 'book'].text}
-            {editStatus && (
-              <div className="ml-1 inline-flex items-center gap-1">
-                ·
-                <div
-                  onClick={openDocTypeSelector}
-                  className="cursor-pointer hover:text-text-accent"
-                >
-                  {t('operation.change', { ns: 'common' })}
-                </div>
+            <div className="ml-1 inline-flex items-center gap-1">
+              ·
+              <div
+                onClick={openDocTypeSelector}
+                className="cursor-pointer hover:text-text-accent"
+              >
+                {t('operation.change', { ns: 'common' })}
               </div>
-            )}
+            </div>
           </>
         )}
       </div>

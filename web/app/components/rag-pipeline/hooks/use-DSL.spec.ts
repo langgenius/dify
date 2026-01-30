@@ -77,19 +77,22 @@ vi.mock('@/app/components/workflow/constants', () => ({
 // ============================================================================
 
 describe('useDSL', () => {
-  let mockLink: { href: string, download: string, click: ReturnType<typeof vi.fn> }
+  let mockLink: { href: string, download: string, click: ReturnType<typeof vi.fn>, style: { display: string }, remove: ReturnType<typeof vi.fn> }
   let originalCreateElement: typeof document.createElement
+  let originalAppendChild: typeof document.body.appendChild
   let mockCreateObjectURL: ReturnType<typeof vi.spyOn>
   let mockRevokeObjectURL: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.clearAllMocks()
 
-    // Create a proper mock link element
+    // Create a proper mock link element with all required properties for downloadBlob
     mockLink = {
       href: '',
       download: '',
       click: vi.fn(),
+      style: { display: '' },
+      remove: vi.fn(),
     }
 
     // Save original and mock selectively - only intercept 'a' elements
@@ -101,8 +104,13 @@ describe('useDSL', () => {
       return originalCreateElement(tagName)
     }) as typeof document.createElement
 
-    mockCreateObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test-url')
-    mockRevokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    // Mock document.body.appendChild for downloadBlob
+    originalAppendChild = document.body.appendChild.bind(document.body)
+    document.body.appendChild = vi.fn(<T extends Node>(node: T): T => node) as typeof document.body.appendChild
+
+    // downloadBlob uses window.URL, not URL
+    mockCreateObjectURL = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:test-url')
+    mockRevokeObjectURL = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {})
 
     // Default store state
     mockWorkflowStoreGetState.mockReturnValue({
@@ -119,6 +127,7 @@ describe('useDSL', () => {
 
   afterEach(() => {
     document.createElement = originalCreateElement
+    document.body.appendChild = originalAppendChild
     mockCreateObjectURL.mockRestore()
     mockRevokeObjectURL.mockRestore()
     vi.clearAllMocks()

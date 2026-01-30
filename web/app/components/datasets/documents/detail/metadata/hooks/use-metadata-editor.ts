@@ -37,7 +37,7 @@ export function useMetadataEditor({ docDetail }: UseMetadataEditorOptions) {
         metadata: (docDetail?.doc_metadata || {}) as Record<string, string>,
       })
     }
-  }, [docDetail?.doc_type, docDetail?.doc_metadata, doc_type])
+  }, [docDetail, doc_type])
 
   const confirmDocType = useCallback(() => {
     if (!tempDocType)

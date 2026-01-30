@@ -73,7 +73,7 @@ export const useDocumentActions = ({
         return
 
       const [e] = await asyncRunSafe<CommonResponse>(
-        opApi({ datasetId, documentIds: selectedIds }) as Promise<CommonResponse>,
+        opApi({ datasetId, documentIds: selectedIds }),
       )
 
       if (!e) {
