@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.agent.entities import AgentEntity, AgentLog, AgentOutputKind, AgentPromptEntity, AgentResult
+from core.agent.entities import AgentEntity, AgentLog, AgentPromptEntity, AgentResult
 from core.model_runtime.entities import SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.llm_entities import LLMUsage
 
@@ -329,20 +329,15 @@ class TestAgentLogProcessing:
         )
 
         result = AgentResult(
-            output=AgentResult.StructuredOutput(
-                output_kind=AgentOutputKind.FINAL_OUTPUT_ANSWER,
-                output_text="Final answer",
-                output_data=None,
-            ),
+            output="Final answer",
             files=[],
             usage=usage,
             finish_reason="stop",
         )
 
         output_payload = result.output
-        assert isinstance(output_payload, AgentResult.StructuredOutput)
-        assert output_payload.output_text == "Final answer"
-        assert output_payload.output_kind == AgentOutputKind.FINAL_OUTPUT_ANSWER
+        assert isinstance(output_payload, str)
+        assert output_payload == "Final answer"
         assert result.files == []
         assert result.usage == usage
         assert result.finish_reason == "stop"

@@ -190,24 +190,11 @@ class AgentOutputKind(StrEnum):
     ILLEGAL_OUTPUT = "illegal_output"
 
 
-OutputKind = AgentOutputKind
-
-
 class AgentResult(BaseModel):
     """
     Agent execution result.
     """
-
-    class StructuredOutput(BaseModel):
-        """
-        Structured output payload from output tools.
-        """
-
-        output_kind: AgentOutputKind
-        output_text: str | None = None
-        output_data: Mapping[str, Any] | None = None
-
-    output: str | StructuredOutput = Field(default="", description="The generated output")
+    output: str | dict = Field(default="", description="The generated output")
     files: list[Any] = Field(default_factory=list, description="Files produced during execution")
     usage: Any | None = Field(default=None, description="LLM usage statistics")
     finish_reason: str | None = Field(default=None, description="Reason for completion")

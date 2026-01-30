@@ -1,10 +1,11 @@
+import json
 import logging
 from collections.abc import Generator
 from copy import deepcopy
 from typing import Any
 
 from core.agent.base_agent_runner import BaseAgentRunner
-from core.agent.entities import AgentEntity, AgentLog, AgentOutputKind, AgentResult
+from core.agent.entities import AgentEntity, AgentLog, AgentResult
 from core.agent.patterns.strategy_factory import StrategyFactory
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
@@ -13,7 +14,6 @@ from core.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
     LLMResultChunk,
-    LLMResultChunkDelta,
     LLMUsage,
     PromptMessage,
     PromptMessageContentType,
@@ -118,7 +118,6 @@ class AgentAppRunner(BaseAgentRunner):
             prompt_messages=prompt_messages,
             model_parameters=app_generate_entity.model_conf.parameters,
             stop=app_generate_entity.model_conf.stop,
-            stream=False,
         )
 
         # Consume generator and collect result
@@ -256,49 +255,30 @@ class AgentAppRunner(BaseAgentRunner):
             raise
 
         # Process final result
-        if isinstance(result, AgentResult):
-            output_payload = result.output
-            if isinstance(output_payload, AgentResult.StructuredOutput):
-                if output_payload.output_kind == AgentOutputKind.ILLEGAL_OUTPUT:
-                    raise ValueError("Agent returned illegal output")
-                if output_payload.output_kind not in {
-                    AgentOutputKind.FINAL_OUTPUT_ANSWER,
-                    AgentOutputKind.OUTPUT_TEXT,
-                }:
-                    raise ValueError("Agent did not return text output")
-                if not output_payload.output_text:
-                    raise ValueError("Agent returned empty text output")
-                final_answer = output_payload.output_text
-            else:
-                if not output_payload:
-                    raise ValueError("Agent returned empty output")
-                final_answer = str(output_payload)
-            usage = result.usage or LLMUsage.empty_usage()
+        if not isinstance(result, AgentResult):
+            raise ValueError("Agent did not return AgentResult")
+        output_payload = result.output
+        if isinstance(output_payload, dict):
+            final_answer = json.dumps(output_payload, ensure_ascii=False)
+        elif isinstance(output_payload, str):
+            final_answer = output_payload
+        else:
+            raise ValueError("Final output is not a string or structured data.")
+        usage = result.usage or LLMUsage.empty_usage()
 
-            # Publish end event
-            self.queue_manager.publish(
-                QueueMessageEndEvent(
-                    llm_result=LLMResult(
-                        model=self.model_instance.model,
-                        prompt_messages=prompt_messages,
-                        message=AssistantPromptMessage(content=final_answer),
-                        usage=usage,
-                        system_fingerprint="",
-                    )
-                ),
-                PublishFrom.APPLICATION_MANAGER,
-            )
-
-        if False:
-            yield LLMResultChunk(
-                model="",
-                prompt_messages=[],
-                delta=LLMResultChunkDelta(
-                    index=0,
-                    message=AssistantPromptMessage(content=""),
-                    usage=None,
-                ),
-            )
+        # Publish end event
+        self.queue_manager.publish(
+            QueueMessageEndEvent(
+                llm_result=LLMResult(
+                    model=self.model_instance.model,
+                    prompt_messages=prompt_messages,
+                    message=AssistantPromptMessage(content=final_answer),
+                    usage=usage,
+                    system_fingerprint="",
+                )
+            ),
+            PublishFrom.APPLICATION_MANAGER,
+        )
 
     def _init_system_message(self, prompt_template: str, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
