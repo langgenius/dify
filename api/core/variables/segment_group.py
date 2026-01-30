@@ -23,7 +23,7 @@ class SegmentGroup(Segment):
 
     def to_object(self):
         return [segment.to_object() for segment in self.value]
-    
+
     def escape_string_variables(self):
         for i, segment in enumerate(self.value):
             if isinstance(segment, StringVariable):
