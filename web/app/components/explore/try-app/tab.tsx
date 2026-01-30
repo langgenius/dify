@@ -12,15 +12,17 @@ export enum TypeEnum {
 type Props = {
   value: TypeEnum
   onChange: (value: TypeEnum) => void
+  disableTry?: boolean
 }
 
 const Tab: FC<Props> = ({
   value,
   onChange,
+  disableTry,
 }) => {
   const { t } = useTranslation()
   const tabs = [
-    { id: TypeEnum.TRY, name: t('tryApp.tabHeader.try', { ns: 'explore' }) },
+    { id: TypeEnum.TRY, name: t('tryApp.tabHeader.try', { ns: 'explore' }), disabled: disableTry },
     { id: TypeEnum.DETAIL, name: t('tryApp.tabHeader.detail', { ns: 'explore' }) },
   ]
   return (
