@@ -13,9 +13,9 @@ import threading
 from collections.abc import Generator
 from typing import TYPE_CHECKING, cast, final
 
+from core.mcp.session_manager import McpSessionRegistry
 from core.workflow.context import capture_current_context
 from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.mcp.session_manager import McpSessionRegistry
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
