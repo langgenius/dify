@@ -1928,7 +1928,7 @@ class LLMNode(Node[LLMNodeData]):
         variable_pool: VariablePool,
         tool_dependencies: ToolDependencies | None,
         structured_output_schema: Mapping[str, Any] | None
-    ) -> Generator[NodeEventBase, None, LLMGenerationData]:
+    ) -> Generator[NodeEventBase | LLMStructuredOutput, None, LLMGenerationData]:
         result: LLMGenerationData | None = None
         sandbox_output_files: list[File] = []
 
@@ -1963,8 +1963,13 @@ class LLMNode(Node[LLMNodeData]):
             # Files are saved as ToolFiles with valid tool_file_id for later reference
             sandbox_output_files = session.collect_output_files()
 
+
         if result is None:
             raise LLMNodeError("SandboxSession exited unexpectedly")
+
+        structured_output = result.structured_output
+        if structured_output is not None:
+            yield structured_output
 
         # Merge sandbox output files into result
         if sandbox_output_files:
