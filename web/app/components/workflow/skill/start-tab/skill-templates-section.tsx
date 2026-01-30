@@ -8,7 +8,6 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useBatchUpload } from '@/service/use-app-asset'
 import { useExistingSkillNames } from '../hooks/use-skill-asset-tree'
 import { useSkillTreeUpdateEmitter } from '../hooks/use-skill-tree-collaboration'
-import CategoryTabs from './category-tabs'
 import SectionHeader from './section-header'
 import TemplateCard from './template-card'
 import TemplateSearch from './template-search'
@@ -17,7 +16,6 @@ import { buildUploadDataFromTemplate } from './templates/template-to-upload'
 
 const SkillTemplatesSection = () => {
   const { t } = useTranslation('workflow')
-  const [activeCategory, setActiveCategory] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
@@ -37,7 +35,7 @@ const SkillTemplatesSection = () => {
 
   const handleUse = useCallback(async (summary: SkillTemplateSummary) => {
     const entry = SKILL_TEMPLATES.find(e => e.id === summary.id)
-    if (!entry || !appId || existingNamesRef.current?.has(summary.name))
+    if (!entry || !appId || existingNamesRef.current?.has(summary.id))
       return
 
     setLoadingId(summary.id)
@@ -46,7 +44,7 @@ const SkillTemplatesSection = () => {
 
     try {
       const children = await entry.loadContent()
-      const uploadData = await buildUploadDataFromTemplate(summary.name, children)
+      const uploadData = await buildUploadDataFromTemplate(summary.id, children)
 
       await batchUploadRef.current.mutateAsync({
         appId,
@@ -69,15 +67,14 @@ const SkillTemplatesSection = () => {
     }
   }, [appId, storeApi])
 
-  const filtered = useMemo(() => SKILL_TEMPLATES.filter((entry) => {
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      return entry.name.toLowerCase().includes(q) || entry.description.toLowerCase().includes(q)
-    }
-    if (activeCategory !== 'all')
-      return entry.tags?.some(tag => tag.toLowerCase() === activeCategory.toLowerCase())
-    return true
-  }), [searchQuery, activeCategory])
+  const filtered = useMemo(() => {
+    if (!searchQuery)
+      return SKILL_TEMPLATES
+    const q = searchQuery.toLowerCase()
+    return SKILL_TEMPLATES.filter(entry =>
+      entry.name.toLowerCase().includes(q) || entry.description.toLowerCase().includes(q),
+    )
+  }, [searchQuery])
 
   return (
     <section className="flex flex-col gap-3 px-6 py-2">
@@ -85,21 +82,13 @@ const SkillTemplatesSection = () => {
         title={t('skill.startTab.templatesTitle')}
         description={t('skill.startTab.templatesDesc')}
       />
-      <div className="flex w-full items-start gap-1">
-        <CategoryTabs
-          activeCategory={activeCategory}
-          onCategoryChange={setActiveCategory}
-        />
-        <TemplateSearch
-          onChange={setSearchQuery}
-        />
-      </div>
+      <TemplateSearch onChange={setSearchQuery} />
       <div className="grid grid-cols-3 gap-3">
         {filtered.map(entry => (
           <TemplateCard
             key={entry.id}
             template={entry}
-            added={existingNames?.has(entry.name) ?? false}
+            added={existingNames?.has(entry.id) ?? false}
             disabled={loadingId !== null}
             loading={loadingId === entry.id}
             onUse={handleUse}

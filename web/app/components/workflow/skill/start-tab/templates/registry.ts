@@ -8,8 +8,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'Algorithmic Art',
     description: 'Creating algorithmic art using p5.js with seeded randomness and interactive parameter exploration. Use this when users request creating art using code, generative art, algorithmic art, flow fields, or particle systems. Create original algorithmic art rather than copying existing artists\' work to avoid copyright violations.',
     fileCount: 3,
-    icon: '✨',
-    tags: ['Creative', 'Development'],
     loadContent: () => import('./skills/algorithmic-art').then(m => m.default),
   },
   {
@@ -17,8 +15,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'Brand Guidelines',
     description: 'Applies Anthropic\'s official brand colors and typography to any sort of artifact that may benefit from having Anthropic\'s look-and-feel. Use it when brand colors or style guidelines, visual formatting, or company design standards apply.',
     fileCount: 1,
-    icon: '🏷️',
-    tags: ['Design', 'Productivity'],
     loadContent: () => import('./skills/brand-guidelines').then(m => m.default),
   },
   {
@@ -26,8 +22,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'Canvas Design',
     description: 'Create beautiful visual art in .png and .pdf documents using design philosophy. You should use this skill when the user asks to create a poster, piece of art, design, or other static piece. Create original visual designs, never copying existing artists\' work to avoid copyright violations.',
     fileCount: 82,
-    icon: '🖼️',
-    tags: ['Design', 'Creative'],
     loadContent: () => import('./skills/canvas-design').then(m => m.default),
   },
   {
@@ -35,8 +29,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'Doc Co-authoring',
     description: 'Guide users through a structured workflow for co-authoring documentation. Use when user wants to write documentation, proposals, technical specs, decision docs, or similar structured content. This workflow helps users efficiently transfer context, refine content through iteration, and verify the doc works for readers. Trigger when user mentions writing docs, creating proposals, drafting specs, or similar documentation tasks.',
     fileCount: 1,
-    icon: '📋',
-    tags: ['Productivity'],
     loadContent: () => import('./skills/doc-coauthoring').then(m => m.default),
   },
   {
@@ -44,8 +36,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'DOCX',
     description: 'Comprehensive document creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction. When Claude needs to work with professional documents (.docx files) for: (1) Creating new documents, (2) Modifying or editing content, (3) Working with tracked changes, (4) Adding comments, or any other document tasks',
     fileCount: 58,
-    icon: '📝',
-    tags: ['Document', 'Productivity'],
     loadContent: () => import('./skills/docx').then(m => m.default),
   },
   {
@@ -53,8 +43,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'Frontend Design',
     description: 'Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, artifacts, posters, or applications (examples include websites, landing pages, dashboards, React components, HTML/CSS layouts, or when styling/beautifying any web UI). Generates creative, polished code and UI design that avoids generic AI aesthetics.',
     fileCount: 1,
-    icon: '🎨',
-    tags: ['Development', 'Design'],
     loadContent: () => import('./skills/frontend-design').then(m => m.default),
   },
   {
@@ -62,8 +50,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'Internal Comms',
     description: 'A set of resources to help me write all kinds of internal communications, using the formats that my company likes to use. Claude should use this skill whenever asked to write some sort of internal communications (status reports, leadership updates, 3P updates, company newsletters, FAQs, incident reports, project updates, etc.).',
     fileCount: 5,
-    icon: '💬',
-    tags: ['Productivity'],
     loadContent: () => import('./skills/internal-comms').then(m => m.default),
   },
   {
@@ -71,8 +57,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'MCP Builder',
     description: 'Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK).',
     fileCount: 9,
-    icon: '🔌',
-    tags: ['Development'],
     loadContent: () => import('./skills/mcp-builder').then(m => m.default),
   },
   {
@@ -80,8 +64,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'PDF',
     description: 'Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.',
     fileCount: 11,
-    icon: '📄',
-    tags: ['Document', 'Productivity'],
     loadContent: () => import('./skills/pdf').then(m => m.default),
   },
   {
@@ -89,8 +71,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'PPTX',
     description: 'Presentation creation, editing, and analysis. When Claude needs to work with presentations (.pptx files) for: (1) Creating new presentations, (2) Modifying or editing content, (3) Working with layouts, (4) Adding comments or speaker notes, or any other presentation tasks',
     fileCount: 55,
-    icon: '📊',
-    tags: ['Document', 'Productivity'],
     loadContent: () => import('./skills/pptx').then(m => m.default),
   },
   {
@@ -98,8 +78,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'Skill Creator',
     description: 'Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Claude\'s capabilities with specialized knowledge, workflows, or tool integrations.',
     fileCount: 6,
-    icon: '🛠️',
-    tags: ['Development'],
     loadContent: () => import('./skills/skill-creator').then(m => m.default),
   },
   {
@@ -107,8 +85,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'Slack GIF Creator',
     description: 'Knowledge and utilities for creating animated GIFs optimized for Slack. Provides constraints, validation tools, and animation concepts. Use when users request animated GIFs for Slack like "make me a GIF of X doing Y for Slack.',
     fileCount: 6,
-    icon: '🎬',
-    tags: ['Creative', 'Productivity'],
     loadContent: () => import('./skills/slack-gif-creator').then(m => m.default),
   },
   {
@@ -116,8 +92,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'Theme Factory',
     description: 'Toolkit for styling artifacts with a theme. These artifacts can be slides, docs, reportings, HTML landing pages, etc. There are 10 pre-set themes with colors/fonts that you can apply to any artifact that has been creating, or can generate a new theme on-the-fly.',
     fileCount: 12,
-    icon: '🎭',
-    tags: ['Design'],
     loadContent: () => import('./skills/theme-factory').then(m => m.default),
   },
   {
@@ -125,8 +99,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'Web Artifacts Builder',
     description: 'Suite of tools for creating elaborate, multi-component claude.ai HTML artifacts using modern frontend web technologies (React, Tailwind CSS, shadcn/ui). Use for complex artifacts requiring state management, routing, or shadcn/ui components - not for simple single-file HTML/JSX artifacts.',
     fileCount: 4,
-    icon: '🌐',
-    tags: ['Development', 'Design'],
     loadContent: () => import('./skills/web-artifacts-builder').then(m => m.default),
   },
   {
@@ -134,8 +106,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'Webapp Testing',
     description: 'Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.',
     fileCount: 5,
-    icon: '🧪',
-    tags: ['Development'],
     loadContent: () => import('./skills/webapp-testing').then(m => m.default),
   },
   {
@@ -143,8 +113,6 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     name: 'XLSX',
     description: 'Comprehensive spreadsheet creation, editing, and analysis with support for formulas, formatting, data analysis, and visualization. When Claude needs to work with spreadsheets (.xlsx, .xlsm, .csv, .tsv, etc) for: (1) Creating new spreadsheets with formulas and formatting, (2) Reading or analyzing data, (3) Modify existing spreadsheets while preserving formulas, (4) Data analysis and visualization in spreadsheets, or (5) Recalculating formulas',
     fileCount: 2,
-    icon: '📈',
-    tags: ['Document', 'Productivity'],
     loadContent: () => import('./skills/xlsx').then(m => m.default),
   },
 ]

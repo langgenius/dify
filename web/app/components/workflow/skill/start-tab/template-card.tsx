@@ -5,7 +5,6 @@ import { RiAddLine, RiCheckLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
 
 type TemplateCardProps = {
@@ -24,7 +23,7 @@ const TemplateCard = ({ template, added, disabled, loading, onUse }: TemplateCar
       <div className="flex items-center gap-3 px-4 pb-2 pt-4">
         <AppIcon
           size="large"
-          icon={template.icon || '📁'}
+          icon="📙"
           className="!bg-components-icon-bg-violet-soft"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
@@ -42,15 +41,7 @@ const TemplateCard = ({ template, added, disabled, loading, onUse }: TemplateCar
         </p>
       </div>
       <div className="relative px-4 pb-4">
-        {template.tags?.length
-          ? (
-              <div className="flex flex-wrap gap-1 transition-opacity group-hover:opacity-0">
-                {template.tags.map(tag => (
-                  <Badge key={tag} className="badge-s" uppercase>{tag}</Badge>
-                ))}
-              </div>
-            )
-          : <div className="h-[18px]" />}
+        <div className="h-[18px]" />
         <div className="pointer-events-none absolute inset-0 flex items-end px-4 pb-4 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
           {added
             ? (

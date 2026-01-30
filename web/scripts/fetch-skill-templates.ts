@@ -64,25 +64,6 @@ const TEXT_EXTENSIONS = new Set([
 
 const SKIP_FILES = new Set(['LICENSE.txt'])
 
-const UI_CONFIG: Record<string, { displayName: string, icon: string, tags: string[] }> = {
-  'pdf': { displayName: 'PDF', icon: '📄', tags: ['Document', 'Productivity'] },
-  'docx': { displayName: 'DOCX', icon: '📝', tags: ['Document', 'Productivity'] },
-  'pptx': { displayName: 'PPTX', icon: '📊', tags: ['Document', 'Productivity'] },
-  'xlsx': { displayName: 'XLSX', icon: '📈', tags: ['Document', 'Productivity'] },
-  'frontend-design': { displayName: 'Frontend Design', icon: '🎨', tags: ['Development', 'Design'] },
-  'canvas-design': { displayName: 'Canvas Design', icon: '🖼️', tags: ['Design', 'Creative'] },
-  'algorithmic-art': { displayName: 'Algorithmic Art', icon: '✨', tags: ['Creative', 'Development'] },
-  'mcp-builder': { displayName: 'MCP Builder', icon: '🔌', tags: ['Development'] },
-  'web-artifacts-builder': { displayName: 'Web Artifacts Builder', icon: '🌐', tags: ['Development', 'Design'] },
-  'doc-coauthoring': { displayName: 'Doc Co-authoring', icon: '📋', tags: ['Productivity'] },
-  'skill-creator': { displayName: 'Skill Creator', icon: '🛠️', tags: ['Development'] },
-  'webapp-testing': { displayName: 'Webapp Testing', icon: '🧪', tags: ['Development'] },
-  'slack-gif-creator': { displayName: 'Slack GIF Creator', icon: '🎬', tags: ['Creative', 'Productivity'] },
-  'theme-factory': { displayName: 'Theme Factory', icon: '🎭', tags: ['Design'] },
-  'brand-guidelines': { displayName: 'Brand Guidelines', icon: '🏷️', tags: ['Design', 'Productivity'] },
-  'internal-comms': { displayName: 'Internal Comms', icon: '💬', tags: ['Productivity'] },
-}
-
 type FileEntry = {
   name: string
   node_type: 'file'
@@ -212,16 +193,11 @@ function generateRegistryFile(metas: SkillMeta[]): string {
   lines.push('export const SKILL_TEMPLATES: SkillTemplateEntry[] = [')
 
   for (const meta of metas) {
-    const config = UI_CONFIG[meta.id] || { displayName: '', icon: '📁', tags: [] }
-    const displayName = config.displayName || meta.name
-    const tagsStr = `[${config.tags.map(t => sq(t)).join(', ')}]`
     lines.push('  {')
     lines.push(`    id: ${sq(meta.id)},`)
-    lines.push(`    name: ${sq(displayName)},`)
+    lines.push(`    name: ${sq(meta.name)},`)
     lines.push(`    description: ${sq(meta.description)},`)
     lines.push(`    fileCount: ${meta.fileCount},`)
-    lines.push(`    icon: ${sq(config.icon)},`)
-    lines.push(`    tags: ${tagsStr},`)
     lines.push(`    loadContent: () => import(${sq(`./skills/${meta.id}`)}).then(m => m.default),`)
     lines.push('  },')
   }

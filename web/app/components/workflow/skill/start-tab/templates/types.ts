@@ -20,15 +20,8 @@ export type SkillTemplateSummary = {
   name: string
   description: string
   fileCount: number
-  icon?: string
-  tags?: string[]
 }
 
 export type SkillTemplateEntry = SkillTemplateSummary & {
   loadContent: () => Promise<SkillTemplateNode[]>
-}
-
-export type SkillTemplateTag = {
-  id: string
-  label: string
 }
