@@ -107,9 +107,11 @@ const InputsPanel = ({ onRun }: Props) => {
     return !(files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
   }, [files])
 
-  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
-    if (canRun)
+  useKeyPress(['meta.enter', 'ctrl.enter'], (event) => {
+    if (canRun && workflowRunningData?.result?.status !== WorkflowRunningStatus.Running) {
+      event.preventDefault()
       doRun()
+    }
   })
 
   return (
