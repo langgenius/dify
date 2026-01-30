@@ -441,7 +441,7 @@ DEFAULT_GENERATOR_SUMMARY_PROMPT = (
 
 Requirements:
 1. Write a concise summary in plain text
-2. Use the same language as the input content
+2. You must write in {language}. No language other than {language} should be used.
 3. Focus on important facts, concepts, and details
 4. If images are included, describe their key information
 5. Do not use words like "好的", "ok", "I understand", "This text discusses", "The content mentions"
