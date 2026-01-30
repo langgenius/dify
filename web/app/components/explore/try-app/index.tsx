@@ -1,11 +1,13 @@
 /* eslint-disable style/multiline-ternary */
 'use client'
 import type { FC } from 'react'
+import type { App as AppType } from '@/models/explore'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal/index'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetTryAppInfo } from '@/service/use-try-app'
 import Button from '../../base/button'
 import App from './app'
@@ -15,6 +17,7 @@ import Tab, { TypeEnum } from './tab'
 
 type Props = {
   appId: string
+  app?: AppType
   category?: string
   onClose: () => void
   onCreate: () => void
@@ -22,12 +25,22 @@ type Props = {
 
 const TryApp: FC<Props> = ({
   appId,
+  app,
   category,
   onClose,
   onCreate,
 }) => {
-  const [type, setType] = useState<TypeEnum>(TypeEnum.TRY)
+  const { systemFeatures } = useGlobalPublicStore()
+  const isTrialApp = !!(app && app.can_trial && systemFeatures.enable_trial_app)
+  const [type, setType] = useState<TypeEnum>(() => (app && !isTrialApp ? TypeEnum.DETAIL : TypeEnum.TRY))
   const { data: appDetail, isLoading } = useGetTryAppInfo(appId)
+
+  React.useEffect(() => {
+    if (app && !isTrialApp && type !== TypeEnum.DETAIL)
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      setType(TypeEnum.DETAIL)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app, isTrialApp])
 
   return (
     <Modal
@@ -45,6 +58,7 @@ const TryApp: FC<Props> = ({
             <Tab
               value={type}
               onChange={setType}
+              disableTry={app ? !isTrialApp : false}
             />
             <Button
               size="large"
