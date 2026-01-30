@@ -1,5 +1,6 @@
+import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
 import type { AppConversationData, ConversationItem } from '@/models/share'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   AppSourceType,
   fetchAppInfo,
@@ -9,6 +10,8 @@ import {
   fetchConversations,
   generationConversationName,
   getAppAccessModeByAppCode,
+  getHumanInputForm,
+  submitHumanInputForm,
 } from './share'
 import { useInvalid } from './use-base'
 
@@ -49,6 +52,7 @@ export const shareQueryKeys = {
   conversationList: (params: ShareConversationsParams) => [NAME_SPACE, 'conversations', params] as const,
   chatList: (params: ShareChatListParams) => [NAME_SPACE, 'chatList', params] as const,
   conversationName: (params: ShareConversationNameParams) => [NAME_SPACE, 'conversationName', params] as const,
+  humanInputForm: (token: string) => [NAME_SPACE, 'humanInputForm', token] as const,
 }
 
 export const useGetWebAppAccessModeByCode = (code: string | null) => {
@@ -148,4 +152,61 @@ export const useShareConversationName = (params: ShareConversationNameParams, op
 
 export const useInvalidateShareConversations = () => {
   return useInvalid(shareQueryKeys.conversations)
+}
+
+export class HumanInputFormError extends Error {
+  code: string
+  status: number
+
+  constructor(code: string, message: string, status: number) {
+    super(message)
+    this.name = 'HumanInputFormError'
+    this.code = code
+    this.status = status
+  }
+}
+
+export const useGetHumanInputForm = (token: string, options: ShareQueryOptions = {}) => {
+  const {
+    enabled = true,
+    refetchOnReconnect,
+    refetchOnWindowFocus,
+  } = options
+  return useQuery<HumanInputFormData, HumanInputFormError>({
+    queryKey: shareQueryKeys.humanInputForm(token),
+    queryFn: async () => {
+      try {
+        return await getHumanInputForm(token)
+      }
+      catch (error) {
+        const response = error as Response
+        if (response.status && response.json) {
+          const errorData = await response.json() as { code: string, message: string }
+          throw new HumanInputFormError(errorData.code, errorData.message, response.status)
+        }
+        throw error
+      }
+    },
+    enabled: enabled && !!token,
+    refetchOnReconnect,
+    refetchOnWindowFocus,
+    retry: false,
+  })
+}
+
+export type SubmitHumanInputFormParams = {
+  token: string
+  data: {
+    inputs: Record<string, string>
+    action: string
+  }
+}
+
+export const useSubmitHumanInputForm = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'submit-human-input-form'],
+    mutationFn: ({ token, data }: SubmitHumanInputFormParams) => {
+      return submitHumanInputForm(token, data)
+    },
+  })
 }

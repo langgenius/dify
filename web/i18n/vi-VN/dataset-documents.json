@@ -31,6 +31,7 @@
   "list.action.pause": "Tạm dừng",
   "list.action.resume": "Tiếp tục",
   "list.action.settings": "Cài đặt phân đoạn",
+  "list.action.summary": "Tạo tóm tắt",
   "list.action.sync": "Đồng bộ",
   "list.action.unarchive": "Khôi phục",
   "list.action.uploadFile": "Tải lên tệp mới",
@@ -75,6 +76,9 @@
   "list.status.indexing": "Đang lập chỉ mục",
   "list.status.paused": "Tạm dừng",
   "list.status.queuing": "Đang chờ",
+  "list.summary.generating": "Đang tạo...",
+  "list.summary.generatingSummary": "Đang tạo tóm tắt",
+  "list.summary.ready": "Tóm tắt đã sẵn sàng",
   "list.table.header.action": "THAO TÁC",
   "list.table.header.chunkingMode": "CHẾ ĐỘ CHUNKING",
   "list.table.header.fileName": "TÊN TỆP",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "KẾT QUẢ",
   "segment.searchResults_other": "KẾT QUẢ",
   "segment.searchResults_zero": "KẾT QUẢ",
+  "segment.summary": "TÓM TẮT",
+  "segment.summaryPlaceholder": "Viết tóm tắt ngắn gọn để tìm kiếm tốt hơn…",
   "segment.vectorHash": "Mã băm vector: "
 }

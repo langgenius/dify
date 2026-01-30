@@ -162,7 +162,7 @@ class RedisSubscriptionBase(Subscription):
         self._start_if_needed()
         return iter(self._message_iterator())
 
-    def receive(self, timeout: float | None = None) -> bytes | None:
+    def receive(self, timeout: float | None = 0.1) -> bytes | None:
         """Receive the next message from the subscription."""
         if self._closed.is_set():
             raise SubscriptionClosedError(f"The Redis {self._get_subscription_type()} subscription is closed")

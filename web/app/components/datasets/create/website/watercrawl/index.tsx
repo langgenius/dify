@@ -125,11 +125,25 @@ const WaterCrawl: FC<Props> = ({
       await sleep(2500)
       return await waitForCrawlFinished(jobId)
     }
-    catch (e: any) {
-      const errorBody = await e.json()
+    catch (error: unknown) {
+      let errorMessage = ''
+
+      const maybeErrorWithJson = error as { json?: () => Promise<unknown>, message?: unknown } | null
+      if (maybeErrorWithJson?.json) {
+        try {
+          const errorBody = await maybeErrorWithJson.json() as { message?: unknown } | null
+          if (typeof errorBody?.message === 'string')
+            errorMessage = errorBody.message
+        }
+        catch {}
+      }
+
+      if (!errorMessage && typeof maybeErrorWithJson?.message === 'string')
+        errorMessage = maybeErrorWithJson.message
+
       return {
         isError: true,
-        errorMessage: errorBody.message,
+        errorMessage,
         data: {
           data: [],
         },
