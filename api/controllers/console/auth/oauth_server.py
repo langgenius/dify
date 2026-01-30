@@ -11,7 +11,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.model import OAuthProviderApp
-from quart_restx import Resource
+from flask_restx import Resource
 from services.oauth_server import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthGrantType, OAuthServerService
 
 from .. import console_ns

@@ -15,7 +15,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
 from models.model import App, AppMode, EndUser
-from quart_restx import Resource
+from flask_restx import Resource
 from services.errors.message import (
     FirstMessageNotExistsError,
     MessageNotExistsError,

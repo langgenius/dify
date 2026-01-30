@@ -5,7 +5,7 @@ from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_N
 from core.errors.error import AppInvokeQuotaExceededError
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
-from quart_restx import Resource
+from flask_restx import Resource
 
 
 def _create_api_app():

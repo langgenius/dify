@@ -1,5 +1,5 @@
 from libs.helper import TimestampField
-from quart_restx import fields
+from flask_restx import fields
 
 dataset_fields = {
     "id": fields.String,

@@ -15,7 +15,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from libs.login import login_required
 from models.dataset import PipelineCustomizedTemplate
-from quart_restx import Resource
+from flask_restx import Resource
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 

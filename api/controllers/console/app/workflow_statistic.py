@@ -10,7 +10,7 @@ from libs.datetime_utils import parse_time_range
 from libs.login import current_account_with_tenant, login_required
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
-from quart_restx import Resource
+from flask_restx import Resource
 from repositories.factory import DifyAPIRepositoryFactory
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"

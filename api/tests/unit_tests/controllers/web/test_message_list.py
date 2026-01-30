@@ -28,7 +28,7 @@ def _load_controller_module():
     module_name = f"{parent_module_name}.message"
 
     if parent_module_name not in sys.modules:
-        from quart_restx import Namespace
+        from flask_restx import Namespace
 
         stub = ModuleType(parent_module_name)
         stub.__file__ = "controllers/web/__init__.py"

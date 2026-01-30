@@ -22,7 +22,7 @@ from core.model_runtime.errors.invoke import InvokeError
 from fields.hit_testing_fields import hit_testing_record_fields
 from libs.login import current_user
 from models.account import Account
-from quart_restx import marshal
+from flask_restx import marshal
 from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService
 

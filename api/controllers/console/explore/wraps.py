@@ -10,7 +10,7 @@ from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import AccountTrialAppRecord, App, InstalledApp, TrialApp
-from quart_restx import Resource
+from flask_restx import Resource
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 

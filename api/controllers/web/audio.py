@@ -22,7 +22,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value
 from models.model import App
-from quart_restx import fields, marshal_with
+from flask_restx import fields, marshal_with
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,

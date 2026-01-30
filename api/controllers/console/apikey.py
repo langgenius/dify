@@ -8,7 +8,7 @@ from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
 from models.model import ApiToken, App
-from quart_restx import Resource, fields, marshal_with
+from flask_restx import Resource, fields, marshal_with
 from quart_restx._http import HTTPStatus
 
 from . import console_ns

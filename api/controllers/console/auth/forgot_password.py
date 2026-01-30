@@ -19,7 +19,7 @@ from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password, valid_password
-from quart_restx import Resource, fields
+from flask_restx import Resource, fields
 from services.account_service import AccountService, TenantService
 from services.feature_service import FeatureService
 

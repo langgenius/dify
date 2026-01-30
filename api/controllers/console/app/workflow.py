@@ -42,7 +42,7 @@ from libs.login import current_account_with_tenant, login_required
 from models import App
 from models.model import AppMode
 from models.workflow import Workflow
-from quart_restx import Resource, fields, marshal_with
+from flask_restx import Resource, fields, marshal_with
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError

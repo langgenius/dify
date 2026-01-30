@@ -5,7 +5,9 @@ import inspect
 from typing import Any, TypeVar
 
 from quart import Quart
+from quart.testing import QuartClient
 from quart.wrappers.request import Request as QuartRequest
+from quart.wrappers.response import Response as QuartResponse
 
 T = TypeVar("T")
 
@@ -85,6 +87,68 @@ class _SyncAppContext:
         raise RuntimeError("Use 'async with' when exiting app context inside an event loop.")
 
 
+def _run_sync(coro: Any) -> Any:
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    raise RuntimeError("Sync test client used inside a running event loop. Use the async client instead.")
+
+
+class _SyncResponse:
+    def __init__(self, response: QuartResponse) -> None:
+        self._response = response
+
+    def get_json(self, *args: Any, **kwargs: Any) -> Any:
+        return _run_sync(self._response.get_json(*args, **kwargs))
+
+    def get_data(self, *args: Any, **kwargs: Any) -> Any:
+        return _run_sync(self._response.get_data(*args, **kwargs))
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._response, name)
+
+
+class _SyncTestClient:
+    def __init__(self, client: QuartClient) -> None:
+        self._client = client
+
+    def open(self, *args: Any, **kwargs: Any) -> _SyncResponse:
+        response = _run_sync(self._client.open(*args, **kwargs))
+        return _SyncResponse(response)
+
+    def get(self, *args: Any, **kwargs: Any) -> _SyncResponse:
+        return self.open(*args, method="GET", **kwargs)
+
+    def post(self, *args: Any, **kwargs: Any) -> _SyncResponse:
+        return self.open(*args, method="POST", **kwargs)
+
+    def put(self, *args: Any, **kwargs: Any) -> _SyncResponse:
+        return self.open(*args, method="PUT", **kwargs)
+
+    def patch(self, *args: Any, **kwargs: Any) -> _SyncResponse:
+        return self.open(*args, method="PATCH", **kwargs)
+
+    def delete(self, *args: Any, **kwargs: Any) -> _SyncResponse:
+        return self.open(*args, method="DELETE", **kwargs)
+
+    def options(self, *args: Any, **kwargs: Any) -> _SyncResponse:
+        return self.open(*args, method="OPTIONS", **kwargs)
+
+    def head(self, *args: Any, **kwargs: Any) -> _SyncResponse:
+        return self.open(*args, method="HEAD", **kwargs)
+
+    def __enter__(self) -> _SyncTestClient:
+        _run_sync(self._client.__aenter__())
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> Any:
+        return _run_sync(self._client.__aexit__(exc_type, exc, tb))
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._client, name)
+
+
 class DifyApp(Quart):
     request_class = DifyRequest
 
@@ -100,3 +164,10 @@ class DifyApp(Quart):
 
     def app_context(self) -> _SyncAppContext:
         return _SyncAppContext(super().app_context())
+
+    def test_client(self, *args: Any, **kwargs: Any) -> _SyncTestClient | QuartClient:
+        sync = kwargs.pop("sync", True)
+        client = super().test_client(*args, **kwargs)
+        if sync:
+            return _SyncTestClient(client)
+        return client

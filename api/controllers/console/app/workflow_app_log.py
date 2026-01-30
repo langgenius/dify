@@ -17,7 +17,7 @@ from fields.workflow_app_log_fields import (
 from libs.login import login_required
 from models import App
 from models.model import AppMode
-from quart_restx import Resource, marshal_with
+from flask_restx import Resource, marshal_with
 from services.workflow_app_service import WorkflowAppService
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"

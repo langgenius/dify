@@ -21,7 +21,7 @@ from libs.login import current_user
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
-from quart_restx import marshal
+from flask_restx import marshal
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 from services.tag_service import TagService

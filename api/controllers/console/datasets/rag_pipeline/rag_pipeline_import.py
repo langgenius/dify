@@ -18,7 +18,7 @@ from fields.rag_pipeline_fields import (
 )
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Pipeline
-from quart_restx import Resource, fields, marshal_with  # type: ignore
+from flask_restx import Resource, fields, marshal_with  # type: ignore
 from services.app_dsl_service import ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 

@@ -13,7 +13,7 @@ from core.mcp.server.streamable_http import handle_mcp_request
 from extensions.ext_database import db
 from libs import helper
 from models.model import App, AppMCPServer, AppMode, EndUser
-from quart_restx import Resource
+from flask_restx import Resource
 
 
 class MCPRequestError(Exception):

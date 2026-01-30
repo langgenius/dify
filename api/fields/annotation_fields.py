@@ -1,5 +1,5 @@
 from libs.helper import TimestampField
-from quart_restx import Namespace, fields
+from flask_restx import Namespace, fields
 
 annotation_fields = {
     "id": fields.String,

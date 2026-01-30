@@ -5,7 +5,7 @@ from enum import StrEnum
 from pydantic import BaseModel, TypeAdapter
 
 from controllers.console import console_ns
-from quart_restx import Namespace
+from flask_restx import Namespace
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 

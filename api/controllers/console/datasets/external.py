@@ -21,7 +21,7 @@ from fields.dataset_fields import (
     weighted_score_fields,
 )
 from libs.login import current_account_with_tenant, login_required
-from quart_restx import Resource, fields, marshal
+from flask_restx import Resource, fields, marshal
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService

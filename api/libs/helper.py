@@ -23,7 +23,7 @@ from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.file import helpers as file_helpers
 from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_redis import redis_client
-from quart_restx import fields
+from flask_restx import fields
 
 if TYPE_CHECKING:
     from models import Account

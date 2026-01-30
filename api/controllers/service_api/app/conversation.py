@@ -23,7 +23,7 @@ from fields.conversation_variable_fields import (
     build_conversation_variable_model,
 )
 from models.model import App, AppMode, EndUser
-from quart_restx import Resource
+from flask_restx import Resource
 from services.conversation_service import ConversationService
 
 

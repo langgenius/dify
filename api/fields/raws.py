@@ -1,5 +1,5 @@
 from core.file import File
-from quart_restx import fields
+from flask_restx import fields
 
 
 class FilesContainedField(fields.Raw):

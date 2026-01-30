@@ -27,7 +27,7 @@ from fields.data_source_fields import (
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import DataSourceOauthBinding, Document
-from quart_restx import Resource, fields, marshal_with
+from flask_restx import Resource, fields, marshal_with
 from services.dataset_service import DatasetService, DocumentService
 from services.datasource_provider_service import DatasourceProviderService
 from tasks.document_indexing_sync_task import document_indexing_sync_task

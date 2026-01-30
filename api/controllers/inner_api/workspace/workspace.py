@@ -9,7 +9,7 @@ from controllers.inner_api.wraps import enterprise_inner_api_only
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from models import Account
-from quart_restx import Resource
+from flask_restx import Resource
 from services.account_service import TenantService
 
 

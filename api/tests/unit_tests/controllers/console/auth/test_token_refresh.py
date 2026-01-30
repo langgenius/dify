@@ -14,7 +14,7 @@ import pytest
 from quart import Quart as Flask
 
 from controllers.console.auth.login import RefreshTokenApi
-from quart_restx import Api
+from flask_restx import Api
 
 
 class TestRefreshTokenApi:

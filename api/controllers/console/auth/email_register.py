@@ -17,7 +17,7 @@ from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
 from models import Account
-from quart_restx import Resource
+from flask_restx import Resource
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError

@@ -1,5 +1,5 @@
 from libs.helper import TimestampField
-from quart_restx import Namespace, fields
+from flask_restx import Namespace, fields
 
 from ._value_type_serializer import serialize_value_type
 

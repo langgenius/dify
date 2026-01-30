@@ -22,7 +22,7 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from models.model import App, EndUser
-from quart_restx import Resource
+from flask_restx import Resource
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,

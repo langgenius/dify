@@ -11,7 +11,7 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import uuid_value
 from libs.login import current_account_with_tenant, login_required
-from quart_restx import Resource
+from flask_restx import Resource
 from services.billing_service import BillingService
 from services.model_provider_service import ModelProviderService
 

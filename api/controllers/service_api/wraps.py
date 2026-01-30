@@ -21,7 +21,7 @@ from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App
 from quart_login import user_logged_in
-from quart_restx import Resource
+from flask_restx import Resource
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 

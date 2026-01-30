@@ -26,7 +26,7 @@ from extensions.ext_database import db
 from libs.helper import StrLen, alphanumeric, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import ToolProviderID
-from quart_restx import (
+from flask_restx import (
     Resource,
     reqparse,
 )

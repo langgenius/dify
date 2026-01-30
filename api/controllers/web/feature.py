@@ -1,5 +1,5 @@
 from controllers.web import web_ns
-from quart_restx import Resource
+from flask_restx import Resource
 from services.feature_service import FeatureService
 
 

@@ -34,7 +34,7 @@ from fields.workflow_app_log_fields import build_workflow_app_log_pagination_mod
 from libs import helper
 from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
-from quart_restx import Namespace, Resource, fields
+from flask_restx import Namespace, Resource, fields
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError

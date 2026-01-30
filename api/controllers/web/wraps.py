@@ -14,7 +14,7 @@ from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, EndUser, Site
-from quart_restx import Resource
+from flask_restx import Resource
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
 from services.feature_service import FeatureService

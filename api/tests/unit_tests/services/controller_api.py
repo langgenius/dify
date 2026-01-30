@@ -94,7 +94,7 @@ from controllers.console.datasets.external import (
 )
 from controllers.console.datasets.hit_testing import HitTestingApi
 from models.dataset import Dataset, DatasetPermissionEnum
-from quart_restx import Api
+from flask_restx import Api
 
 # ============================================================================
 # Test Data Factory

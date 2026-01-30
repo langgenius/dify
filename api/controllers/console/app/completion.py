@@ -31,7 +31,7 @@ from libs.helper import uuid_value
 from libs.login import current_user, login_required
 from models import Account
 from models.model import AppMode
-from quart_restx import Resource
+from flask_restx import Resource
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError

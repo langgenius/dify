@@ -21,7 +21,7 @@ from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account
-from quart_restx import Resource
+from flask_restx import Resource
 from services.account_service import AccountService
 
 

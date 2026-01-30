@@ -28,7 +28,7 @@ from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
 from models import Account
 from models.dataset import Pipeline
-from quart_restx import Resource, marshal, marshal_with
+from flask_restx import Resource, marshal, marshal_with
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 

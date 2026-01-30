@@ -6,7 +6,7 @@ from controllers.console.wraps import (
 )
 from core.schemas.schema_manager import SchemaManager
 from libs.login import login_required
-from quart_restx import Resource
+from flask_restx import Resource
 
 from . import console_ns
 

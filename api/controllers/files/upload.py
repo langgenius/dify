@@ -8,7 +8,7 @@ import services
 from core.file.helpers import verify_plugin_file_signature
 from core.tools.tool_file_manager import ToolFileManager
 from fields.file_fields import FileResponse
-from quart_restx import Resource
+from flask_restx import Resource
 from quart_restx.api import HTTPStatus
 
 from ..common.errors import (

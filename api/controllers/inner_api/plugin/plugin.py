@@ -31,7 +31,7 @@ from core.tools.entities.tool_entities import ToolProviderType
 from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
-from quart_restx import Resource
+from flask_restx import Resource
 
 
 @inner_api_ns.route("/invoke/llm")

@@ -25,7 +25,7 @@ from controllers.console.error import (
     AccountInFreezeError,
     WorkspacesLimitExceeded,
 )
-from quart_restx import Api
+from flask_restx import Api
 from services.errors.account import AccountLoginError, AccountPasswordError
 
 

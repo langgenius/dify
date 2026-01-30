@@ -7,7 +7,7 @@ from fields.workflow_run_fields import (
     workflow_run_for_log_fields,
 )
 from libs.helper import TimestampField
-from quart_restx import Namespace, fields
+from flask_restx import Namespace, fields
 
 workflow_app_log_partial_fields = {
     "id": fields.String,

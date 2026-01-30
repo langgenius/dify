@@ -15,7 +15,7 @@ from extensions.ext_database import db
 from fields.dataset_fields import dataset_detail_fields
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import DatasetPermissionEnum
-from quart_restx import Resource, marshal
+from flask_restx import Resource, marshal
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService

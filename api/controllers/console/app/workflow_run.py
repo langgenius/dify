@@ -26,7 +26,7 @@ from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
 from libs.login import current_user, login_required
 from models import Account, App, AppMode, EndUser, WorkflowArchiveLog, WorkflowRunTriggeredFrom
-from quart_restx import Resource, fields, marshal_with
+from flask_restx import Resource, fields, marshal_with
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
 from services.workflow_run_service import WorkflowRunService
 

@@ -8,7 +8,7 @@ from controllers.console import console_ns
 from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import login_required
-from quart_restx import Resource, fields
+from flask_restx import Resource, fields
 from services.ops_service import OpsService
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"

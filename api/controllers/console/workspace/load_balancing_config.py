@@ -8,7 +8,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.login import current_account_with_tenant, login_required
 from models import TenantAccountRole
-from quart_restx import Resource
+from flask_restx import Resource
 from services.model_load_balancing_service import ModelLoadBalancingService
 
 

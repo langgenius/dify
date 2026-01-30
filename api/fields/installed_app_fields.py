@@ -1,5 +1,5 @@
 from libs.helper import AppIconUrlField, TimestampField
-from quart_restx import fields
+from flask_restx import fields
 
 app_fields = {
     "id": fields.String,

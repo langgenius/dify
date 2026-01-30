@@ -1,4 +1,4 @@
-from quart_restx import Namespace, fields
+from flask_restx import Namespace, fields
 
 simple_end_user_fields = {
     "id": fields.String,
