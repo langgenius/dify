@@ -1,0 +1,76 @@
+'use client'
+
+import type { SkillTemplateNode, SkillTemplateWithMetadata } from './templates/types'
+import { RiAddLine } from '@remixicon/react'
+import { memo, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
+import Badge from '@/app/components/base/badge'
+import Button from '@/app/components/base/button'
+
+function countFiles(nodes: SkillTemplateNode[]): number {
+  return nodes.reduce((count, node) => {
+    if (node.node_type === 'file')
+      return count + 1
+    return count + countFiles(node.children)
+  }, 0)
+}
+
+type TemplateCardProps = {
+  template: SkillTemplateWithMetadata
+  onUse: (template: SkillTemplateWithMetadata) => void
+}
+
+const TemplateCard = ({ template, onUse }: TemplateCardProps) => {
+  const { t } = useTranslation('workflow')
+  const fileCount = useMemo(() => countFiles(template.children), [template.children])
+
+  return (
+    <div className="group flex h-full flex-col overflow-hidden rounded-xl border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg transition-colors hover:bg-components-panel-on-panel-item-bg-hover">
+      <div className="flex items-center gap-3 px-4 pb-2 pt-4">
+        <AppIcon
+          size="large"
+          icon={template.icon || '📁'}
+          background="#f5f3ff"
+        />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
+          <span className="system-md-semibold truncate text-text-secondary">
+            {template.name}
+          </span>
+          <span className="system-xs-regular text-text-tertiary">
+            {t('skill.startTab.filesIncluded', { count: fileCount })}
+          </span>
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col px-4 py-1">
+        <p className="system-xs-regular line-clamp-2 min-h-[32px] w-full text-text-tertiary">
+          {template.description}
+        </p>
+      </div>
+      <div className="relative px-4 pb-4">
+        {template.tags?.length
+          ? (
+              <div className="flex flex-wrap gap-1 transition-opacity group-hover:opacity-0">
+                {template.tags.map(tag => (
+                  <Badge key={tag} text={tag} />
+                ))}
+              </div>
+            )
+          : <div className="h-5" />}
+        <div className="pointer-events-none absolute inset-0 flex items-end px-4 pb-4 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+          <Button
+            variant="primary"
+            size="medium"
+            className="w-full"
+            onClick={() => onUse(template)}
+          >
+            <RiAddLine className="mr-0.5 h-4 w-4" />
+            {t('skill.startTab.useThisSkill')}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default memo(TemplateCard)
