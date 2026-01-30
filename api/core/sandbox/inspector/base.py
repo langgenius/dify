@@ -15,6 +15,15 @@ class SandboxFileSource(abc.ABC):
         self._sandbox_id = sandbox_id
 
     @abc.abstractmethod
+    def exists(self) -> bool:
+        """Check if the sandbox source exists and is available.
+
+        Returns:
+            True if the sandbox source exists and can be accessed, False otherwise.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def list_files(self, *, path: str, recursive: bool) -> list[SandboxFileNode]:
         raise NotImplementedError
 

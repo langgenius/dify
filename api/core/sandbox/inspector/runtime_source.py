@@ -20,6 +20,10 @@ class SandboxFileRuntimeSource(SandboxFileSource):
         super().__init__(tenant_id=tenant_id, sandbox_id=sandbox_id)
         self._runtime = runtime
 
+    def exists(self) -> bool:
+        """Check if the sandbox runtime exists and is available."""
+        return self._runtime is not None
+
     def list_files(self, *, path: str, recursive: bool) -> list[SandboxFileNode]:
         script = r"""
 import json

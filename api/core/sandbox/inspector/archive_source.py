@@ -69,8 +69,6 @@ print(json.dumps(entries))
         from extensions.storage.file_presign_storage import FilePresignStorage
 
         storage_key = f"sandbox_archives/{self._tenant_id}/{self._sandbox_id}.tar.gz"
-        if not storage.exists(storage_key):
-            raise ValueError("Sandbox archive not found")
         presign_storage = FilePresignStorage(storage.storage_runner)
         return presign_storage.get_download_url(storage_key, self._EXPORT_EXPIRES_IN_SECONDS)
 
@@ -80,9 +78,13 @@ print(json.dumps(entries))
 
         return ZipSandbox(tenant_id=self._tenant_id, user_id="system", app_id="sandbox-archive-browser")
 
+    def exists(self) -> bool:
+        """Check if the sandbox archive exists in storage."""
+        storage_key = f"sandbox_archives/{self._tenant_id}/{self._sandbox_id}.tar.gz"
+        return storage.exists(storage_key)
+
     def list_files(self, *, path: str, recursive: bool) -> list[SandboxFileNode]:
         archive_url = self._get_archive_download_url()
-
         with self._create_zip_sandbox() as zs:
             # Download and extract the archive
             archive_path = zs.download_archive(archive_url, path="workspace.tar.gz")

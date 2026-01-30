@@ -35,6 +35,10 @@ class SandboxFileBrowser:
             return SandboxFileRuntimeSource(tenant_id=self._tenant_id, sandbox_id=self._sandbox_id, runtime=runtime)
         return SandboxFileArchiveSource(tenant_id=self._tenant_id, sandbox_id=self._sandbox_id)
 
+    def exists(self) -> bool:
+        """Check if the sandbox source exists and is available."""
+        return self._backend().exists()
+
     def list_files(self, *, path: str | None = None, recursive: bool = False) -> list[SandboxFileNode]:
         workspace_path = self._normalize_workspace_path(path)
         return self._backend().list_files(path=workspace_path, recursive=recursive)
