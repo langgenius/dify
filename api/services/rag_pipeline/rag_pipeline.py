@@ -22,7 +22,6 @@ from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     GetOnlineDocumentPageContentRequest,
     OnlineDocumentPagesMessage,
-    OnlineDriveBrowseFilesRequest,
     OnlineDriveBrowseFilesResponse,
     WebsiteCrawlMessage,
 )
@@ -592,12 +591,7 @@ class RagPipelineService:
                     online_drive_result: Generator[OnlineDriveBrowseFilesResponse, None, None] = (
                         datasource_runtime.online_drive_browse_files(
                             user_id=account.id,
-                            request=OnlineDriveBrowseFilesRequest(
-                                bucket=payload.inputs.bucket,
-                                prefix=payload.inputs.prefix,
-                                max_keys=payload.inputs.max_keys,
-                                next_page_parameters=payload.inputs.next_page_parameters,
-                            ),
+                            request=payload.inputs,
                             provider_type=datasource_runtime.datasource_provider_type(),
                         )
                     )
