@@ -86,6 +86,7 @@ vi.mock('./actions/commands/registry', () => ({
 
 vi.mock('@/app/components/workflow/utils/common', () => ({
   getKeyboardKeyCodeBySystem: () => 'ctrl',
+  getKeyboardKeyNameBySystem: (key: string) => key,
   isEventTargetInputArea: () => false,
   isMac: () => false,
 }))
