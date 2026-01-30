@@ -250,7 +250,7 @@ def annotation_reply_action(
 ) -> AnnotationJobStatusResponse:
     app_id_str = str(app_id)
     if action == "enable":
-        result = AppAnnotationService.enable_app_annotation(payload, app_id_str)
+        result = AppAnnotationService.enable_app_annotation(payload.model_dump(), app_id_str)
     else:
         result = AppAnnotationService.disable_app_annotation(app_id_str)
 
@@ -267,7 +267,7 @@ def annotation_reply_action(
 @login_required
 @account_initialization_required
 @edit_permission_required
-def get_annotation_setting(app_id: UUID) -> AnnotationSettingResponse:
+def get_annotation_setting(app_id: UUID) -> dict:
     return AppAnnotationService.get_app_annotation_setting_by_app_id(str(app_id))
 
 
@@ -284,16 +284,16 @@ def update_annotation_setting(
     app_id: UUID,
     annotation_setting_id: UUID,
     payload: AnnotationSettingUpdatePayload,
-) -> AnnotationSettingResponse:
+) -> dict:
     result = AppAnnotationService.update_app_annotation_setting(
         str(app_id),
         str(annotation_setting_id),
-        payload,
+        payload.model_dump(),
     )
     embedding_model = result.get("embedding_model") if isinstance(result, dict) else None
     if isinstance(embedding_model, dict) and not embedding_model:
-        result.embedding_model = None
-    return AnnotationSettingResponse.model_validate(result)
+        result["embedding_model"] = None
+    return AnnotationSettingResponse.model_validate(result).model_dump()
 
 
 @console_router.get(
@@ -376,7 +376,7 @@ def create_annotation(app_id: UUID, payload: CreateAnnotationPayload) -> Annotat
 @login_required
 @account_initialization_required
 @edit_permission_required
-def delete_annotations(app_id: UUID, payload: DeleteAnnotationsPayload) -> DeleteAnnotationsResponse:
+def delete_annotations(app_id: UUID, payload: DeleteAnnotationsPayload) -> dict:
     app_id_str = str(app_id)
 
     annotation_ids = payload.annotation_ids
@@ -384,7 +384,7 @@ def delete_annotations(app_id: UUID, payload: DeleteAnnotationsPayload) -> Delet
         if len(annotation_ids) == 0 or any(not annotation_id.strip() for annotation_id in annotation_ids):
             raise BadRequest("annotation_ids must be a non-empty list of IDs.")
         result = AppAnnotationService.delete_app_annotations_in_batch(app_id_str, annotation_ids)
-        return DeleteAnnotationsResponse.model_validate(result)
+        return DeleteAnnotationsResponse.model_validate(result).model_dump()
 
     return AppAnnotationService.clear_all_annotations(app_id_str)
 
@@ -414,7 +414,7 @@ def export_annotations(app_id: UUID) -> AnnotationExportResponse:
 @cloud_edition_billing_resource_check("annotation")
 @edit_permission_required
 def update_annotation(app_id: UUID, annotation_id: UUID, payload: UpdateAnnotationPayload) -> AnnotationItem:
-    annotation = AppAnnotationService.update_app_annotation_directly(payload, str(app_id), str(annotation_id))
+    annotation = AppAnnotationService.update_app_annotation_directly(payload.model_dump(), str(app_id), str(annotation_id))
     return _annotation_to_response(annotation)
 
 
@@ -444,7 +444,7 @@ def delete_annotation(app_id: UUID, annotation_id: UUID) -> dict[str, str] | Non
 @annotation_import_rate_limit
 @annotation_import_concurrency_limit
 @edit_permission_required
-def batch_import_annotations(app_id: UUID) -> AnnotationBatchImportResponse:
+def batch_import_annotations(app_id: UUID) -> dict:
     from configs import dify_config
 
     file = _get_single_uploaded_file(field_name="file")
@@ -467,8 +467,8 @@ def batch_import_annotations(app_id: UUID) -> AnnotationBatchImportResponse:
         raise BadRequest("The uploaded file is empty")
 
     result = AppAnnotationService.batch_import_app_annotations(str(app_id), file)
-    if result.job_id:
-        result.job_id = _normalize_job_id(result.job_id)
+    if result.get("job_id"):
+        result["job_id"] = _normalize_job_id(result["job_id"])
     return result
 
 
