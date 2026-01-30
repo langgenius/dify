@@ -4,6 +4,7 @@ export type SkillTemplateFileNode = {
   name: string
   node_type: Extract<AssetNodeType, 'file'>
   content: string
+  encoding?: 'base64'
 }
 
 export type SkillTemplateFolderNode = {
@@ -14,24 +15,18 @@ export type SkillTemplateFolderNode = {
 
 export type SkillTemplateNode = SkillTemplateFileNode | SkillTemplateFolderNode
 
-export type SkillTemplateFrontmatter = {
-  name: string
-  description: string
-}
-
-export type SkillTemplate = {
+export type SkillTemplateSummary = {
   id: string
   name: string
   description: string
-  children: SkillTemplateNode[]
-}
-
-export type SkillTemplateMetadata = {
-  tags?: string[]
+  fileCount: number
   icon?: string
+  tags?: string[]
 }
 
-export type SkillTemplateWithMetadata = SkillTemplate & SkillTemplateMetadata
+export type SkillTemplateEntry = SkillTemplateSummary & {
+  loadContent: () => Promise<SkillTemplateNode[]>
+}
 
 export type SkillTemplateTag = {
   id: string

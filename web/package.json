@@ -51,7 +51,8 @@
     "storybook:build": "storybook build",
     "preinstall": "npx only-allow pnpm",
     "analyze": "ANALYZE=true pnpm build",
-    "knip": "knip"
+    "knip": "knip",
+    "fetch-skill-templates": "tsx ./scripts/fetch-skill-templates.ts"
   },
   "dependencies": {
     "@amplitude/analytics-browser": "2.33.1",

@@ -1,29 +1,20 @@
 'use client'
 
-import type { SkillTemplateNode, SkillTemplateWithMetadata } from './templates/types'
+import type { SkillTemplateSummary } from './templates/types'
 import { RiAddLine } from '@remixicon/react'
-import { memo, useMemo } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
 
-function countFiles(nodes: SkillTemplateNode[]): number {
-  return nodes.reduce((count, node) => {
-    if (node.node_type === 'file')
-      return count + 1
-    return count + countFiles(node.children)
-  }, 0)
-}
-
 type TemplateCardProps = {
-  template: SkillTemplateWithMetadata
-  onUse: (template: SkillTemplateWithMetadata) => void
+  template: SkillTemplateSummary
+  onUse: (template: SkillTemplateSummary) => void
 }
 
 const TemplateCard = ({ template, onUse }: TemplateCardProps) => {
   const { t } = useTranslation('workflow')
-  const fileCount = useMemo(() => countFiles(template.children), [template.children])
 
   return (
     <div className="group flex h-full flex-col overflow-hidden rounded-xl border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg transition-colors hover:bg-components-panel-on-panel-item-bg-hover">
@@ -38,7 +29,7 @@ const TemplateCard = ({ template, onUse }: TemplateCardProps) => {
             {template.name}
           </span>
           <span className="system-xs-regular text-text-tertiary">
-            {t('skill.startTab.filesIncluded', { count: fileCount })}
+            {t('skill.startTab.filesIncluded', { count: template.fileCount })}
           </span>
         </div>
       </div>
