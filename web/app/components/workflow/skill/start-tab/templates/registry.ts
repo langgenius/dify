@@ -135,7 +135,7 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     description: 'Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.',
     fileCount: 5,
     icon: '🧪',
-    tags: ['Development', 'Testing'],
+    tags: ['Development'],
     loadContent: () => import('./skills/webapp-testing').then(m => m.default),
   },
   {
@@ -144,7 +144,7 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     description: 'Comprehensive spreadsheet creation, editing, and analysis with support for formulas, formatting, data analysis, and visualization. When Claude needs to work with spreadsheets (.xlsx, .xlsm, .csv, .tsv, etc) for: (1) Creating new spreadsheets with formulas and formatting, (2) Reading or analyzing data, (3) Modify existing spreadsheets while preserving formulas, (4) Data analysis and visualization in spreadsheets, or (5) Recalculating formulas',
     fileCount: 2,
     icon: '📈',
-    tags: ['Document', 'Analysis'],
+    tags: ['Document', 'Productivity'],
     loadContent: () => import('./skills/xlsx').then(m => m.default),
   },
 ]

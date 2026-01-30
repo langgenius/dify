@@ -7,14 +7,13 @@ export type TemplateCategory = {
   id: string
   label: string
 }
-// TODO: use real categories from backend
-const MOCK_CATEGORIES: TemplateCategory[] = [
+const CATEGORIES: TemplateCategory[] = [
   { id: 'all', label: 'All' },
+  { id: 'document', label: 'Document' },
   { id: 'productivity', label: 'Productivity' },
-  { id: 'analysis', label: 'Analysis' },
-  { id: 'search', label: 'Search' },
   { id: 'development', label: 'Development' },
-  { id: 'security', label: 'Security' },
+  { id: 'design', label: 'Design' },
+  { id: 'creative', label: 'Creative' },
 ]
 
 type CategoryTabsProps = {
@@ -24,7 +23,7 @@ type CategoryTabsProps = {
 }
 
 const CategoryTabs = ({
-  categories = MOCK_CATEGORIES,
+  categories = CATEGORIES,
   activeCategory,
   onCategoryChange,
 }: CategoryTabsProps) => {
