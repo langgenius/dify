@@ -4,7 +4,9 @@ import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import { useEventEmitter } from 'ahooks'
 import { createContext, useContext } from 'use-context-selector'
 
-const EventEmitterContext = createContext<{ eventEmitter: EventEmitter<string> | null }>({
+export type EventPayload = string | ({ type: string } & Record<string, unknown>)
+
+const EventEmitterContext = createContext<{ eventEmitter: EventEmitter<EventPayload> | null }>({
   eventEmitter: null,
 })
 
@@ -16,7 +18,7 @@ type EventEmitterContextProviderProps = {
 export const EventEmitterContextProvider = ({
   children,
 }: EventEmitterContextProviderProps) => {
-  const eventEmitter = useEventEmitter<string>()
+  const eventEmitter = useEventEmitter<EventPayload>()
 
   return (
     <EventEmitterContext.Provider value={{ eventEmitter }}>

@@ -49,7 +49,7 @@ const VariableInspectTrigger: FC = () => {
   const handleStop = () => {
     eventEmitter?.emit({
       type: EVENT_WORKFLOW_STOP,
-    } as any)
+    })
   }
 
   const handleClearAll = () => {

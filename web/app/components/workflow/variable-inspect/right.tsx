@@ -143,7 +143,7 @@ const Right: FC<Props> = ({
       type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
       instanceId: `${nodeId}-chat-workflow-llm-prompt-editor`,
       payload: res.modified,
-    } as any)
+    })
     handleHidePromptGenerator()
   }, [setInputs, blockType, nodeId, node?.data, handleHidePromptGenerator])
 

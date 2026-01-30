@@ -157,7 +157,7 @@ const Editor: FC<Props> = ({
 
   const handleInsertVariable = () => {
     setFocus()
-    eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId } as any)
+    eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId })
   }
 
   const getVarType = useWorkflowVariableType()

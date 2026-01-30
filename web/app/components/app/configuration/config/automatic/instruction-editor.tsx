@@ -61,7 +61,7 @@ const InstructionEditor: FC<Props> = ({
       )
 
   const handleInsertVariable = () => {
-    eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId: editorKey } as any)
+    eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId: editorKey })
   }
 
   return (

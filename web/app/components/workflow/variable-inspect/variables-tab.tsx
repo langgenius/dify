@@ -127,8 +127,7 @@ const VariablesTab: FC<InspectHeaderProps> = (headerProps) => {
   const { eventEmitter } = useEventEmitterContextContext()
 
   const onStopListening = useCallback(() => {
-    // eslint-disable-next-line ts/no-explicit-any -- EventEmitter is typed as string but project-wide convention passes { type } objects
-    eventEmitter?.emit({ type: EVENT_WORKFLOW_STOP } as any)
+    eventEmitter?.emit({ type: EVENT_WORKFLOW_STOP })
   }, [eventEmitter])
 
   useEffect(() => {
