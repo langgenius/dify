@@ -2527,8 +2527,15 @@ class LLMNode(Node[LLMNodeData]):
             key=lambda item: trace_state.tool_call_index_map.get(item.id or "", len(trace_state.tool_call_index_map))
         )
 
+        text_content: str
+        if aggregate.text:
+            text_content = aggregate.text
+        elif aggregate.structured_output:
+            text_content = json.dumps(aggregate.structured_output.structured_output)
+        else:
+            raise ValueError("Aggregate must have either text or structured output.")
         return LLMGenerationData(
-            text=aggregate.text or json.dumps(aggregate.structured_output.structured_output),
+            text=text_content,
             reasoning_contents=buffers.reasoning_per_turn,
             tool_calls=tool_calls_for_generation,
             sequence=sequence,
