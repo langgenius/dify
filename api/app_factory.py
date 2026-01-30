@@ -111,7 +111,7 @@ def _patch_flask_restx_schema(app: DifyApp) -> None:
         from flask_restx import fields as restx_fields
         from flask_restx import swagger as restx_swagger
         from flask_restx.model import Model, OrderedModel
-    except Exception:
+    except ImportError:
         return
 
     original_register_field = restx_swagger.Swagger.register_field
