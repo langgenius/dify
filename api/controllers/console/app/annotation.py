@@ -268,11 +268,7 @@ def annotation_reply_action(
 @account_initialization_required
 @edit_permission_required
 def get_annotation_setting(app_id: UUID) -> AnnotationSettingResponse:
-    result = AppAnnotationService.get_app_annotation_setting_by_app_id(str(app_id))
-    embedding_model = result.get("embedding_model") if isinstance(result, dict) else None
-    if isinstance(embedding_model, dict) and not embedding_model:
-        result["embedding_model"] = None
-    return AnnotationSettingResponse.model_validate(result)
+    return AppAnnotationService.get_app_annotation_setting_by_app_id(str(app_id))
 
 
 @console_router.post(
@@ -296,7 +292,7 @@ def update_annotation_setting(
     )
     embedding_model = result.get("embedding_model") if isinstance(result, dict) else None
     if isinstance(embedding_model, dict) and not embedding_model:
-        result["embedding_model"] = None
+        result.embedding_model = None
     return AnnotationSettingResponse.model_validate(result)
 
 
@@ -390,8 +386,7 @@ def delete_annotations(app_id: UUID, payload: DeleteAnnotationsPayload) -> Delet
         result = AppAnnotationService.delete_app_annotations_in_batch(app_id_str, annotation_ids)
         return DeleteAnnotationsResponse.model_validate(result)
 
-    result = AppAnnotationService.clear_all_annotations(app_id_str)
-    return DeleteAnnotationsResponse.model_validate(result)
+    return AppAnnotationService.clear_all_annotations(app_id_str)
 
 
 @console_router.get(
@@ -472,9 +467,9 @@ def batch_import_annotations(app_id: UUID) -> AnnotationBatchImportResponse:
         raise BadRequest("The uploaded file is empty")
 
     result = AppAnnotationService.batch_import_app_annotations(str(app_id), file)
-    if "job_id" in result:
-        result["job_id"] = _normalize_job_id(result.get("job_id"))
-    return AnnotationBatchImportResponse.model_validate(result)
+    if result.job_id:
+        result.job_id = _normalize_job_id(result.job_id)
+    return result
 
 
 @console_router.get(

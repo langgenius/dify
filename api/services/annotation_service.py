@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from controllers.console.app.annotation import UpdateAnnotationPayload
+from controllers.console.app.annotation import (
+    AnnotationBatchImportResponse,
+    AnnotationSettingResponse,
+    DeleteAnnotationsResponse,
+    EmbeddingModel,
+    UpdateAnnotationPayload,
+)
 
 if TYPE_CHECKING:
     from controllers.console.app.annotation import (
@@ -490,7 +496,7 @@ class AppAnnotationService:
             batch_import_annotations_task.delay(str(job_id), result, app_id, current_tenant_id, current_user.id)
 
         except ValueError as e:
-            return {"error_msg": str(e)}
+            return AnnotationBatchImportResponse(error_msg=str(e))
         except Exception as e:
             # Clean up active job registration on error (only if job was created)
             if job_id is not None:
@@ -503,9 +509,9 @@ class AppAnnotationService:
 
             # Check if it's a CSV parsing error
             error_str = str(e)
-            return {"error_msg": f"An error occurred while processing the file: {error_str}"}
+            return AnnotationBatchImportResponse(error_msg=f"An error occurred while processing the file: {error_str}")
 
-        return {"job_id": job_id, "job_status": "waiting", "record_count": len(result)}
+        return AnnotationBatchImportResponse(job_id=job_id, job_status="waiting", record_count=len(result))
 
     @classmethod
     def get_annotation_hit_histories(cls, app_id: str, annotation_id: str, page, limit):
@@ -595,23 +601,23 @@ class AppAnnotationService:
         if annotation_setting:
             collection_binding_detail = annotation_setting.collection_binding_detail
             if collection_binding_detail:
-                return {
-                    "id": annotation_setting.id,
-                    "enabled": True,
-                    "score_threshold": annotation_setting.score_threshold,
-                    "embedding_model": {
-                        "embedding_provider_name": collection_binding_detail.provider_name,
-                        "embedding_model_name": collection_binding_detail.model_name,
-                    },
-                }
+                return AnnotationSettingResponse(
+                    id=annotation_setting.id,
+                    enabled=True,
+                    score_threshold=annotation_setting.score_threshold,
+                    embedding_model=EmbeddingModel(
+                        embedding_provider_name=collection_binding_detail.provider_name,
+                        embedding_model_name=collection_binding_detail.model_name,
+                    ),
+                )
             else:
-                return {
-                    "id": annotation_setting.id,
-                    "enabled": True,
-                    "score_threshold": annotation_setting.score_threshold,
-                    "embedding_model": {},
-                }
-        return {"enabled": False}
+                return AnnotationSettingResponse(
+                    id=annotation_setting.id,
+                    enabled=True,
+                    score_threshold=annotation_setting.score_threshold,
+                    embedding_model=EmbeddingModel(),
+                )
+        return AnnotationSettingResponse(enabled=False)
 
     @classmethod
     def update_app_annotation_setting(
@@ -647,22 +653,22 @@ class AppAnnotationService:
         collection_binding_detail = annotation_setting.collection_binding_detail
 
         if collection_binding_detail:
-            return {
-                "id": annotation_setting.id,
-                "enabled": True,
-                "score_threshold": annotation_setting.score_threshold,
-                "embedding_model": {
-                    "embedding_provider_name": collection_binding_detail.provider_name,
-                    "embedding_model_name": collection_binding_detail.model_name,
-                },
-            }
+            return AnnotationSettingResponse(
+                id=annotation_setting.id,
+                enabled=True,
+                score_threshold=annotation_setting.score_threshold,
+                embedding_model=EmbeddingModel(
+                    embedding_provider_name=collection_binding_detail.provider_name,
+                    embedding_model_name=collection_binding_detail.model_name,
+                ),
+            )
         else:
-            return {
-                "id": annotation_setting.id,
-                "enabled": True,
-                "score_threshold": annotation_setting.score_threshold,
-                "embedding_model": {},
-            }
+            return AnnotationSettingResponse(
+                id=annotation_setting.id,
+                enabled=True,
+                score_threshold=annotation_setting.score_threshold,
+                embedding_model=EmbeddingModel(),
+            )
 
     @classmethod
     def clear_all_annotations(cls, app_id: str):
@@ -698,4 +704,4 @@ class AppAnnotationService:
             db.session.delete(annotation)
 
         db.session.commit()
-        return {"result": "success"}
+        return DeleteAnnotationsResponse(result="success")
