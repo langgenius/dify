@@ -1,0 +1,10 @@
+identity:
+  author: Dify
+  name: agent_output
+  label:
+    en_US: Agent Output
+  description:
+    en_US: Internal tools for agent output control.
+  icon: icon.svg
+  tags:
+    - utilities

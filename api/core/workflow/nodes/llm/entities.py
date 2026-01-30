@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 from core.agent.entities import AgentLog, AgentResult
 from core.file import File
 from core.model_runtime.entities import ImagePromptMessageContent, LLMMode
-from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.llm_entities import LLMStructuredOutput, LLMUsage
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.entities import ToolCall, ToolCallResult
@@ -156,6 +156,9 @@ class LLMGenerationData(BaseModel):
     finish_reason: str | None = Field(None, description="Finish reason from LLM")
     files: list[File] = Field(default_factory=list, description="Generated files")
     trace: list[LLMTraceSegment] = Field(default_factory=list, description="Streaming trace in emitted order")
+    structured_output: LLMStructuredOutput | None = Field(
+        default=None, description="Structured output from tool-only agent runs"
+    )
 
 
 class ThinkTagStreamParser:
@@ -284,6 +287,7 @@ class AggregatedResult(BaseModel):
     files: list[File] = Field(default_factory=list)
     usage: LLMUsage = Field(default_factory=LLMUsage.empty_usage)
     finish_reason: str | None = None
+    structured_output: LLMStructuredOutput | None = None
 
 
 class AgentContext(BaseModel):

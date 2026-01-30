@@ -1,0 +1,18 @@
+identity:
+  name: final_output_answer
+  author: Dify
+  label:
+    en_US: Final Output Answer
+description:
+  human:
+    en_US: Internal tool to deliver the final answer.
+  llm: Use this tool when you are ready to provide the final answer.
+parameters:
+  - name: text
+    type: string
+    required: true
+    label:
+      en_US: Text
+    human_description:
+      en_US: Final answer text.
+    form: llm

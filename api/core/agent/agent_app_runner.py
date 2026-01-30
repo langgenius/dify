@@ -4,7 +4,7 @@ from copy import deepcopy
 from typing import Any
 
 from core.agent.base_agent_runner import BaseAgentRunner
-from core.agent.entities import AgentEntity, AgentLog, AgentResult
+from core.agent.entities import AgentEntity, AgentLog, AgentOutputKind, AgentResult
 from core.agent.patterns.strategy_factory import StrategyFactory
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
@@ -13,6 +13,7 @@ from core.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
     LLMResultChunk,
+    LLMResultChunkDelta,
     LLMUsage,
     PromptMessage,
     PromptMessageContentType,
@@ -106,7 +107,6 @@ class AgentAppRunner(BaseAgentRunner):
 
         # Initialize state variables
         current_agent_thought_id = None
-        has_published_thought = False
         current_tool_name: str | None = None
         self._current_message_file_ids: list[str] = []
 
@@ -118,7 +118,7 @@ class AgentAppRunner(BaseAgentRunner):
             prompt_messages=prompt_messages,
             model_parameters=app_generate_entity.model_conf.parameters,
             stop=app_generate_entity.model_conf.stop,
-            stream=True,
+            stream=False,
         )
 
         # Consume generator and collect result
@@ -133,17 +133,10 @@ class AgentAppRunner(BaseAgentRunner):
                     break
 
                 if isinstance(output, LLMResultChunk):
-                    # Handle LLM chunk
-                    if current_agent_thought_id and not has_published_thought:
-                        self.queue_manager.publish(
-                            QueueAgentThoughtEvent(agent_thought_id=current_agent_thought_id),
-                            PublishFrom.APPLICATION_MANAGER,
-                        )
-                        has_published_thought = True
+                    # No more expect streaming data
+                    continue
 
-                    yield output
-
-                elif isinstance(output, AgentLog):
+                else:
                     # Handle Agent Log using log_type for type-safe dispatch
                     if output.status == AgentLog.LogStatus.START:
                         if output.log_type == AgentLog.LogType.ROUND:
@@ -156,7 +149,6 @@ class AgentAppRunner(BaseAgentRunner):
                                 tool_input="",
                                 messages_ids=message_file_ids,
                             )
-                            has_published_thought = False
 
                         elif output.log_type == AgentLog.LogType.TOOL_CALL:
                             if current_agent_thought_id is None:
@@ -265,7 +257,22 @@ class AgentAppRunner(BaseAgentRunner):
 
         # Process final result
         if isinstance(result, AgentResult):
-            final_answer = result.text
+            output_payload = result.output
+            if isinstance(output_payload, AgentResult.StructuredOutput):
+                if output_payload.output_kind == AgentOutputKind.ILLEGAL_OUTPUT:
+                    raise ValueError("Agent returned illegal output")
+                if output_payload.output_kind not in {
+                    AgentOutputKind.FINAL_OUTPUT_ANSWER,
+                    AgentOutputKind.OUTPUT_TEXT,
+                }:
+                    raise ValueError("Agent did not return text output")
+                if not output_payload.output_text:
+                    raise ValueError("Agent returned empty text output")
+                final_answer = output_payload.output_text
+            else:
+                if not output_payload:
+                    raise ValueError("Agent returned empty output")
+                final_answer = str(output_payload)
             usage = result.usage or LLMUsage.empty_usage()
 
             # Publish end event
@@ -280,6 +287,17 @@ class AgentAppRunner(BaseAgentRunner):
                     )
                 ),
                 PublishFrom.APPLICATION_MANAGER,
+            )
+
+        if False:
+            yield LLMResultChunk(
+                model="",
+                prompt_messages=[],
+                delta=LLMResultChunkDelta(
+                    index=0,
+                    message=AssistantPromptMessage(content=""),
+                    usage=None,
+                ),
             )
 
     def _init_system_message(self, prompt_template: str, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
