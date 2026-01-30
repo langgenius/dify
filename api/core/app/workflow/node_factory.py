@@ -86,10 +86,7 @@ class DifyNodeFactory(NodeFactory):
 
         # Get node type from config
         node_data = node_config["data"]
-        try:
-            node_type = node_data.type
-        except ValueError:
-            raise ValueError(f"Unknown node type: {node_data.type}")
+        node_type = node_data.type
 
         # Get node class
         node_mapping = NODE_TYPE_CLASSES_MAPPING.get(node_type)
