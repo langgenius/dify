@@ -43,4 +43,3 @@ exclude = [
     "controllers/web/workflow_events.py",
     "tasks/app_generate/workflow_execute_task.py",
 ]
-

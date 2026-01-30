@@ -100,7 +100,7 @@ def test_ensure_form_active_respects_global_timeout(monkeypatch, sample_form_rec
         created_at=datetime.utcnow() - timedelta(hours=2),
         expiration_time=datetime.utcnow() + timedelta(hours=2),
     )
-    monkeypatch.setattr(human_input_service_module.dify_config, "HITL_GLOBAL_TIMEOUT_SECONDS", 3600)
+    monkeypatch.setattr(human_input_service_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
 
     with pytest.raises(FormExpiredError):
         service.ensure_form_active(Form(expired_record))
