@@ -25,6 +25,7 @@ from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
+from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
 from models.enums import UserFrom
@@ -302,10 +303,7 @@ class WorkflowEntry:
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         # init workflow run state
-        node_config = {
-            "id": node_id,
-            "data": node_data,
-        }
+        node_config = NodeConfigDictAdapter.validate_python({"id": node_id, "data": node_data})
         node: Node = node_cls(
             id=str(uuid.uuid4()),
             config=node_config,

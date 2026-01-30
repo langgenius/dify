@@ -53,6 +53,7 @@ from core.workflow.graph_events import (
     NodeRunSucceededEvent,
 )
 from core.workflow.graph_events.graph import GraphRunAbortedEvent
+from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.runtime import GraphRuntimeState, VariablePool
@@ -299,7 +300,7 @@ class WorkflowBasedAppRunner:
 
         try:
             variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                graph_config=workflow.graph_dict, config=target_node_config
+                graph_config=workflow.graph_dict, config=NodeConfigDictAdapter.validate_python(target_node_config)
             )
         except NotImplementedError:
             variable_mapping = {}
