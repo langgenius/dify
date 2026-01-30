@@ -6,6 +6,7 @@ from flask_restx.api import HTTPStatus
 from pydantic import BaseModel, Field
 
 from controllers.common.schema import register_schema_models
+from controllers.console.app.annotation import AnnotationReplyPayload
 from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_app_token
@@ -20,18 +21,12 @@ class AnnotationCreatePayload(BaseModel):
     answer: str = Field(description="Annotation answer")
 
 
-class AnnotationReplyActionPayload(BaseModel):
-    score_threshold: float = Field(description="Score threshold for annotation matching")
-    embedding_provider_name: str = Field(description="Embedding provider name")
-    embedding_model_name: str = Field(description="Embedding model name")
-
-
-register_schema_models(service_api_ns, AnnotationCreatePayload, AnnotationReplyActionPayload)
+register_schema_models(service_api_ns, AnnotationCreatePayload, AnnotationReplyPayload)
 
 
 @service_api_ns.route("/apps/annotation-reply/<string:action>")
 class AnnotationReplyActionApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[AnnotationReplyActionPayload.__name__])
+    @service_api_ns.expect(service_api_ns.models[AnnotationReplyPayload.__name__])
     @service_api_ns.doc("annotation_reply_action")
     @service_api_ns.doc(description="Enable or disable annotation reply feature")
     @service_api_ns.doc(params={"action": "Action to perform: 'enable' or 'disable'"})
@@ -44,7 +39,7 @@ class AnnotationReplyActionApi(Resource):
     @validate_app_token
     def post(self, app_model: App, action: Literal["enable", "disable"]):
         """Enable or disable annotation reply feature."""
-        args = AnnotationReplyActionPayload.model_validate(service_api_ns.payload or {}).model_dump()
+        args = AnnotationReplyPayload.model_validate(service_api_ns.payload or {})
         if action == "enable":
             result = AppAnnotationService.enable_app_annotation(args, app_model.id)
         elif action == "disable":
