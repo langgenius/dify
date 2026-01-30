@@ -2,7 +2,7 @@ import json
 import logging
 import mimetypes
 import secrets
-from collections.abc import Mapping, Sequence, Callable
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 import orjson
