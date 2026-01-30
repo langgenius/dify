@@ -4,6 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import TryApp from './index'
 import { TypeEnum } from './tab'
 
+// Ensure Try tab is rendered in tests, preserve other config exports
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return { ...actual, IS_CLOUD_EDITION: true }
+})
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {

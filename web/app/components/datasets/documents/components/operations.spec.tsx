@@ -371,10 +371,12 @@ describe('Operations', () => {
       await act(async () => {
         fireEvent.click(renameButton)
       })
-      // Rename modal should be shown
+      // Rename modal should be shown: wait for the modal-specific label, then check input value
       await waitFor(() => {
-        expect(screen.getByDisplayValue('Test Document')).toBeInTheDocument()
+        expect(screen.getByText('list.table.name')).toBeInTheDocument()
       })
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveValue('Test Document')
     })
 
     it('should call sync for notion data source', async () => {

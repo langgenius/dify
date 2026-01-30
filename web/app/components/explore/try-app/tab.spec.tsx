@@ -1,6 +1,12 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Tab, { TypeEnum } from './tab'
+
+// Ensure Try tab is rendered in tests, preserve other config exports
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return { ...actual, IS_CLOUD_EDITION: true }
+})
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -15,20 +21,24 @@ vi.mock('react-i18next', () => ({
 }))
 
 describe('Tab', () => {
+  let mockOnChange: (v: TypeEnum) => void
+
+  beforeEach(() => {
+    mockOnChange = vi.fn()
+  })
+
   afterEach(() => {
     cleanup()
   })
 
-  it('renders tab with TRY value selected', () => {
-    const mockOnChange = vi.fn()
+  it('renders tab with TRY value selected', async () => {
     render(<Tab value={TypeEnum.TRY} onChange={mockOnChange} />)
 
     expect(screen.getByText('Try')).toBeInTheDocument()
     expect(screen.getByText('Detail')).toBeInTheDocument()
   })
 
-  it('renders tab with DETAIL value selected', () => {
-    const mockOnChange = vi.fn()
+  it('renders tab with DETAIL value selected', async () => {
     render(<Tab value={TypeEnum.DETAIL} onChange={mockOnChange} />)
 
     expect(screen.getByText('Try')).toBeInTheDocument()
@@ -36,15 +46,13 @@ describe('Tab', () => {
   })
 
   it('calls onChange when clicking a tab', () => {
-    const mockOnChange = vi.fn()
     render(<Tab value={TypeEnum.TRY} onChange={mockOnChange} />)
 
     fireEvent.click(screen.getByText('Detail'))
     expect(mockOnChange).toHaveBeenCalledWith(TypeEnum.DETAIL)
   })
 
-  it('calls onChange when clicking Try tab', () => {
-    const mockOnChange = vi.fn()
+  it('calls onChange when clicking Try tab', async () => {
     render(<Tab value={TypeEnum.DETAIL} onChange={mockOnChange} />)
 
     fireEvent.click(screen.getByText('Try'))

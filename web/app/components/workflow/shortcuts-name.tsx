@@ -7,22 +7,26 @@ type ShortcutsNameProps = {
   className?: string
   textColor?: 'default' | 'secondary'
   bgColor?: 'gray' | 'white'
+  ariaHidden?: boolean
 }
 const ShortcutsName = ({
   keys,
   className,
   textColor = 'default',
   bgColor = 'gray',
+  ariaHidden = true,
 }: ShortcutsNameProps) => {
   return (
-    <div className={cn(
-      'flex items-center gap-0.5',
-      className,
-    )}
+    <div
+      aria-hidden={ariaHidden}
+      className={cn(
+        'flex items-center gap-0.5',
+        className,
+      )}
     >
       {
         keys.map(key => (
-          <div
+          <kbd
             key={key}
             className={cn(
               'system-kbd flex h-4 min-w-4 items-center justify-center rounded-[4px] px-1 capitalize',
@@ -31,8 +35,8 @@ const ShortcutsName = ({
               textColor === 'secondary' && 'text-text-tertiary',
             )}
           >
-            {getKeyboardKeyNameBySystem(key)}
-          </div>
+            {(typeof getKeyboardKeyNameBySystem === 'function' ? getKeyboardKeyNameBySystem(key) : key)}
+          </kbd>
         ))
       }
     </div>

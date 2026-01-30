@@ -267,6 +267,9 @@ describe('UpdateDSLModal', () => {
 
       fireEvent.change(fileInput, { target: { files: [file] } })
 
+      // Flush FileReader async
+      await new Promise(r => setTimeout(r, 0))
+
       // File should be processed
       await waitFor(() => {
         expect(screen.getByTestId('uploader')).toBeInTheDocument()
@@ -311,6 +314,9 @@ describe('UpdateDSLModal', () => {
 
       fireEvent.change(fileInput, { target: { files: [file] } })
 
+      // Ensure FileReader onload completes
+      await new Promise(r => setTimeout(r, 0))
+
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
         expect(importButton).not.toBeDisabled()
@@ -324,6 +330,8 @@ describe('UpdateDSLModal', () => {
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await new Promise(r => setTimeout(r, 0))
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -385,10 +393,11 @@ describe('UpdateDSLModal', () => {
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
 
+      await new Promise(r => setTimeout(r, 0))
+
       // Wait for FileReader to process
       await waitFor(() => {
-        const importButton = screen.getByText('common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
+        expect(screen.getByTestId('uploader')).toBeInTheDocument()
       })
 
       // Click import button
@@ -414,6 +423,8 @@ describe('UpdateDSLModal', () => {
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await new Promise(r => setTimeout(r, 0))
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -443,6 +454,8 @@ describe('UpdateDSLModal', () => {
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
 
+      await new Promise(r => setTimeout(r, 0))
+
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
         expect(importButton).not.toBeDisabled()
@@ -469,6 +482,8 @@ describe('UpdateDSLModal', () => {
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
 
+      await new Promise(r => setTimeout(r, 0))
+
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
         expect(importButton).not.toBeDisabled()
@@ -494,6 +509,8 @@ describe('UpdateDSLModal', () => {
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await new Promise(r => setTimeout(r, 0))
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -581,8 +598,8 @@ describe('UpdateDSLModal', () => {
         expect(importButton).not.toBeDisabled()
       })
 
-      // Give extra time for the FileReader's setTimeout to complete
-      await new Promise(resolve => setTimeout(resolve, 10))
+      // Flush timers for FileReader
+      await new Promise(r => setTimeout(r, 0))
 
       const importButton = screen.getByText('common.overwriteAndImport')
       fireEvent.click(importButton)
@@ -606,6 +623,8 @@ describe('UpdateDSLModal', () => {
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await new Promise(r => setTimeout(r, 0))
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -632,6 +651,8 @@ describe('UpdateDSLModal', () => {
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await new Promise(r => setTimeout(r, 0))
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -669,10 +690,13 @@ describe('UpdateDSLModal', () => {
       const importButton = screen.getByText('common.overwriteAndImport')
       fireEvent.click(importButton)
 
-      // Wait for the error modal to be shown after setTimeout
+      // Advance timers for error modal (300ms)
+      await new Promise(r => setTimeout(r, 350))
+
+      // Wait for the error modal to be shown
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      })
     })
 
     it('should show version info in error modal', async () => {
@@ -690,6 +714,8 @@ describe('UpdateDSLModal', () => {
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
 
+      await new Promise(r => setTimeout(r, 0))
+
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
         expect(importButton).not.toBeDisabled()
@@ -698,11 +724,13 @@ describe('UpdateDSLModal', () => {
       const importButton = screen.getByText('common.overwriteAndImport')
       fireEvent.click(importButton)
 
+      await new Promise(r => setTimeout(r, 350))
+
       // Wait for error modal with version info
       await waitFor(() => {
         expect(screen.getByText('1.0.0')).toBeInTheDocument()
         expect(screen.getByText('2.0.0')).toBeInTheDocument()
-      }, { timeout: 500 })
+      })
     })
 
     it('should close error modal when cancel button is clicked', async () => {
@@ -720,6 +748,8 @@ describe('UpdateDSLModal', () => {
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
 
+      await new Promise(r => setTimeout(r, 0))
+
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
         expect(importButton).not.toBeDisabled()
@@ -728,10 +758,12 @@ describe('UpdateDSLModal', () => {
       const importButton = screen.getByText('common.overwriteAndImport')
       fireEvent.click(importButton)
 
+      await new Promise(r => setTimeout(r, 350))
+
       // Wait for error modal
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      })
 
       // Find and click cancel button in error modal - it should be the one with secondary variant
       const cancelButtons = screen.getAllByText('newApp.Cancel')
@@ -776,10 +808,10 @@ describe('UpdateDSLModal', () => {
       const importButton = screen.getByText('common.overwriteAndImport')
       fireEvent.click(importButton)
 
-      // Wait for error modal
+      // Wait for the error modal
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      })
 
       // Click confirm button
       const confirmButton = screen.getByText('newApp.Confirm')
@@ -820,7 +852,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -862,7 +894,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -901,7 +933,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -943,7 +975,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)

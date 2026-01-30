@@ -199,7 +199,7 @@ const CreateAppModal = ({
             onClick={handleSubmit}
           >
             <span>{!isEditModal ? t('operation.create', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</span>
-            <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
+            <ShortcutsName keys={['ctrl', '↵']} bgColor="white" ariaHidden />
           </Button>
           <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
         </div>
