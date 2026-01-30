@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import Generator, Mapping
 from typing import Union
 
@@ -112,6 +113,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     "conversation_id": conversation_id,
                 },
                 invoke_from=InvokeFrom.SERVICE_API,
+                workflow_run_id=str(uuid.uuid4()),
                 streaming=stream,
             )
         elif app.mode == AppMode.AGENT_CHAT:

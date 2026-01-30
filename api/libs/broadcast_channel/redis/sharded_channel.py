@@ -61,7 +61,14 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
 
     def _get_message(self) -> dict | None:
         assert self._pubsub is not None
-        return self._pubsub.get_sharded_message(ignore_subscribe_messages=True, timeout=0.1)  # type: ignore[attr-defined]
+        # NOTE(QuantumGhost): this is an issue in
+        # upstream code. If Sharded PubSub is used with Cluster, the
+        # `ClusterPubSub.get_sharded_message` will return `None` regardless of
+        # message['type'].
+        #
+        # Since we have already filtered at the caller's site, we can safely set
+        # `ignore_subscribe_messages=False`.
+        return self._pubsub.get_sharded_message(ignore_subscribe_messages=False, timeout=0.1)  # type: ignore[attr-defined]
 
     def _get_message_type(self) -> str:
         return "smessage"
