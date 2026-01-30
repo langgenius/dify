@@ -74,7 +74,7 @@ def _patch_flask_restx_swagger_ui(app: DifyApp) -> None:
         from flask_restx import apidoc
         from jinja2 import ChoiceLoader, PackageLoader
         from quart import Blueprint, render_template, url_for
-    except Exception:
+    except ImportError:
         return
 
     loaders = []
