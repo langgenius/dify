@@ -994,7 +994,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/base/file-uploader/utils.ts": {
@@ -1661,7 +1661,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 5
+      "count": 4
     }
   },
   "app/components/datasets/create/website/watercrawl/options.tsx": {
@@ -1788,11 +1788,6 @@
     }
   },
   "app/components/datasets/documents/detail/context.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2589,11 +2584,6 @@
       "count": 2
     }
   },
-  "app/components/share/text-generation/run-once/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "app/components/share/text-generation/run-once/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -2643,19 +2633,6 @@
   "app/components/tools/mcp/mcp-server-param-item.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/tools/mcp/mcp-service-card.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
-  "app/components/tools/mcp/modal.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 20
     }
   },
   "app/components/tools/mcp/provider-card.tsx": {
@@ -4341,11 +4318,6 @@
       "count": 10
     }
   },
-  "testing/testing.md": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "types/app.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -4395,11 +4367,6 @@
     "no-console": {
       "count": 1
     },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "utils/format.spec.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }
