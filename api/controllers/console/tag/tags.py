@@ -76,7 +76,7 @@ def list_tags(query: TagListQueryParam) -> list[TagResponse]:
 @account_initialization_required
 def create_tag(payload: TagBasePayload) -> TagResponse:
     current_user, _ = current_account_with_tenant()
-    # The role of the current user in the ta table must be admin, owner, or editor
+    # The role of the current user in the tag table must be admin, owner, or editor
     if not (current_user.has_edit_permission or current_user.is_dataset_editor):
         raise Forbidden()
 
