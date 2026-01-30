@@ -4,7 +4,7 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import type { Model } from '@/types/app'
 import { RiArrowRightLine, RiSendPlaneLine } from '@remixicon/react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
@@ -59,6 +59,17 @@ const ChatView = ({
     chatListRef.current.scrollTop = chatListRef.current.scrollHeight
   }, [isGenerating, promptMessages.length])
 
+  const assistantVersionMap = useMemo(() => {
+    let assistantIndex = 0
+    return promptMessages.map((message) => {
+      if (message.role !== 'assistant')
+        return null
+      const versionMeta = versionOptions[assistantIndex] ?? null
+      assistantIndex += 1
+      return versionMeta
+    })
+  }, [promptMessages, versionOptions])
+
   return (
     <>
       <div
@@ -66,57 +77,51 @@ const ChatView = ({
         className="flex-1 overflow-y-auto px-4 py-2"
       >
         <div className="flex w-full flex-col items-end gap-4 pt-3">
-          {(() => {
-            let assistantIndex = -1
-            // FIXME: delete these hard coded values assistant
-            return promptMessages.map((message, index) => {
-              if (message.role === 'assistant')
-                assistantIndex += 1
-              const versionMeta = message.role === 'assistant' ? versionOptions[assistantIndex] : null
-              const isSelected = versionMeta?.index === currentVersionIndex
-              const assistantContent = message.content || defaultAssistantMessage
-              return (
-                <div
-                  key={`${message.role}-${index}`}
-                  className={cn('flex w-full', message.role === 'user' ? 'justify-end' : 'justify-start')}
-                >
-                  {message.role === 'user'
-                    ? (
-                        <div className="max-w-[320px] whitespace-pre-wrap rounded-xl bg-util-colors-blue-brand-blue-brand-500 px-3 py-2 text-sm leading-5 text-text-primary-on-surface">
-                          {message.content}
+          {promptMessages.map((message, index) => {
+            const versionMeta = assistantVersionMap[index]
+            const isSelected = versionMeta?.index === currentVersionIndex
+            const assistantContent = message.content || defaultAssistantMessage
+            return (
+              <div
+                key={`${message.role}-${index}`}
+                className={cn('flex w-full', message.role === 'user' ? 'justify-end' : 'justify-start')}
+              >
+                {message.role === 'user'
+                  ? (
+                      <div className="max-w-[320px] whitespace-pre-wrap rounded-xl bg-util-colors-blue-brand-blue-brand-500 px-3 py-2 text-sm leading-5 text-text-primary-on-surface">
+                        {message.content}
+                      </div>
+                    )
+                  : (
+                      <div className="flex w-full flex-col items-start gap-2">
+                        <div className="whitespace-pre-wrap px-2 text-sm leading-5 text-text-primary">
+                          {assistantContent}
                         </div>
-                      )
-                    : (
-                        <div className="flex w-full flex-col items-start gap-2">
-                          <div className="whitespace-pre-wrap px-2 text-sm leading-5 text-text-primary">
-                            {assistantContent}
-                          </div>
-                          {versionMeta && (
-                            <button
-                              type="button"
-                              className={cn(
-                                'flex min-h-[40px] w-full items-center gap-2 rounded-[12px] border-[0.5px] bg-components-card-bg px-3 py-2 text-left',
-                                isSelected
-                                  ? 'border-[1.5px] border-components-option-card-option-selected-border'
-                                  : 'border-components-panel-border-subtle',
-                              )}
-                              onClick={() => onSelectVersion(versionMeta.index)}
-                            >
-                              <div className="flex h-4 w-4 items-center justify-center rounded-[5px] border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 p-[2px] shadow-xs">
-                                <CodeAssistant className="h-3 w-3 text-text-primary-on-surface" />
-                              </div>
-                              <span className="flex-1 text-[13px] font-medium text-text-primary">
-                                {versionMeta.label}
-                              </span>
-                              <RiArrowRightLine className="h-4 w-4 text-text-tertiary" />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                </div>
-              )
-            })
-          })()}
+                        {versionMeta && (
+                          <button
+                            type="button"
+                            className={cn(
+                              'flex min-h-[40px] w-full items-center gap-2 rounded-[12px] border-[0.5px] bg-components-card-bg px-3 py-2 text-left',
+                              isSelected
+                                ? 'border-[1.5px] border-components-option-card-option-selected-border'
+                                : 'border-components-panel-border-subtle',
+                            )}
+                            onClick={() => onSelectVersion(versionMeta.index)}
+                          >
+                            <div className="flex h-4 w-4 items-center justify-center rounded-[5px] border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 p-[2px] shadow-xs">
+                              <CodeAssistant className="h-3 w-3 text-text-primary-on-surface" />
+                            </div>
+                            <span className="flex-1 text-[13px] font-medium text-text-primary">
+                              {versionMeta.label}
+                            </span>
+                            <RiArrowRightLine className="h-4 w-4 text-text-tertiary" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+              </div>
+            )
+          })}
           {isGenerating && (
             <div className="flex w-full items-center gap-2 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-2 px-2 py-2 text-xs text-text-secondary">
               <LoadingAnim type="text" />
