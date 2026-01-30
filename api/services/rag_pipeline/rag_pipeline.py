@@ -550,7 +550,7 @@ class RagPipelineService:
                 provider_id=f"{datasource_node_data.get('plugin_id')}/{datasource_node_data.get('provider_name')}",
                 datasource_name=datasource_node_data.get("datasource_name"),
                 tenant_id=pipeline.tenant_id,
-                datasource_type=DatasourceProviderType(payload.datasource_type),
+                datasource_type=payload.datasource_type,
             )
             datasource_provider_service = DatasourceProviderService()
             credentials = datasource_provider_service.get_datasource_credentials(
