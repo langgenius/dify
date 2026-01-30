@@ -12,7 +12,7 @@ import Group from './group'
 
 type Props = {
   currentNodeVar?: currentVarType
-  handleVarSelect: (state: any) => void
+  handleVarSelect: (state: currentVarType) => void
 }
 
 const Left = ({

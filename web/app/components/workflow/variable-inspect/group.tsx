@@ -25,7 +25,7 @@ type Props = {
   currentVar?: currentVarType
   varType: VarInInspectType
   varList: VarInInspect[]
-  handleSelect: (state: any) => void
+  handleSelect: (state: currentVarType) => void
   handleView?: () => void
   handleClear?: () => void
 }
@@ -50,7 +50,7 @@ const Group = ({
 
   const visibleVarList = isEnv ? varList : varList.filter(v => v.visible)
 
-  const handleSelectVar = (varItem: any, type?: string) => {
+  const handleSelectVar = (varItem: VarInInspect, type?: VarInInspectType) => {
     if (type === VarInInspectType.environment) {
       handleSelect({
         nodeId: VarInInspectType.environment,

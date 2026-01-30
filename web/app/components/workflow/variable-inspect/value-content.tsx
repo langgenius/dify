@@ -1,3 +1,4 @@
+import type { VarInspectValue } from './types'
 import type { VarInInspect } from '@/types/workflow'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
@@ -30,7 +31,7 @@ import { CHUNK_SCHEMA_TYPES, PreviewType } from './types'
 
 type Props = {
   currentVar: VarInInspect
-  handleValueChange: (varId: string, value: any) => void
+  handleValueChange: (varId: string, value: VarInspectValue) => void
   isTruncated: boolean
 }
 
