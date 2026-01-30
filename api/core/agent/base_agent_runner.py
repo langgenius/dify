@@ -257,7 +257,10 @@ class BaseAgentRunner(AppRunner):
             tenant_id=self.tenant_id,
             invoke_from=self.application_generate_entity.invoke_from,
             tool_invoke_from=ToolInvokeFrom.AGENT,
-            output_tool_names=select_output_tool_names(structured_output_enabled=False),
+            output_tool_names=select_output_tool_names(
+                structured_output_enabled=False,
+                include_illegal_output=True,
+            ),
         )
         for tool in output_tools:
             tool_instances[tool.entity.identity.name] = tool

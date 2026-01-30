@@ -78,8 +78,11 @@ class ReActStrategy(AgentPattern):
         output_text_payload: str | None = None
         finish_reason: str | None = None
         terminal_output_seen = False
+        tool_instance_names = {tool.entity.identity.name for tool in self.tools}
         available_output_tool_names = {
-            tool.entity.identity.name for tool in self.tools if tool.entity.identity.name in OUTPUT_TOOL_NAME_SET
+            tool_name
+            for tool_name in tool_instance_names
+            if tool_name in OUTPUT_TOOL_NAME_SET and tool_name != ILLEGAL_OUTPUT_TOOL
         }
         if FINAL_STRUCTURED_OUTPUT_TOOL in available_output_tool_names:
             terminal_tool_name = FINAL_STRUCTURED_OUTPUT_TOOL
@@ -87,7 +90,7 @@ class ReActStrategy(AgentPattern):
             terminal_tool_name = FINAL_OUTPUT_TOOL
         else:
             raise ValueError("No terminal output tool configured")
-        allow_illegal_output = ILLEGAL_OUTPUT_TOOL in available_output_tool_names
+        allow_illegal_output = ILLEGAL_OUTPUT_TOOL in tool_instance_names
 
         # Add "Observation" to stop sequences
         if "Observation" not in stop:
@@ -110,7 +113,7 @@ class ReActStrategy(AgentPattern):
                     tool for tool in self.tools if tool.entity.identity.name in available_output_tool_names
                 ]
             else:
-                tools_for_prompt = self.tools
+                tools_for_prompt = [tool for tool in self.tools if tool.entity.identity.name != ILLEGAL_OUTPUT_TOOL]
             current_messages = self._build_prompt_with_react_format(
                 prompt_messages, agent_scratchpad, tools_for_prompt, self.instruction
             )
@@ -273,7 +276,11 @@ class ReActStrategy(AgentPattern):
                 tool_names = []
                 if tools:
                     # Convert tools to prompt message tools format
-                    prompt_tools = [tool.to_prompt_message_tool() for tool in tools]
+                    prompt_tools = [
+                        tool.to_prompt_message_tool()
+                        for tool in tools
+                        if tool.entity.identity.name != ILLEGAL_OUTPUT_TOOL
+                    ]
                     tool_names = [tool.name for tool in prompt_tools]
 
                     # Format tools as JSON for comprehensive information

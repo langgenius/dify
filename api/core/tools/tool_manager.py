@@ -368,7 +368,7 @@ class ToolManager:
         app_id: str,
         agent_tool: AgentToolEntity,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
-        variable_pool: Optional["VariablePool"] = None,
+        variable_pool: Optional[VariablePool] = None,
     ) -> Tool:
         """
         get the agent tool runtime
@@ -408,9 +408,9 @@ class ToolManager:
         tenant_id: str,
         app_id: str,
         node_id: str,
-        workflow_tool: "ToolEntity",
+        workflow_tool: ToolEntity,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
-        variable_pool: Optional["VariablePool"] = None,
+        variable_pool: Optional[VariablePool] = None,
     ) -> Tool:
         """
         get the workflow tool runtime
@@ -1017,7 +1017,7 @@ class ToolManager:
     def _convert_tool_parameters_type(
         cls,
         parameters: list[ToolParameter],
-        variable_pool: Optional["VariablePool"],
+        variable_pool: Optional[VariablePool],
         tool_configurations: dict[str, Any],
         typ: Literal["agent", "workflow", "tool"] = "workflow",
     ) -> dict[str, Any]:

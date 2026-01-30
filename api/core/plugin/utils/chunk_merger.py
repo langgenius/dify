@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, TypeVar
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
 if TYPE_CHECKING:
-    from core.agent.entities import AgentInvokeMessage
+    pass
 
 MessageType = TypeVar("MessageType", bound=ToolInvokeMessage)
 

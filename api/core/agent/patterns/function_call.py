@@ -42,6 +42,7 @@ class FunctionCallStrategy(AgentPattern):
         """Execute the function call agent strategy."""
         # Convert tools to prompt format
         prompt_tools: list[PromptMessageTool] = self._convert_tools_to_prompt_format()
+        tool_instance_names = {tool.entity.identity.name for tool in self.tools}
         available_output_tool_names = {tool.name for tool in prompt_tools if tool.name in OUTPUT_TOOL_NAME_SET}
         if FINAL_STRUCTURED_OUTPUT_TOOL in available_output_tool_names:
             terminal_tool_name = FINAL_STRUCTURED_OUTPUT_TOOL
@@ -49,7 +50,7 @@ class FunctionCallStrategy(AgentPattern):
             terminal_tool_name = FINAL_OUTPUT_TOOL
         else:
             raise ValueError("No terminal output tool configured")
-        allow_illegal_output = ILLEGAL_OUTPUT_TOOL in available_output_tool_names
+        allow_illegal_output = ILLEGAL_OUTPUT_TOOL in tool_instance_names
 
         # Initialize tracking
         iteration_step: int = 1

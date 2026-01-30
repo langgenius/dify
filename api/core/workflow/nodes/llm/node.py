@@ -1936,7 +1936,8 @@ class LLMNode(Node[LLMNodeData]):
                 invoke_from=self.invoke_from,
                 tool_invoke_from=ToolInvokeFrom.WORKFLOW,
                 output_tool_names=select_output_tool_names(
-                    structured_output_enabled=self._node_data.structured_output_enabled
+                    structured_output_enabled=self._node_data.structured_output_enabled,
+                    include_illegal_output=True,
                 ),
                 structured_output_schema=structured_output_schema,
             )
@@ -2041,7 +2042,8 @@ class LLMNode(Node[LLMNodeData]):
                 invoke_from=self.invoke_from,
                 tool_invoke_from=ToolInvokeFrom.WORKFLOW,
                 output_tool_names=select_output_tool_names(
-                    structured_output_enabled=self._node_data.structured_output_enabled
+                    structured_output_enabled=self._node_data.structured_output_enabled,
+                    include_illegal_output=True,
                 ),
                 structured_output_schema=structured_output_schema,
             )
