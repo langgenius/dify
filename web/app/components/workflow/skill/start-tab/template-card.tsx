@@ -22,7 +22,7 @@ const TemplateCard = ({ template, onUse }: TemplateCardProps) => {
         <AppIcon
           size="large"
           icon={template.icon || '📁'}
-          background="#f5f3ff"
+          className="!bg-components-icon-bg-violet-soft"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
           <span className="system-md-semibold truncate text-text-secondary">
@@ -43,11 +43,11 @@ const TemplateCard = ({ template, onUse }: TemplateCardProps) => {
           ? (
               <div className="flex flex-wrap gap-1 transition-opacity group-hover:opacity-0">
                 {template.tags.map(tag => (
-                  <Badge key={tag} text={tag} />
+                  <Badge key={tag} className="badge-s" uppercase>{tag}</Badge>
                 ))}
               </div>
             )
-          : <div className="h-5" />}
+          : <div className="h-[18px]" />}
         <div className="pointer-events-none absolute inset-0 flex items-end px-4 pb-4 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
           <Button
             variant="primary"

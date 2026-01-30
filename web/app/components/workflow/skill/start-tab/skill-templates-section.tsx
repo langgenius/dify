@@ -17,7 +17,7 @@ import { buildUploadDataFromTemplate } from './templates/template-to-upload'
 const SkillTemplatesSection = () => {
   const { t } = useTranslation('workflow')
   const [activeCategory, setActiveCategory] = useState('all')
-  const [searchValue, setSearchValue] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
   const appDetail = useAppStore(s => s.appDetail)
@@ -65,14 +65,14 @@ const SkillTemplatesSection = () => {
   }, [appId, storeApi])
 
   const filtered = useMemo(() => SKILL_TEMPLATES.filter((entry) => {
-    if (searchValue) {
-      const q = searchValue.toLowerCase()
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
       return entry.name.toLowerCase().includes(q) || entry.description.toLowerCase().includes(q)
     }
     if (activeCategory !== 'all')
       return entry.tags?.some(tag => tag.toLowerCase() === activeCategory.toLowerCase())
     return true
-  }), [searchValue, activeCategory])
+  }), [searchQuery, activeCategory])
 
   return (
     <section className="flex flex-col gap-3 px-6 py-2">
@@ -86,8 +86,7 @@ const SkillTemplatesSection = () => {
           onCategoryChange={setActiveCategory}
         />
         <TemplateSearch
-          value={searchValue}
-          onChange={setSearchValue}
+          onChange={setSearchQuery}
         />
       </div>
       <div className="grid grid-cols-3 gap-3">
