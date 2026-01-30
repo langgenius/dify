@@ -1,4 +1,3 @@
-from core.datasource.entities.datasource_entities import DatasourceProviderType
 import json
 import logging
 from typing import Any, Literal, cast
@@ -35,7 +34,7 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.datasource.entities.datasource_entities import OnlineDriveBrowseFilesRequest
+from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDriveBrowseFilesRequest
 from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from factories import variable_factory
