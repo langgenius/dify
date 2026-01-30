@@ -239,9 +239,11 @@ const buildLLMGenerationItemsFromHistorySequence = (message: ChatMessageRes): {
   message: string
 } => {
   const { answer, generation_detail } = message
+  let result = ''
 
   if (!generation_detail) {
-    return { llmGenerationItems: [], message: answer || '' }
+    result = answer || ''
+    return { llmGenerationItems: [], message: result }
   }
 
   const { reasoning_content = [], tool_calls = [], sequence = [] } = generation_detail
@@ -252,6 +254,7 @@ const buildLLMGenerationItemsFromHistorySequence = (message: ChatMessageRes): {
       case 'content': {
         const text = answer?.substring(segment.start, segment.end)
         if (text?.trim()) {
+          result += text
           llmGenerationItems.push({
             id: uuidV4(),
             type: 'text',
@@ -292,7 +295,7 @@ const buildLLMGenerationItemsFromHistorySequence = (message: ChatMessageRes): {
     }
   })
 
-  return { llmGenerationItems, message: '' }
+  return { llmGenerationItems, message: result }
 }
 
 export {
