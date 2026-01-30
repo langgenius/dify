@@ -192,7 +192,6 @@ class StatusCount(ResponseModel):
     success: int
     failed: int
     partial_success: int
-    paused: int
 
 
 class ModelConfig(ResponseModel):
