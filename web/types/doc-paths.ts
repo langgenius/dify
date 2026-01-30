@@ -104,6 +104,10 @@ export type UseDifyPath =
   | '/use-dify/workspace/subscription-management'
   | '/use-dify/workspace/team-members-management'
 
+// UseDify node paths (without prefix)
+type ExtractNodesPath<T> = T extends `/use-dify/nodes/${infer Path}` ? Path : never
+export type UseDifyNodesPath = ExtractNodesPath<UseDifyPath>
+
 // SelfHost paths
 export type SelfHostPath =
   | '/self-host/advanced-deployments/local-source-code'
