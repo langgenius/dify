@@ -5,7 +5,8 @@ import secrets
 from collections.abc import Generator
 
 import pytest
-from quart import Quart as Flask
+import quart
+from dify_app import DifyApp as Flask
 from quart.testing import QuartClient as FlaskClient
 from sqlalchemy.orm import Session
 
@@ -39,6 +40,10 @@ os.environ.setdefault("STORAGE_TYPE", "opendal")
 os.environ.setdefault("OPENDAL_SCHEME", "fs")
 
 _CACHED_APP = create_app()
+
+# Ensure test modules importing Quart/Flask from quart get the sync-capable app.
+quart.Flask = Flask
+quart.Quart = Flask
 
 
 @pytest.fixture

@@ -165,6 +165,12 @@ class DifyApp(Quart):
     def app_context(self) -> _SyncAppContext:
         return _SyncAppContext(super().app_context())
 
+    def request_context(self, request: Any) -> _SyncAppContext:
+        return _SyncAppContext(super().request_context(request))
+
+    def test_request_context(self, *args: Any, **kwargs: Any) -> _SyncAppContext:
+        return _SyncAppContext(super().test_request_context(*args, **kwargs))
+
     def test_client(self, *args: Any, **kwargs: Any) -> _SyncTestClient | QuartClient:
         sync = kwargs.pop("sync", True)
         client = super().test_client(*args, **kwargs)

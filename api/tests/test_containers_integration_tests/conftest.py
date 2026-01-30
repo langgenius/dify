@@ -13,7 +13,8 @@ from collections.abc import Generator
 from pathlib import Path
 
 import pytest
-from quart import Quart as Flask
+import quart
+from dify_app import DifyApp as Flask
 from quart.testing import QuartClient as FlaskClient
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
@@ -29,6 +30,10 @@ from extensions.ext_database import db
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+# Ensure test modules importing Quart/Flask from quart get the sync-capable app.
+quart.Flask = Flask
+quart.Quart = Flask
 
 
 class DifyTestContainers:
