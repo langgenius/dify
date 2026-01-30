@@ -2,7 +2,7 @@ import Papa from 'papaparse'
 import { downloadBlob } from './download'
 
 export function downloadCSV(
-  data: Record<string, string>[] | string[][],
+  data: Array<Record<string, string> | string []>,
   filename: string,
   options?: {
     bom?: boolean
@@ -11,7 +11,7 @@ export function downloadCSV(
 ): void {
   const { bom = true, delimiter } = options || {}
 
-  const csv = Papa.unparse(data as unknown[], {
+  const csv = Papa.unparse(data, {
     delimiter,
   })
 
