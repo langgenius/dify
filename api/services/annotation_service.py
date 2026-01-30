@@ -1,3 +1,13 @@
+from typing import TYPE_CHECKING
+
+from controllers.console.app.annotation import UpdateAnnotationPayload
+
+if TYPE_CHECKING:
+    from controllers.console.app.annotation import (
+        AnnotationReplyPayload,
+        AnnotationSettingUpdatePayload,
+        CreateAnnotationPayload,
+    )
 import logging
 import uuid
 
@@ -25,7 +35,7 @@ from tasks.annotation.update_annotation_to_index_task import update_annotation_t
 
 class AppAnnotationService:
     @classmethod
-    def up_insert_app_annotation_from_message(cls, args: dict, app_id: str) -> MessageAnnotation:
+    def up_insert_app_annotation_from_message(cls, args: CreateAnnotationPayload, app_id: str) -> MessageAnnotation:
         # get app info
         current_user, current_tenant_id = current_account_with_tenant()
         app = (
@@ -37,18 +47,18 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
-        answer = args.get("answer") or args.get("content")
+        answer = args.answer or args.content
         if answer is None:
             raise ValueError("Either 'answer' or 'content' must be provided")
 
-        if args.get("message_id"):
-            message_id = str(args["message_id"])
+        if args.message_id:
+            message_id = str(args.message_id)
             message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app.id).first()
 
             if not message:
                 raise NotFound("Message Not Exists.")
 
-            question = args.get("question") or message.query or ""
+            question = args.question or message.query or ""
 
             annotation: MessageAnnotation | None = message.annotation
             if annotation:
@@ -64,7 +74,7 @@ class AppAnnotationService:
                     account_id=current_user.id,
                 )
         else:
-            question = args.get("question")
+            question = args.question
             if not question:
                 raise ValueError("'question' is required when 'message_id' is not provided")
 
@@ -85,7 +95,7 @@ class AppAnnotationService:
         return annotation
 
     @classmethod
-    def enable_app_annotation(cls, args: dict, app_id: str):
+    def enable_app_annotation(cls, args: AnnotationReplyPayload, app_id: str):
         enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(enable_app_annotation_key)
         if cache_result is not None:
@@ -102,9 +112,9 @@ class AppAnnotationService:
             app_id,
             current_user.id,
             current_tenant_id,
-            args["score_threshold"],
-            args["embedding_provider_name"],
-            args["embedding_model_name"],
+            args.score_threshold,
+            args.embedding_provider_name,
+            args.embedding_model_name,
         )
         return {"job_id": job_id, "job_status": "waiting"}
 
@@ -231,7 +241,7 @@ class AppAnnotationService:
         return annotation
 
     @classmethod
-    def update_app_annotation_directly(cls, args: dict, app_id: str, annotation_id: str):
+    def update_app_annotation_directly(cls, args: UpdateAnnotationPayload, app_id: str, annotation_id: str):
         # get app info
         _, current_tenant_id = current_account_with_tenant()
         app = (
@@ -248,11 +258,11 @@ class AppAnnotationService:
         if not annotation:
             raise NotFound("Annotation not found")
 
-        question = args.get("question")
+        question = args.question
         if question is None:
             raise ValueError("'question' is required")
 
-        annotation.content = args["answer"]
+        annotation.content = args.answer or ""
         annotation.question = question
 
         db.session.commit()
@@ -602,7 +612,9 @@ class AppAnnotationService:
         return {"enabled": False}
 
     @classmethod
-    def update_app_annotation_setting(cls, app_id: str, annotation_setting_id: str, args: dict):
+    def update_app_annotation_setting(
+        cls, app_id: str, annotation_setting_id: str, args: AnnotationSettingUpdatePayload
+    ):
         current_user, current_tenant_id = current_account_with_tenant()
         # get app info
         app = (
@@ -624,7 +636,7 @@ class AppAnnotationService:
         )
         if not annotation_setting:
             raise NotFound("App annotation not found")
-        annotation_setting.score_threshold = args["score_threshold"]
+        annotation_setting.score_threshold = args.score_threshold
         annotation_setting.updated_user_id = current_user.id
         annotation_setting.updated_at = naive_utc_now()
         db.session.add(annotation_setting)

@@ -9,14 +9,13 @@ Notes:
   can't set custom response headers (e.g. for export responses) from these handlers.
 """
 
-from __future__ import annotations
-
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 from uuid import UUID
 
 from flask import abort, request
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_serializer
+from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
@@ -36,6 +35,9 @@ from services.annotation_service import AppAnnotationService
 
 if TYPE_CHECKING:
     from models.model import AppAnnotationHitHistory, MessageAnnotation
+else:
+    AppAnnotationHitHistory: TypeAlias = Any
+    MessageAnnotation: TypeAlias = Any
 
 
 def _to_timestamp(value: datetime | int | None) -> int | None:
@@ -46,38 +48,18 @@ def _to_timestamp(value: datetime | int | None) -> int | None:
     return None
 
 
-def _annotation_to_response(annotation: MessageAnnotation) -> AnnotationItem:
-    created_at = _to_timestamp(annotation.created_at)
-    if created_at is None:
-        created_at = 0
-    return AnnotationItem(
-        id=annotation.id,
-        question=annotation.question,
-        answer=annotation.content,
-        hit_count=annotation.hit_count,
-        created_at=created_at,
-    )
-
-
-def _hit_history_to_response(hit: AppAnnotationHitHistory) -> AnnotationHitHistoryItem:
-    created_at = _to_timestamp(hit.created_at)
-    if created_at is None:
-        created_at = 0
-    return AnnotationHitHistoryItem(
-        id=hit.id,
-        source=hit.source,
-        score=hit.score,
-        question=hit.question,
-        created_at=created_at,
-        match=hit.annotation_question,
-        response=hit.annotation_content,
-    )
-
-
 def _normalize_job_id(value: Any) -> str:
     if isinstance(value, (bytes, bytearray)):
         return value.decode()
     return str(value)
+
+
+def _get_single_uploaded_file(*, field_name: str) -> FileStorage:
+    if field_name not in request.files:
+        raise NoFileUploadedError()
+    if len(request.files) > 1:
+        raise TooManyFilesError()
+    return request.files[field_name]
 
 
 class AnnotationReplyPayload(BaseModel):
@@ -116,6 +98,13 @@ class UpdateAnnotationPayload(BaseModel):
     answer: str | None = None
     content: str | None = None
     annotation_reply: dict[str, Any] | None = None
+
+
+class DeleteAnnotationsPayload(BaseModel):
+    annotation_ids: list[str] | None = Field(
+        default=None,
+        description="Annotation IDs to delete in batch. If omitted, clears all annotations.",
+    )
 
 
 class PaginationQuery(BaseModel):
@@ -193,6 +182,11 @@ class AnnotationExportResponse(ResponseModel):
     data: list[AnnotationItem] = Field(description="Annotations")
 
 
+class DeleteAnnotationsResponse(ResponseModel):
+    deleted_count: int | None = Field(default=None, description="Deleted annotations count (batch delete only)")
+    result: Literal["success"] | None = Field(default=None, description='Result (clear-all only, e.g. "success")')
+
+
 class AnnotationHitHistoryItem(ResponseModel):
     id: str = Field(description="Hit history ID")
     source: str = Field(description="Source")
@@ -209,6 +203,34 @@ class AnnotationHitHistoryListResponse(ResponseModel):
     limit: int = Field(description="Page size")
     total: int = Field(description="Total count")
     page: int = Field(description="Current page")
+
+
+def _annotation_to_response(annotation: MessageAnnotation) -> AnnotationItem:
+    created_at = _to_timestamp(annotation.created_at)
+    if created_at is None:
+        created_at = 0
+    return AnnotationItem(
+        id=str(annotation.id),
+        question=str(annotation.question or ""),
+        answer=str(annotation.content or ""),
+        hit_count=int(annotation.hit_count or 0),
+        created_at=created_at,
+    )
+
+
+def _hit_history_to_response(hit: AppAnnotationHitHistory) -> AnnotationHitHistoryItem:
+    created_at = _to_timestamp(hit.created_at)
+    if created_at is None:
+        created_at = 0
+    return AnnotationHitHistoryItem(
+        id=str(hit.id),
+        source=str(hit.source or ""),
+        score=float(hit.score or 0.0),
+        question=str(hit.question or ""),
+        created_at=created_at,
+        match=str(getattr(hit, "annotation_question", "") or ""),
+        response=str(getattr(hit, "annotation_content", "") or ""),
+    )
 
 
 @console_router.post(
@@ -228,7 +250,7 @@ def annotation_reply_action(
 ) -> AnnotationJobStatusResponse:
     app_id_str = str(app_id)
     if action == "enable":
-        result = AppAnnotationService.enable_app_annotation(payload.model_dump(), app_id_str)
+        result = AppAnnotationService.enable_app_annotation(payload, app_id_str)
     else:
         result = AppAnnotationService.disable_app_annotation(app_id_str)
 
@@ -270,7 +292,7 @@ def update_annotation_setting(
     result = AppAnnotationService.update_app_annotation_setting(
         str(app_id),
         str(annotation_setting_id),
-        payload.model_dump(),
+        payload,
     )
     embedding_model = result.get("embedding_model") if isinstance(result, dict) else None
     if isinstance(embedding_model, dict) and not embedding_model:
@@ -345,8 +367,7 @@ def list_annotations(app_id: UUID, query: AnnotationListQuery) -> AnnotationList
 @cloud_edition_billing_resource_check("annotation")
 @edit_permission_required
 def create_annotation(app_id: UUID, payload: CreateAnnotationPayload) -> AnnotationItem:
-    data = payload.model_dump(exclude_none=True)
-    annotation = AppAnnotationService.up_insert_app_annotation_from_message(data, str(app_id))
+    annotation = AppAnnotationService.up_insert_app_annotation_from_message(payload, str(app_id))
     return _annotation_to_response(annotation)
 
 
@@ -359,16 +380,18 @@ def create_annotation(app_id: UUID, payload: CreateAnnotationPayload) -> Annotat
 @login_required
 @account_initialization_required
 @edit_permission_required
-def delete_annotations(app_id: UUID) -> dict[str, Any] | None:
+def delete_annotations(app_id: UUID, payload: DeleteAnnotationsPayload) -> DeleteAnnotationsResponse:
     app_id_str = str(app_id)
 
-    annotation_ids = request.args.getlist("annotation_id")
-    if annotation_ids:
-        if not all(annotation_id.strip() for annotation_id in annotation_ids if annotation_id):
-            raise BadRequest("annotation_ids are required if the parameter is provided.")
-        return AppAnnotationService.delete_app_annotations_in_batch(app_id_str, annotation_ids)
+    annotation_ids = payload.annotation_ids
+    if annotation_ids is not None:
+        if len(annotation_ids) == 0 or any(not annotation_id.strip() for annotation_id in annotation_ids):
+            raise BadRequest("annotation_ids must be a non-empty list of IDs.")
+        result = AppAnnotationService.delete_app_annotations_in_batch(app_id_str, annotation_ids)
+        return DeleteAnnotationsResponse.model_validate(result)
 
-    return AppAnnotationService.clear_all_annotations(app_id_str)
+    result = AppAnnotationService.clear_all_annotations(app_id_str)
+    return DeleteAnnotationsResponse.model_validate(result)
 
 
 @console_router.get(
@@ -396,8 +419,7 @@ def export_annotations(app_id: UUID) -> AnnotationExportResponse:
 @cloud_edition_billing_resource_check("annotation")
 @edit_permission_required
 def update_annotation(app_id: UUID, annotation_id: UUID, payload: UpdateAnnotationPayload) -> AnnotationItem:
-    data = payload.model_dump(exclude_none=True)
-    annotation = AppAnnotationService.update_app_annotation_directly(data, str(app_id), str(annotation_id))
+    annotation = AppAnnotationService.update_app_annotation_directly(payload, str(app_id), str(annotation_id))
     return _annotation_to_response(annotation)
 
 
@@ -430,12 +452,7 @@ def delete_annotation(app_id: UUID, annotation_id: UUID) -> dict[str, str] | Non
 def batch_import_annotations(app_id: UUID) -> AnnotationBatchImportResponse:
     from configs import dify_config
 
-    if "file" not in request.files:
-        raise NoFileUploadedError()
-    if len(request.files) > 1:
-        raise TooManyFilesError()
-
-    file = request.files["file"]
+    file = _get_single_uploaded_file(field_name="file")
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise BadRequest("Invalid file type. Only CSV files are allowed")
 
