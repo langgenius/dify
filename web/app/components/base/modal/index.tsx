@@ -19,6 +19,7 @@ type IModal = {
   highPriority?: boolean // For modals that need to appear above dropdowns
   overlayOpacity?: boolean // For semi-transparent overlay instead of default
   clickOutsideNotClose?: boolean // Prevent closing when clicking outside modal
+  initialFocus?: React.RefObject<HTMLElement | null>
 }
 
 export default function Modal({
@@ -35,10 +36,11 @@ export default function Modal({
   highPriority = false,
   overlayOpacity = false,
   clickOutsideNotClose = false,
+  initialFocus,
 }: IModal) {
   return (
     <Transition appear show={isShow} as={Fragment}>
-      <Dialog as="div" className={cn('relative', highPriority ? 'z-[1100]' : 'z-[60]', wrapperClassName)} onClose={clickOutsideNotClose ? noop : onClose}>
+      <Dialog as="div" className={cn('relative', highPriority ? 'z-[1100]' : 'z-[60]', wrapperClassName)} onClose={clickOutsideNotClose ? noop : onClose} initialFocus={initialFocus}>
         <TransitionChild>
           <div className={cn('fixed inset-0', overlayOpacity ? 'bg-workflow-canvas-canvas-overlay' : 'bg-background-overlay', 'duration-300 ease-in data-[closed]:opacity-0', 'data-[enter]:opacity-100', 'data-[leave]:opacity-0')} />
         </TransitionChild>

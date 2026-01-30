@@ -46,6 +46,8 @@ const CreateBlankSkillModal = ({ isOpen, onClose }: CreateBlankSkillModalProps) 
 
   const { data: existingNames } = useExistingSkillNames()
 
+  const inputRef = useRef<HTMLInputElement>(null)
+
   const trimmedName = skillName.trim()
   const isDuplicate = !!trimmedName && (existingNames?.has(trimmedName) ?? false)
   const canCreate = !!trimmedName && !isDuplicate && !isCreating
@@ -116,18 +118,19 @@ const CreateBlankSkillModal = ({ isOpen, onClose }: CreateBlankSkillModalProps) 
       title={t('skill.startTab.createModal.title', { ns: 'workflow' })}
       closable={!isCreating}
       clickOutsideNotClose={isCreating}
+      initialFocus={inputRef}
     >
       <div className="mt-6 flex flex-col gap-1">
         <label className="system-sm-semibold text-text-secondary">
           {t('skill.startTab.createModal.nameLabel', { ns: 'workflow' })}
         </label>
         <Input
+          ref={inputRef}
           value={skillName}
           onChange={e => setSkillName(e.target.value)}
           placeholder={t('skill.startTab.createModal.namePlaceholder', { ns: 'workflow' }) || ''}
           destructive={isDuplicate}
           disabled={isCreating}
-          autoFocus
           onKeyDown={(e) => {
             if (e.key === 'Enter' && canCreate)
               handleCreate()
