@@ -1,11 +1,6 @@
 [src]
 exclude = [
     # deps groups (A1/A2/B/C/D/E)
-    # A1: foundational runtime typing / provider plumbing
-    "core/mcp/session",
-    "core/model_runtime/model_providers",
-    "core/workflow/nodes/protocols.py",
-    "libs/gmpy2_pkcs10aep_cipher.py",
     # A2: workflow engine/nodes
     "core/workflow",
     "core/app/workflow",
@@ -33,6 +28,3 @@ exclude = [
     "tests",
 ]
 
-[rules]
-missing-argument = "ignore" # TODO: restore when **args for constructor is supported properly
-possibly-unbound-attribute = "ignore"

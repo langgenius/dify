@@ -314,6 +314,8 @@ class ModelProviderFactory:
         elif model_type == ModelType.TTS:
             return TTSModel.model_validate(init_params)
 
+        raise ValueError(f"Unsupported model type: {model_type}")
+
     def get_provider_icon(self, provider: str, icon_type: str, lang: str) -> tuple[bytes, str]:
         """
         Get provider icon

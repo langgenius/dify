@@ -1,13 +1,7 @@
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import tailwindTypography from '@tailwindcss/typography'
 // @ts-expect-error workaround for turbopack issue
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define.ts'
 import typography from './typography.js'
-
-const _dirname = typeof __dirname !== 'undefined'
-  ? __dirname
-  : path.dirname(fileURLToPath(import.meta.url))
 
 const config = {
   theme: {
@@ -159,21 +153,7 @@ const config = {
       },
     },
   },
-  plugins: [
-    tailwindTypography,
-    // iconsPlugin({
-    //   collections: {
-    //     ...getCollectionsFromSubDirs(path.resolve(_dirname, 'app/components/base/icons/assets/public'), 'custom-public'),
-    //     ...getCollectionsFromSubDirs(path.resolve(_dirname, 'app/components/base/icons/assets/vender'), 'custom-vender'),
-    //     ...getIconCollections(['heroicons', 'ri']),
-    //   },
-    //   extraProperties: {
-    //     width: '1rem',
-    //     height: '1rem',
-    //     display: 'block',
-    //   },
-    // }),
-  ],
+  plugins: [tailwindTypography],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
   corePlugins: {
     preflight: false,

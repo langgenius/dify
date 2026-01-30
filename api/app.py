@@ -1,5 +1,13 @@
+from __future__ import annotations
+
 import os
 import sys
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from celery import Celery
+
+    celery: Celery
 
 
 def is_db_command() -> bool:
@@ -30,7 +38,7 @@ else:
 
     socketio_app, flask_app = create_app()
     app = flask_app
-    celery = flask_app.extensions["celery"]
+    celery = cast("Celery", flask_app.extensions["celery"])
 
 if __name__ == "__main__":
     from gevent import pywsgi
