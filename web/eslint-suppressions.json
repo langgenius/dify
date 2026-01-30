@@ -506,11 +506,6 @@
       "count": 1
     }
   },
-  "app/components/app/create-app-modal/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
-    }
-  },
   "app/components/app/create-app-modal/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -2686,11 +2681,6 @@
     }
   },
   "app/components/workflow-app/components/workflow-main.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/workflow-app/components/workflow-onboarding-modal/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 2
     }
