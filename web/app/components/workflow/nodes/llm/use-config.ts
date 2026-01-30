@@ -67,6 +67,11 @@ const useConfig = (id: string, payload: LLMNodeType) => {
         })
       }
     }
+    else {
+      newPayload = produce(newPayload, (draft) => {
+        draft.computer_use = false
+      })
+    }
     doSetInputs(newPayload)
     inputRef.current = newPayload
   }, [doSetInputs, defaultRolePrefix, isSupportSandbox])
