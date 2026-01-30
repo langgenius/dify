@@ -35,6 +35,7 @@ class TestDataFactory:
         app_id: str = "app-789",
         workflow_id: str = "workflow-101",
         status: str | WorkflowExecutionStatus = "paused",
+        pause_id: str | None = None,
         **kwargs,
     ) -> MagicMock:
         """Create a mock WorkflowRun object."""
@@ -44,6 +45,7 @@ class TestDataFactory:
         mock_run.app_id = app_id
         mock_run.workflow_id = workflow_id
         mock_run.status = status
+        mock_run.pause_id = pause_id
 
         for key, value in kwargs.items():
             setattr(mock_run, key, value)
