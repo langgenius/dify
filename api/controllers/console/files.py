@@ -1,7 +1,6 @@
 from typing import Literal
 
 from quart import request
-from quart_restx import Resource
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -24,6 +23,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.file_fields import FileResponse, UploadConfig
 from libs.login import current_account_with_tenant, login_required
+from quart_restx import Resource
 from services.file_service import FileService
 
 from . import console_ns

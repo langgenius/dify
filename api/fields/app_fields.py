@@ -1,9 +1,8 @@
 import json
 
-from quart_restx import fields
-
 from fields.workflow_fields import workflow_partial_fields
 from libs.helper import AppIconUrlField, TimestampField
+from quart_restx import fields
 
 
 class JsonStringField(fields.Raw):

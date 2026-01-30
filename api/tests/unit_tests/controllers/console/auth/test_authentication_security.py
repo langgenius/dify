@@ -5,11 +5,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from quart import Quart as Flask
-from quart_restx import Api
 
 import services.errors.account
 from controllers.console.auth.error import AuthenticationFailedError
 from controllers.console.auth.login import LoginApi
+from quart_restx import Api
 
 
 def encode_password(password: str) -> str:

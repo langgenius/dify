@@ -26,7 +26,8 @@ class TestFileUploadSecurity:
     # Test 1: Basic file validation
     def test_should_validate_file_presence(self):
         """Test that missing file is detected"""
-        from quart import Quart as Flask, request
+        from quart import Quart as Flask
+        from quart import request
 
         app = Flask(__name__)
 
@@ -38,7 +39,8 @@ class TestFileUploadSecurity:
 
     def test_should_validate_multiple_files(self):
         """Test that multiple files are rejected"""
-        from quart import Quart as Flask, request
+        from quart import Quart as Flask
+        from quart import request
 
         app = Flask(__name__)
 
@@ -55,7 +57,8 @@ class TestFileUploadSecurity:
 
     def test_should_validate_empty_filename(self):
         """Test that empty filename is rejected"""
-        from quart import Quart as Flask, request
+        from quart import Quart as Flask
+        from quart import request
 
         app = Flask(__name__)
 

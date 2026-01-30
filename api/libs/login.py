@@ -5,12 +5,12 @@ from functools import wraps
 from typing import TYPE_CHECKING, Any
 
 from quart import current_app, g, has_request_context, request
-from quart_login.config import EXEMPT_METHODS
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
 from libs.token import check_csrf_token
 from models import Account
+from quart_login.config import EXEMPT_METHODS
 
 if TYPE_CHECKING:
     from models.model import EndUser

@@ -3,7 +3,8 @@ import logging
 from unittest import mock
 
 import pytest
-from quart import Quart as Flask, Response
+from quart import Quart as Flask
+from quart import Response
 
 from configs import dify_config
 from extensions import ext_request_logging

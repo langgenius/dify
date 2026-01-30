@@ -6,13 +6,13 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
-from quart_login import current_user
 
 from core.helper import encrypter
 from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
 from core.rag.extractor.watercrawl.provider import WaterCrawlProvider
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from quart_login import current_user
 from services.datasource_provider_service import DatasourceProviderService
 
 

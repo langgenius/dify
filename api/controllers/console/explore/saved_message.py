@@ -1,5 +1,5 @@
-from quart import request
 from pydantic import BaseModel, Field, TypeAdapter
+from quart import request
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_models

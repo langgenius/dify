@@ -1,13 +1,12 @@
 import logging
 
-from quart_restx import Resource
-
 from controllers.console.wraps import (
     account_initialization_required,
     setup_required,
 )
 from core.schemas.schema_manager import SchemaManager
 from libs.login import login_required
+from quart_restx import Resource
 
 from . import console_ns
 

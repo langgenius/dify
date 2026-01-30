@@ -1,7 +1,5 @@
 from typing import Literal
 
-from quart_login import current_user
-from quart_restx import marshal
 from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
 
@@ -9,6 +7,8 @@ from controllers.common.schema import register_schema_model, register_schema_mod
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
 from fields.dataset_fields import dataset_metadata_fields
+from quart_login import current_user
+from quart_restx import marshal
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,

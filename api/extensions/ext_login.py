@@ -1,10 +1,9 @@
 import json
 
-import quart_login as flask_login
 from quart import Response, request
-from quart_login import user_loaded_from_request, user_logged_in
 from werkzeug.exceptions import NotFound, Unauthorized
 
+import quart_login as flask_login
 from configs import dify_config
 from constants import HEADER_NAME_APP_CODE
 from dify_app import DifyApp
@@ -13,6 +12,7 @@ from libs.passport import PassportService
 from libs.token import extract_access_token, extract_webapp_passport
 from models import Account, Tenant, TenantAccountJoin
 from models.model import AppMCPServer, EndUser
+from quart_login import user_loaded_from_request, user_logged_in
 from services.account_service import AccountService
 
 login_manager = flask_login.LoginManager()

@@ -3,8 +3,9 @@ import threading
 import time
 from typing import Any
 
-from quart import Quart as Flask, current_app
 from pydantic import BaseModel, ConfigDict
+from quart import Quart as Flask
+from quart import current_app
 
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom

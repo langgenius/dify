@@ -12,9 +12,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from quart import Quart as Flask
-from quart_restx import Api
 
 from controllers.console.auth.login import RefreshTokenApi
+from quart_restx import Api
 
 
 class TestRefreshTokenApi:

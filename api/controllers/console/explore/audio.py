@@ -1,7 +1,7 @@
 import logging
 
-from quart import request
 from pydantic import BaseModel, Field
+from quart import request
 from werkzeug.exceptions import InternalServerError
 
 import services

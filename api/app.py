@@ -58,7 +58,6 @@ def _install_flask_views_shim() -> None:
 
 _install_flask_views_shim()
 
-import sys
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:

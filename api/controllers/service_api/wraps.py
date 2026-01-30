@@ -6,10 +6,8 @@ from enum import StrEnum, auto
 from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
-from quart import current_app, request
-from quart_login import user_logged_in
-from quart_restx import Resource
 from pydantic import BaseModel
+from quart import current_app, request
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
@@ -22,6 +20,8 @@ from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App
+from quart_login import user_logged_in
+from quart_restx import Resource
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 

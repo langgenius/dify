@@ -1,5 +1,5 @@
-from quart import Quart as Flask
 from pydantic import BaseModel
+from quart import Quart as Flask
 
 from configs import dify_config
 from core.entities import DEFAULT_PLUGIN_ID

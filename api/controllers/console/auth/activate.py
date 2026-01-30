@@ -1,6 +1,5 @@
-from quart import request
-from quart_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 
 from constants.languages import supported_language
 from controllers.console import console_ns
@@ -9,6 +8,7 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, timezone
 from models import AccountStatus
+from quart_restx import Resource, fields
 from services.account_service import RegisterService
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"

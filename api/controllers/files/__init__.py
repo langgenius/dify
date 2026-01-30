@@ -1,7 +1,7 @@
 from quart import Blueprint
-from quart_restx import Namespace
 
 from libs.external_api import ExternalApi
+from quart_restx import Namespace
 
 bp = Blueprint("files", __name__, url_prefix="/files")
 

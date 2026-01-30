@@ -8,8 +8,8 @@ from typing import Any
 
 import click
 import sqlalchemy as sa
-from quart import current_app
 from pydantic import TypeAdapter
+from quart import current_app
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker

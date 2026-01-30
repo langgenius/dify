@@ -2,7 +2,6 @@ import logging
 from typing import Any, cast
 
 from quart import request
-from quart_restx import Resource, fields, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -65,6 +64,7 @@ from models import Account
 from models.account import TenantStatus
 from models.model import AppMode, Site
 from models.workflow import Workflow
+from quart_restx import Resource, fields, marshal, marshal_with, reqparse
 from services.app_generate_service import AppGenerateService
 from services.app_service import AppService
 from services.audio_service import AudioService

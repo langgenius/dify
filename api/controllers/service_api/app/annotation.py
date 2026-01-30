@@ -1,9 +1,7 @@
 from typing import Literal
 
-from quart import request
-from quart_restx import Namespace, Resource, fields
-from quart_restx.api import HTTPStatus
 from pydantic import BaseModel, Field
+from quart import request
 
 from controllers.common.schema import register_schema_models
 from controllers.console.wraps import edit_permission_required
@@ -12,6 +10,8 @@ from controllers.service_api.wraps import validate_app_token
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import annotation_fields, build_annotation_model
 from models.model import App
+from quart_restx import Namespace, Resource, fields
+from quart_restx.api import HTTPStatus
 from services.annotation_service import AppAnnotationService
 
 

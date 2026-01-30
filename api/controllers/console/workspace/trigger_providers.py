@@ -1,9 +1,8 @@
 import logging
 from typing import Any
 
-from quart import make_response, redirect, request
-from quart_restx import Resource
 from pydantic import BaseModel, model_validator
+from quart import make_response, redirect, request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
@@ -19,6 +18,7 @@ from extensions.ext_database import db
 from libs.login import current_user, login_required
 from models.account import Account
 from models.provider_ids import TriggerProviderID
+from quart_restx import Resource
 from services.plugin.oauth_service import OAuthProxyService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService

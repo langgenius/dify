@@ -1,6 +1,5 @@
-from quart import request
-from quart_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
+from quart import request
 
 from constants.languages import languages
 from controllers.common.schema import get_or_create_model
@@ -8,6 +7,7 @@ from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required
 from libs.helper import AppIconUrlField
 from libs.login import current_user, login_required
+from quart_restx import Resource, fields, marshal_with
 from services.recommended_app_service import RecommendedAppService
 
 app_fields = {

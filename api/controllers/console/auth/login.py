@@ -1,10 +1,9 @@
 from typing import Any
 
-import quart_login as flask_login
-from quart import make_response, request
-from quart_restx import Resource
 from pydantic import BaseModel, Field
+from quart import make_response, request
 
+import quart_login as flask_login
 import services
 from configs import dify_config
 from constants.languages import get_valid_language
@@ -42,6 +41,7 @@ from libs.token import (
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
 )
+from quart_restx import Resource
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError

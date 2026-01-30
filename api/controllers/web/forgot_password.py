@@ -1,9 +1,8 @@
 import base64
 import secrets
 
-from quart import request
-from quart_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_models
@@ -22,6 +21,7 @@ from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account
+from quart_restx import Resource
 from services.account_service import AccountService
 
 

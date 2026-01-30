@@ -6,7 +6,8 @@ from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
-from quart import Quart as Flask, current_app
+from quart import Quart as Flask
+from quart import current_app
 from sqlalchemy import and_, literal, or_, select
 from sqlalchemy.orm import Session
 

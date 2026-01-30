@@ -1,7 +1,7 @@
 from typing import Literal
 
-from quart import request
 from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
+from quart import request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 

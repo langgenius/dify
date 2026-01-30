@@ -6,4 +6,4 @@ stay compatible with Quart while keeping Flask-RESTX's API surface.
 """
 
 from flask_restx import *  # noqa: F403
-from flask_restx import __all__  # noqa: F401
+from flask_restx import __all__

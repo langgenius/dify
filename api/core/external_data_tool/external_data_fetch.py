@@ -3,7 +3,8 @@ from collections.abc import Mapping
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from typing import Any
 
-from quart import Quart as Flask, current_app
+from quart import Quart as Flask
+from quart import current_app
 
 from core.app.app_config.entities import ExternalDataVariableEntity
 from core.external_data_tool.factory import ExternalDataToolFactory

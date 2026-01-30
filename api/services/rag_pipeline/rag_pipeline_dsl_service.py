@@ -13,7 +13,6 @@ from uuid import uuid4
 import yaml  # type: ignore
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
-from quart_login import current_user
 from packaging import version
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -35,6 +34,7 @@ from factories import variable_factory
 from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.workflow import Workflow, WorkflowType
+from quart_login import current_user
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     KnowledgeConfiguration,

@@ -6,4 +6,4 @@ code can keep the Quart import surface.
 """
 
 from flask_sqlalchemy import *  # noqa: F403
-from flask_sqlalchemy import __all__  # noqa: F401
+from flask_sqlalchemy import __all__

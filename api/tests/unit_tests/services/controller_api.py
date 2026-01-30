@@ -87,7 +87,6 @@ from uuid import uuid4
 
 import pytest
 from quart import Quart as Flask
-from quart_restx import Api
 
 from controllers.console.datasets.datasets import DatasetApi, DatasetListApi
 from controllers.console.datasets.external import (
@@ -95,6 +94,7 @@ from controllers.console.datasets.external import (
 )
 from controllers.console.datasets.hit_testing import HitTestingApi
 from models.dataset import Dataset, DatasetPermissionEnum
+from quart_restx import Api
 
 # ============================================================================
 # Test Data Factory

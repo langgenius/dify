@@ -12,8 +12,8 @@ from dataclasses import dataclass
 from enum import StrEnum, auto
 from typing import Any, Protocol
 
-from quart import render_template
 from pydantic import BaseModel, Field
+from quart import render_template
 
 from extensions.ext_mail import mail
 from services.feature_service import BrandingModel, FeatureService

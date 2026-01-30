@@ -1,8 +1,7 @@
-from quart_restx import Namespace, fields
-
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
+from quart_restx import Namespace, fields
 
 workflow_run_for_log_fields = {
     "id": fields.String,

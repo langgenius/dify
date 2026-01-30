@@ -5,7 +5,6 @@ from pathlib import Path
 from uuid import uuid4
 
 import yaml
-from quart_login import current_user
 
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
@@ -15,6 +14,7 @@ from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowType
+from quart_login import current_user
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.plugin.plugin_migration import PluginMigration
 from services.plugin.plugin_service import PluginService

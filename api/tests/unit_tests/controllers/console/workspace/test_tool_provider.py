@@ -3,11 +3,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from quart import Quart as Flask
-from quart_restx import Api
 
 from controllers.console.workspace.tool_providers import ToolProviderMCPApi
 from core.db.session_factory import configure_session_factory
 from extensions.ext_database import db
+from quart_restx import Api
 from services.tools.mcp_tools_manage_service import ReconnectResult
 
 

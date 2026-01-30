@@ -1,4 +1,3 @@
-from quart_restx import fields, marshal_with
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -8,6 +7,7 @@ from extensions.ext_database import db
 from libs.helper import AppIconUrlField
 from models.account import TenantStatus
 from models.model import Site
+from quart_restx import fields, marshal_with
 from services.feature_service import FeatureService
 
 

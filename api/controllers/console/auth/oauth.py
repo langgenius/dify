@@ -2,7 +2,6 @@ import logging
 
 import httpx
 from quart import current_app, redirect, request
-from quart_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
@@ -19,6 +18,7 @@ from libs.token import (
     set_refresh_token_to_cookie,
 )
 from models import Account, AccountStatus
+from quart_restx import Resource
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError

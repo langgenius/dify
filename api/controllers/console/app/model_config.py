@@ -2,7 +2,6 @@ import json
 from typing import cast
 
 from quart import request
-from quart_restx import Resource, fields
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -15,6 +14,7 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models.model import AppMode, AppModelConfig
+from quart_restx import Resource, fields
 from services.app_model_config_service import AppModelConfigService
 
 

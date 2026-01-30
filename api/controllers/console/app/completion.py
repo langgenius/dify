@@ -1,9 +1,8 @@
 import logging
 from typing import Any, Literal
 
-from quart import request
-from quart_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -32,6 +31,7 @@ from libs.helper import uuid_value
 from libs.login import current_user, login_required
 from models import Account
 from models.model import AppMode
+from quart_restx import Resource
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError

@@ -3,8 +3,8 @@ import uuid
 from collections.abc import Generator
 from typing import Any
 
-from quart import request
 from pydantic import BaseModel
+from quart import request
 from werkzeug.exceptions import Forbidden
 
 import services

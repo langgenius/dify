@@ -1,9 +1,8 @@
 import logging
 from typing import Any
 
-from quart import request
-from quart_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
+from quart import request
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
@@ -16,6 +15,7 @@ from fields.installed_app_fields import app_fields, installed_app_fields, instal
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import App, InstalledApp, RecommendedApp
+from quart_restx import Resource, fields, marshal_with
 from services.account_service import TenantService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService

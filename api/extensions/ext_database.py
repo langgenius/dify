@@ -4,7 +4,6 @@ import gevent
 from sqlalchemy import event
 from sqlalchemy.pool import Pool
 
-from configs import dify_config
 from dify_app import DifyApp
 from models.engine import db
 

@@ -6,10 +6,11 @@ from typing import Any, Optional
 from uuid import uuid4
 
 import sqlalchemy as sa
-from quart_login import UserMixin
 from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, validates
 from typing_extensions import deprecated
+
+from quart_login import UserMixin
 
 from .base import TypeBase
 from .engine import db

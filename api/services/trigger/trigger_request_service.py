@@ -1,8 +1,8 @@
 from collections.abc import Mapping
 from typing import Any
 
-from quart import Request
 from pydantic import TypeAdapter
+from quart import Request
 
 from core.plugin.utils.http_parser import deserialize_request, serialize_request
 from extensions.ext_storage import storage

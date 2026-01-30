@@ -1,8 +1,7 @@
 from typing import Any, cast
 
-from quart import request
-from quart_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -55,6 +54,7 @@ from libs.login import current_account_with_tenant, login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
+from quart_restx import Resource, fields, marshal, marshal_with
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
 # Register models for quart_restx to avoid dict type issues in Swagger

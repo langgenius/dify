@@ -3,9 +3,9 @@ import threading
 
 import pytest
 from quart import Quart as Flask
-from quart_login import LoginManager, UserMixin, current_user, login_user
 
 from libs.flask_utils import preserve_flask_contexts
+from quart_login import LoginManager, UserMixin, current_user, login_user
 
 
 class User(UserMixin):

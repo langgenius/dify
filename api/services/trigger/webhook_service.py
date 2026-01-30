@@ -6,8 +6,8 @@ from collections.abc import Mapping
 from typing import Any
 
 import orjson
-from quart import request
 from pydantic import BaseModel
+from quart import request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage

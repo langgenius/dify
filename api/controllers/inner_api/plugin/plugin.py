@@ -1,5 +1,3 @@
-from quart_restx import Resource
-
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user_tenant, plugin_data
@@ -33,6 +31,7 @@ from core.tools.entities.tool_entities import ToolProviderType
 from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
+from quart_restx import Resource
 
 
 @inner_api_ns.route("/invoke/llm")

@@ -1,8 +1,8 @@
 import logging
 from typing import Literal
 
-from quart import request
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from quart import request
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.schema import register_schema_models

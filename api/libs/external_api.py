@@ -4,13 +4,13 @@ from typing import Any
 
 from quart import Blueprint, Quart, current_app
 from quart.signals import got_request_exception
-from quart_restx import Api
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
 
 from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
 from libs.token import build_force_logout_cookie_headers
+from quart_restx import Api
 
 
 def http_status_message(code):

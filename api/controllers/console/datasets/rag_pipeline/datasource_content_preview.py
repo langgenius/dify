@@ -1,6 +1,3 @@
-from quart_restx import (  # type: ignore
-    Resource,  # type: ignore
-)
 from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden
 
@@ -10,6 +7,9 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from libs.login import current_user, login_required
 from models import Account
 from models.dataset import Pipeline
+from quart_restx import (  # type: ignore
+    Resource,  # type: ignore
+)
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"

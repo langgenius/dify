@@ -1,5 +1,3 @@
-from quart_restx import Resource, fields
-
 from controllers.common.schema import register_schema_model
 from fields.hit_testing_fields import (
     child_chunk_fields,
@@ -9,6 +7,7 @@ from fields.hit_testing_fields import (
     segment_fields,
 )
 from libs.login import login_required
+from quart_restx import Resource, fields
 
 from .. import console_ns
 from ..datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload

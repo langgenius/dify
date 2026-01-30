@@ -3,7 +3,8 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
-from quart import Quart as Flask, current_app
+from quart import Quart as Flask
+from quart import current_app
 
 from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval

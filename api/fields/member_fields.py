@@ -1,6 +1,5 @@
-from quart_restx import Namespace, fields
-
 from libs.helper import AvatarUrlField, TimestampField
+from quart_restx import Namespace, fields
 
 simple_account_fields = {
     "id": fields.String,

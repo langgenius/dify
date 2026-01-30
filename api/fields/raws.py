@@ -1,6 +1,5 @@
-from quart_restx import fields
-
 from core.file import File
+from quart_restx import fields
 
 
 class FilesContainedField(fields.Raw):

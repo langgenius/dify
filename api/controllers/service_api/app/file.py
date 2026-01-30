@@ -1,6 +1,4 @@
 from quart import request
-from quart_restx import Resource
-from quart_restx.api import HTTPStatus
 
 import services
 from controllers.common.errors import (
@@ -16,6 +14,8 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from extensions.ext_database import db
 from fields.file_fields import FileResponse
 from models import App, EndUser
+from quart_restx import Resource
+from quart_restx.api import HTTPStatus
 from services.file_service import FileService
 
 register_schema_models(service_api_ns, FileResponse)

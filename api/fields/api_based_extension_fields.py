@@ -1,6 +1,5 @@
-from quart_restx import fields
-
 from libs.helper import TimestampField
+from quart_restx import fields
 
 
 class HiddenAPIKey(fields.Raw):

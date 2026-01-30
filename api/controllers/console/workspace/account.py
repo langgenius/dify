@@ -4,9 +4,8 @@ from datetime import datetime
 from typing import Literal
 
 import pytz
-from quart import request
-from quart_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator, model_validator
+from quart import request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -42,6 +41,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, TimestampField, extract_remote_ip, timezone
 from libs.login import current_account_with_tenant, login_required
 from models import AccountIntegrate, InvitationCode
+from quart_restx import Resource, fields, marshal_with
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError

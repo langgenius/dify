@@ -1,7 +1,6 @@
 import json
 from enum import StrEnum
 
-from quart_restx import Resource, marshal_with
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound
 
@@ -12,6 +11,7 @@ from extensions.ext_database import db
 from fields.app_fields import app_server_fields
 from libs.login import current_account_with_tenant, login_required
 from models.model import AppMCPServer
+from quart_restx import Resource, marshal_with
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 

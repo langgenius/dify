@@ -1,8 +1,7 @@
 import logging
 
-from quart import request
-from quart_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
+from quart import request
 from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
 
@@ -28,6 +27,7 @@ from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.account import Tenant, TenantStatus
+from quart_restx import Resource, fields, marshal, marshal_with
 from services.account_service import TenantService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService

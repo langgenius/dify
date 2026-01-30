@@ -1,6 +1,5 @@
 from typing import Literal
 
-from quart_restx import Resource, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import NotFound
 
@@ -18,6 +17,7 @@ from fields.app_fields import app_site_fields
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import Site
+from quart_restx import Resource, marshal_with
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 

@@ -1,4 +1,6 @@
-from quart import Quart as Flask, request
+from quart import Quart as Flask
+from quart import request
+
 from quart_restx import Api, Resource
 
 app = Flask(__name__)

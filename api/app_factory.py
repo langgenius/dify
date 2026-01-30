@@ -70,10 +70,10 @@ def _patch_flask_restx_swagger_ui(app: DifyApp) -> None:
     try:
         import os
 
+        import flask_restx
+        from flask_restx import apidoc
         from jinja2 import ChoiceLoader, PackageLoader
         from quart import Blueprint, render_template, url_for
-        import flask_restx
-        import flask_restx.apidoc as apidoc
     except Exception:
         return
 
@@ -185,9 +185,7 @@ def _patch_flask_restx_schema(app: DifyApp) -> None:
             for resource, urls, route_doc, kwargs in ns.resources:
                 for url in self.api.ns_urls(ns, urls):
                     path = restx_swagger.extract_path(url)
-                    serialized = self.serialize_resource(
-                        ns, resource, url, route_doc=route_doc, **kwargs
-                    )
+                    serialized = self.serialize_resource(ns, resource, url, route_doc=route_doc, **kwargs)
                     paths[path] = serialized
 
         if restx_swagger.current_app.config["RESTX_INCLUDE_ALL_MODELS"]:
@@ -198,9 +196,7 @@ def _patch_flask_restx_schema(app: DifyApp) -> None:
             if ns.authorizations:
                 if self.api.authorizations is None:
                     self.api.authorizations = {}
-                self.api.authorizations = restx_swagger.merge(
-                    self.api.authorizations, ns.authorizations
-                )
+                self.api.authorizations = restx_swagger.merge(self.api.authorizations, ns.authorizations)
 
         specs = {
             "swagger": "2.0",

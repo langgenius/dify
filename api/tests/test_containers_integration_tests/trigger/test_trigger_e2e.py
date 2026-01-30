@@ -8,7 +8,8 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from quart import Quart as Flask, Response
+from quart import Quart as Flask
+from quart import Response
 from quart.testing import QuartClient as FlaskClient
 from sqlalchemy.orm import Session
 

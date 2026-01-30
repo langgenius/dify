@@ -1,7 +1,6 @@
-from quart_restx import fields
-
 from fields.workflow_fields import workflow_partial_fields
 from libs.helper import AppIconUrlField, TimestampField
+from quart_restx import fields
 
 pipeline_detail_kernel_fields = {
     "id": fields.String,

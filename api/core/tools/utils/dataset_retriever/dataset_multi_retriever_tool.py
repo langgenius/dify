@@ -1,8 +1,9 @@
 import threading
 from typing import Any
 
-from quart import Quart as Flask, current_app
 from pydantic import BaseModel, Field
+from quart import Quart as Flask
+from quart import current_app
 from sqlalchemy import select
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler

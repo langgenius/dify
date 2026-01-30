@@ -7,4 +7,4 @@ on Quart while keeping Flask-Login's API surface.
 """
 
 from flask_login import *  # noqa: F403
-from flask_login import __all__  # noqa: F401
+from flask_login import __all__

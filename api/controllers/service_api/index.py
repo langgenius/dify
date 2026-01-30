@@ -1,7 +1,6 @@
-from quart_restx import Resource
-
 from configs import dify_config
 from controllers.service_api import service_api_ns
+from quart_restx import Resource
 
 
 @service_api_ns.route("/")

@@ -12,7 +12,6 @@ from uuid import uuid4
 
 import sqlalchemy as sa
 from quart import request
-from quart_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -24,6 +23,7 @@ from core.tools.signature import sign_tool_file
 from core.workflow.enums import WorkflowExecutionStatus
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
+from quart_login import UserMixin  # type: ignore[import-untyped]
 
 from .account import Account, Tenant
 from .base import Base, TypeBase

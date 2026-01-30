@@ -6,7 +6,6 @@ from itertools import islice
 from typing import TYPE_CHECKING, Any, Union
 
 import qdrant_client
-from quart import current_app
 from pydantic import BaseModel
 from qdrant_client.http import models as rest
 from qdrant_client.http.models import (
@@ -18,6 +17,7 @@ from qdrant_client.http.models import (
     TokenizerType,
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
+from quart import current_app
 from sqlalchemy import select
 
 from configs import dify_config

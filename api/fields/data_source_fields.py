@@ -1,6 +1,5 @@
-from quart_restx import fields
-
 from libs.helper import TimestampField
+from quart_restx import fields
 
 integrate_icon_fields = {"type": fields.String, "url": fields.String, "emoji": fields.String}
 

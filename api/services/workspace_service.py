@@ -1,8 +1,7 @@
-from quart_login import current_user
-
 from configs import dify_config
 from extensions.ext_database import db
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
+from quart_login import current_user
 from services.account_service import TenantService
 from services.feature_service import FeatureService
 

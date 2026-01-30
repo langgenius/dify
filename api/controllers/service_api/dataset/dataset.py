@@ -1,8 +1,7 @@
 from typing import Any, Literal, cast
 
-from quart import request
-from quart_restx import marshal
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from quart import request
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -22,6 +21,7 @@ from libs.login import current_user
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
+from quart_restx import marshal
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 from services.tag_service import TagService

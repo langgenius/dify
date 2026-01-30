@@ -1,8 +1,7 @@
 from typing import Any, Union
 
-from quart import Response
-from quart_restx import Resource
 from pydantic import BaseModel, Field, ValidationError
+from quart import Response
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_model
@@ -14,6 +13,7 @@ from core.mcp.server.streamable_http import handle_mcp_request
 from extensions.ext_database import db
 from libs import helper
 from models.model import App, AppMCPServer, AppMode, EndUser
+from quart_restx import Resource
 
 
 class MCPRequestError(Exception):

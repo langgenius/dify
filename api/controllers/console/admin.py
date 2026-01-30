@@ -2,9 +2,8 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
-from quart import request
-from quart_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound, Unauthorized
 
@@ -16,6 +15,7 @@ from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from libs.token import extract_access_token
 from models.model import App, ExporleBanner, InstalledApp, RecommendedApp, TrialApp
+from quart_restx import Resource
 
 P = ParamSpec("P")
 R = TypeVar("R")

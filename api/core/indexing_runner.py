@@ -7,7 +7,8 @@ import time
 import uuid
 from typing import Any
 
-from quart import Quart as Flask, current_app
+from quart import Quart as Flask
+from quart import current_app
 from sqlalchemy import select
 from sqlalchemy.orm.exc import ObjectDeletedError
 

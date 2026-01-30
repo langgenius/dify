@@ -1,9 +1,8 @@
 from typing import Any, Literal
 from uuid import UUID
 
-from quart import request
-from quart_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
+from quart import request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -24,6 +23,7 @@ from fields.conversation_variable_fields import (
     build_conversation_variable_model,
 )
 from models.model import App, AppMode, EndUser
+from quart_restx import Resource
 from services.conversation_service import ConversationService
 
 

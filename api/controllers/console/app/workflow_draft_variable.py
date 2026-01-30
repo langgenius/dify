@@ -3,9 +3,8 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any, NoReturn, ParamSpec, TypeVar
 
-from quart import Response, request
-from quart_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
+from quart import Response, request
 from sqlalchemy.orm import Session
 
 from controllers.console import console_ns
@@ -26,6 +25,7 @@ from factories.variable_factory import build_segment_with_type
 from libs.login import login_required
 from models import App, AppMode
 from models.workflow import WorkflowDraftVariable
+from quart_restx import Resource, fields, marshal, marshal_with
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 

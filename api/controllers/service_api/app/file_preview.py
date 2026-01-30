@@ -1,9 +1,8 @@
 import logging
 from urllib.parse import quote
 
-from quart import Response, request
-from quart_restx import Resource
 from pydantic import BaseModel, Field
+from quart import Response, request
 
 from controllers.common.file_response import enforce_download_for_html
 from controllers.common.schema import register_schema_model
@@ -16,6 +15,7 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, EndUser, Message, MessageFile, UploadFile
+from quart_restx import Resource
 
 logger = logging.getLogger(__name__)
 
