@@ -7,7 +7,7 @@ from typing import Union, cast
 from sqlalchemy import select
 
 from core.agent.entities import AgentEntity, AgentToolEntity, ExecutionContext
-from core.agent.output_tools import build_agent_output_tools
+from core.agent.output_tools import build_agent_output_tools, select_output_tool_names
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -257,6 +257,7 @@ class BaseAgentRunner(AppRunner):
             tenant_id=self.tenant_id,
             invoke_from=self.application_generate_entity.invoke_from,
             tool_invoke_from=ToolInvokeFrom.AGENT,
+            output_tool_names=select_output_tool_names(structured_output_enabled=False),
         )
         for tool in output_tools:
             tool_instances[tool.entity.identity.name] = tool

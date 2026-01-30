@@ -16,6 +16,6 @@ class IllegalOutputTool(BuiltinTool):
     ) -> Generator[ToolInvokeMessage, None, None]:
         message = (
             "Protocol violation: do not output plain text. "
-            "Call output_text, final_structured_output, then final_output_answer."
+            "Call an output tool and finish with the configured terminal tool."
         )
         yield self.create_text_message(message)

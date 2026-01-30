@@ -7,7 +7,7 @@ You have access to the following tools:
 {{tools}}
 
 Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
-Valid "action" values: {{tool_names}}. You must call "final_output_answer" to finish.
+Valid "action" values: {{tool_names}}. You must call "{{final_tool_name}}" to finish.
 
 Provide only ONE action per $JSON_BLOB, as shown:
 
@@ -32,7 +32,7 @@ Thought: I know what to respond
 Action:
 ```
 {
-  "action": "final_output_answer",
+  "action": "{{final_tool_name}}",
   "action_input": {
     "text": "Final response to human"
   }
@@ -58,7 +58,7 @@ You have access to the following tools:
 {{tools}}
 
 Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
-Valid "action" values: {{tool_names}}. You must call "final_output_answer" to finish.
+Valid "action" values: {{tool_names}}. You must call "{{final_tool_name}}" to finish.
 
 Provide only ONE action per $JSON_BLOB, as shown:
 
@@ -83,7 +83,7 @@ Thought: I know what to respond
 Action:
 ```
 {
-  "action": "final_output_answer",
+  "action": "{{final_tool_name}}",
   "action_input": {
     "text": "Final response to human"
   }

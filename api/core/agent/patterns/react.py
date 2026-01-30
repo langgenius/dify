@@ -77,6 +77,17 @@ class ReActStrategy(AgentPattern):
         structured_output_payload: dict[str, Any] | None = None
         output_text_payload: str | None = None
         finish_reason: str | None = None
+        terminal_output_seen = False
+        available_output_tool_names = {
+            tool.entity.identity.name for tool in self.tools if tool.entity.identity.name in OUTPUT_TOOL_NAME_SET
+        }
+        if FINAL_STRUCTURED_OUTPUT_TOOL in available_output_tool_names:
+            terminal_tool_name = FINAL_STRUCTURED_OUTPUT_TOOL
+        elif FINAL_OUTPUT_TOOL in available_output_tool_names:
+            terminal_tool_name = FINAL_OUTPUT_TOOL
+        else:
+            raise ValueError("No terminal output tool configured")
+        allow_illegal_output = ILLEGAL_OUTPUT_TOOL in available_output_tool_names
 
         # Add "Observation" to stop sequences
         if "Observation" not in stop:
@@ -95,7 +106,9 @@ class ReActStrategy(AgentPattern):
 
             # Build prompt with tool restrictions on last iteration
             if iteration_step == max_iterations:
-                tools_for_prompt = [tool for tool in self.tools if tool.entity.identity.name in OUTPUT_TOOL_NAME_SET]
+                tools_for_prompt = [
+                    tool for tool in self.tools if tool.entity.identity.name in available_output_tool_names
+                ]
             else:
                 tools_for_prompt = self.tools
             current_messages = self._build_prompt_with_react_format(
@@ -150,6 +163,8 @@ class ReActStrategy(AgentPattern):
 
             # Check if we have an action to execute
             if scratchpad.action is None:
+                if not allow_illegal_output:
+                    raise ValueError("Model did not call any tools")
                 illegal_action = AgentScratchpadUnit.Action(
                     action_name=ILLEGAL_OUTPUT_TOOL,
                     action_input={"raw": scratchpad.thought or ""},
@@ -162,33 +177,29 @@ class ReActStrategy(AgentPattern):
                 output_files.extend(tool_files)
             else:
                 action_name = scratchpad.action.action_name
-                if action_name == FINAL_OUTPUT_TOOL:
+                if action_name == OUTPUT_TEXT_TOOL and isinstance(scratchpad.action.action_input, dict):
+                    output_text_payload = scratchpad.action.action_input.get("text")
+                elif action_name == FINAL_STRUCTURED_OUTPUT_TOOL and isinstance(scratchpad.action.action_input, dict):
+                    data = scratchpad.action.action_input.get("data")
+                    if isinstance(data, dict):
+                        structured_output_payload = data
+                elif action_name == FINAL_OUTPUT_TOOL:
                     if isinstance(scratchpad.action.action_input, dict):
                         final_text = self._format_output_text(scratchpad.action.action_input.get("text"))
                     else:
                         final_text = self._format_output_text(scratchpad.action.action_input)
-                    observation, tool_files = yield from self._handle_tool_call(
-                        scratchpad.action, current_messages, round_log
-                    )
-                    scratchpad.observation = observation
-                    output_files.extend(tool_files)
+
+                observation, tool_files = yield from self._handle_tool_call(
+                    scratchpad.action, current_messages, round_log
+                )
+                scratchpad.observation = observation
+                output_files.extend(tool_files)
+
+                if action_name == terminal_tool_name:
+                    terminal_output_seen = True
                     react_state = False
                 else:
-                    if action_name == OUTPUT_TEXT_TOOL and isinstance(scratchpad.action.action_input, dict):
-                        output_text_payload = scratchpad.action.action_input.get("text")
-                    elif action_name == FINAL_STRUCTURED_OUTPUT_TOOL and isinstance(
-                        scratchpad.action.action_input, dict
-                    ):
-                        data = scratchpad.action.action_input.get("data")
-                        if isinstance(data, dict):
-                            structured_output_payload = data
-
                     react_state = True
-                    observation, tool_files = yield from self._handle_tool_call(
-                        scratchpad.action, current_messages, round_log
-                    )
-                    scratchpad.observation = observation
-                    output_files.extend(tool_files)
 
             yield self._finish_log(
                 round_log,
@@ -207,7 +218,13 @@ class ReActStrategy(AgentPattern):
         from core.agent.entities import AgentResult
 
         output_payload: str | AgentResult.StructuredOutput
-        if final_text:
+        if terminal_tool_name == FINAL_STRUCTURED_OUTPUT_TOOL and terminal_output_seen:
+            output_payload = AgentResult.StructuredOutput(
+                output_kind=AgentOutputKind.FINAL_STRUCTURED_OUTPUT,
+                output_text=None,
+                output_data=structured_output_payload,
+            )
+        elif final_text:
             output_payload = AgentResult.StructuredOutput(
                 output_kind=AgentOutputKind.FINAL_OUTPUT_ANSWER,
                 output_text=final_text,
@@ -268,12 +285,19 @@ class ReActStrategy(AgentPattern):
                     tools_str = "No tools available"
                     tool_names_str = ""
 
+                final_tool_name = FINAL_OUTPUT_TOOL
+                if FINAL_STRUCTURED_OUTPUT_TOOL in tool_names:
+                    final_tool_name = FINAL_STRUCTURED_OUTPUT_TOOL
+                if final_tool_name not in tool_names:
+                    raise ValueError("No terminal output tool available for prompt")
+
                 # Replace placeholders in the existing system prompt
                 updated_content = msg.content
                 assert isinstance(updated_content, str)
                 updated_content = updated_content.replace("{{instruction}}", instruction)
                 updated_content = updated_content.replace("{{tools}}", tools_str)
                 updated_content = updated_content.replace("{{tool_names}}", tool_names_str)
+                updated_content = updated_content.replace("{{final_tool_name}}", final_tool_name)
 
                 # Create new SystemPromptMessage with updated content
                 messages[i] = SystemPromptMessage(content=updated_content)

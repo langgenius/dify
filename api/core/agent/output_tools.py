@@ -25,15 +25,42 @@ OUTPUT_TOOL_NAMES: Sequence[str] = (
 OUTPUT_TOOL_NAME_SET = set(OUTPUT_TOOL_NAMES)
 
 
+def select_output_tool_names(
+    *,
+    structured_output_enabled: bool,
+    include_illegal_output: bool = False,
+) -> list[str]:
+    tool_names = [OUTPUT_TEXT_TOOL]
+    if structured_output_enabled:
+        tool_names.append(FINAL_STRUCTURED_OUTPUT_TOOL)
+    else:
+        tool_names.append(FINAL_OUTPUT_TOOL)
+    if include_illegal_output:
+        tool_names.append(ILLEGAL_OUTPUT_TOOL)
+    return tool_names
+
+
+def select_terminal_tool_name(*, structured_output_enabled: bool) -> str:
+    return FINAL_STRUCTURED_OUTPUT_TOOL if structured_output_enabled else FINAL_OUTPUT_TOOL
+
+
 def build_agent_output_tools(
     *,
     tenant_id: str,
     invoke_from: InvokeFrom,
     tool_invoke_from: ToolInvokeFrom,
+    output_tool_names: Sequence[str],
     structured_output_schema: dict[str, Any] | None = None,
 ) -> list[Tool]:
     tools: list[Tool] = []
-    for tool_name in OUTPUT_TOOL_NAMES:
+    tool_names: list[str] = []
+    for tool_name in output_tool_names:
+        if tool_name not in OUTPUT_TOOL_NAME_SET:
+            raise ValueError(f"Unknown output tool name: {tool_name}")
+        if tool_name not in tool_names:
+            tool_names.append(tool_name)
+
+    for tool_name in tool_names:
         tool = ToolManager.get_tool_runtime(
             provider_type=ToolProviderType.BUILT_IN,
             provider_id=OUTPUT_TOOL_PROVIDER,

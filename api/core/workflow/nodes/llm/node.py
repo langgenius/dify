@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 from sqlalchemy import select
 
 from core.agent.entities import AgentEntity, AgentLog, AgentOutputKind, AgentResult, AgentToolEntity, ExecutionContext
-from core.agent.output_tools import build_agent_output_tools
+from core.agent.output_tools import build_agent_output_tools, select_output_tool_names
 from core.agent.patterns import StrategyFactory
 from core.app.entities.app_asset_entities import AppAssetFileTree
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -1935,6 +1935,9 @@ class LLMNode(Node[LLMNodeData]):
                 tenant_id=self.tenant_id,
                 invoke_from=self.invoke_from,
                 tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+                output_tool_names=select_output_tool_names(
+                    structured_output_enabled=self._node_data.structured_output_enabled
+                ),
                 structured_output_schema=structured_output_schema,
             )
 
@@ -2037,6 +2040,9 @@ class LLMNode(Node[LLMNodeData]):
                 tenant_id=self.tenant_id,
                 invoke_from=self.invoke_from,
                 tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+                output_tool_names=select_output_tool_names(
+                    structured_output_enabled=self._node_data.structured_output_enabled
+                ),
                 structured_output_schema=structured_output_schema,
             )
         )

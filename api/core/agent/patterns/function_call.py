@@ -42,6 +42,14 @@ class FunctionCallStrategy(AgentPattern):
         """Execute the function call agent strategy."""
         # Convert tools to prompt format
         prompt_tools: list[PromptMessageTool] = self._convert_tools_to_prompt_format()
+        available_output_tool_names = {tool.name for tool in prompt_tools if tool.name in OUTPUT_TOOL_NAME_SET}
+        if FINAL_STRUCTURED_OUTPUT_TOOL in available_output_tool_names:
+            terminal_tool_name = FINAL_STRUCTURED_OUTPUT_TOOL
+        elif FINAL_OUTPUT_TOOL in available_output_tool_names:
+            terminal_tool_name = FINAL_OUTPUT_TOOL
+        else:
+            raise ValueError("No terminal output tool configured")
+        allow_illegal_output = ILLEGAL_OUTPUT_TOOL in available_output_tool_names
 
         # Initialize tracking
         iteration_step: int = 1
@@ -54,6 +62,7 @@ class FunctionCallStrategy(AgentPattern):
         output_text_payload: str | None = None
         finish_reason: str | None = None
         output_files: list[File] = []  # Track files produced by tools
+        terminal_output_seen = False
 
         class _LLMInvoker(Protocol):
             def invoke_llm(
@@ -79,7 +88,7 @@ class FunctionCallStrategy(AgentPattern):
             yield round_log
             # On last iteration, restrict tools to output tools
             if iteration_step == max_iterations:
-                current_tools = [tool for tool in prompt_tools if tool.name in OUTPUT_TOOL_NAME_SET]
+                current_tools = [tool for tool in prompt_tools if tool.name in available_output_tool_names]
             else:
                 current_tools = prompt_tools
             model_log = self._create_log(
@@ -115,6 +124,8 @@ class FunctionCallStrategy(AgentPattern):
             )
 
             if not tool_calls:
+                if not allow_illegal_output:
+                    raise ValueError("Model did not call any tools")
                 tool_calls = [
                     (
                         str(uuid.uuid4()),
@@ -149,9 +160,12 @@ class FunctionCallStrategy(AgentPattern):
                     elif tool_name == FINAL_STRUCTURED_OUTPUT_TOOL:
                         data = tool_args.get("data")
                         structured_output_payload = cast(dict[str, Any] | None, data)
+                        if tool_name == terminal_tool_name:
+                            terminal_tool_seen = True
                     elif tool_name == FINAL_OUTPUT_TOOL:
                         final_text = self._format_output_text(tool_args.get("text"))
-                        terminal_tool_seen = True
+                        if tool_name == terminal_tool_name:
+                            terminal_tool_seen = True
 
                     tool_response, tool_files, _ = yield from self._handle_tool_call(
                         tool_name, tool_args, tool_call_id, messages, round_log
@@ -161,6 +175,7 @@ class FunctionCallStrategy(AgentPattern):
                     output_files.extend(tool_files)
 
                 if terminal_tool_seen:
+                    terminal_output_seen = True
                     function_call_state = False
             yield self._finish_log(
                 round_log,
@@ -181,7 +196,13 @@ class FunctionCallStrategy(AgentPattern):
         from core.agent.entities import AgentResult
 
         output_payload: str | AgentResult.StructuredOutput
-        if final_text:
+        if terminal_tool_name == FINAL_STRUCTURED_OUTPUT_TOOL and terminal_output_seen:
+            output_payload = AgentResult.StructuredOutput(
+                output_kind=AgentOutputKind.FINAL_STRUCTURED_OUTPUT,
+                output_text=None,
+                output_data=structured_output_payload,
+            )
+        elif final_text:
             output_payload = AgentResult.StructuredOutput(
                 output_kind=AgentOutputKind.FINAL_OUTPUT_ANSWER,
                 output_text=final_text,
