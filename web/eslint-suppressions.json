@@ -4203,16 +4203,13 @@
   },
   "app/components/workflow/variable-inspect/value-content.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 5
+      "count": 1
     },
     "regexp/no-super-linear-backtracking": {
       "count": 1
     },
     "regexp/no-unused-capturing-group": {
       "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 7
     }
   },
   "app/components/workflow/workflow-history-store.tsx": {
