@@ -8,7 +8,7 @@ from typing import Protocol, cast, final
 from pydantic import TypeAdapter
 
 from core.workflow.entities.graph_config import NodeConfigDict
-from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType
+from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState
 from core.workflow.nodes.base.node import Node
 from libs.typing import is_str
 

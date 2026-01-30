@@ -170,8 +170,8 @@ class DefaultValue(BaseModel):
 class BaseNodeData(ABC, BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    title: str
     type: NodeType
+    title: str = ""
     desc: str | None = None
     version: str = "1"
     error_strategy: ErrorStrategy | None = None

@@ -87,9 +87,9 @@ class DifyNodeFactory(NodeFactory):
         # Get node type from config
         node_data = node_config["data"]
         try:
-            node_type = NodeType(node_data["type"])
+            node_type = node_data.type
         except ValueError:
-            raise ValueError(f"Unknown node type: {node_data['type']}")
+            raise ValueError(f"Unknown node type: {node_data.type}")
 
         # Get node class
         node_mapping = NODE_TYPE_CLASSES_MAPPING.get(node_type)
@@ -97,7 +97,7 @@ class DifyNodeFactory(NodeFactory):
             raise ValueError(f"No class mapping found for node type: {node_type}")
 
         latest_node_class = node_mapping.get(LATEST_VERSION)
-        node_version = str(node_data.get("version", "1"))
+        node_version = str(node_data.version)
         matched_node_class = node_mapping.get(node_version)
         node_class = matched_node_class or latest_node_class
         if not node_class:

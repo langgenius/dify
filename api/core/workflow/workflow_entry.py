@@ -148,7 +148,7 @@ class WorkflowEntry:
         node_config_data = node_config["data"]
 
         # Get node type
-        node_type = NodeType(node_config_data["type"])
+        node_type = node_config_data.type
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(

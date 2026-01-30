@@ -19,8 +19,8 @@ from core.trigger.debug.events import (
     build_plugin_pool_key,
     build_webhook_pool_key,
 )
-from core.workflow.enums import NodeType
 from core.workflow.entities.graph_config import NodeConfigDict
+from core.workflow.enums import NodeType
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
 from extensions.ext_redis import redis_client
