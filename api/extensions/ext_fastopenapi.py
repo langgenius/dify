@@ -1,7 +1,7 @@
 from flask_cors import CORS
 
 from configs import dify_config
-from controllers.fastopenapi import DifyFlaskRouter, console_router, web_router
+from controllers.fastopenapi import FlaskRouter, console_router, web_router
 from dify_app import DifyApp
 from extensions.ext_blueprints import AUTHENTICATED_HEADERS, EXPOSED_HEADERS
 
@@ -14,7 +14,7 @@ def init_app(app: DifyApp) -> None:
     redoc_url = f"{DOCS_PREFIX}/redoc" if docs_enabled else None
     openapi_url = f"{DOCS_PREFIX}/openapi.json" if docs_enabled else None
 
-    router = DifyFlaskRouter(
+    router = FlaskRouter(
         app=app,
         docs_url=docs_url,
         redoc_url=redoc_url,
