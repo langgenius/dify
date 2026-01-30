@@ -25,7 +25,8 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("HTTP_REQUEST_MAX_READ_TIMEOUT", "300")  # Custom value for testing
 
     # load dotenv file with pydantic-settings
-    config = DifyConfig()
+    # Disable `.env` loading to ensure test stability across environments
+    config = DifyConfig(_env_file=None)
 
     # constant values
     assert config.COMMIT_SHA == ""
@@ -59,7 +60,8 @@ def test_http_timeout_defaults(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DB_PORT", "5432")
     monkeypatch.setenv("DB_DATABASE", "dify")
 
-    config = DifyConfig()
+    # Disable `.env` loading to ensure test stability across environments
+    config = DifyConfig(_env_file=None)
 
     # Verify default timeout values
     assert config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT == 10
@@ -86,7 +88,8 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("WEB_API_CORS_ALLOW_ORIGINS", "http://127.0.0.1:3000,*")
     monkeypatch.setenv("CODE_EXECUTION_ENDPOINT", "http://127.0.0.1:8194/")
 
-    flask_app.config.from_mapping(DifyConfig().model_dump())  # pyright: ignore
+    # Disable `.env` loading to ensure test stability across environments
+    flask_app.config.from_mapping(DifyConfig(_env_file=None).model_dump())  # pyright: ignore
     config = flask_app.config
 
     # configs read from pydantic-settings
