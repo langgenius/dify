@@ -22,6 +22,9 @@
     "and_uc >= 15.5",
     "and_qq >= 14.9"
   ],
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "next dev",
     "dev:inspect": "next dev --inspect",
