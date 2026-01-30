@@ -2,6 +2,7 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
+from flask_restx import Api
 from quart import Blueprint, Quart, current_app
 from quart.signals import got_request_exception
 from werkzeug.exceptions import HTTPException
@@ -10,7 +11,6 @@ from werkzeug.http import HTTP_STATUS_CODES
 from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
 from libs.token import build_force_logout_cookie_headers
-from flask_restx import Api
 
 
 def http_status_message(code):

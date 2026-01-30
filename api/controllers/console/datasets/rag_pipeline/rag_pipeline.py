@@ -1,5 +1,6 @@
 import logging
 
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 from quart import request
 from sqlalchemy.orm import Session
@@ -15,7 +16,6 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from libs.login import login_required
 from models.dataset import PipelineCustomizedTemplate
-from flask_restx import Resource
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 

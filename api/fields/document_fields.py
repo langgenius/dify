@@ -1,6 +1,7 @@
+from flask_restx import fields
+
 from fields.dataset_fields import dataset_fields
 from libs.helper import TimestampField
-from flask_restx import fields
 
 document_metadata_fields = {
     "id": fields.String,

@@ -1,5 +1,6 @@
-from libs.helper import TimestampField
 from flask_restx import fields
+
+from libs.helper import TimestampField
 
 document_fields = {
     "id": fields.String,

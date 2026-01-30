@@ -1,7 +1,6 @@
+from flask_restx import Api, Resource
 from quart import Quart as Flask
 from quart import request
-
-from flask_restx import Api, Resource
 
 app = Flask(__name__)
 api = Api(app)

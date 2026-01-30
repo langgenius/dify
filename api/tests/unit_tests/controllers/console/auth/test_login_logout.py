@@ -12,6 +12,7 @@ import base64
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask_restx import Api
 from quart import Quart as Flask
 
 from controllers.console.auth.error import (
@@ -25,7 +26,6 @@ from controllers.console.error import (
     AccountInFreezeError,
     WorkspacesLimitExceeded,
 )
-from flask_restx import Api
 from services.errors.account import AccountLoginError, AccountPasswordError
 
 

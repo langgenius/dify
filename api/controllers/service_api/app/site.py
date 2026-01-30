@@ -1,3 +1,4 @@
+from flask_restx import Resource
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.fields import Site as SiteResponse
@@ -6,7 +7,6 @@ from controllers.service_api.wraps import validate_app_token
 from extensions.ext_database import db
 from models.account import TenantStatus
 from models.model import App, Site
-from flask_restx import Resource
 
 
 @service_api_ns.route("/site")

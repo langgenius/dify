@@ -1,3 +1,4 @@
+from flask_restx import Resource
 from jwt import InvalidTokenError
 from pydantic import BaseModel, Field, field_validator
 from quart import make_response, request
@@ -26,7 +27,6 @@ from libs.token import (
     clear_webapp_access_token_from_cookie,
     extract_webapp_access_token,
 )
-from flask_restx import Resource
 from services.account_service import AccountService
 from services.app_service import AppService
 from services.webapp_auth_service import WebAppAuthService

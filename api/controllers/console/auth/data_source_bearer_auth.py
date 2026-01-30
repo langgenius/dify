@@ -1,7 +1,7 @@
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from libs.login import current_account_with_tenant, login_required
-from flask_restx import Resource
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
 from .. import console_ns

@@ -1,5 +1,6 @@
-from controllers.web import web_ns
 from flask_restx import Resource
+
+from controllers.web import web_ns
 from services.feature_service import FeatureService
 
 

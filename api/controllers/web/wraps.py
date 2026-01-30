@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
+from flask_restx import Resource
 from quart import request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,7 +15,6 @@ from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, EndUser, Site
-from flask_restx import Resource
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
 from services.feature_service import FeatureService

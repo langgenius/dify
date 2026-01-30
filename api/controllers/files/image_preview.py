@@ -1,5 +1,6 @@
 from urllib.parse import quote
 
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 from quart import Response, request
 from werkzeug.exceptions import NotFound
@@ -9,7 +10,6 @@ from controllers.common.errors import UnsupportedFileTypeError
 from controllers.common.file_response import enforce_download_for_html
 from controllers.files import files_ns
 from extensions.ext_database import db
-from flask_restx import Resource
 from services.account_service import TenantService
 from services.file_service import FileService
 

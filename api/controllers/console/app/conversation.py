@@ -1,6 +1,7 @@
 from typing import Literal
 
 import sqlalchemy as sa
+from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from quart import abort, request
 from sqlalchemy import func, or_
@@ -18,7 +19,6 @@ from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
 from models.model import AppMode
-from flask_restx import Resource, fields, marshal_with
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 

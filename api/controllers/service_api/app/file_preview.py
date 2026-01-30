@@ -1,6 +1,7 @@
 import logging
 from urllib.parse import quote
 
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 from quart import Response, request
 
@@ -15,7 +16,6 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, EndUser, Message, MessageFile, UploadFile
-from flask_restx import Resource
 
 logger = logging.getLogger(__name__)
 

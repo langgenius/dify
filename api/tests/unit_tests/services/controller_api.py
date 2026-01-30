@@ -86,6 +86,7 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
+from flask_restx import Api
 from quart import Quart as Flask
 
 from controllers.console.datasets.datasets import DatasetApi, DatasetListApi
@@ -94,7 +95,6 @@ from controllers.console.datasets.external import (
 )
 from controllers.console.datasets.hit_testing import HitTestingApi
 from models.dataset import Dataset, DatasetPermissionEnum
-from flask_restx import Api
 
 # ============================================================================
 # Test Data Factory

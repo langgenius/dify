@@ -1,6 +1,7 @@
 import json
 from typing import cast
 
+from flask_restx import Resource, fields
 from quart import request
 
 from controllers.console import console_ns
@@ -14,7 +15,6 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models.model import AppMode, AppModelConfig
-from flask_restx import Resource, fields
 from services.app_model_config_service import AppModelConfigService
 
 

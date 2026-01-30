@@ -6,11 +6,11 @@ from collections.abc import Generator
 
 import pytest
 import quart
-from dify_app import DifyApp as Flask
 from quart.testing import QuartClient as FlaskClient
 from sqlalchemy.orm import Session
 
 from app_factory import create_app
+from dify_app import DifyApp as Flask
 from extensions.ext_database import db
 from models import Account, DifySetup, Tenant, TenantAccountJoin
 from services.account_service import AccountService, RegisterService

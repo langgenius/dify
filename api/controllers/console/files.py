@@ -1,5 +1,6 @@
 from typing import Literal
 
+from flask_restx import Resource
 from quart import request
 from werkzeug.exceptions import Forbidden
 
@@ -23,7 +24,6 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.file_fields import FileResponse, UploadConfig
 from libs.login import current_account_with_tenant, login_required
-from flask_restx import Resource
 from services.file_service import FileService
 
 from . import console_ns

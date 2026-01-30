@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal, TypeAlias
 
+from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, field_validator
 from quart import request
 from sqlalchemy import select
@@ -29,7 +30,6 @@ from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
-from flask_restx import Resource
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService

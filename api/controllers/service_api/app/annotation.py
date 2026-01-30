@@ -1,5 +1,6 @@
 from typing import Literal
 
+from flask_restx import Namespace, Resource, fields
 from pydantic import BaseModel, Field
 from quart import request
 
@@ -10,7 +11,6 @@ from controllers.service_api.wraps import validate_app_token
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import annotation_fields, build_annotation_model
 from models.model import App
-from flask_restx import Namespace, Resource, fields
 from quart_restx.api import HTTPStatus
 from services.annotation_service import AppAnnotationService
 

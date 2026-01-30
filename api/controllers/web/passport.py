@@ -1,6 +1,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
+from flask_restx import Resource
 from quart import make_response, request
 from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound, Unauthorized
@@ -13,7 +14,6 @@ from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_webapp_access_token
 from models.model import App, EndUser, Site
-from flask_restx import Resource
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
 

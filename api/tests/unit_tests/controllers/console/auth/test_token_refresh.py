@@ -11,10 +11,10 @@ This module tests the token refresh mechanism including:
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask_restx import Api
 from quart import Quart as Flask
 
 from controllers.console.auth.login import RefreshTokenApi
-from flask_restx import Api
 
 
 class TestRefreshTokenApi:

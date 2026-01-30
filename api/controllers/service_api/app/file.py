@@ -1,3 +1,4 @@
+from flask_restx import Resource
 from quart import request
 
 import services
@@ -14,7 +15,6 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from extensions.ext_database import db
 from fields.file_fields import FileResponse
 from models import App, EndUser
-from flask_restx import Resource
 from quart_restx.api import HTTPStatus
 from services.file_service import FileService
 

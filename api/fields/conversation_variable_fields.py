@@ -1,5 +1,6 @@
-from libs.helper import TimestampField
 from flask_restx import Namespace, fields
+
+from libs.helper import TimestampField
 
 from ._value_type_serializer import serialize_value_type
 

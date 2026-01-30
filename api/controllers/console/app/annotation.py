@@ -1,5 +1,6 @@
 from typing import Any, Literal
 
+from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from quart import abort, make_response, request
 
@@ -21,7 +22,6 @@ from fields.annotation_fields import (
 )
 from libs.helper import uuid_value
 from libs.login import login_required
-from flask_restx import Resource, fields, marshal, marshal_with
 from services.annotation_service import AppAnnotationService
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"

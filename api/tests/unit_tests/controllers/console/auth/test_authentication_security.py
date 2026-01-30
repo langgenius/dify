@@ -4,12 +4,12 @@ import base64
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask_restx import Api
 from quart import Quart as Flask
 
 import services.errors.account
 from controllers.console.auth.error import AuthenticationFailedError
 from controllers.console.auth.login import LoginApi
-from flask_restx import Api
 
 
 def encode_password(password: str) -> str:

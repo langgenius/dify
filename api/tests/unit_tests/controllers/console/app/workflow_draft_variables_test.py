@@ -4,6 +4,7 @@ from typing import Any, NamedTuple
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask_restx import marshal
 
 from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_FIELDS,
@@ -18,7 +19,6 @@ from factories.variable_factory import build_segment
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
-from flask_restx import marshal
 from services.workflow_draft_variable_service import WorkflowDraftVariableList
 
 _TEST_APP_ID = "test_app_id"

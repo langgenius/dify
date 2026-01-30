@@ -1,5 +1,6 @@
 from typing import Any
 
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 from quart import make_response, request
 
@@ -41,7 +42,6 @@ from libs.token import (
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
 )
-from flask_restx import Resource
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError

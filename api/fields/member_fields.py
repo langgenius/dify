@@ -1,5 +1,6 @@
-from libs.helper import AvatarUrlField, TimestampField
 from flask_restx import Namespace, fields
+
+from libs.helper import AvatarUrlField, TimestampField
 
 simple_account_fields = {
     "id": fields.String,

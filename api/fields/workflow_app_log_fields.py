@@ -1,3 +1,5 @@
+from flask_restx import Namespace, fields
+
 from fields.end_user_fields import build_simple_end_user_model, simple_end_user_fields
 from fields.member_fields import build_simple_account_model, simple_account_fields
 from fields.workflow_run_fields import (
@@ -7,7 +9,6 @@ from fields.workflow_run_fields import (
     workflow_run_for_log_fields,
 )
 from libs.helper import TimestampField
-from flask_restx import Namespace, fields
 
 workflow_app_log_partial_fields = {
     "id": fields.String,

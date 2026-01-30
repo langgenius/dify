@@ -1,3 +1,4 @@
+from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field
 from quart import request
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
@@ -21,7 +22,6 @@ from fields.dataset_fields import (
     weighted_score_fields,
 )
 from libs.login import current_account_with_tenant, login_required
-from flask_restx import Resource, fields, marshal
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService

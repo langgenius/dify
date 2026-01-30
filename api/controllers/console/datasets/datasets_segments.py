@@ -1,5 +1,6 @@
 import uuid
 
+from flask_restx import Resource, marshal
 from pydantic import BaseModel, Field
 from quart import request
 from sqlalchemy import String, cast, func, or_, select
@@ -33,7 +34,6 @@ from libs.helper import escape_like_pattern
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import ChildChunk, DocumentSegment
 from models.model import UploadFile
-from flask_restx import Resource, marshal
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError

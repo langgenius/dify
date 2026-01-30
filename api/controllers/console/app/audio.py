@@ -1,5 +1,6 @@
 import logging
 
+from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
 from quart import request
 from werkzeug.exceptions import InternalServerError
@@ -23,7 +24,6 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
 from models import App, AppMode
-from flask_restx import Resource, fields
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,

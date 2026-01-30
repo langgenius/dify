@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.console import console_ns
@@ -21,7 +22,6 @@ from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App
-from flask_restx import Resource
 from services.workflow_service import WorkflowService
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"

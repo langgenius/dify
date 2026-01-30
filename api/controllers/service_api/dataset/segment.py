@@ -1,5 +1,6 @@
 from typing import Any
 
+from flask_restx import marshal
 from pydantic import BaseModel, Field
 from quart import request
 from werkzeug.exceptions import NotFound
@@ -21,7 +22,6 @@ from extensions.ext_database import db
 from fields.segment_fields import child_chunk_fields, segment_fields
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset
-from flask_restx import marshal
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError

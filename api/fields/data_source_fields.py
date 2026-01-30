@@ -1,5 +1,6 @@
-from libs.helper import TimestampField
 from flask_restx import fields
+
+from libs.helper import TimestampField
 
 integrate_icon_fields = {"type": fields.String, "url": fields.String, "emoji": fields.String}
 

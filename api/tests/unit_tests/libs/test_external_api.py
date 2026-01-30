@@ -1,3 +1,4 @@
+from flask_restx import Resource
 from quart import Blueprint, Flask
 from werkzeug.exceptions import BadRequest, Unauthorized
 
@@ -5,7 +6,6 @@ from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_N
 from core.errors.error import AppInvokeQuotaExceededError
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
-from flask_restx import Resource
 
 
 def _create_api_app():

@@ -1,5 +1,6 @@
 import logging
 
+from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
 from quart import request
 from werkzeug.exceptions import Unauthorized
@@ -11,7 +12,6 @@ from core.app.app_config.common.parameters_mapping import get_parameters_from_fe
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, AppMode
-from flask_restx import Resource
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService

@@ -1,5 +1,6 @@
 from mimetypes import guess_extension
 
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 from quart import request
 from werkzeug.exceptions import Forbidden
@@ -8,7 +9,6 @@ import services
 from core.file.helpers import verify_plugin_file_signature
 from core.tools.tool_file_manager import ToolFileManager
 from fields.file_fields import FileResponse
-from flask_restx import Resource
 from quart_restx.api import HTTPStatus
 
 from ..common.errors import (

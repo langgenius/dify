@@ -2,10 +2,10 @@
 
 from enum import StrEnum
 
+from flask_restx import Namespace
 from pydantic import BaseModel, TypeAdapter
 
 from controllers.console import console_ns
-from flask_restx import Namespace
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 

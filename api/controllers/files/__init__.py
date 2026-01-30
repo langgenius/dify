@@ -1,7 +1,7 @@
+from flask_restx import Namespace
 from quart import Blueprint
 
 from libs.external_api import ExternalApi
-from flask_restx import Namespace
 
 bp = Blueprint("files", __name__, url_prefix="/files")
 

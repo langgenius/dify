@@ -1,10 +1,10 @@
+from flask_restx import Resource
 from quart import request
 
 from controllers.console import api
 from controllers.console.explore.wraps import explore_banner_enabled
 from extensions.ext_database import db
 from models.model import ExporleBanner
-from flask_restx import Resource
 
 
 class BannerApi(Resource):

@@ -1,6 +1,7 @@
 import base64
 from typing import Literal
 
+from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
 from quart import request
 from werkzeug.exceptions import BadRequest
@@ -9,7 +10,6 @@ from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
 from enums.cloud_plan import CloudPlan
 from libs.login import current_account_with_tenant, login_required
-from flask_restx import Resource, fields
 from services.billing_service import BillingService
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"

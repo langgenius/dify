@@ -1,3 +1,4 @@
+from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
 from quart import request
 
@@ -7,7 +8,6 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from libs.helper import uuid_value
 from libs.login import login_required
 from models.model import AppMode
-from flask_restx import Resource, fields
 from services.agent_service import AgentService
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"

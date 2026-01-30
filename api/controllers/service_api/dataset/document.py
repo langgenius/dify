@@ -2,6 +2,7 @@ import json
 from typing import Self
 from uuid import UUID
 
+from flask_restx import marshal
 from pydantic import BaseModel, Field, model_validator
 from quart import request
 from sqlalchemy import desc, select
@@ -34,7 +35,6 @@ from extensions.ext_database import db
 from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
-from flask_restx import marshal
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     KnowledgeConfig,

@@ -2,12 +2,12 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask_restx import Api
 from quart import Quart as Flask
 
 from controllers.console.workspace.tool_providers import ToolProviderMCPApi
 from core.db.session_factory import configure_session_factory
 from extensions.ext_database import db
-from flask_restx import Api
 from services.tools.mcp_tools_manage_service import ReconnectResult
 
 

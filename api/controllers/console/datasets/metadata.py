@@ -1,5 +1,6 @@
 from typing import Literal
 
+from flask_restx import Resource, marshal_with
 from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
 
@@ -8,7 +9,6 @@ from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from fields.dataset_fields import dataset_metadata_fields
 from libs.login import current_account_with_tenant, login_required
-from flask_restx import Resource, marshal_with
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,

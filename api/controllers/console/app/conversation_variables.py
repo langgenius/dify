@@ -1,3 +1,4 @@
+from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from quart import request
 from sqlalchemy import select
@@ -14,7 +15,6 @@ from fields.conversation_variable_fields import (
 from libs.login import login_required
 from models import ConversationVariable
 from models.model import AppMode
-from flask_restx import Resource, fields, marshal_with
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 

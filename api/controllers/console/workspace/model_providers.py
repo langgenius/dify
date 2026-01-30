@@ -1,6 +1,7 @@
 import io
 from typing import Any, Literal
 
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from quart import request, send_file
 
@@ -11,7 +12,6 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import uuid_value
 from libs.login import current_account_with_tenant, login_required
-from flask_restx import Resource
 from services.billing_service import BillingService
 from services.model_provider_service import ModelProviderService
 

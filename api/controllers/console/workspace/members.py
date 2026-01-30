@@ -1,5 +1,6 @@
 from urllib import parse
 
+from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from quart import abort, request
 
@@ -28,7 +29,6 @@ from fields.member_fields import account_with_role_fields, account_with_role_lis
 from libs.helper import extract_remote_ip
 from libs.login import current_account_with_tenant, login_required
 from models.account import Account, TenantAccountRole
-from flask_restx import Resource, fields, marshal_with
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService

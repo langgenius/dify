@@ -2,6 +2,7 @@ import logging
 from typing import Any, Literal
 from uuid import UUID
 
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from quart import request
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
@@ -30,7 +31,6 @@ from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.model import App, AppMode, EndUser
-from flask_restx import Resource
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError

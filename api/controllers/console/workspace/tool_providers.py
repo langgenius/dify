@@ -2,6 +2,10 @@ import io
 import logging
 from urllib.parse import urlparse
 
+from flask_restx import (
+    Resource,
+    reqparse,
+)
 from quart import make_response, redirect, request, send_file
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
@@ -26,10 +30,6 @@ from extensions.ext_database import db
 from libs.helper import StrLen, alphanumeric, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import ToolProviderID
-from flask_restx import (
-    Resource,
-    reqparse,
-)
 
 # from models.provider_ids import ToolProviderID
 from services.plugin.oauth_service import OAuthProxyService

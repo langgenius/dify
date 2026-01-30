@@ -14,7 +14,6 @@ from pathlib import Path
 
 import pytest
 import quart
-from dify_app import DifyApp as Flask
 from quart.testing import QuartClient as FlaskClient
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
@@ -25,6 +24,7 @@ from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
 from app_factory import create_app
+from dify_app import DifyApp as Flask
 from extensions.ext_database import db
 
 # Configure logging for test containers

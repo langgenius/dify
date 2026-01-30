@@ -3,8 +3,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import quart
-from dify_app import DifyApp as Flask
 from sqlalchemy import create_engine
+
+from dify_app import DifyApp as Flask
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))

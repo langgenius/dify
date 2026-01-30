@@ -1,3 +1,4 @@
+from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from quart import request
 
@@ -5,7 +6,6 @@ from constants import HIDDEN_VALUE
 from fields.api_based_extension_fields import api_based_extension_fields
 from libs.login import current_account_with_tenant, login_required
 from models.api_based_extension import APIBasedExtension
-from flask_restx import Resource, fields, marshal_with
 from services.api_based_extension_service import APIBasedExtensionService
 from services.code_based_extension_service import CodeBasedExtensionService
 
