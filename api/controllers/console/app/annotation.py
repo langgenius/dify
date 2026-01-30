@@ -292,7 +292,7 @@ def update_annotation_setting(
     )
     embedding_model = result.get("embedding_model") if isinstance(result, dict) else None
     if isinstance(embedding_model, dict) and not embedding_model:
-        result["embedding_model"] = None
+        result["embedding_model"] = None # type: ignore
     return AnnotationSettingResponse.model_validate(result).model_dump()
 
 
