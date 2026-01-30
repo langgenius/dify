@@ -31,19 +31,24 @@ class ResponseSession:
     @classmethod
     def from_node(cls, node: NodeProtocol) -> ResponseSession:
         """
-        Create a ResponseSession from an AnswerNode or EndNode.
+        Create a ResponseSession from a response-capable node.
+
+        The parameter is typed as `NodeProtocol` because the graph is exposed behind a protocol at the runtime layer,
+        but at runtime this must be an `AnswerNode`, `EndNode`, or `KnowledgeIndexNode` that provides:
+        - `id: str`
+        - `get_streaming_template() -> Template`
 
         Args:
-            node: Must be either an AnswerNode or EndNode instance
+            node: Node from the materialized workflow graph.
 
         Returns:
             ResponseSession configured with the node's streaming template
 
         Raises:
-            TypeError: If node is not an AnswerNode or EndNode
+            TypeError: If node is not a supported response node type.
         """
         if not isinstance(node, AnswerNode | EndNode | KnowledgeIndexNode):
-            raise TypeError
+            raise TypeError("ResponseSession.from_node only supports AnswerNode, EndNode, or KnowledgeIndexNode")
         return cls(
             node_id=node.id,
             template=node.get_streaming_template(),
