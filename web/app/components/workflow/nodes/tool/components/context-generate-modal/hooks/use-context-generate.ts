@@ -22,6 +22,7 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { useStore } from '@/app/components/workflow/store'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useGetLanguage } from '@/context/i18n'
 import { languages } from '@/i18n-config/language'
 import { fetchContextGenerateSuggestedQuestions, generateContext } from '@/service/debug'
@@ -271,7 +272,7 @@ const useContextGenerate = ({
   const [inputValue, setInputValue] = useState('')
   const [isGenerating, { setTrue: setGeneratingTrue, setFalse: setGeneratingFalse }] = useBoolean(false)
   const [modelOverride, setModelOverride] = useState<Model | null>(() => {
-    const stored = localStorage.getItem('auto-gen-model')
+    const stored = localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL)
     if (!stored)
       return null
     const parsed = JSON.parse(stored) as Model
@@ -327,7 +328,7 @@ const useContextGenerate = ({
       mode: newValue.mode as ModelModeType,
     }
     setModelOverride(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+    localStorage.setItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
   }, [model])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
@@ -336,7 +337,7 @@ const useContextGenerate = ({
       completion_params: newParams as CompletionParams,
     }
     setModelOverride(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+    localStorage.setItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
   }, [model])
 
   const promptMessageCount = promptMessages?.length ?? 0

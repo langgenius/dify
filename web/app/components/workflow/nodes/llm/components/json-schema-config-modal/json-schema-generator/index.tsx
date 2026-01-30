@@ -12,6 +12,7 @@ import {
 import Toast from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import useTheme from '@/hooks/use-theme'
 import { useGenerateStructuredOutputRules } from '@/service/use-common'
 import { ModelModeType, Theme } from '@/types/app'
@@ -36,8 +37,8 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   onApply,
   crossAxisOffset,
 }) => {
-  const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
+  const localModel = localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL)
+    ? JSON.parse(localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL) as string) as Model
     : null
   const [open, setOpen] = useState(false)
   const [view, setView] = useState(GeneratorView.promptEditor)
@@ -60,8 +61,8 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
 
   useEffect(() => {
     if (defaultModel) {
-      const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
+      const localModel = localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL)
+        ? JSON.parse(localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL) || '')
         : null
       if (localModel) {
         setModel(localModel)
@@ -95,7 +96,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
       mode: newValue.mode as ModelModeType,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+    localStorage.setItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
   }, [model, setModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
@@ -104,7 +105,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
       completion_params: newParams as CompletionParams,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+    localStorage.setItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
   }, [model, setModel])
 
   const { mutateAsync: generateStructuredOutputRules, isPending: isGenerating } = useGenerateStructuredOutputRules()

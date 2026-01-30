@@ -30,6 +30,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
 import IdeaOutput from './idea-output'
@@ -83,8 +84,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   onFinished,
 }) => {
   const { t } = useTranslation()
-  const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
+  const localModel = localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL)
+    ? JSON.parse(localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL) as string) as Model
     : null
   const [model, setModel] = React.useState<Model>(localModel || {
     name: '',
@@ -178,8 +179,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   useEffect(() => {
     if (defaultModel) {
-      const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
+      const localModel = localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL)
+        ? JSON.parse(localStorage.getItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL) || '')
         : null
       if (localModel) {
         setModel(localModel)
@@ -209,7 +210,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       mode: newValue.mode as ModelModeType,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+    localStorage.setItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
   }, [model, setModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
@@ -218,7 +219,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       completion_params: newParams as CompletionParams,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+    localStorage.setItem(STORAGE_KEYS.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
   }, [model, setModel])
 
   const onGenerate = async () => {
