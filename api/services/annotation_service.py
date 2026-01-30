@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from controllers.console.app.annotation import UpdateAnnotationPayload
