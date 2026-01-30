@@ -78,6 +78,7 @@ const ToolItem: FC<Props> = ({
     >
       <div
         key={payload.name}
+        data-tool-picker-item="true"
         className="flex cursor-pointer items-center justify-between rounded-lg pl-[21px] pr-1 hover:bg-state-base-hover"
         onClick={() => {
           if (disabled)

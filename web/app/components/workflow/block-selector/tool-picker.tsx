@@ -57,6 +57,7 @@ type Props = {
   searchText?: string
   onSearchTextChange?: (value: string) => void
   hideSearchBox?: boolean
+  enableKeyboardNavigation?: boolean
 }
 
 const ToolPicker: FC<Props> = ({
@@ -79,6 +80,7 @@ const ToolPicker: FC<Props> = ({
   searchText: controlledSearchText,
   onSearchTextChange,
   hideSearchBox = false,
+  enableKeyboardNavigation = false,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -239,6 +241,8 @@ const ToolPicker: FC<Props> = ({
             showFeatured={scope === 'all' && enable_marketplace}
             hideFeaturedTool={hideFeaturedTool}
             hideSelectedInfo={hideSelectedInfo}
+            enableKeyboardNavigation={enableKeyboardNavigation}
+            onClose={() => onShowChange(false)}
             onFeaturedInstallSuccess={async () => {
               invalidateBuiltInTools()
               invalidateCustomTools()

@@ -181,6 +181,7 @@ const Tool: FC<Props> = ({
       <div className={cn(className)}>
         <div
           className="group/item flex w-full cursor-pointer select-none items-center justify-between rounded-lg pl-3 pr-1 hover:bg-state-base-hover"
+          data-tool-picker-item="true"
           onClick={() => {
             if (hasAction) {
               setFold(!isFold)

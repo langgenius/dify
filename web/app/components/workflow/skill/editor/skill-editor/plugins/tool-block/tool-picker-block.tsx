@@ -5,7 +5,9 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { LexicalTypeaheadMenuPlugin, MenuOption } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import {
   $createTextNode,
+  $getSelection,
   $insertNodes,
+  $isRangeSelection,
 } from 'lexical'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -44,6 +46,20 @@ const ToolPickerBlock = ({ scope = 'all' }: ToolPickerBlockProps) => {
 
   const options = useMemo(() => [new ToolPickerMenuOption()], [])
 
+  const getMatchFromSelection = useCallback(() => {
+    const selection = $getSelection()
+    if (!$isRangeSelection(selection) || !selection.isCollapsed())
+      return null
+    const anchor = selection.anchor
+    if (anchor.type !== 'text')
+      return null
+    const anchorNode = anchor.getNode()
+    if (!anchorNode.isSimpleText())
+      return null
+    const text = anchorNode.getTextContent().slice(0, anchor.offset)
+    return checkForTriggerMatch(text, editor)
+  }, [checkForTriggerMatch, editor])
+
   const buildNextMetadata = useCallback((metadata: Record<string, unknown>, toolEntries: {
     configId: string
     tool: ToolDefaultValue
@@ -73,7 +89,7 @@ const ToolPickerBlock = ({ scope = 'all' }: ToolPickerBlockProps) => {
       tool,
     }))
     editor.update(() => {
-      const match = checkForTriggerMatch('@', editor)
+      const match = getMatchFromSelection()
       const nodeToRemove = match ? $splitNodeContainingQuery(match) : null
       if (nodeToRemove)
         nodeToRemove.remove()
@@ -124,7 +140,7 @@ const ToolPickerBlock = ({ scope = 'all' }: ToolPickerBlockProps) => {
       ...nextMetadata,
     })
     pinTab(activeTabId)
-  }, [buildNextMetadata, checkForTriggerMatch, editor, isUsingExternalMetadata, storeApi, toolBlockContext])
+  }, [buildNextMetadata, editor, getMatchFromSelection, isUsingExternalMetadata, storeApi, toolBlockContext])
 
   const renderMenu = useCallback((
     anchorElementRef: React.RefObject<HTMLElement | null>,
@@ -163,6 +179,7 @@ const ToolPickerBlock = ({ scope = 'all' }: ToolPickerBlockProps) => {
         searchText={queryString}
         onSearchTextChange={setQueryString}
         hideSearchBox
+        enableKeyboardNavigation
         scope={scope}
         hideFeaturedTool
         preventFocusLoss
