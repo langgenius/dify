@@ -51,7 +51,9 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
             if segments:
                 index_node_ids = [segment.index_node_id for segment in segments]
                 index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-                index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
+                index_processor.clean(
+                    dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
+                )
 
                 for segment in segments:
                     image_upload_file_ids = get_image_upload_file_ids(segment.content)

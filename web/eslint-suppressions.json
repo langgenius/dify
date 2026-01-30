@@ -177,6 +177,11 @@
       "count": 1
     }
   },
+  "app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/app/annotation/batch-add-annotation-modal/csv-downloader.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -186,12 +191,18 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/app/annotation/edit-annotation-modal/edit-item/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -250,6 +261,11 @@
     },
     "ts/no-explicit-any": {
       "count": 6
+    }
+  },
+  "app/components/app/configuration/base/var-highlight/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
     }
   },
   "app/components/app/configuration/config-prompt/advanced-prompt-input.tsx": {
@@ -422,6 +438,11 @@
       "count": 6
     }
   },
+  "app/components/app/configuration/debug/debug-with-multiple-model/context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/app/configuration/debug/debug-with-multiple-model/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 5
@@ -504,6 +525,11 @@
       "count": 1
     }
   },
+  "app/components/app/create-app-dialog/app-list/sidebar.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/app/create-app-modal/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 7
@@ -520,6 +546,14 @@
   "app/components/app/create-from-dsl-modal/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "app/components/app/log/filter.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
     }
   },
   "app/components/app/log/index.tsx": {
@@ -588,6 +622,9 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     },
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -595,6 +632,11 @@
   "app/components/app/text-generate/item/result-tab.tsx": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/app/workflow-log/filter.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
     }
   },
   "app/components/app/workflow-log/list.spec.tsx": {
@@ -648,6 +690,11 @@
       "count": 1
     }
   },
+  "app/components/base/action-button/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/base/agent-log-modal/detail.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -674,6 +721,11 @@
   "app/components/base/agent-log-modal/tool-call.tsx": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/base/amplitude/AmplitudeProvider.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
     }
   },
   "app/components/base/amplitude/utils.ts": {
@@ -724,6 +776,9 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
     "react/no-nested-component-definitions": {
       "count": 1
     }
@@ -733,8 +788,18 @@
       "count": 1
     }
   },
+  "app/components/base/button/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/base/button/sync-button.stories.tsx": {
     "no-console": {
+      "count": 1
+    }
+  },
+  "app/components/base/carousel/index.tsx": {
+    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -814,6 +879,11 @@
       "count": 3
     },
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/chat/chat/context.tsx": {
+    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -920,8 +990,16 @@
     }
   },
   "app/components/base/error-boundary/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 3
+    },
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/base/features/context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
     }
   },
   "app/components/base/features/new-feature-panel/annotation-reply/index.tsx": {
@@ -989,12 +1067,17 @@
       "count": 3
     }
   },
+  "app/components/base/file-uploader/store.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 4
+    }
+  },
   "app/components/base/file-uploader/utils.spec.ts": {
     "test/no-identical-title": {
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/base/file-uploader/utils.ts": {
@@ -1085,6 +1168,11 @@
       "count": 2
     }
   },
+  "app/components/base/ga/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/base/icons/utils.ts": {
     "ts/no-explicit-any": {
       "count": 3
@@ -1134,6 +1222,16 @@
     },
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "app/components/base/input/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "app/components/base/logo/dify-logo.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
     }
   },
   "app/components/base/markdown-blocks/audio-block.tsx": {
@@ -1286,6 +1384,11 @@
       "count": 1
     }
   },
+  "app/components/base/node-status/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/base/notion-connector/index.stories.tsx": {
     "no-console": {
       "count": 1
@@ -1317,6 +1420,9 @@
     }
   },
   "app/components/base/portal-to-follow-elem/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1483,6 +1589,16 @@
       "count": 1
     }
   },
+  "app/components/base/textarea/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "app/components/base/toast/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
   "app/components/base/video-gallery/VideoPlayer.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -1524,6 +1640,16 @@
   "app/components/billing/plan/index.tsx": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/billing/pricing/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "app/components/billing/pricing/plan-switcher/plan-range-switcher.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
     }
   },
   "app/components/billing/pricing/plans/cloud-plan-item/index.spec.tsx": {
@@ -1576,6 +1702,11 @@
       "count": 3
     }
   },
+  "app/components/datasets/common/image-uploader/store.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 4
+    }
+  },
   "app/components/datasets/common/image-uploader/utils.ts": {
     "ts/no-explicit-any": {
       "count": 2
@@ -1583,6 +1714,16 @@
   },
   "app/components/datasets/common/retrieval-method-config/index.spec.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/common/retrieval-method-info/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/index.tsx": {
+    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -1614,6 +1755,11 @@
   "app/components/datasets/create/step-two/hooks/use-indexing-config.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
+    }
+  },
+  "app/components/datasets/create/step-two/preview-item/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
     }
   },
   "app/components/datasets/create/stop-embedding-modal/index.spec.tsx": {
@@ -1661,7 +1807,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 5
+      "count": 4
     }
   },
   "app/components/datasets/create/website/watercrawl/options.tsx": {
@@ -1672,6 +1818,9 @@
   "app/components/datasets/documents/components/list.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -1737,6 +1886,11 @@
       "count": 2
     }
   },
+  "app/components/datasets/documents/create-from-pipeline/data-source/store/provider.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/datasets/documents/create-from-pipeline/data-source/store/slices/online-drive.ts": {
     "ts/no-explicit-any": {
       "count": 4
@@ -1782,6 +1936,11 @@
       "count": 1
     }
   },
+  "app/components/datasets/documents/detail/completed/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/datasets/documents/detail/completed/new-child-segment.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -1802,6 +1961,11 @@
   },
   "app/components/datasets/documents/detail/new-segment.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/detail/segment-add/index.tsx": {
+    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -1945,6 +2109,11 @@
       "count": 1
     }
   },
+  "app/components/explore/try-app/tab.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/goto-anything/actions/commands/command-bus.ts": {
     "ts/no-explicit-any": {
       "count": 2
@@ -1956,6 +2125,9 @@
     }
   },
   "app/components/goto-anything/actions/commands/slash.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 3
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1973,6 +2145,9 @@
   "app/components/goto-anything/context.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
     }
   },
   "app/components/goto-anything/index.spec.tsx": {
@@ -2169,6 +2344,11 @@
       "count": 4
     }
   },
+  "app/components/plugins/install-plugin/install-bundle/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/plugins/install-plugin/install-bundle/item/github-item.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -2243,6 +2423,11 @@
   "app/components/plugins/plugin-auth/hooks/use-plugin-auth-action.ts": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/plugins/plugin-auth/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 3
     }
   },
   "app/components/plugins/plugin-auth/plugin-auth-in-agent.tsx": {
@@ -2329,6 +2514,9 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2369,6 +2557,9 @@
     }
   },
   "app/components/plugins/plugin-page/context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2584,11 +2775,6 @@
       "count": 2
     }
   },
-  "app/components/share/text-generation/run-once/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "app/components/share/text-generation/run-once/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -2738,6 +2924,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/block-selector/constants.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/workflow/block-selector/featured-tools.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
@@ -2756,6 +2947,11 @@
   },
   "app/components/workflow/block-selector/hooks.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/block-selector/index-bar.tsx": {
+    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -2797,9 +2993,24 @@
       "count": 1
     }
   },
+  "app/components/workflow/block-selector/view-type-select.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/workflow/candidate-node-main.tsx": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/workflow/context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/datasets-detail-store/provider.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
     }
   },
   "app/components/workflow/header/run-mode.tsx": {
@@ -2810,8 +3021,18 @@
       "count": 1
     }
   },
+  "app/components/workflow/header/test-run-menu.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/workflow/header/view-workflow-history.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/hooks-store/provider.tsx": {
+    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -2935,8 +3156,16 @@
     }
   },
   "app/components/workflow/nodes/_base/components/editor/code-editor/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 6
+    }
+  },
+  "app/components/workflow/nodes/_base/components/entry-node-container.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/components/error-handle/default-value.tsx": {
@@ -2961,6 +3190,16 @@
   },
   "app/components/workflow/nodes/_base/components/input-var-type-icon.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/components/layout/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 7
+    }
+  },
+  "app/components/workflow/nodes/_base/components/mcp-tool-availability.tsx": {
+    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -3047,6 +3286,9 @@
     }
   },
   "app/components/workflow/nodes/_base/components/workflow-panel/tab.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3100,6 +3342,9 @@
     }
   },
   "app/components/workflow/nodes/agent/panel.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3381,6 +3626,11 @@
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
+    }
+  },
+  "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 3
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/auto-width-input.tsx": {
@@ -3680,6 +3930,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/note-node/note-editor/toolbar/color-picker.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/workflow/note-node/note-editor/utils.ts": {
     "regexp/no-useless-quantifier": {
       "count": 1
@@ -3716,6 +3971,9 @@
     }
   },
   "app/components/workflow/panel/chat-variable-panel/components/object-value-item.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 5
     },
@@ -3995,6 +4253,11 @@
       "count": 8
     }
   },
+  "app/components/workflow/workflow-history-store.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
   "app/components/workflow/workflow-preview/components/nodes/constants.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -4056,12 +4319,45 @@
     }
   },
   "context/app-context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
+  "context/datasets-context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "context/event-emitter.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "context/external-api-panel-context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "context/external-knowledge-api-context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "context/global-public-context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 4
+    }
+  },
   "context/hooks/use-trigger-events-limit-modal.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 3
+    }
+  },
+  "context/mitt-context.tsx": {
+    "react-refresh/only-export-components": {
       "count": 3
     }
   },
@@ -4071,12 +4367,28 @@
     }
   },
   "context/modal-context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 5
     }
   },
   "context/provider-context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 3
+    },
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "context/web-app-context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "context/workspace-context.tsx": {
+    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -4116,6 +4428,9 @@
   "hooks/use-pay.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
+    },
+    "react-refresh/only-export-components": {
+      "count": 3
     }
   },
   "i18n-config/README.md": {
@@ -4323,11 +4638,6 @@
       "count": 10
     }
   },
-  "testing/testing.md": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "types/app.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -4377,11 +4687,6 @@
     "no-console": {
       "count": 1
     },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "utils/format.spec.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }

@@ -1,7 +1,7 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
-import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
+import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
@@ -28,6 +28,7 @@ import {
 } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import ShortcutsName from '../../workflow/shortcuts-name'
 import Uploader from './uploader'
 
 type CreateFromDSLModalProps = {
@@ -298,10 +299,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             className="gap-1"
           >
             <span>{t('newApp.Create', { ns: 'app' })}</span>
-            <div className="flex gap-0.5">
-              <RiCommandLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
-              <RiCornerDownLeftLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
-            </div>
+            <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
           </Button>
         </div>
       </Modal>
