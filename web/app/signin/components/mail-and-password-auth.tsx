@@ -139,10 +139,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
             id="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter')
-                handleEmailPasswordLogin()
-            }}
+            onPressEnter={() => handleEmailPasswordLogin()}
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}

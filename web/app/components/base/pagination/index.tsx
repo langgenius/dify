@@ -71,12 +71,12 @@ const CustomizedPagination: FC<Props> = ({
     setShowInput(false)
   }
 
+  const handleInputPressEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.preventDefault()
+    handleInputConfirm()
+  }
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleInputConfirm()
-    }
-    else if (e.key === 'Escape') {
+    if (e.key === 'Escape') {
       e.preventDefault()
       setInputValue(current + 1)
       setShowInput(false)
@@ -132,6 +132,7 @@ const CustomizedPagination: FC<Props> = ({
             autoFocus
             value={inputValue}
             onChange={handleInputChange}
+            onPressEnter={handleInputPressEnter}
             onKeyDown={handleInputKeyDown}
             onBlur={handleInputBlur}
           />

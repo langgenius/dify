@@ -103,12 +103,10 @@ export default function InviteSettingsPage() {
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder={t('namePlaceholder', { ns: 'login' }) || ''}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  handleActivate()
-                }
+              onPressEnter={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleActivate()
               }}
             />
           </div>

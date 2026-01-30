@@ -1,5 +1,5 @@
 import type { VariantProps } from 'class-variance-authority'
-import type { ChangeEventHandler, CSSProperties, FocusEventHandler } from 'react'
+import type { ChangeEventHandler, CSSProperties, FocusEventHandler, KeyboardEventHandler } from 'react'
 import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
 import { cva } from 'class-variance-authority'
 import { noop } from 'es-toolkit/function'
@@ -33,6 +33,7 @@ export type InputProps = {
   wrapperClassName?: string
   styleCss?: CSSProperties
   unit?: string
+  onPressEnter?: KeyboardEventHandler<HTMLInputElement>
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> & VariantProps<typeof inputVariants>
 
 const removeLeadingZeros = (value: string) => value.replace(/^(-?)0+(?=\d)/, '$1')
@@ -52,10 +53,26 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   placeholder,
   onChange = noop,
   onBlur = noop,
+  onKeyDown,
+  onPressEnter,
   unit,
   ...props
 }, ref) => {
   const { t } = useTranslation()
+  const isComposingRef = React.useRef(false)
+  const handleCompositionStart = () => {
+    isComposingRef.current = true
+  }
+  const handleCompositionEnd = () => {
+    setTimeout(() => {
+      isComposingRef.current = false
+    }, 50)
+  }
+  const handleKeyDown: KeyboardEventHandler<HTMLInputElement> = (e) => {
+    if (onPressEnter && e.key === 'Enter' && !e.nativeEvent.isComposing && !isComposingRef.current)
+      onPressEnter(e)
+    onKeyDown?.(e)
+  }
   const handleNumberChange: ChangeEventHandler<HTMLInputElement> = (e) => {
     if (value === 0) {
       // remove leading zeros
@@ -108,6 +125,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
         onBlur={props.type === 'number' ? handleNumberBlur : onBlur}
         disabled={disabled}
         {...props}
+        onKeyDown={handleKeyDown}
+        onCompositionStart={handleCompositionStart}
+        onCompositionEnd={handleCompositionEnd}
       />
       {!!(showClearIcon && value && !disabled && !destructive) && (
         <div

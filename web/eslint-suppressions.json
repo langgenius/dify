@@ -1234,11 +1234,6 @@
       "count": 1
     }
   },
-  "app/components/base/input/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
   "app/components/base/logo/dify-logo.tsx": {
     "react-refresh/only-export-components": {
       "count": 2

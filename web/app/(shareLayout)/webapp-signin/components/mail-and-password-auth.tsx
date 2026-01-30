@@ -145,10 +145,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
             value={password}
             onChange={e => setPassword(e.target.value)}
             id="password"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter')
-                handleEmailPasswordLogin()
-            }}
+            onPressEnter={() => handleEmailPasswordLogin()}
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
