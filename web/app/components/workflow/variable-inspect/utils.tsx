@@ -42,7 +42,7 @@ export const toEnvVarInInspect = (envVar: EnvironmentVariable): VarInInspect => 
   }
 }
 
-export const validateJSONSchema = (schema: any, type: string) => {
+export const validateJSONSchema = (schema: unknown, type: string): z.SafeParseReturnType<unknown, unknown> => {
   if (type === 'array[string]') {
     const result = arrayStringSchemaParttern.safeParse(schema)
     return result
@@ -60,7 +60,7 @@ export const validateJSONSchema = (schema: any, type: string) => {
     return result
   }
   else {
-    return { success: true } as any
+    return z.unknown().safeParse(schema)
   }
 }
 
