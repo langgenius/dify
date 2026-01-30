@@ -45,7 +45,10 @@ export const useAvailableNodesMetaData = () => {
     const { metaData } = node
     const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
     const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
-    const helpLinkPath = `/use-dify/nodes/${metaData.helpLinkUri}` as DocPathWithoutLang
+    const helpLinkUri = metaData.helpLinkUri?.includes('-trigger') && !metaData.helpLinkUri?.startsWith('trigger/')
+      ? `trigger/${metaData.helpLinkUri}`
+      : metaData.helpLinkUri || 'trigger/overview'
+    const helpLinkPath = `/use-dify/nodes/${helpLinkUri}` as DocPathWithoutLang
     return {
       ...node,
       metaData: {
