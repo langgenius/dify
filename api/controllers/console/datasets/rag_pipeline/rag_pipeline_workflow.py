@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     ConversationCompletedError,
@@ -136,7 +136,10 @@ register_schema_models(
     NodeIdQuery,
     WorkflowRunQuery,
     DatasourceVariablesPayload,
+    OnlineDriveBrowseFilesRequest,
 )
+
+register_enum_models(console_ns, DatasourceProviderType)
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft")
