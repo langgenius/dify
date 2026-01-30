@@ -24,14 +24,14 @@ class SandboxService:
         tenant_id: str,
         app_id: str,
         user_id: str,
-        workflow_execution_id: str,
+        sandbox_id: str,
         sandbox_provider: SandboxProviderEntity,
     ) -> Sandbox:
         assets = AppAssetService.get_assets(tenant_id, app_id, user_id, is_draft=False)
         if not assets:
             raise ValueError(f"No assets found for tid={tenant_id}, app_id={app_id}")
 
-        archive_storage = ArchiveSandboxStorage(tenant_id, app_id, workflow_execution_id, storage.storage_runner)
+        archive_storage = ArchiveSandboxStorage(tenant_id, app_id, sandbox_id, storage.storage_runner)
         sandbox = (
             SandboxBuilder(tenant_id, SandboxType(sandbox_provider.provider_type))
             .options(sandbox_provider.config)
@@ -66,8 +66,6 @@ class SandboxService:
         assets = AppAssetService.get_assets(tenant_id, app_id, user_id, is_draft=True)
         if not assets:
             raise ValueError(f"No assets found for tid={tenant_id}, app_id={app_id}")
-
-        SandboxService.delete_draft_storage(tenant_id, app_id, user_id)
 
         AppAssetPackageService.build_assets(tenant_id, app_id, assets)
         sandbox_id = SandboxBuilder.draft_id(user_id)

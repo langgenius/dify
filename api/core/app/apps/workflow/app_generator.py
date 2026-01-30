@@ -515,7 +515,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                             tenant_id=application_generate_entity.app_config.tenant_id,
                             app_id=application_generate_entity.app_config.app_id,
                             user_id=application_generate_entity.user_id,
-                            workflow_execution_id=application_generate_entity.workflow_execution_id,
+                            sandbox_id=application_generate_entity.workflow_execution_id,
                             sandbox_provider=sandbox_provider,
                         )
                     graph_engine_layers = (

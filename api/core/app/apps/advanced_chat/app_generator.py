@@ -536,13 +536,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                             sandbox_provider=sandbox_provider,
                         )
                     else:
-                        if application_generate_entity.workflow_run_id is None:
-                            raise ValueError("workflow_run_id is required when sandbox is enabled")
                         sandbox = SandboxService.create(
                             tenant_id=application_generate_entity.app_config.tenant_id,
                             app_id=application_generate_entity.app_config.app_id,
                             user_id=application_generate_entity.user_id,
-                            workflow_execution_id=application_generate_entity.workflow_run_id,
+                            sandbox_id=conversation_id,
                             sandbox_provider=sandbox_provider,
                         )
                     graph_engine_layers = (SandboxLayer(sandbox=sandbox),)
