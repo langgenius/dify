@@ -2510,7 +2510,7 @@ class LLMNode(Node[LLMNodeData]):
         )
 
         return LLMGenerationData(
-            text=aggregate.text,
+            text=aggregate.text or json.dumps(aggregate.structured_output),
             reasoning_contents=buffers.reasoning_per_turn,
             tool_calls=tool_calls_for_generation,
             sequence=sequence,
