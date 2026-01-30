@@ -2529,57 +2529,59 @@ class LLMNode(Node[LLMNodeData]):
         state = ToolOutputState()
 
         try:
-            for output in outputs:
+            while True:
+                output = next(outputs)
                 if isinstance(output, AgentLog):
                     yield from self._handle_agent_log_output(output, state.stream, state.trace, state.agent)
                 else:
                     continue
         except StopIteration as exception:
-            if isinstance(getattr(exception, "value", None), AgentResult):
-                state.agent.agent_result = exception.value
-
-        if state.agent.agent_result:
-            output_payload = state.agent.agent_result.output
-            structured_output_data: Mapping[str, Any] | None = None
-            if isinstance(output_payload, AgentResult.StructuredOutput):
-                output_kind = output_payload.output_kind
-                if output_kind == AgentOutputKind.ILLEGAL_OUTPUT:
-                    raise ValueError("Agent returned illegal output")
-                if output_kind in {AgentOutputKind.FINAL_OUTPUT_ANSWER, AgentOutputKind.OUTPUT_TEXT}:
-                    if not output_payload.output_text:
-                        raise ValueError("Agent returned empty text output")
-                    state.aggregate.text = output_payload.output_text
-                elif output_kind == AgentOutputKind.FINAL_STRUCTURED_OUTPUT:
-                    if output_payload.output_data is None:
-                        raise ValueError("Agent returned empty structured output")
-                else:
-                    raise ValueError("Agent returned unsupported output kind")
-
-                if output_payload.output_data is not None:
-                    if not isinstance(output_payload.output_data, Mapping):
-                        raise ValueError("Agent returned invalid structured output")
-                    structured_output_data = output_payload.output_data
+            if not isinstance(exception.value, AgentResult):
+                raise ValueError(f"Unexpected output type: {type(exception.value)}") from exception
+            state.agent.agent_result = exception.value
+        if not state.agent.agent_result:
+            raise ValueError("No agent result found in tool outputs")
+        output_payload = state.agent.agent_result.output
+        structured_output_data: Mapping[str, Any] | None = None
+        if isinstance(output_payload, AgentResult.StructuredOutput):
+            output_kind = output_payload.output_kind
+            if output_kind == AgentOutputKind.ILLEGAL_OUTPUT:
+                raise ValueError("Agent returned illegal output")
+            if output_kind in {AgentOutputKind.FINAL_OUTPUT_ANSWER, AgentOutputKind.OUTPUT_TEXT}:
+                if not output_payload.output_text:
+                    raise ValueError("Agent returned empty text output")
+                state.aggregate.text = output_payload.output_text
+            elif output_kind == AgentOutputKind.FINAL_STRUCTURED_OUTPUT:
+                if output_payload.output_data is None:
+                    raise ValueError("Agent returned empty structured output")
             else:
-                if not output_payload:
-                    raise ValueError("Agent returned empty output")
-                state.aggregate.text = str(output_payload)
+                raise ValueError("Agent returned unsupported output kind")
 
-            state.aggregate.files = state.agent.agent_result.files
-            if state.agent.agent_result.usage:
-                state.aggregate.usage = state.agent.agent_result.usage
-            if state.agent.agent_result.finish_reason:
-                state.aggregate.finish_reason = state.agent.agent_result.finish_reason
+            if output_payload.output_data is not None:
+                if not isinstance(output_payload.output_data, Mapping):
+                    raise ValueError("Agent returned invalid structured output")
+                structured_output_data = output_payload.output_data
+        else:
+            if not output_payload:
+                raise ValueError("Agent returned empty output")
+            state.aggregate.text = str(output_payload)
 
-            if structured_output_data is not None:
-                output_schema = LLMNode.fetch_structured_output_schema(
-                    structured_output=self._node_data.structured_output or {},
-                )
-                converted_output = convert_file_refs_in_output(
-                    output=structured_output_data,
-                    json_schema=output_schema,
-                    tenant_id=self.tenant_id,
-                )
-                state.aggregate.structured_output = LLMStructuredOutput(structured_output=converted_output)
+        state.aggregate.files = state.agent.agent_result.files
+        if state.agent.agent_result.usage:
+            state.aggregate.usage = state.agent.agent_result.usage
+        if state.agent.agent_result.finish_reason:
+            state.aggregate.finish_reason = state.agent.agent_result.finish_reason
+
+        if structured_output_data is not None:
+            output_schema = LLMNode.fetch_structured_output_schema(
+                structured_output=self._node_data.structured_output or {},
+            )
+            converted_output = convert_file_refs_in_output(
+                output=structured_output_data,
+                json_schema=output_schema,
+                tenant_id=self.tenant_id,
+            )
+            state.aggregate.structured_output = LLMStructuredOutput(structured_output=converted_output)
 
         yield from self._flush_remaining_stream(state.stream, state.trace, state.aggregate)
         yield from self._close_streams()
