@@ -183,7 +183,7 @@ describe('dataset-config/card-item', () => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated dataset' }))
     })
     await waitFor(() => {
-      expect(screen.getByText('Mock settings modal')).not.toBeVisible()
+      expect(screen.queryByText('Mock settings modal')).not.toBeInTheDocument()
     })
   })
 

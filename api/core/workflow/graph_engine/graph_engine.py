@@ -37,6 +37,7 @@ from .command_processing import (
     PauseCommandHandler,
     UpdateVariablesCommandHandler,
 )
+from .config import GraphEngineConfig
 from .entities.commands import AbortCommand, PauseCommand, UpdateVariablesCommand
 from .error_handler import ErrorHandler
 from .event_management import EventHandler, EventManager
@@ -70,10 +71,7 @@ class GraphEngine:
         graph: Graph,
         graph_runtime_state: GraphRuntimeState,
         command_channel: CommandChannel,
-        min_workers: int | None = None,
-        max_workers: int | None = None,
-        scale_up_threshold: int | None = None,
-        scale_down_idle_time: float | None = None,
+        config: GraphEngineConfig,
     ) -> None:
         """Initialize the graph engine with all subsystems and dependencies."""
         # stop event
@@ -85,17 +83,11 @@ class GraphEngine:
         self._graph_runtime_state.stop_event = self._stop_event
         self._graph_runtime_state.configure(graph=cast("GraphProtocol", graph))
         self._command_channel = command_channel
+        self._config = config
 
         # Graph execution tracks the overall execution state
         self._graph_execution = cast("GraphExecution", self._graph_runtime_state.graph_execution)
         self._graph_execution.workflow_id = workflow_id
-
-        # === Worker Management Parameters ===
-        # Parameters for dynamic worker pool scaling
-        self._min_workers = min_workers
-        self._max_workers = max_workers
-        self._scale_up_threshold = scale_up_threshold
-        self._scale_down_idle_time = scale_down_idle_time
 
         # === Execution Queues ===
         self._ready_queue = cast(ReadyQueue, self._graph_runtime_state.ready_queue)
@@ -167,10 +159,7 @@ class GraphEngine:
             graph=self._graph,
             layers=self._layers,
             execution_context=execution_context,
-            min_workers=self._min_workers,
-            max_workers=self._max_workers,
-            scale_up_threshold=self._scale_up_threshold,
-            scale_down_idle_time=self._scale_down_idle_time,
+            config=self._config,
             stop_event=self._stop_event,
         )
 
