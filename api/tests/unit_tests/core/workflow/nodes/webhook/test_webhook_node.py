@@ -5,9 +5,9 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod, FileType
 from core.variables import FileVariable, StringVariable
-from core.workflow.enums import NodeType
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from core.workflow.enums import NodeType
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
