@@ -54,19 +54,23 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   onChange = noop,
   onBlur = noop,
   onKeyDown,
+  onCompositionStart,
+  onCompositionEnd,
   onPressEnter,
   unit,
   ...props
 }, ref) => {
   const { t } = useTranslation()
   const isComposingRef = React.useRef(false)
-  const handleCompositionStart = () => {
+  const handleCompositionStart: React.CompositionEventHandler<HTMLInputElement> = (e) => {
     isComposingRef.current = true
+    onCompositionStart?.(e)
   }
-  const handleCompositionEnd = () => {
+  const handleCompositionEnd: React.CompositionEventHandler<HTMLInputElement> = (e) => {
     setTimeout(() => {
       isComposingRef.current = false
     }, 50)
+    onCompositionEnd?.(e)
   }
   const handleKeyDown: KeyboardEventHandler<HTMLInputElement> = (e) => {
     if (onPressEnter && e.key === 'Enter' && !e.nativeEvent.isComposing && !isComposingRef.current)
