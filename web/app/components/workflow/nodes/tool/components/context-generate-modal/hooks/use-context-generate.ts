@@ -74,7 +74,7 @@ const resolveVarSchema = (variable: Var): Record<string, unknown> | undefined =>
 
 const toAvailableVarsPayload = (
   availableVars: NodeOutPutVar[],
-  nodeMap: Map<string, { data?: { type?: string } }>,
+  nodeMap: Map<string, Node>,
 ): ContextGenerateAvailableVar[] => {
   const results: ContextGenerateAvailableVar[] = []
   availableVars.forEach((nodeVar) => {

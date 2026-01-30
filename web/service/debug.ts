@@ -1,6 +1,8 @@
 import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnThought } from './base'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
+import type { BlockEnum, ValueSelector, VarType } from '@/app/components/workflow/types'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { AppModeEnum, CompletionParams, ModelModeType } from '@/types/app'
 import { get, post, ssePost } from './base'
@@ -34,13 +36,13 @@ export type ContextGenerateMessage = {
 
 // FIXME
 export type ContextGenerateAvailableVar = {
-  value_selector: string[]
-  type: string
+  value_selector: ValueSelector
+  type: VarType
   description?: string
   node_id?: string
   node_title?: string
-  node_type?: string
-  schema?: Record<string, unknown> | null
+  node_type?: BlockEnum
+  schema?: StructuredOutput['schema'] | Record<string, unknown> | null
 }
 
 export type ContextGenerateParameterInfo = {
