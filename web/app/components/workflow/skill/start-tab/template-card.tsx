@@ -10,10 +10,12 @@ import Button from '@/app/components/base/button'
 
 type TemplateCardProps = {
   template: SkillTemplateSummary
+  disabled?: boolean
+  loading?: boolean
   onUse: (template: SkillTemplateSummary) => void
 }
 
-const TemplateCard = ({ template, onUse }: TemplateCardProps) => {
+const TemplateCard = ({ template, disabled, loading, onUse }: TemplateCardProps) => {
   const { t } = useTranslation('workflow')
 
   return (
@@ -53,6 +55,8 @@ const TemplateCard = ({ template, onUse }: TemplateCardProps) => {
             variant="primary"
             size="medium"
             className="w-full"
+            disabled={disabled}
+            loading={loading}
             onClick={() => onUse(template)}
           >
             <RiAddLine className="mr-0.5 h-4 w-4" />

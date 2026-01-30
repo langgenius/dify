@@ -94,13 +94,12 @@ const SkillTemplatesSection = () => {
           <TemplateCard
             key={entry.id}
             template={entry}
+            disabled={loadingId !== null}
+            loading={loadingId === entry.id}
             onUse={handleUse}
           />
         ))}
       </div>
-      {loadingId
-        ? <div className="pointer-events-none fixed inset-0 z-50" />
-        : null}
     </section>
   )
 }
