@@ -127,7 +127,7 @@ class TestWorkflowEntry:
                 return node_config
 
         workflow = StubWorkflow()
-        variable_pool = VariablePool(system_variables=SystemVariable.empty(), user_inputs={})
+        variable_pool = VariablePool(system_variables=SystemVariable.default(), user_inputs={})
         expected_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
             max_number=dify_config.CODE_MAX_NUMBER,
@@ -157,7 +157,7 @@ class TestWorkflowEntry:
         # Initialize variable pool with environment variables
         env_var = StringVariable(name="API_KEY", value="existing_key")
         variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+            system_variables=SystemVariable.default(),
             environment_variables=[env_var],
             user_inputs={},
         )
@@ -198,7 +198,7 @@ class TestWorkflowEntry:
         # Initialize variable pool with conversation variables
         conv_var = StringVariable(name="last_message", value="Hello")
         variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+            system_variables=SystemVariable.default(),
             conversation_variables=[conv_var],
             user_inputs={},
         )
@@ -239,7 +239,7 @@ class TestWorkflowEntry:
         """Test mapping regular node variables from user inputs to variable pool."""
         # Initialize empty variable pool
         variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+            system_variables=SystemVariable.default(),
             user_inputs={},
         )
 
@@ -281,7 +281,7 @@ class TestWorkflowEntry:
     def test_mapping_user_inputs_with_file_handling(self):
         """Test mapping file inputs from user inputs to variable pool."""
         variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+            system_variables=SystemVariable.default(),
             user_inputs={},
         )
 
@@ -340,7 +340,7 @@ class TestWorkflowEntry:
     def test_mapping_user_inputs_missing_variable_error(self):
         """Test that mapping raises error when required variable is missing."""
         variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+            system_variables=SystemVariable.default(),
             user_inputs={},
         )
 
@@ -366,7 +366,7 @@ class TestWorkflowEntry:
     def test_mapping_user_inputs_with_alternative_key_format(self):
         """Test mapping with alternative key format (without node prefix)."""
         variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+            system_variables=SystemVariable.default(),
             user_inputs={},
         )
 
@@ -396,7 +396,7 @@ class TestWorkflowEntry:
     def test_mapping_user_inputs_with_complex_selectors(self):
         """Test mapping with complex node variable keys."""
         variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+            system_variables=SystemVariable.default(),
             user_inputs={},
         )
 
@@ -432,7 +432,7 @@ class TestWorkflowEntry:
     def test_mapping_user_inputs_invalid_node_variable(self):
         """Test that mapping handles invalid node variable format."""
         variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+            system_variables=SystemVariable.default(),
             user_inputs={},
         )
 

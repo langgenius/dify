@@ -102,6 +102,8 @@ def init_app(app: DifyApp) -> Celery:
     imports = [
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.trigger_processing_tasks",  # async trigger processing
+        "tasks.generate_summary_index_task",  # summary index generation
+        "tasks.regenerate_summary_index_task",  # summary index regeneration
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -148,6 +150,12 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["datasets-queue-monitor"] = {
             "task": "schedule.queue_monitor_task.queue_monitor_task",
             "schedule": timedelta(minutes=dify_config.QUEUE_MONITOR_INTERVAL or 30),
+        }
+    if dify_config.ENABLE_HUMAN_INPUT_TIMEOUT_TASK:
+        imports.append("tasks.human_input_timeout_tasks")
+        beat_schedule["human_input_form_timeout"] = {
+            "task": "human_input_form_timeout.check_and_resume",
+            "schedule": timedelta(minutes=dify_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL),
         }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.append("schedule.check_upgradable_plugin_task")
