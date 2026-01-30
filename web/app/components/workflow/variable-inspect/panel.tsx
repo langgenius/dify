@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import { useFeatures } from '@/app/components/base/features/hooks'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { useStore } from '../store'
 import ArtifactsTab from './artifacts-tab'
@@ -11,7 +12,12 @@ import VariablesTab from './variables-tab'
 const VariablesPanel: FC<{ onClose: () => void }> = ({ onClose }) => {
   const { t } = useTranslation('workflow')
   const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
+  const sandboxEnabled = useFeatures(s => s.features.sandbox?.enabled) ?? false
   const [activeTab, setActiveTab] = useState<InspectTab>(InspectTab.Variables)
+
+  const resolvedTab = (!sandboxEnabled && activeTab === InspectTab.Artifacts)
+    ? InspectTab.Variables
+    : activeTab
 
   const environmentVariables = useStore(s => s.environmentVariables)
   const { conversationVars, systemVars, nodesWithInspectVars, deleteAllInspectorVars } = useCurrentVars()
@@ -25,7 +31,7 @@ const VariablesPanel: FC<{ onClose: () => void }> = ({ onClose }) => {
     setCurrentFocusNodeId('')
   }, [deleteAllInspectorVars, setCurrentFocusNodeId])
 
-  const headerActions = activeTab === InspectTab.Variables && !isVariablesEmpty
+  const headerActions = resolvedTab === InspectTab.Variables && !isVariablesEmpty
     ? (
         <Button variant="ghost" size="small" onClick={handleClear}>
           {t('debug.variableInspect.clearAll')}
@@ -34,13 +40,13 @@ const VariablesPanel: FC<{ onClose: () => void }> = ({ onClose }) => {
     : undefined
 
   const headerProps = {
-    activeTab,
+    activeTab: resolvedTab,
     onTabChange: setActiveTab,
     onClose,
     headerActions,
   }
 
-  return activeTab === InspectTab.Variables
+  return resolvedTab === InspectTab.Variables
     ? <VariablesTab {...headerProps} />
     : <ArtifactsTab {...headerProps} />
 }
