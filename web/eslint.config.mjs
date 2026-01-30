@@ -104,17 +104,8 @@ export default antfu(
       'tailwindcss/migration-from-tailwind-2': 'warn',
     },
   },
-  // Dify custom rules
   {
-    plugins: {
-      dify,
-    },
-  },
-  {
-    files: ['**/*.tsx'],
-    rules: {
-      'dify/prefer-tailwind-icon': 'warn',
-    },
+    plugins: { dify },
   },
   {
     files: ['i18n/**/*.json'],
