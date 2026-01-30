@@ -15,6 +15,7 @@
     "quart_migrate",
     "quart_orjson",
     "quart_sqlalchemy",
+    "flask_restx",
     "opentelemetry.instrumentation.celery",
     "opentelemetry.instrumentation.asgi",
     "opentelemetry.instrumentation.httpx",
