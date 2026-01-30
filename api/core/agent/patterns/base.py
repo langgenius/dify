@@ -60,8 +60,7 @@ class AgentPattern(ABC):
         self,
         prompt_messages: list[PromptMessage],
         model_parameters: dict[str, Any],
-        stop: list[str] = [],
-        stream: bool = True,
+        stop: list[str]
     ) -> Generator[LLMResultChunk | AgentLog, None, AgentResult]:
         """Execute the agent strategy."""
         pass

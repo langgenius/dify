@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 from collections.abc import Generator
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any
 
-from core.agent.entities import AgentLog, AgentOutputKind, AgentResult, AgentScratchpadUnit, ExecutionContext
+from core.agent.entities import AgentLog, AgentResult, AgentScratchpadUnit, ExecutionContext
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 from core.agent.output_tools import (
     FINAL_OUTPUT_TOOL,
@@ -60,10 +60,10 @@ class ReActStrategy(AgentPattern):
 
     def run(
         self,
-        prompt_messages: list[PromptMessage],
+        prompt_messages:
+        list[PromptMessage],
         model_parameters: dict[str, Any],
-        stop: list[str] = [],
-        stream: bool = True,
+        stop: list[str]
     ) -> Generator[LLMResultChunk | AgentLog, None, AgentResult]:
         """Execute the ReAct agent strategy."""
         # Initialize tracking
@@ -137,16 +137,13 @@ class ReActStrategy(AgentPattern):
             messages_to_use = current_messages
 
             # Invoke model
-            chunks = cast(
-                Union[Generator[LLMResultChunk, None, None], LLMResult],
-                self.model_instance.invoke_llm(
-                    prompt_messages=messages_to_use,
-                    model_parameters=model_parameters,
-                    stop=stop,
-                    stream=False,
-                    user=self.context.user_id or "",
-                    callbacks=[],
-                ),
+            chunks = self.model_instance.invoke_llm(
+                prompt_messages=messages_to_use,
+                model_parameters=model_parameters,
+                stop=stop,
+                stream=False,
+                user=self.context.user_id or "",
+                callbacks=[],
             )
 
             # Process response
@@ -173,7 +170,7 @@ class ReActStrategy(AgentPattern):
                     action_input={"raw": scratchpad.thought or ""},
                 )
                 scratchpad.action = illegal_action
-                scratchpad.action_str = json.dumps(illegal_action.to_dict())
+                scratchpad.action_str = illegal_action.model_dump_json()
                 react_state = True
                 observation, tool_files = yield from self._handle_tool_call(illegal_action, current_messages, round_log)
                 scratchpad.observation = observation
@@ -218,33 +215,9 @@ class ReActStrategy(AgentPattern):
 
         # Return final result
 
-        from core.agent.entities import AgentResult
+        output_payload: str | dict
 
-        output_payload: str | AgentResult.StructuredOutput
-        if terminal_tool_name == FINAL_STRUCTURED_OUTPUT_TOOL and terminal_output_seen:
-            output_payload = AgentResult.StructuredOutput(
-                output_kind=AgentOutputKind.FINAL_STRUCTURED_OUTPUT,
-                output_text=None,
-                output_data=structured_output_payload,
-            )
-        elif final_text:
-            output_payload = AgentResult.StructuredOutput(
-                output_kind=AgentOutputKind.FINAL_OUTPUT_ANSWER,
-                output_text=final_text,
-                output_data=structured_output_payload,
-            )
-        elif output_text_payload:
-            output_payload = AgentResult.StructuredOutput(
-                output_kind=AgentOutputKind.OUTPUT_TEXT,
-                output_text=str(output_text_payload),
-                output_data=structured_output_payload,
-            )
-        else:
-            output_payload = AgentResult.StructuredOutput(
-                output_kind=AgentOutputKind.ILLEGAL_OUTPUT,
-                output_text="Model failed to produce a final output.",
-                output_data=structured_output_payload,
-            )
+        # TODO
 
         return AgentResult(
             output=output_payload,
@@ -336,7 +309,7 @@ class ReActStrategy(AgentPattern):
 
     def _handle_chunks(
         self,
-        chunks: Union[Generator[LLMResultChunk, None, None], LLMResult],
+        chunks: LLMResult,
         llm_usage: dict[str, Any],
         model_log: AgentLog,
         current_messages: list[PromptMessage],
@@ -353,25 +326,20 @@ class ReActStrategy(AgentPattern):
         """
         usage_dict: dict[str, Any] = {}
 
-        # Convert non-streaming to streaming format if needed
-        if isinstance(chunks, LLMResult):
-            # Create a generator from the LLMResult
-            def result_to_chunks() -> Generator[LLMResultChunk, None, None]:
-                yield LLMResultChunk(
-                    model=chunks.model,
-                    prompt_messages=chunks.prompt_messages,
-                    delta=LLMResultChunkDelta(
-                        index=0,
-                        message=chunks.message,
-                        usage=chunks.usage,
-                        finish_reason=None,  # LLMResult doesn't have finish_reason, only streaming chunks do
-                    ),
-                    system_fingerprint=chunks.system_fingerprint or "",
-                )
+        def result_to_chunks() -> Generator[LLMResultChunk, None, None]:
+            yield LLMResultChunk(
+                model=chunks.model,
+                prompt_messages=chunks.prompt_messages,
+                delta=LLMResultChunkDelta(
+                    index=0,
+                    message=chunks.message,
+                    usage=chunks.usage,
+                    finish_reason=None,  # LLMResult doesn't have finish_reason, only streaming chunks do
+                ),
+                system_fingerprint=chunks.system_fingerprint or "",
+            )
 
-            streaming_chunks = result_to_chunks()
-        else:
-            streaming_chunks = chunks
+        streaming_chunks = result_to_chunks()
 
         react_chunks = CotAgentOutputParser.handle_react_stream_output(streaming_chunks, usage_dict)
 
@@ -397,7 +365,7 @@ class ReActStrategy(AgentPattern):
 
                 if emit_chunks:
                     yield self._create_text_chunk(json.dumps(chunk.model_dump()), current_messages)
-            else:
+            elif isinstance(chunk, str):
                 # Text chunk
                 chunk_text = str(chunk)
                 scratchpad.agent_response = (scratchpad.agent_response or "") + chunk_text
@@ -405,6 +373,8 @@ class ReActStrategy(AgentPattern):
 
                 if emit_chunks:
                     yield self._create_text_chunk(chunk_text, current_messages)
+            else:
+                raise ValueError(f"Unexpected chunk type: {type(chunk)}")
 
         # Update usage
         if usage_dict.get("usage"):
