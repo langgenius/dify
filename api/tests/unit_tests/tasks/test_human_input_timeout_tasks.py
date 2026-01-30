@@ -115,7 +115,7 @@ def test_is_global_timeout_uses_created_at():
 def test_check_and_handle_human_input_timeouts_marks_and_routes(monkeypatch: pytest.MonkeyPatch):
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
-    monkeypatch.setattr(task_module.dify_config, "HITL_GLOBAL_TIMEOUT_SECONDS", 3600)
+    monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
     monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=object()))
 
     forms = [
@@ -193,7 +193,7 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(monkeypatch: pyt
 def test_check_and_handle_human_input_timeouts_omits_global_filter_when_disabled(monkeypatch: pytest.MonkeyPatch):
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
-    monkeypatch.setattr(task_module.dify_config, "HITL_GLOBAL_TIMEOUT_SECONDS", 0)
+    monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 0)
     monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=object()))
 
     capture: dict[str, Any] = {}

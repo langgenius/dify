@@ -93,9 +93,9 @@ class AppExecutionConfig(BaseSettings):
         default=0,
     )
 
-    HITL_GLOBAL_TIMEOUT_SECONDS: PositiveInt = Field(
+    HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS: PositiveInt = Field(
         description="Maximum seconds a workflow run can stay paused waiting for human input before global timeout.",
-        default=int(timedelta(days=3).total_seconds()),
+        default=int(timedelta(days=7).total_seconds()),
         ge=1,
     )
 
