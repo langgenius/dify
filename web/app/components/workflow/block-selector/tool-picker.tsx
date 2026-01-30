@@ -54,6 +54,9 @@ type Props = {
   preventFocusLoss?: boolean
   hideFeaturedTool?: boolean
   hideSelectedInfo?: boolean
+  searchText?: string
+  onSearchTextChange?: (value: string) => void
+  hideSearchBox?: boolean
 }
 
 const ToolPicker: FC<Props> = ({
@@ -73,9 +76,20 @@ const ToolPicker: FC<Props> = ({
   preventFocusLoss = false,
   hideFeaturedTool = false,
   hideSelectedInfo = false,
+  searchText: controlledSearchText,
+  onSearchTextChange,
+  hideSearchBox = false,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
+  const isSearchControlled = controlledSearchText !== undefined
+  const effectiveSearchText = isSearchControlled ? controlledSearchText : searchText
+  const handleSearchTextChange = (value: string) => {
+    if (isSearchControlled)
+      onSearchTextChange?.(value)
+    else
+      setSearchText(value)
+  }
   const [tags, setTags] = useState<string[]>([])
 
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
@@ -190,26 +204,28 @@ const ToolPicker: FC<Props> = ({
             e.preventDefault()
           }}
         >
-          <div
-            className="p-2 pb-1"
-          >
-            <SearchBox
-              search={searchText}
-              onSearchChange={setSearchText}
-              tags={tags}
-              onTagsChange={setTags}
-              placeholder={t('searchTools', { ns: 'plugin' })!}
-              supportAddCustomTool={supportAddCustomTool}
-              onAddedCustomTool={handleAddedCustomTool}
-              onShowAddCustomCollectionModal={showEditCustomCollectionModal}
-              inputClassName="grow"
-            />
-          </div>
+          {!hideSearchBox && (
+            <div
+              className="p-2 pb-1"
+            >
+              <SearchBox
+                search={effectiveSearchText}
+                onSearchChange={handleSearchTextChange}
+                tags={tags}
+                onTagsChange={setTags}
+                placeholder={t('searchTools', { ns: 'plugin' })!}
+                supportAddCustomTool={supportAddCustomTool}
+                onAddedCustomTool={handleAddedCustomTool}
+                onShowAddCustomCollectionModal={showEditCustomCollectionModal}
+                inputClassName="grow"
+              />
+            </div>
+          )}
           <AllTools
             className="mt-1"
             toolContentClassName="max-w-[100%]"
             tags={tags}
-            searchText={searchText}
+            searchText={effectiveSearchText}
             onSelect={handleSelect as OnSelectBlock}
             onSelectMultiple={handleSelectMultiple}
             buildInTools={builtinToolList || []}

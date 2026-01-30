@@ -8,7 +8,7 @@ import {
   $insertNodes,
 } from 'lexical'
 import * as React from 'react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import ReactDOM from 'react-dom'
 import { v4 as uuid } from 'uuid'
 import { useBasicTypeaheadTriggerMatch } from '@/app/components/base/prompt-editor/hooks'
@@ -35,11 +35,12 @@ const ToolPickerBlock = ({ scope = 'all' }: ToolPickerBlockProps) => {
   const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
     minLength: 0,
-    maxLength: 0,
+    maxLength: 75,
   })
   const storeApi = useWorkflowStore()
   const toolBlockContext = useToolBlockContext()
   const isUsingExternalMetadata = Boolean(toolBlockContext?.onMetadataChange)
+  const [queryString, setQueryString] = useState('')
 
   const options = useMemo(() => [new ToolPickerMenuOption()], [])
 
@@ -132,7 +133,10 @@ const ToolPickerBlock = ({ scope = 'all' }: ToolPickerBlockProps) => {
     if (!anchorElementRef.current)
       return null
 
-    const closeMenu = () => selectOptionAndCleanUp(options[0])
+    const closeMenu = () => {
+      setQueryString('')
+      selectOptionAndCleanUp(options[0])
+    }
 
     return ReactDOM.createPortal(
       <ToolPicker
@@ -156,19 +160,22 @@ const ToolPickerBlock = ({ scope = 'all' }: ToolPickerBlockProps) => {
           insertTools(tools)
           closeMenu()
         }}
+        searchText={queryString}
+        onSearchTextChange={setQueryString}
+        hideSearchBox
         scope={scope}
         hideFeaturedTool
         preventFocusLoss
       />,
       anchorElementRef.current,
     )
-  }, [insertTools, options, scope])
+  }, [insertTools, options, queryString, scope])
 
   return (
     <LexicalTypeaheadMenuPlugin
       options={options}
       onSelectOption={() => { }}
-      onQueryChange={() => { }}
+      onQueryChange={matchingString => setQueryString(matchingString || '')}
       menuRenderFn={renderMenu}
       triggerFn={checkForTriggerMatch}
       anchorClassName="z-[999999] translate-y-[calc(-100%-3px)]"
