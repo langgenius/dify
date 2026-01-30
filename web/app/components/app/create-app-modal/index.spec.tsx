@@ -47,15 +47,6 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyNameBySystem: (key: string) => key,
-}))
-
-// Mock ShortcutsName to avoid polluting button accessible names
-vi.mock('@/app/components/workflow/shortcuts-name', () => ({
-  default: () => null,
-}))
-
 const mockNotify = vi.fn()
 const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()
@@ -133,7 +124,7 @@ describe('CreateAppModal', () => {
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
     fireEvent.change(nameInput, { target: { value: 'My App' } })
-    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Create' }))
+    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => expect(mockCreateApp).toHaveBeenCalledWith({
       name: 'My App',
@@ -161,7 +152,7 @@ describe('CreateAppModal', () => {
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
     fireEvent.change(nameInput, { target: { value: 'My App' } })
-    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Create' }))
+    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => expect(mockCreateApp).toHaveBeenCalled())
     expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'boom' })
