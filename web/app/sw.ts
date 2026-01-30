@@ -18,8 +18,18 @@ const scopePathname = new URL(self.registration.scope).pathname
 const basePath = scopePathname.replace(/\/serwist\/$/, '').replace(/\/$/, '')
 const offlineUrl = `${basePath}/_offline.html`
 
+const manifest = self.__SW_MANIFEST?.map((entry) => {
+  if (typeof entry === 'string')
+    return entry.replace(/^\/serwist\//, '/')
+
+  return {
+    ...entry,
+    url: entry.url.replace(/^\/serwist\//, '/'),
+  }
+})
+
 const serwist = new Serwist({
-  precacheEntries: self.__SW_MANIFEST,
+  precacheEntries: manifest,
   skipWaiting: true,
   disableDevLogs: true,
   clientsClaim: true,
