@@ -12,6 +12,7 @@ from pydantic.json import pydantic_encoder
 
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.entities.pause_reason import PauseReason
+from core.workflow.enums import NodeExecutionType, NodeState, NodeType
 from core.workflow.runtime.variable_pool import VariablePool
 
 
@@ -103,14 +104,33 @@ class ResponseStreamCoordinatorProtocol(Protocol):
         ...
 
 
+class NodeProtocol(Protocol):
+    """Structural interface for graph nodes."""
+
+    id: str
+    state: NodeState
+    execution_type: NodeExecutionType
+    node_type: NodeType
+
+    def blocks_variable_output(self, variable_selectors: set[tuple[str, ...]]) -> bool: ...
+
+
+class EdgeProtocol(Protocol):
+    id: str
+    state: NodeState
+    tail: str
+    head: str
+    source_handle: str
+
+
 class GraphProtocol(Protocol):
     """Structural interface required from graph instances attached to the runtime state."""
 
-    nodes: Mapping[str, object]
-    edges: Mapping[str, object]
-    root_node: object
+    nodes: Mapping[str, NodeProtocol]
+    edges: Mapping[str, EdgeProtocol]
+    root_node: NodeProtocol
 
-    def get_outgoing_edges(self, node_id: str) -> Sequence[object]: ...
+    def get_outgoing_edges(self, node_id: str) -> Sequence[EdgeProtocol]: ...
 
 
 @dataclass(slots=True)

@@ -10,10 +10,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from core.workflow.nodes.answer.answer_node import AnswerNode
-from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.template import Template
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.knowledge_index import KnowledgeIndexNode
+from core.workflow.runtime.graph_runtime_state import NodeProtocol
 
 
 @dataclass
@@ -29,7 +29,7 @@ class ResponseSession:
     index: int = 0  # Current position in the template segments
 
     @classmethod
-    def from_node(cls, node: Node) -> ResponseSession:
+    def from_node(cls, node: NodeProtocol) -> ResponseSession:
         """
         Create a ResponseSession from an AnswerNode or EndNode.
 
