@@ -78,7 +78,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                 elif fetch_user_arg.fetch_from == WhereisUserArg.JSON:
                     user_id = (await request.get_json()).get("user")
                 elif fetch_user_arg.fetch_from == WhereisUserArg.FORM:
-                    user_id = (await request.form).get("user")
+                    user_id = (await (await request.form)).get("user")
                 else:
                     user_id = None
 

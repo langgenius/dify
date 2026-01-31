@@ -102,7 +102,7 @@ class MemberInviteEmailApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("members")
-    def post(self):
+    async def post(self):
         payload = console_ns.payload or {}
         args = MemberInvitePayload.model_validate(payload)
 
@@ -253,7 +253,7 @@ class SendOwnerTransferEmailApi(Resource):
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
-    def post(self):
+    async def post(self):
         payload = console_ns.payload or {}
         args = OwnerTransferEmailPayload.model_validate(payload)
         ip_address = extract_remote_ip(request)
@@ -290,7 +290,7 @@ class OwnerTransferCheckApi(Resource):
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
-    def post(self):
+    async def post(self):
         payload = console_ns.payload or {}
         args = OwnerTransferCheckPayload.model_validate(payload)
         # check if the current user is the owner of the workspace
@@ -334,7 +334,7 @@ class OwnerTransfer(Resource):
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
-    def post(self, member_id):
+    async def post(self, member_id):
         payload = console_ns.payload or {}
         args = OwnerTransferPayload.model_validate(payload)
 

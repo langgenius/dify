@@ -103,7 +103,7 @@ class ActivateApi(Resource):
         ),
     )
     @console_ns.response(400, "Already activated or invalid token")
-    def post(self):
+    async def post(self):
         args = ActivatePayload.model_validate(console_ns.payload)
 
         normalized_request_email = args.email.lower() if args.email else None

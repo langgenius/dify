@@ -65,7 +65,7 @@ class AppImportApi(Resource):
     @marshal_with(app_import_model)
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
-    def post(self):
+    async def post(self):
         # Check user role first
         current_user, _ = current_account_with_tenant()
         args = AppImportPayload.model_validate(console_ns.payload)
@@ -107,7 +107,7 @@ class AppImportConfirmApi(Resource):
     @account_initialization_required
     @marshal_with(app_import_model)
     @edit_permission_required
-    def post(self, import_id):
+    async def post(self, import_id):
         # Check user role first
         current_user, _ = current_account_with_tenant()
 

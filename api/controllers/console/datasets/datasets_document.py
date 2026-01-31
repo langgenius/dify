@@ -363,7 +363,7 @@ class DatasetDocumentListApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
-    def post(self, dataset_id):
+    async def post(self, dataset_id):
         current_user, _ = current_account_with_tenant()
         dataset_id = str(dataset_id)
 
@@ -436,7 +436,7 @@ class DatasetInitApi(Resource):
     @marshal_with(dataset_and_document_model)
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def post(self):
+    async def post(self):
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.is_dataset_editor:
@@ -901,7 +901,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
-    def post(self, dataset_id: str):
+    async def post(self, dataset_id: str):
         """Stream a ZIP archive containing the requested uploaded documents."""
         # Parse and validate request payload.
         payload = DocumentBatchDownloadZipPayload.model_validate(console_ns.payload or {})
@@ -1146,7 +1146,7 @@ class DocumentRetryApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[DocumentRetryPayload.__name__])
-    def post(self, dataset_id):
+    async def post(self, dataset_id):
         """retry document."""
         payload = DocumentRetryPayload.model_validate(console_ns.payload or {})
         dataset_id = str(dataset_id)
@@ -1188,7 +1188,7 @@ class DocumentRenameApi(DocumentResource):
     @account_initialization_required
     @marshal_with(document_model)
     @console_ns.expect(console_ns.models[DocumentRenamePayload.__name__])
-    def post(self, dataset_id, document_id):
+    async def post(self, dataset_id, document_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         current_user, _ = current_account_with_tenant()
         if not current_user.is_dataset_editor:
@@ -1286,7 +1286,7 @@ class DocumentGenerateSummaryApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def post(self, dataset_id):
+    async def post(self, dataset_id):
         """
         Generate summary index for specified documents.
 

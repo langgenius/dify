@@ -54,7 +54,7 @@ class PluginUploadFileApi(Resource):
         }
     )
     @files_ns.response(HTTPStatus.CREATED, "File uploaded", files_ns.models[FileResponse.__name__])
-    def post(self):
+    async def post(self):
         """Upload a file for plugin usage.
 
         Accepts a file upload with signature verification for security.
@@ -71,7 +71,7 @@ class PluginUploadFileApi(Resource):
         """
         args = PluginUploadQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
-        file = request.files.get("file")
+        file = (await request.files).get("file")
         if file is None:
             raise Forbidden("File is required.")
 

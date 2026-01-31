@@ -264,7 +264,7 @@ class TestDeserializeResponse:
 
         assert response.status_code == 200
         assert response.get_data() == b"Hello, World!"
-        assert response.headers.get("Content-Type") == "text/plain"
+        assert (await response.headers).get("Content-Type") == "text/plain"
 
     def test_deserialize_response_with_json(self):
         body = b'{"result": "success", "data": [1, 2, 3]}'
@@ -280,8 +280,8 @@ class TestDeserializeResponse:
 
         assert response.status_code == 201
         assert response.get_data() == body
-        assert response.headers.get("Content-Type") == "application/json"
-        assert response.headers.get("X-Custom-Header") == "test-value"
+        assert (await response.headers).get("Content-Type") == "application/json"
+        assert (await response.headers).get("X-Custom-Header") == "test-value"
 
     def test_deserialize_error_response(self):
         raw_data = b"HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\n\r\n<html><body>Page not found</body></html>"
@@ -342,9 +342,9 @@ class TestDeserializeResponse:
         # Verify key properties are preserved
         assert restored_response.status_code == original_response.status_code
         assert restored_response.get_data() == original_response.get_data()
-        assert restored_response.headers.get("Content-Type") == "application/json"
-        assert restored_response.headers.get("X-Request-Id") == "abc-123"
-        assert restored_response.headers.get("Cache-Control") == "no-cache"
+        assert restored_(await response.headers).get("Content-Type") == "application/json"
+        assert restored_(await response.headers).get("X-Request-Id") == "abc-123"
+        assert restored_(await response.headers).get("Cache-Control") == "no-cache"
 
 
 class TestEdgeCases:

@@ -175,7 +175,7 @@ class ConversationRenameApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user, c_id):
+    async def post(self, app_model, end_user, c_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()

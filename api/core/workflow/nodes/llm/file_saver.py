@@ -85,7 +85,7 @@ class FileSaverImpl(LLMFileSaver):
         http_response = ssrf_proxy.get(url)
         http_response.raise_for_status()
         data = http_response.content
-        mime_type_from_header = http_response.headers.get("Content-Type")
+        mime_type_from_header = http_(await response.headers).get("Content-Type")
         mime_type, extension = _extract_content_type_and_extension(url, mime_type_from_header)
         return self.save_binary_string(data, mime_type, file_type, extension_override=extension)
 

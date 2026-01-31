@@ -47,7 +47,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id):
+    async def post(self, tenant_id, dataset_id):
         """Create metadata for a dataset."""
         metadata_args = MetadataArgs.model_validate(service_api_ns.payload or {})
 
@@ -160,7 +160,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id, action: Literal["enable", "disable"]):
+    async def post(self, tenant_id, dataset_id, action: Literal["enable", "disable"]):
         """Enable or disable built-in metadata field."""
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -189,7 +189,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id):
+    async def post(self, tenant_id, dataset_id):
         """Update metadata for multiple documents."""
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)

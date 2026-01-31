@@ -68,35 +68,35 @@ def oauth_server_access_token_required(view: Callable[Concatenate[T, OAuthProvid
         if not authorization_header:
             response = jsonify({"error": "Authorization header is required"})
             response.status_code = 401
-            response.headers["WWW-Authenticate"] = "Bearer"
+            (await response.headers)["WWW-Authenticate"] = "Bearer"
             return response
 
         parts = authorization_header.strip().split(None, 1)
         if len(parts) != 2:
             response = jsonify({"error": "Invalid Authorization header format"})
             response.status_code = 401
-            response.headers["WWW-Authenticate"] = "Bearer"
+            (await response.headers)["WWW-Authenticate"] = "Bearer"
             return response
 
         token_type = parts[0].strip()
         if token_type.lower() != "bearer":
             response = jsonify({"error": "token_type is invalid"})
             response.status_code = 401
-            response.headers["WWW-Authenticate"] = "Bearer"
+            (await response.headers)["WWW-Authenticate"] = "Bearer"
             return response
 
         access_token = parts[1].strip()
         if not access_token:
             response = jsonify({"error": "access_token is required"})
             response.status_code = 401
-            response.headers["WWW-Authenticate"] = "Bearer"
+            (await response.headers)["WWW-Authenticate"] = "Bearer"
             return response
 
         account = OAuthServerService.validate_oauth_access_token(oauth_provider_app.client_id, access_token)
         if not account:
             response = jsonify({"error": "access_token or client_id is invalid"})
             response.status_code = 401
-            response.headers["WWW-Authenticate"] = "Bearer"
+            (await response.headers)["WWW-Authenticate"] = "Bearer"
             return response
 
         return view(self, oauth_provider_app, account, *args, **kwargs)
@@ -108,7 +108,7 @@ def oauth_server_access_token_required(view: Callable[Concatenate[T, OAuthProvid
 class OAuthServerAppApi(Resource):
     @setup_required
     @oauth_server_client_id_required
-    def post(self, oauth_provider_app: OAuthProviderApp):
+    async def post(self, oauth_provider_app: OAuthProviderApp):
         payload = OAuthProviderRequest.model_validate(request.get_json())
         redirect_uri = payload.redirect_uri
 
@@ -131,7 +131,7 @@ class OAuthServerUserAuthorizeApi(Resource):
     @login_required
     @account_initialization_required
     @oauth_server_client_id_required
-    def post(self, oauth_provider_app: OAuthProviderApp):
+    async def post(self, oauth_provider_app: OAuthProviderApp):
         current_user, _ = current_account_with_tenant()
         account = current_user
         user_account_id = account.id
@@ -148,7 +148,7 @@ class OAuthServerUserAuthorizeApi(Resource):
 class OAuthServerUserTokenApi(Resource):
     @setup_required
     @oauth_server_client_id_required
-    def post(self, oauth_provider_app: OAuthProviderApp):
+    async def post(self, oauth_provider_app: OAuthProviderApp):
         payload = OAuthTokenRequest.model_validate(request.get_json())
 
         try:
@@ -199,7 +199,7 @@ class OAuthServerUserAccountApi(Resource):
     @setup_required
     @oauth_server_client_id_required
     @oauth_server_access_token_required
-    def post(self, oauth_provider_app: OAuthProviderApp, account: Account):
+    async def post(self, oauth_provider_app: OAuthProviderApp, account: Account):
         return jsonable_encoder(
             {
                 "name": account.name,

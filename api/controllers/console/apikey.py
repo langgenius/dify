@@ -74,7 +74,7 @@ class BaseApiKeyListResource(Resource):
 
     @marshal_with(api_key_item_model)
     @edit_permission_required
-    def post(self, resource_id):
+    async def post(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         _, current_tenant_id = current_account_with_tenant()
@@ -152,7 +152,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc(params={"resource_id": "App ID"})
     @console_ns.response(201, "API key created successfully", api_key_item_model)
     @console_ns.response(400, "Maximum keys exceeded")
-    def post(self, resource_id):  # type: ignore
+    async def post(self, resource_id):  # type: ignore
         """Create a new API key for an app"""
         return super().post(resource_id)
 
@@ -192,7 +192,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc(params={"resource_id": "Dataset ID"})
     @console_ns.response(201, "API key created successfully", api_key_item_model)
     @console_ns.response(400, "Maximum keys exceeded")
-    def post(self, resource_id):  # type: ignore
+    async def post(self, resource_id):  # type: ignore
         """Create a new API key for a dataset"""
         return super().post(resource_id)
 

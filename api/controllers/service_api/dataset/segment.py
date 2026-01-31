@@ -87,7 +87,7 @@ class SegmentApi(DatasetApiResource):
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id: str, dataset_id: str, document_id: str):
+    async def post(self, tenant_id: str, dataset_id: str, document_id: str):
         _, current_tenant_id = current_account_with_tenant()
         """Create single segment."""
         # check dataset
@@ -250,7 +250,7 @@ class DatasetSegmentApi(DatasetApiResource):
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
+    async def post(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
         _, current_tenant_id = current_account_with_tenant()
         # check dataset
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
@@ -339,7 +339,7 @@ class ChildChunkApi(DatasetApiResource):
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
+    async def post(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
         _, current_tenant_id = current_account_with_tenant()
         """Create child chunk."""
         # check dataset

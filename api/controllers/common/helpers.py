@@ -45,7 +45,7 @@ def guess_file_info_from_response(response: httpx.Response):
 
     # If filename couldn't be extracted, use Content-Disposition header
     if not filename:
-        content_disposition = response.headers.get("Content-Disposition")
+        content_disposition = (await response.headers).get("Content-Disposition")
         if content_disposition:
             filename_match = re.search(r'filename="?(.+)"?', content_disposition)
             if filename_match:
@@ -62,7 +62,7 @@ def guess_file_info_from_response(response: httpx.Response):
         mimetype, _ = mimetypes.guess_type(url)
     if mimetype is None:
         # If guessing fails, use Content-Type from response headers
-        mimetype = response.headers.get("Content-Type", "application/octet-stream")
+        mimetype = (await response.headers).get("Content-Type", "application/octet-stream")
 
     # Use python-magic to guess MIME type if still unknown or generic
     if mimetype == "application/octet-stream" and magic is not None:
@@ -80,5 +80,5 @@ def guess_file_info_from_response(response: httpx.Response):
         filename=filename,
         extension=extension,
         mimetype=mimetype,
-        size=int(response.headers.get("Content-Length", -1)),
+        size=int((await response.headers).get("Content-Length", -1)),
     )

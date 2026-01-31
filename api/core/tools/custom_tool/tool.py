@@ -141,7 +141,7 @@ class ApiTool(Tool):
                 )
 
             # Check content type
-            content_type = response.headers.get("content-type", "").lower()
+            content_type = (await response).headers.get("content-type", "").lower()
             is_json_content_type = "application/json" in content_type
 
             # Try to parse as JSON

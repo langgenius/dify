@@ -103,7 +103,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
         }
     )
     @service_api_ns.expect(service_api_ns.models[DatasourceNodeRunPayload.__name__])
-    def post(self, tenant_id: str, dataset_id: str, node_id: str):
+    async def post(self, tenant_id: str, dataset_id: str, node_id: str):
         """Resource for getting datasource plugins."""
         payload = DatasourceNodeRunPayload.model_validate(service_api_ns.payload or {})
         assert isinstance(current_user, Account)
@@ -160,7 +160,7 @@ class PipelineRunApi(DatasetApiResource):
         }
     )
     @service_api_ns.expect(service_api_ns.models[PipelineRunApiEntity.__name__])
-    def post(self, tenant_id: str, dataset_id: str):
+    async def post(self, tenant_id: str, dataset_id: str):
         """Resource for running a rag pipeline."""
         payload = PipelineRunApiEntity.model_validate(service_api_ns.payload or {})
 
@@ -198,19 +198,19 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
             415: "Unsupported file type",
         }
     )
-    def post(self, tenant_id: str):
+    async def post(self, tenant_id: str):
         """Upload a file for use in conversations.
 
         Accepts a single file upload via multipart/form-data.
         """
         # check file
-        if "file" not in request.files:
+        if "file" not in (await request.files):
             raise NoFileUploadedError()
 
-        if len(request.files) > 1:
+        if len(await request.files) > 1:
             raise TooManyFilesError()
 
-        file = request.files["file"]
+        file = (await request.files)["file"]
         if not file.mimetype:
             raise UnsupportedFileTypeError()
 

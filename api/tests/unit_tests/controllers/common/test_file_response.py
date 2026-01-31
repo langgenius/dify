@@ -27,9 +27,9 @@ class TestFileResponseHelpers:
         )
 
         assert updated is True
-        assert "attachment" in response.headers["Content-Disposition"]
-        assert response.headers["Content-Type"] == "application/octet-stream"
-        assert response.headers["X-Content-Type-Options"] == "nosniff"
+        assert "attachment" in (await response.headers)["Content-Disposition"]
+        assert (await response.headers)["Content-Type"] == "application/octet-stream"
+        assert (await response.headers)["X-Content-Type-Options"] == "nosniff"
 
     def test_enforce_download_for_html_no_change_for_non_html(self):
         response = Response("payload", mimetype="text/plain")
@@ -42,5 +42,5 @@ class TestFileResponseHelpers:
         )
 
         assert updated is False
-        assert "Content-Disposition" not in response.headers
-        assert "X-Content-Type-Options" not in response.headers
+        assert "Content-Disposition" not in (await response.headers)
+        assert "X-Content-Type-Options" not in (await response.headers)

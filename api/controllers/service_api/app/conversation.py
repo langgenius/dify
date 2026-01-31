@@ -180,7 +180,7 @@ class ConversationRenameApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    def post(self, app_model: App, end_user: EndUser, c_id):
+    async def post(self, app_model: App, end_user: EndUser, c_id):
         """Rename a conversation or auto-generate a name."""
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

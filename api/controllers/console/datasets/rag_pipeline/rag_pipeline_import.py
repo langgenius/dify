@@ -62,7 +62,7 @@ class RagPipelineImportApi(Resource):
     @edit_permission_required
     @marshal_with(pipeline_import_model)
     @console_ns.expect(console_ns.models[RagPipelineImportPayload.__name__])
-    def post(self):
+    async def post(self):
         # Check user role first
         current_user, _ = current_account_with_tenant()
         payload = RagPipelineImportPayload.model_validate(console_ns.payload or {})
@@ -98,7 +98,7 @@ class RagPipelineImportConfirmApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @marshal_with(pipeline_import_model)
-    def post(self, import_id):
+    async def post(self, import_id):
         current_user, _ = current_account_with_tenant()
 
         # Create service with session

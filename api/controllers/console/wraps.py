@@ -467,7 +467,7 @@ def decrypt_password_field(view: Callable[P, R]):
 
     Usage:
         @decrypt_password_field
-        def post(self):
+        async def post(self):
             args = LoginPayload.model_validate(console_ns.payload)
             # args.password is now decrypted
     """
@@ -489,7 +489,7 @@ def decrypt_code_field(view: Callable[P, R]):
 
     Usage:
         @decrypt_code_field
-        def post(self):
+        async def post(self):
             args = EmailCodeLoginPayload.model_validate(console_ns.payload)
             # args.code is now decrypted
     """

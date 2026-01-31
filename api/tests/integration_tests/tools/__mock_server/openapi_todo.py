@@ -17,7 +17,7 @@ class TodosResource(Resource):
         todos = todos_data.get(username, [])
         return {"todos": todos}
 
-    def post(self, username):
+    async def post(self, username):
         data = request.get_json()
         new_todo = data.get("todo")
         todos_data.setdefault(username, []).append(new_todo)

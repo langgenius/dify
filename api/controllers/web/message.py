@@ -147,7 +147,7 @@ class MessageFeedbackApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user, message_id):
+    async def post(self, app_model, end_user, message_id):
         message_id = str(message_id)
 
         payload = MessageFeedbackPayload.model_validate(web_ns.payload or {})

@@ -367,7 +367,7 @@ def _parse_token_response(response: httpx.Response) -> OAuthTokens:
     Raises:
         ValueError: If response cannot be parsed
     """
-    content_type = response.headers.get("content-type", "").lower()
+    content_type = (await response.headers).get("content-type", "").lower()
 
     if "application/json" in content_type:
         # Standard OAuth 2.0 JSON response (RFC 6749)

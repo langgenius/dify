@@ -67,7 +67,7 @@ class AppMCPServerController(Resource):
     @setup_required
     @marshal_with(app_server_model)
     @edit_permission_required
-    def post(self, app_model):
+    async def post(self, app_model):
         _, current_tenant_id = current_account_with_tenant()
         payload = MCPServerCreatePayload.model_validate(console_ns.payload or {})
 

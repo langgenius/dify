@@ -69,7 +69,7 @@ def _log_request_finished(response) -> None:
         req_method = "-"
         req_path = "-"
 
-    trace_id = get_trace_id_from_otel_context() or response.headers.get("X-Trace-Id") or ""
+    trace_id = get_trace_id_from_otel_context() or (await response.headers).get("X-Trace-Id") or ""
     logger.info(
         "%s %s %s %s %s",
         req_method,

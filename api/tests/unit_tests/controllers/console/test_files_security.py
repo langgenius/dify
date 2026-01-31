@@ -33,7 +33,7 @@ class TestFileUploadSecurity:
 
         with app.test_request_context(method="POST", data={}):
             # Simulate the check in FileApi.post()
-            if "file" not in request.files:
+            if "file" not in (await request.files):
                 with pytest.raises(NoFileUploadedError):
                     raise NoFileUploadedError()
 
@@ -51,7 +51,7 @@ class TestFileUploadSecurity:
 
         with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
             # Simulate the check in FileApi.post()
-            if len(request.files) > 1:
+            if len(await request.files) > 1:
                 with pytest.raises(TooManyFilesError):
                     raise TooManyFilesError()
 
@@ -65,7 +65,7 @@ class TestFileUploadSecurity:
         file_data = {"file": (io.BytesIO(b"content"), "", "text/plain")}
 
         with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
-            file = request.files["file"]
+            file = (await request.files)["file"]
             if not file.filename:
                 with pytest.raises(FilenameNotExistsError):
                     raise FilenameNotExistsError

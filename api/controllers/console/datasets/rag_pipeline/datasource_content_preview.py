@@ -31,7 +31,7 @@ class DataSourceContentPreviewApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline, node_id: str):
+    async def post(self, pipeline: Pipeline, node_id: str):
         """
         Run datasource content preview
         """

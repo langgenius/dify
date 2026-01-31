@@ -31,7 +31,7 @@ class SendGridClient:
             response = sg.client.mail.send.post(request_body=mail_json)  # type: ignore
             logger.debug(response.status_code)
             logger.debug(response.body)
-            logger.debug(response.headers)
+            logger.debug(await response.headers)
 
         except TimeoutError:
             logger.exception("SendGridClient Timeout occurred while sending email")

@@ -75,7 +75,7 @@ class LoginApi(Resource):
         }
     )
     @decrypt_password_field
-    def post(self):
+    async def post(self):
         """Authenticate user and login."""
         payload = LoginPayload.model_validate(web_ns.payload or {})
 
@@ -153,7 +153,7 @@ class LogoutApi(Resource):
             200: "Logout successful",
         }
     )
-    def post(self):
+    async def post(self):
         response = make_response({"result": "success"})
         # enterprise SSO sets same site to None in https deployment
         # so we need to logout by calling api
@@ -175,7 +175,7 @@ class EmailCodeLoginSendEmailApi(Resource):
             404: "Account not found",
         }
     )
-    def post(self):
+    async def post(self):
         payload = EmailCodeLoginSendPayload.model_validate(web_ns.payload or {})
 
         if payload.language == "zh-Hans":
@@ -207,7 +207,7 @@ class EmailCodeLoginApi(Resource):
         }
     )
     @decrypt_code_field
-    def post(self):
+    async def post(self):
         payload = EmailCodeLoginVerifyPayload.model_validate(web_ns.payload or {})
 
         user_email = payload.email.lower()

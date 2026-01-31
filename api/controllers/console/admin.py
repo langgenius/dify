@@ -96,7 +96,7 @@ class InsertExploreAppListApi(Resource):
     @console_ns.response(404, "App not found")
     @only_edition_cloud
     @admin_required
-    def post(self):
+    async def post(self):
         payload = InsertExploreAppPayload.model_validate(console_ns.payload)
 
         app = db.session.execute(select(App).where(App.id == payload.app_id)).scalar_one_or_none()
@@ -240,7 +240,7 @@ class InsertExploreBannerApi(Resource):
     @console_ns.response(201, "Banner inserted successfully")
     @only_edition_cloud
     @admin_required
-    def post(self):
+    async def post(self):
         payload = InsertExploreBannerPayload.model_validate(console_ns.payload)
 
         banner = ExporleBanner(

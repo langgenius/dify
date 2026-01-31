@@ -197,8 +197,8 @@ class TestFilePreviewApi:
         # Check response properties
         assert response.mimetype == mock_upload_file.mime_type
         assert response.direct_passthrough is True
-        assert response.headers["Content-Length"] == str(mock_upload_file.size)
-        assert "Cache-Control" in response.headers
+        assert (await response.headers)["Content-Length"] == str(mock_upload_file.size)
+        assert "Cache-Control" in (await response.headers)
 
     def test_build_file_response_as_attachment(self, file_preview_api, mock_upload_file):
         """Test file response building with attachment flag"""
@@ -207,9 +207,9 @@ class TestFilePreviewApi:
         response = file_preview_api._build_file_response(mock_generator, mock_upload_file, True)
 
         # Check attachment-specific headers
-        assert "attachment" in response.headers["Content-Disposition"]
-        assert mock_upload_file.name in response.headers["Content-Disposition"]
-        assert response.headers["Content-Type"] == "application/octet-stream"
+        assert "attachment" in (await response.headers)["Content-Disposition"]
+        assert mock_upload_file.name in (await response.headers)["Content-Disposition"]
+        assert (await response.headers)["Content-Type"] == "application/octet-stream"
 
     def test_build_file_response_html_forces_attachment(self, file_preview_api, mock_upload_file):
         """Test HTML files are forced to download"""
@@ -220,9 +220,9 @@ class TestFilePreviewApi:
 
         response = file_preview_api._build_file_response(mock_generator, mock_upload_file, False)
 
-        assert "attachment" in response.headers["Content-Disposition"]
-        assert response.headers["Content-Type"] == "application/octet-stream"
-        assert response.headers["X-Content-Type-Options"] == "nosniff"
+        assert "attachment" in (await response.headers)["Content-Disposition"]
+        assert (await response.headers)["Content-Type"] == "application/octet-stream"
+        assert (await response.headers)["X-Content-Type-Options"] == "nosniff"
 
     def test_build_file_response_audio_video(self, file_preview_api, mock_upload_file):
         """Test file response building for audio/video files"""
@@ -232,7 +232,7 @@ class TestFilePreviewApi:
         response = file_preview_api._build_file_response(mock_generator, mock_upload_file, False)
 
         # Check Range support for media files
-        assert response.headers["Accept-Ranges"] == "bytes"
+        assert (await response.headers)["Accept-Ranges"] == "bytes"
 
     def test_build_file_response_no_size(self, file_preview_api, mock_upload_file):
         """Test file response building when size is unknown"""
@@ -242,7 +242,7 @@ class TestFilePreviewApi:
         response = file_preview_api._build_file_response(mock_generator, mock_upload_file, False)
 
         # Content-Length should not be set when size is unknown
-        assert "Content-Length" not in response.headers
+        assert "Content-Length" not in (await response.headers)
 
     @patch("controllers.service_api.app.file_preview.storage")
     def test_get_method_integration(

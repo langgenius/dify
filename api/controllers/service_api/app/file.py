@@ -36,19 +36,19 @@ class FileApi(Resource):
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))  # type: ignore
     @service_api_ns.response(HTTPStatus.CREATED, "File uploaded", service_api_ns.models[FileResponse.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    async def post(self, app_model: App, end_user: EndUser):
         """Upload a file for use in conversations.
 
         Accepts a single file upload via multipart/form-data.
         """
         # check file
-        if "file" not in request.files:
+        if "file" not in (await request.files):
             raise NoFileUploadedError()
 
-        if len(request.files) > 1:
+        if len(await request.files) > 1:
             raise TooManyFilesError()
 
-        file = request.files["file"]
+        file = (await request.files)["file"]
         if not file.mimetype:
             raise UnsupportedFileTypeError()
 

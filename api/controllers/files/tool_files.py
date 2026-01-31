@@ -74,10 +74,10 @@ class ToolFileApi(Resource):
             headers={},
         )
         if tool_file.size > 0:
-            response.headers["Content-Length"] = str(tool_file.size)
+            (await response.headers)["Content-Length"] = str(tool_file.size)
         if args.as_attachment:
             encoded_filename = quote(tool_file.name)
-            response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
+            (await response.headers)["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
         enforce_download_for_html(
             response,

@@ -181,7 +181,7 @@ class DatasetListApi(DatasetApiResource):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id):
+    async def post(self, tenant_id):
         """Resource for creating datasets."""
         payload = DatasetCreatePayload.model_validate(service_api_ns.payload or {})
 
@@ -501,7 +501,7 @@ class DatasetTagsApi(DatasetApiResource):
         }
     )
     @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
-    def post(self, _):
+    async def post(self, _):
         """Add a knowledge type tag."""
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -571,7 +571,7 @@ class DatasetTagBindingApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    def post(self, _):
+    async def post(self, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -595,7 +595,7 @@ class DatasetTagUnbindingApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    def post(self, _):
+    async def post(self, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):

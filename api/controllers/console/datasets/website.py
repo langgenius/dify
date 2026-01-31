@@ -35,7 +35,7 @@ class WebsiteCrawlApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         payload = WebsiteCrawlPayload.model_validate(console_ns.payload or {})
 
         # Create typed request and validate

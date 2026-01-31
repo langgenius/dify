@@ -55,7 +55,7 @@ class ApiKeyAuthDataSourceBinding(Resource):
     @account_initialization_required
     @is_admin_or_owner_required
     @console_ns.expect(console_ns.models[ApiKeyAuthBindingPayload.__name__])
-    def post(self):
+    async def post(self):
         # The role of the current user in the table must be admin or owner
         _, current_tenant_id = current_account_with_tenant()
         payload = ApiKeyAuthBindingPayload.model_validate(console_ns.payload)

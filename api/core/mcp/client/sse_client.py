@@ -164,7 +164,7 @@ class SSETransport:
         response.raise_for_status()
         logger.debug("Client message sent successfully: %s", response.status_code)
 
-    def post_writer(self, client: httpx.Client, endpoint_url: str, write_queue: WriteQueue):
+    async def post_writer(self, client: httpx.Client, endpoint_url: str, write_queue: WriteQueue):
         """Handle writing messages to the server.
 
         Args:

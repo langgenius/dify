@@ -75,7 +75,7 @@ class APIBasedExtensionAPI(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(api_based_extension_model)
-    def post(self):
+    async def post(self):
         payload = APIBasedExtensionPayload.model_validate(console_ns.payload or {})
         _, current_tenant_id = current_account_with_tenant()
 
@@ -114,7 +114,7 @@ class APIBasedExtensionDetailAPI(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(api_based_extension_model)
-    def post(self, id):
+    async def post(self, id):
         api_based_extension_id = str(id)
         _, current_tenant_id = current_account_with_tenant()
 

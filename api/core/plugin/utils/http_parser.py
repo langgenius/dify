@@ -109,7 +109,7 @@ def deserialize_request(raw_data: bytes) -> Request:
 def serialize_response(response: Response) -> bytes:
     raw = f"HTTP/1.1 {response.status}\r\n".encode()
 
-    for name, value in response.headers.items():
+    for name, value in (await response.headers).items():
         raw += f"{name}: {value}\r\n".encode()
 
     raw += b"\r\n"
@@ -158,6 +158,6 @@ def deserialize_response(raw_data: bytes) -> Response:
         if ":" not in line_str:
             continue
         name, value = line_str.split(":", 1)
-        response.headers[name] = value.strip()
+        (await response.headers)[name] = value.strip()
 
     return response

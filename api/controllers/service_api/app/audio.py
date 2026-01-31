@@ -49,12 +49,12 @@ class AudioApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))
-    def post(self, app_model: App, end_user: EndUser):
+    async def post(self, app_model: App, end_user: EndUser):
         """Convert audio to text using speech-to-text.
 
         Accepts an audio file upload and returns the transcribed text.
         """
-        file = request.files["file"]
+        file = (await request.files)["file"]
 
         try:
             response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user.id)
@@ -110,7 +110,7 @@ class TextApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    def post(self, app_model: App, end_user: EndUser):
+    async def post(self, app_model: App, end_user: EndUser):
         """Convert text to audio using text-to-speech.
 
         Converts the provided text to audio using the specified voice.

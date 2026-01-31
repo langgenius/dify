@@ -48,10 +48,10 @@ register_schema_model(console_ns, TextToAudioPayload)
     endpoint="installed_app_audio",
 )
 class ChatAudioApi(InstalledAppResource):
-    def post(self, installed_app):
+    async def post(self, installed_app):
         app_model = installed_app.app
 
-        file = request.files["file"]
+        file = (await request.files)["file"]
 
         try:
             response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=None)
@@ -89,7 +89,7 @@ class ChatAudioApi(InstalledAppResource):
 )
 class ChatTextApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
-    def post(self, installed_app):
+    async def post(self, installed_app):
         app_model = installed_app.app
         try:
             payload = TextToAudioPayload.model_validate(console_ns.payload or {})

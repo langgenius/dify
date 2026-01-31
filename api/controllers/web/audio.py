@@ -73,9 +73,9 @@ class AudioApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model: App, end_user):
+    async def post(self, app_model: App, end_user):
         """Convert audio to text"""
-        file = request.files["file"]
+        file = (await request.files)["file"]
 
         try:
             response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user)
@@ -121,7 +121,7 @@ class TextApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model: App, end_user):
+    async def post(self, app_model: App, end_user):
         """Convert text to audio"""
         try:
             payload = TextToAudioPayload.model_validate(web_ns.payload or {})

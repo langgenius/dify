@@ -104,7 +104,7 @@ class AnnotationReplyActionApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
-    def post(self, app_id, action: Literal["enable", "disable"]):
+    async def post(self, app_id, action: Literal["enable", "disable"]):
         app_id = str(app_id)
         args = AnnotationReplyPayload.model_validate(console_ns.payload)
         if action == "enable":
@@ -143,7 +143,7 @@ class AppAnnotationSettingUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, app_id, annotation_setting_id):
+    async def post(self, app_id, annotation_setting_id):
         app_id = str(app_id)
         annotation_setting_id = str(annotation_setting_id)
 
@@ -222,7 +222,7 @@ class AnnotationApi(Resource):
     @cloud_edition_billing_resource_check("annotation")
     @marshal_with(annotation_fields)
     @edit_permission_required
-    def post(self, app_id):
+    async def post(self, app_id):
         app_id = str(app_id)
         args = CreateAnnotationPayload.model_validate(console_ns.payload)
         data = args.model_dump(exclude_none=True)
@@ -271,15 +271,15 @@ class AnnotationExportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, app_id):
+    async def get(self, app_id):
         app_id = str(app_id)
         annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
         response_data = {"data": marshal(annotation_list, annotation_fields)}
 
         # Create response with secure headers for CSV export
-        response = make_response(response_data, 200)
-        response.headers["Content-Type"] = "application/json; charset=utf-8"
-        response.headers["X-Content-Type-Options"] = "nosniff"
+        response = await make_response(response_data, 200)
+        (response.headers)["Content-Type"] = "application/json; charset=utf-8"
+        (response.headers)["X-Content-Type-Options"] = "nosniff"
 
         return response
 
@@ -299,7 +299,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
     @marshal_with(annotation_fields)
-    def post(self, app_id, annotation_id):
+    async def post(self, app_id, annotation_id):
         app_id = str(app_id)
         annotation_id = str(annotation_id)
         args = UpdateAnnotationPayload.model_validate(console_ns.payload)
@@ -336,20 +336,20 @@ class AnnotationBatchImportApi(Resource):
     @annotation_import_rate_limit
     @annotation_import_concurrency_limit
     @edit_permission_required
-    def post(self, app_id):
+    async def post(self, app_id):
         from configs import dify_config
 
         app_id = str(app_id)
 
         # check file
-        if "file" not in request.files:
+        if "file" not in (await request.files):
             raise NoFileUploadedError()
 
-        if len(request.files) > 1:
+        if len(await request.files) > 1:
             raise TooManyFilesError()
 
         # get file from request
-        file = request.files["file"]
+        file = (await request.files)["file"]
 
         # check file type
         if not file.filename or not file.filename.lower().endswith(".csv"):

@@ -39,7 +39,7 @@ class EnterpriseWorkspace(Resource):
             404: "Owner account not found or service not available",
         }
     )
-    def post(self):
+    async def post(self):
         args = WorkspaceCreatePayload.model_validate(inner_api_ns.payload or {})
 
         account = db.session.query(Account).filter_by(email=args.owner_email).first()
@@ -80,7 +80,7 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
             404: "Service not available",
         }
     )
-    def post(self):
+    async def post(self):
         args = WorkspaceOwnerlessPayload.model_validate(inner_api_ns.payload or {})
 
         tenant = TenantService.create_tenant(args.name, is_from_dashboard=True)

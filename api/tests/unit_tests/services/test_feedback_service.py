@@ -152,8 +152,8 @@ class TestFeedbackService:
         # Assert
         assert response.mimetype == "text/csv"
         assert "charset=utf-8-sig" in response.content_type
-        assert "attachment" in response.headers["Content-Disposition"]
-        assert "dify_feedback_export_app-456" in response.headers["Content-Disposition"]
+        assert "attachment" in (await response.headers)["Content-Disposition"]
+        assert "dify_feedback_export_app-456" in (await response.headers)["Content-Disposition"]
 
         # Verify CSV content
         csv_content = response.get_data(as_text=True)
@@ -190,7 +190,7 @@ class TestFeedbackService:
         # Assert
         assert response.mimetype == "application/json"
         assert "charset=utf-8" in response.content_type
-        assert "attachment" in response.headers["Content-Disposition"]
+        assert "attachment" in (await response.headers)["Content-Disposition"]
 
         # Verify JSON structure
         json_content = json.loads(response.get_data(as_text=True))

@@ -130,7 +130,7 @@ class InstalledAppsListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("apps")
-    def post(self):
+    async def post(self):
         payload = InstalledAppCreatePayload.model_validate(console_ns.payload or {})
 
         recommended_app = db.session.query(RecommendedApp).where(RecommendedApp.app_id == payload.app_id).first()

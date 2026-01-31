@@ -32,7 +32,7 @@ class MCPAuthError(MCPConnectionError):
 
         # Extract OAuth metadata hints from WWW-Authenticate header
         if response is not None:
-            www_authenticate_header = response.headers.get("WWW-Authenticate")
+            www_authenticate_header = (await response.headers).get("WWW-Authenticate")
 
         self.resource_metadata_url: str | None = None
         self.scope_hint: str | None = None

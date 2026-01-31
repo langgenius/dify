@@ -52,7 +52,7 @@ class SavedMessageListApi(InstalledAppResource):
         ).model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[SavedMessageCreatePayload.__name__])
-    def post(self, installed_app):
+    async def post(self, installed_app):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         if app_model.mode != "completion":

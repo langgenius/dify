@@ -59,7 +59,7 @@ class EmailRegisterSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
-    def post(self):
+    async def post(self):
         args = EmailRegisterSendPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
 
@@ -84,7 +84,7 @@ class EmailRegisterCheckApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
-    def post(self):
+    async def post(self):
         args = EmailRegisterValidityPayload.model_validate(console_ns.payload)
 
         user_email = args.email.lower()
@@ -124,7 +124,7 @@ class EmailRegisterResetApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
-    def post(self):
+    async def post(self):
         args = EmailRegisterResetPayload.model_validate(console_ns.payload)
 
         # Validate passwords match

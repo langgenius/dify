@@ -82,7 +82,7 @@ class CustomizedPipelineTemplateApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    def post(self, template_id: str):
+    async def post(self, template_id: str):
         with Session(db.engine) as session:
             template = (
                 session.query(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id).first()
@@ -101,7 +101,7 @@ class PublishCustomizedPipelineTemplateApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @knowledge_pipeline_publish_enabled
-    def post(self, pipeline_id: str):
+    async def post(self, pipeline_id: str):
         payload = Payload.model_validate(console_ns.payload or {})
         rag_pipeline_service = RagPipelineService()
         rag_pipeline_service.publish_customized_pipeline_template(pipeline_id, payload.model_dump())

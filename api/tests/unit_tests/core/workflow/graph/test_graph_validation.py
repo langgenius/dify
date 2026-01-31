@@ -58,7 +58,7 @@ class _TestNode(Node[_TestNodeData]):
     def _run(self):
         raise NotImplementedError
 
-    def post_init(self) -> None:
+    async def post_init(self) -> None:
         super().post_init()
         self._maybe_override_execution_type()
         self.data = dict(self.node_data.model_dump())

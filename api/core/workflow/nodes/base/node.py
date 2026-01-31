@@ -238,7 +238,7 @@ class Node(Generic[NodeDataT]):
 
         self.post_init()
 
-    def post_init(self) -> None:
+    async def post_init(self) -> None:
         """Optional hook for subclasses requiring extra initialization."""
         return
 

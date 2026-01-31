@@ -287,7 +287,7 @@ class WebhookService:
                 - body_data: Form data as key-value pairs
                 - files_data: Empty dict (form-urlencoded requests don't contain files)
         """
-        return dict(request.form), {}
+        return dict(await request.form), {}
 
     @classmethod
     def _extract_multipart_body(cls, webhook_trigger: WorkflowWebhookTrigger) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -301,8 +301,8 @@ class WebhookService:
                 - body_data: Form data as key-value pairs
                 - files_data: Processed file objects indexed by field name
         """
-        body = dict(request.form)
-        files = cls._process_file_uploads(request.files, webhook_trigger) if request.files else {}
+        body = dict(await request.form)
+        files = cls._process_file_uploads((await request.files), webhook_trigger) if (await request.files) else {}
         return body, files
 
     @classmethod

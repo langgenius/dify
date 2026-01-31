@@ -307,7 +307,7 @@ class MessageFeedbackApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_model):
+    async def post(self, app_model):
         current_user, _ = current_account_with_tenant()
 
         args = MessageFeedbackPayload.model_validate(console_ns.payload)

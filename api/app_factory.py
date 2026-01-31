@@ -36,7 +36,7 @@ def create_quart_app_with_configs() -> DifyApp:
     # add after request hook for injecting trace headers from OpenTelemetry span context
     # Only adds headers when OTEL is enabled and has valid context
     @dify_app.after_request
-    def add_trace_headers(response):
+    async def add_trace_headers(response):
         try:
             span = get_current_span()
             ctx = span.get_span_context() if span else None
@@ -45,10 +45,10 @@ def create_quart_app_with_configs() -> DifyApp:
                 return response
 
             # Inject trace headers from OTEL context
-            if ctx.trace_id != INVALID_TRACE_ID and "X-Trace-Id" not in response.headers:
-                response.headers["X-Trace-Id"] = format(ctx.trace_id, "032x")
-            if ctx.span_id != INVALID_SPAN_ID and "X-Span-Id" not in response.headers:
-                response.headers["X-Span-Id"] = format(ctx.span_id, "016x")
+            if ctx.trace_id != INVALID_TRACE_ID and "X-Trace-Id" not in (await response.headers):
+                (await response.headers)["X-Trace-Id"] = format(ctx.trace_id, "032x")
+            if ctx.span_id != INVALID_SPAN_ID and "X-Span-Id" not in (await response.headers):
+                (await response.headers)["X-Span-Id"] = format(ctx.span_id, "016x")
 
         except Exception:
             # Never break the response due to tracing header injection

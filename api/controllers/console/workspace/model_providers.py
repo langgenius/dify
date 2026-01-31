@@ -133,7 +133,7 @@ class ModelProviderCredentialApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider: str):
+    async def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = ParserCredentialCreate.model_validate(payload)
@@ -203,7 +203,7 @@ class ModelProviderCredentialSwitchApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider: str):
+    async def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = ParserCredentialSwitch.model_validate(payload)
@@ -223,7 +223,7 @@ class ModelProviderValidateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, provider: str):
+    async def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = ParserCredentialValidate.model_validate(payload)
@@ -277,7 +277,7 @@ class PreferredProviderTypeUpdateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider: str):
+    async def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
 
         tenant_id = current_tenant_id

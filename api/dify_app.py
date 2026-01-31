@@ -179,7 +179,7 @@ class _SyncTestClient:
     def get(self, *args: Any, **kwargs: Any) -> _SyncResponse:
         return self.open(*args, method="GET", **kwargs)
 
-    def post(self, *args: Any, **kwargs: Any) -> _SyncResponse:
+    async def post(self, *args: Any, **kwargs: Any) -> _SyncResponse:
         return self.open(*args, method="POST", **kwargs)
 
     def put(self, *args: Any, **kwargs: Any) -> _SyncResponse:

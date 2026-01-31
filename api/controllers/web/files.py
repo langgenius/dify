@@ -31,7 +31,7 @@ class FileApi(WebApiResource):
         }
     )
     @web_ns.response(201, "File uploaded successfully", web_ns.models[FileResponse.__name__])
-    def post(self, app_model, end_user):
+    async def post(self, app_model, end_user):
         """Upload a file for use in web applications.
 
         Accepts file uploads for use within web applications, supporting
@@ -56,17 +56,17 @@ class FileApi(WebApiResource):
             FileTooLargeError: File exceeds size limit
             UnsupportedFileTypeError: File type not supported
         """
-        if "file" not in request.files:
+        if "file" not in (await request.files):
             raise NoFileUploadedError()
 
-        if len(request.files) > 1:
+        if len(await request.files) > 1:
             raise TooManyFilesError()
 
-        file = request.files["file"]
+        file = (await request.files)["file"]
         if not file.filename:
             raise FilenameNotExistsError
 
-        source = request.form.get("source")
+        source = (await request.form).get("source")
         if source not in ("datasets", None):
             source = None
 

@@ -159,7 +159,7 @@ class TenantApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(tenant_fields)
-    def post(self):
+    async def post(self):
         if request.path == "/info":
             logger.warning("Deprecated URL /info was used.")
 
@@ -187,7 +187,7 @@ class SwitchWorkspaceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = SwitchWorkspacePayload.model_validate(payload)
@@ -212,7 +212,7 @@ class CustomConfigWorkspaceApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
-    def post(self):
+    async def post(self):
         _, current_tenant_id = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = WorkspaceCustomConfigPayload.model_validate(payload)
@@ -237,17 +237,17 @@ class WebappLogoWorkspaceApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
-    def post(self):
+    async def post(self):
         current_user, _ = current_account_with_tenant()
         # check file
-        if "file" not in request.files:
+        if "file" not in (await request.files):
             raise NoFileUploadedError()
 
-        if len(request.files) > 1:
+        if len(await request.files) > 1:
             raise TooManyFilesError()
 
         # get file from request
-        file = request.files["file"]
+        file = (await request.files)["file"]
         if not file.filename:
             raise FilenameNotExistsError
 
@@ -278,7 +278,7 @@ class WorkspaceInfoApi(Resource):
     @login_required
     @account_initialization_required
     # Change workspace name
-    def post(self):
+    async def post(self):
         _, current_tenant_id = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = WorkspaceInfoPayload.model_validate(payload)

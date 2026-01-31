@@ -122,7 +122,7 @@ class DocumentAddByTextApi(DatasetApiResource):
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_resource_check("documents", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id):
+    async def post(self, tenant_id, dataset_id):
         """Create document by text."""
         payload = DocumentTextCreatePayload.model_validate(service_api_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
@@ -209,7 +209,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
+    async def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
         """Update document by text."""
         payload = DocumentTextUpdate.model_validate(service_api_ns.payload or {})
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).first()
@@ -287,7 +287,7 @@ class DocumentAddByFileApi(DatasetApiResource):
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_resource_check("documents", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id):
+    async def post(self, tenant_id, dataset_id):
         """Create document by upload file."""
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
@@ -298,8 +298,8 @@ class DocumentAddByFileApi(DatasetApiResource):
             raise ValueError("External datasets are not supported.")
 
         args = {}
-        if "data" in request.form:
-            args = json.loads(request.form["data"])
+        if "data" in (await request.form):
+            args = json.loads((await request.form)["data"])
         if "doc_form" not in args:
             args["doc_form"] = dataset.chunk_structure or "text_model"
         if "doc_language" not in args:
@@ -330,14 +330,14 @@ class DocumentAddByFileApi(DatasetApiResource):
             )
 
         # check file
-        if "file" not in request.files:
+        if "file" not in (await request.files):
             raise NoFileUploadedError()
 
-        if len(request.files) > 1:
+        if len(await request.files) > 1:
             raise TooManyFilesError()
 
         # save file info
-        file = request.files["file"]
+        file = (await request.files)["file"]
         if not file.filename:
             raise FilenameNotExistsError
 
@@ -397,7 +397,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id, document_id):
+    async def post(self, tenant_id, dataset_id, document_id):
         """Update document by upload file."""
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
@@ -408,8 +408,8 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             raise ValueError("External datasets are not supported.")
 
         args = {}
-        if "data" in request.form:
-            args = json.loads(request.form["data"])
+        if "data" in (await request.form):
+            args = json.loads((await request.form)["data"])
         if "doc_form" not in args:
             args["doc_form"] = dataset.chunk_structure or "text_model"
         if "doc_language" not in args:
@@ -422,11 +422,11 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         # indexing_technique is already set in dataset since this is an update
         args["indexing_technique"] = dataset.indexing_technique
 
-        if "file" in request.files:
+        if "file" in (await request.files):
             # save file info
-            file = request.files["file"]
+            file = (await request.files)["file"]
 
-            if len(request.files) > 1:
+            if len(await request.files) > 1:
                 raise TooManyFilesError()
 
             if not file.filename:

@@ -56,7 +56,7 @@ def test_set_csrf_cookie_includes_domain_when_configured(monkeypatch):
 
     set_csrf_token_to_cookie(request, response, "abc123")
 
-    cookies = response.headers.getlist("Set-Cookie")
+    cookies = (await response.headers).getlist("Set-Cookie")
     assert any("csrf_token=abc123" in c for c in cookies)
     assert any("Domain=example.com" in c for c in cookies)
     assert all("__Host-" not in c for c in cookies)

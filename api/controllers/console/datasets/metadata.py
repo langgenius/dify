@@ -36,7 +36,7 @@ class DatasetMetadataCreateApi(Resource):
     @enterprise_license_required
     @marshal_with(dataset_metadata_fields)
     @console_ns.expect(console_ns.models[MetadataArgs.__name__])
-    def post(self, dataset_id):
+    async def post(self, dataset_id):
         current_user, _ = current_account_with_tenant()
         metadata_args = MetadataArgs.model_validate(console_ns.payload or {})
 
@@ -118,7 +118,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    def post(self, dataset_id, action: Literal["enable", "disable"]):
+    async def post(self, dataset_id, action: Literal["enable", "disable"]):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -140,7 +140,7 @@ class DocumentMetadataEditApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @console_ns.expect(console_ns.models[MetadataOperationData.__name__])
-    def post(self, dataset_id):
+    async def post(self, dataset_id):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)

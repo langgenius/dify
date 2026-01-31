@@ -48,7 +48,7 @@ class MCPAppApi(Resource):
             404: "Server or app not found",
         }
     )
-    def post(self, server_code: str):
+    async def post(self, server_code: str):
         """Handle MCP requests for a specific server.
 
         Processes JSON-RPC formatted requests according to the Model Context Protocol specification.

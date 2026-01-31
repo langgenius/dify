@@ -71,7 +71,7 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
+    async def post(self, app_id):
         """Create a new trace app configuration"""
         args = TraceConfigPayload.model_validate(console_ns.payload)
 

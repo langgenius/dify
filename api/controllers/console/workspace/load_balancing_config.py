@@ -29,7 +29,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, provider: str):
+    async def post(self, provider: str):
         current_user, current_tenant_id = current_account_with_tenant()
         if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()
@@ -72,7 +72,7 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, provider: str, config_id: str):
+    async def post(self, provider: str, config_id: str):
         current_user, current_tenant_id = current_account_with_tenant()
         if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()

@@ -535,7 +535,7 @@ class AppListApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
-    def post(self):
+    async def post(self):
         """Create app"""
         current_user, current_tenant_id = current_account_with_tenant()
         args = CreateAppPayload.model_validate(console_ns.payload)
@@ -632,7 +632,7 @@ class AppCopyApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    async def post(self, app_model):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
@@ -700,7 +700,7 @@ class AppNameApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    async def post(self, app_model):
         args = AppNamePayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -722,7 +722,7 @@ class AppIconApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    async def post(self, app_model):
         args = AppIconPayload.model_validate(console_ns.payload or {})
 
         app_service = AppService()
@@ -744,7 +744,7 @@ class AppSiteStatus(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    async def post(self, app_model):
         args = AppSiteStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -766,7 +766,7 @@ class AppApiStatus(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     @get_app_model(mode=None)
-    def post(self, app_model):
+    async def post(self, app_model):
         args = AppApiStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -800,7 +800,7 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, app_id):
+    async def post(self, app_id):
         # add app trace
         args = AppTracePayload.model_validate(console_ns.payload)
 

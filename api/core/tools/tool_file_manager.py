@@ -124,7 +124,7 @@ class ToolFileManager:
 
         mimetype = (
             guess_type(file_url)[0]
-            or response.headers.get("Content-Type", "").split(";")[0].strip()
+            or (await response.headers).get("Content-Type", "").split(";")[0].strip()
             or "application/octet-stream"
         )
         extension = guess_extension(mimetype) or ".bin"

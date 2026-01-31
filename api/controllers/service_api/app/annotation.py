@@ -42,7 +42,7 @@ class AnnotationReplyActionApi(Resource):
         }
     )
     @validate_app_token
-    def post(self, app_model: App, action: Literal["enable", "disable"]):
+    async def post(self, app_model: App, action: Literal["enable", "disable"]):
         """Enable or disable annotation reply feature."""
         args = AnnotationReplyActionPayload.model_validate(service_api_ns.payload or {}).model_dump()
         if action == "enable":
@@ -137,7 +137,7 @@ class AnnotationListApi(Resource):
     )
     @validate_app_token
     @service_api_ns.marshal_with(build_annotation_model(service_api_ns), code=HTTPStatus.CREATED)
-    def post(self, app_model: App):
+    async def post(self, app_model: App):
         """Create a new annotation."""
         args = AnnotationCreatePayload.model_validate(service_api_ns.payload or {}).model_dump()
         annotation = AppAnnotationService.insert_app_annotation_directly(args, app_model.id)

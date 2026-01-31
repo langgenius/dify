@@ -90,7 +90,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
     def version(cls) -> str:
         return "1"
 
-    def _run(self) -> NodeRunResult:
+    async def _run(self) -> NodeRunResult:
         process_data = {}
         try:
             http_executor = Executor(

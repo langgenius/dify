@@ -47,7 +47,7 @@ def login_required(func: Callable[P, R]):
 
         @app.route('/post')
         @login_required
-        def post():
+        async def post():
             pass
 
     If there are only certain times you need to require that your user is

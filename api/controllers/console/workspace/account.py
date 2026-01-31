@@ -190,7 +190,7 @@ class AccountInitApi(Resource):
     @console_ns.expect(console_ns.models[AccountInitPayload.__name__])
     @setup_required
     @login_required
-    def post(self):
+    async def post(self):
         account, _ = current_account_with_tenant()
 
         if account.status == "active":
@@ -250,7 +250,7 @@ class AccountNameApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
-    def post(self):
+    async def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = AccountNamePayload.model_validate(payload)
@@ -266,7 +266,7 @@ class AccountAvatarApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
-    def post(self):
+    async def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = AccountAvatarPayload.model_validate(payload)
@@ -283,7 +283,7 @@ class AccountInterfaceLanguageApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
-    def post(self):
+    async def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = AccountInterfaceLanguagePayload.model_validate(payload)
@@ -300,7 +300,7 @@ class AccountInterfaceThemeApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
-    def post(self):
+    async def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = AccountInterfaceThemePayload.model_validate(payload)
@@ -317,7 +317,7 @@ class AccountTimezoneApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
-    def post(self):
+    async def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = AccountTimezonePayload.model_validate(payload)
@@ -334,7 +334,7 @@ class AccountPasswordApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
-    def post(self):
+    async def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = AccountPasswordPayload.model_validate(payload)
@@ -411,7 +411,7 @@ class AccountDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         account, _ = current_account_with_tenant()
 
         payload = console_ns.payload or {}
@@ -429,7 +429,7 @@ class AccountDeleteApi(Resource):
 class AccountDeleteUpdateFeedbackApi(Resource):
     @console_ns.expect(console_ns.models[AccountDeletionFeedbackPayload.__name__])
     @setup_required
-    def post(self):
+    async def post(self):
         payload = console_ns.payload or {}
         args = AccountDeletionFeedbackPayload.model_validate(payload)
 
@@ -471,7 +471,7 @@ class EducationApi(Resource):
     @account_initialization_required
     @only_edition_cloud
     @cloud_edition_billing_enabled
-    def post(self):
+    async def post(self):
         account, _ = current_account_with_tenant()
 
         payload = console_ns.payload or {}
@@ -524,7 +524,7 @@ class ChangeEmailSendEmailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = ChangeEmailSendPayload.model_validate(payload)
@@ -578,7 +578,7 @@ class ChangeEmailCheckApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         payload = console_ns.payload or {}
         args = ChangeEmailValidityPayload.model_validate(payload)
 
@@ -621,7 +621,7 @@ class ChangeEmailResetApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
-    def post(self):
+    async def post(self):
         payload = console_ns.payload or {}
         args = ChangeEmailResetPayload.model_validate(payload)
         normalized_new_email = args.new_email.lower()
@@ -656,7 +656,7 @@ class ChangeEmailResetApi(Resource):
 class CheckEmailUnique(Resource):
     @console_ns.expect(console_ns.models[CheckEmailUniquePayload.__name__])
     @setup_required
-    def post(self):
+    async def post(self):
         payload = console_ns.payload or {}
         args = CheckEmailUniquePayload.model_validate(payload)
         normalized_email = args.email.lower()

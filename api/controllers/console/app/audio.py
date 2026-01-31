@@ -72,8 +72,8 @@ class ChatMessageAudioApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def post(self, app_model):
-        file = request.files["file"]
+    async def post(self, app_model):
+        file = (await request.files)["file"]
 
         try:
             response = AudioService.transcript_asr(
@@ -121,7 +121,7 @@ class ChatMessageTextApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_model: App):
+    async def post(self, app_model: App):
         try:
             payload = TextToSpeechPayload.model_validate(console_ns.payload)
 

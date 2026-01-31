@@ -147,7 +147,7 @@ class DefaultModelApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         _, tenant_id = current_account_with_tenant()
 
         args = ParserPostDefault.model_validate(console_ns.payload)
@@ -193,7 +193,7 @@ class ModelProviderModelApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider: str):
+    async def post(self, provider: str):
         # To save the model's load balance configs
         _, tenant_id = current_account_with_tenant()
         args = ParserPostModels.model_validate(console_ns.payload)
@@ -311,7 +311,7 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider: str):
+    async def post(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
         args = ParserCreateCredential.model_validate(console_ns.payload)
@@ -403,7 +403,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider: str):
+    async def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
         args = ParserSwitch.model_validate(console_ns.payload)
 
@@ -477,7 +477,7 @@ class ModelProviderModelValidateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, provider: str):
+    async def post(self, provider: str):
         _, tenant_id = current_account_with_tenant()
         args = ParserValidate.model_validate(console_ns.payload)
 

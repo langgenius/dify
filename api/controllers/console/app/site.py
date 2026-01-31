@@ -72,7 +72,7 @@ class AppSite(Resource):
     @account_initialization_required
     @get_app_model
     @marshal_with(app_site_model)
-    def post(self, app_model):
+    async def post(self, app_model):
         args = AppSiteUpdatePayload.model_validate(console_ns.payload or {})
         current_user, _ = current_account_with_tenant()
         site = db.session.query(Site).where(Site.app_id == app_model.id).first()
@@ -122,7 +122,7 @@ class AppSiteAccessTokenReset(Resource):
     @account_initialization_required
     @get_app_model
     @marshal_with(app_site_model)
-    def post(self, app_model):
+    async def post(self, app_model):
         current_user, _ = current_account_with_tenant()
         site = db.session.query(Site).where(Site.app_id == app_model.id).first()
 

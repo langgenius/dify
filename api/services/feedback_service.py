@@ -154,7 +154,7 @@ class FeedbackService:
 
         # Create response without requiring app context
         response = Response(output.getvalue(), mimetype="text/csv; charset=utf-8-sig")
-        response.headers["Content-Disposition"] = (
+        (await response.headers)["Content-Disposition"] = (
             f"attachment; filename=dify_feedback_export_{app_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         )
 
@@ -178,7 +178,7 @@ class FeedbackService:
             json.dumps(response_data, ensure_ascii=False, indent=2),
             mimetype="application/json; charset=utf-8",
         )
-        response.headers["Content-Disposition"] = (
+        (await response.headers)["Content-Disposition"] = (
             f"attachment; filename=dify_feedback_export_{app_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         )
 

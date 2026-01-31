@@ -16,7 +16,7 @@ class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id):
+    async def post(self, tenant_id, dataset_id):
         """Perform hit testing on a dataset.
 
         Tests retrieval performance for the specified dataset.

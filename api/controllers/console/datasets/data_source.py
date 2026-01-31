@@ -316,7 +316,7 @@ class DataSourceNotionApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.expect(console_ns.models[NotionEstimatePayload.__name__])
-    def post(self):
+    async def post(self):
         _, current_tenant_id = current_account_with_tenant()
 
         payload = NotionEstimatePayload.model_validate(console_ns.payload or {})
