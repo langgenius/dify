@@ -462,7 +462,7 @@ class TestLogoutApi:
             response = logout_api.post()
 
         # Assert
-        mock_service_logout.assert_called_once_with(account=mock_account)
+        mock_service_logout.assert_called_once_with(account=mock_account, access_token=None)
         mock_logout_user.assert_called_once()
         assert response.json["result"] == "success"
 
@@ -492,4 +492,136 @@ class TestLogoutApi:
             response = logout_api.post()
 
         # Assert
+        assert response.json["result"] == "success"
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.current_account_with_tenant")
+    @patch("controllers.console.auth.login.AccountService.logout")
+    @patch("controllers.console.auth.login.flask_login.logout_user")
+    @patch("controllers.console.auth.login.extract_access_token")
+    def test_logout_with_access_token_in_cookie(
+        self,
+        mock_extract_access_token,
+        mock_logout_user,
+        mock_service_logout,
+        mock_current_account,
+        mock_db,
+        app,
+        mock_account,
+    ):
+        """
+        Test logout with access token in cookie.
+
+        Verifies that:
+        - Access token is extracted from the request
+        - Token is passed to AccountService.logout for revocation
+        - User session is terminated
+        - Success response is returned
+        """
+        # Arrange
+        mock_db.session.query.return_value.first.return_value = MagicMock()
+        mock_current_account.return_value = (mock_account, MagicMock())
+        test_access_token = "test.jwt.token"
+
+        # Mock extract_access_token to return a token
+        mock_extract_access_token.return_value = test_access_token
+
+        # Act
+        with app.test_request_context("/logout", method="POST"):
+            logout_api = LogoutApi()
+            response = logout_api.post()
+
+        # Assert
+        # Verify extract_access_token was called with request
+        mock_extract_access_token.assert_called_once()
+        # Verify logout was called with the access token
+        mock_service_logout.assert_called_once_with(account=mock_account, access_token=test_access_token)
+        mock_logout_user.assert_called_once()
+        assert response.json["result"] == "success"
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.current_account_with_tenant")
+    @patch("controllers.console.auth.login.AccountService.logout")
+    @patch("controllers.console.auth.login.flask_login.logout_user")
+    @patch("controllers.console.auth.login.extract_access_token")
+    def test_logout_with_access_token_in_authorization_header(
+        self,
+        mock_extract_access_token,
+        mock_logout_user,
+        mock_service_logout,
+        mock_current_account,
+        mock_db,
+        app,
+        mock_account,
+    ):
+        """
+        Test logout with access token in Authorization header.
+
+        Verifies that:
+        - Access token is extracted from Authorization header
+        - Token is passed to AccountService.logout for revocation
+        - User session is terminated
+        - Success response is returned
+        """
+        # Arrange
+        mock_db.session.query.return_value.first.return_value = MagicMock()
+        mock_current_account.return_value = (mock_account, MagicMock())
+        test_access_token = "bearer.token.from.header"
+
+        # Mock extract_access_token to return a token from header
+        mock_extract_access_token.return_value = test_access_token
+
+        # Act
+        with app.test_request_context(
+            "/logout", method="POST", headers={"Authorization": f"Bearer {test_access_token}"}
+        ):
+            logout_api = LogoutApi()
+            response = logout_api.post()
+
+        # Assert
+        # Verify logout was called with the access token from header
+        mock_service_logout.assert_called_once_with(account=mock_account, access_token=test_access_token)
+        mock_logout_user.assert_called_once()
+        assert response.json["result"] == "success"
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.current_account_with_tenant")
+    @patch("controllers.console.auth.login.AccountService.logout")
+    @patch("controllers.console.auth.login.flask_login.logout_user")
+    @patch("controllers.console.auth.login.extract_access_token")
+    def test_logout_with_no_access_token(
+        self,
+        mock_extract_access_token,
+        mock_logout_user,
+        mock_service_logout,
+        mock_current_account,
+        mock_db,
+        app,
+        mock_account,
+    ):
+        """
+        Test logout when no access token is present.
+
+        Verifies that:
+        - Logout proceeds without error when no token is present
+        - AccountService.logout is called with access_token=None
+        - User session is still terminated
+        - Success response is returned
+        """
+        # Arrange
+        mock_db.session.query.return_value.first.return_value = MagicMock()
+        mock_current_account.return_value = (mock_account, MagicMock())
+
+        # Mock extract_access_token to return None (no token in request)
+        mock_extract_access_token.return_value = None
+
+        # Act
+        with app.test_request_context("/logout", method="POST"):
+            logout_api = LogoutApi()
+            response = logout_api.post()
+
+        # Assert
+        # Verify logout was called with access_token=None
+        mock_service_logout.assert_called_once_with(account=mock_account, access_token=None)
+        mock_logout_user.assert_called_once()
         assert response.json["result"] == "success"
