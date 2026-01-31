@@ -4,8 +4,9 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from configs import dify_config
-from core.file import File, FileTransferMethod, file_manager
-from core.helper import ssrf_proxy
+from core.file import File, FileTransferMethod
+from core.file.file_manager import file_manager as default_file_manager
+from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
 from core.variables.segments import ArrayFileSegment
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
@@ -47,9 +48,9 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
-        http_client: HttpClientProtocol = ssrf_proxy,
+        http_client: HttpClientProtocol | None = None,
         tool_file_manager_factory: Callable[[], ToolFileManager] = ToolFileManager,
-        file_manager: FileManagerProtocol = file_manager,
+        file_manager: FileManagerProtocol | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -57,9 +58,9 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        self._http_client = http_client
+        self._http_client = http_client or ssrf_proxy
         self._tool_file_manager_factory = tool_file_manager_factory
-        self._file_manager = file_manager
+        self._file_manager = file_manager or default_file_manager
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
