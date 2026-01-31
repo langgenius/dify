@@ -126,9 +126,8 @@ workflow:
             additionalProperties: false
             properties:
               image:
-                description: File ID (UUID) of the selected image
-                format: dify-file-ref
-                type: string
+                description: Sandbox file path of the selected image
+                type: file
             required:
             - image
             type: object

@@ -257,8 +257,8 @@ def _build_file_descriptions(files: Sequence[Any]) -> str:
     """
     Build a text description of generated files for inclusion in context.
 
-    The description includes file_id which can be used by subsequent nodes
-    to reference the files via structured output.
+    The description includes file_id for context; structured output file paths
+    are only supported in sandbox mode.
     """
     if not files:
         return ""

@@ -21,7 +21,11 @@ from core.app_assets.constants import AppAssetsAttrs
 from core.file import FileTransferMethod, FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.output_parser.file_ref import convert_file_refs_in_output
+from core.llm_generator.output_parser.file_ref import (
+    adapt_schema_for_sandbox_file_paths,
+    convert_sandbox_file_paths_in_output,
+    detect_file_path_fields,
+)
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance, ModelManager
@@ -297,13 +301,20 @@ class LLMNode(Node[LLMNodeData]):
                 )
 
             structured_output_schema: Mapping[str, Any] | None
+            structured_output_file_paths: list[str] = []
 
             if self.node_data.structured_output_enabled:
                 if not self.node_data.structured_output:
                     raise ValueError("structured_output_enabled is True but structured_output is not set")
-                structured_output_schema = LLMNode.fetch_structured_output_schema(
-                    structured_output=self.node_data.structured_output
-                )
+                raw_schema = LLMNode.fetch_structured_output_schema(structured_output=self.node_data.structured_output)
+                if self.node_data.computer_use:
+                    structured_output_schema, structured_output_file_paths = adapt_schema_for_sandbox_file_paths(
+                        raw_schema
+                    )
+                else:
+                    if detect_file_path_fields(raw_schema):
+                        raise LLMNodeError("Structured output file paths are only supported in sandbox mode.")
+                    structured_output_schema = raw_schema
             else:
                 structured_output_schema = None
 
@@ -319,8 +330,10 @@ class LLMNode(Node[LLMNodeData]):
                     stop=stop,
                     variable_pool=variable_pool,
                     tool_dependencies=tool_dependencies,
-                    structured_output_schema=structured_output_schema
+                    structured_output_schema=structured_output_schema,
+                    structured_output_file_paths=structured_output_file_paths,
                 )
+
             elif self.tool_call_enabled:
                 generator = self._invoke_llm_with_tools(
                     model_instance=model_instance,
@@ -330,7 +343,7 @@ class LLMNode(Node[LLMNodeData]):
                     variable_pool=variable_pool,
                     node_inputs=node_inputs,
                     process_data=process_data,
-                    structured_output_schema=structured_output_schema
+                    structured_output_schema=structured_output_schema,
                 )
             else:
                 # Use traditional LLM invocation
@@ -532,8 +545,8 @@ class LLMNode(Node[LLMNodeData]):
                 model_parameters=node_data_model.completion_params,
                 stop=list(stop or []),
                 user=user_id,
-                tenant_id=tenant_id,
             )
+
         else:
             request_start_time = time.perf_counter()
 
@@ -1880,7 +1893,7 @@ class LLMNode(Node[LLMNodeData]):
         variable_pool: VariablePool,
         node_inputs: dict[str, Any],
         process_data: dict[str, Any],
-        structured_output_schema: Mapping[str, Any] | None
+        structured_output_schema: Mapping[str, Any] | None,
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
         """Invoke LLM with tools support (from Agent V2).
 
@@ -1906,14 +1919,14 @@ class LLMNode(Node[LLMNodeData]):
             files=prompt_files,
             max_iterations=self._node_data.max_iterations or 10,
             context=ExecutionContext(user_id=self.user_id, app_id=self.app_id, tenant_id=self.tenant_id),
-            structured_output_schema=structured_output_schema
+            structured_output_schema=structured_output_schema,
         )
 
         # Run strategy
         outputs = strategy.run(
             prompt_messages=list(prompt_messages),
             model_parameters=self._node_data.model.completion_params,
-            stop=list(stop or [])
+            stop=list(stop or []),
         )
 
         result = yield from self._process_tool_outputs(outputs)
@@ -1927,10 +1940,12 @@ class LLMNode(Node[LLMNodeData]):
         stop: Sequence[str] | None,
         variable_pool: VariablePool,
         tool_dependencies: ToolDependencies | None,
-        structured_output_schema: Mapping[str, Any] | None
+        structured_output_schema: Mapping[str, Any] | None,
+        structured_output_file_paths: Sequence[str] | None,
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, LLMGenerationData]:
         result: LLMGenerationData | None = None
         sandbox_output_files: list[File] = []
+        structured_output_files: list[File] = []
 
         # FIXME(Mairuis): Async processing for bash session.
         with SandboxBashSession(sandbox=sandbox, node_id=self.id, tools=tool_dependencies) as session:
@@ -1948,16 +1963,30 @@ class LLMNode(Node[LLMNodeData]):
                 max_iterations=self._node_data.max_iterations or 100,
                 agent_strategy=AgentEntity.Strategy.FUNCTION_CALLING,
                 context=ExecutionContext(user_id=self.user_id, app_id=self.app_id, tenant_id=self.tenant_id),
-                structured_output_schema=structured_output_schema
+                structured_output_schema=structured_output_schema,
             )
 
             outputs = strategy.run(
                 prompt_messages=list(prompt_messages),
                 model_parameters=self._node_data.model.completion_params,
-                stop=list(stop or [])
+                stop=list(stop or []),
             )
 
             result = yield from self._process_tool_outputs(outputs)
+
+            if result and result.structured_output and structured_output_file_paths:
+                structured_output_payload = result.structured_output.structured_output or {}
+                try:
+                    converted_output, structured_output_files = convert_sandbox_file_paths_in_output(
+                        output=structured_output_payload,
+                        file_path_fields=structured_output_file_paths,
+                        file_resolver=session.download_file,
+                    )
+                except ValueError as exc:
+                    raise LLMNodeError(str(exc)) from exc
+                result = result.model_copy(
+                    update={"structured_output": LLMStructuredOutput(structured_output=converted_output)}
+                )
 
             # Collect output files from sandbox before session ends
             # Files are saved as ToolFiles with valid tool_file_id for later reference
@@ -1971,7 +2000,7 @@ class LLMNode(Node[LLMNodeData]):
             yield structured_output
 
         # Merge sandbox output files into result
-        if sandbox_output_files:
+        if sandbox_output_files or structured_output_files:
             result = LLMGenerationData(
                 text=result.text,
                 reasoning_contents=result.reasoning_contents,
@@ -1979,7 +2008,7 @@ class LLMNode(Node[LLMNodeData]):
                 sequence=result.sequence,
                 usage=result.usage,
                 finish_reason=result.finish_reason,
-                files=result.files + sandbox_output_files,
+                files=result.files + sandbox_output_files + structured_output_files,
                 trace=result.trace,
             )
 
@@ -2056,9 +2085,12 @@ class LLMNode(Node[LLMNodeData]):
                 structured_output=self._node_data.structured_output or {},
             )
         tool_instances.extend(
-            build_agent_output_tools(tenant_id=self.tenant_id, invoke_from=self.invoke_from,
-                                     tool_invoke_from=ToolInvokeFrom.WORKFLOW,
-                                     structured_output_schema=structured_output_schema)
+            build_agent_output_tools(
+                tenant_id=self.tenant_id,
+                invoke_from=self.invoke_from,
+                tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+                structured_output_schema=structured_output_schema,
+            )
         )
 
         return tool_instances
@@ -2564,15 +2596,7 @@ class LLMNode(Node[LLMNodeData]):
             raise ValueError("No agent result found in tool outputs")
         output_payload = agent_result.output
         if isinstance(output_payload, dict):
-            state.aggregate.structured_output = LLMStructuredOutput(
-                structured_output=convert_file_refs_in_output(
-                    output=output_payload,
-                    json_schema=LLMNode.fetch_structured_output_schema(
-                        structured_output=self._node_data.structured_output or {},
-                    ),
-                    tenant_id=self.tenant_id,
-                )
-            )
+            state.aggregate.structured_output = LLMStructuredOutput(structured_output=output_payload)
             state.aggregate.text = json.dumps(output_payload)
         elif isinstance(output_payload, str):
             state.aggregate.text = output_payload
