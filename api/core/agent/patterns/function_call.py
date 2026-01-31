@@ -138,12 +138,15 @@ class FunctionCallStrategy(AgentPattern):
                 tool_response, tool_files, _ = yield from self._handle_tool_call(
                     tool_name, tool_args, tool_call_id, messages, round_log
                 )
+                tool_entity = self._find_tool_by_name(tool_name)
                 tool_outputs[tool_name] = tool_response
                 # Track files produced by tools
                 output_files.extend(tool_files)
                 if tool_response == TERMINAL_OUTPUT_MESSAGE:
                     function_call_state = False
-                    final_tool_args = tool_args
+                    final_tool_args = tool_entity.transform_tool_parameters_type(
+                        tool_args
+                    )
 
             yield self._finish_log(
                 round_log,

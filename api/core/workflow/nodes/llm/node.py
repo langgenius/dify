@@ -1963,7 +1963,6 @@ class LLMNode(Node[LLMNodeData]):
             # Files are saved as ToolFiles with valid tool_file_id for later reference
             sandbox_output_files = session.collect_output_files()
 
-
         if result is None:
             raise LLMNodeError("SandboxSession exited unexpectedly")
 
