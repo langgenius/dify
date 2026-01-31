@@ -8,11 +8,12 @@ from pydantic import BaseModel, ConfigDict
 
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import (
-    get_default_value_for_type,
     fill_defaults_from_schema,
+    get_default_value_for_type,
     invoke_llm_with_pydantic_model,
     invoke_llm_with_structured_output,
 )
+from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultWithStructuredOutput,
