@@ -58,15 +58,35 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   const actionContainerRef = useRef<HTMLDivElement | null>(null)
   const actionRightRef = useRef<HTMLDivElement | null>(null)
   const baseTextareaHeightRef = useRef<number | null>(null)
+  const mentionTimerRef = useRef<number | null>(null)
+  const focusTimerRef = useRef<number | null>(null)
+  const layoutRafRef = useRef<number | null>(null)
 
   // Expose textarea ref to parent component
   useImperativeHandle(forwardedRef, () => textareaRef.current!, [])
+
+  useEffect(() => {
+    return () => {
+      if (mentionTimerRef.current !== null) {
+        window.clearTimeout(mentionTimerRef.current)
+        mentionTimerRef.current = null
+      }
+      if (focusTimerRef.current !== null) {
+        window.clearTimeout(focusTimerRef.current)
+        focusTimerRef.current = null
+      }
+      if (layoutRafRef.current !== null) {
+        window.cancelAnimationFrame(layoutRafRef.current)
+        layoutRafRef.current = null
+      }
+    }
+  }, [])
 
   const workflowStore = useWorkflowStore()
   const mentionUsersFromStore = useStore(state => (
     appId ? state.mentionableUsersCache[appId] : undefined
   ))
-  const mentionUsers = mentionUsersFromStore ?? []
+  const mentionUsers = useMemo(() => mentionUsersFromStore ?? [], [mentionUsersFromStore])
 
   const [showMentionDropdown, setShowMentionDropdown] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
@@ -229,6 +249,17 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
     setPaddingBottom(prev => (prev === nextBottom ? prev : nextBottom))
   }, [shouldReserveButtonGap, shouldReserveHorizontalSpace, paddingRight, paddingBottom])
 
+  const scheduleLayoutSync = useCallback(() => {
+    if (typeof window === 'undefined')
+      return
+    if (layoutRafRef.current !== null)
+      window.cancelAnimationFrame(layoutRafRef.current)
+    layoutRafRef.current = window.requestAnimationFrame(() => {
+      evaluateContentLayout()
+      syncHighlightScroll()
+    })
+  }, [evaluateContentLayout, syncHighlightScroll])
+
   const setActionContainerRef = useCallback((node: HTMLDivElement | null) => {
     actionContainerRef.current = node
 
@@ -326,7 +357,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   const handleContentChange = useCallback((newValue: string) => {
     onChange(newValue)
 
-    setTimeout(() => {
+    if (mentionTimerRef.current !== null)
+      window.clearTimeout(mentionTimerRef.current)
+    mentionTimerRef.current = window.setTimeout(() => {
       const cursorPosition = textareaRef.current?.selectionStart || 0
       const textBeforeCursor = newValue.slice(0, cursorPosition)
       const mentionMatch = textBeforeCursor.match(/@(\w*)$/)
@@ -341,14 +374,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
         setShowMentionDropdown(false)
       }
 
-      if (typeof window !== 'undefined') {
-        window.requestAnimationFrame(() => {
-          evaluateContentLayout()
-          syncHighlightScroll()
-        })
-      }
+      scheduleLayoutSync()
     }, 0)
-  }, [onChange, evaluateContentLayout, syncHighlightScroll])
+  }, [onChange, scheduleLayoutSync])
 
   const handleMentionButtonClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -371,7 +399,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
 
     onChange(newContent)
 
-    setTimeout(() => {
+    if (mentionTimerRef.current !== null)
+      window.clearTimeout(mentionTimerRef.current)
+    mentionTimerRef.current = window.setTimeout(() => {
       const newCursorPos = cursorPosition + 1
       textarea.setSelectionRange(newCursorPos, newCursorPos)
       textarea.focus()
@@ -381,14 +411,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
       setShowMentionDropdown(true)
       setSelectedMentionIndex(0)
 
-      if (typeof window !== 'undefined') {
-        window.requestAnimationFrame(() => {
-          evaluateContentLayout()
-          syncHighlightScroll()
-        })
-      }
+      scheduleLayoutSync()
     }, 0)
-  }, [value, onChange, evaluateContentLayout, syncHighlightScroll, showMentionDropdown])
+  }, [value, onChange, scheduleLayoutSync, showMentionDropdown])
 
   const insertMention = useCallback((user: UserProfile) => {
     const textarea = textareaRef.current
@@ -408,19 +433,16 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
     const newMentionedUserIds = [...mentionedUserIds, user.id]
     setMentionedUserIds(newMentionedUserIds)
 
-    setTimeout(() => {
+    if (mentionTimerRef.current !== null)
+      window.clearTimeout(mentionTimerRef.current)
+    mentionTimerRef.current = window.setTimeout(() => {
       const extraSpace = needsSpaceBefore ? 1 : 0
       const newCursorPos = mentionPosition + extraSpace + user.name.length + 2 // (space) + @ + name + space
       textarea.setSelectionRange(newCursorPos, newCursorPos)
       textarea.focus()
-      if (typeof window !== 'undefined') {
-        window.requestAnimationFrame(() => {
-          evaluateContentLayout()
-          syncHighlightScroll()
-        })
-      }
+      scheduleLayoutSync()
     }, 0)
-  }, [value, mentionPosition, onChange, mentionedUserIds, evaluateContentLayout, syncHighlightScroll])
+  }, [value, mentionPosition, onChange, mentionedUserIds, scheduleLayoutSync])
 
   const handleSubmit = useCallback(async (e?: React.MouseEvent) => {
     if (e) {
@@ -497,7 +519,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   useEffect(() => {
     if (autoFocus && textareaRef.current) {
       const textarea = textareaRef.current
-      setTimeout(() => {
+      if (focusTimerRef.current !== null)
+        window.clearTimeout(focusTimerRef.current)
+      focusTimerRef.current = window.setTimeout(() => {
         textarea.focus()
         const length = textarea.value.length
         textarea.setSelectionRange(length, length)

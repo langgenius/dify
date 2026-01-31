@@ -162,7 +162,7 @@ const VarReferencePicker: FC<Props> = ({
   const [open, setOpen] = useState(false)
   useEffect(() => {
     onOpen()
-  }, [open])
+  }, [open, onOpen])
   const hasValue = !isConstant && value.length > 0
 
   const isIterationVar = useMemo(() => {
@@ -275,10 +275,12 @@ const VarReferencePicker: FC<Props> = ({
       return
 
     const workflowContainer = document.getElementById('workflow-container')
+    if (!workflowContainer)
+      return
     const {
       clientWidth,
       clientHeight,
-    } = workflowContainer!
+    } = workflowContainer
     const {
       setViewport,
     } = reactflow

@@ -31,7 +31,9 @@ export const useVariableAssigner = () => {
   const handleAssignVariableValueChange = useCallback((nodeId: string, value: ValueSelector, varDetail: Var, groupId?: string) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
-    const node: Node<VariableAssignerNodeType> = nodes.find(node => node.id === nodeId)!
+    const node = nodes.find(node => node.id === nodeId) as Node<VariableAssignerNodeType> | undefined
+    if (!node)
+      return
 
     let payload
     if (groupId && groupId !== 'target') {
