@@ -1,5 +1,5 @@
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import jwt
 import pytest
@@ -35,9 +35,12 @@ class TestPassportService:
         assert isinstance(token, str)
         assert len(token.split(".")) == 3  # JWT format: header.payload.signature
 
-        # Verify token content
+        # Verify token content (jti is automatically added)
         decoded = passport_service.verify(token)
-        assert decoded == payload
+        assert decoded["user_id"] == payload["user_id"]
+        assert decoded["app_code"] == payload["app_code"]
+        assert "jti" in decoded  # jti is automatically added
+        assert isinstance(decoded["jti"], str)
 
     def test_should_handle_different_payload_types(self, passport_service):
         """Test issuing and verifying tokens with different payload types"""
@@ -57,7 +60,11 @@ class TestPassportService:
         for payload in test_cases:
             token = passport_service.issue(payload)
             decoded = passport_service.verify(token)
-            assert decoded == payload
+            # Verify all original fields are present
+            for key, value in payload.items():
+                assert decoded[key] == value
+            # Verify jti is added
+            assert "jti" in decoded
 
     # Security tests
     def test_should_reject_modified_token(self, passport_service):
@@ -153,7 +160,10 @@ class TestPassportService:
             payload = {"test": "data"}
             token = service.issue(payload)
             decoded = service.verify(token)
-            assert decoded == payload
+            # Verify original payload fields are present
+            assert decoded["test"] == payload["test"]
+            # jti is automatically added
+            assert "jti" in decoded
 
     def test_should_handle_none_secret_key(self):
         """Test behavior when SECRET_KEY is None"""
@@ -192,7 +202,11 @@ class TestPassportService:
         for payload in special_payloads:
             token = passport_service.issue(payload)
             decoded = passport_service.verify(token)
-            assert decoded == payload
+            # Verify all original fields are present
+            for key, value in payload.items():
+                assert decoded[key] == value
+            # jti is automatically added
+            assert "jti" in decoded
 
     def test_should_catch_generic_pyjwt_errors(self, passport_service):
         """Test that generic PyJWTError exceptions are caught and converted to Unauthorized"""
@@ -203,3 +217,104 @@ class TestPassportService:
             with pytest.raises(Unauthorized) as exc_info:
                 passport_service.verify("some-token")
             assert str(exc_info.value) == "401 Unauthorized: Invalid token."
+
+    # Token blacklist tests
+    def test_should_revoke_token_successfully(self, passport_service):
+        """Test that tokens can be revoked and added to blacklist using jti"""
+        payload = {"user_id": "123", "exp": (datetime.now(UTC) + timedelta(hours=1)).timestamp()}
+        with patch("libs.passport.dify_config") as mock_config:
+            mock_config.SECRET_KEY = "test-secret-key-for-testing"
+            token = jwt.encode(payload, mock_config.SECRET_KEY, algorithm="HS256")
+
+        # Mock redis_client
+        mock_redis = MagicMock()
+        with patch("libs.passport.redis_client", mock_redis):
+            result = passport_service.revoke(token)
+
+        assert result is True
+        mock_redis.setex.assert_called_once()
+        # Verify the key format uses jti
+        call_args = mock_redis.setex.call_args
+        key = call_args[0][0]
+        assert "passport:blacklist:jti:" in key
+        # Verify TTL is approximately 1 hour (3600 seconds)
+        ttl = call_args[0][1]
+        assert 3500 < ttl <= 3600  # Allow some tolerance
+
+    def test_should_not_revoke_already_expired_token(self, passport_service):
+        """Test that already expired tokens are not added to blacklist"""
+        past_time = datetime.now(UTC) - timedelta(hours=1)
+        payload = {"user_id": "123", "exp": past_time.timestamp()}
+
+        with patch("libs.passport.dify_config") as mock_config:
+            mock_config.SECRET_KEY = "test-secret-key-for-testing"
+            token = jwt.encode(payload, mock_config.SECRET_KEY, algorithm="HS256")
+
+        # Mock redis_client
+        mock_redis = MagicMock()
+        with patch("libs.passport.redis_client", mock_redis):
+            result = passport_service.revoke(token)
+
+        assert result is False
+        mock_redis.setex.assert_not_called()
+
+    def test_should_reject_revoked_token(self, passport_service):
+        """Test that revoked tokens cannot be verified"""
+        payload = {"user_id": "123"}
+        token = passport_service.issue(payload)
+
+        # Get the jti from the token
+        decoded = jwt.decode(token, options={"verify_signature": False})
+        jti = decoded.get("jti")
+
+        # Mock redis to simulate token being revoked (jti in blacklist)
+        mock_redis = MagicMock()
+        mock_redis.exists.return_value = True
+
+        with patch("libs.passport.redis_client", mock_redis):
+            with pytest.raises(Unauthorized) as exc_info:
+                passport_service.verify(token)
+
+        assert "revoked" in str(exc_info.value).lower()
+        # Verify that jti was used to check blacklist
+        mock_redis.exists.assert_called_once_with(f"passport:blacklist:jti:{jti}")
+
+    def test_should_verify_non_revoked_token(self, passport_service):
+        """Test that non-revoked tokens can be verified"""
+        payload = {"user_id": "123"}
+        token = passport_service.issue(payload)
+
+        # Get the jti from the token
+        decoded = jwt.decode(token, options={"verify_signature": False})
+        jti = decoded.get("jti")
+
+        # Mock redis to return False (token not in blacklist)
+        mock_redis = MagicMock()
+        mock_redis.exists.return_value = False
+
+        with patch("libs.passport.redis_client", mock_redis):
+            decoded = passport_service.verify(token)
+
+        assert decoded["user_id"] == payload["user_id"]
+        assert "jti" in decoded
+        mock_redis.exists.assert_called_once_with(f"passport:blacklist:jti:{jti}")
+
+    def test_should_handle_revoke_with_invalid_token(self, passport_service):
+        """Test that revoke handles invalid tokens gracefully"""
+        invalid_token = "invalid.token.here"
+
+        # Mock redis_client
+        mock_redis = MagicMock()
+        with patch("libs.passport.redis_client", mock_redis):
+            result = passport_service.revoke(invalid_token)
+
+        assert result is False
+        mock_redis.setex.assert_not_called()
+
+    def test_should_generate_correct_blacklist_key(self, passport_service):
+        """Test that blacklist key is generated correctly using jti"""
+        jti = "test-jti-uuid"
+        expected_key = f"passport:blacklist:jti:{jti}"
+
+        actual_key = passport_service._get_blacklist_key(jti)
+        assert actual_key == expected_key

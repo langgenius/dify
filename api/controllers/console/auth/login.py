@@ -37,6 +37,7 @@ from libs.token import (
     clear_access_token_from_cookie,
     clear_csrf_token_from_cookie,
     clear_refresh_token_from_cookie,
+    extract_access_token,
     extract_refresh_token,
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
@@ -157,7 +158,9 @@ class LogoutApi(Resource):
         if isinstance(account, flask_login.AnonymousUserMixin):
             response = make_response({"result": "success"})
         else:
-            AccountService.logout(account=account)
+            # Extract access_token from request to revoke it
+            access_token = extract_access_token(request)
+            AccountService.logout(account=account, access_token=access_token)
             flask_login.logout_user()
             response = make_response({"result": "success"})
 

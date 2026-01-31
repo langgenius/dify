@@ -423,7 +423,12 @@ class AccountService:
         return TokenPair(access_token=access_token, refresh_token=refresh_token, csrf_token=csrf_token)
 
     @staticmethod
-    def logout(*, account: Account):
+    def logout(*, account: Account, access_token: str | None = None):
+        # Revoke access_token if provided
+        if access_token:
+            PassportService.revoke(access_token)
+
+        # Delete refresh_token
         refresh_token = redis_client.get(AccountService._get_account_refresh_token_key(account.id))
         if refresh_token:
             AccountService._delete_refresh_token(refresh_token.decode("utf-8"), account.id)
