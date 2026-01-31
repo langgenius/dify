@@ -10,6 +10,7 @@ import type {
   Node as WorkflowNode,
 } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
+import Toast from '@/app/components/base/toast'
 import { NULL_STRATEGY } from '@/app/components/workflow/nodes/_base/constants'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, EditionType, isPromptMessageContext, PromptRole, VarType } from '@/app/components/workflow/types'
@@ -441,7 +442,11 @@ export function useMixedVariableExtractor({
         detectAgentFromText: payload.detectAgentFromText,
       })
     }
-    catch {
+    catch (error) {
+      Toast.notify({
+        type: 'error',
+        message: error as string,
+      })
     }
   }, [applyNestedNodeGraphData, configsMap?.flowId, configsMap?.flowType, paramKey, resolveNestedNodeParameterSchema, toolNodeId])
 

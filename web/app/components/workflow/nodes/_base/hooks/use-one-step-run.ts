@@ -647,7 +647,7 @@ const useOneStepRun = <T>({
     return null
   }, [flowId, id, data, handleNodeDataUpdate, cancelPluginSingleRun])
 
-  const checkValidWrap = () => {
+  const checkValidWrap = useCallback(() => {
     if (!checkValid)
       return { isValid: true, errorMessage: '' }
     const res = checkValid(data, t, moreDataForCheckValid)
@@ -665,7 +665,8 @@ const useOneStepRun = <T>({
       })
     }
     return res
-  }
+  }, [checkValid, data, handleNodeDataUpdate, id, t, moreDataForCheckValid])
+
   const [canShowSingleRun, setCanShowSingleRun] = useState(false)
   const isShowSingleRun = data._isSingleRun && canShowSingleRun
   const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[]>([])

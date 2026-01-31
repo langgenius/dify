@@ -222,6 +222,7 @@ mise.toml
 
 
 # AI Assistant
+.sisyphus/
 .roo/
 api/.env.backup
 /clickzetta

@@ -34,6 +34,7 @@ import {
   Fragment,
   memo,
   useCallback,
+  useLayoutEffect,
   useMemo,
   useState,
 } from 'react'
@@ -71,6 +72,19 @@ type ComponentPickerProps = {
   isSupportFileVar?: boolean
   isSupportSandbox?: boolean
 }
+
+type ReferenceSyncProps = {
+  anchor: HTMLElement | null
+  setReference: (node: HTMLElement | null) => void
+}
+
+const ReferenceSync = ({ anchor, setReference }: ReferenceSyncProps) => {
+  useLayoutEffect(() => {
+    setReference(anchor)
+  }, [anchor, setReference])
+  return null
+}
+
 const ComponentPicker = ({
   triggerString,
   contextBlock,
@@ -265,14 +279,12 @@ const ComponentPicker = ({
     if (!(anchorElementRef.current && (isSandboxMenu || allFlattenOptions.length || workflowVariableBlock?.show)))
       return null
 
-    setTimeout(() => {
-      if (anchorElementRef.current)
-        refs.setReference(anchorElementRef.current)
-    }, 0)
+    const anchorElement = anchorElementRef.current
 
     if (isSandboxMenu) {
       return (
         <>
+          <ReferenceSync anchor={anchorElement} setReference={refs.setReference} />
           {ReactDOM.createPortal(
             <div className="h-0 w-0">
               <div
@@ -347,7 +359,7 @@ const ComponentPicker = ({
                 </div>
               </div>
             </div>,
-            anchorElementRef.current,
+            anchorElement,
           )}
         </>
       )
@@ -355,6 +367,7 @@ const ComponentPicker = ({
 
     return (
       <>
+        <ReferenceSync anchor={anchorElement} setReference={refs.setReference} />
         {
           ReactDOM.createPortal(
             <div className="h-0 w-0">
@@ -443,7 +456,7 @@ const ComponentPicker = ({
                     )}
               </div>
             </div>,
-            anchorElementRef.current,
+            anchorElement,
           )
         }
       </>
