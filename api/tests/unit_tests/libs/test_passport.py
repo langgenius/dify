@@ -1,5 +1,5 @@
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import jwt
 import pytest
@@ -203,3 +203,93 @@ class TestPassportService:
             with pytest.raises(Unauthorized) as exc_info:
                 passport_service.verify("some-token")
             assert str(exc_info.value) == "401 Unauthorized: Invalid token."
+
+    # Token blacklist tests
+    def test_should_revoke_token_successfully(self, passport_service):
+        """Test that tokens can be revoked and added to blacklist"""
+        payload = {"user_id": "123", "exp": (datetime.now(UTC) + timedelta(hours=1)).timestamp()}
+        with patch("libs.passport.dify_config") as mock_config:
+            mock_config.SECRET_KEY = "test-secret-key-for-testing"
+            token = jwt.encode(payload, mock_config.SECRET_KEY, algorithm="HS256")
+
+        # Mock redis_client
+        mock_redis = MagicMock()
+        with patch("libs.passport.redis_client", mock_redis):
+            result = passport_service.revoke(token)
+
+        assert result is True
+        mock_redis.setex.assert_called_once()
+        # Verify the key format
+        call_args = mock_redis.setex.call_args
+        assert "passport:blacklist:" in call_args[0][0]
+        # Verify TTL is approximately 1 hour (3600 seconds)
+        ttl = call_args[0][1]
+        assert 3500 < ttl <= 3600  # Allow some tolerance
+
+    def test_should_not_revoke_already_expired_token(self, passport_service):
+        """Test that already expired tokens are not added to blacklist"""
+        past_time = datetime.now(UTC) - timedelta(hours=1)
+        payload = {"user_id": "123", "exp": past_time.timestamp()}
+
+        with patch("libs.passport.dify_config") as mock_config:
+            mock_config.SECRET_KEY = "test-secret-key-for-testing"
+            token = jwt.encode(payload, mock_config.SECRET_KEY, algorithm="HS256")
+
+        # Mock redis_client
+        mock_redis = MagicMock()
+        with patch("libs.passport.redis_client", mock_redis):
+            result = passport_service.revoke(token)
+
+        assert result is False
+        mock_redis.setex.assert_not_called()
+
+    def test_should_reject_revoked_token(self, passport_service):
+        """Test that revoked tokens cannot be verified"""
+        payload = {"user_id": "123"}
+        token = passport_service.issue(payload)
+
+        # Revoke the token
+        mock_redis = MagicMock()
+        mock_redis.exists.return_value = True
+
+        with patch("libs.passport.redis_client", mock_redis):
+            with pytest.raises(Unauthorized) as exc_info:
+                passport_service.verify(token)
+
+        assert "revoked" in str(exc_info.value).lower()
+        mock_redis.exists.assert_called_once_with(f"passport:blacklist:{token}")
+
+    def test_should_verify_non_revoked_token(self, passport_service):
+        """Test that non-revoked tokens can be verified"""
+        payload = {"user_id": "123"}
+        token = passport_service.issue(payload)
+
+        # Mock redis to return False (token not in blacklist)
+        mock_redis = MagicMock()
+        mock_redis.exists.return_value = False
+
+        with patch("libs.passport.redis_client", mock_redis):
+            decoded = passport_service.verify(token)
+
+        assert decoded == payload
+        mock_redis.exists.assert_called_once_with(f"passport:blacklist:{token}")
+
+    def test_should_handle_revoke_with_invalid_token(self, passport_service):
+        """Test that revoke handles invalid tokens gracefully"""
+        invalid_token = "invalid.token.here"
+
+        # Mock redis_client
+        mock_redis = MagicMock()
+        with patch("libs.passport.redis_client", mock_redis):
+            result = passport_service.revoke(invalid_token)
+
+        assert result is False
+        mock_redis.setex.assert_not_called()
+
+    def test_should_generate_correct_blacklist_key(self, passport_service):
+        """Test that blacklist key is generated correctly"""
+        token = "test.token.value"
+        expected_key = f"passport:blacklist:{token}"
+
+        actual_key = passport_service._get_blacklist_key(token)
+        assert actual_key == expected_key
