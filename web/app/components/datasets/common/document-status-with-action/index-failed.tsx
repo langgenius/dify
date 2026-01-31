@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useReducer } from 'react'
-import { useTranslation } from 'react-i18next'
-import StatusWithAction from './status-with-action'
-import { retryErrorDocs } from '@/service/datasets'
 import type { IndexingStatusResponse } from '@/models/datasets'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { useEffect, useReducer } from 'react'
+import { useTranslation } from 'react-i18next'
+import { retryErrorDocs } from '@/service/datasets'
 import { useDatasetErrorDocs } from '@/service/knowledge/use-dataset'
+import StatusWithAction from './status-with-action'
 
 type Props = {
   datasetId: string
@@ -62,9 +63,9 @@ const RetryButton: FC<Props> = ({ datasetId }) => {
 
   return (
     <StatusWithAction
-      type='warning'
-      description={`${errorDocs?.total} ${t('dataset.docsFailedNotice')}`}
-      actionText={t('dataset.retry')}
+      type="warning"
+      description={`${errorDocs?.total} ${t('docsFailedNotice', { ns: 'dataset' })}`}
+      actionText={t('retry', { ns: 'dataset' })}
       disabled={indexState.value === 'retry'}
       onAction={indexState.value === 'error' ? onRetryErrorDocs : noop}
     />

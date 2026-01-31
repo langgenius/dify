@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import WarningMask from '.'
 import Button from '@/app/components/base/button'
+import WarningMask from '.'
 
 export type IFormattingChangedProps = {
   onConfirm: () => void
@@ -24,17 +24,17 @@ const FormattingChanged: FC<IFormattingChangedProps> = ({
 
   return (
     <WarningMask
-      title={t('appDebug.formattingChangedTitle')}
-      description={t('appDebug.formattingChangedText')}
-      footer={
-        <div className='flex space-x-2'>
-          <Button variant='primary' className='flex space-x-2' onClick={onConfirm}>
+      title={t('formattingChangedTitle', { ns: 'appDebug' })}
+      description={t('formattingChangedText', { ns: 'appDebug' })}
+      footer={(
+        <div className="flex space-x-2">
+          <Button variant="primary" className="flex space-x-2" onClick={onConfirm}>
             {icon}
-            <span>{t('common.operation.refresh')}</span>
+            <span>{t('operation.refresh', { ns: 'common' })}</span>
           </Button>
-          <Button onClick={onCancel}>{t('common.operation.cancel') as string}</Button>
+          <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' }) as string}</Button>
         </div>
-      }
+      )}
     />
   )
 }

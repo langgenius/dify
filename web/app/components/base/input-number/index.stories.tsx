@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import { InputNumber } from '.'
 
@@ -74,7 +74,9 @@ const InputNumberDemo = (args: any) => {
         }}
       />
       <div className="mt-3 text-sm text-gray-600">
-        Current value: <span className="font-semibold">{value}</span>
+        Current value:
+        {' '}
+        <span className="font-semibold">{value}</span>
       </div>
     </div>
   )
@@ -249,7 +251,12 @@ const QuantitySelectorDemo = () => {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Product Name</h3>
-            <p className="text-sm text-gray-500">${pricePerItem} each</p>
+            <p className="text-sm text-gray-500">
+              $
+              {pricePerItem}
+              {' '}
+              each
+            </p>
           </div>
         </div>
         <div className="flex flex-col gap-2">
@@ -265,7 +272,10 @@ const QuantitySelectorDemo = () => {
         <div className="border-t border-gray-200 pt-4">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">Total</span>
-            <span className="text-lg font-semibold text-gray-900">${total}</span>
+            <span className="text-lg font-semibold text-gray-900">
+              $
+              {total}
+            </span>
           </div>
         </div>
       </div>
@@ -322,7 +332,13 @@ const TimerSettingsDemo = () => {
         </div>
         <div className="mt-2 rounded-lg bg-blue-50 p-3">
           <div className="text-sm text-gray-600">
-            Total duration: <span className="font-semibold">{totalSeconds} seconds</span>
+            Total duration:
+            {' '}
+            <span className="font-semibold">
+              {totalSeconds}
+              {' '}
+              seconds
+            </span>
           </div>
         </div>
       </div>
@@ -379,7 +395,15 @@ const AnimationSettingsDemo = () => {
         </div>
         <div className="mt-2 rounded-lg bg-gray-50 p-4">
           <div className="font-mono text-xs text-gray-700">
-            animation: {duration}ms {delay}ms {iterations}
+            animation:
+            {' '}
+            {duration}
+            ms
+            {' '}
+            {delay}
+            ms
+            {' '}
+            {iterations}
           </div>
         </div>
       </div>
@@ -416,11 +440,17 @@ const TemperatureControlDemo = () => {
         <div className="grid grid-cols-2 gap-4 rounded-lg bg-gray-50 p-4">
           <div>
             <div className="text-xs text-gray-500">Celsius</div>
-            <div className="text-2xl font-semibold text-gray-900">{temperature}°C</div>
+            <div className="text-2xl font-semibold text-gray-900">
+              {temperature}
+              °C
+            </div>
           </div>
           <div>
             <div className="text-xs text-gray-500">Fahrenheit</div>
-            <div className="text-2xl font-semibold text-gray-900">{fahrenheit}°F</div>
+            <div className="text-2xl font-semibold text-gray-900">
+              {fahrenheit}
+              °F
+            </div>
           </div>
         </div>
       </div>

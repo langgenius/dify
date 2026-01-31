@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { DataSourceCredential } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type { NotionPage } from '@/models/common'
 import { useEffect, useMemo, useState } from 'react'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { NotionPageSelector } from '.'
-import type { DataSourceCredential } from '@/app/components/header/account-setting/data-source-page-new/types'
-import type { NotionPage } from '@/models/common'
 
 const DATASET_ID = 'dataset-demo'
 const CREDENTIALS: DataSourceCredential[] = [
@@ -171,7 +171,10 @@ const NotionSelectorPreview = () => {
         <div className="mb-2 font-semibold uppercase tracking-[0.18em] text-text-tertiary">
           Debug state
         </div>
-        <p className="mb-1">Active credential: <span className="font-mono">{credentialId || 'None'}</span></p>
+        <p className="mb-1">
+          Active credential:
+          <span className="font-mono">{credentialId || 'None'}</span>
+        </p>
         <pre className="max-h-40 overflow-auto rounded-lg bg-background-default p-3 font-mono text-[11px] leading-relaxed text-text-tertiary">
           {JSON.stringify(selectedPages, null, 2)}
         </pre>

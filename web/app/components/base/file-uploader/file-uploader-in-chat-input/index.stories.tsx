@@ -1,13 +1,13 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { useState } from 'react'
-import FileUploaderInChatInput from '.'
-import { FileContextProvider } from '../store'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
+import { useState } from 'react'
+import { ToastProvider } from '@/app/components/base/toast'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
+import FileUploaderInChatInput from '.'
 import { FileList } from '../file-uploader-in-chat-input/file-list'
-import { ToastProvider } from '@/app/components/base/toast'
+import { FileContextProvider } from '../store'
 
 const mockFiles: FileEntity[] = [
   {

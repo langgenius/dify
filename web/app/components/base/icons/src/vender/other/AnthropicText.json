@@ -1,539 +1,539 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "90",
-			"height": "20",
-			"viewBox": "0 0 90 20",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"clip-path": "url(#clip0_8587_60274)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "mask",
-						"attributes": {
-							"id": "mask0_8587_60274",
-							"style": "mask-type:luminance",
-							"maskUnits": "userSpaceOnUse",
-							"x": "0",
-							"y": "4",
-							"width": "90",
-							"height": "11"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"d": "M89.375 4.99805H0V14.998H89.375V4.99805Z",
-									"fill": "currentColor"
-								},
-								"children": []
-							}
-						]
-					},
-					{
-						"type": "element",
-						"name": "g",
-						"attributes": {
-							"mask": "url(#mask0_8587_60274)"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "mask",
-								"attributes": {
-									"id": "mask1_8587_60274",
-									"style": "mask-type:luminance",
-									"maskUnits": "userSpaceOnUse",
-									"x": "0",
-									"y": "4",
-									"width": "90",
-									"height": "11"
-								},
-								"children": [
-									{
-										"type": "element",
-										"name": "path",
-										"attributes": {
-											"d": "M0 4.99609H89.375V14.9961H0V4.99609Z",
-											"fill": "currentColor"
-										},
-										"children": []
-									}
-								]
-							},
-							{
-								"type": "element",
-								"name": "g",
-								"attributes": {
-									"mask": "url(#mask1_8587_60274)"
-								},
-								"children": [
-									{
-										"type": "element",
-										"name": "mask",
-										"attributes": {
-											"id": "mask2_8587_60274",
-											"style": "mask-type:luminance",
-											"maskUnits": "userSpaceOnUse",
-											"x": "0",
-											"y": "4",
-											"width": "90",
-											"height": "11"
-										},
-										"children": [
-											{
-												"type": "element",
-												"name": "path",
-												"attributes": {
-													"d": "M0 4.99414H89.375V14.9941H0V4.99414Z",
-													"fill": "currentColor"
-												},
-												"children": []
-											}
-										]
-									},
-									{
-										"type": "element",
-										"name": "g",
-										"attributes": {
-											"mask": "url(#mask2_8587_60274)"
-										},
-										"children": [
-											{
-												"type": "element",
-												"name": "mask",
-												"attributes": {
-													"id": "mask3_8587_60274",
-													"style": "mask-type:luminance",
-													"maskUnits": "userSpaceOnUse",
-													"x": "0",
-													"y": "4",
-													"width": "90",
-													"height": "11"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
-															"fill": "currentColor"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "g",
-												"attributes": {
-													"mask": "url(#mask3_8587_60274)"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M18.1273 11.9244L13.7773 5.15625H11.4297V14.825H13.4321V8.05688L17.7821 14.825H20.1297V5.15625H18.1273V11.9244Z",
-															"fill": "currentColor",
-															"fill-opacity": "0.92"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "mask",
-												"attributes": {
-													"id": "mask4_8587_60274",
-													"style": "mask-type:luminance",
-													"maskUnits": "userSpaceOnUse",
-													"x": "0",
-													"y": "4",
-													"width": "90",
-													"height": "11"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
-															"fill": "currentColor"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "g",
-												"attributes": {
-													"mask": "url(#mask4_8587_60274)"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M21.7969 7.02094H25.0423V14.825H27.1139V7.02094H30.3594V5.15625H21.7969V7.02094Z",
-															"fill": "currentColor",
-															"fill-opacity": "0.92"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "mask",
-												"attributes": {
-													"id": "mask5_8587_60274",
-													"style": "mask-type:luminance",
-													"maskUnits": "userSpaceOnUse",
-													"x": "0",
-													"y": "4",
-													"width": "90",
-													"height": "11"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
-															"fill": "currentColor"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "g",
-												"attributes": {
-													"mask": "url(#mask5_8587_60274)"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M38.6442 9.00994H34.0871V5.15625H32.0156V14.825H34.0871V10.8746H38.6442V14.825H40.7156V5.15625H38.6442V9.00994Z",
-															"fill": "currentColor",
-															"fill-opacity": "0.92"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "mask",
-												"attributes": {
-													"id": "mask6_8587_60274",
-													"style": "mask-type:luminance",
-													"maskUnits": "userSpaceOnUse",
-													"x": "0",
-													"y": "4",
-													"width": "90",
-													"height": "11"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
-															"fill": "currentColor"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "g",
-												"attributes": {
-													"mask": "url(#mask6_8587_60274)"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M45.3376 7.02094H47.893C48.9152 7.02094 49.4539 7.39387 49.4539 8.09831C49.4539 8.80275 48.9152 9.17569 47.893 9.17569H45.3376V7.02094ZM51.5259 8.09831C51.5259 6.27506 50.186 5.15625 47.9897 5.15625H43.2656V14.825H45.3376V11.0404H47.6443L49.7164 14.825H52.0094L49.715 10.7521C50.8666 10.3094 51.5259 9.37721 51.5259 8.09831Z",
-															"fill": "currentColor",
-															"fill-opacity": "0.92"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "mask",
-												"attributes": {
-													"id": "mask7_8587_60274",
-													"style": "mask-type:luminance",
-													"maskUnits": "userSpaceOnUse",
-													"x": "0",
-													"y": "4",
-													"width": "90",
-													"height": "11"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
-															"fill": "currentColor"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "g",
-												"attributes": {
-													"mask": "url(#mask7_8587_60274)"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M57.8732 13.0565C56.2438 13.0565 55.2496 11.8963 55.2496 10.004C55.2496 8.08416 56.2438 6.92394 57.8732 6.92394C59.4887 6.92394 60.4691 8.08416 60.4691 10.004C60.4691 11.8963 59.4887 13.0565 57.8732 13.0565ZM57.8732 4.99023C55.0839 4.99023 53.1094 7.06206 53.1094 10.004C53.1094 12.9184 55.0839 14.9902 57.8732 14.9902C60.6486 14.9902 62.6094 12.9184 62.6094 10.004C62.6094 7.06206 60.6486 4.99023 57.8732 4.99023Z",
-															"fill": "currentColor",
-															"fill-opacity": "0.92"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "mask",
-												"attributes": {
-													"id": "mask8_8587_60274",
-													"style": "mask-type:luminance",
-													"maskUnits": "userSpaceOnUse",
-													"x": "0",
-													"y": "4",
-													"width": "90",
-													"height": "11"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
-															"fill": "currentColor"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "g",
-												"attributes": {
-													"mask": "url(#mask8_8587_60274)"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M69.1794 9.45194H66.6233V7.02094H69.1794C70.2019 7.02094 70.7407 7.43532 70.7407 8.23644C70.7407 9.03756 70.2019 9.45194 69.1794 9.45194ZM69.2762 5.15625H64.5508V14.825H66.6233V11.3166H69.2762C71.473 11.3166 72.8133 10.1564 72.8133 8.23644C72.8133 6.3165 71.473 5.15625 69.2762 5.15625Z",
-															"fill": "currentColor",
-															"fill-opacity": "0.92"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "mask",
-												"attributes": {
-													"id": "mask9_8587_60274",
-													"style": "mask-type:luminance",
-													"maskUnits": "userSpaceOnUse",
-													"x": "0",
-													"y": "4",
-													"width": "90",
-													"height": "11"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
-															"fill": "currentColor"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "g",
-												"attributes": {
-													"mask": "url(#mask9_8587_60274)"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M86.8413 11.5786C86.4823 12.5179 85.7642 13.0565 84.7837 13.0565C83.1542 13.0565 82.16 11.8963 82.16 10.004C82.16 8.08416 83.1542 6.92394 84.7837 6.92394C85.7642 6.92394 86.4823 7.46261 86.8413 8.40183H89.0369C88.4984 6.33002 86.8827 4.99023 84.7837 4.99023C81.9942 4.99023 80.0195 7.06206 80.0195 10.004C80.0195 12.9184 81.9942 14.9902 84.7837 14.9902C86.8965 14.9902 88.5122 13.6366 89.0508 11.5786H86.8413Z",
-															"fill": "currentColor",
-															"fill-opacity": "0.92"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "mask",
-												"attributes": {
-													"id": "mask10_8587_60274",
-													"style": "mask-type:luminance",
-													"maskUnits": "userSpaceOnUse",
-													"x": "0",
-													"y": "4",
-													"width": "90",
-													"height": "11"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
-															"fill": "currentColor"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "g",
-												"attributes": {
-													"mask": "url(#mask10_8587_60274)"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M73.6484 5.15625L77.5033 14.825H79.6172L75.7624 5.15625H73.6484Z",
-															"fill": "currentColor",
-															"fill-opacity": "0.92"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "mask",
-												"attributes": {
-													"id": "mask11_8587_60274",
-													"style": "mask-type:luminance",
-													"maskUnits": "userSpaceOnUse",
-													"x": "0",
-													"y": "4",
-													"width": "90",
-													"height": "11"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
-															"fill": "currentColor"
-														},
-														"children": []
-													}
-												]
-											},
-											{
-												"type": "element",
-												"name": "g",
-												"attributes": {
-													"mask": "url(#mask11_8587_60274)"
-												},
-												"children": [
-													{
-														"type": "element",
-														"name": "path",
-														"attributes": {
-															"d": "M3.64038 10.9989L4.95938 7.60106L6.27838 10.9989H3.64038ZM3.85422 5.15625L0 14.825H2.15505L2.9433 12.7946H6.97558L7.76371 14.825H9.91875L6.06453 5.15625H3.85422Z",
-															"fill": "currentColor",
-															"fill-opacity": "0.92"
-														},
-														"children": []
-													}
-												]
-											}
-										]
-									}
-								]
-							}
-						]
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "clipPath",
-						"attributes": {
-							"id": "clip0_8587_60274"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "rect",
-								"attributes": {
-									"width": "89.375",
-									"height": "10",
-									"fill": "white",
-									"transform": "translate(0 5)"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "AnthropicText"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "90",
+      "height": "20",
+      "viewBox": "0 0 90 20",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "clip-path": "url(#clip0_8587_60274)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "mask",
+            "attributes": {
+              "id": "mask0_8587_60274",
+              "style": "mask-type:luminance",
+              "maskUnits": "userSpaceOnUse",
+              "x": "0",
+              "y": "4",
+              "width": "90",
+              "height": "11"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "M89.375 4.99805H0V14.998H89.375V4.99805Z",
+                  "fill": "currentColor"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "g",
+            "attributes": {
+              "mask": "url(#mask0_8587_60274)"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "mask",
+                "attributes": {
+                  "id": "mask1_8587_60274",
+                  "style": "mask-type:luminance",
+                  "maskUnits": "userSpaceOnUse",
+                  "x": "0",
+                  "y": "4",
+                  "width": "90",
+                  "height": "11"
+                },
+                "children": [
+                  {
+                    "type": "element",
+                    "name": "path",
+                    "attributes": {
+                      "d": "M0 4.99609H89.375V14.9961H0V4.99609Z",
+                      "fill": "currentColor"
+                    },
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "type": "element",
+                "name": "g",
+                "attributes": {
+                  "mask": "url(#mask1_8587_60274)"
+                },
+                "children": [
+                  {
+                    "type": "element",
+                    "name": "mask",
+                    "attributes": {
+                      "id": "mask2_8587_60274",
+                      "style": "mask-type:luminance",
+                      "maskUnits": "userSpaceOnUse",
+                      "x": "0",
+                      "y": "4",
+                      "width": "90",
+                      "height": "11"
+                    },
+                    "children": [
+                      {
+                        "type": "element",
+                        "name": "path",
+                        "attributes": {
+                          "d": "M0 4.99414H89.375V14.9941H0V4.99414Z",
+                          "fill": "currentColor"
+                        },
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "type": "element",
+                    "name": "g",
+                    "attributes": {
+                      "mask": "url(#mask2_8587_60274)"
+                    },
+                    "children": [
+                      {
+                        "type": "element",
+                        "name": "mask",
+                        "attributes": {
+                          "id": "mask3_8587_60274",
+                          "style": "mask-type:luminance",
+                          "maskUnits": "userSpaceOnUse",
+                          "x": "0",
+                          "y": "4",
+                          "width": "90",
+                          "height": "11"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
+                              "fill": "currentColor"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "g",
+                        "attributes": {
+                          "mask": "url(#mask3_8587_60274)"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M18.1273 11.9244L13.7773 5.15625H11.4297V14.825H13.4321V8.05688L17.7821 14.825H20.1297V5.15625H18.1273V11.9244Z",
+                              "fill": "currentColor",
+                              "fill-opacity": "0.92"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "mask",
+                        "attributes": {
+                          "id": "mask4_8587_60274",
+                          "style": "mask-type:luminance",
+                          "maskUnits": "userSpaceOnUse",
+                          "x": "0",
+                          "y": "4",
+                          "width": "90",
+                          "height": "11"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
+                              "fill": "currentColor"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "g",
+                        "attributes": {
+                          "mask": "url(#mask4_8587_60274)"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M21.7969 7.02094H25.0423V14.825H27.1139V7.02094H30.3594V5.15625H21.7969V7.02094Z",
+                              "fill": "currentColor",
+                              "fill-opacity": "0.92"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "mask",
+                        "attributes": {
+                          "id": "mask5_8587_60274",
+                          "style": "mask-type:luminance",
+                          "maskUnits": "userSpaceOnUse",
+                          "x": "0",
+                          "y": "4",
+                          "width": "90",
+                          "height": "11"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
+                              "fill": "currentColor"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "g",
+                        "attributes": {
+                          "mask": "url(#mask5_8587_60274)"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M38.6442 9.00994H34.0871V5.15625H32.0156V14.825H34.0871V10.8746H38.6442V14.825H40.7156V5.15625H38.6442V9.00994Z",
+                              "fill": "currentColor",
+                              "fill-opacity": "0.92"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "mask",
+                        "attributes": {
+                          "id": "mask6_8587_60274",
+                          "style": "mask-type:luminance",
+                          "maskUnits": "userSpaceOnUse",
+                          "x": "0",
+                          "y": "4",
+                          "width": "90",
+                          "height": "11"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
+                              "fill": "currentColor"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "g",
+                        "attributes": {
+                          "mask": "url(#mask6_8587_60274)"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M45.3376 7.02094H47.893C48.9152 7.02094 49.4539 7.39387 49.4539 8.09831C49.4539 8.80275 48.9152 9.17569 47.893 9.17569H45.3376V7.02094ZM51.5259 8.09831C51.5259 6.27506 50.186 5.15625 47.9897 5.15625H43.2656V14.825H45.3376V11.0404H47.6443L49.7164 14.825H52.0094L49.715 10.7521C50.8666 10.3094 51.5259 9.37721 51.5259 8.09831Z",
+                              "fill": "currentColor",
+                              "fill-opacity": "0.92"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "mask",
+                        "attributes": {
+                          "id": "mask7_8587_60274",
+                          "style": "mask-type:luminance",
+                          "maskUnits": "userSpaceOnUse",
+                          "x": "0",
+                          "y": "4",
+                          "width": "90",
+                          "height": "11"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
+                              "fill": "currentColor"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "g",
+                        "attributes": {
+                          "mask": "url(#mask7_8587_60274)"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M57.8732 13.0565C56.2438 13.0565 55.2496 11.8963 55.2496 10.004C55.2496 8.08416 56.2438 6.92394 57.8732 6.92394C59.4887 6.92394 60.4691 8.08416 60.4691 10.004C60.4691 11.8963 59.4887 13.0565 57.8732 13.0565ZM57.8732 4.99023C55.0839 4.99023 53.1094 7.06206 53.1094 10.004C53.1094 12.9184 55.0839 14.9902 57.8732 14.9902C60.6486 14.9902 62.6094 12.9184 62.6094 10.004C62.6094 7.06206 60.6486 4.99023 57.8732 4.99023Z",
+                              "fill": "currentColor",
+                              "fill-opacity": "0.92"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "mask",
+                        "attributes": {
+                          "id": "mask8_8587_60274",
+                          "style": "mask-type:luminance",
+                          "maskUnits": "userSpaceOnUse",
+                          "x": "0",
+                          "y": "4",
+                          "width": "90",
+                          "height": "11"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
+                              "fill": "currentColor"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "g",
+                        "attributes": {
+                          "mask": "url(#mask8_8587_60274)"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M69.1794 9.45194H66.6233V7.02094H69.1794C70.2019 7.02094 70.7407 7.43532 70.7407 8.23644C70.7407 9.03756 70.2019 9.45194 69.1794 9.45194ZM69.2762 5.15625H64.5508V14.825H66.6233V11.3166H69.2762C71.473 11.3166 72.8133 10.1564 72.8133 8.23644C72.8133 6.3165 71.473 5.15625 69.2762 5.15625Z",
+                              "fill": "currentColor",
+                              "fill-opacity": "0.92"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "mask",
+                        "attributes": {
+                          "id": "mask9_8587_60274",
+                          "style": "mask-type:luminance",
+                          "maskUnits": "userSpaceOnUse",
+                          "x": "0",
+                          "y": "4",
+                          "width": "90",
+                          "height": "11"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
+                              "fill": "currentColor"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "g",
+                        "attributes": {
+                          "mask": "url(#mask9_8587_60274)"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M86.8413 11.5786C86.4823 12.5179 85.7642 13.0565 84.7837 13.0565C83.1542 13.0565 82.16 11.8963 82.16 10.004C82.16 8.08416 83.1542 6.92394 84.7837 6.92394C85.7642 6.92394 86.4823 7.46261 86.8413 8.40183H89.0369C88.4984 6.33002 86.8827 4.99023 84.7837 4.99023C81.9942 4.99023 80.0195 7.06206 80.0195 10.004C80.0195 12.9184 81.9942 14.9902 84.7837 14.9902C86.8965 14.9902 88.5122 13.6366 89.0508 11.5786H86.8413Z",
+                              "fill": "currentColor",
+                              "fill-opacity": "0.92"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "mask",
+                        "attributes": {
+                          "id": "mask10_8587_60274",
+                          "style": "mask-type:luminance",
+                          "maskUnits": "userSpaceOnUse",
+                          "x": "0",
+                          "y": "4",
+                          "width": "90",
+                          "height": "11"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
+                              "fill": "currentColor"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "g",
+                        "attributes": {
+                          "mask": "url(#mask10_8587_60274)"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M73.6484 5.15625L77.5033 14.825H79.6172L75.7624 5.15625H73.6484Z",
+                              "fill": "currentColor",
+                              "fill-opacity": "0.92"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "mask",
+                        "attributes": {
+                          "id": "mask11_8587_60274",
+                          "style": "mask-type:luminance",
+                          "maskUnits": "userSpaceOnUse",
+                          "x": "0",
+                          "y": "4",
+                          "width": "90",
+                          "height": "11"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M0 4.99219H89.375V14.9922H0V4.99219Z",
+                              "fill": "currentColor"
+                            },
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "element",
+                        "name": "g",
+                        "attributes": {
+                          "mask": "url(#mask11_8587_60274)"
+                        },
+                        "children": [
+                          {
+                            "type": "element",
+                            "name": "path",
+                            "attributes": {
+                              "d": "M3.64038 10.9989L4.95938 7.60106L6.27838 10.9989H3.64038ZM3.85422 5.15625L0 14.825H2.15505L2.9433 12.7946H6.97558L7.76371 14.825H9.91875L6.06453 5.15625H3.85422Z",
+                              "fill": "currentColor",
+                              "fill-opacity": "0.92"
+                            },
+                            "children": []
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "clipPath",
+            "attributes": {
+              "id": "clip0_8587_60274"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "rect",
+                "attributes": {
+                  "width": "89.375",
+                  "height": "10",
+                  "fill": "white",
+                  "transform": "translate(0 5)"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "AnthropicText"
 }

@@ -29,7 +29,7 @@ from core.workflow.node_events import (
 )
 from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.loop.entities import LoopNodeData, LoopVariableData
+from core.workflow.nodes.loop.entities import LoopCompletedReason, LoopNodeData, LoopVariableData
 from core.workflow.utils.condition.processor import ConditionProcessor
 from factories.variable_factory import TypeMismatchError, build_segment_with_type, segment_to_variable
 from libs.datetime_utils import naive_utc_now
@@ -96,6 +96,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         loop_duration_map: dict[str, float] = {}
         single_loop_variable_map: dict[str, dict[str, Any]] = {}  # single loop variable output
         loop_usage = LLMUsage.empty_usage()
+        loop_node_ids = self._extract_loop_node_ids_from_config(self.graph_config, self._node_id)
 
         # Start Loop event
         yield LoopStartedEvent(
@@ -118,6 +119,8 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                 loop_count = 0
 
             for i in range(loop_count):
+                # Clear stale variables from previous loop iterations to avoid streaming old values
+                self._clear_loop_subgraph_variables(loop_node_ids)
                 graph_engine = self._create_graph_engine(start_at=start_at, root_node_id=root_node_id)
 
                 loop_start_time = naive_utc_now()
@@ -177,7 +180,11 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                     WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: loop_usage.total_tokens,
                     WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: loop_usage.total_price,
                     WorkflowNodeExecutionMetadataKey.CURRENCY: loop_usage.currency,
-                    "completed_reason": "loop_break" if reach_break_condition else "loop_completed",
+                    WorkflowNodeExecutionMetadataKey.COMPLETED_REASON: (
+                        LoopCompletedReason.LOOP_BREAK
+                        if reach_break_condition
+                        else LoopCompletedReason.LOOP_COMPLETED.value
+                    ),
                     WorkflowNodeExecutionMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
                     WorkflowNodeExecutionMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
                 },
@@ -273,6 +280,17 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         current_metadata = event.node_run_result.metadata
         if WorkflowNodeExecutionMetadataKey.LOOP_ID not in current_metadata:
             event.node_run_result.metadata = {**current_metadata, **loop_metadata}
+
+    def _clear_loop_subgraph_variables(self, loop_node_ids: set[str]) -> None:
+        """
+        Remove variables produced by loop sub-graph nodes from previous iterations.
+
+        Keeping stale variables causes a freshly created response coordinator in the
+        next iteration to fall back to outdated values when no stream chunks exist.
+        """
+        variable_pool = self.graph_runtime_state.variable_pool
+        for node_id in loop_node_ids:
+            variable_pool.remove([node_id])
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
@@ -395,11 +413,11 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
 
     def _create_graph_engine(self, start_at: datetime, root_node_id: str):
         # Import dependencies
+        from core.app.workflow.node_factory import DifyNodeFactory
         from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine
+        from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
         from core.workflow.graph_engine.command_channels import InMemoryChannel
-        from core.workflow.nodes.node_factory import DifyNodeFactory
         from core.workflow.runtime import GraphRuntimeState
 
         # Create GraphInitParams from node attributes
@@ -434,6 +452,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             graph=loop_graph,
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
+            config=GraphEngineConfig(),
         )
 
         return graph_engine

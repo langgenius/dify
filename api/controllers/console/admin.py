@@ -6,18 +6,19 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
 
-P = ParamSpec("P")
-R = TypeVar("R")
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import console_ns
 from controllers.console.wraps import only_edition_cloud
+from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from libs.token import extract_access_token
-from models.model import App, InstalledApp, RecommendedApp
+from models.model import App, ExporleBanner, InstalledApp, RecommendedApp, TrialApp
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -31,6 +32,8 @@ class InsertExploreAppPayload(BaseModel):
     language: str = Field(...)
     category: str = Field(...)
     position: int = Field(...)
+    can_trial: bool = Field(default=False)
+    trial_limit: int = Field(default=0)
 
     @field_validator("language")
     @classmethod
@@ -38,9 +41,31 @@ class InsertExploreAppPayload(BaseModel):
         return supported_language(value)
 
 
+class InsertExploreBannerPayload(BaseModel):
+    category: str = Field(...)
+    title: str = Field(...)
+    description: str = Field(...)
+    img_src: str = Field(..., alias="img-src")
+    language: str = Field(default="en-US")
+    link: str = Field(...)
+    sort: int = Field(...)
+
+    @field_validator("language")
+    @classmethod
+    def validate_language(cls, value: str) -> str:
+        return supported_language(value)
+
+    model_config = {"populate_by_name": True}
+
+
 console_ns.schema_model(
     InsertExploreAppPayload.__name__,
     InsertExploreAppPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+console_ns.schema_model(
+    InsertExploreBannerPayload.__name__,
+    InsertExploreBannerPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
 
 
@@ -90,7 +115,7 @@ class InsertExploreAppListApi(Resource):
             privacy_policy = site.privacy_policy or payload.privacy_policy or ""
             custom_disclaimer = site.custom_disclaimer or payload.custom_disclaimer or ""
 
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             recommended_app = session.execute(
                 select(RecommendedApp).where(RecommendedApp.app_id == payload.app_id)
             ).scalar_one_or_none()
@@ -108,6 +133,20 @@ class InsertExploreAppListApi(Resource):
                 )
 
                 db.session.add(recommended_app)
+                if payload.can_trial:
+                    trial_app = db.session.execute(
+                        select(TrialApp).where(TrialApp.app_id == payload.app_id)
+                    ).scalar_one_or_none()
+                    if not trial_app:
+                        db.session.add(
+                            TrialApp(
+                                app_id=payload.app_id,
+                                tenant_id=app.tenant_id,
+                                trial_limit=payload.trial_limit,
+                            )
+                        )
+                    else:
+                        trial_app.trial_limit = payload.trial_limit
 
                 app.is_public = True
                 db.session.commit()
@@ -122,6 +161,20 @@ class InsertExploreAppListApi(Resource):
                 recommended_app.category = payload.category
                 recommended_app.position = payload.position
 
+                if payload.can_trial:
+                    trial_app = db.session.execute(
+                        select(TrialApp).where(TrialApp.app_id == payload.app_id)
+                    ).scalar_one_or_none()
+                    if not trial_app:
+                        db.session.add(
+                            TrialApp(
+                                app_id=payload.app_id,
+                                tenant_id=app.tenant_id,
+                                trial_limit=payload.trial_limit,
+                            )
+                        )
+                    else:
+                        trial_app.trial_limit = payload.trial_limit
                 app.is_public = True
 
                 db.session.commit()
@@ -138,7 +191,7 @@ class InsertExploreAppApi(Resource):
     @only_edition_cloud
     @admin_required
     def delete(self, app_id):
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             recommended_app = session.execute(
                 select(RecommendedApp).where(RecommendedApp.app_id == str(app_id))
             ).scalar_one_or_none()
@@ -146,13 +199,13 @@ class InsertExploreAppApi(Resource):
         if not recommended_app:
             return {"result": "success"}, 204
 
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             app = session.execute(select(App).where(App.id == recommended_app.app_id)).scalar_one_or_none()
 
         if app:
             app.is_public = False
 
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             installed_apps = (
                 session.execute(
                     select(InstalledApp).where(
@@ -167,7 +220,60 @@ class InsertExploreAppApi(Resource):
             for installed_app in installed_apps:
                 session.delete(installed_app)
 
+            trial_app = session.execute(
+                select(TrialApp).where(TrialApp.app_id == recommended_app.app_id)
+            ).scalar_one_or_none()
+            if trial_app:
+                session.delete(trial_app)
+
         db.session.delete(recommended_app)
+        db.session.commit()
+
+        return {"result": "success"}, 204
+
+
+@console_ns.route("/admin/insert-explore-banner")
+class InsertExploreBannerApi(Resource):
+    @console_ns.doc("insert_explore_banner")
+    @console_ns.doc(description="Insert an explore banner")
+    @console_ns.expect(console_ns.models[InsertExploreBannerPayload.__name__])
+    @console_ns.response(201, "Banner inserted successfully")
+    @only_edition_cloud
+    @admin_required
+    def post(self):
+        payload = InsertExploreBannerPayload.model_validate(console_ns.payload)
+
+        banner = ExporleBanner(
+            content={
+                "category": payload.category,
+                "title": payload.title,
+                "description": payload.description,
+                "img-src": payload.img_src,
+            },
+            link=payload.link,
+            sort=payload.sort,
+            language=payload.language,
+        )
+        db.session.add(banner)
+        db.session.commit()
+
+        return {"result": "success"}, 201
+
+
+@console_ns.route("/admin/delete-explore-banner/<uuid:banner_id>")
+class DeleteExploreBannerApi(Resource):
+    @console_ns.doc("delete_explore_banner")
+    @console_ns.doc(description="Delete an explore banner")
+    @console_ns.doc(params={"banner_id": "Banner ID to delete"})
+    @console_ns.response(204, "Banner deleted successfully")
+    @only_edition_cloud
+    @admin_required
+    def delete(self, banner_id):
+        banner = db.session.execute(select(ExporleBanner).where(ExporleBanner.id == banner_id)).scalar_one_or_none()
+        if not banner:
+            raise NotFound(f"Banner '{banner_id}' is not found")
+
+        db.session.delete(banner)
         db.session.commit()
 
         return {"result": "success"}, 204

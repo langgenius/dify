@@ -1,8 +1,41 @@
-import { merge, noop } from 'lodash-es'
-import { defaultPlan } from '@/app/components/billing/config'
-import { baseProviderContextValue } from '@/context/provider-context'
-import type { ProviderContextState } from '@/context/provider-context'
 import type { Plan, UsagePlanInfo } from '@/app/components/billing/type'
+import type { ProviderContextState } from '@/context/provider-context'
+import { merge } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
+import { defaultPlan } from '@/app/components/billing/config'
+
+// Avoid being mocked in tests
+export const baseProviderContextValue: ProviderContextState = {
+  modelProviders: [],
+  refreshModelProviders: noop,
+  textGenerationModelList: [],
+  supportRetrievalMethods: [],
+  isAPIKeySet: true,
+  plan: defaultPlan,
+  isFetchedPlan: false,
+  enableBilling: false,
+  onPlanInfoChanged: noop,
+  enableReplaceWebAppLogo: false,
+  modelLoadBalancingEnabled: false,
+  datasetOperatorEnabled: false,
+  enableEducationPlan: false,
+  isEducationWorkspace: false,
+  isEducationAccount: false,
+  allowRefreshEducationVerify: false,
+  educationAccountExpireAt: null,
+  isLoadingEducationAccountInfo: false,
+  isFetchingEducationAccountInfo: false,
+  webappCopyrightEnabled: false,
+  licenseLimit: {
+    workspace_members: {
+      size: 0,
+      limit: 0,
+    },
+  },
+  refreshLicenseLimit: noop,
+  isAllowTransferWorkspace: false,
+  isAllowPublishAsCustomKnowledgePipelineTemplate: false,
+}
 
 export const createMockProviderContextValue = (overrides: Partial<ProviderContextState> = {}): ProviderContextState => {
   const merged = merge({}, baseProviderContextValue, overrides)

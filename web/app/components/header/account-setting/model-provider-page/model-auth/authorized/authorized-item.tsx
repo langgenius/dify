@@ -1,15 +1,15 @@
-import {
-  memo,
-  useCallback,
-} from 'react'
-import CredentialItem from './credential-item'
 import type {
   Credential,
   CustomModel,
   CustomModelCredential,
   ModelProvider,
 } from '../../declarations'
+import {
+  memo,
+  useCallback,
+} from 'react'
 import ModelIcon from '../../model-icon'
+import CredentialItem from './credential-item'
 
 type AuthorizedItemProps = {
   provider: ModelProvider
@@ -54,23 +54,23 @@ export const AuthorizedItem = ({
   }, [onItemClick, model])
 
   return (
-    <div className='p-1'>
+    <div className="p-1">
       {
         showModelTitle && (
           <div
-            className='flex h-9 items-center px-2'
+            className="flex h-9 items-center px-2"
           >
             {
               model?.model && (
                 <ModelIcon
-                  className='mr-1 h-5 w-5 shrink-0'
+                  className="mr-1 h-5 w-5 shrink-0"
                   provider={provider}
                   modelName={model.model}
                 />
               )
             }
             <div
-              className='system-md-medium mx-1 grow truncate text-text-primary'
+              className="system-md-medium mx-1 grow truncate text-text-primary"
               title={title ?? model?.model}
             >
               {title ?? model?.model}

@@ -90,7 +90,7 @@ jobs:
           touch "/tmp/digests/${sanitized_digest}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: digests-${{ matrix.context }}-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
@@ -112,7 +112,7 @@ jobs:
             context: "web"
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: /tmp/digests
           pattern: digests-${{ matrix.context }}-*

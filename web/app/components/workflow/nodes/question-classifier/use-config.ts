@@ -1,21 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { produce } from 'immer'
-import { BlockEnum, VarType } from '../../types'
 import type { Memory, ValueSelector, Var } from '../../types'
+import type { QuestionClassifierNodeType, Topic } from './types'
+import { produce } from 'immer'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useUpdateNodeInternals } from 'reactflow'
+import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { AppModeEnum } from '@/types/app'
 import {
-  useIsChatMode, useNodesReadOnly,
+  useIsChatMode,
+  useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
-import { useStore } from '../../store'
-import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useConfigVision from '../../hooks/use-config-vision'
-import type { QuestionClassifierNodeType, Topic } from './types'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
-import { useUpdateNodeInternals } from 'reactflow'
-import { AppModeEnum } from '@/types/app'
+import { useStore } from '../../store'
+import { BlockEnum, VarType } from '../../types'
+import useAvailableVarList from '../_base/hooks/use-available-var-list'
 
 const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const updateNodeInternals = useUpdateNodeInternals()
@@ -56,7 +57,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     },
   })
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId

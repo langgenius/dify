@@ -1,6 +1,6 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { fn } from 'storybook/test'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
+import { fn } from 'storybook/test'
 import DrawerPlus from '.'
 
 const meta = {
@@ -103,12 +103,12 @@ export const WithFooter: Story = {
                 <p>Populate the body with scrollable content. Footer stays pinned.</p>
               </div>
             )}
-            foot={
+            foot={(
               <div className="flex justify-end gap-2 border-t border-divider-subtle bg-components-panel-bg p-4">
                 <button className="rounded-md border border-divider-subtle px-3 py-1.5 text-sm text-text-secondary" onClick={() => setOpen(false)}>Cancel</button>
                 <button className="rounded-md bg-primary-600 px-3 py-1.5 text-sm text-white">Save</button>
               </div>
-            }
+            )}
           />
         </div>
       )

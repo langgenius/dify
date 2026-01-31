@@ -1,11 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  useRouter,
-} from 'next/navigation'
-import { useTranslation } from 'react-i18next'
-import { useDebounceFn } from 'ahooks'
+import type { FC } from 'react'
 import {
   RiApps2Line,
   RiDragDropLine,
@@ -14,25 +9,43 @@ import {
   RiMessage3Line,
   RiRobot3Line,
 } from '@remixicon/react'
-import AppCard from './app-card'
-import NewAppCard from './new-app-card'
-import useAppsQueryState from './hooks/use-apps-query-state'
-import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
-import { useAppContext } from '@/context/app-context'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { CheckModal } from '@/hooks/use-pay'
-import TabSliderNew from '@/app/components/base/tab-slider-new'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
-import Input from '@/app/components/base/input'
-import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
-import TagFilter from '@/app/components/base/tag-management/filter'
-import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
+import { useDebounceFn } from 'ahooks'
 import dynamic from 'next/dynamic'
+import {
+  useRouter,
+} from 'next/navigation'
+import { parseAsString, useQueryState } from 'nuqs'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import TabSliderNew from '@/app/components/base/tab-slider-new'
+import TagFilter from '@/app/components/base/tag-management/filter'
+import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
+import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useAppContext } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { CheckModal } from '@/hooks/use-pay'
+import { useInfiniteAppList } from '@/service/use-apps'
+import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import AppCard from './app-card'
+import { AppCardSkeleton } from './app-card-skeleton'
 import Empty from './empty'
 import Footer from './footer'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { AppModeEnum } from '@/types/app'
-import { useInfiniteAppList } from '@/service/use-apps'
+import useAppsQueryState from './hooks/use-apps-query-state'
+import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
+import NewAppCard from './new-app-card'
+
+// Define valid tabs at module scope to avoid re-creation on each render and stale closures
+const validTabs = new Set<string | AppModeEnum>([
+  'all',
+  AppModeEnum.WORKFLOW,
+  AppModeEnum.ADVANCED_CHAT,
+  AppModeEnum.CHAT,
+  AppModeEnum.AGENT_CHAT,
+  AppModeEnum.COMPLETION,
+])
 
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
@@ -41,15 +54,22 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
   ssr: false,
 })
 
-const List = () => {
+type Props = {
+  controlRefreshList?: number
+}
+const List: FC<Props> = ({
+  controlRefreshList = 0,
+}) => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
-  const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: 'all',
-  })
+  const [activeTab, setActiveTab] = useQueryState(
+    'category',
+    parseAsString.withDefault('all').withOptions({ history: 'push' }),
+  )
+
   const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
@@ -88,6 +108,7 @@ const List = () => {
   const {
     data,
     isLoading,
+    isFetching,
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
@@ -95,14 +116,21 @@ const List = () => {
     refetch,
   } = useInfiniteAppList(appListQueryParams, { enabled: !isCurrentWorkspaceDatasetOperator })
 
+  useEffect(() => {
+    if (controlRefreshList > 0) {
+      refetch()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlRefreshList])
+
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('app.types.all'), icon: <RiApps2Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: AppModeEnum.WORKFLOW, text: t('app.types.workflow'), icon: <RiExchange2Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('app.types.advanced'), icon: <RiMessage3Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: AppModeEnum.CHAT, text: t('app.types.chatbot'), icon: <RiMessage3Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('app.types.agent'), icon: <RiRobot3Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: AppModeEnum.COMPLETION, text: t('app.types.completion'), icon: <RiFile4Line className='mr-1 h-[14px] w-[14px]' /> },
+    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <RiApps2Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <RiExchange2Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <RiRobot3Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <RiFile4Line className="mr-1 h-[14px] w-[14px]" /> },
   ]
 
   useEffect(() => {
@@ -171,70 +199,90 @@ const List = () => {
 
   const pages = data?.pages ?? []
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
+  // Show skeleton during initial load or when refetching with no previous data
+  const showSkeleton = isLoading || (isFetching && pages.length === 0)
 
   return (
     <>
-      <div ref={containerRef} className='relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body'>
+      <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
         {dragging && (
           <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2">
           </div>
         )}
 
-        <div className='sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-5 pt-7'>
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-5 pt-7">
           <TabSliderNew
             value={activeTab}
             onChange={setActiveTab}
             options={options}
           />
-          <div className='flex items-center gap-2'>
+          <div className="flex items-center gap-2">
             <CheckboxWithLabel
-              className='mr-2'
-              label={t('app.showMyCreatedAppsOnly')}
+              className="mr-2"
+              label={t('showMyCreatedAppsOnly', { ns: 'app' })}
               isChecked={isCreatedByMe}
               onChange={handleCreatedByMeChange}
             />
-            <TagFilter type='app' value={tagFilterValue} onChange={handleTagsChange} />
+            <TagFilter type="app" value={tagFilterValue} onChange={handleTagsChange} />
             <Input
               showLeftIcon
               showClearIcon
-              wrapperClassName='w-[200px]'
+              wrapperClassName="w-[200px]"
               value={keywords}
               onChange={e => handleKeywordsChange(e.target.value)}
               onClear={() => handleKeywordsChange('')}
             />
           </div>
         </div>
-        {hasAnyApp
-          ? <div className='relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
-            {isCurrentWorkspaceEditor
-              && <NewAppCard ref={newAppCardRef} onSuccess={refetch} selectedAppType={activeTab} />}
-            {pages.map(({ data: apps }) => apps.map(app => (
-              <AppCard key={app.id} app={app} onRefresh={refetch} />
-            )))}
-          </div>
-          : <div className='relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
-            {isCurrentWorkspaceEditor
-              && <NewAppCard ref={newAppCardRef} className='z-10' onSuccess={refetch} selectedAppType={activeTab} />}
-            <Empty />
-          </div>}
+        <div className={cn(
+          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
+          !hasAnyApp && 'overflow-hidden',
+        )}
+        >
+          {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
+            <NewAppCard
+              ref={newAppCardRef}
+              isLoading={isLoadingCurrentWorkspace}
+              onSuccess={refetch}
+              selectedAppType={activeTab}
+              className={cn(!hasAnyApp && 'z-10')}
+            />
+          )}
+          {(() => {
+            if (showSkeleton)
+              return <AppCardSkeleton count={6} />
+
+            if (hasAnyApp) {
+              return pages.flatMap(({ data: apps }) => apps).map(app => (
+                <AppCard key={app.id} app={app} onRefresh={refetch} />
+              ))
+            }
+
+            // No apps - show empty state
+            return <Empty />
+          })()}
+          {isFetchingNextPage && (
+            <AppCardSkeleton count={3} />
+          )}
+        </div>
 
         {isCurrentWorkspaceEditor && (
           <div
             className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
             role="region"
-            aria-label={t('app.newApp.dropDSLToCreateApp')}
+            aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
           >
             <RiDragDropLine className="h-4 w-4" />
-            <span className="system-xs-regular">{t('app.newApp.dropDSLToCreateApp')}</span>
+            <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
         )}
         {!systemFeatures.branding.enabled && (
           <Footer />
         )}
         <CheckModal />
-        <div ref={anchorRef} className='h-0'> </div>
+        <div ref={anchorRef} className="h-0"> </div>
         {showTagManagementModal && (
-          <TagManagementModal type='app' show={showTagManagementModal} />
+          <TagManagementModal type="app" show={showTagManagementModal} />
         )}
       </div>
 

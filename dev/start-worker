@@ -37,6 +37,7 @@ show_help() {
   echo "  pipeline              - Standard pipeline tasks"
   echo "  triggered_workflow_dispatcher - Trigger dispatcher tasks"
   echo "  trigger_refresh_executor - Trigger refresh tasks"
+  echo "  retention               - Retention tasks"
 }
 
 # Parse command line arguments
@@ -82,7 +83,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
-cd "$SCRIPT_DIR/.."
+cd "$SCRIPT_DIR/../api"
 
 if [[ -n "${ENV_FILE}" ]]; then
   if [[ ! -f "${ENV_FILE}" ]]; then
@@ -105,10 +106,10 @@ if [[ -z "${QUEUES}" ]]; then
   # Configure queues based on edition
   if [[ "${EDITION}" == "CLOUD" ]]; then
     # Cloud edition: separate queues for dataset and trigger tasks
-    QUEUES="dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor"
+    QUEUES="dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention"
   else
     # Community edition (SELF_HOSTED): dataset and workflow have separate queues
-    QUEUES="dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor"
+    QUEUES="dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention"
   fi
 
   echo "No queues specified, using edition-based defaults: ${QUEUES}"
@@ -122,6 +123,6 @@ echo "  Concurrency: ${CONCURRENCY}"
 echo "  Pool: ${POOL}"
 echo "  Log Level: ${LOGLEVEL}"
 
-uv --directory api run \
+uv run \
   celery -A app.celery worker \
   -P ${POOL} -c ${CONCURRENCY} --loglevel ${LOGLEVEL} -Q ${QUEUES}

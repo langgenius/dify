@@ -1,5 +1,5 @@
-import type { FileUploadConfigResponse } from '@/models/common'
 import type { FileEntity } from './types'
+import type { FileUploadConfigResponse } from '@/models/common'
 import {
   DEFAULT_IMAGE_FILE_BATCH_LIMIT,
   DEFAULT_IMAGE_FILE_SIZE_LIMIT,

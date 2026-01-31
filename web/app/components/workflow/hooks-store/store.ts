@@ -1,26 +1,22 @@
+import type { FileUpload } from '../../base/features/types'
+import type {
+  BlockEnum,
+  Node,
+  NodeDefault,
+  ToolWithProvider,
+  ValueSelector,
+} from '@/app/components/workflow/types'
+import type { IOtherOptions } from '@/service/base'
+import type { SchemaTypeDefinition } from '@/service/use-common'
+import type { FlowType } from '@/types/common'
+import type { VarInInspect } from '@/types/workflow'
+import { noop } from 'es-toolkit/function'
 import { useContext } from 'react'
-import {
-  noop,
-} from 'lodash-es'
 import {
   useStore as useZustandStore,
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { HooksStoreContext } from './provider'
-import type {
-  BlockEnum,
-  NodeDefault,
-  ToolWithProvider,
-} from '@/app/components/workflow/types'
-import type { IOtherOptions } from '@/service/base'
-import type { VarInInspect } from '@/types/workflow'
-import type {
-  Node,
-  ValueSelector,
-} from '@/app/components/workflow/types'
-import type { FlowType } from '@/types/common'
-import type { FileUpload } from '../../base/features/types'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 
 export type AvailableNodesMetaData = {
   nodes: NodeDefault[]
@@ -32,7 +28,7 @@ export type CommonHooksFnMap = {
     callback?: {
       onSuccess?: () => void
       onError?: () => void
-      onSettled?: () => void,
+      onSettled?: () => void
     },
   ) => Promise<void>
   syncWorkflowDraftWhenPageClose: () => void
@@ -50,7 +46,7 @@ export type CommonHooksFnMap = {
   handleWorkflowTriggerPluginRunInWorkflow: (nodeId?: string) => void
   handleWorkflowRunAllTriggersInWorkflow: (nodeIds: string[]) => void
   availableNodesMetaData?: AvailableNodesMetaData
-  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
+  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string, traceUrl: string }
   exportCheck?: () => Promise<void>
   handleExportDSL?: (include?: boolean, flowId?: string) => Promise<void>
   fetchInspectVars: (params: { passInVars?: boolean, vars?: VarInInspect[], passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>, passedInSchemaTypeDefinitions?: SchemaTypeDefinition[] }) => Promise<void>

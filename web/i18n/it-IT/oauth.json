@@ -1,0 +1,19 @@
+{
+  "connect": "Connetti a",
+  "continue": "Continua",
+  "error.authAppInfoFetchFailed": "Impossibile recuperare le informazioni sull'app per l'autorizzazione",
+  "error.authorizeFailed": "Autorizzazione fallita",
+  "error.invalidParams": "Parametri non validi",
+  "login": "Accesso",
+  "scopes.avatar": "Avatar",
+  "scopes.email": "Email",
+  "scopes.languagePreference": "Preferenza Linguistica",
+  "scopes.name": "Nome",
+  "scopes.timezone": "Fuso orario",
+  "switchAccount": "Cambia account",
+  "tips.common": "Rispettiamo la tua privacy e utilizzeremo queste informazioni solo per migliorare la tua esperienza con i nostri strumenti per sviluppatori.",
+  "tips.loggedIn": "Questa app vuole accedere alle seguenti informazioni dal tuo account Dify Cloud.",
+  "tips.needLogin": "Per favore, accedi per autorizzare",
+  "tips.notLoggedIn": "Questa app vuole accedere al tuo account Dify Cloud",
+  "unknownApp": "App sconosciuta"
+}

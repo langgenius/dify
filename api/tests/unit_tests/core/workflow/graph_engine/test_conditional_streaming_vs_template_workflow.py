@@ -7,7 +7,7 @@ This test validates that:
 """
 
 from core.workflow.enums import NodeType
-from core.workflow.graph_engine import GraphEngine
+from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_events import (
     GraphRunSucceededEvent,
@@ -44,6 +44,7 @@ def test_streaming_output_with_blocking_equals_one():
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
+        config=GraphEngineConfig(),
     )
 
     # Execute the workflow
@@ -139,6 +140,7 @@ def test_streaming_output_with_blocking_not_equals_one():
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
+        config=GraphEngineConfig(),
     )
 
     # Execute the workflow

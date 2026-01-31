@@ -1,9 +1,9 @@
 'use client'
 import { useSearchParams } from 'next/navigation'
-import OneMoreStep from './one-more-step'
-import NormalForm from './normal-form'
 import { useEffect } from 'react'
 import usePSInfo from '../components/billing/partner-stack/use-ps-info'
+import NormalForm from './normal-form'
+import OneMoreStep from './one-more-step'
 
 const SignIn = () => {
   const searchParams = useSearchParams()

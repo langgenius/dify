@@ -1,9 +1,9 @@
 import type { AfterResponseHook, BeforeErrorHook, BeforeRequestHook, Hooks } from 'ky'
-import ky from 'ky'
 import type { IOtherOptions } from './base'
+import Cookies from 'js-cookie'
+import ky from 'ky'
 import Toast from '@/app/components/base/toast'
 import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_MARKETPLACE, MARKETPLACE_API_PREFIX, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
-import Cookies from 'js-cookie'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -24,7 +24,12 @@ export type FetchOptionType = Omit<RequestInit, 'body'> & {
 }
 
 const afterResponse204: AfterResponseHook = async (_request, _options, response) => {
-  if (response.status === 204) return Response.json({ result: 'success' })
+  if (response.status === 204) {
+    return new Response(JSON.stringify({ result: 'success' }), {
+      status: 200,
+      headers: { 'Content-Type': ContentType.json },
+    })
+  }
 }
 
 export type ResponseError = {
@@ -126,8 +131,25 @@ export const getBaseOptions = (): RequestInit => ({
 })
 
 async function base<T>(url: string, options: FetchOptionType = {}, otherOptions: IOtherOptions = {}): Promise<T> {
-  const baseOptions = getBaseOptions()
-  const { params, body, headers, ...init } = Object.assign({}, baseOptions, options)
+  // In fetchCompat mode, skip baseOptions to avoid overriding Request object's method, headers,
+  const baseOptions = otherOptions.fetchCompat
+    ? {
+        mode: 'cors',
+        credentials: 'include', // always send cookies、HTTP Basic authentication.
+        redirect: 'follow',
+      }
+    : {
+        mode: 'cors',
+        credentials: 'include', // always send cookies、HTTP Basic authentication.
+        headers: new Headers({
+          'Content-Type': ContentType.json,
+        }),
+        method: 'GET',
+        redirect: 'follow',
+      }
+  const { params, body, headers: headersFromProps, ...init } = Object.assign({}, baseOptions, options)
+  const headers = new Headers(headersFromProps || {})
+
   const {
     isPublicAPI = false,
     isMarketplaceAPI = false,
@@ -135,6 +157,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     needAllResponseContent,
     deleteContentType,
     getAbortController,
+    fetchCompat = false,
+    request,
   } = otherOptions
 
   let base: string
@@ -153,14 +177,14 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
 
   const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
   if (!isMarketplaceAPI)
-    (headers as any).set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
+    headers.set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
 
   if (deleteContentType)
-    (headers as any).delete('Content-Type')
+    headers.delete('Content-Type')
 
   // ! For Marketplace API, help to filter tags added in new version
   if (isMarketplaceAPI)
-    (headers as any).set('X-Dify-Version', !IS_MARKETPLACE ? APP_VERSION : '999.0.0')
+    headers.set('X-Dify-Version', !IS_MARKETPLACE ? APP_VERSION : '999.0.0')
 
   const client = baseClient.extend({
     hooks: {
@@ -180,7 +204,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     },
   })
 
-  const res = await client(fetchPathname, {
+  const res = await client(request || fetchPathname, {
     ...init,
     headers,
     credentials: isMarketplaceAPI
@@ -189,8 +213,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     retry: {
       methods: [],
     },
-    ...(bodyStringify ? { json: body } : { body: body as BodyInit }),
-    searchParams: params,
+    ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
+    searchParams: !fetchCompat ? params : undefined,
     fetch(resource: RequestInfo | URL, options?: RequestInit) {
       if (resource instanceof Request && options) {
         const mergedHeaders = new Headers(options.headers || {})
@@ -203,14 +227,15 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     },
   })
 
-  if (needAllResponseContent)
+  if (needAllResponseContent || fetchCompat)
     return res as T
   const contentType = res.headers.get('content-type')
   if (
     contentType
     && [ContentType.download, ContentType.audio, ContentType.downloadZip].includes(contentType)
-  )
+  ) {
     return await res.blob() as T
+  }
 
   return await res.json() as T
 }

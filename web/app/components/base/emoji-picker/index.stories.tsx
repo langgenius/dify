@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import EmojiPicker from '.'
 
@@ -28,7 +28,7 @@ type Story = StoryObj<typeof meta>
 
 const EmojiPickerDemo = () => {
   const [open, setOpen] = useState(false)
-  const [selection, setSelection] = useState<{ emoji: string; background: string } | null>(null)
+  const [selection, setSelection] = useState<{ emoji: string, background: string } | null>(null)
 
   return (
     <div className="flex min-h-[320px] flex-col items-start gap-4 px-6 py-8 md:px-12">

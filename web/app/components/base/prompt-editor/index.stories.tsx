@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 
 // Mock component to avoid complex initialization issues
@@ -207,13 +207,17 @@ const MultipleEditorsDemo = () => {
           <div className="whitespace-pre-wrap text-sm text-gray-800">
             {systemPrompt && (
               <>
-                <strong>System:</strong> {systemPrompt}
+                <strong>System:</strong>
+                {' '}
+                {systemPrompt}
                 {userPrompt && '\n\n'}
               </>
             )}
             {userPrompt && (
               <>
-                <strong>User:</strong> {userPrompt}
+                <strong>User:</strong>
+                {' '}
+                {userPrompt}
               </>
             )}
           </div>
@@ -293,7 +297,11 @@ const ChatPromptBuilderDemo = () => {
     <div style={{ width: '700px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold">Chat Prompt Builder</h3>
-        <span className="text-xs text-gray-500">{characterCount} characters</span>
+        <span className="text-xs text-gray-500">
+          {characterCount}
+          {' '}
+          characters
+        </span>
       </div>
       <div className="min-h-[200px] rounded-lg border border-gray-300 bg-gray-50 p-4">
         <PromptEditorMock
@@ -303,7 +311,15 @@ const ChatPromptBuilderDemo = () => {
         />
       </div>
       <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
-        💡 <strong>Tip:</strong> Type <code className="rounded bg-blue-100 px-1 py-0.5">/</code> to insert variables or templates
+        💡
+        {' '}
+        <strong>Tip:</strong>
+        {' '}
+        Type
+        {' '}
+        <code className="rounded bg-blue-100 px-1 py-0.5">/</code>
+        {' '}
+        to insert variables or templates
       </div>
     </div>
   )

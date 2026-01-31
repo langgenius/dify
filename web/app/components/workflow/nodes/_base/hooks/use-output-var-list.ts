@@ -1,6 +1,3 @@
-import { useCallback, useRef, useState } from 'react'
-import { produce } from 'immer'
-import { useBoolean, useDebounceFn } from 'ahooks'
 import type {
   CodeNodeType,
   OutputVar,
@@ -8,15 +5,18 @@ import type {
 import type {
   ValueSelector,
 } from '@/app/components/workflow/types'
-import {
-  BlockEnum,
-  VarType,
-} from '@/app/components/workflow/types'
+import { useBoolean, useDebounceFn } from 'ahooks'
+import { produce } from 'immer'
+import { useCallback, useRef, useState } from 'react'
 import {
   useWorkflow,
 } from '@/app/components/workflow/hooks'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { getDefaultValue } from '@/app/components/workflow/nodes/_base/components/error-handle/utils'
+import {
+  BlockEnum,
+  VarType,
+} from '@/app/components/workflow/types'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 
 type Params<T> = {
@@ -74,7 +74,7 @@ function useOutputVarList<T>({
 
     if (newKey) {
       handleOutVarRenameChange(id, [id, outputKeyOrders[changedIndex!]], [id, newKey])
-      if(!(id in oldNameRecord.current))
+      if (!(id in oldNameRecord.current))
         oldNameRecord.current[id] = outputKeyOrders[changedIndex!]
       renameInspectNameWithDebounce(id, newKey)
     }
@@ -82,7 +82,7 @@ function useOutputVarList<T>({
       const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
         return varItem.name === Object.keys(newVars)[0]
       })?.id
-      if(varId)
+      if (varId)
         deleteInspectVar(id, varId)
     }
   }, [inputs, setInputs, varKey, outputKeyOrders, onOutputKeyOrdersChange, handleOutVarRenameChange, id, renameInspectNameWithDebounce, nodesWithInspectVars, deleteInspectVar])
@@ -120,7 +120,7 @@ function useOutputVarList<T>({
     const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
       return varItem.name === removedVar[1]
     })?.id
-    if(varId)
+    if (varId)
       deleteInspectVar(id, varId)
     removeUsedVarInNodes(removedVar)
     hideRemoveVarConfirm()
@@ -145,7 +145,7 @@ function useOutputVarList<T>({
     const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
       return varItem.name === key
     })?.id
-    if(varId)
+    if (varId)
       deleteInspectVar(id, varId)
   }, [outputKeyOrders, isVarUsedInNodes, id, inputs, setInputs, onOutputKeyOrdersChange, nodesWithInspectVars, deleteInspectVar, showRemoveVarConfirm, varKey])
 

@@ -1,10 +1,10 @@
-import { create } from 'zustand'
 import type {
   ParametersSchema,
   PluginDeclaration,
   PluginDetail,
   PluginTriggerSubscriptionConstructor,
 } from '../types'
+import { create } from 'zustand'
 
 type TriggerDeclarationSummary = {
   subscription_schema?: ParametersSchema[]

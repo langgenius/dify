@@ -1,26 +1,26 @@
+import type { Edge, Node } from '@/app/components/workflow/types'
+import type { FileUploadConfigResponse } from '@/models/common'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import {
   useCallback,
   useEffect,
   useState,
 } from 'react'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
-import { useWorkflowTemplate } from './use-workflow-template'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { useWorkflowConfig } from '@/service/use-workflow'
 import {
   fetchNodesDefaultConfigs,
   fetchPublishedWorkflow,
   fetchWorkflowDraft,
   syncWorkflowDraft,
 } from '@/service/workflow'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { useWorkflowConfig } from '@/service/use-workflow'
-import type { FileUploadConfigResponse } from '@/models/common'
-import type { Edge, Node } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
+import { useWorkflowTemplate } from './use-workflow-template'
 
 const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean => {
   const startNodeIds = nodes

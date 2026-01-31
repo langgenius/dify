@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 import hashlib
 import logging
 from collections.abc import Sequence
 from threading import Lock
 
+from pydantic import ValidationError
+from redis import RedisError
+
 import contexts
+from configs import dify_config
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
 from core.model_runtime.model_providers.__base.ai_model import AIModel
@@ -16,6 +22,7 @@ from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
 from core.model_runtime.schema_validators.provider_credential_schema_validator import ProviderCredentialSchemaValidator
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from extensions.ext_redis import redis_client
 from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)
@@ -38,7 +45,7 @@ class ModelProviderFactory:
         plugin_providers = self.get_plugin_model_providers()
         return [provider.declaration for provider in plugin_providers]
 
-    def get_plugin_model_providers(self) -> Sequence["PluginModelProviderEntity"]:
+    def get_plugin_model_providers(self) -> Sequence[PluginModelProviderEntity]:
         """
         Get all plugin model providers
         :return: list of plugin model providers
@@ -76,7 +83,7 @@ class ModelProviderFactory:
         plugin_model_provider_entity = self.get_plugin_model_provider(provider=provider)
         return plugin_model_provider_entity.declaration
 
-    def get_plugin_model_provider(self, provider: str) -> "PluginModelProviderEntity":
+    def get_plugin_model_provider(self, provider: str) -> PluginModelProviderEntity:
         """
         Get plugin model provider
         :param provider: provider name
@@ -173,34 +180,60 @@ class ModelProviderFactory:
         """
         plugin_id, provider_name = self.get_plugin_id_and_provider_name_from_provider(provider)
         cache_key = f"{self.tenant_id}:{plugin_id}:{provider_name}:{model_type.value}:{model}"
-        # sort credentials
         sorted_credentials = sorted(credentials.items()) if credentials else []
         cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
 
+        cached_schema_json = None
         try:
-            contexts.plugin_model_schemas.get()
-        except LookupError:
-            contexts.plugin_model_schemas.set({})
-            contexts.plugin_model_schema_lock.set(Lock())
-
-        with contexts.plugin_model_schema_lock.get():
-            if cache_key in contexts.plugin_model_schemas.get():
-                return contexts.plugin_model_schemas.get()[cache_key]
-
-            schema = self.plugin_model_manager.get_model_schema(
-                tenant_id=self.tenant_id,
-                user_id="unknown",
-                plugin_id=plugin_id,
-                provider=provider_name,
-                model_type=model_type.value,
-                model=model,
-                credentials=credentials or {},
+            cached_schema_json = redis_client.get(cache_key)
+        except (RedisError, RuntimeError) as exc:
+            logger.warning(
+                "Failed to read plugin model schema cache for model %s: %s",
+                model,
+                str(exc),
+                exc_info=True,
             )
+        if cached_schema_json:
+            try:
+                return AIModelEntity.model_validate_json(cached_schema_json)
+            except ValidationError:
+                logger.warning(
+                    "Failed to validate cached plugin model schema for model %s",
+                    model,
+                    exc_info=True,
+                )
+                try:
+                    redis_client.delete(cache_key)
+                except (RedisError, RuntimeError) as exc:
+                    logger.warning(
+                        "Failed to delete invalid plugin model schema cache for model %s: %s",
+                        model,
+                        str(exc),
+                        exc_info=True,
+                    )
 
-            if schema:
-                contexts.plugin_model_schemas.get()[cache_key] = schema
+        schema = self.plugin_model_manager.get_model_schema(
+            tenant_id=self.tenant_id,
+            user_id="unknown",
+            plugin_id=plugin_id,
+            provider=provider_name,
+            model_type=model_type.value,
+            model=model,
+            credentials=credentials or {},
+        )
 
-            return schema
+        if schema:
+            try:
+                redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_SCHEMA_CACHE_TTL, schema.model_dump_json())
+            except (RedisError, RuntimeError) as exc:
+                logger.warning(
+                    "Failed to write plugin model schema cache for model %s: %s",
+                    model,
+                    str(exc),
+                    exc_info=True,
+                )
+
+        return schema
 
     def get_models(
         self,
@@ -281,11 +314,13 @@ class ModelProviderFactory:
         elif model_type == ModelType.TTS:
             return TTSModel.model_validate(init_params)
 
+        raise ValueError(f"Unsupported model type: {model_type}")
+
     def get_provider_icon(self, provider: str, icon_type: str, lang: str) -> tuple[bytes, str]:
         """
         Get provider icon
         :param provider: provider name
-        :param icon_type: icon type (icon_small or icon_large)
+        :param icon_type: icon type (icon_small or icon_small_dark)
         :param lang: language (zh_Hans or en_US)
         :return: provider icon
         """
@@ -309,13 +344,7 @@ class ModelProviderFactory:
             else:
                 file_name = provider_schema.icon_small_dark.en_US
         else:
-            if not provider_schema.icon_large:
-                raise ValueError(f"Provider {provider} does not have large icon.")
-
-            if lang.lower() == "zh_hans":
-                file_name = provider_schema.icon_large.zh_Hans
-            else:
-                file_name = provider_schema.icon_large.en_US
+            raise ValueError(f"Unsupported icon type: {icon_type}.")
 
         if not file_name:
             raise ValueError(f"Provider {provider} does not have icon.")

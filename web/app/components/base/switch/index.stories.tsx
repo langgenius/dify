@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import Switch from '.'
 
@@ -515,7 +515,9 @@ const APIAccessControlDemo = () => {
         <div className="flex items-center justify-between rounded-lg bg-green-50 p-3">
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-              <span className="text-green-600">✓</span> Read Access
+              <span className="text-green-600">✓</span>
+              {' '}
+              Read Access
             </div>
             <div className="text-xs text-gray-500">View resources and data</div>
           </div>
@@ -529,7 +531,9 @@ const APIAccessControlDemo = () => {
         <div className="flex items-center justify-between rounded-lg bg-blue-50 p-3">
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-              <span className="text-blue-600">✎</span> Write Access
+              <span className="text-blue-600">✎</span>
+              {' '}
+              Write Access
             </div>
             <div className="text-xs text-gray-500">Create and update resources</div>
           </div>
@@ -543,7 +547,9 @@ const APIAccessControlDemo = () => {
         <div className="flex items-center justify-between rounded-lg bg-red-50 p-3">
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-              <span className="text-red-600">🗑</span> Delete Access
+              <span className="text-red-600">🗑</span>
+              {' '}
+              Delete Access
             </div>
             <div className="text-xs text-gray-500">Remove resources permanently</div>
           </div>
@@ -557,7 +563,9 @@ const APIAccessControlDemo = () => {
         <div className="flex items-center justify-between rounded-lg bg-purple-50 p-3">
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-              <span className="text-purple-600">⚡</span> Admin Access
+              <span className="text-purple-600">⚡</span>
+              {' '}
+              Admin Access
             </div>
             <div className="text-xs text-gray-500">Full administrative privileges</div>
           </div>

@@ -1,23 +1,24 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
+import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import UrlInput from '../base/url-input'
-import OptionsWrap from '../base/options-wrap'
+import Toast from '@/app/components/base/toast'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useModalContextSelector } from '@/context/modal-context'
+import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
+import { sleep } from '@/utils'
 import CrawledResult from '../base/crawled-result'
 import Crawling from '../base/crawling'
 import ErrorMessage from '../base/error-message'
-import Options from './options'
-import { useModalContextSelector } from '@/context/modal-context'
-import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import Toast from '@/app/components/base/toast'
-import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
-import { sleep } from '@/utils'
 import Header from '../base/header'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import OptionsWrap from '../base/options-wrap'
+import UrlInput from '../base/url-input'
+import Options from './options'
 
-const ERROR_I18N_PREFIX = 'common.errorMsg'
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const ERROR_I18N_PREFIX = 'errorMsg'
+const I18N_PREFIX = 'stepOne.website'
 
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
@@ -60,16 +61,18 @@ const FireCrawl: FC<Props> = ({
     let errorMsg = ''
     if (!url) {
       errorMsg = t(`${ERROR_I18N_PREFIX}.fieldRequired`, {
+        ns: 'common',
         field: 'url',
       })
     }
 
     if (!errorMsg && !((url.startsWith('http://') || url.startsWith('https://'))))
-      errorMsg = t(`${ERROR_I18N_PREFIX}.urlError`)
+      errorMsg = t(`${ERROR_I18N_PREFIX}.urlError`, { ns: 'common' })
 
     if (!errorMsg && (crawlOptions.limit === null || crawlOptions.limit === undefined || crawlOptions.limit === '')) {
       errorMsg = t(`${ERROR_I18N_PREFIX}.fieldRequired`, {
-        field: t(`${I18N_PREFIX}.limit`),
+        ns: 'common',
+        field: t(`${I18N_PREFIX}.limit`, { ns: 'datasetCreation' }),
       })
     }
 
@@ -163,7 +166,7 @@ const FireCrawl: FC<Props> = ({
       onJobIdChange(jobId)
       const { isError, data, errorMessage } = await waitForCrawlFinished(jobId)
       if (isError) {
-        setCrawlErrorMessage(errorMessage || t(`${I18N_PREFIX}.unknownError`))
+        setCrawlErrorMessage(errorMessage || t(`${I18N_PREFIX}.unknownError`, { ns: 'datasetCreation' }))
       }
       else {
         setCrawlResult(data)
@@ -172,7 +175,7 @@ const FireCrawl: FC<Props> = ({
       }
     }
     catch (e) {
-      setCrawlErrorMessage(t(`${I18N_PREFIX}.unknownError`)!)
+      setCrawlErrorMessage(t(`${I18N_PREFIX}.unknownError`, { ns: 'datasetCreation' })!)
       console.log(e)
     }
     finally {
@@ -184,41 +187,44 @@ const FireCrawl: FC<Props> = ({
     <div>
       <Header
         onClickConfiguration={handleSetting}
-        title={t(`${I18N_PREFIX}.firecrawlTitle`)}
-        buttonText={t(`${I18N_PREFIX}.configureFirecrawl`)}
-        docTitle={t(`${I18N_PREFIX}.firecrawlDoc`)}
-        docLink={'https://docs.firecrawl.dev/introduction'}
+        title={t(`${I18N_PREFIX}.firecrawlTitle`, { ns: 'datasetCreation' })}
+        buttonText={t(`${I18N_PREFIX}.configureFirecrawl`, { ns: 'datasetCreation' })}
+        docTitle={t(`${I18N_PREFIX}.firecrawlDoc`, { ns: 'datasetCreation' })}
+        docLink="https://docs.firecrawl.dev/introduction"
       />
-      <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle p-4 pb-0'>
+      <div className="mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle p-4 pb-0">
         <UrlInput onRun={handleRun} isRunning={isRunning} />
         <OptionsWrap
-          className='mt-4'
+          className="mt-4"
           controlFoldOptions={controlFoldOptions}
         >
-          <Options className='mt-2' payload={crawlOptions} onChange={onCrawlOptionsChange} />
+          <Options className="mt-2" payload={crawlOptions} onChange={onCrawlOptionsChange} />
         </OptionsWrap>
 
         {!isInit && (
-          <div className='relative left-[-16px] mt-3 w-[calc(100%_+_32px)] rounded-b-xl'>
+          <div className="relative left-[-16px] mt-3 w-[calc(100%_+_32px)] rounded-b-xl">
             {isRunning
-              && <Crawling
-                className='mt-2'
-                crawledNum={crawlResult?.current || 0}
-                totalNum={crawlResult?.total || Number.parseFloat(crawlOptions.limit as string) || 0}
-              />}
+              && (
+                <Crawling
+                  className="mt-2"
+                  crawledNum={crawlResult?.current || 0}
+                  totalNum={crawlResult?.total || Number.parseFloat(crawlOptions.limit as string) || 0}
+                />
+              )}
             {showError && (
-              <ErrorMessage className='rounded-b-xl' title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={crawlErrorMessage} />
+              <ErrorMessage className="rounded-b-xl" title={t(`${I18N_PREFIX}.exceptionErrorTitle`, { ns: 'datasetCreation' })} errorMsg={crawlErrorMessage} />
             )}
             {isCrawlFinished && !showError
-              && <CrawledResult
-                className='mb-2'
-                list={crawlResult?.data || []}
-                checkedList={checkedCrawlResult}
-                onSelectedChange={onCheckedCrawlResultChange}
-                onPreview={onPreview}
-                usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
-              />
-            }
+              && (
+                <CrawledResult
+                  className="mb-2"
+                  list={crawlResult?.data || []}
+                  checkedList={checkedCrawlResult}
+                  onSelectedChange={onCheckedCrawlResultChange}
+                  onPreview={onPreview}
+                  usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
+                />
+              )}
           </div>
         )}
       </div>

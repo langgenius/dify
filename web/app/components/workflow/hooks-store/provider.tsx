@@ -1,3 +1,4 @@
+import type { Shape } from './store'
 import {
   createContext,
   useEffect,
@@ -7,7 +8,6 @@ import { useStore } from 'reactflow'
 import {
   createHooksStore,
 } from './store'
-import type { Shape } from './store'
 
 type HooksStore = ReturnType<typeof createHooksStore>
 export const HooksStoreContext = createContext<HooksStore | null | undefined>(null)

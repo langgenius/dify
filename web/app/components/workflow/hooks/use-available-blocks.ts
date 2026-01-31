@@ -23,8 +23,9 @@ export const useAvailableBlocks = (nodeType?: BlockEnum, inContainer?: boolean) 
   const availablePrevBlocks = useMemo(() => {
     if (!nodeType || nodeType === BlockEnum.Start || nodeType === BlockEnum.DataSource
       || nodeType === BlockEnum.TriggerPlugin || nodeType === BlockEnum.TriggerWebhook
-      || nodeType === BlockEnum.TriggerSchedule)
+      || nodeType === BlockEnum.TriggerSchedule) {
       return []
+    }
 
     return availableNodesType
   }, [availableNodesType, nodeType])

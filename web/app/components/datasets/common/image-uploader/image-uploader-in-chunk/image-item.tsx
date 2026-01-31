@@ -1,16 +1,16 @@
+import type { FileEntity } from '../types'
+import {
+  RiCloseLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
 } from 'react'
-import {
-  RiCloseLine,
-} from '@remixicon/react'
-import FileImageRender from '@/app/components/base/file-uploader/file-image-render'
-import type { FileEntity } from '../types'
-import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
-import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
-import { fileIsUploaded } from '../utils'
 import Button from '@/app/components/base/button'
+import FileImageRender from '@/app/components/base/file-uploader/file-image-render'
+import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
+import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
+import { fileIsUploaded } from '../utils'
 
 type ImageItemProps = {
   file: FileEntity
@@ -48,32 +48,32 @@ const ImageItem = ({
 
   return (
     <div
-      className='group/file-image relative cursor-pointer'
+      className="group/file-image relative cursor-pointer"
       onClick={handlePreview}
     >
       {
         showDeleteAction && (
           <Button
-            className='absolute -right-1.5 -top-1.5 z-[11] hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex'
+            className="absolute -right-1.5 -top-1.5 z-[11] hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex"
             onClick={handleRemove}
           >
-            <RiCloseLine className='h-4 w-4 text-components-button-secondary-text' />
+            <RiCloseLine className="h-4 w-4 text-components-button-secondary-text" />
           </Button>
         )
       }
       <FileImageRender
-        className='h-[68px] w-[68px] shadow-md'
+        className="h-[68px] w-[68px] shadow-md"
         imageUrl={base64Url || sourceUrl || ''}
       />
       {
         progress >= 0 && !fileIsUploaded(file) && (
-          <div className='absolute inset-0 z-10 flex items-center justify-center border-[2px] border-effects-image-frame bg-background-overlay-alt'>
+          <div className="absolute inset-0 z-10 flex items-center justify-center border-[2px] border-effects-image-frame bg-background-overlay-alt">
             <ProgressCircle
               percentage={progress}
               size={12}
-              circleStrokeColor='stroke-components-progress-white-border'
-              circleFillColor='fill-transparent'
-              sectorFillColor='fill-components-progress-white-progress'
+              circleStrokeColor="stroke-components-progress-white-border"
+              circleFillColor="fill-transparent"
+              sectorFillColor="fill-components-progress-white-progress"
             />
           </div>
         )
@@ -81,10 +81,10 @@ const ImageItem = ({
       {
         progress === -1 && (
           <div
-            className='absolute inset-0 z-10 flex items-center justify-center border-[2px] border-state-destructive-border bg-background-overlay-destructive'
+            className="absolute inset-0 z-10 flex items-center justify-center border-[2px] border-state-destructive-border bg-background-overlay-destructive"
             onClick={handleReUpload}
           >
-            <ReplayLine className='size-5 text-text-primary-on-surface' />
+            <ReplayLine className="size-5 text-text-primary-on-surface" />
           </div>
         )
       }

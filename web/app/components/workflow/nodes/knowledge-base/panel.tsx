@@ -1,33 +1,33 @@
 import type { FC } from 'react'
+import type { KnowledgeBaseNodeType } from './types'
+import type { NodePanelProps, Var } from '@/app/components/workflow/types'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { KnowledgeBaseNodeType } from './types'
-import {
-  ChunkStructureEnum,
-  IndexMethodEnum,
-} from './types'
-import ChunkStructure from './components/chunk-structure'
-import IndexMethod from './components/index-method'
-import RetrievalSetting from './components/retrieval-setting'
-import EmbeddingModel from './components/embedding-model'
-import { useConfig } from './hooks/use-config'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
+import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import {
   BoxGroup,
   BoxGroupField,
   Group,
 } from '@/app/components/workflow/nodes/_base/components/layout'
-import Split from '../_base/components/split'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import type { Var } from '@/app/components/workflow/types'
-import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import Split from '../_base/components/split'
+import ChunkStructure from './components/chunk-structure'
+import EmbeddingModel from './components/embedding-model'
+import IndexMethod from './components/index-method'
+import RetrievalSetting from './components/retrieval-setting'
+import { useConfig } from './hooks/use-config'
+import {
+  ChunkStructureEnum,
+  IndexMethodEnum,
+} from './types'
 
 const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   id,
@@ -52,10 +52,12 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     handleScoreThresholdChange,
     handleScoreThresholdEnabledChange,
     handleInputVariableChange,
+    handleSummaryIndexSettingChange,
   } = useConfig(id)
 
   const filterVar = useCallback((variable: Var) => {
-    if (!data.chunk_structure) return false
+    if (!data.chunk_structure)
+      return false
     switch (data.chunk_structure) {
       case ChunkStructureEnum.general:
         return variable.schemaType === 'general_structure' || variable.schemaType === 'multimodal_general_structure'
@@ -69,7 +71,8 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   }, [data.chunk_structure])
 
   const chunkTypePlaceHolder = useMemo(() => {
-    if (!data.chunk_structure) return ''
+    if (!data.chunk_structure)
+      return ''
     let placeholder = ''
     switch (data.chunk_structure) {
       case ChunkStructureEnum.general:
@@ -107,7 +110,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   return (
     <div>
       <Group
-        className='py-3'
+        className="py-3"
         withBorderBottom={!!data.chunk_structure}
       >
         <ChunkStructure
@@ -117,7 +120,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
         />
       </Group>
       {
-        data.chunk_structure && (
+        !!data.chunk_structure && (
           <>
             <BoxGroupField
               boxGroupProps={{
@@ -125,8 +128,8 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
               }}
               fieldProps={{
                 fieldTitleProps: {
-                  title: t('workflow.nodes.knowledgeBase.chunksInput'),
-                  tooltip: t('workflow.nodes.knowledgeBase.chunksInputTip'),
+                  title: t('nodes.knowledgeBase.chunksInput', { ns: 'workflow' }),
+                  tooltip: t('nodes.knowledgeBase.chunksInputTip', { ns: 'workflow' }),
                 },
               }}
             >
@@ -144,7 +147,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
               />
             </BoxGroupField>
             <BoxGroup>
-              <div className='space-y-3'>
+              <div className="space-y-3">
                 <IndexMethod
                   chunkStructure={data.chunk_structure}
                   indexMethod={data.indexing_technique}
@@ -163,9 +166,25 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                     />
                   )
                 }
-                <div className='pt-1'>
-                  <Split className='h-[1px]' />
+                <div className="pt-1">
+                  <Split className="h-[1px]" />
                 </div>
+                {
+                  data.indexing_technique === IndexMethodEnum.QUALIFIED
+                  && [ChunkStructureEnum.general, ChunkStructureEnum.parent_child].includes(data.chunk_structure)
+                  && (
+                    <>
+                      <SummaryIndexSetting
+                        summaryIndexSetting={data.summary_index_setting}
+                        onSummaryIndexSettingChange={handleSummaryIndexSettingChange}
+                        readonly={nodesReadOnly}
+                      />
+                      <div className="pt-1">
+                        <Split className="h-[1px]" />
+                      </div>
+                    </>
+                  )
+                }
                 <RetrievalSetting
                   indexMethod={data.indexing_technique}
                   searchMethod={data.retrieval_model.search_method}

@@ -1,23 +1,23 @@
 'use client'
-import { useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useContext } from 'use-context-selector'
-import { useTranslation } from 'react-i18next'
 import { useDebounceFn, useKeyPress } from 'ahooks'
+import { noop } from 'es-toolkit/function'
+import { useRouter } from 'next/navigation'
+import { useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import {
   DSLImportMode,
   DSLImportStatus,
 } from '@/models/app'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { noop } from 'lodash-es'
-import Uploader from './uploader'
+import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
 import Header from './header'
 import Tab from './tab'
-import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
+import Uploader from './uploader'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -47,7 +47,7 @@ const CreateFromDSLModal = ({
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [dslUrlValue, setDslUrlValue] = useState(dslUrl)
   const [showErrorModal, setShowErrorModal] = useState(false)
-  const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
+  const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
   const { handleCheckPluginDependencies } = usePluginDependencies()
 
@@ -95,7 +95,7 @@ const CreateFromDSLModal = ({
     }
 
     if (!response) {
-      notify({ type: 'error', message: t('datasetPipeline.creation.errorTip') })
+      notify({ type: 'error', message: t('creation.errorTip', { ns: 'datasetPipeline' }) })
       isCreatingRef.current = false
       return
     }
@@ -108,8 +108,8 @@ const CreateFromDSLModal = ({
 
       notify({
         type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-        message: t(status === DSLImportStatus.COMPLETED ? 'datasetPipeline.creation.successTip' : 'datasetPipeline.creation.caution'),
-        children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('app.newApp.appCreateDSLWarning'),
+        message: t(status === DSLImportStatus.COMPLETED ? 'creation.successTip' : 'creation.caution', { ns: 'datasetPipeline' }),
+        children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('newApp.appCreateDSLWarning', { ns: 'app' }),
       })
       if (pipeline_id)
         await handleCheckPluginDependencies(pipeline_id, true)
@@ -130,7 +130,7 @@ const CreateFromDSLModal = ({
       isCreatingRef.current = false
     }
     else {
-      notify({ type: 'error', message: t('datasetPipeline.creation.errorTip') })
+      notify({ type: 'error', message: t('creation.errorTip', { ns: 'datasetPipeline' }) })
       isCreatingRef.current = false
     }
   }
@@ -150,7 +150,7 @@ const CreateFromDSLModal = ({
     const response = await importDSLConfirm(importId)
 
     if (!response) {
-      notify({ type: 'error', message: t('datasetPipeline.creation.errorTip') })
+      notify({ type: 'error', message: t('creation.errorTip', { ns: 'datasetPipeline' }) })
       return
     }
 
@@ -164,14 +164,14 @@ const CreateFromDSLModal = ({
 
       notify({
         type: 'success',
-        message: t('datasetPipeline.creation.successTip'),
+        message: t('creation.successTip', { ns: 'datasetPipeline' }),
       })
       if (pipeline_id)
         await handleCheckPluginDependencies(pipeline_id, true)
       push(`datasets/${dataset_id}/pipeline`)
     }
     else if (status === DSLImportStatus.FAILED) {
-      notify({ type: 'error', message: t('datasetPipeline.creation.errorTip') })
+      notify({ type: 'error', message: t('creation.errorTip', { ns: 'datasetPipeline' }) })
     }
   }
 
@@ -186,7 +186,7 @@ const CreateFromDSLModal = ({
   return (
     <>
       <Modal
-        className='w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl'
+        className="w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl"
         isShow={show}
         onClose={noop}
       >
@@ -195,11 +195,11 @@ const CreateFromDSLModal = ({
           currentTab={currentTab}
           setCurrentTab={setCurrentTab}
         />
-        <div className='px-6 py-4'>
+        <div className="px-6 py-4">
           {
             currentTab === CreateFromDSLModalTab.FROM_FILE && (
               <Uploader
-                className='mt-0'
+                className="mt-0"
                 file={currentFile}
                 updateFile={handleFile}
               />
@@ -208,11 +208,11 @@ const CreateFromDSLModal = ({
           {
             currentTab === CreateFromDSLModalTab.FROM_URL && (
               <div>
-                <div className='system-md-semibold leading6 mb-1 text-text-secondary'>
+                <div className="system-md-semibold leading6 mb-1 text-text-secondary">
                   DSL URL
                 </div>
                 <Input
-                  placeholder={t('app.importFromDSLUrlPlaceholder') || ''}
+                  placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
                   value={dslUrlValue}
                   onChange={e => setDslUrlValue(e.target.value)}
                 />
@@ -220,38 +220,44 @@ const CreateFromDSLModal = ({
             )
           }
         </div>
-        <div className='flex justify-end gap-x-2 p-6 pt-5'>
+        <div className="flex justify-end gap-x-2 p-6 pt-5">
           <Button onClick={onClose}>
-            {t('app.newApp.Cancel')}
+            {t('newApp.Cancel', { ns: 'app' })}
           </Button>
           <Button
             disabled={buttonDisabled}
-            variant='primary'
+            variant="primary"
             onClick={handleCreateApp}
-            className='gap-1'
+            className="gap-1"
           >
-            <span>{t('app.newApp.import')}</span>
+            <span>{t('newApp.import', { ns: 'app' })}</span>
           </Button>
         </div>
       </Modal>
       <Modal
         isShow={showErrorModal}
         onClose={() => setShowErrorModal(false)}
-        className='w-[480px]'
+        className="w-[480px]"
       >
-        <div className='flex flex-col items-start gap-2 self-stretch pb-4'>
-          <div className='title-2xl-semi-bold text-text-primary'>{t('app.newApp.appCreateDSLErrorTitle')}</div>
-          <div className='system-md-regular flex grow flex-col text-text-secondary'>
-            <div>{t('app.newApp.appCreateDSLErrorPart1')}</div>
-            <div>{t('app.newApp.appCreateDSLErrorPart2')}</div>
+        <div className="flex flex-col items-start gap-2 self-stretch pb-4">
+          <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
+          <div className="system-md-regular flex grow flex-col text-text-secondary">
+            <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
+            <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
             <br />
-            <div>{t('app.newApp.appCreateDSLErrorPart3')}<span className='system-md-medium'>{versions?.importedVersion}</span></div>
-            <div>{t('app.newApp.appCreateDSLErrorPart4')}<span className='system-md-medium'>{versions?.systemVersion}</span></div>
+            <div>
+              {t('newApp.appCreateDSLErrorPart3', { ns: 'app' })}
+              <span className="system-md-medium">{versions?.importedVersion}</span>
+            </div>
+            <div>
+              {t('newApp.appCreateDSLErrorPart4', { ns: 'app' })}
+              <span className="system-md-medium">{versions?.systemVersion}</span>
+            </div>
           </div>
         </div>
-        <div className='flex items-start justify-end gap-2 self-stretch pt-6'>
-          <Button variant='secondary' onClick={() => setShowErrorModal(false)}>{t('app.newApp.Cancel')}</Button>
-          <Button variant='primary' destructive onClick={onDSLConfirm}>{t('app.newApp.Confirm')}</Button>
+        <div className="flex items-start justify-end gap-2 self-stretch pt-6">
+          <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+          <Button variant="primary" destructive onClick={onDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
         </div>
       </Modal>
     </>

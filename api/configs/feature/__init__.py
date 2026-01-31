@@ -218,7 +218,7 @@ class PluginConfig(BaseSettings):
 
     PLUGIN_DAEMON_TIMEOUT: PositiveFloat | None = Field(
         description="Timeout in seconds for requests to the plugin daemon (set to None to disable)",
-        default=300.0,
+        default=600.0,
     )
 
     INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
@@ -241,6 +241,11 @@ class PluginConfig(BaseSettings):
     PLUGIN_MAX_BUNDLE_SIZE: PositiveInt = Field(
         description="Maximum allowed size for plugin bundles in bytes",
         default=15728640 * 12,
+    )
+
+    PLUGIN_MODEL_SCHEMA_CACHE_TTL: PositiveInt = Field(
+        description="TTL in seconds for caching plugin model schemas in Redis",
+        default=60 * 60,
     )
 
 
@@ -378,6 +383,37 @@ class FileUploadConfig(BaseSettings):
     ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT: NonNegativeInt = Field(
         description="Timeout for downloading image attachments in seconds",
         default=60,
+    )
+
+    # Annotation Import Security Configurations
+    ANNOTATION_IMPORT_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed CSV file size for annotation import in megabytes",
+        default=2,
+    )
+
+    ANNOTATION_IMPORT_MAX_RECORDS: PositiveInt = Field(
+        description="Maximum number of annotation records allowed in a single import",
+        default=10000,
+    )
+
+    ANNOTATION_IMPORT_MIN_RECORDS: PositiveInt = Field(
+        description="Minimum number of annotation records required in a single import",
+        default=1,
+    )
+
+    ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE: PositiveInt = Field(
+        description="Maximum number of annotation import requests per minute per tenant",
+        default=5,
+    )
+
+    ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
+        description="Maximum number of annotation import requests per hour per tenant",
+        default=20,
+    )
+
+    ANNOTATION_IMPORT_MAX_CONCURRENT: PositiveInt = Field(
+        description="Maximum number of concurrent annotation import tasks per tenant",
+        default=2,
     )
 
     inner_UPLOAD_FILE_EXTENSION_BLACKLIST: str = Field(
@@ -554,6 +590,11 @@ class LoggingConfig(BaseSettings):
     LOG_LEVEL: str = Field(
         description="Logging level, default to INFO. Set to ERROR for production environments.",
         default="INFO",
+    )
+
+    LOG_OUTPUT_FORMAT: Literal["text", "json"] = Field(
+        description="Log output format: 'text' for human-readable, 'json' for structured JSON logs.",
+        default="text",
     )
 
     LOG_FILE: str | None = Field(
@@ -913,6 +954,12 @@ class MailConfig(BaseSettings):
         default=False,
     )
 
+    SMTP_LOCAL_HOSTNAME: str | None = Field(
+        description="Override the local hostname used in SMTP HELO/EHLO. "
+        "Useful behind NAT or when the default hostname causes rejections.",
+        default=None,
+    )
+
     EMAIL_SEND_IP_LIMIT_PER_MINUTE: PositiveInt = Field(
         description="Maximum number of emails allowed to be sent from the same IP address in a minute",
         default=50,
@@ -921,6 +968,16 @@ class MailConfig(BaseSettings):
     SENDGRID_API_KEY: str | None = Field(
         description="API key for SendGrid service",
         default=None,
+    )
+
+    ENABLE_TRIAL_APP: bool = Field(
+        description="Enable trial app",
+        default=False,
+    )
+
+    ENABLE_EXPLORE_BANNER: bool = Field(
+        description="Enable explore banner",
+        default=False,
     )
 
 
@@ -1063,6 +1120,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
     )
     ENABLE_CLEAN_MESSAGES: bool = Field(
         description="Enable clean messages task",
+        default=False,
+    )
+    ENABLE_WORKFLOW_RUN_CLEANUP_TASK: bool = Field(
+        description="Enable scheduled workflow run cleanup task",
         default=False,
     )
     ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(
@@ -1239,6 +1300,25 @@ class TenantIsolatedTaskQueueConfig(BaseSettings):
     )
 
 
+class SandboxExpiredRecordsCleanConfig(BaseSettings):
+    SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD: NonNegativeInt = Field(
+        description="Graceful period in days for sandbox records clean after subscription expiration",
+        default=21,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum number of records to process in each batch",
+        default=1000,
+    )
+    SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: PositiveInt = Field(
+        description="Retention days for sandbox expired workflow_run records and message records",
+        default=30,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL: PositiveInt = Field(
+        description="Lock TTL for sandbox expired records clean task in seconds",
+        default=90000,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1264,6 +1344,7 @@ class FeatureConfig(
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,
+    SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,

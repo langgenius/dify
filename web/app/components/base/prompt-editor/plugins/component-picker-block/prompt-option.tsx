@@ -40,9 +40,10 @@ export const PromptMenuItem = memo(({
         if (disabled)
           return
         onClick()
-      }}>
+      }}
+    >
       {icon}
-      <div className='ml-1 text-[13px] text-text-secondary'>{title}</div>
+      <div className="ml-1 text-[13px] text-text-secondary">{title}</div>
     </div>
   )
 })

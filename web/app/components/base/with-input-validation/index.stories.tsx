@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { z } from 'zod'
 import withValidation from '.'
 
@@ -15,9 +15,20 @@ const UserCard = ({ name, email, age, role }: UserCardProps) => {
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <h3 className="mb-2 text-lg font-semibold">{name}</h3>
       <div className="space-y-1 text-sm text-gray-600">
-        <div>Email: {email}</div>
-        <div>Age: {age}</div>
-        {role && <div>Role: {role}</div>}
+        <div>
+          Email:
+          {email}
+        </div>
+        <div>
+          Age:
+          {age}
+        </div>
+        {role && (
+          <div>
+            Role:
+            {role}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -35,8 +46,14 @@ const ProductCard = ({ name, price, category, inStock }: ProductCardProps) => {
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <h3 className="mb-2 text-lg font-semibold">{name}</h3>
       <div className="space-y-1 text-sm">
-        <div className="text-xl font-bold text-green-600">${price}</div>
-        <div className="text-gray-600">Category: {category}</div>
+        <div className="text-xl font-bold text-green-600">
+          $
+          {price}
+        </div>
+        <div className="text-gray-600">
+          Category:
+          {category}
+        </div>
         <div className={inStock ? 'text-green-600' : 'text-red-600'}>
           {inStock ? '✓ In Stock' : '✗ Out of Stock'}
         </div>
@@ -299,11 +316,15 @@ export const APIResponseValidation: Story = {
           {mockAPIResponses.map((product, index) => (
             <div key={index}>
               <ValidatedProductCard {...product} />
-              {!product.name || product.price <= 0 ? (
-                <div className="mt-2 text-xs text-red-600">
-                  ⚠️ Validation failed for product {index + 1}
-                </div>
-              ) : null}
+              {!product.name || product.price <= 0
+                ? (
+                    <div className="mt-2 text-xs text-red-600">
+                      ⚠️ Validation failed for product
+                      {' '}
+                      {index + 1}
+                    </div>
+                  )
+                : null}
             </div>
           ))}
         </div>
@@ -332,7 +353,10 @@ export const ConfigurationValidation: Story = {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Timeout:</span>
-            <span>{timeout}ms</span>
+            <span>
+              {timeout}
+              ms
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Retries:</span>

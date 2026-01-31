@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -14,8 +16,12 @@ from enums.quota_type import QuotaType, unlimited
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
-from services.errors.app import InvokeRateLimitError, QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
+from services.errors.app import QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
+from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import WorkflowService
+
+if TYPE_CHECKING:
+    from controllers.console.app.workflow import LoopNodeRunPayload
 
 
 class AppGenerateService:
@@ -164,7 +170,9 @@ class AppGenerateService:
             raise ValueError(f"Invalid app mode {app_model.mode}")
 
     @classmethod
-    def generate_single_loop(cls, app_model: App, user: Account, node_id: str, args: Any, streaming: bool = True):
+    def generate_single_loop(
+        cls, app_model: App, user: Account, node_id: str, args: LoopNodeRunPayload, streaming: bool = True
+    ):
         if app_model.mode == AppMode.ADVANCED_CHAT:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
             return AdvancedChatAppGenerator.convert_to_event_stream(

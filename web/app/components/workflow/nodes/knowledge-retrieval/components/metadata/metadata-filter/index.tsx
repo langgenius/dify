@@ -1,16 +1,16 @@
+import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { noop } from 'es-toolkit/function'
 import {
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import Collapse from '@/app/components/workflow/nodes/_base/components/collapse'
+import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import MetadataTrigger from '../metadata-trigger'
 import MetadataFilterSelector from './metadata-filter-selector'
-import Collapse from '@/app/components/workflow/nodes/_base/components/collapse'
-import Tooltip from '@/app/components/base/tooltip'
-import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import { noop } from 'lodash-es'
 
 type MetadataFilterProps = {
   metadataFilterMode?: MetadataFilteringModeEnum
@@ -41,28 +41,28 @@ const MetadataFilter = ({
       onCollapse={setCollapsed}
       hideCollapseIcon
       trigger={collapseIcon => (
-        <div className='flex grow items-center justify-between pr-4'>
-          <div className='flex items-center'>
-            <div className='system-sm-semibold-uppercase mr-0.5 text-text-secondary'>
-              {t('workflow.nodes.knowledgeRetrieval.metadata.title')}
+        <div className="flex grow items-center justify-between pr-4">
+          <div className="flex items-center">
+            <div className="system-sm-semibold-uppercase mr-0.5 text-text-secondary">
+              {t('nodes.knowledgeRetrieval.metadata.title', { ns: 'workflow' })}
             </div>
             <Tooltip
               popupContent={(
-                <div className='w-[200px]'>
-                  {t('workflow.nodes.knowledgeRetrieval.metadata.tip')}
+                <div className="w-[200px]">
+                  {t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })}
                 </div>
               )}
             />
             {collapseIcon}
           </div>
-          <div className='flex items-center'>
+          <div className="flex items-center">
             <MetadataFilterSelector
               value={metadataFilterMode}
               onSelect={handleMetadataFilterModeChangeWrapped}
             />
             {
               metadataFilterMode === MetadataFilteringModeEnum.manual && (
-                <div className='ml-1'>
+                <div className="ml-1">
                   <MetadataTrigger {...restProps} />
                 </div>
               )
@@ -75,13 +75,13 @@ const MetadataFilter = ({
         {
           metadataFilterMode === MetadataFilteringModeEnum.automatic && (
             <>
-              <div className='body-xs-regular px-4 text-text-tertiary'>
-                {t('workflow.nodes.knowledgeRetrieval.metadata.options.automatic.desc')}
+              <div className="body-xs-regular px-4 text-text-tertiary">
+                {t('nodes.knowledgeRetrieval.metadata.options.automatic.desc', { ns: 'workflow' })}
               </div>
-              <div className='mt-1 px-4'>
+              <div className="mt-1 px-4">
                 <ModelParameterModal
-                  portalToFollowElemContentClassName='z-[50]'
-                  popupClassName='!w-[387px]'
+                  portalToFollowElemContentClassName="z-[50]"
+                  popupClassName="!w-[387px]"
                   isInWorkflow
                   isAdvancedMode={true}
                   provider={metadataModelConfig?.provider || ''}

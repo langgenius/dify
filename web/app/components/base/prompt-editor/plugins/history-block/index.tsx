@@ -1,20 +1,20 @@
-import {
-  memo,
-  useEffect,
-} from 'react'
+import type { HistoryBlockType } from '../../types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
+import { noop } from 'es-toolkit/function'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { HistoryBlockType } from '../../types'
+import {
+  memo,
+  useEffect,
+} from 'react'
 import {
   $createHistoryBlockNode,
   HistoryBlockNode,
 } from './node'
-import { noop } from 'lodash-es'
 
 export const INSERT_HISTORY_BLOCK_COMMAND = createCommand('INSERT_HISTORY_BLOCK_COMMAND')
 export const DELETE_HISTORY_BLOCK_COMMAND = createCommand('DELETE_HISTORY_BLOCK_COMMAND')
@@ -76,5 +76,5 @@ const HistoryBlock = memo(({
 HistoryBlock.displayName = 'HistoryBlock'
 
 export { HistoryBlock }
-export { HistoryBlockNode } from './node'
 export { default as HistoryBlockReplacementBlock } from './history-block-replacement-block'
+export { HistoryBlockNode } from './node'

@@ -1,17 +1,17 @@
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
+import type { AssignerNodeType } from './types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import {
   RiAddLine,
 } from '@remixicon/react'
-import VarList from './components/var-list'
-import useConfig from './use-config'
-import type { AssignerNodeType } from './types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
-import { useHandleAddOperationItem } from './hooks'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import VarList from './components/var-list'
+import { useHandleAddOperationItem } from './hooks'
+import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.assigner'
+const i18nPrefix = 'nodes.assigner'
 
 const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
   id,
@@ -37,12 +37,12 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
   }
 
   return (
-    <div className='flex flex-col items-start self-stretch py-2'>
-      <div className='flex w-full flex-col items-start justify-center gap-1 self-stretch px-4 py-2'>
-        <div className='flex items-start gap-2 self-stretch'>
-          <div className='system-sm-semibold-uppercase flex grow flex-col items-start justify-center text-text-secondary'>{t(`${i18nPrefix}.variables`)}</div>
+    <div className="flex flex-col items-start self-stretch py-2">
+      <div className="flex w-full flex-col items-start justify-center gap-1 self-stretch px-4 py-2">
+        <div className="flex items-start gap-2 self-stretch">
+          <div className="system-sm-semibold-uppercase flex grow flex-col items-start justify-center text-text-secondary">{t(`${i18nPrefix}.variables`, { ns: 'workflow' })}</div>
           <ActionButton onClick={handleAddOperation}>
-            <RiAddLine className='h-4 w-4 shrink-0 text-text-tertiary' />
+            <RiAddLine className="h-4 w-4 shrink-0 text-text-tertiary" />
           </ActionButton>
         </div>
         <VarList

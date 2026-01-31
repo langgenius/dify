@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import importlib
 import logging
 import operator
@@ -59,7 +61,7 @@ logger = logging.getLogger(__name__)
 
 
 class Node(Generic[NodeDataT]):
-    node_type: ClassVar["NodeType"]
+    node_type: ClassVar[NodeType]
     execution_type: NodeExecutionType = NodeExecutionType.EXECUTABLE
     _node_data_type: ClassVar[type[BaseNodeData]] = BaseNodeData
 
@@ -198,14 +200,14 @@ class Node(Generic[NodeDataT]):
         return None
 
     # Global registry populated via __init_subclass__
-    _registry: ClassVar[dict["NodeType", dict[str, type["Node"]]]] = {}
+    _registry: ClassVar[dict[NodeType, dict[str, type[Node]]]] = {}
 
     def __init__(
         self,
         id: str,
         config: Mapping[str, Any],
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        graph_init_params: GraphInitParams,
+        graph_runtime_state: GraphRuntimeState,
     ) -> None:
         self._graph_init_params = graph_init_params
         self.id = id
@@ -241,8 +243,17 @@ class Node(Generic[NodeDataT]):
         return
 
     @property
-    def graph_init_params(self) -> "GraphInitParams":
+    def graph_init_params(self) -> GraphInitParams:
         return self._graph_init_params
+
+    @property
+    def execution_id(self) -> str:
+        return self._node_execution_id
+
+    def ensure_execution_id(self) -> str:
+        if not self._node_execution_id:
+            self._node_execution_id = str(uuid4())
+        return self._node_execution_id
 
     def _hydrate_node_data(self, data: Mapping[str, Any]) -> NodeDataT:
         return cast(NodeDataT, self._node_data_type.model_validate(data))
@@ -255,15 +266,17 @@ class Node(Generic[NodeDataT]):
         """
         raise NotImplementedError
 
+    def _should_stop(self) -> bool:
+        """Check if execution should be stopped."""
+        return self.graph_runtime_state.stop_event.is_set()
+
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
-        # Generate a single node execution ID to use for all events
-        if not self._node_execution_id:
-            self._node_execution_id = str(uuid4())
+        execution_id = self.ensure_execution_id()
         self._start_at = naive_utc_now()
 
         # Create and push start event with required fields
         start_event = NodeRunStartedEvent(
-            id=self._node_execution_id,
+            id=execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             node_title=self.title,
@@ -321,10 +334,25 @@ class Node(Generic[NodeDataT]):
                 if isinstance(event, NodeEventBase):  # pyright: ignore[reportUnnecessaryIsInstance]
                     yield self._dispatch(event)
                 elif isinstance(event, GraphNodeEventBase) and not event.in_iteration_id and not event.in_loop_id:  # pyright: ignore[reportUnnecessaryIsInstance]
-                    event.id = self._node_execution_id
+                    event.id = self.execution_id
                     yield event
                 else:
                     yield event
+
+                if self._should_stop():
+                    error_message = "Execution cancelled"
+                    yield NodeRunFailedEvent(
+                        id=self.execution_id,
+                        node_id=self._node_id,
+                        node_type=self.node_type,
+                        start_at=self._start_at,
+                        node_run_result=NodeRunResult(
+                            status=WorkflowNodeExecutionStatus.FAILED,
+                            error=error_message,
+                        ),
+                        error=error_message,
+                    )
+                    return
         except Exception as e:
             logger.exception("Node %s failed to run", self._node_id)
             result = NodeRunResult(
@@ -333,7 +361,7 @@ class Node(Generic[NodeDataT]):
                 error_type="WorkflowNodeError",
             )
             yield NodeRunFailedEvent(
-                id=self._node_execution_id,
+                id=self.execution_id,
                 node_id=self._node_id,
                 node_type=self.node_type,
                 start_at=self._start_at,
@@ -431,7 +459,7 @@ class Node(Generic[NodeDataT]):
         raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
 
     @classmethod
-    def get_node_type_classes_mapping(cls) -> Mapping["NodeType", Mapping[str, type["Node"]]]:
+    def get_node_type_classes_mapping(cls) -> Mapping[NodeType, Mapping[str, type[Node]]]:
         """Return mapping of NodeType -> {version -> Node subclass} using __init_subclass__ registry.
 
         Import all modules under core.workflow.nodes so subclasses register themselves on import.
@@ -441,12 +469,8 @@ class Node(Generic[NodeDataT]):
         import core.workflow.nodes as _nodes_pkg
 
         for _, _modname, _ in pkgutil.walk_packages(_nodes_pkg.__path__, _nodes_pkg.__name__ + "."):
-            # Avoid importing modules that depend on the registry to prevent circular imports
-            # e.g. node_factory imports node_mapping which builds the mapping here.
-            if _modname in {
-                "core.workflow.nodes.node_factory",
-                "core.workflow.nodes.node_mapping",
-            }:
+            # Avoid importing modules that depend on the registry to prevent circular imports.
+            if _modname == "core.workflow.nodes.node_mapping":
                 continue
             importlib.import_module(_modname)
 
@@ -512,7 +536,7 @@ class Node(Generic[NodeDataT]):
         match result.status:
             case WorkflowNodeExecutionStatus.FAILED:
                 return NodeRunFailedEvent(
-                    id=self._node_execution_id,
+                    id=self.execution_id,
                     node_id=self.id,
                     node_type=self.node_type,
                     start_at=self._start_at,
@@ -521,7 +545,7 @@ class Node(Generic[NodeDataT]):
                 )
             case WorkflowNodeExecutionStatus.SUCCEEDED:
                 return NodeRunSucceededEvent(
-                    id=self._node_execution_id,
+                    id=self.execution_id,
                     node_id=self.id,
                     node_type=self.node_type,
                     start_at=self._start_at,
@@ -537,7 +561,7 @@ class Node(Generic[NodeDataT]):
     @_dispatch.register
     def _(self, event: StreamChunkEvent) -> NodeRunStreamChunkEvent:
         return NodeRunStreamChunkEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             selector=event.selector,
@@ -550,7 +574,7 @@ class Node(Generic[NodeDataT]):
         match event.node_run_result.status:
             case WorkflowNodeExecutionStatus.SUCCEEDED:
                 return NodeRunSucceededEvent(
-                    id=self._node_execution_id,
+                    id=self.execution_id,
                     node_id=self._node_id,
                     node_type=self.node_type,
                     start_at=self._start_at,
@@ -558,7 +582,7 @@ class Node(Generic[NodeDataT]):
                 )
             case WorkflowNodeExecutionStatus.FAILED:
                 return NodeRunFailedEvent(
-                    id=self._node_execution_id,
+                    id=self.execution_id,
                     node_id=self._node_id,
                     node_type=self.node_type,
                     start_at=self._start_at,
@@ -573,7 +597,7 @@ class Node(Generic[NodeDataT]):
     @_dispatch.register
     def _(self, event: PauseRequestedEvent) -> NodeRunPauseRequestedEvent:
         return NodeRunPauseRequestedEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.PAUSED),
@@ -583,7 +607,7 @@ class Node(Generic[NodeDataT]):
     @_dispatch.register
     def _(self, event: AgentLogEvent) -> NodeRunAgentLogEvent:
         return NodeRunAgentLogEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             message_id=event.message_id,
@@ -599,7 +623,7 @@ class Node(Generic[NodeDataT]):
     @_dispatch.register
     def _(self, event: LoopStartedEvent) -> NodeRunLoopStartedEvent:
         return NodeRunLoopStartedEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             node_title=self.node_data.title,
@@ -612,7 +636,7 @@ class Node(Generic[NodeDataT]):
     @_dispatch.register
     def _(self, event: LoopNextEvent) -> NodeRunLoopNextEvent:
         return NodeRunLoopNextEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             node_title=self.node_data.title,
@@ -623,7 +647,7 @@ class Node(Generic[NodeDataT]):
     @_dispatch.register
     def _(self, event: LoopSucceededEvent) -> NodeRunLoopSucceededEvent:
         return NodeRunLoopSucceededEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             node_title=self.node_data.title,
@@ -637,7 +661,7 @@ class Node(Generic[NodeDataT]):
     @_dispatch.register
     def _(self, event: LoopFailedEvent) -> NodeRunLoopFailedEvent:
         return NodeRunLoopFailedEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             node_title=self.node_data.title,
@@ -652,7 +676,7 @@ class Node(Generic[NodeDataT]):
     @_dispatch.register
     def _(self, event: IterationStartedEvent) -> NodeRunIterationStartedEvent:
         return NodeRunIterationStartedEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             node_title=self.node_data.title,
@@ -665,7 +689,7 @@ class Node(Generic[NodeDataT]):
     @_dispatch.register
     def _(self, event: IterationNextEvent) -> NodeRunIterationNextEvent:
         return NodeRunIterationNextEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             node_title=self.node_data.title,
@@ -676,7 +700,7 @@ class Node(Generic[NodeDataT]):
     @_dispatch.register
     def _(self, event: IterationSucceededEvent) -> NodeRunIterationSucceededEvent:
         return NodeRunIterationSucceededEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             node_title=self.node_data.title,
@@ -690,7 +714,7 @@ class Node(Generic[NodeDataT]):
     @_dispatch.register
     def _(self, event: IterationFailedEvent) -> NodeRunIterationFailedEvent:
         return NodeRunIterationFailedEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             node_title=self.node_data.title,
@@ -705,7 +729,7 @@ class Node(Generic[NodeDataT]):
     @_dispatch.register
     def _(self, event: RunRetrieverResourceEvent) -> NodeRunRetrieverResourceEvent:
         return NodeRunRetrieverResourceEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             retriever_resources=event.retriever_resources,

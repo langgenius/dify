@@ -1,7 +1,7 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import LinkedAppsPanel from '.'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { RelatedApp } from '@/models/datasets'
 import { AppModeEnum } from '@/types/app'
+import LinkedAppsPanel from '.'
 
 const mockRelatedApps: RelatedApp[] = [
   {

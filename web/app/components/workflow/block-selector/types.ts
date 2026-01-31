@@ -1,6 +1,6 @@
-import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ParametersSchema, PluginMeta, PluginTriggerSubscriptionConstructor, SupportedCreationMethods, TriggerEvent } from '../../plugins/types'
 import type { Collection, Event } from '../../tools/types'
+import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 export enum TabsEnum {
   Start = 'start',
@@ -39,9 +39,9 @@ export type TriggerDefaultValue = PluginCommonDefaultValue & {
   title: string
   plugin_unique_identifier: string
   is_team_authorization: boolean
-  params: Record<string, any>
-  paramSchemas: Record<string, any>[]
-  output_schema: Record<string, any>
+  params: Record<string, unknown>
+  paramSchemas: Record<string, unknown>[]
+  output_schema: Record<string, unknown>
   subscription_id?: string
   meta?: PluginMeta
 }
@@ -52,9 +52,9 @@ export type ToolDefaultValue = PluginCommonDefaultValue & {
   tool_description: string
   title: string
   is_team_authorization: boolean
-  params: Record<string, any>
-  paramSchemas: Record<string, any>[]
-  output_schema?: Record<string, any>
+  params: Record<string, unknown>
+  paramSchemas: Record<string, unknown>[]
+  output_schema?: Record<string, unknown>
   credential_id?: string
   meta?: PluginMeta
   plugin_id?: string
@@ -82,10 +82,10 @@ export type ToolValue = {
   tool_name: string
   tool_label: string
   tool_description?: string
-  settings?: Record<string, any>
-  parameters?: Record<string, any>
+  settings?: Record<string, unknown>
+  parameters?: Record<string, unknown>
   enabled?: boolean
-  extra?: Record<string, any>
+  extra?: { description?: string } & Record<string, unknown>
   credential_id?: string
 }
 
@@ -94,12 +94,12 @@ export type DataSourceItem = {
   plugin_unique_identifier: string
   provider: string
   declaration: {
-    credentials_schema: any[]
+    credentials_schema: unknown[]
     provider_type: string
     identity: {
       author: string
       description: TypeWithI18N
-      icon: string | { background: string; content: string }
+      icon: string | { background: string, content: string }
       label: TypeWithI18N
       name: string
       tags: string[]
@@ -108,15 +108,15 @@ export type DataSourceItem = {
       description: TypeWithI18N
       identity: {
         author: string
-        icon?: string | { background: string; content: string }
+        icon?: string | { background: string, content: string }
         label: TypeWithI18N
         name: string
         provider: string
       }
-      parameters: any[]
+      parameters: unknown[]
       output_schema?: {
         type: string
-        properties: Record<string, any>
+        properties: Record<string, unknown>
       }
     }[]
   }
@@ -130,18 +130,18 @@ export type TriggerParameter = {
   label: TypeWithI18N
   description?: TypeWithI18N
   type: 'string' | 'number' | 'boolean' | 'select' | 'file' | 'files'
-  | 'model-selector' | 'app-selector' | 'object' | 'array' | 'dynamic-select'
+    | 'model-selector' | 'app-selector' | 'object' | 'array' | 'dynamic-select'
   auto_generate?: {
     type: string
-    value?: any
+    value?: unknown
   } | null
   template?: {
     type: string
-    value?: any
+    value?: unknown
   } | null
   scope?: string | null
   required?: boolean
-  default?: any
+  default?: unknown
   min?: number | null
   max?: number | null
   precision?: number | null
@@ -154,11 +154,11 @@ export type TriggerParameter = {
 
 export type TriggerCredentialField = {
   type: 'secret-input' | 'text-input' | 'select' | 'boolean'
-  | 'app-selector' | 'model-selector' | 'tools-selector'
+    | 'app-selector' | 'model-selector' | 'tools-selector'
   name: string
   scope?: string | null
   required: boolean
-  default?: string | number | boolean | Array<any> | null
+  default?: string | number | boolean | Array<unknown> | null
   options?: Array<{
     value: string
     label: TypeWithI18N
@@ -191,7 +191,7 @@ export type TriggerApiEntity = {
   identity: TriggerIdentity
   description: TypeWithI18N
   parameters: TriggerParameter[]
-  output_schema?: Record<string, any>
+  output_schema?: Record<string, unknown>
 }
 
 export type TriggerProviderApiEntity = {
@@ -237,31 +237,14 @@ type TriggerSubscriptionStructure = {
   name: string
   provider: string
   credential_type: TriggerCredentialTypeEnum
-  credentials: TriggerSubCredentials
+  credentials: Record<string, unknown>
   endpoint: string
-  parameters: TriggerSubParameters
-  properties: TriggerSubProperties
+  parameters: Record<string, unknown>
+  properties: Record<string, unknown>
   workflows_in_use: number
 }
 
 export type TriggerSubscription = TriggerSubscriptionStructure
-
-export type TriggerSubCredentials = {
-  access_tokens: string
-}
-
-export type TriggerSubParameters = {
-  repository: string
-  webhook_secret?: string
-}
-
-export type TriggerSubProperties = {
-  active: boolean
-  events: string[]
-  external_id: string
-  repository: string
-  webhook_secret?: string
-}
 
 export type TriggerSubscriptionBuilder = TriggerSubscriptionStructure
 
@@ -275,7 +258,7 @@ export type TriggerOAuthConfig = {
   params: {
     client_id: string
     client_secret: string
-    [key: string]: any
+    [key: string]: string
   }
   system_configured: boolean
 }

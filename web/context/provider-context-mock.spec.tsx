@@ -1,8 +1,8 @@
-import { render } from '@testing-library/react'
 import type { UsagePlanInfo } from '@/app/components/billing/type'
+import { render } from '@testing-library/react'
+import { createMockPlan, createMockPlanReset, createMockPlanTotal, createMockPlanUsage } from '@/__mocks__/provider-context'
 import { Plan } from '@/app/components/billing/type'
 import ProviderContextMock from './provider-context-mock'
-import { createMockPlan, createMockPlanReset, createMockPlanTotal, createMockPlanUsage } from '@/__mocks__/provider-context'
 
 let mockPlan: Plan = Plan.sandbox
 const usage: UsagePlanInfo = {
@@ -30,7 +30,7 @@ const reset = {
   triggerEvents: 100,
 }
 
-jest.mock('@/context/provider-context', () => ({
+vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => {
     const withPlan = createMockPlan(mockPlan)
     const withUsage = createMockPlanUsage(usage, withPlan)
@@ -48,7 +48,7 @@ const renderWithPlan = (plan: Plan) => {
 describe('ProviderContextMock', () => {
   beforeEach(() => {
     mockPlan = Plan.sandbox
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
   it('should display sandbox plan type when mocked with sandbox plan', async () => {
     const { getByTestId } = renderWithPlan(Plan.sandbox)

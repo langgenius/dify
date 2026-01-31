@@ -1,29 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { intersectionBy } from 'lodash-es'
-import { useContext } from 'use-context-selector'
-import { produce } from 'immer'
-import { v4 as uuid4 } from 'uuid'
-import { useFormattingChangedDispatcher } from '../debug/hooks'
-import FeaturePanel from '../base/feature-panel'
-import OperationBtn from '../base/operation-btn'
-import CardItem from './card-item'
-import ParamsConfig from './params-config'
-import ContextVar from './context-var'
-import ConfigContext from '@/context/debug-configuration'
-import { AppModeEnum } from '@/types/app'
-import type { DataSet } from '@/models/datasets'
-import {
-  getMultipleRetrievalConfig,
-  getSelectedDatasetsMode,
-} from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
-import { hasEditPermissionForDataset } from '@/utils/permission'
-import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
 import type {
   HandleAddCondition,
   HandleRemoveCondition,
@@ -31,13 +7,43 @@ import type {
   HandleUpdateCondition,
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { DataSet } from '@/models/datasets'
+import { intersectionBy } from 'es-toolkit/compat'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import { v4 as uuid4 } from 'uuid'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
 import {
   ComparisonOperator,
   LogicalOperator,
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import {
+  getMultipleRetrievalConfig,
+  getSelectedDatasetsMode,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
+import ConfigContext from '@/context/debug-configuration'
+import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import { hasEditPermissionForDataset } from '@/utils/permission'
+import FeaturePanel from '../base/feature-panel'
+import OperationBtn from '../base/operation-btn'
+import { useFormattingChangedDispatcher } from '../debug/hooks'
+import CardItem from './card-item'
+import ContextVar from './context-var'
+import ParamsConfig from './params-config'
 
-const DatasetConfig: FC = () => {
+type Props = {
+  readonly?: boolean
+  hideMetadataFilter?: boolean
+}
+const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   const { t } = useTranslation()
   const userProfile = useAppContextSelector(s => s.userProfile)
   const {
@@ -77,10 +83,12 @@ const DatasetConfig: FC = () => {
     const oldRetrievalConfig = {
       top_k,
       score_threshold,
-      reranking_model: (reranking_model && reranking_model.reranking_provider_name && reranking_model.reranking_model_name) ? {
-        provider: reranking_model.reranking_provider_name,
-        model: reranking_model.reranking_model_name,
-      } : undefined,
+      reranking_model: (reranking_model && reranking_model.reranking_provider_name && reranking_model.reranking_model_name)
+        ? {
+            provider: reranking_model.reranking_provider_name,
+            model: reranking_model.reranking_model_name,
+          }
+        : undefined,
       reranking_mode,
       weights,
       reranking_enable,
@@ -112,8 +120,9 @@ const DatasetConfig: FC = () => {
       (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
       || mixtureInternalAndExternal
       || allExternal
-    )
+    ) {
       setRerankSettingModalOpen(true)
+    }
     formattingChangedDispatcher()
   }
 
@@ -172,7 +181,7 @@ const DatasetConfig: FC = () => {
     }))
   }, [setDatasetConfigs, datasetConfigsRef])
 
-  const handleAddCondition = useCallback<HandleAddCondition>(({ name, type }) => {
+  const handleAddCondition = useCallback<HandleAddCondition>(({ id, name, type }) => {
     let operator: ComparisonOperator = ComparisonOperator.is
 
     if (type === MetadataFilteringVariableType.number)
@@ -180,6 +189,7 @@ const DatasetConfig: FC = () => {
 
     const newCondition = {
       id: uuid4(),
+      metadata_id: id, // Save metadata.id for reliable reference
       name,
       comparison_operator: operator,
     }
@@ -227,7 +237,7 @@ const DatasetConfig: FC = () => {
     setDatasetConfigs(newInputs)
   }, [setDatasetConfigs, datasetConfigsRef])
 
-  const handleMetadataModelChange = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleMetadataModelChange = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(datasetConfigsRef.current!, (draft) => {
       draft.metadata_model_config = {
         provider: model.provider,
@@ -251,58 +261,63 @@ const DatasetConfig: FC = () => {
 
   return (
     <FeaturePanel
-      className='mt-2'
-      title={t('appDebug.feature.dataSet.title')}
-      headerRight={
-        <div className='flex items-center gap-1'>
-          {!isAgent && <ParamsConfig disabled={!hasData} selectedDatasets={dataSet} />}
-          <OperationBtn type="add" onClick={showSelectDataSet} />
-        </div>
-      }
+      className="mt-2"
+      title={t('feature.dataSet.title', { ns: 'appDebug' })}
+      headerRight={(
+        !readonly && (
+          <div className="flex items-center gap-1">
+            {!isAgent && <ParamsConfig disabled={!hasData} selectedDatasets={dataSet} />}
+            <OperationBtn type="add" onClick={showSelectDataSet} />
+          </div>
+        )
+      )}
       hasHeaderBottomBorder={!hasData}
       noBodySpacing
     >
       {hasData
         ? (
-          <div className='mt-1 flex flex-wrap justify-between px-3 pb-3'>
-            {formattedDataset.map(item => (
-              <CardItem
-                key={item.id}
-                config={item}
-                onRemove={onRemove}
-                onSave={handleSave}
-                editable={item.editable}
-              />
-            ))}
-          </div>
-        )
+            <div className={cn('mt-1 grid grid-cols-1 px-3 pb-3', readonly && 'grid-cols-2 gap-1')}>
+              {formattedDataset.map(item => (
+                <CardItem
+                  key={item.id}
+                  config={item}
+                  onRemove={onRemove}
+                  onSave={handleSave}
+                  editable={item.editable}
+                  readonly={readonly}
+                />
+              ))}
+            </div>
+          )
         : (
-          <div className='mt-1 px-3 pb-3'>
-            <div className='pb-1 pt-2 text-xs text-text-tertiary'>{t('appDebug.feature.dataSet.noData')}</div>
-          </div>
-        )}
+            <div className="mt-1 px-3 pb-3">
+              <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('feature.dataSet.noData', { ns: 'appDebug' })}</div>
+            </div>
+          )}
 
-      <div className='border-t border-t-divider-subtle py-2'>
-        <MetadataFilter
-          metadataList={metadataList}
-          selectedDatasetsLoaded
-          metadataFilterMode={datasetConfigs.metadata_filtering_mode}
-          metadataFilteringConditions={datasetConfigs.metadata_filtering_conditions}
-          handleAddCondition={handleAddCondition}
-          handleMetadataFilterModeChange={handleMetadataFilterModeChange}
-          handleRemoveCondition={handleRemoveCondition}
-          handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
-          handleUpdateCondition={handleUpdateCondition}
-          metadataModelConfig={datasetConfigs.metadata_model_config}
-          handleMetadataModelChange={handleMetadataModelChange}
-          handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
-          isCommonVariable
-          availableCommonStringVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.string || item.type === MetadataFilteringVariableType.select)}
-          availableCommonNumberVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.number)}
-        />
-      </div>
+      {!hideMetadataFilter && (
+        <div className="border-t border-t-divider-subtle py-2">
+          <MetadataFilter
+            metadataList={metadataList}
+            selectedDatasetsLoaded
+            metadataFilterMode={datasetConfigs.metadata_filtering_mode}
+            metadataFilteringConditions={datasetConfigs.metadata_filtering_conditions}
+            handleAddCondition={handleAddCondition}
+            handleMetadataFilterModeChange={handleMetadataFilterModeChange}
+            handleRemoveCondition={handleRemoveCondition}
+            handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
+            handleUpdateCondition={handleUpdateCondition}
+            metadataModelConfig={datasetConfigs.metadata_model_config}
+            handleMetadataModelChange={handleMetadataModelChange}
+            handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
+            isCommonVariable
+            availableCommonStringVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.string || item.type === MetadataFilteringVariableType.select)}
+            availableCommonNumberVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.number)}
+          />
+        </div>
+      )}
 
-      {mode === AppModeEnum.COMPLETION && dataSet.length > 0 && (
+      {!readonly && mode === AppModeEnum.COMPLETION && dataSet.length > 0 && (
         <ContextVar
           value={selectedContextVar?.key}
           options={promptVariablesToSelect}
