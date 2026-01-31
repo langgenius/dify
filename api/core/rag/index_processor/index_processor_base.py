@@ -227,14 +227,14 @@ class BaseIndexProcessor(ABC):
             response.raise_for_status()
 
             # Check Content-Length header if available
-            content_length = (await response.headers).get("Content-Length")
+            content_length = response.headers.get("Content-Length")
             if content_length and int(content_length) > MAX_IMAGE_SIZE:
                 logging.warning("Image from %s exceeds 2MB limit (size: %s bytes)", image_url, content_length)
                 return None
 
             filename = None
 
-            content_disposition = (await response.headers).get("content-disposition")
+            content_disposition = response.headers.get("content-disposition")
             if content_disposition:
                 _, params = cgi.parse_header(content_disposition)
                 if "filename" in params:
@@ -252,7 +252,7 @@ class BaseIndexProcessor(ABC):
 
             name, current_ext = os.path.splitext(filename)
 
-            content_type = (await response.headers).get("content-type", "").split(";")[0].strip()
+            content_type = response.headers.get("content-type", "").split(";")[0].strip()
 
             real_ext = mimetypes.guess_extension(content_type)
 

@@ -416,7 +416,7 @@ class TriggerSubscriptionBuilderService:
             },
             response={
                 "status_code": response.status_code,
-                "headers": dict(await response.headers),
+                "headers": dictresponse.headers,
                 "data": response.get_data(as_text=True),
             },
             created_at=datetime.now(),

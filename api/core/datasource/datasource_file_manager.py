@@ -118,7 +118,7 @@ class DatasourceFileManager:
 
         mimetype = (
             guess_type(file_url)[0]
-            or (await response.headers).get("Content-Type", "").split(";")[0].strip()
+            or response.headers.get("Content-Type", "").split(";")[0].strip()
             or "application/octet-stream"
         )
         extension = guess_extension(mimetype) or ".bin"

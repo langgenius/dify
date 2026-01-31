@@ -101,7 +101,7 @@ class Response:
 
     def __init__(self, response: httpx.Response):
         self.response = response
-        self.headers = dict(await response.headers)
+        self.headers = dictresponse.headers
         self._cached_text = None
 
     @property

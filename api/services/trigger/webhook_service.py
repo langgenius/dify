@@ -256,7 +256,7 @@ class WebhookService:
             )
 
     @classmethod
-    def _extract_json_body(cls) -> tuple[dict[str, Any], dict[str, Any]]:
+    async def _extract_json_body(cls) -> tuple[dict[str, Any], dict[str, Any]]:
         """Extract JSON body from request.
 
         Returns:
@@ -267,7 +267,7 @@ class WebhookService:
         Raises:
             ValueError: If JSON parsing fails
         """
-        raw_body = request.get_data(cache=True)
+        raw_body = await request.get_data(cache=True)
         if not raw_body or raw_body.strip() == b"":
             return {}, {}
 
@@ -279,7 +279,7 @@ class WebhookService:
         return body, {}
 
     @classmethod
-    def _extract_form_body(cls) -> tuple[dict[str, Any], dict[str, Any]]:
+    async def _extract_form_body(cls) -> tuple[dict[str, Any], dict[str, Any]]:
         """Extract form-urlencoded body from request.
 
         Returns:
@@ -290,7 +290,7 @@ class WebhookService:
         return dict(await request.form), {}
 
     @classmethod
-    def _extract_multipart_body(cls, webhook_trigger: WorkflowWebhookTrigger) -> tuple[dict[str, Any], dict[str, Any]]:
+    async def _extract_multipart_body(cls, webhook_trigger: WorkflowWebhookTrigger) -> tuple[dict[str, Any], dict[str, Any]]:
         """Extract multipart/form-data body and files from request.
 
         Args:

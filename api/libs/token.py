@@ -183,7 +183,7 @@ def build_force_logout_cookie_headers() -> list[str]:
     clear_access_token_from_cookie(response)
     clear_csrf_token_from_cookie(response)
     clear_refresh_token_from_cookie(response)
-    return (await response.headers).getlist("Set-Cookie")
+    return response.headers.getlist("Set-Cookie")
 
 
 def check_csrf_token(request: Request, user_id: str):

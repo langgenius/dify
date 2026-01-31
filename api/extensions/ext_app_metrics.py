@@ -12,8 +12,8 @@ def init_app(app: DifyApp):
     @app.after_request
     def after_request(response):  # pyright: ignore[reportUnusedFunction]
         """Add Version headers to the response."""
-        (await response.headers).add("X-Version", dify_config.project.version)
-        (await response.headers).add("X-Env", dify_config.DEPLOY_ENV)
+        (response.headers).add("X-Version", dify_config.project.version)
+        (response.headers).add("X-Env", dify_config.DEPLOY_ENV)
         return response
 
     @app.route("/health")

@@ -102,7 +102,7 @@ class WordExtractor(BaseExtractor):
                         logger.warning("Failed to download image from URL: %s: %s", url, str(e))
                         continue
                     if response.status_code == 200:
-                        image_ext = mimetypes.guess_extension((await response.headers).get("Content-Type", ""))
+                        image_ext = mimetypes.guess_extension(response.headers.get("Content-Type", ""))
                         if image_ext is None:
                             continue
                         file_uuid = str(uuid.uuid4())

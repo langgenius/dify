@@ -160,7 +160,7 @@ class FilePreviewApi(Resource):
 
         # Add Content-Length if known
         if upload_file.size and upload_file.size > 0:
-            (await response.headers)["Content-Length"] = str(upload_file.size)
+            response.headers["Content-Length"] = str(upload_file.size)
 
         # Add Accept-Ranges header for audio/video files to support seeking
         if upload_file.mime_type in [
@@ -175,14 +175,14 @@ class FilePreviewApi(Resource):
             "video/quicktime",
             "audio/x-m4a",
         ]:
-            (await response.headers)["Accept-Ranges"] = "bytes"
+            response.headers["Accept-Ranges"] = "bytes"
 
         # Set Content-Disposition for downloads
         if as_attachment and upload_file.name:
             encoded_filename = quote(upload_file.name)
-            (await response.headers)["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
+            response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
             # Override content-type for downloads to force download
-            (await response.headers)["Content-Type"] = "application/octet-stream"
+            response.headers["Content-Type"] = "application/octet-stream"
 
         enforce_download_for_html(
             response,
@@ -192,6 +192,6 @@ class FilePreviewApi(Resource):
         )
 
         # Add caching headers for performance
-        (await response.headers)["Cache-Control"] = "public, max-age=3600"  # Cache for 1 hour
+        response.headers["Cache-Control"] = "public, max-age=3600"  # Cache for 1 hour
 
         return response

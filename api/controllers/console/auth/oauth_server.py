@@ -68,35 +68,35 @@ def oauth_server_access_token_required(view: Callable[Concatenate[T, OAuthProvid
         if not authorization_header:
             response = jsonify({"error": "Authorization header is required"})
             response.status_code = 401
-            (await response.headers)["WWW-Authenticate"] = "Bearer"
+            response.headers["WWW-Authenticate"] = "Bearer"
             return response
 
         parts = authorization_header.strip().split(None, 1)
         if len(parts) != 2:
             response = jsonify({"error": "Invalid Authorization header format"})
             response.status_code = 401
-            (await response.headers)["WWW-Authenticate"] = "Bearer"
+            response.headers["WWW-Authenticate"] = "Bearer"
             return response
 
         token_type = parts[0].strip()
         if token_type.lower() != "bearer":
             response = jsonify({"error": "token_type is invalid"})
             response.status_code = 401
-            (await response.headers)["WWW-Authenticate"] = "Bearer"
+            response.headers["WWW-Authenticate"] = "Bearer"
             return response
 
         access_token = parts[1].strip()
         if not access_token:
             response = jsonify({"error": "access_token is required"})
             response.status_code = 401
-            (await response.headers)["WWW-Authenticate"] = "Bearer"
+            response.headers["WWW-Authenticate"] = "Bearer"
             return response
 
         account = OAuthServerService.validate_oauth_access_token(oauth_provider_app.client_id, access_token)
         if not account:
             response = jsonify({"error": "access_token or client_id is invalid"})
             response.status_code = 401
-            (await response.headers)["WWW-Authenticate"] = "Bearer"
+            response.headers["WWW-Authenticate"] = "Bearer"
             return response
 
         return view(self, oauth_provider_app, account, *args, **kwargs)

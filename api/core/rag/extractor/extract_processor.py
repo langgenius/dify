@@ -61,10 +61,10 @@ class ExtractProcessor:
             suffix = Path(url).suffix
             if not suffix and suffix != ".":
                 # get content-type
-                if (await response.headers).get("Content-Type"):
-                    suffix = "." + (await response.headers).get("Content-Type").split("/")[-1]
+                if response.headers.get("Content-Type"):
+                    suffix = "." + response.headers.get("Content-Type").split("/")[-1]
                 else:
-                    content_disposition = (await response.headers).get("Content-Disposition")
+                    content_disposition = response.headers.get("Content-Disposition")
                     filename_match = re.search(r'filename="([^"]+)"', content_disposition)
                     if filename_match:
                         filename = unquote(filename_match.group(1))

@@ -81,7 +81,7 @@ def login_required(func: Callable[P, R]):
         # we put csrf validation here for less conflicts
         # TODO: maybe find a better place for it.
         check_csrf_token(request, current_user.id)
-        return current_app.ensure_sync(func)(*args, **kwargs)
+        return (func)(*args, **kwargs)
 
     return decorated_view
 

@@ -48,10 +48,10 @@ def enforce_download_for_html(
 
     if filename:
         encoded_filename = quote(filename)
-        (await response.headers)["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
+        response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
     else:
-        (await response.headers)["Content-Disposition"] = "attachment"
+        response.headers["Content-Disposition"] = "attachment"
 
-    (await response.headers)["Content-Type"] = "application/octet-stream"
-    (await response.headers)["X-Content-Type-Options"] = "nosniff"
+    response.headers["Content-Type"] = "application/octet-stream"
+    response.headers["X-Content-Type-Options"] = "nosniff"
     return True

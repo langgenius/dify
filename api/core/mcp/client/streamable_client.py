@@ -152,7 +152,7 @@ class StreamableHTTPTransport:
         response: httpx.Response,
     ):
         """Extract and store session ID from response headers."""
-        new_session_id = (await response.headers).get(MCP_SESSION_ID)
+        new_session_id = response.headers.get(MCP_SESSION_ID)
         if new_session_id:
             self.session_id = new_session_id
             logger.info("Received session ID: %s", self.session_id)
@@ -316,7 +316,7 @@ class StreamableHTTPTransport:
             # Per https://modelcontextprotocol.io/specification/2025-06-18/basic#notifications:
             # The server MUST NOT send a response to notifications.
             if isinstance(message.root, JSONRPCRequest):
-                content_type = cast(str, (await response.headers).get(CONTENT_TYPE, "").lower())
+                content_type = cast(str, response.headers.get(CONTENT_TYPE, "").lower())
 
                 if content_type.startswith(JSON):
                     self._handle_json_response(response, ctx.server_to_client_queue)

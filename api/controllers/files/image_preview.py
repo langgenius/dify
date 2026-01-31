@@ -131,13 +131,13 @@ class FilePreviewApi(Resource):
             "video/quicktime",
             "audio/x-m4a",
         ]:
-            (await response.headers)["Accept-Ranges"] = "bytes"
+            response.headers["Accept-Ranges"] = "bytes"
         if upload_file.size > 0:
-            (await response.headers)["Content-Length"] = str(upload_file.size)
+            response.headers["Content-Length"] = str(upload_file.size)
         if args.as_attachment:
             encoded_filename = quote(upload_file.name)
-            (await response.headers)["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
-            (await response.headers)["Content-Type"] = "application/octet-stream"
+            response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
+            response.headers["Content-Type"] = "application/octet-stream"
 
         enforce_download_for_html(
             response,

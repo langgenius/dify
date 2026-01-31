@@ -42,11 +42,11 @@ def get_url(url: str, user_agent: str | None = None) -> str:
 
     if response.status_code == 200:
         # check content-type
-        content_type = (await response.headers).get("Content-Type")
+        content_type = response.headers.get("Content-Type")
         if content_type:
-            main_content_type = (await response.headers).get("Content-Type").split(";")[0].strip()
+            main_content_type = response.headers.get("Content-Type").split(";")[0].strip()
         else:
-            content_disposition = (await response.headers).get("Content-Disposition", "")
+            content_disposition = response.headers.get("Content-Disposition", "")
             filename_match = re.search(r'filename="([^"]+)"', content_disposition)
             if filename_match:
                 filename = unquote(filename_match.group(1))
