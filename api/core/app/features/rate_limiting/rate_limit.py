@@ -1,4 +1,3 @@
-import contextlib
 import logging
 import time
 import uuid
@@ -102,14 +101,6 @@ class RateLimit:
                 generator=generator,
                 request_id=request_id,
             )
-
-
-@contextlib.contextmanager
-def rate_limit_context(rate_limit: RateLimit, request_id: str | None):
-    request_id = rate_limit.enter(request_id)
-    yield
-    if request_id is not None:
-        rate_limit.exit(request_id)
 
 
 class RateLimitGenerator:
