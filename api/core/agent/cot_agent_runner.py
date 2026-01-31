@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 
 class CotAgentRunner(BaseAgentRunner, ABC):
-    _is_first_iteration = True
     _ignore_observation_providers = ["wenxin"]
     _historic_prompt_messages: list[PromptMessage]
     _agent_scratchpad: list[AgentScratchpadUnit]
@@ -76,6 +75,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         function_call_state = True
         llm_usage: dict[str, LLMUsage | None] = {"usage": None}
         final_answer = ""
+        direct_flag = False
         prompt_messages: list = []  # Initialize prompt_messages
         agent_thought_id = ""  # Initialize agent_thought_id
 
@@ -211,7 +211,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     except TypeError:
                         final_answer = f"{scratchpad.action.action_input}"
                 else:
-                    function_call_state = True
                     # action is tool call, invoke tool
                     tool_invoke_response, tool_invoke_meta = self._handle_invoke_action(
                         action=scratchpad.action,
@@ -221,6 +220,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     )
                     scratchpad.observation = tool_invoke_response
                     scratchpad.agent_response = tool_invoke_response
+
+                    # detect direct return
+                    direct_flag = (tool_invoke_meta.extra or {}).get("return_direct", False)
 
                     self.save_agent_thought(
                         agent_thought_id=agent_thought_id,
@@ -238,11 +240,32 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                     )
 
+                    if direct_flag:
+                        final_answer = str(tool_invoke_response or "")
+                        function_call_state = False  # Explicitly set to False
+                    else:
+                        function_call_state = True
+
                 # update prompt tool message
                 for prompt_tool in self._prompt_messages_tools:
                     self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
 
             iteration_step += 1
+
+        if not direct_flag:
+            self._save_and_publish_final_thought(agent_thought_id, final_answer, thought=final_answer)
+        else:
+            # In return_direct mode, we need to create a new thought for the final answer
+            # to avoid overwriting the tool execution thought (which has tool_name/input).
+            # This ensures the UI renders both the tool card and the final answer bubble.
+            final_answer_thought_id = self.create_agent_thought(
+                message_id=self.message.id,
+                message=final_answer,
+                tool_name="",
+                tool_input="",
+                messages_ids=[],
+            )
+            self._save_and_publish_final_thought(final_answer_thought_id, final_answer, thought=final_answer)
 
         yield LLMResultChunk(
             model=model_instance.model,
@@ -253,17 +276,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             system_fingerprint="",
         )
 
-        # save agent thought
-        self.save_agent_thought(
-            agent_thought_id=agent_thought_id,
-            tool_name="",
-            tool_input={},
-            tool_invoke_meta={},
-            thought=final_answer,
-            observation={},
-            answer=final_answer,
-            messages_ids=[],
-        )
         # publish end event
         self.queue_manager.publish(
             QueueMessageEndEvent(
@@ -277,6 +289,19 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             ),
             PublishFrom.APPLICATION_MANAGER,
         )
+
+    def _save_and_publish_final_thought(self, thought_id: str, final_answer: str, thought: str = ""):
+        self.save_agent_thought(
+            agent_thought_id=thought_id,
+            tool_name="",
+            tool_input={},
+            tool_invoke_meta={},
+            thought=thought,
+            observation={},
+            answer=final_answer,
+            messages_ids=[],
+        )
+        self.queue_manager.publish(QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER)
 
     def _handle_invoke_action(
         self,

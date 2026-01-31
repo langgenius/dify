@@ -1,5 +1,6 @@
 import json
 import logging
+from collections import defaultdict
 from collections.abc import Generator
 from copy import deepcopy
 from typing import Any, Union
@@ -124,13 +125,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         function_call_state = True
                         tool_calls.extend(self.extract_tool_calls(chunk) or [])
                         tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
-                        try:
-                            tool_call_inputs = json.dumps(
-                                {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
-                            )
-                        except TypeError:
-                            # fallback: force ASCII to handle non-serializable objects
-                            tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
+
+                        tool_call_inputs = self._prepare_tool_inputs(tool_calls)
 
                     if chunk.delta.message and chunk.delta.message.content:
                         if isinstance(chunk.delta.message.content, list):
@@ -151,13 +147,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     function_call_state = True
                     tool_calls.extend(self.extract_blocking_tool_calls(result) or [])
                     tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
-                    try:
-                        tool_call_inputs = json.dumps(
-                            {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
-                        )
-                    except TypeError:
-                        # fallback: force ASCII to handle non-serializable objects
-                        tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
+
+                    tool_call_inputs = self._prepare_tool_inputs(tool_calls)
 
                 if result.usage:
                     increase_usage(llm_usage, result.usage)
@@ -230,12 +221,18 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             for tool_call_id, tool_call_name, tool_call_args in tool_calls:
                 tool_instance = tool_instances.get(tool_call_name)
                 if not tool_instance:
-                    tool_response = {
-                        "tool_call_id": tool_call_id,
-                        "tool_call_name": tool_call_name,
-                        "tool_response": f"there is not a tool named {tool_call_name}",
-                        "meta": ToolInvokeMeta.error_instance(f"there is not a tool named {tool_call_name}").to_dict(),
-                    }
+                    error_message = f"there is not a tool named {tool_call_name}"
+                    tool_invoke_meta = ToolInvokeMeta.error_instance(error_message)
+                    tool_invoke_response = error_message
+                    tool_response = self._create_tool_response(
+                        tool_call_id,
+                        tool_call_name,
+                        tool_call_args,
+                        tool_invoke_response,
+                        tool_invoke_meta,
+                        False,
+                    )
+                    tool_responses.append(tool_response)
                 else:
                     # invoke tool
                     tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
@@ -260,37 +257,51 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         # add message file ids
                         message_file_ids.append(message_file_id)
 
-                    tool_response = {
-                        "tool_call_id": tool_call_id,
-                        "tool_call_name": tool_call_name,
-                        "tool_response": tool_invoke_response,
-                        "meta": tool_invoke_meta.to_dict(),
-                    }
-
-                tool_responses.append(tool_response)
-                if tool_response["tool_response"] is not None:
-                    self._current_thoughts.append(
-                        ToolPromptMessage(
-                            content=str(tool_response["tool_response"]),
-                            tool_call_id=tool_call_id,
-                            name=tool_call_name,
-                        )
+                    direct_flag = (tool_invoke_meta.extra or {}).get("return_direct", False)
+                    tool_response = self._create_tool_response(
+                        tool_call_id,
+                        tool_call_name,
+                        tool_call_args,
+                        tool_invoke_response,
+                        tool_invoke_meta,
+                        direct_flag,
                     )
+                    tool_responses.append(tool_response)
 
             if len(tool_responses) > 0:
+                all_direct = all(tr.get("direct_flag") is True for tr in tool_responses)
+                if all_direct:
+                    llm_final_usage = llm_usage.get("usage") or LLMUsage.empty_usage()
+                    yield from self._handle_direct_return(
+                        agent_thought_id,
+                        tool_responses,
+                        response or "",
+                        message_file_ids,
+                        prompt_messages,
+                        llm_final_usage,
+                    )
+                    return
+
+                for tr in tool_responses:
+                    if tr["tool_response"] is not None:
+                        self._current_thoughts.append(
+                            ToolPromptMessage(
+                                content=str(tr["tool_response"]),
+                                tool_call_id=tr["tool_call_id"],
+                                name=tr["tool_call_name"],
+                            )
+                        )
                 # save agent thought
+                tool_invoke_meta_dict = self._aggregate_by_tool_name(tool_responses, "meta")
+                observation = self._aggregate_by_tool_name(tool_responses, "tool_response")
+
                 self.save_agent_thought(
                     agent_thought_id=agent_thought_id,
                     tool_name="",
                     tool_input="",
                     thought="",
-                    tool_invoke_meta={
-                        tool_response["tool_call_name"]: tool_response["meta"] for tool_response in tool_responses
-                    },
-                    observation={
-                        tool_response["tool_call_name"]: tool_response["tool_response"]
-                        for tool_response in tool_responses
-                    },
+                    tool_invoke_meta=tool_invoke_meta_dict,
+                    observation=observation,
                     answer="",
                     messages_ids=message_file_ids,
                 )
@@ -304,18 +315,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             iteration_step += 1
 
-        # publish end event
-        self.queue_manager.publish(
-            QueueMessageEndEvent(
-                llm_result=LLMResult(
-                    model=model_instance.model,
-                    prompt_messages=prompt_messages,
-                    message=AssistantPromptMessage(content=final_answer),
-                    usage=llm_usage["usage"] or LLMUsage.empty_usage(),
-                    system_fingerprint="",
-                )
-            ),
-            PublishFrom.APPLICATION_MANAGER,
+        # yield final answer
+        # calculate usage
+        llm_final_usage = llm_usage.get("usage") or LLMUsage.empty_usage()
+        yield from self._yield_final_answer(
+            final_answer=final_answer,
+            prompt_messages=prompt_messages,
+            usage=llm_final_usage,
+            delta_content="",
         )
 
     def check_tool_calls(self, llm_result_chunk: LLMResultChunk) -> bool:
@@ -379,6 +386,211 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             )
 
         return tool_calls
+
+    def _prepare_tool_inputs(self, tool_calls: list[tuple[str, str, dict[str, Any]]]) -> str:
+        """
+        Prepare tool inputs from tool calls, handling multiple calls to the same tool.
+
+        :param tool_calls: List of tool calls (id, name, args).
+        :return: JSON string of organized tool inputs.
+        """
+        # Organize tool inputs by tool name, handling multiple calls to the same tool
+        tool_inputs_map = defaultdict(list)
+        for _, name, args in tool_calls:
+            tool_inputs_map[name].append(args)
+
+        # Flatten single inputs for backward compatibility or simpler structure
+        final_tool_inputs = self._flatten(tool_inputs_map)
+
+        # Handle non-serializable objects by converting them to strings
+        return json.dumps(final_tool_inputs, ensure_ascii=False, default=str)
+
+    def _create_tool_response(
+        self,
+        tool_call_id: str,
+        tool_call_name: str,
+        tool_call_args: dict[str, Any],
+        tool_invoke_response: str | None,
+        tool_invoke_meta: ToolInvokeMeta,
+        direct_flag: bool,
+    ) -> dict[str, Any]:
+        """
+        Create a standardized tool response dictionary.
+
+        :param tool_call_id: The ID of the tool call.
+        :param tool_call_name: The name of the tool called.
+        :param tool_call_args: The arguments passed to the tool.
+        :param tool_invoke_response: The response string from the tool invocation.
+        :param tool_invoke_meta: Metadata associated with the tool invocation.
+        :param direct_flag: Boolean flag indicating if this is a direct return.
+        :return: A dictionary containing structured tool response data.
+        """
+        return {
+            "tool_call_id": tool_call_id,
+            "tool_call_name": tool_call_name,
+            "tool_response": tool_invoke_response,
+            "tool_call_args": tool_call_args,
+            "meta": tool_invoke_meta.to_dict(),
+            "direct_flag": direct_flag,
+        }
+
+    @staticmethod
+    def _aggregate_by_tool_name(
+        tool_responses: list[dict[str, Any]], value_key: str, default: Any = None
+    ) -> dict[str, Any]:
+        """
+        Aggregate tool response values by tool name.
+
+        :param tool_responses: The list of tool responses.
+        :param value_key: The key to retrieve the value from the tool response.
+        :param default: The default value if the key is missing.
+        :return: A dictionary of aggregated values.
+        """
+        agg = defaultdict(list)
+        for tr in tool_responses:
+            if "tool_call_name" in tr:
+                agg[tr["tool_call_name"]].append(tr.get(value_key, default))
+        return FunctionCallAgentRunner._flatten(agg)
+
+    @staticmethod
+    def _flatten(agg_dict: dict[str, list[Any]]) -> dict[str, Any]:
+        """
+        Flatten a dictionary of lists into a dictionary of single values.
+        If a list has only one element, it is replaced by that element.
+
+        :param agg_dict: The dictionary to flatten.
+        :return: The flattened dictionary.
+        """
+        return {k: (v[0] if len(v) == 1 else v) for k, v in agg_dict.items()}
+
+    def _yield_final_answer(
+        self,
+        final_answer: str,
+        prompt_messages: list[PromptMessage],
+        usage: LLMUsage,
+        delta_content: str = "",
+    ) -> Generator[LLMResultChunk, None, None]:
+        """
+        Yield the final answer as an LLMResultChunk and publish the MessageEndEvent.
+
+        :param final_answer: The final answer content.
+        :param prompt_messages: The prompt messages.
+        :param usage: The usage statistics.
+        :param delta_content: The content to be yielded in the chunk delta.
+                              Defaults to "" to avoid duplicate display when yielding final answer.
+        :return: A generator yielding LLMResultChunk.
+        """
+        yield LLMResultChunk(
+            model=self.model_instance.model,
+            prompt_messages=prompt_messages,
+            system_fingerprint="",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content=delta_content),
+                usage=usage,
+            ),
+        )
+
+        self.queue_manager.publish(
+            QueueMessageEndEvent(
+                llm_result=LLMResult(
+                    model=self.model_instance.model,
+                    prompt_messages=prompt_messages,
+                    message=AssistantPromptMessage(content=final_answer),
+                    usage=usage,
+                    system_fingerprint="",
+                )
+            ),
+            PublishFrom.APPLICATION_MANAGER,
+        )
+
+    def _save_and_publish_thought(self, thought_id: str, **kwargs):
+        """
+        Save and publish an agent thought.
+
+        :param thought_id: The thought ID.
+        :param kwargs: Additional arguments to be passed to save_agent_thought.
+        """
+        self.save_agent_thought(agent_thought_id=thought_id, **kwargs)
+        self.queue_manager.publish(QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER)
+
+    def _handle_direct_return(
+        self,
+        agent_thought_id: str,
+        tool_responses: list[dict[str, Any]],
+        thought: str,
+        message_file_ids: list[str],
+        prompt_messages: list[PromptMessage],
+        usage: LLMUsage,
+    ) -> Generator[LLMResultChunk, None, None]:
+        """
+        Handle the direct return process when a tool is invoked with return_direct=True.
+
+        :param agent_thought_id: The agent thought ID.
+        :param tool_responses: The tool responses.
+        :param thought: The thought content.
+        :param message_file_ids: The message file IDs.
+        :param prompt_messages: The prompt messages.
+        :param usage: The usage statistics.
+        :return: A generator yielding LLMResultChunk.
+        """
+        final_answer = "\n".join(
+            [str(tr["tool_response"]) for tr in tool_responses if tr.get("tool_response") is not None]
+        )
+        tool_invoke_meta = self._aggregate_by_tool_name(tool_responses, "meta")
+        observation = self._aggregate_by_tool_name(tool_responses, "tool_response")
+        tool_input = self._aggregate_by_tool_name(tool_responses, "tool_call_args", default={})
+        tool_name = ";".join(sorted({tr["tool_call_name"] for tr in tool_responses}))
+
+        self._save_and_publish_thought(
+            thought_id=agent_thought_id,
+            tool_name=tool_name,
+            tool_input=tool_input,
+            thought=thought,
+            tool_invoke_meta=tool_invoke_meta,
+            observation=observation,
+            answer=final_answer,
+            messages_ids=message_file_ids,
+        )
+
+        final_answer_thought_id = self.create_agent_thought(
+            message_id=self.message.id,
+            message=final_answer,
+            tool_name="",
+            tool_input="",
+            messages_ids=message_file_ids,
+        )
+        # In Dify's UI, the thought process is split into steps:
+        # 1. Tool call step (Action): Requires `tool` and `observation` fields.
+        # 2. Final answer step (Response): Requires `thought` and `answer` fields.
+        # Even in `return_direct` mode, we must create this second thought with the final answer
+        # to ensure the frontend renders the "Final Answer" bubble correctly after the tool card.
+        # This maintains visual consistency with the standard ReAct loop.
+        self._save_and_publish_thought(
+            thought_id=final_answer_thought_id,
+            tool_name="",
+            tool_input="",
+            thought=final_answer,
+            tool_invoke_meta={},
+            observation={},
+            answer=final_answer,
+            messages_ids=message_file_ids,
+        )
+
+        # In return_direct mode, we should NOT stream the content via delta_content.
+        # 1. For text tools: The frontend will render the result via the AgentThought event (final_answer).
+        #    Streaming it here would duplicate the content.
+        # 2. For rich media tools (e.g., ECharts, JSON): The tool output is structured data.
+        #    Forcing it into delta_content (which expects text) would send raw JSON strings (e.g., "{'a': 1}")
+        #    to the chat bubble, which breaks the frontend renderer and looks bad.
+        # Therefore, we send delta_content="" to keep the chat bubble clean and rely on the
+        # tool's native rendering logic (AgentThought) to display the result.
+        yield from self._yield_final_answer(
+            final_answer=final_answer,
+            prompt_messages=prompt_messages,
+            usage=usage,
+            delta_content="",
+        )
 
     def _init_system_message(self, prompt_template: str, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
