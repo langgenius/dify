@@ -290,7 +290,9 @@ class WebhookService:
         return dict(await request.form), {}
 
     @classmethod
-    async def _extract_multipart_body(cls, webhook_trigger: WorkflowWebhookTrigger) -> tuple[dict[str, Any], dict[str, Any]]:
+    async def _extract_multipart_body(
+        cls, webhook_trigger: WorkflowWebhookTrigger
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Extract multipart/form-data body and files from request.
 
         Args:

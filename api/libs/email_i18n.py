@@ -116,9 +116,9 @@ class EmailRenderer(Protocol):
 class FlaskEmailRenderer:
     """Flask-based email template renderer."""
 
-    def render_template(self, template_path: str, **context: Any) -> str:
+    async def render_template(self, template_path: str, **context: Any) -> str:
         """Render email template using Flask's render_template."""
-        return render_template(template_path, **context)
+        return await render_template(template_path, **context)
 
 
 class BrandingService(Protocol):

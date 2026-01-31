@@ -1,5 +1,5 @@
 import json
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from os import getenv
 from typing import Any, Union
@@ -59,7 +59,7 @@ class ApiTool(Tool):
             provider_id=self.provider_id,
         )
 
-    def validate_credentials(
+    async def validate_credentials(
         self, credentials: dict[str, Any], parameters: dict[str, Any], format_only: bool = False
     ) -> str:
         """
@@ -71,7 +71,7 @@ class ApiTool(Tool):
         if format_only:
             return ""
 
-        response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
+        response = await self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
         # validate response
         parsed_response = self.validate_and_parse_response(response)
         # For credential validation, always return as string
@@ -141,7 +141,7 @@ class ApiTool(Tool):
                 )
 
             # Check content type
-            content_type = (await response).headers.get("content-type", "").lower()
+            content_type = response.headers.get("content-type", "").lower()
             is_json_content_type = "application/json" in content_type
 
             # Try to parse as JSON
@@ -168,7 +168,7 @@ class ApiTool(Tool):
         else:
             return (parameter.get("schema", {}) or {}).get("default", "")
 
-    def do_http_request(
+    async def do_http_request(
         self, url: str, method: str, headers: dict[str, Any], parameters: dict[str, Any]
     ) -> httpx.Response:
         """
@@ -286,7 +286,7 @@ class ApiTool(Tool):
         method_lc = method.lower()
         if method_lc not in _METHOD_MAP:
             raise ValueError(f"Invalid http method {method}")
-        response: httpx.Response = _METHOD_MAP[
+        response: httpx.Response = await _METHOD_MAP[
             method_lc
         ](  # https://discuss.python.org/t/type-inference-for-function-return-types/42926
             url,
@@ -373,14 +373,14 @@ class ApiTool(Tool):
         except ValueError:
             return value
 
-    def _invoke(
+    async def _invoke(
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> AsyncGenerator[ToolInvokeMessage, None]:
         """
         invoke http request
         """
@@ -389,7 +389,9 @@ class ApiTool(Tool):
         headers = self.assembling_request(tool_parameters)
 
         # do http request
-        response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, tool_parameters)
+        response = await self.do_http_request(
+            self.api_bundle.server_url, self.api_bundle.method, headers, tool_parameters
+        )
 
         # validate response
         parsed_response = self.validate_and_parse_response(response)

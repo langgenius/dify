@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
@@ -51,7 +51,7 @@ class Tool(ABC):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage]:
+    ):
         if self.runtime and self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
 
@@ -68,13 +68,13 @@ class Tool(ABC):
 
         if isinstance(result, ToolInvokeMessage):
 
-            def single_generator() -> Generator[ToolInvokeMessage, None, None]:
+            async def single_generator():
                 yield result
 
             return single_generator()
         elif isinstance(result, list):
 
-            def generator() -> Generator[ToolInvokeMessage, None, None]:
+            async def generator():
                 yield from result
 
             return generator()
@@ -101,7 +101,7 @@ class Tool(ABC):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
+    ) -> ToolInvokeMessage | list[ToolInvokeMessage] | AsyncGenerator[ToolInvokeMessage, None]:
         pass
 
     def get_runtime_parameters(
