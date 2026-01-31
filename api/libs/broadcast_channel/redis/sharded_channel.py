@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
 from redis import Redis
 
@@ -18,7 +20,7 @@ class ShardedRedisBroadcastChannel:
     ):
         self._client = redis_client
 
-    def topic(self, topic: str) -> "ShardedTopic":
+    def topic(self, topic: str) -> ShardedTopic:
         return ShardedTopic(self._client, topic)
 
 

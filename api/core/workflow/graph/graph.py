@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -175,7 +177,7 @@ class Graph:
     def _create_node_instances(
         cls,
         node_configs_map: dict[str, dict[str, object]],
-        node_factory: "NodeFactory",
+        node_factory: NodeFactory,
     ) -> dict[str, Node]:
         """
         Create node instances from configurations using the node factory.
@@ -197,7 +199,7 @@ class Graph:
         return nodes
 
     @classmethod
-    def new(cls) -> "GraphBuilder":
+    def new(cls) -> GraphBuilder:
         """Create a fluent builder for assembling a graph programmatically."""
 
         return GraphBuilder(graph_cls=cls)
@@ -284,9 +286,10 @@ class Graph:
         cls,
         *,
         graph_config: Mapping[str, object],
-        node_factory: "NodeFactory",
+        node_factory: NodeFactory,
         root_node_id: str | None = None,
-    ) -> "Graph":
+        skip_validation: bool = False,
+    ) -> Graph:
         """
         Initialize graph
 
@@ -337,8 +340,9 @@ class Graph:
             root_node=root_node,
         )
 
-        # Validate the graph structure using built-in validators
-        get_graph_validator().validate(graph)
+        if not skip_validation:
+            # Validate the graph structure using built-in validators
+            get_graph_validator().validate(graph)
 
         return graph
 
@@ -383,7 +387,7 @@ class GraphBuilder:
         self._edges: list[Edge] = []
         self._edge_counter = 0
 
-    def add_root(self, node: Node) -> "GraphBuilder":
+    def add_root(self, node: Node) -> GraphBuilder:
         """Register the root node. Must be called exactly once."""
 
         if self._nodes:
@@ -398,7 +402,7 @@ class GraphBuilder:
         *,
         from_node_id: str | None = None,
         source_handle: str = "source",
-    ) -> "GraphBuilder":
+    ) -> GraphBuilder:
         """Append a node and connect it from the specified predecessor."""
 
         if not self._nodes:
@@ -419,7 +423,7 @@ class GraphBuilder:
 
         return self
 
-    def connect(self, *, tail: str, head: str, source_handle: str = "source") -> "GraphBuilder":
+    def connect(self, *, tail: str, head: str, source_handle: str = "source") -> GraphBuilder:
         """Connect two existing nodes without adding a new node."""
 
         if tail not in self._nodes_by_id:

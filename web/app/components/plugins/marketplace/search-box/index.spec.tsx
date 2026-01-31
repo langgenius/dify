@@ -10,9 +10,9 @@ import ToolSelectorTrigger from './trigger/tool-selector'
 // Mock external dependencies only
 // ================================
 
-// Mock useMixedTranslation hook
-vi.mock('../hooks', () => ({
-  useMixedTranslation: (_locale?: string) => ({
+// Mock i18n translation hook
+vi.mock('#i18n', () => ({
+  useTranslation: () => ({
     t: (key: string, options?: { ns?: string }) => {
       // Build full key with namespace prefix if provided
       const fullKey = options?.ns ? `${options.ns}.${key}` : key
@@ -26,16 +26,19 @@ vi.mock('../hooks', () => ({
   }),
 }))
 
-// Mock useMarketplaceContext
-const mockContextValues = {
-  searchPluginText: '',
-  handleSearchPluginTextChange: vi.fn(),
-  filterPluginTags: [] as string[],
-  handleFilterPluginTagsChange: vi.fn(),
-}
+// Mock marketplace state hooks
+const { mockSearchPluginText, mockHandleSearchPluginTextChange, mockFilterPluginTags, mockHandleFilterPluginTagsChange } = vi.hoisted(() => {
+  return {
+    mockSearchPluginText: '',
+    mockHandleSearchPluginTextChange: vi.fn(),
+    mockFilterPluginTags: [] as string[],
+    mockHandleFilterPluginTagsChange: vi.fn(),
+  }
+})
 
-vi.mock('../context', () => ({
-  useMarketplaceContext: (selector: (v: typeof mockContextValues) => unknown) => selector(mockContextValues),
+vi.mock('../atoms', () => ({
+  useSearchPluginText: () => [mockSearchPluginText, mockHandleSearchPluginTextChange],
+  useFilterPluginTags: () => [mockFilterPluginTags, mockHandleFilterPluginTagsChange],
 }))
 
 // Mock useTags hook
@@ -364,13 +367,6 @@ describe('SearchBox', () => {
       expect(container.querySelector('.custom-input-class')).toBeInTheDocument()
     })
 
-    it('should pass locale to TagsFilter', () => {
-      render(<SearchBox {...defaultProps} locale="zh-CN" />)
-
-      // TagsFilter should be rendered with locale
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
-    })
-
     it('should handle empty placeholder', () => {
       render(<SearchBox {...defaultProps} placeholder="" />)
 
@@ -437,20 +433,11 @@ describe('SearchBoxWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPortalOpenState = false
-    // Reset context values
-    mockContextValues.searchPluginText = ''
-    mockContextValues.filterPluginTags = []
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<SearchBoxWrapper />)
-
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-    })
-
-    it('should render with locale prop', () => {
-      render(<SearchBoxWrapper locale="en-US" />)
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
@@ -469,28 +456,14 @@ describe('SearchBoxWrapper', () => {
     })
   })
 
-  describe('Context Integration', () => {
-    it('should use searchPluginText from context', () => {
-      mockContextValues.searchPluginText = 'context search'
-      render(<SearchBoxWrapper />)
-
-      expect(screen.getByDisplayValue('context search')).toBeInTheDocument()
-    })
-
+  describe('Hook Integration', () => {
     it('should call handleSearchPluginTextChange when search changes', () => {
       render(<SearchBoxWrapper />)
 
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: 'new search' } })
 
-      expect(mockContextValues.handleSearchPluginTextChange).toHaveBeenCalledWith('new search')
-    })
-
-    it('should use filterPluginTags from context', () => {
-      mockContextValues.filterPluginTags = ['agent', 'rag']
-      render(<SearchBoxWrapper />)
-
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(mockHandleSearchPluginTextChange).toHaveBeenCalledWith('new search')
     })
   })
 
@@ -498,13 +471,6 @@ describe('SearchBoxWrapper', () => {
     it('should use translation for placeholder', () => {
       render(<SearchBoxWrapper />)
 
-      expect(screen.getByPlaceholderText('Search plugins')).toBeInTheDocument()
-    })
-
-    it('should pass locale to useMixedTranslation', () => {
-      render(<SearchBoxWrapper locale="zh-CN" />)
-
-      // Translation should still work
       expect(screen.getByPlaceholderText('Search plugins')).toBeInTheDocument()
     })
   })
@@ -665,12 +631,6 @@ describe('MarketplaceTrigger', () => {
   })
 
   describe('Props Variations', () => {
-    it('should handle locale prop', () => {
-      render(<MarketplaceTrigger {...defaultProps} locale="zh-CN" />)
-
-      expect(screen.getByText('All Tags')).toBeInTheDocument()
-    })
-
     it('should handle empty tagsMap', () => {
       const { container } = render(
         <MarketplaceTrigger {...defaultProps} tagsMap={{}} tags={[]} />,
@@ -1251,7 +1211,6 @@ describe('Combined Workflows', () => {
         supportAddCustomTool
         onShowAddCustomCollectionModal={vi.fn()}
         placeholder="Search plugins"
-        locale="en-US"
         wrapperClassName="custom-wrapper"
         inputClassName="custom-input"
         autoFocus={false}

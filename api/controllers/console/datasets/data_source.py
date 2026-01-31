@@ -3,13 +3,13 @@ from collections.abc import Generator
 from typing import Any, cast
 
 from flask import request
-from flask_restx import Resource, marshal_with
+from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import register_schema_model
+from controllers.common.schema import get_or_create_model, register_schema_model
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
@@ -17,7 +17,14 @@ from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
-from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
+from fields.data_source_fields import (
+    integrate_fields,
+    integrate_icon_fields,
+    integrate_list_fields,
+    integrate_notion_info_list_fields,
+    integrate_page_fields,
+    integrate_workspace_fields,
+)
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import DataSourceOauthBinding, Document
@@ -36,7 +43,60 @@ class NotionEstimatePayload(BaseModel):
     doc_language: str = Field(default="English")
 
 
+class DataSourceNotionListQuery(BaseModel):
+    dataset_id: str | None = Field(default=None, description="Dataset ID")
+    credential_id: str = Field(..., description="Credential ID", min_length=1)
+    datasource_parameters: dict[str, Any] | None = Field(default=None, description="Datasource parameters JSON string")
+
+
+class DataSourceNotionPreviewQuery(BaseModel):
+    credential_id: str = Field(..., description="Credential ID", min_length=1)
+
+
 register_schema_model(console_ns, NotionEstimatePayload)
+
+
+integrate_icon_model = get_or_create_model("DataSourceIntegrateIcon", integrate_icon_fields)
+
+integrate_page_fields_copy = integrate_page_fields.copy()
+integrate_page_fields_copy["page_icon"] = fields.Nested(integrate_icon_model, allow_null=True)
+integrate_page_model = get_or_create_model("DataSourceIntegratePage", integrate_page_fields_copy)
+
+integrate_workspace_fields_copy = integrate_workspace_fields.copy()
+integrate_workspace_fields_copy["pages"] = fields.List(fields.Nested(integrate_page_model))
+integrate_workspace_model = get_or_create_model("DataSourceIntegrateWorkspace", integrate_workspace_fields_copy)
+
+integrate_fields_copy = integrate_fields.copy()
+integrate_fields_copy["source_info"] = fields.Nested(integrate_workspace_model)
+integrate_model = get_or_create_model("DataSourceIntegrate", integrate_fields_copy)
+
+integrate_list_fields_copy = integrate_list_fields.copy()
+integrate_list_fields_copy["data"] = fields.List(fields.Nested(integrate_model))
+integrate_list_model = get_or_create_model("DataSourceIntegrateList", integrate_list_fields_copy)
+
+notion_page_fields = {
+    "page_name": fields.String,
+    "page_id": fields.String,
+    "page_icon": fields.Nested(integrate_icon_model, allow_null=True),
+    "is_bound": fields.Boolean,
+    "parent_id": fields.String,
+    "type": fields.String,
+}
+notion_page_model = get_or_create_model("NotionIntegratePage", notion_page_fields)
+
+notion_workspace_fields = {
+    "workspace_name": fields.String,
+    "workspace_id": fields.String,
+    "workspace_icon": fields.String,
+    "pages": fields.List(fields.Nested(notion_page_model)),
+}
+notion_workspace_model = get_or_create_model("NotionIntegrateWorkspace", notion_workspace_fields)
+
+integrate_notion_info_list_fields_copy = integrate_notion_info_list_fields.copy()
+integrate_notion_info_list_fields_copy["notion_info"] = fields.List(fields.Nested(notion_workspace_model))
+integrate_notion_info_list_model = get_or_create_model(
+    "NotionIntegrateInfoList", integrate_notion_info_list_fields_copy
+)
 
 
 @console_ns.route(
@@ -47,7 +107,7 @@ class DataSourceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(integrate_list_fields)
+    @marshal_with(integrate_list_model)
     def get(self):
         _, current_tenant_id = current_account_with_tenant()
 
@@ -132,30 +192,19 @@ class DataSourceNotionListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(integrate_notion_info_list_fields)
+    @marshal_with(integrate_notion_info_list_model)
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
 
-        dataset_id = request.args.get("dataset_id", default=None, type=str)
-        credential_id = request.args.get("credential_id", default=None, type=str)
-        if not credential_id:
-            raise ValueError("Credential id is required.")
+        query = DataSourceNotionListQuery.model_validate(request.args.to_dict())
 
         # Get datasource_parameters from query string (optional, for GitHub and other datasources)
-        datasource_parameters_str = request.args.get("datasource_parameters", default=None, type=str)
-        datasource_parameters = {}
-        if datasource_parameters_str:
-            try:
-                datasource_parameters = json.loads(datasource_parameters_str)
-                if not isinstance(datasource_parameters, dict):
-                    raise ValueError("datasource_parameters must be a JSON object.")
-            except json.JSONDecodeError:
-                raise ValueError("Invalid datasource_parameters JSON format.")
+        datasource_parameters = query.datasource_parameters or {}
 
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=current_tenant_id,
-            credential_id=credential_id,
+            credential_id=query.credential_id,
             provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
         )
@@ -164,8 +213,8 @@ class DataSourceNotionListApi(Resource):
         exist_page_ids = []
         with Session(db.engine) as session:
             # import notion in the exist dataset
-            if dataset_id:
-                dataset = DatasetService.get_dataset(dataset_id)
+            if query.dataset_id:
+                dataset = DatasetService.get_dataset(query.dataset_id)
                 if not dataset:
                     raise NotFound("Dataset not found.")
                 if dataset.data_source_type != "notion_import":
@@ -173,7 +222,7 @@ class DataSourceNotionListApi(Resource):
 
                 documents = session.scalars(
                     select(Document).filter_by(
-                        dataset_id=dataset_id,
+                        dataset_id=query.dataset_id,
                         tenant_id=current_tenant_id,
                         data_source_type="notion_import",
                         enabled=True,
@@ -240,13 +289,12 @@ class DataSourceNotionApi(Resource):
     def get(self, page_id, page_type):
         _, current_tenant_id = current_account_with_tenant()
 
-        credential_id = request.args.get("credential_id", default=None, type=str)
-        if not credential_id:
-            raise ValueError("Credential id is required.")
+        query = DataSourceNotionPreviewQuery.model_validate(request.args.to_dict())
+
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=current_tenant_id,
-            credential_id=credential_id,
+            credential_id=query.credential_id,
             provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
         )

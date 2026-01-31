@@ -3,9 +3,7 @@ import type { App } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useAccessControlStore from '@/context/access-control-store'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode, SubjectType } from '@/models/access-control'
-import { defaultSystemFeatures } from '@/types/feature'
 import Toast from '../../base/toast'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
@@ -32,13 +30,6 @@ vi.mock('@/context/app-context', () => ({
       is_password_set: true,
     },
   }),
-}))
-
-vi.mock('@/service/common', () => ({
-  fetchCurrentWorkspace: vi.fn(),
-  fetchLangGeniusVersion: vi.fn(),
-  fetchUserProfile: vi.fn(),
-  getSystemFeatures: vi.fn(),
 }))
 
 vi.mock('@/service/access-control', () => ({
@@ -112,23 +103,6 @@ const memberSubject: Subject = {
   accountData: baseMember,
 } as Subject
 
-const resetAccessControlStore = () => {
-  useAccessControlStore.setState({
-    appId: '',
-    specificGroups: [],
-    specificMembers: [],
-    currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-    selectedGroupsForBreadcrumb: [],
-  })
-}
-
-const resetGlobalStore = () => {
-  useGlobalPublicStore.setState({
-    systemFeatures: defaultSystemFeatures,
-    isGlobalPending: false,
-  })
-}
-
 beforeAll(() => {
   class MockIntersectionObserver {
     observe = vi.fn(() => undefined)
@@ -140,9 +114,6 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-  vi.clearAllMocks()
-  resetAccessControlStore()
-  resetGlobalStore()
   mockMutateAsync.mockResolvedValue(undefined)
   mockUseUpdateAccessMode.mockReturnValue({
     isPending: false,

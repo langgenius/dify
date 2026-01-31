@@ -15,10 +15,9 @@ import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
-import { getDocsUrl } from '@/app/components/plugins/utils'
 import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useLocale } from '@/context/i18n'
+import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
@@ -27,7 +26,7 @@ import { cn } from '@/utils/classnames'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
-import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/plugin-type-switch'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
 import {
   PluginPageContextProvider,
   usePluginPageContext,
@@ -47,7 +46,7 @@ const PluginPage = ({
   marketplace,
 }: PluginPageProps) => {
   const { t } = useTranslation()
-  const locale = useLocale()
+  const docLink = useDocLink()
   useDocumentTitle(t('metadata.title', { ns: 'plugin' }))
 
   // Use nuqs hook for installation state
@@ -175,7 +174,7 @@ const PluginPage = ({
                     </Button>
                   </Link>
                   <Link
-                    href={getDocsUrl(locale, '/plugins/publish-plugins/publish-to-dify-marketplace/README')}
+                    href={docLink('/develop-plugin/publishing/marketplace-listing/release-to-dify-marketplace')}
                     target="_blank"
                   >
                     <Button
@@ -207,6 +206,7 @@ const PluginPage = ({
                   popupContent={t('privilege.title', { ns: 'plugin' })}
                 >
                   <Button
+                    data-testid="plugin-settings-button"
                     className="group h-full w-full p-2 text-components-button-secondary-text"
                     onClick={setShowPluginSettingModal}
                   >

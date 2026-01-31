@@ -2,17 +2,19 @@ import json
 import logging
 from argparse import ArgumentTypeError
 from collections.abc import Sequence
-from typing import Literal, cast
+from contextlib import ExitStack
+from typing import Any, Literal, cast
+from uuid import UUID
 
 import sqlalchemy as sa
-from flask import request
+from flask import request, send_file
 from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from core.errors.error import (
     LLMBadRequestError,
@@ -42,6 +44,8 @@ from models import DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
+from services.file_service import FileService
+from tasks.generate_summary_index_task import generate_summary_index_task
 
 from ..app.error import (
     ProviderModelCurrentlyNotSupportError,
@@ -65,35 +69,31 @@ from ..wraps import (
 
 logger = logging.getLogger(__name__)
 
-
-def _get_or_create_model(model_name: str, field_def):
-    existing = console_ns.models.get(model_name)
-    if existing is None:
-        existing = console_ns.model(model_name, field_def)
-    return existing
+# NOTE: Keep constants near the top of the module for discoverability.
+DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
 
 
 # Register models for flask_restx to avoid dict type issues in Swagger
-dataset_model = _get_or_create_model("Dataset", dataset_fields)
+dataset_model = get_or_create_model("Dataset", dataset_fields)
 
-document_metadata_model = _get_or_create_model("DocumentMetadata", document_metadata_fields)
+document_metadata_model = get_or_create_model("DocumentMetadata", document_metadata_fields)
 
 document_fields_copy = document_fields.copy()
 document_fields_copy["doc_metadata"] = fields.List(
     fields.Nested(document_metadata_model), attribute="doc_metadata_details"
 )
-document_model = _get_or_create_model("Document", document_fields_copy)
+document_model = get_or_create_model("Document", document_fields_copy)
 
 document_with_segments_fields_copy = document_with_segments_fields.copy()
 document_with_segments_fields_copy["doc_metadata"] = fields.List(
     fields.Nested(document_metadata_model), attribute="doc_metadata_details"
 )
-document_with_segments_model = _get_or_create_model("DocumentWithSegments", document_with_segments_fields_copy)
+document_with_segments_model = get_or_create_model("DocumentWithSegments", document_with_segments_fields_copy)
 
 dataset_and_document_fields_copy = dataset_and_document_fields.copy()
 dataset_and_document_fields_copy["dataset"] = fields.Nested(dataset_model)
 dataset_and_document_fields_copy["documents"] = fields.List(fields.Nested(document_model))
-dataset_and_document_model = _get_or_create_model("DatasetAndDocument", dataset_and_document_fields_copy)
+dataset_and_document_model = get_or_create_model("DatasetAndDocument", dataset_and_document_fields_copy)
 
 
 class DocumentRetryPayload(BaseModel):
@@ -104,6 +104,25 @@ class DocumentRenamePayload(BaseModel):
     name: str
 
 
+class GenerateSummaryPayload(BaseModel):
+    document_list: list[str]
+
+
+class DocumentBatchDownloadZipPayload(BaseModel):
+    """Request payload for bulk downloading documents as a zip archive."""
+
+    document_ids: list[UUID] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
+
+
+class DocumentDatasetListParam(BaseModel):
+    page: int = Field(1, title="Page", description="Page number.")
+    limit: int = Field(20, title="Limit", description="Page size.")
+    search: str | None = Field(None, alias="keyword", title="Search", description="Search keyword.")
+    sort_by: str = Field("-created_at", alias="sort", title="SortBy", description="Sort by field.")
+    status: str | None = Field(None, title="Status", description="Document status.")
+    fetch_val: str = Field("false", alias="fetch")
+
+
 register_schema_models(
     console_ns,
     KnowledgeConfig,
@@ -111,6 +130,8 @@ register_schema_models(
     RetrievalModel,
     DocumentRetryPayload,
     DocumentRenamePayload,
+    GenerateSummaryPayload,
+    DocumentBatchDownloadZipPayload,
 )
 
 
@@ -225,14 +246,16 @@ class DatasetDocumentListApi(Resource):
     def get(self, dataset_id):
         current_user, current_tenant_id = current_account_with_tenant()
         dataset_id = str(dataset_id)
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        search = request.args.get("keyword", default=None, type=str)
-        sort = request.args.get("sort", default="-created_at", type=str)
-        status = request.args.get("status", default=None, type=str)
+        raw_args = request.args.to_dict()
+        param = DocumentDatasetListParam.model_validate(raw_args)
+        page = param.page
+        limit = param.limit
+        search = param.search
+        sort = param.sort_by
+        status = param.status
         # "yes", "true", "t", "y", "1" convert to True, while others convert to False.
         try:
-            fetch_val = request.args.get("fetch", default="false")
+            fetch_val = param.fetch_val
             if isinstance(fetch_val, bool):
                 fetch = fetch_val
             else:
@@ -295,6 +318,13 @@ class DatasetDocumentListApi(Resource):
 
         paginated_documents = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
         documents = paginated_documents.items
+
+        DocumentService.enrich_documents_with_summary_index_status(
+            documents=documents,
+            dataset=dataset,
+            tenant_id=current_tenant_id,
+        )
+
         if fetch:
             for document in documents:
                 completed_segments = (
@@ -780,6 +810,7 @@ class DocumentApi(DocumentResource):
                 "display_status": document.display_status,
                 "doc_form": document.doc_form,
                 "doc_language": document.doc_language,
+                "need_summary": document.need_summary if document.need_summary is not None else False,
             }
         else:
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
@@ -815,6 +846,7 @@ class DocumentApi(DocumentResource):
                 "display_status": document.display_status,
                 "doc_form": document.doc_form,
                 "doc_language": document.doc_language,
+                "need_summary": document.need_summary if document.need_summary is not None else False,
             }
 
         return response, 200
@@ -840,6 +872,62 @@ class DocumentApi(DocumentResource):
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
         return {"result": "success"}, 204
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/download")
+class DocumentDownloadApi(DocumentResource):
+    """Return a signed download URL for a dataset document's original uploaded file."""
+
+    @console_ns.doc("get_dataset_document_download_url")
+    @console_ns.doc(description="Get a signed download URL for a dataset document's original uploaded file")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    def get(self, dataset_id: str, document_id: str) -> dict[str, Any]:
+        # Reuse the shared permission/tenant checks implemented in DocumentResource.
+        document = self.get_document(str(dataset_id), str(document_id))
+        return {"url": DocumentService.get_document_download_url(document)}
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/download-zip")
+class DocumentBatchDownloadZipApi(DocumentResource):
+    """Download multiple uploaded-file documents as a single ZIP (avoids browser multi-download limits)."""
+
+    @console_ns.doc("download_dataset_documents_as_zip")
+    @console_ns.doc(description="Download selected dataset documents as a single ZIP archive (upload-file only)")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
+    def post(self, dataset_id: str):
+        """Stream a ZIP archive containing the requested uploaded documents."""
+        # Parse and validate request payload.
+        payload = DocumentBatchDownloadZipPayload.model_validate(console_ns.payload or {})
+
+        current_user, current_tenant_id = current_account_with_tenant()
+        dataset_id = str(dataset_id)
+        document_ids: list[str] = [str(document_id) for document_id in payload.document_ids]
+        upload_files, download_name = DocumentService.prepare_document_batch_download_zip(
+            dataset_id=dataset_id,
+            document_ids=document_ids,
+            tenant_id=current_tenant_id,
+            current_user=current_user,
+        )
+
+        # Delegate ZIP packing to FileService, but keep Flask response+cleanup in the route.
+        with ExitStack() as stack:
+            zip_path = stack.enter_context(FileService.build_upload_files_zip_tempfile(upload_files=upload_files))
+            response = send_file(
+                zip_path,
+                mimetype="application/zip",
+                as_attachment=True,
+                download_name=download_name,
+            )
+            cleanup = stack.pop_all()
+            response.call_on_close(cleanup.close)
+        return response
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>")
@@ -1098,7 +1186,7 @@ class DocumentRenameApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(document_fields)
+    @marshal_with(document_model)
     @console_ns.expect(console_ns.models[DocumentRenamePayload.__name__])
     def post(self, dataset_id, document_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
@@ -1182,3 +1270,137 @@ class DocumentPipelineExecutionLogApi(DocumentResource):
             "input_data": log.input_data,
             "datasource_node_id": log.datasource_node_id,
         }, 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/generate-summary")
+class DocumentGenerateSummaryApi(Resource):
+    @console_ns.doc("generate_summary_for_documents")
+    @console_ns.doc(description="Generate summary index for documents")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.expect(console_ns.models[GenerateSummaryPayload.__name__])
+    @console_ns.response(200, "Summary generation started successfully")
+    @console_ns.response(400, "Invalid request or dataset configuration")
+    @console_ns.response(403, "Permission denied")
+    @console_ns.response(404, "Dataset not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    def post(self, dataset_id):
+        """
+        Generate summary index for specified documents.
+
+        This endpoint checks if the dataset configuration supports summary generation
+        (indexing_technique must be 'high_quality' and summary_index_setting.enable must be true),
+        then asynchronously generates summary indexes for the provided documents.
+        """
+        current_user, _ = current_account_with_tenant()
+        dataset_id = str(dataset_id)
+
+        # Get dataset
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
+        # Check permissions
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        # Validate request payload
+        payload = GenerateSummaryPayload.model_validate(console_ns.payload or {})
+        document_list = payload.document_list
+
+        if not document_list:
+            from werkzeug.exceptions import BadRequest
+
+            raise BadRequest("document_list cannot be empty.")
+
+        # Check if dataset configuration supports summary generation
+        if dataset.indexing_technique != "high_quality":
+            raise ValueError(
+                f"Summary generation is only available for 'high_quality' indexing technique. "
+                f"Current indexing technique: {dataset.indexing_technique}"
+            )
+
+        summary_index_setting = dataset.summary_index_setting
+        if not summary_index_setting or not summary_index_setting.get("enable"):
+            raise ValueError("Summary index is not enabled for this dataset. Please enable it in the dataset settings.")
+
+        # Verify all documents exist and belong to the dataset
+        documents = DocumentService.get_documents_by_ids(dataset_id, document_list)
+
+        if len(documents) != len(document_list):
+            found_ids = {doc.id for doc in documents}
+            missing_ids = set(document_list) - found_ids
+            raise NotFound(f"Some documents not found: {list(missing_ids)}")
+
+        # Dispatch async tasks for each document
+        for document in documents:
+            # Skip qa_model documents as they don't generate summaries
+            if document.doc_form == "qa_model":
+                logger.info("Skipping summary generation for qa_model document %s", document.id)
+                continue
+
+            # Dispatch async task
+            generate_summary_index_task.delay(dataset_id, document.id)
+            logger.info(
+                "Dispatched summary generation task for document %s in dataset %s",
+                document.id,
+                dataset_id,
+            )
+
+        return {"result": "success"}, 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/summary-status")
+class DocumentSummaryStatusApi(DocumentResource):
+    @console_ns.doc("get_document_summary_status")
+    @console_ns.doc(description="Get summary index generation status for a document")
+    @console_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @console_ns.response(200, "Summary status retrieved successfully")
+    @console_ns.response(404, "Document not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id, document_id):
+        """
+        Get summary index generation status for a document.
+
+        Returns:
+        - total_segments: Total number of segments in the document
+        - summary_status: Dictionary with status counts
+          - completed: Number of summaries completed
+          - generating: Number of summaries being generated
+          - error: Number of summaries with errors
+          - not_started: Number of segments without summary records
+        - summaries: List of summary records with status and content preview
+        """
+        current_user, _ = current_account_with_tenant()
+        dataset_id = str(dataset_id)
+        document_id = str(document_id)
+
+        # Get dataset
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
+        # Check permissions
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        # Get summary status detail from service
+        from services.summary_index_service import SummaryIndexService
+
+        result = SummaryIndexService.get_document_summary_status_detail(
+            document_id=document_id,
+            dataset_id=dataset_id,
+        )
+
+        return result, 200

@@ -1,7 +1,9 @@
 import base64
+import datetime
 import json
 import logging
 import secrets
+import time
 from typing import Any
 
 import click
@@ -20,7 +22,7 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from core.rag.models.document import Document
+from core.rag.models.document import ChildDocument, Document
 from core.tools.utils.system_oauth_encryption import encrypt_system_oauth_params
 from events.app_event import app_was_created
 from extensions.ext_database import db
@@ -34,7 +36,7 @@ from libs.rsa import generate_key_pair
 from models import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
+from models.model import App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
 from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from models.provider import Provider, ProviderModel
 from models.provider_ids import DatasourceProviderID, ToolProviderID
@@ -45,6 +47,9 @@ from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpi
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 from services.plugin.plugin_service import PluginService
+from services.retention.conversation.messages_clean_policy import create_message_clean_policy
+from services.retention.conversation.messages_clean_service import MessagesCleanService
+from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
@@ -62,8 +67,10 @@ def reset_password(email, new_password, password_confirm):
     if str(new_password).strip() != str(password_confirm).strip():
         click.echo(click.style("Passwords do not match.", fg="red"))
         return
+    normalized_email = email.strip().lower()
+
     with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-        account = session.query(Account).where(Account.email == email).one_or_none()
+        account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=session)
 
         if not account:
             click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -84,7 +91,7 @@ def reset_password(email, new_password, password_confirm):
         base64_password_hashed = base64.b64encode(password_hashed).decode()
         account.password = base64_password_hashed
         account.password_salt = base64_salt
-        AccountService.reset_login_error_rate_limit(email)
+        AccountService.reset_login_error_rate_limit(normalized_email)
         click.echo(click.style("Password reset successfully.", fg="green"))
 
 
@@ -100,20 +107,22 @@ def reset_email(email, new_email, email_confirm):
     if str(new_email).strip() != str(email_confirm).strip():
         click.echo(click.style("New emails do not match.", fg="red"))
         return
+    normalized_new_email = new_email.strip().lower()
+
     with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-        account = session.query(Account).where(Account.email == email).one_or_none()
+        account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=session)
 
         if not account:
             click.echo(click.style(f"Account not found for email: {email}", fg="red"))
             return
 
         try:
-            email_validate(new_email)
+            email_validate(normalized_new_email)
         except:
             click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
             return
 
-        account.email = new_email
+        account.email = normalized_new_email
         click.echo(click.style("Email updated successfully.", fg="green"))
 
 
@@ -409,6 +418,22 @@ def migrate_knowledge_vector_database():
                                 "dataset_id": segment.dataset_id,
                             },
                         )
+                        if dataset_document.doc_form == "hierarchical_model":
+                            child_chunks = segment.get_child_chunks()
+                            if child_chunks:
+                                child_documents = []
+                                for child_chunk in child_chunks:
+                                    child_document = ChildDocument(
+                                        page_content=child_chunk.content,
+                                        metadata={
+                                            "doc_id": child_chunk.index_node_id,
+                                            "doc_hash": child_chunk.index_node_hash,
+                                            "document_id": segment.document_id,
+                                            "dataset_id": segment.dataset_id,
+                                        },
+                                    )
+                                    child_documents.append(child_document)
+                                document.children = child_documents
 
                         documents.append(document)
                         segments_count = segments_count + 1
@@ -422,7 +447,13 @@ def migrate_knowledge_vector_database():
                                 fg="green",
                             )
                         )
+                        all_child_documents = []
+                        for doc in documents:
+                            if doc.children:
+                                all_child_documents.extend(doc.children)
                         vector.create(documents)
+                        if all_child_documents:
+                            vector.create(all_child_documents)
                         click.echo(click.style(f"Created vector index for dataset {dataset.id}.", fg="green"))
                     except Exception as e:
                         click.echo(click.style(f"Failed to created vector index for dataset {dataset.id}.", fg="red"))
@@ -658,7 +689,7 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
         return
 
     # Create account
-    email = email.strip()
+    email = email.strip().lower()
 
     if "@" not in email:
         click.echo(click.style("Invalid email address.", fg="red"))
@@ -850,6 +881,435 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     ClearFreePlanTenantExpiredLogs.process(days, batch, tenant_ids)
 
     click.echo(click.style("Clear free plan tenant expired logs completed.", fg="green"))
+
+
+@click.command("clean-workflow-runs", help="Clean expired workflow runs and related data for free tenants.")
+@click.option(
+    "--before-days",
+    "--days",
+    default=30,
+    show_default=True,
+    type=click.IntRange(min=0),
+    help="Delete workflow runs created before N days ago.",
+)
+@click.option("--batch-size", default=200, show_default=True, help="Batch size for selecting workflow runs.")
+@click.option(
+    "--from-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Lower bound in days ago (older). Must be paired with --to-days-ago.",
+)
+@click.option(
+    "--to-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Upper bound in days ago (newer). Must be paired with --from-days-ago.",
+)
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview cleanup results without deleting any workflow run data.",
+)
+def clean_workflow_runs(
+    before_days: int,
+    batch_size: int,
+    from_days_ago: int | None,
+    to_days_ago: int | None,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    dry_run: bool,
+):
+    """
+    Clean workflow runs and related workflow data for free tenants.
+    """
+    if (start_from is None) ^ (end_before is None):
+        raise click.UsageError("--start-from and --end-before must be provided together.")
+
+    if (from_days_ago is None) ^ (to_days_ago is None):
+        raise click.UsageError("--from-days-ago and --to-days-ago must be provided together.")
+
+    if from_days_ago is not None and to_days_ago is not None:
+        if start_from or end_before:
+            raise click.UsageError("Choose either day offsets or explicit dates, not both.")
+        if from_days_ago <= to_days_ago:
+            raise click.UsageError("--from-days-ago must be greater than --to-days-ago.")
+        now = datetime.datetime.now()
+        start_from = now - datetime.timedelta(days=from_days_ago)
+        end_before = now - datetime.timedelta(days=to_days_ago)
+        before_days = 0
+
+    start_time = datetime.datetime.now(datetime.UTC)
+    click.echo(click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white"))
+
+    WorkflowRunCleanup(
+        days=before_days,
+        batch_size=batch_size,
+        start_from=start_from,
+        end_before=end_before,
+        dry_run=dry_run,
+    ).run()
+
+    end_time = datetime.datetime.now(datetime.UTC)
+    elapsed = end_time - start_time
+    click.echo(
+        click.style(
+            f"Workflow run cleanup completed. start={start_time.isoformat()} "
+            f"end={end_time.isoformat()} duration={elapsed}",
+            fg="green",
+        )
+    )
+
+
+@click.command(
+    "archive-workflow-runs",
+    help="Archive workflow runs for paid plan tenants to S3-compatible storage.",
+)
+@click.option("--tenant-ids", default=None, help="Optional comma-separated tenant IDs for grayscale rollout.")
+@click.option("--before-days", default=90, show_default=True, help="Archive runs older than N days.")
+@click.option(
+    "--from-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Lower bound in days ago (older). Must be paired with --to-days-ago.",
+)
+@click.option(
+    "--to-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Upper bound in days ago (newer). Must be paired with --from-days-ago.",
+)
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Archive runs created at or after this timestamp (UTC if no timezone).",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Archive runs created before this timestamp (UTC if no timezone).",
+)
+@click.option("--batch-size", default=100, show_default=True, help="Batch size for processing.")
+@click.option("--workers", default=1, show_default=True, type=int, help="Concurrent workflow runs to archive.")
+@click.option("--limit", default=None, type=int, help="Maximum number of runs to archive.")
+@click.option("--dry-run", is_flag=True, help="Preview without archiving.")
+@click.option("--delete-after-archive", is_flag=True, help="Delete runs and related data after archiving.")
+def archive_workflow_runs(
+    tenant_ids: str | None,
+    before_days: int,
+    from_days_ago: int | None,
+    to_days_ago: int | None,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    batch_size: int,
+    workers: int,
+    limit: int | None,
+    dry_run: bool,
+    delete_after_archive: bool,
+):
+    """
+    Archive workflow runs for paid plan tenants older than the specified days.
+
+    This command archives the following tables to storage:
+    - workflow_node_executions
+    - workflow_node_execution_offload
+    - workflow_pauses
+    - workflow_pause_reasons
+    - workflow_trigger_logs
+
+    The workflow_runs and workflow_app_logs tables are preserved for UI listing.
+    """
+    from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
+
+    run_started_at = datetime.datetime.now(datetime.UTC)
+    click.echo(
+        click.style(
+            f"Starting workflow run archiving at {run_started_at.isoformat()}.",
+            fg="white",
+        )
+    )
+
+    if (start_from is None) ^ (end_before is None):
+        click.echo(click.style("start-from and end-before must be provided together.", fg="red"))
+        return
+
+    if (from_days_ago is None) ^ (to_days_ago is None):
+        click.echo(click.style("from-days-ago and to-days-ago must be provided together.", fg="red"))
+        return
+
+    if from_days_ago is not None and to_days_ago is not None:
+        if start_from or end_before:
+            click.echo(click.style("Choose either day offsets or explicit dates, not both.", fg="red"))
+            return
+        if from_days_ago <= to_days_ago:
+            click.echo(click.style("from-days-ago must be greater than to-days-ago.", fg="red"))
+            return
+        now = datetime.datetime.now()
+        start_from = now - datetime.timedelta(days=from_days_ago)
+        end_before = now - datetime.timedelta(days=to_days_ago)
+        before_days = 0
+
+    if start_from and end_before and start_from >= end_before:
+        click.echo(click.style("start-from must be earlier than end-before.", fg="red"))
+        return
+    if workers < 1:
+        click.echo(click.style("workers must be at least 1.", fg="red"))
+        return
+
+    archiver = WorkflowRunArchiver(
+        days=before_days,
+        batch_size=batch_size,
+        start_from=start_from,
+        end_before=end_before,
+        workers=workers,
+        tenant_ids=[tid.strip() for tid in tenant_ids.split(",")] if tenant_ids else None,
+        limit=limit,
+        dry_run=dry_run,
+        delete_after_archive=delete_after_archive,
+    )
+    summary = archiver.run()
+    click.echo(
+        click.style(
+            f"Summary: processed={summary.total_runs_processed}, archived={summary.runs_archived}, "
+            f"skipped={summary.runs_skipped}, failed={summary.runs_failed}, "
+            f"time={summary.total_elapsed_time:.2f}s",
+            fg="cyan",
+        )
+    )
+
+    run_finished_at = datetime.datetime.now(datetime.UTC)
+    elapsed = run_finished_at - run_started_at
+    click.echo(
+        click.style(
+            f"Workflow run archiving completed. start={run_started_at.isoformat()} "
+            f"end={run_finished_at.isoformat()} duration={elapsed}",
+            fg="green",
+        )
+    )
+
+
+@click.command(
+    "restore-workflow-runs",
+    help="Restore archived workflow runs from S3-compatible storage.",
+)
+@click.option(
+    "--tenant-ids",
+    required=False,
+    help="Tenant IDs (comma-separated).",
+)
+@click.option("--run-id", required=False, help="Workflow run ID to restore.")
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
+)
+@click.option("--workers", default=1, show_default=True, type=int, help="Concurrent workflow runs to restore.")
+@click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of runs to restore.")
+@click.option("--dry-run", is_flag=True, help="Preview without restoring.")
+def restore_workflow_runs(
+    tenant_ids: str | None,
+    run_id: str | None,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    workers: int,
+    limit: int,
+    dry_run: bool,
+):
+    """
+    Restore an archived workflow run from storage to the database.
+
+    This restores the following tables:
+    - workflow_node_executions
+    - workflow_node_execution_offload
+    - workflow_pauses
+    - workflow_pause_reasons
+    - workflow_trigger_logs
+    """
+    from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
+
+    parsed_tenant_ids = None
+    if tenant_ids:
+        parsed_tenant_ids = [tid.strip() for tid in tenant_ids.split(",") if tid.strip()]
+        if not parsed_tenant_ids:
+            raise click.BadParameter("tenant-ids must not be empty")
+
+    if (start_from is None) ^ (end_before is None):
+        raise click.UsageError("--start-from and --end-before must be provided together.")
+    if run_id is None and (start_from is None or end_before is None):
+        raise click.UsageError("--start-from and --end-before are required for batch restore.")
+    if workers < 1:
+        raise click.BadParameter("workers must be at least 1")
+
+    start_time = datetime.datetime.now(datetime.UTC)
+    click.echo(
+        click.style(
+            f"Starting restore of workflow run {run_id} at {start_time.isoformat()}.",
+            fg="white",
+        )
+    )
+
+    restorer = WorkflowRunRestore(dry_run=dry_run, workers=workers)
+    if run_id:
+        results = [restorer.restore_by_run_id(run_id)]
+    else:
+        assert start_from is not None
+        assert end_before is not None
+        results = restorer.restore_batch(
+            parsed_tenant_ids,
+            start_date=start_from,
+            end_date=end_before,
+            limit=limit,
+        )
+
+    end_time = datetime.datetime.now(datetime.UTC)
+    elapsed = end_time - start_time
+
+    successes = sum(1 for result in results if result.success)
+    failures = len(results) - successes
+
+    if failures == 0:
+        click.echo(
+            click.style(
+                f"Restore completed successfully. success={successes} duration={elapsed}",
+                fg="green",
+            )
+        )
+    else:
+        click.echo(
+            click.style(
+                f"Restore completed with failures. success={successes} failed={failures} duration={elapsed}",
+                fg="red",
+            )
+        )
+
+
+@click.command(
+    "delete-archived-workflow-runs",
+    help="Delete archived workflow runs from the database.",
+)
+@click.option(
+    "--tenant-ids",
+    required=False,
+    help="Tenant IDs (comma-separated).",
+)
+@click.option("--run-id", required=False, help="Workflow run ID to delete.")
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
+)
+@click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of runs to delete.")
+@click.option("--dry-run", is_flag=True, help="Preview without deleting.")
+def delete_archived_workflow_runs(
+    tenant_ids: str | None,
+    run_id: str | None,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    limit: int,
+    dry_run: bool,
+):
+    """
+    Delete archived workflow runs from the database.
+    """
+    from services.retention.workflow_run.delete_archived_workflow_run import ArchivedWorkflowRunDeletion
+
+    parsed_tenant_ids = None
+    if tenant_ids:
+        parsed_tenant_ids = [tid.strip() for tid in tenant_ids.split(",") if tid.strip()]
+        if not parsed_tenant_ids:
+            raise click.BadParameter("tenant-ids must not be empty")
+
+    if (start_from is None) ^ (end_before is None):
+        raise click.UsageError("--start-from and --end-before must be provided together.")
+    if run_id is None and (start_from is None or end_before is None):
+        raise click.UsageError("--start-from and --end-before are required for batch delete.")
+
+    start_time = datetime.datetime.now(datetime.UTC)
+    target_desc = f"workflow run {run_id}" if run_id else "workflow runs"
+    click.echo(
+        click.style(
+            f"Starting delete of {target_desc} at {start_time.isoformat()}.",
+            fg="white",
+        )
+    )
+
+    deleter = ArchivedWorkflowRunDeletion(dry_run=dry_run)
+    if run_id:
+        results = [deleter.delete_by_run_id(run_id)]
+    else:
+        assert start_from is not None
+        assert end_before is not None
+        results = deleter.delete_batch(
+            parsed_tenant_ids,
+            start_date=start_from,
+            end_date=end_before,
+            limit=limit,
+        )
+
+    for result in results:
+        if result.success:
+            click.echo(
+                click.style(
+                    f"{'[DRY RUN] Would delete' if dry_run else 'Deleted'} "
+                    f"workflow run {result.run_id} (tenant={result.tenant_id})",
+                    fg="green",
+                )
+            )
+        else:
+            click.echo(
+                click.style(
+                    f"Failed to delete workflow run {result.run_id}: {result.error}",
+                    fg="red",
+                )
+            )
+
+    end_time = datetime.datetime.now(datetime.UTC)
+    elapsed = end_time - start_time
+
+    successes = sum(1 for result in results if result.success)
+    failures = len(results) - successes
+
+    if failures == 0:
+        click.echo(
+            click.style(
+                f"Delete completed successfully. success={successes} duration={elapsed}",
+                fg="green",
+            )
+        )
+    else:
+        click.echo(
+            click.style(
+                f"Delete completed with failures. success={successes} failed={failures} duration={elapsed}",
+                fg="red",
+            )
+        )
 
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
@@ -2111,3 +2571,79 @@ def migrate_oss(
             except Exception as e:
                 db.session.rollback()
                 click.echo(click.style(f"Failed to update DB storage_type: {str(e)}", fg="red"))
+
+
+@click.command("clean-expired-messages", help="Clean expired messages.")
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    required=True,
+    help="Lower bound (inclusive) for created_at.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    required=True,
+    help="Upper bound (exclusive) for created_at.",
+)
+@click.option("--batch-size", default=1000, show_default=True, help="Batch size for selecting messages.")
+@click.option(
+    "--graceful-period",
+    default=21,
+    show_default=True,
+    help="Graceful period in days after subscription expiration, will be ignored when billing is disabled.",
+)
+@click.option("--dry-run", is_flag=True, default=False, help="Show messages logs would be cleaned without deleting")
+def clean_expired_messages(
+    batch_size: int,
+    graceful_period: int,
+    start_from: datetime.datetime,
+    end_before: datetime.datetime,
+    dry_run: bool,
+):
+    """
+    Clean expired messages and related data for tenants based on clean policy.
+    """
+    click.echo(click.style("clean_messages: start clean messages.", fg="green"))
+
+    start_at = time.perf_counter()
+
+    try:
+        # Create policy based on billing configuration
+        # NOTE: graceful_period will be ignored when billing is disabled.
+        policy = create_message_clean_policy(graceful_period_days=graceful_period)
+
+        # Create and run the cleanup service
+        service = MessagesCleanService.from_time_range(
+            policy=policy,
+            start_from=start_from,
+            end_before=end_before,
+            batch_size=batch_size,
+            dry_run=dry_run,
+        )
+        stats = service.run()
+
+        end_at = time.perf_counter()
+        click.echo(
+            click.style(
+                f"clean_messages: completed successfully\n"
+                f"  - Latency: {end_at - start_at:.2f}s\n"
+                f"  - Batches processed: {stats['batches']}\n"
+                f"  - Total messages scanned: {stats['total_messages']}\n"
+                f"  - Messages filtered: {stats['filtered_messages']}\n"
+                f"  - Messages deleted: {stats['total_deleted']}",
+                fg="green",
+            )
+        )
+    except Exception as e:
+        end_at = time.perf_counter()
+        logger.exception("clean_messages failed")
+        click.echo(
+            click.style(
+                f"clean_messages: failed after {end_at - start_at:.2f}s - {str(e)}",
+                fg="red",
+            )
+        )
+        raise
+
+    click.echo(click.style("messages cleanup completed.", fg="green"))

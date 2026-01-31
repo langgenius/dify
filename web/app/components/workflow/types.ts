@@ -223,7 +223,7 @@ export type InputVar = {
   getVarValueFromDependent?: boolean
   hide?: boolean
   isFileItem?: boolean
-  json_schema?: string // for jsonObject type
+  json_schema?: string | Record<string, any> // for jsonObject type
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {
@@ -469,6 +469,7 @@ export enum SupportUploadFileTypes {
 
 export type UploadFileSetting = {
   allowed_file_upload_methods: TransferMethod[]
+  allowed_upload_methods?: TransferMethod[]
   allowed_file_types: SupportUploadFileTypes[]
   allowed_file_extensions?: string[]
   max_length: number

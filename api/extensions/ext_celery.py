@@ -102,6 +102,8 @@ def init_app(app: DifyApp) -> Celery:
     imports = [
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.trigger_processing_tasks",  # async trigger processing
+        "tasks.generate_summary_index_task",  # summary index generation
+        "tasks.regenerate_summary_index_task",  # summary index regeneration
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -162,6 +164,13 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["clean_workflow_runlogs_precise"] = {
             "task": "schedule.clean_workflow_runlogs_precise.clean_workflow_runlogs_precise",
             "schedule": crontab(minute="0", hour="2"),
+        }
+    if dify_config.ENABLE_WORKFLOW_RUN_CLEANUP_TASK:
+        # for saas only
+        imports.append("schedule.clean_workflow_runs_task")
+        beat_schedule["clean_workflow_runs_task"] = {
+            "task": "schedule.clean_workflow_runs_task.clean_workflow_runs_task",
+            "schedule": crontab(minute="0", hour="0"),
         }
     if dify_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:
         imports.append("schedule.workflow_schedule_task")

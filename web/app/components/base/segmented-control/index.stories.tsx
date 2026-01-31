@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { RiLineChartLine, RiListCheck2, RiRobot2Line } from '@remixicon/react'
 import { useState } from 'react'
 import { SegmentedControl } from '.'

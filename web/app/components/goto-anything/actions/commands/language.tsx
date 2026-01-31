@@ -1,6 +1,6 @@
 import type { CommandSearchResult } from '../types'
 import type { SlashCommandHandler } from './types'
-import i18n from '@/i18n-config/i18next-config'
+import { getI18n } from 'react-i18next'
 import { languages } from '@/i18n-config/language'
 import { registerCommands, unregisterCommands } from './command-bus'
 
@@ -14,6 +14,7 @@ const buildLanguageCommands = (query: string): CommandSearchResult[] => {
   const list = languages.filter(item => item.supported && (
     !q || item.name.toLowerCase().includes(q) || String(item.value).toLowerCase().includes(q)
   ))
+  const i18n = getI18n()
   return list.map(item => ({
     id: `lang-${item.value}`,
     title: item.name,

@@ -68,13 +68,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         request_id: RequestId,
         request_meta: RequestParams.Meta | None,
         request: ReceiveRequestT,
-        session: """BaseSession[
-            SendRequestT,
-            SendNotificationT,
-            SendResultT,
-            ReceiveRequestT,
-            ReceiveNotificationT
-        ]""",
+        session: """BaseSession[SendRequestT, SendNotificationT, SendResultT, ReceiveRequestT, ReceiveNotificationT]""",
         on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], Any],
     ):
         self.request_id = request_id
@@ -353,7 +347,7 @@ class BaseSession(
                         message.message.root.model_dump(by_alias=True, mode="json", exclude_none=True)
                     )
 
-                    responder = RequestResponder(
+                    responder = RequestResponder[ReceiveRequestT, SendResultT](
                         request_id=message.message.root.id,
                         request_meta=validated_request.root.params.meta if validated_request.root.params else None,
                         request=validated_request,

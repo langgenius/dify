@@ -1,6 +1,6 @@
 'use client'
+import { useTranslation } from '#i18n'
 import { Group } from '@/app/components/base/icons/src/vender/other'
-import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 import { cn } from '@/utils/classnames'
 import Line from './line'
 
@@ -8,16 +8,14 @@ type Props = {
   text?: string
   lightCard?: boolean
   className?: string
-  locale?: string
 }
 
 const Empty = ({
   text,
   lightCard,
   className,
-  locale,
 }: Props) => {
-  const { t } = useMixedTranslation(locale)
+  const { t } = useTranslation()
 
   return (
     <div

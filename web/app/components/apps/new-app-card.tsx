@@ -6,10 +6,12 @@ import {
   useSearchParams,
 } from 'next/navigation'
 import * as React from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContextSelector } from 'use-context-selector'
 import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import AppListContext from '@/context/app-list-context'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
 
@@ -25,6 +27,7 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
 
 export type CreateAppCardProps = {
   className?: string
+  isLoading?: boolean
   onSuccess?: () => void
   ref: React.RefObject<HTMLDivElement | null>
   selectedAppType?: string
@@ -33,6 +36,7 @@ export type CreateAppCardProps = {
 const CreateAppCard = ({
   ref,
   className,
+  isLoading = false,
   onSuccess,
   selectedAppType,
 }: CreateAppCardProps) => {
@@ -53,10 +57,21 @@ const CreateAppCard = ({
     return undefined
   }, [dslUrl])
 
+  const controlHideCreateFromTemplatePanel = useContextSelector(AppListContext, ctx => ctx.controlHideCreateFromTemplatePanel)
+  useEffect(() => {
+    if (controlHideCreateFromTemplatePanel > 0)
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      setShowNewAppTemplateDialog(false)
+  }, [controlHideCreateFromTemplatePanel])
+
   return (
     <div
       ref={ref}
-      className={cn('relative col-span-1 inline-flex h-[160px] flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg', className)}
+      className={cn(
+        'relative col-span-1 inline-flex h-[160px] flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg transition-opacity',
+        isLoading && 'pointer-events-none opacity-50',
+        className,
+      )}
     >
       <div className="grow rounded-t-xl p-2">
         <div className="px-6 pb-1 pt-2 text-xs font-medium leading-[18px] text-text-tertiary">{t('createApp', { ns: 'app' })}</div>

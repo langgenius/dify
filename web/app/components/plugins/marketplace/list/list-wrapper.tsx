@@ -1,49 +1,27 @@
 'use client'
-import type { Plugin } from '../../types'
-import type { MarketplaceCollection } from '../types'
-import type { Locale } from '@/i18n-config'
-import { useEffect } from 'react'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
-import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
-import { useMarketplaceContext } from '../context'
 import SortDropdown from '../sort-dropdown'
+import { useMarketplaceData } from '../state'
 import List from './index'
 
 type ListWrapperProps = {
-  marketplaceCollections: MarketplaceCollection[]
-  marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   showInstallButton?: boolean
-  locale: Locale
 }
 const ListWrapper = ({
-  marketplaceCollections,
-  marketplaceCollectionPluginsMap,
   showInstallButton,
-  locale,
 }: ListWrapperProps) => {
-  const { t } = useMixedTranslation(locale)
-  const plugins = useMarketplaceContext(v => v.plugins)
-  const pluginsTotal = useMarketplaceContext(v => v.pluginsTotal)
-  const marketplaceCollectionsFromClient = useMarketplaceContext(v => v.marketplaceCollectionsFromClient)
-  const marketplaceCollectionPluginsMapFromClient = useMarketplaceContext(v => v.marketplaceCollectionPluginsMapFromClient)
-  const isLoading = useMarketplaceContext(v => v.isLoading)
-  const isSuccessCollections = useMarketplaceContext(v => v.isSuccessCollections)
-  const handleQueryPlugins = useMarketplaceContext(v => v.handleQueryPlugins)
-  const searchPluginText = useMarketplaceContext(v => v.searchPluginText)
-  const filterPluginTags = useMarketplaceContext(v => v.filterPluginTags)
-  const page = useMarketplaceContext(v => v.page)
-  const handleMoreClick = useMarketplaceContext(v => v.handleMoreClick)
+  const { t } = useTranslation()
 
-  useEffect(() => {
-    if (
-      !marketplaceCollectionsFromClient?.length
-      && isSuccessCollections
-      && !searchPluginText
-      && !filterPluginTags.length
-    ) {
-      handleQueryPlugins()
-    }
-  }, [handleQueryPlugins, marketplaceCollections, marketplaceCollectionsFromClient, isSuccessCollections, searchPluginText, filterPluginTags])
+  const {
+    plugins,
+    pluginsTotal,
+    marketplaceCollections,
+    marketplaceCollectionPluginsMap,
+    isLoading,
+    isFetchingNextPage,
+    page,
+  } = useMarketplaceData()
 
   return (
     <div
@@ -55,7 +33,7 @@ const ListWrapper = ({
           <div className="mb-4 flex items-center pt-3">
             <div className="title-xl-semi-bold text-text-primary">{t('marketplace.pluginsResult', { ns: 'plugin', num: pluginsTotal })}</div>
             <div className="mx-3 h-3.5 w-[1px] bg-divider-regular"></div>
-            <SortDropdown locale={locale} />
+            <SortDropdown />
           </div>
         )
       }
@@ -69,13 +47,16 @@ const ListWrapper = ({
       {
         (!isLoading || page > 1) && (
           <List
-            marketplaceCollections={marketplaceCollectionsFromClient || marketplaceCollections}
-            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMapFromClient || marketplaceCollectionPluginsMap}
+            marketplaceCollections={marketplaceCollections || []}
+            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
             plugins={plugins}
             showInstallButton={showInstallButton}
-            locale={locale}
-            onMoreClick={handleMoreClick}
           />
+        )
+      }
+      {
+        isFetchingNextPage && (
+          <Loading className="my-3" />
         )
       }
     </div>

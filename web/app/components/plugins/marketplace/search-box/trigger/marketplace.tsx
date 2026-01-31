@@ -1,15 +1,14 @@
 import type { Tag } from '../../../hooks'
+import { useTranslation } from '#i18n'
 import { RiArrowDownSLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
-import { useMixedTranslation } from '../../hooks'
 
 type MarketplaceTriggerProps = {
   selectedTagsLength: number
   open: boolean
   tags: string[]
   tagsMap: Record<string, Tag>
-  locale?: string
   onTagsChange: (tags: string[]) => void
 }
 
@@ -18,10 +17,9 @@ const MarketplaceTrigger = ({
   open,
   tags,
   tagsMap,
-  locale,
   onTagsChange,
 }: MarketplaceTriggerProps) => {
-  const { t } = useMixedTranslation(locale)
+  const { t } = useTranslation()
 
   return (
     <div

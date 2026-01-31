@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import json
 import logging
 import threading
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 
 class SchemaRegistry:
@@ -11,7 +13,7 @@ class SchemaRegistry:
 
     logger: ClassVar[logging.Logger] = logging.getLogger(__name__)
 
-    _default_instance: ClassVar[Optional["SchemaRegistry"]] = None
+    _default_instance: ClassVar[SchemaRegistry | None] = None
     _lock: ClassVar[threading.Lock] = threading.Lock()
 
     def __init__(self, base_dir: str):
@@ -20,7 +22,7 @@ class SchemaRegistry:
         self.metadata: MutableMapping[str, MutableMapping[str, Any]] = {}
 
     @classmethod
-    def default_registry(cls) -> "SchemaRegistry":
+    def default_registry(cls) -> SchemaRegistry:
         """Returns the default schema registry for builtin schemas (thread-safe singleton)"""
         if cls._default_instance is None:
             with cls._lock:
