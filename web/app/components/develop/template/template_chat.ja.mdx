@@ -77,6 +77,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       （オプション）ワークフローID、特定のバージョンを指定するために使用、提供されない場合はデフォルトの公開バージョンを使用。<br/>
       取得方法：バージョン履歴インターフェースで、各バージョンエントリの右側にあるコピーアイコンをクリックすると、完全なワークフローIDをコピーできます。
       </Property>
+      <Property name='workflow_tag' type='string' key='workflow_tag'>
+      （オプション）ワークフロータグ、タグで特定バージョンのワークフローを指定するために使用されます。システムは以下の優先順位で検索します：workflow_tag > workflow_id > 最新公開バージョン。
+      </Property>
       <Property name='trace_id' type='string' key='trace_id'>
         （オプション）トレースID。既存の業務システムのトレースコンポーネントと連携し、エンドツーエンドの分散トレーシングを実現するために使用します。指定がない場合、システムが自動的に trace_id を生成します。以下の3つの方法で渡すことができ、優先順位は次のとおりです：<br/>
         - Header：HTTPヘッダー <code>X-Trace-Id</code> で渡す（最優先）。<br/>

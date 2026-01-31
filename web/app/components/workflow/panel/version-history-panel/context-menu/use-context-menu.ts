@@ -42,8 +42,12 @@ const useContextMenu = (props: ContextMenuProps) => {
         key: VersionHistoryContextMenuOptions.copyId,
         name: t('versionHistory.copyId', { ns: 'workflow' }),
       },
+      {
+        key: VersionHistoryContextMenuOptions.manageTag,
+        name: t('tag.manageTag', { ns: 'workflow' }),
+      },
     ]
-  }, [isNamedVersion, t])
+  }, [isNamedVersion, t, pipelineId])
 
   return {
     deleteOperation,

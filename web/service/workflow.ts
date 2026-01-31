@@ -6,6 +6,7 @@ import type {
   FetchWorkflowDraftResponse,
   NodesDefaultConfigsResponse,
   VarInInspect,
+  WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 import { get, post } from './base'
 import { getFlowPrefix } from './utils'
@@ -41,6 +42,10 @@ export const getLoopSingleNodeRunUrl = (flowType: FlowType, isChatFlow: boolean,
 
 export const fetchPublishedWorkflow = (url: string) => {
   return get<FetchWorkflowDraftResponse>(url)
+}
+
+export const fetchWorkflowRunHistory = (url: string) => {
+  return get<WorkflowRunHistoryResponse>(url)
 }
 
 export const stopWorkflowRun = (url: string) => {

@@ -322,19 +322,25 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 ---
 
 <Heading
-  url='/workflows/:workflow_id/run'
+  url='/workflows/:identifier/run'
   method='POST'
   title='执行指定版本 Workflow'
   name='#Execute-Specific-Workflow'
 />
 <Row>
   <Col>
-    执行指定版本的工作流，通过路径参数指定工作流ID。
+    执行指定版本的工作流，支持通过工作流ID或标签指定版本。
 
     ### Path
-    - `workflow_id` (string) Required 工作流ID，用于指定特定版本的工作流
-
-      获取方式：在版本历史界面，点击每个版本条目右侧的复制图标即可复制完整的工作流 ID。
+    - `identifier` (string) Required 工作流标识符
+      - 工作流ID（UUID格式）
+      - 工作流标签
+    
+      系统优先按UUID格式处理，如果不是有效的UUID格式，则按标签查询。
+      
+      **获取方式：**
+      - 工作流ID：在版本历史界面，点击每个版本条目右侧的复制图标即可复制完整的工作流 ID
+      - 工作流标签：通过版本历史页面获取对应的工作流标签
 
     ### Request Body
       - `inputs` (object) Required
@@ -489,8 +495,8 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/workflows/:workflow_id/run"
-      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\
+      label="/workflows/:identifier/run"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{identifier}/run' \\
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
 --data-raw '{

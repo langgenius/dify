@@ -492,10 +492,35 @@ export enum VersionHistoryContextMenuOptions {
   delete = 'delete',
   exportDSL = 'exportDSL',
   copyId = 'copyId',
+  manageTag = 'manageTag',
 }
 
 export type ChildNodeTypeCount = {
   [key: string]: number
+}
+
+export type WorkflowTag = {
+  id: string
+  tenant_id: string
+  app_id: string
+  workflow_id: string
+  name: string
+  created_by: {
+    id: string
+    name: string
+    email: string
+  }
+  created_at: number
+  updated_at: number
+  is_transferred?: boolean
+  old_workflow_id?: string
+}
+
+export type WorkflowTagList = {
+  items: WorkflowTag[]
+  page: number
+  limit: number
+  has_more: boolean
 }
 
 export const TRIGGER_NODE_TYPES = [
