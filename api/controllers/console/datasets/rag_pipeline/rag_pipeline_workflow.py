@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     ConversationCompletedError,
@@ -34,6 +34,7 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDriveBrowseFilesRequest
 from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from factories import variable_factory
@@ -71,8 +72,8 @@ class NodeRunRequiredPayload(BaseModel):
 
 
 class DatasourceNodeRunPayload(BaseModel):
-    inputs: dict[str, Any]
-    datasource_type: str
+    inputs: OnlineDriveBrowseFilesRequest
+    datasource_type: DatasourceProviderType
     credential_id: str | None = None
 
 
@@ -135,7 +136,10 @@ register_schema_models(
     NodeIdQuery,
     WorkflowRunQuery,
     DatasourceVariablesPayload,
+    OnlineDriveBrowseFilesRequest,
 )
+
+register_enum_models(console_ns, DatasourceProviderType)
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft")
@@ -470,11 +474,9 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
                 rag_pipeline_service.run_datasource_workflow_node(
                     pipeline=pipeline,
                     node_id=node_id,
-                    user_inputs=payload.inputs,
+                    payload=payload,
                     account=current_user,
-                    datasource_type=payload.datasource_type,
                     is_published=False,
-                    credential_id=payload.credential_id,
                 )
             )
         )
@@ -503,11 +505,9 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
                 rag_pipeline_service.run_datasource_workflow_node(
                     pipeline=pipeline,
                     node_id=node_id,
-                    user_inputs=payload.inputs,
+                    payload=payload,
                     account=current_user,
-                    datasource_type=payload.datasource_type,
                     is_published=False,
-                    credential_id=payload.credential_id,
                 )
             )
         )

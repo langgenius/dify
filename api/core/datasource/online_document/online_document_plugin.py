@@ -1,5 +1,10 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.datasource.entities.datasource_entities import OnlineDriveBrowseFilesRequest
 from collections.abc import Generator
-from typing import Any
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
@@ -34,7 +39,7 @@ class OnlineDocumentDatasourcePlugin(DatasourcePlugin):
     def get_online_document_pages(
         self,
         user_id: str,
-        datasource_parameters: dict[str, Any],
+        datasource_parameters: OnlineDriveBrowseFilesRequest,
         provider_type: str,
     ) -> Generator[OnlineDocumentPagesMessage, None, None]:
         manager = PluginDatasourceManager()
