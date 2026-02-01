@@ -589,6 +589,7 @@ x-shared-env: &shared-api-worker-env
   PLUGIN_DAEMON_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
   PLUGIN_DAEMON_URL: ${PLUGIN_DAEMON_URL:-http://plugin_daemon:5002}
   PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+  PLUGIN_MODEL_SCHEMA_CACHE_TTL: ${PLUGIN_MODEL_SCHEMA_CACHE_TTL:-3600}
   PLUGIN_PPROF_ENABLED: ${PLUGIN_PPROF_ENABLED:-false}
   PLUGIN_DEBUGGING_HOST: ${PLUGIN_DEBUGGING_HOST:-0.0.0.0}
   PLUGIN_DEBUGGING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
@@ -706,7 +707,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.11.4
+    image: langgenius/dify-api:1.12.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -748,7 +749,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.11.4
+    image: langgenius/dify-api:1.12.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -787,7 +788,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.11.4
+    image: langgenius/dify-api:1.12.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -817,7 +818,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.11.4
+    image: langgenius/dify-web:1.12.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -955,7 +956,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.5.2-local
+    image: langgenius/dify-plugin-daemon:0.5.3-local
     restart: always
     environment:
       # Use the shared environment variables.

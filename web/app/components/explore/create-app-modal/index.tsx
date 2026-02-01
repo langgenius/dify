@@ -1,6 +1,6 @@
 'use client'
 import type { AppIconType } from '@/types/app'
-import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
+import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -17,6 +17,7 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
 import AppIconPicker from '../../base/app-icon-picker'
+import ShortcutsName from '../../workflow/shortcuts-name'
 
 export type CreateAppModalProps = {
   show: boolean
@@ -198,10 +199,7 @@ const CreateAppModal = ({
             onClick={handleSubmit}
           >
             <span>{!isEditModal ? t('operation.create', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</span>
-            <div className="flex gap-0.5">
-              <RiCommandLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
-              <RiCornerDownLeftLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
-            </div>
+            <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
           </Button>
           <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
         </div>
