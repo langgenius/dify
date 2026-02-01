@@ -565,6 +565,9 @@ class SummaryIndexService:
                     )
                     session.add(summary_record)
 
+            # Commit the batch created records
+            session.commit()
+
     @staticmethod
     def update_summary_record_error(
         segment: DocumentSegment,
@@ -769,7 +772,6 @@ class SummaryIndexService:
                 dataset=dataset,
                 status="not_started",
             )
-            session.commit()  # Commit initial records
 
             summary_records = []
 
