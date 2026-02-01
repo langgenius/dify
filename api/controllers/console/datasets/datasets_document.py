@@ -1341,10 +1341,7 @@ class DocumentGenerateSummaryApi(Resource):
 
         # Update need_summary to True for documents that don't have it set
         # This handles the case where documents were created when summary_index_setting was disabled
-        documents_to_update = [
-            doc for doc in documents
-            if not doc.need_summary and doc.doc_form != "qa_model"
-        ]
+        documents_to_update = [doc for doc in documents if not doc.need_summary and doc.doc_form != "qa_model"]
 
         if documents_to_update:
             document_ids_to_update = [str(doc.id) for doc in documents_to_update]

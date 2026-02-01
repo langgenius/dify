@@ -58,7 +58,7 @@ class BaseIndexProcessor(ABC):
         For each segment in preview_texts, generate a summary using LLM and attach it to the segment.
         The summary can be stored in a new attribute, e.g., summary.
         This method should be implemented by subclasses.
-        
+
         Args:
             tenant_id: Tenant ID
             preview_texts: List of preview details to generate summaries for

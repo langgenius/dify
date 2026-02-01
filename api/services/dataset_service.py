@@ -1390,9 +1390,7 @@ class DocumentService:
         return documents
 
     @staticmethod
-    def update_documents_need_summary(
-        dataset_id: str, document_ids: Sequence[str], need_summary: bool = True
-    ) -> int:
+    def update_documents_need_summary(dataset_id: str, document_ids: Sequence[str], need_summary: bool = True) -> int:
         """
         Update need_summary field for multiple documents.
 
