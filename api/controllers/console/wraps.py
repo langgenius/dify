@@ -97,7 +97,7 @@ def cloud_edition_billing_enabled(view: Callable[P, R]) -> Callable[P, R]:
 def cloud_edition_billing_resource_check(resource: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]) -> Callable[P, R]:
         @wraps(view)
-        def decorated(*args: P.args, **kwargs: P.kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             _, current_tenant_id = current_account_with_tenant()
             features = FeatureService.get_features(current_tenant_id)
             if features.billing.enabled:
@@ -139,7 +139,7 @@ def cloud_edition_billing_resource_check(resource: str) -> Callable[[Callable[P,
 def cloud_edition_billing_knowledge_limit_check(resource: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]) -> Callable[P, R]:
         @wraps(view)
-        def decorated(*args: P.args, **kwargs: P.kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             _, current_tenant_id = current_account_with_tenant()
             features = FeatureService.get_features(current_tenant_id)
             if features.billing.enabled:
@@ -285,7 +285,7 @@ def enable_change_email(view: Callable[P, R]) -> Callable[P, R]:
 
 def is_allow_transfer_owner(view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         from libs.workspace_permission import check_workspace_owner_transfer_permission
 
         _, current_tenant_id = current_account_with_tenant()
