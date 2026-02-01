@@ -45,105 +45,9 @@ from services.tools.workflow_tools_manage_service import WorkflowToolManageServi
 logger = logging.getLogger(__name__)
 
 
-class ToolProviderListQuery(BaseModel):
-    type: Literal["builtin", "model", "api", "workflow", "mcp"] | None = None
-
-
-class BuiltinToolCredentialDeletePayload(BaseModel):
-    credential_id: str
-
-
-class BuiltinToolAddPayload(BaseModel):
-    credentials: dict[str, Any]
-    name: str | None = Field(default=None, max_length=30)
-    type: CredentialType
-
-
-class BuiltinToolUpdatePayload(BaseModel):
-    credential_id: str
-    credentials: dict[str, Any] | None = None
-    name: str | None = Field(default=None, max_length=30)
-
-
-class ApiToolProviderBasePayload(BaseModel):
-    credentials: dict[str, Any]
-    schema_type: ApiProviderSchemaType
-    schema_: str = Field(alias="schema")
-    provider: str
-    icon: dict[str, Any]
-    privacy_policy: str = ""
-    labels: list[str] = []
-    custom_disclaimer: str = ""
-
-
-class ApiToolProviderAddPayload(ApiToolProviderBasePayload):
-    pass
-
-
-class ApiToolProviderUpdatePayload(ApiToolProviderBasePayload):
-    original_provider: str
-
-
-class UrlQuery(BaseModel):
-    url: HttpUrl
-
-
-class ProviderQuery(BaseModel):
-    provider: str
-
-
-class ApiToolProviderDeletePayload(BaseModel):
-    provider: str
-
-
-class ApiToolSchemaPayload(BaseModel):
-    schema_: str = Field(alias="schema")
-
-
-class ApiToolTestPayload(BaseModel):
-    tool_name: str
-    provider_name: str = ""
-    credentials: dict[str, Any]
-    parameters: dict[str, Any]
-    schema_type: ApiProviderSchemaType
-    schema_: str = Field(alias="schema")
-
-
-class WorkflowToolBasePayload(BaseModel):
-    name: str = Field(pattern=r"^[a-zA-Z0-9_]+$")
-    label: str
-    description: str
-    icon: dict[str, Any]
-    parameters: list[WorkflowToolParameterConfiguration] = Field(default_factory=list)
-    privacy_policy: str = ""
-    labels: list[str] | None = None
-
-
-class WorkflowToolCreatePayload(WorkflowToolBasePayload):
-    workflow_app_id: UUIDStrOrEmpty
-
-
-class WorkflowToolUpdatePayload(WorkflowToolBasePayload):
-    workflow_tool_id: UUIDStrOrEmpty
-
-
-class WorkflowToolDeletePayload(BaseModel):
-    workflow_tool_id: UUIDStrOrEmpty
-
-
-class WorkflowToolGetQuery(BaseModel):
-    workflow_tool_id: UUIDStrOrEmpty | None = None
-    workflow_app_id: UUIDStrOrEmpty | None = None
-
-    @model_validator(mode="after")
-    def ensure_one(self) -> "WorkflowToolGetQuery":
-        if not self.workflow_tool_id and not self.workflow_app_id:
-            raise ValueError("workflow_tool_id or workflow_app_id is required")
-        return self
-
-
-class WorkflowToolListQuery(BaseModel):
-    workflow_tool_id: UUIDStrOrEmpty
+def is_valid_url(url: str) -> bool:
+    if not url:
+        return False
 
     try:
         parsed = urlparse(url)
@@ -151,8 +55,6 @@ class WorkflowToolListQuery(BaseModel):
     except (ValueError, TypeError):
         return False
 
-class BuiltinProviderDefaultCredentialPayload(BaseModel):
-    id: str
 
 class ToolProviderListQuery(BaseModel):
     type: Literal["builtin", "model", "api", "workflow", "mcp"] | None = None
@@ -428,7 +330,7 @@ class ToolBuiltinProviderAddApi(Resource):
         payload = BuiltinToolAddPayload.model_validate(console_ns.payload or {})
 
         return BuiltinToolManageService.add_builtin_tool_provider(
-            user_id=user.id,
+            user_id=user_id,
             tenant_id=tenant_id,
             provider=provider,
             credentials=payload.credentials,
@@ -446,11 +348,12 @@ class ToolBuiltinProviderUpdateApi(Resource):
     @account_initialization_required
     def post(self, provider):
         user, tenant_id = current_account_with_tenant()
+        user_id = user.id
 
         payload = BuiltinToolUpdatePayload.model_validate(console_ns.payload or {})
 
         result = BuiltinToolManageService.update_builtin_tool_provider(
-            user_id=user.id,
+            user_id=user_id,
             tenant_id=tenant_id,
             provider=provider,
             credential_id=payload.credential_id,
@@ -500,7 +403,7 @@ class ToolApiProviderAddApi(Resource):
         payload = ApiToolProviderAddPayload.model_validate(console_ns.payload or {})
 
         return ApiToolManageService.create_api_tool_provider(
-            user.id,
+            user_id,
             tenant_id,
             payload.provider,
             payload.icon,
@@ -527,7 +430,7 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
         query = UrlQuery.model_validate(raw_args)
 
         return ApiToolManageService.get_api_tool_provider_remote_schema(
-            user.id,
+            user_id,
             tenant_id,
             str(query.url),
         )
@@ -548,7 +451,7 @@ class ToolApiProviderListToolsApi(Resource):
 
         return jsonable_encoder(
             ApiToolManageService.list_api_tool_provider_tools(
-                user.id,
+                user_id,
                 tenant_id,
                 query.provider,
             )
@@ -570,7 +473,7 @@ class ToolApiProviderUpdateApi(Resource):
         payload = ApiToolProviderUpdatePayload.model_validate(console_ns.payload or {})
 
         return ApiToolManageService.update_api_tool_provider(
-            user.id,
+            user_id,
             tenant_id,
             payload.provider,
             payload.original_provider,
@@ -599,7 +502,7 @@ class ToolApiProviderDeleteApi(Resource):
         payload = ApiToolProviderDeletePayload.model_validate(console_ns.payload or {})
 
         return ApiToolManageService.delete_api_tool_provider(
-            user.id,
+            user_id,
             tenant_id,
             payload.provider,
         )
@@ -619,7 +522,7 @@ class ToolApiProviderGetApi(Resource):
         query = ProviderQuery.model_validate(raw_args)
 
         return ApiToolManageService.get_api_tool_provider(
-            user.id,
+            user_id,
             tenant_id,
             query.provider,
         )
@@ -689,7 +592,7 @@ class ToolWorkflowProviderCreateApi(Resource):
         payload = WorkflowToolCreatePayload.model_validate(console_ns.payload or {})
 
         return WorkflowToolManageService.create_workflow_tool(
-            user_id=user.id,
+            user_id=user_id,
             tenant_id=tenant_id,
             workflow_app_id=payload.workflow_app_id,
             name=payload.name,
@@ -711,11 +614,12 @@ class ToolWorkflowProviderUpdateApi(Resource):
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
+        user_id = user.id
 
         payload = WorkflowToolUpdatePayload.model_validate(console_ns.payload or {})
 
         return WorkflowToolManageService.update_workflow_tool(
-            user.id,
+            user_id,
             tenant_id,
             payload.workflow_tool_id,
             payload.name,
@@ -743,7 +647,7 @@ class ToolWorkflowProviderDeleteApi(Resource):
         payload = WorkflowToolDeletePayload.model_validate(console_ns.payload or {})
 
         return WorkflowToolManageService.delete_workflow_tool(
-            user.id,
+            user_id,
             tenant_id,
             payload.workflow_tool_id,
         )
@@ -764,16 +668,19 @@ class ToolWorkflowProviderGetApi(Resource):
 
         if query.workflow_tool_id:
             tool = WorkflowToolManageService.get_workflow_tool_by_tool_id(
-                user.id,
+                user_id,
                 tenant_id,
                 query.workflow_tool_id,
             )
         elif query.workflow_app_id:
             tool = WorkflowToolManageService.get_workflow_tool_by_app_id(
-                user.id,
+                user_id,
                 tenant_id,
                 query.workflow_app_id,
             )
+        else:
+            raise ValueError("incorrect workflow_tool_id or workflow_app_id")
+
         return jsonable_encoder(tool)
 
 
@@ -792,7 +699,7 @@ class ToolWorkflowProviderListToolApi(Resource):
 
         return jsonable_encoder(
             WorkflowToolManageService.list_single_workflow_tools(
-                user.id,
+                user_id,
                 tenant_id,
                 query.workflow_tool_id,
             )
@@ -806,11 +713,14 @@ class ToolBuiltinListApi(Resource):
     @account_initialization_required
     def get(self):
         user, tenant_id = current_account_with_tenant()
+
+        user_id = user.id
+
         return jsonable_encoder(
             [
                 provider.to_dict()
                 for provider in BuiltinToolManageService.list_builtin_tools(
-                    user.id,
+                    user_id,
                     tenant_id,
                 )
             ]
@@ -842,11 +752,14 @@ class ToolWorkflowListApi(Resource):
     @account_initialization_required
     def get(self):
         user, tenant_id = current_account_with_tenant()
+
+        user_id = user.id
+
         return jsonable_encoder(
             [
                 provider.to_dict()
                 for provider in WorkflowToolManageService.list_tenant_workflow_tools(
-                    user.id,
+                    user_id,
                     tenant_id,
                 )
             ]
