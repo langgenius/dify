@@ -92,6 +92,8 @@ export const useUserProfile = () => {
         },
       }
     },
+    staleTime: 0,
+    gcTime: 0,
   })
 }
 

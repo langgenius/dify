@@ -1,46 +1,45 @@
 import type { ReactNode } from 'react'
-import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import * as React from 'react'
+import { AppInitializer } from '@/app/components/app-initializer'
+import AmplitudeProvider from '@/app/components/base/amplitude'
 import GA, { GaType } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'
-import { getQueryClientServer } from '@/context/query-client-server'
-import { serverFetchWithAuth } from '@/utils/ssr-fetch'
-import { CommonLayoutClient } from './layout-client'
+import GotoAnything from '@/app/components/goto-anything'
+import Header from '@/app/components/header'
+import HeaderWrapper from '@/app/components/header/header-wrapper'
+import ReadmePanel from '@/app/components/plugins/readme-panel'
+import { AppContextProvider } from '@/context/app-context'
+import { EventEmitterContextProvider } from '@/context/event-emitter'
+import { ModalContextProvider } from '@/context/modal-context'
+import { ProviderContextProvider } from '@/context/provider-context'
+import PartnerStack from '../components/billing/partner-stack'
+import Splash from '../components/splash'
 
-const IS_DEV = process.env.NODE_ENV === 'development'
-
-async function fetchUserProfileForSSR() {
-  const { data: profile, headers } = await serverFetchWithAuth('/account/profile')
-  return {
-    profile,
-    meta: {
-      currentVersion: headers.get('x-version'),
-      currentEnv: IS_DEV ? 'DEVELOPMENT' : headers.get('x-env'),
-    },
-  }
-}
-
-export default async function CommonLayout({ children }: { children: ReactNode }) {
-  const queryClient = getQueryClientServer()
-
-  await Promise.all([
-    queryClient.prefetchQuery({
-      queryKey: ['common', 'user-profile'],
-      queryFn: fetchUserProfileForSSR,
-    }),
-    queryClient.prefetchQuery({
-      queryKey: ['common', 'current-workspace'],
-      queryFn: async () => {
-        const { data } = await serverFetchWithAuth('/workspaces/current', 'POST', {})
-        return data
-      },
-    }),
-  ])
-
+const Layout = ({ children }: { children: ReactNode }) => {
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
+    <>
       <GA gaType={GaType.admin} />
-      <CommonLayoutClient>{children}</CommonLayoutClient>
-      <Zendesk />
-    </HydrationBoundary>
+      <AmplitudeProvider />
+      <AppInitializer>
+        <AppContextProvider>
+          <EventEmitterContextProvider>
+            <ProviderContextProvider>
+              <ModalContextProvider>
+                <HeaderWrapper>
+                  <Header />
+                </HeaderWrapper>
+                {children}
+                <PartnerStack />
+                <ReadmePanel />
+                <GotoAnything />
+                <Splash />
+              </ModalContextProvider>
+            </ProviderContextProvider>
+          </EventEmitterContextProvider>
+        </AppContextProvider>
+        <Zendesk />
+      </AppInitializer>
+    </>
   )
 }
+export default Layout

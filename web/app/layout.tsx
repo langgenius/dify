@@ -1,16 +1,13 @@
 import type { Viewport } from 'next'
-import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { Provider as JotaiProvider } from 'jotai'
 import { ThemeProvider } from 'next-themes'
 import { Instrument_Serif } from 'next/font/google'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { TanstackQueryInitializer } from '@/context/query-client'
-import { getQueryClientServer } from '@/context/query-client-server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { DatasetAttr } from '@/types/feature'
 import { cn } from '@/utils/classnames'
-import { serverFetch } from '@/utils/ssr-fetch'
 import { ToastProvider } from './components/base/toast'
 import BrowserInitializer from './components/browser-initializer'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
@@ -42,18 +39,6 @@ const LocaleLayout = async ({
   children: React.ReactNode
 }) => {
   const locale = await getLocaleOnServer()
-  const queryClient = getQueryClientServer()
-
-  await Promise.all([
-    queryClient.prefetchQuery({
-      queryKey: ['systemFeatures'],
-      queryFn: () => serverFetch('/system-features'),
-    }),
-    queryClient.prefetchQuery({
-      queryKey: ['setupStatus'],
-      queryFn: () => serverFetch('/setup'),
-    }),
-  ])
 
   const datasetMap: Record<DatasetAttr, string | undefined> = {
     [DatasetAttr.DATA_API_PREFIX]: process.env.NEXT_PUBLIC_API_PREFIX,
@@ -123,15 +108,13 @@ const LocaleLayout = async ({
                 <BrowserInitializer>
                   <SentryInitializer>
                     <TanstackQueryInitializer>
-                      <HydrationBoundary state={dehydrate(queryClient)}>
-                        <I18nServerProvider>
-                          <ToastProvider>
-                            <GlobalPublicStoreProvider>
-                              {children}
-                            </GlobalPublicStoreProvider>
-                          </ToastProvider>
-                        </I18nServerProvider>
-                      </HydrationBoundary>
+                      <I18nServerProvider>
+                        <ToastProvider>
+                          <GlobalPublicStoreProvider>
+                            {children}
+                          </GlobalPublicStoreProvider>
+                        </ToastProvider>
+                      </I18nServerProvider>
                     </TanstackQueryInitializer>
                   </SentryInitializer>
                 </BrowserInitializer>
