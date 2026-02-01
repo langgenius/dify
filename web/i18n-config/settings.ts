@@ -9,5 +9,8 @@ export function getInitOptions(): InitOptions {
     partialBundledLanguages: true,
     keySeparator: false,
     ns: namespacesCamelCase,
+    interpolation: {
+      escapeValue: false,
+    },
   }
 }

@@ -1,4 +1,4 @@
-import { downloadFile, formatFileSize, formatNumber, formatNumberAbbreviated, formatTime } from './format'
+import { formatFileSize, formatNumber, formatNumberAbbreviated, formatTime } from './format'
 
 describe('formatNumber', () => {
   it('should correctly format integers', () => {
@@ -18,6 +18,28 @@ describe('formatNumber', () => {
   })
   it('should correctly handle empty input', () => {
     expect(formatNumber('')).toBe('')
+  })
+  it('should format very small numbers without scientific notation', () => {
+    expect(formatNumber(0.0000008)).toBe('0.0000008')
+    expect(formatNumber(0.0000001)).toBe('0.0000001')
+    expect(formatNumber(0.000001)).toBe('0.000001')
+    expect(formatNumber(0.00001)).toBe('0.00001')
+  })
+  it('should format negative small numbers without scientific notation', () => {
+    expect(formatNumber(-0.0000008)).toBe('-0.0000008')
+    expect(formatNumber(-0.0000001)).toBe('-0.0000001')
+  })
+  it('should handle small numbers from string input', () => {
+    expect(formatNumber('0.0000008')).toBe('0.0000008')
+    expect(formatNumber('8E-7')).toBe('0.0000008')
+    expect(formatNumber('1e-7')).toBe('0.0000001')
+  })
+  it('should handle small numbers with multi-digit mantissa in scientific notation', () => {
+    expect(formatNumber(1.23e-7)).toBe('0.000000123')
+    expect(formatNumber(1.234e-7)).toBe('0.0000001234')
+    expect(formatNumber(12.34e-7)).toBe('0.000001234')
+    expect(formatNumber(0.0001234)).toBe('0.0001234')
+    expect(formatNumber('1.23e-7')).toBe('0.000000123')
   })
 })
 describe('formatFileSize', () => {
@@ -60,49 +82,6 @@ describe('formatTime', () => {
     expect(formatTime(7200)).toBe('2.00 h')
   })
 })
-describe('downloadFile', () => {
-  it('should create a link and trigger a download correctly', () => {
-    // Mock data
-    const blob = new Blob(['test content'], { type: 'text/plain' })
-    const fileName = 'test-file.txt'
-    const mockUrl = 'blob:mockUrl'
-
-    // Mock URL.createObjectURL
-    const createObjectURLMock = vi.fn().mockReturnValue(mockUrl)
-    const revokeObjectURLMock = vi.fn()
-    Object.defineProperty(window.URL, 'createObjectURL', { value: createObjectURLMock })
-    Object.defineProperty(window.URL, 'revokeObjectURL', { value: revokeObjectURLMock })
-
-    // Mock createElement and appendChild
-    const mockLink = {
-      href: '',
-      download: '',
-      click: vi.fn(),
-      remove: vi.fn(),
-    }
-    const createElementMock = vi.spyOn(document, 'createElement').mockReturnValue(mockLink as any)
-    const appendChildMock = vi.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => {
-      return node
-    })
-
-    // Call the function
-    downloadFile({ data: blob, fileName })
-
-    // Assertions
-    expect(createObjectURLMock).toHaveBeenCalledWith(blob)
-    expect(createElementMock).toHaveBeenCalledWith('a')
-    expect(mockLink.href).toBe(mockUrl)
-    expect(mockLink.download).toBe(fileName)
-    expect(appendChildMock).toHaveBeenCalledWith(mockLink)
-    expect(mockLink.click).toHaveBeenCalled()
-    expect(mockLink.remove).toHaveBeenCalled()
-    expect(revokeObjectURLMock).toHaveBeenCalledWith(mockUrl)
-
-    // Clean up mocks
-    vi.restoreAllMocks()
-  })
-})
-
 describe('formatNumberAbbreviated', () => {
   it('should return number as string when less than 1000', () => {
     expect(formatNumberAbbreviated(0)).toBe('0')

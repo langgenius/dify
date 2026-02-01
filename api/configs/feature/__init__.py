@@ -243,6 +243,11 @@ class PluginConfig(BaseSettings):
         default=15728640 * 12,
     )
 
+    PLUGIN_MODEL_SCHEMA_CACHE_TTL: PositiveInt = Field(
+        description="TTL in seconds for caching plugin model schemas in Redis",
+        default=60 * 60,
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """
@@ -949,6 +954,12 @@ class MailConfig(BaseSettings):
         default=False,
     )
 
+    SMTP_LOCAL_HOSTNAME: str | None = Field(
+        description="Override the local hostname used in SMTP HELO/EHLO. "
+        "Useful behind NAT or when the default hostname causes rejections.",
+        default=None,
+    )
+
     EMAIL_SEND_IP_LIMIT_PER_MINUTE: PositiveInt = Field(
         description="Maximum number of emails allowed to be sent from the same IP address in a minute",
         default=50,
@@ -957,6 +968,16 @@ class MailConfig(BaseSettings):
     SENDGRID_API_KEY: str | None = Field(
         description="API key for SendGrid service",
         default=None,
+    )
+
+    ENABLE_TRIAL_APP: bool = Field(
+        description="Enable trial app",
+        default=False,
+    )
+
+    ENABLE_EXPLORE_BANNER: bool = Field(
+        description="Enable explore banner",
+        default=False,
     )
 
 
@@ -1291,6 +1312,10 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: PositiveInt = Field(
         description="Retention days for sandbox expired workflow_run records and message records",
         default=30,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL: PositiveInt = Field(
+        description="Lock TTL for sandbox expired records clean task in seconds",
+        default=90000,
     )
 
 

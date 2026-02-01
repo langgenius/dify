@@ -1,11 +1,12 @@
 from urllib import parse
 
 from flask import abort, request
-from flask_restx import Resource, marshal_with
+from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 
 import services
 from configs import dify_config
+from controllers.common.schema import get_or_create_model, register_enum_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -24,7 +25,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_database import db
-from fields.member_fields import account_with_role_list_fields
+from fields.member_fields import account_with_role_fields, account_with_role_list_fields
 from libs.helper import extract_remote_ip
 from libs.login import current_account_with_tenant, login_required
 from models.account import Account, TenantAccountRole
@@ -67,6 +68,13 @@ reg(MemberRoleUpdatePayload)
 reg(OwnerTransferEmailPayload)
 reg(OwnerTransferCheckPayload)
 reg(OwnerTransferPayload)
+register_enum_models(console_ns, TenantAccountRole)
+
+account_with_role_model = get_or_create_model("AccountWithRole", account_with_role_fields)
+
+account_with_role_list_fields_copy = account_with_role_list_fields.copy()
+account_with_role_list_fields_copy["accounts"] = fields.List(fields.Nested(account_with_role_model))
+account_with_role_list_model = get_or_create_model("AccountWithRoleList", account_with_role_list_fields_copy)
 
 
 @console_ns.route("/workspaces/current/members")
@@ -76,7 +84,7 @@ class MemberListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_with_role_list_fields)
+    @marshal_with(account_with_role_list_model)
     def get(self):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
@@ -107,6 +115,12 @@ class MemberInviteEmailApi(Resource):
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
+
+        # Check workspace permission for member invitations
+        from libs.workspace_permission import check_workspace_member_invite_permission
+
+        check_workspace_member_invite_permission(inviter.current_tenant.id)
+
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
 
@@ -116,26 +130,31 @@ class MemberInviteEmailApi(Resource):
             raise WorkspaceMembersLimitExceeded()
 
         for invitee_email in invitee_emails:
+            normalized_invitee_email = invitee_email.lower()
             try:
                 if not inviter.current_tenant:
                     raise ValueError("No current tenant")
                 token = RegisterService.invite_new_member(
-                    inviter.current_tenant, invitee_email, interface_language, role=invitee_role, inviter=inviter
+                    tenant=inviter.current_tenant,
+                    email=invitee_email,
+                    language=interface_language,
+                    role=invitee_role,
+                    inviter=inviter,
                 )
-                encoded_invitee_email = parse.quote(invitee_email)
+                encoded_invitee_email = parse.quote(normalized_invitee_email)
                 invitation_results.append(
                     {
                         "status": "success",
-                        "email": invitee_email,
+                        "email": normalized_invitee_email,
                         "url": f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
                     }
                 )
             except AccountAlreadyInTenantError:
                 invitation_results.append(
-                    {"status": "success", "email": invitee_email, "url": f"{console_web_url}/signin"}
+                    {"status": "success", "email": normalized_invitee_email, "url": f"{console_web_url}/signin"}
                 )
             except Exception as e:
-                invitation_results.append({"status": "failed", "email": invitee_email, "message": str(e)})
+                invitation_results.append({"status": "failed", "email": normalized_invitee_email, "message": str(e)})
 
         return {
             "result": "success",
@@ -216,7 +235,7 @@ class DatasetOperatorMemberListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_with_role_list_fields)
+    @marshal_with(account_with_role_list_model)
     def get(self):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
