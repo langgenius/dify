@@ -1,10 +1,11 @@
-import type { QAChunk } from './types'
+import type { GeneralChunk, ParentChildChunk, QAChunk } from './types'
 import type { ParentMode } from '@/models/datasets'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Dot from '@/app/components/datasets/documents/detail/completed/common/dot'
 import SegmentIndexTag from '@/app/components/datasets/documents/detail/completed/common/segment-index-tag'
+import SummaryLabel from '@/app/components/datasets/documents/detail/completed/common/summary-label'
 import { PreviewSlice } from '@/app/components/datasets/formatted-text/flavours/preview-slice'
 import { ChunkingMode } from '@/models/datasets'
 import { formatNumber } from '@/utils/format'
@@ -14,7 +15,7 @@ import { QAItemType } from './types'
 type ChunkCardProps = {
   chunkType: ChunkingMode
   parentMode?: ParentMode
-  content: string | string[] | QAChunk
+  content: ParentChildChunk | QAChunk | GeneralChunk
   positionId?: string | number
   wordCount: number
 }
@@ -33,7 +34,7 @@ const ChunkCard = (props: ChunkCardProps) => {
 
   const contentElement = useMemo(() => {
     if (chunkType === ChunkingMode.parentChild) {
-      return (content as string[]).map((child, index) => {
+      return (content as ParentChildChunk).child_contents.map((child, index) => {
         const indexForLabel = index + 1
         return (
           <PreviewSlice
@@ -57,7 +58,17 @@ const ChunkCard = (props: ChunkCardProps) => {
       )
     }
 
-    return content as string
+    return (content as GeneralChunk).content
+  }, [content, chunkType])
+
+  const summaryElement = useMemo(() => {
+    if (chunkType === ChunkingMode.parentChild) {
+      return (content as ParentChildChunk).parent_summary
+    }
+    if (chunkType === ChunkingMode.text) {
+      return (content as GeneralChunk).summary
+    }
+    return null
   }, [content, chunkType])
 
   return (
@@ -73,6 +84,7 @@ const ChunkCard = (props: ChunkCardProps) => {
         </div>
       )}
       <div className="body-md-regular text-text-secondary">{contentElement}</div>
+      {summaryElement && <SummaryLabel summary={summaryElement} />}
     </div>
   )
 }

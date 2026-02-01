@@ -137,7 +137,7 @@ export default function AppSelector() {
                         <MenuItem>
                           <Link
                             className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
-                            href={docLink('/introduction')}
+                            href={docLink('/use-dify/getting-started/introduction')}
                             target="_blank"
                             rel="noopener noreferrer"
                           >

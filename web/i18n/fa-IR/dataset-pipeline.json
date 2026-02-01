@@ -79,7 +79,7 @@
   "pipelineNameAndIcon": "نام و نماد خط لوله",
   "publishPipeline.error.message": "انتشار پایپ لاین دانش ناموفق است",
   "publishPipeline.success.message": "خط لوله دانش منتشر شد",
-  "publishPipeline.success.tip": "برای افزودن یا مدیریت اسناد، به اسناد بروید.",
+  "publishPipeline.success.tip": "برای افزودن یا مدیریت اسناد، به <CustomLink>اسناد</CustomLink> بروید.",
   "publishTemplate.error.message": "انتشار الگوی خط لوله انجام نشد",
   "publishTemplate.success.learnMore": "بیشتر بدانید",
   "publishTemplate.success.message": "الگوی خط لوله منتشر شد",

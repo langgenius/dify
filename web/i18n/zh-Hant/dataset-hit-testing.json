@@ -3,7 +3,7 @@
   "dateTimeFormat": "YYYY-MM-DD HH:mm",
   "desc": "基於給定的查詢文字測試知識庫的檢索效果。",
   "hit.emptyTip": "檢索測試結果將展示在這裡",
-  "hit.title": "檢索段落",
+  "hit.title": "{{num}} 檢索段落",
   "hitChunks": "命中 {{num}} 個子區塊",
   "imageUploader.dropZoneTip": "將檔案拖曳到此上傳",
   "imageUploader.singleChunkAttachmentLimitTooltip": "單個區塊附件的數量不能超過 {{limit}}",
