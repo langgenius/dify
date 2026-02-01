@@ -5,7 +5,6 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, cast
 
-from flask import has_request_context
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
@@ -21,7 +20,6 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.errors import ToolInvokeError
 from factories.file_factory import build_from_mapping
-from libs.login import current_user
 from models import Account, Tenant
 from models.model import App, EndUser
 from models.workflow import Workflow
@@ -209,21 +207,7 @@ class WorkflowTool(Tool):
         Returns:
             Account | EndUser | None: The resolved user object, or None if resolution fails.
         """
-        if has_request_context():
-            return self._resolve_user_from_request()
-        else:
-            return self._resolve_user_from_database(user_id=user_id)
-
-    def _resolve_user_from_request(self) -> Account | EndUser | None:
-        """
-        Resolve user from Flask request context.
-        """
-        try:
-            # Note: `current_user` is a LocalProxy. Never compare it with None directly.
-            return getattr(current_user, "_get_current_object", lambda: current_user)()
-        except Exception as e:
-            logger.warning("Failed to resolve user from request context: %s", e)
-            return None
+        return self._resolve_user_from_database(user_id=user_id)
 
     def _resolve_user_from_database(self, user_id: str) -> Account | EndUser | None:
         """

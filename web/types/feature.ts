@@ -1,3 +1,5 @@
+import type { ModelProviderQuotaGetPaid } from './model-provider'
+
 export enum SSOProtocol {
   SAML = 'saml',
   OIDC = 'oidc',
@@ -26,6 +28,7 @@ type License = {
 }
 
 export type SystemFeatures = {
+  trial_models: ModelProviderQuotaGetPaid[]
   plugin_installation_permission: {
     plugin_installation_scope: InstallationScope
     restrict_to_marketplace_only: boolean
@@ -59,9 +62,12 @@ export type SystemFeatures = {
     allow_email_code_login: boolean
     allow_email_password_login: boolean
   }
+  enable_trial_app: boolean
+  enable_explore_banner: boolean
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
+  trial_models: [],
   plugin_installation_permission: {
     plugin_installation_scope: InstallationScope.ALL,
     restrict_to_marketplace_only: false,
@@ -98,6 +104,8 @@ export const defaultSystemFeatures: SystemFeatures = {
     allow_email_code_login: false,
     allow_email_password_login: false,
   },
+  enable_trial_app: false,
+  enable_explore_banner: false,
 }
 
 export enum DatasetAttr {

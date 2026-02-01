@@ -65,7 +65,9 @@ const StepTwo: FC<StepTwoProps> = ({
   // Custom hooks
   const segmentation = useSegmentationState({
     initialSegmentationType: currentDataset?.doc_form === ChunkingMode.parentChild ? ProcessMode.parentChild : ProcessMode.general,
+    initialSummaryIndexSetting: currentDataset?.summary_index_setting,
   })
+  const showSummaryIndexSetting = !currentDataset
   const indexing = useIndexingConfig({
     initialIndexType: propsIndexingType,
     initialEmbeddingModel: currentDataset?.embedding_model ? { provider: currentDataset.embedding_model_provider, model: currentDataset.embedding_model } : undefined,
@@ -156,7 +158,7 @@ const StepTwo: FC<StepTwoProps> = ({
     })
     if (!isValid)
       return
-    const params = creation.buildCreationParams(currentDocForm, docLanguage, segmentation.getProcessRule(currentDocForm), indexing.retrievalConfig, indexing.embeddingModel, indexing.getIndexingTechnique())
+    const params = creation.buildCreationParams(currentDocForm, docLanguage, segmentation.getProcessRule(currentDocForm), indexing.retrievalConfig, indexing.embeddingModel, indexing.getIndexingTechnique(), segmentation.summaryIndexSetting)
     if (!params)
       return
     await creation.executeCreation(params, indexing.indexType, indexing.retrievalConfig)
@@ -217,6 +219,9 @@ const StepTwo: FC<StepTwoProps> = ({
             onPreview={updatePreview}
             onReset={segmentation.resetToDefaults}
             locale={locale}
+            showSummaryIndexSetting={showSummaryIndexSetting}
+            summaryIndexSetting={segmentation.summaryIndexSetting}
+            onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
           />
         )}
         {showParentChildOption && (
@@ -236,6 +241,9 @@ const StepTwo: FC<StepTwoProps> = ({
             onRuleToggle={segmentation.toggleRule}
             onPreview={updatePreview}
             onReset={segmentation.resetToDefaults}
+            showSummaryIndexSetting={showSummaryIndexSetting}
+            summaryIndexSetting={segmentation.summaryIndexSetting}
+            onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
           />
         )}
         <Divider className="my-5" />
