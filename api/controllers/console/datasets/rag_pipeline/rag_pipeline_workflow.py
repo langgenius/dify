@@ -55,9 +55,9 @@ logger = logging.getLogger(__name__)
 class DraftWorkflowSyncPayload(BaseModel):
     graph: dict[str, Any]
     hash: str | None = None
-    environment_variables: list[dict[str, Any]] = []
-    conversation_variables: list[dict[str, Any]] = []
-    rag_pipeline_variables: list[dict[str, Any]] = []
+    environment_variables: list[dict[str, Any]] | None = None
+    conversation_variables: list[dict[str, Any]] | None = None
+    rag_pipeline_variables: list[dict[str, Any]] | None = None
     features: dict[str, Any] | None = None
 
 
@@ -164,7 +164,6 @@ class DraftRagPipelineApi(Resource):
         # return workflow, if not found, return None (initiate graph by frontend)
         return workflow
 
-    @console_ns.expect(console_ns.models[DraftWorkflowSyncPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -180,21 +179,37 @@ class DraftRagPipelineApi(Resource):
         content_type = request.headers.get("Content-Type", "")
 
         if "application/json" in content_type:
-            payload = DraftWorkflowSyncPayload.model_validate(console_ns.payload or {})
+            payload_dict = console_ns.payload or {}
         elif "text/plain" in content_type:
             try:
-                payload = DraftWorkflowSyncPayload.model_validate_json(request.data.decode("utf-8"))
-            except ValidationError:
+                data = json.loads(request.data.decode("utf-8"))
+                if "graph" not in data or "features" not in data:
+                    raise ValueError("graph or features not found in data")
+
+                if not isinstance(data.get("graph"), dict):
+                    raise ValueError("graph is not a dict")
+
+                payload_dict = {
+                    "graph": data.get("graph"),
+                    "features": data.get("features"),
+                    "hash": data.get("hash"),
+                    "environment_variables": data.get("environment_variables"),
+                    "conversation_variables": data.get("conversation_variables"),
+                    "rag_pipeline_variables": data.get("rag_pipeline_variables"),
+                }
+            except json.JSONDecodeError:
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
 
+        payload = DraftWorkflowSyncPayload.model_validate(payload_dict)
+
         try:
-            environment_variables_list = payload.environment_variables
+            environment_variables_list = payload.environment_variables or []
             environment_variables = [
                 variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
             ]
-            conversation_variables_list = payload.conversation_variables
+            conversation_variables_list = payload.conversation_variables or []
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
@@ -206,7 +221,7 @@ class DraftRagPipelineApi(Resource):
                 account=current_user,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
-                rag_pipeline_variables=payload.rag_pipeline_variables,
+                rag_pipeline_variables=payload.rag_pipeline_variables or [],
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
