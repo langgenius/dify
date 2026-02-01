@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Any, Literal, cast
 
-from flask_restx import Resource, marshal_with, reqparse  # type: ignore
+from flask_restx import Resource, marshal_with  # type: ignore
 from pydantic import BaseModel, Field
 from quart import abort, request
 from sqlalchemy.orm import Session
