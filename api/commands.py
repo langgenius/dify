@@ -1500,6 +1500,8 @@ def clear_orphaned_file_records(force: bool):
                     for i in rs:
                         for j in i[0]:
                             all_ids_in_tables.append({"table": ids_table["table"], "id": j})
+                case _:
+                    pass
         click.echo(click.style(f"Found {len(all_ids_in_tables)} file ids in tables.", fg="white"))
 
     except Exception as e:
@@ -1814,6 +1816,8 @@ def file_usage(
                                     }
                                 )
                             total_count += 1
+            case _:
+                pass
 
     # Output results
     if output_json:

@@ -519,6 +519,8 @@ class ChatConversationApi(Resource):
                     .group_by(Conversation.id)
                     .having(func.count(MessageAnnotation.id) == 0)
                 )
+            case "all":
+                pass
 
         if app_model.mode == AppMode.ADVANCED_CHAT:
             query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
