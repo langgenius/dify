@@ -304,6 +304,7 @@ class AppDslService:
 
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
             draft_var_srv.delete_workflow_variables(app_id=app.id)
+            self._session.commit()
             return Import(
                 id=import_id,
                 status=status,
