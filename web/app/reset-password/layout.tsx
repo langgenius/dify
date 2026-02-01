@@ -1,11 +1,11 @@
 'use client'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 import { cn } from '@/utils/classnames'
 import Header from '../signin/_header'
 
 export default function SignInLayout({ children }: any) {
-  const systemFeatures = useSystemFeatures()
+  const { systemFeatures } = useGlobalPublicStore()
   return (
     <>
       <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>

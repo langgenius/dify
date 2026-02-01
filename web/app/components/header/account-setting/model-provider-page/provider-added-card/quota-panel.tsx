@@ -10,7 +10,7 @@ import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { useAppContext } from '@/context/app-context'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import useTimestamp from '@/hooks/use-timestamp'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { cn } from '@/utils/classnames'
@@ -56,7 +56,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const { currentWorkspace } = useAppContext()
-  const { trial_models } = useSystemFeatures()
+  const { trial_models } = useGlobalPublicStore(s => s.systemFeatures)
   const credits = Math.max((currentWorkspace.trial_credits - currentWorkspace.trial_credits_used) || 0, 0)
   const providerMap = useMemo(() => new Map(
     providers.map(p => [p.provider, p.preferred_provider_type]),

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { IS_CE_EDITION } from '@/config'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { invitationCheck } from '@/service/common'
 import { useIsLogin } from '@/service/use-common'
 import { LicenseStatus } from '@/types/feature'
@@ -30,7 +30,7 @@ const NormalForm = () => {
   const [isInitCheckLoading, setInitCheckLoading] = useState(true)
   const [isRedirecting, setIsRedirecting] = useState(false)
   const isLoading = isCheckLoading || isInitCheckLoading || isRedirecting
-  const systemFeatures = useSystemFeatures()
+  const { systemFeatures } = useGlobalPublicStore()
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
   const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)

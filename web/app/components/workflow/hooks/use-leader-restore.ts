@@ -6,7 +6,7 @@ import { useReactFlow } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import Toast from '@/app/components/base/toast'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useWorkflowStore } from '../store'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
@@ -123,7 +123,7 @@ export const useLeaderRestore = () => {
     versionId: string
     callbacks: RestoreCallbacks | null
   } | null>(null)
-  const isCollaborationEnabled = useSystemFeatures().enable_collaboration_mode
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
 
   const requestRestore = useCallback((data: RestoreRequestData, callbacks?: RestoreCallbacks) => {
     if (!isCollaborationEnabled || !collaborationManager.isConnected() || collaborationManager.getIsLeader()) {

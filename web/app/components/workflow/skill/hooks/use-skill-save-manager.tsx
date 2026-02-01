@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { extractToolConfigIds } from '@/app/components/workflow/utils'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { consoleQuery } from '@/service/client'
 import { useUpdateAppAssetFileContent } from '@/service/use-app-asset'
 import { skillCollaborationManager } from '../../collaboration/skills/skill-collaboration-manager'
@@ -89,7 +89,7 @@ export const SkillSaveProvider = ({
   const storeApi = useWorkflowStore()
   const queryClient = useQueryClient()
   const updateContent = useUpdateAppAssetFileContent()
-  const isCollaborationEnabled = useSystemFeatures().enable_collaboration_mode
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
   const queueRef = useRef<Map<string, Promise<SaveResult>>>(new Map())
   const fallbackRegistryRef = useRef<Map<string, FallbackEntry>>(new Map())
 

@@ -8,7 +8,7 @@ import { useContextSelector } from 'use-context-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import AppListContext from '@/context/app-list-context'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { cn } from '@/utils/classnames'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 
@@ -25,7 +25,7 @@ const AppCard = ({
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
-  const systemFeatures = useSystemFeatures()
+  const { systemFeatures } = useGlobalPublicStore()
   const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
   const setShowTryAppPanel = useContextSelector(AppListContext, ctx => ctx.setShowTryAppPanel)
   const showTryAPPPanel = useCallback((appId: string) => {

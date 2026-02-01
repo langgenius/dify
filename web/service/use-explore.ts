@@ -1,6 +1,6 @@
 import type { App, AppCategory } from '@/models/explore'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode } from '@/models/access-control'
 import { fetchAppList, fetchBanners, fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
 import { AppSourceType, fetchAppMeta, fetchAppParams } from './share'
@@ -57,7 +57,7 @@ export const useUpdateAppPinStatus = () => {
 }
 
 export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
-  const systemFeatures = useSystemFeatures()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   return useQuery({
     queryKey: [NAME_SPACE, 'appAccessMode', appId, systemFeatures.webapp_auth.enabled],
     queryFn: () => {

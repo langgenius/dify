@@ -5,8 +5,8 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWebAppStore } from '@/context/web-app-context'
-import { useSystemFeatures } from '@/hooks/use-global-public'
 import { AccessMode } from '@/models/access-control'
 import { webAppLogout } from '@/service/webapp-auth'
 import ExternalMemberSsoAuth from './components/external-member-sso-auth'
@@ -14,7 +14,7 @@ import NormalForm from './normalForm'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
-  const systemFeatures = useSystemFeatures()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
   const searchParams = useSearchParams()
   const router = useRouter()

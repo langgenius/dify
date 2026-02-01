@@ -66,7 +66,8 @@ vi.mock('@/context/i18n', () => ({
 let mockEnableMarketplace = true
 
 vi.mock('@/context/global-public-context', () => ({
-  useSystemFeatures: () => ({ enable_marketplace: mockEnableMarketplace }),
+  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_marketplace: boolean } }) => unknown) =>
+    selector({ systemFeatures: { enable_marketplace: mockEnableMarketplace } }),
 }))
 
 vi.mock('@/context/modal-context', () => ({

@@ -5,11 +5,11 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import WorkplaceSelector from '@/app/components/header/account-dropdown/workplace-selector'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useAppContext } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { WorkspaceProvider } from '@/context/workspace-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { useSystemFeatures } from '@/hooks/use-global-public'
 import { Plan } from '../billing/type'
 import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
@@ -33,7 +33,7 @@ const Header = () => {
   const isMobile = media === MediaType.mobile
   const { enableBilling, plan } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
-  const systemFeatures = useSystemFeatures()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const isFreePlan = plan.type === Plan.sandbox
   const isBrandingEnabled = systemFeatures.branding.enabled
   const handlePlanClick = useCallback(() => {

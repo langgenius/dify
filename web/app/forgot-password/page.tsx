@@ -2,8 +2,8 @@
 import { useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import ChangePasswordForm from '@/app/forgot-password/ChangePasswordForm'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useSystemFeatures } from '@/hooks/use-global-public'
 import { cn } from '@/utils/classnames'
 import Header from '../signin/_header'
 import ForgotPasswordForm from './ForgotPasswordForm'
@@ -12,7 +12,7 @@ const ForgotPassword = () => {
   useDocumentTitle('')
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
-  const systemFeatures = useSystemFeatures()
+  const { systemFeatures } = useGlobalPublicStore()
 
   return (
     <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>

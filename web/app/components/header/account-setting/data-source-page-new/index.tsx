@@ -1,11 +1,11 @@
 import { memo } from 'react'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetDataSourceListAuth } from '@/service/use-datasource'
 import Card from './card'
 import InstallFromMarketplace from './install-from-marketplace'
 
 const DataSourcePage = () => {
-  const { enable_marketplace } = useSystemFeatures()
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const { data } = useGetDataSourceListAuth()
 
   return (

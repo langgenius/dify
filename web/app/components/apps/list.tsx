@@ -27,7 +27,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
 import { DSLImportStatus } from '@/models/app'
 import { fetchWorkflowOnlineUsers, importAppBundle } from '@/service/apps'
@@ -68,7 +68,7 @@ const List: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const systemFeatures = useSystemFeatures()
+  const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
   const { push } = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()

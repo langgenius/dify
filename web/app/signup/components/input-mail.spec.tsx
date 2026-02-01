@@ -2,8 +2,8 @@ import type { MockedFunction } from 'vitest'
 import type { SystemFeatures } from '@/types/feature'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
-import { useSystemFeatures } from '@/hooks/use-global-public'
 import { useSendMail } from '@/service/use-common'
 import { defaultSystemFeatures } from '@/types/feature'
 import Form from './input-mail'
@@ -33,7 +33,7 @@ vi.mock('next/link', () => ({
 }))
 
 vi.mock('@/context/global-public-context', () => ({
-  useSystemFeatures: vi.fn(),
+  useGlobalPublicStore: vi.fn(),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -46,7 +46,7 @@ vi.mock('@/service/use-common', () => ({
 
 type UseSendMailResult = ReturnType<typeof useSendMail>
 
-const mockUseSystemFeatures = useSystemFeatures as unknown as MockedFunction<typeof useSystemFeatures>
+const mockUseGlobalPublicStore = useGlobalPublicStore as unknown as MockedFunction<typeof useGlobalPublicStore>
 const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
 const mockUseSendMail = useSendMail as unknown as MockedFunction<typeof useSendMail>
 
@@ -57,9 +57,11 @@ const renderForm = ({
   brandingEnabled?: boolean
   isPending?: boolean
 } = {}) => {
-  mockUseSystemFeatures.mockReturnValue(buildSystemFeatures({
-    branding: { enabled: brandingEnabled },
-  }))
+  mockUseGlobalPublicStore.mockReturnValue({
+    systemFeatures: buildSystemFeatures({
+      branding: { enabled: brandingEnabled },
+    }),
+  })
   mockUseLocale.mockReturnValue('en-US')
   mockUseSendMail.mockReturnValue({
     mutateAsync: mockSubmitMail,

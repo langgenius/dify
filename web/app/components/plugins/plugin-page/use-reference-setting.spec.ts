@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import mocks for assertions
 import { useAppContext } from '@/context/app-context'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
 import Toast from '../../base/toast'
@@ -21,7 +21,7 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('@/context/global-public-context', () => ({
-  useSystemFeatures: vi.fn(),
+  useGlobalPublicStore: vi.fn(),
 }))
 
 vi.mock('@/service/use-plugins', () => ({
@@ -309,9 +309,14 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
   })
 
   it('should return true when marketplace is enabled and canManagement is true', () => {
-    vi.mocked(useSystemFeatures).mockReturnValue({
-      enable_marketplace: true,
-    } as ReturnType<typeof useSystemFeatures>)
+    vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
+      const state = {
+        systemFeatures: {
+          enable_marketplace: true,
+        },
+      }
+      return selector(state as Parameters<typeof selector>[0])
+    })
 
     const { result } = renderHook(() => useCanInstallPluginFromMarketplace())
 
@@ -319,9 +324,14 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
   })
 
   it('should return false when marketplace is disabled', () => {
-    vi.mocked(useSystemFeatures).mockReturnValue({
-      enable_marketplace: false,
-    } as ReturnType<typeof useSystemFeatures>)
+    vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
+      const state = {
+        systemFeatures: {
+          enable_marketplace: false,
+        },
+      }
+      return selector(state as Parameters<typeof selector>[0])
+    })
 
     const { result } = renderHook(() => useCanInstallPluginFromMarketplace())
 
@@ -329,9 +339,14 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
   })
 
   it('should return false when canManagement is false', () => {
-    vi.mocked(useSystemFeatures).mockReturnValue({
-      enable_marketplace: true,
-    } as ReturnType<typeof useSystemFeatures>)
+    vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
+      const state = {
+        systemFeatures: {
+          enable_marketplace: true,
+        },
+      }
+      return selector(state as Parameters<typeof selector>[0])
+    })
 
     vi.mocked(useReferenceSettings).mockReturnValue({
       data: {
@@ -348,9 +363,14 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
   })
 
   it('should return false when both marketplace is disabled and canManagement is false', () => {
-    vi.mocked(useSystemFeatures).mockReturnValue({
-      enable_marketplace: false,
-    } as ReturnType<typeof useSystemFeatures>)
+    vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
+      const state = {
+        systemFeatures: {
+          enable_marketplace: false,
+        },
+      }
+      return selector(state as Parameters<typeof selector>[0])
+    })
 
     vi.mocked(useReferenceSettings).mockReturnValue({
       data: {

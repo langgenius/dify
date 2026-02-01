@@ -8,7 +8,7 @@ import type {
 import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
@@ -64,7 +64,7 @@ const Tabs: FC<TabsProps> = ({
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
   const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
-  const { enable_marketplace } = useSystemFeatures()
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const workflowStore = useWorkflowStore()
   const inRAGPipeline = dataSources.length > 0
   const {

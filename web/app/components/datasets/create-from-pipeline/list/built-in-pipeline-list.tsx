@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
-import { useSystemFeatures } from '@/hooks/use-global-public'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { usePipelineTemplateList } from '@/service/use-pipeline'
 import CreateCard from './create-card'
@@ -13,7 +13,7 @@ const BuiltInPipelineList = () => {
       return locale
     return LanguagesSupported[0]
   }, [locale])
-  const enableMarketplace = useSystemFeatures().enable_marketplace
+  const enableMarketplace = useGlobalPublicStore(s => s.systemFeatures.enable_marketplace)
   const { data: pipelineList, isLoading } = usePipelineTemplateList({ type: 'built-in', language }, enableMarketplace)
   const list = pipelineList?.pipeline_templates || []
 

@@ -4,13 +4,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { skillCollaborationManager } from '@/app/components/workflow/collaboration/skills/skill-collaboration-manager'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { consoleQuery } from '@/service/client'
 
 export const useSkillTreeUpdateEmitter = () => {
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
-  const isCollaborationEnabled = useSystemFeatures().enable_collaboration_mode
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
 
   return useCallback((payload: Record<string, unknown> = {}) => {
     if (!appId || !isCollaborationEnabled)
@@ -22,7 +22,7 @@ export const useSkillTreeUpdateEmitter = () => {
 export const useSkillTreeCollaboration = () => {
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
-  const isCollaborationEnabled = useSystemFeatures().enable_collaboration_mode
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
   const queryClient = useQueryClient()
 
   useEffect(() => {

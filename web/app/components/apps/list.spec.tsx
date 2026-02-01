@@ -27,8 +27,10 @@ vi.mock('@/context/app-context', () => ({
 
 // Mock global public store
 vi.mock('@/context/global-public-context', () => ({
-  useSystemFeatures: () => ({
-    branding: { enabled: false },
+  useGlobalPublicStore: () => ({
+    systemFeatures: {
+      branding: { enabled: false },
+    },
   }),
 }))
 

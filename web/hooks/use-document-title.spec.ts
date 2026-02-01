@@ -1,5 +1,5 @@
-import { renderHook } from '@testing-library/react'
-import { useIsSystemFeaturesPending, useSystemFeatures } from '@/hooks/use-global-public'
+import { act, renderHook } from '@testing-library/react'
+import { useGlobalPublicStore, useIsSystemFeaturesPending } from '@/context/global-public-context'
 /**
  * Test suite for useDocumentTitle hook
  *
@@ -15,10 +15,13 @@ import { useIsSystemFeaturesPending, useSystemFeatures } from '@/hooks/use-globa
 import { defaultSystemFeatures } from '@/types/feature'
 import useDocumentTitle from './use-document-title'
 
-vi.mock('@/context/global-public-context', () => ({
-  useSystemFeatures: vi.fn(() => ({ ...defaultSystemFeatures })),
-  useIsSystemFeaturesPending: vi.fn(() => false),
-}))
+vi.mock('@/context/global-public-context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/context/global-public-context')>()
+  return {
+    ...actual,
+    useIsSystemFeaturesPending: vi.fn(() => false),
+  }
+})
 
 /**
  * Test behavior when system features are still loading
@@ -27,7 +30,11 @@ vi.mock('@/context/global-public-context', () => ({
 describe('title should be empty if systemFeatures is pending', () => {
   beforeEach(() => {
     vi.mocked(useIsSystemFeaturesPending).mockReturnValue(true)
-    vi.mocked(useSystemFeatures).mockReturnValue({ ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } })
+    act(() => {
+      useGlobalPublicStore.setState({
+        systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } },
+      })
+    })
   })
   /**
    * Test that title stays empty during loading even when a title is provided
@@ -52,7 +59,11 @@ describe('title should be empty if systemFeatures is pending', () => {
 describe('use default branding', () => {
   beforeEach(() => {
     vi.mocked(useIsSystemFeaturesPending).mockReturnValue(false)
-    vi.mocked(useSystemFeatures).mockReturnValue({ ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } })
+    act(() => {
+      useGlobalPublicStore.setState({
+        systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } },
+      })
+    })
   })
   /**
    * Test title format with page title and default branding
@@ -80,7 +91,11 @@ describe('use default branding', () => {
 describe('use specific branding', () => {
   beforeEach(() => {
     vi.mocked(useIsSystemFeaturesPending).mockReturnValue(false)
-    vi.mocked(useSystemFeatures).mockReturnValue({ ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: true, application_title: 'Test' } })
+    act(() => {
+      useGlobalPublicStore.setState({
+        systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: true, application_title: 'Test' } },
+      })
+    })
   })
   /**
    * Test title format with page title and custom branding

@@ -1,11 +1,11 @@
 'use client'
-import type * as React from 'react'
 import Header from '@/app/signin/_header'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { cn } from '@/utils/classnames'
 
-export default function SignInLayout({ children }: { children: React.ReactNode }) {
-  const systemFeatures = useSystemFeatures()
+export default function SignInLayout({ children }: any) {
+  const { systemFeatures } = useGlobalPublicStore()
   return (
     <>
       <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>

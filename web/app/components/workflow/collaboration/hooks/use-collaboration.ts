@@ -7,7 +7,7 @@ import type {
 } from '../types/collaboration'
 import { useEffect, useRef, useState } from 'react'
 import Toast from '@/app/components/base/toast'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
 
@@ -33,7 +33,7 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
   const [state, setState] = useState<CollaborationViewState>(initialState)
 
   const cursorServiceRef = useRef<CursorService | null>(null)
-  const isCollaborationEnabled = useSystemFeatures().enable_collaboration_mode
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
 
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) {

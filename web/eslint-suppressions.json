@@ -24,7 +24,7 @@
   },
   "__tests__/embedded-user-id-store.test.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
+      "count": 3
     }
   },
   "__tests__/goto-anything/command-selector.test.tsx": {
@@ -101,6 +101,11 @@
   },
   "app/(shareLayout)/components/splash.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/(shareLayout)/webapp-reset-password/layout.tsx": {
+    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -648,7 +653,7 @@
   },
   "app/components/apps/app-card.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 20
+      "count": 22
     }
   },
   "app/components/apps/app-card.tsx": {
@@ -1666,7 +1671,7 @@
   },
   "app/components/custom/custom-web-app-brand/index.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 6
+      "count": 7
     }
   },
   "app/components/custom/custom-web-app-brand/index.tsx": {
@@ -2540,7 +2545,7 @@
   },
   "app/components/plugins/plugin-item/index.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 8
+      "count": 10
     }
   },
   "app/components/plugins/plugin-item/index.tsx": {
@@ -2563,7 +2568,7 @@
   },
   "app/components/plugins/plugin-page/empty/index.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 5
+      "count": 7
     }
   },
   "app/components/plugins/plugin-page/empty/index.tsx": {
@@ -4298,6 +4303,11 @@
   "context/external-knowledge-api-context.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
+    }
+  },
+  "context/global-public-context.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 4
     }
   },
   "context/hooks/use-trigger-events-limit-modal.ts": {

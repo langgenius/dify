@@ -8,8 +8,8 @@ import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import Split from '@/app/signin/split'
 import { emailRegex } from '@/config'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
-import { useSystemFeatures } from '@/hooks/use-global-public'
 import { useSendMail } from '@/service/use-common'
 
 type Props = {
@@ -21,7 +21,7 @@ export default function Form({
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const locale = useLocale()
-  const systemFeatures = useSystemFeatures()
+  const { systemFeatures } = useGlobalPublicStore()
 
   const { mutateAsync: submitMail, isPending } = useSendMail()
 

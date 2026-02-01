@@ -26,7 +26,7 @@ import {
   getSandboxProviderListContract,
   saveSandboxProviderConfigContract,
 } from './console/sandbox-provider'
-import { setupStatusContract, systemFeaturesContract } from './console/system'
+import { systemFeaturesContract } from './console/system'
 import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
 import {
   workflowDraftEnvironmentVariablesContract,
@@ -51,7 +51,6 @@ export const consoleRouterContract = {
     avatar: accountAvatarContract,
   },
   systemFeatures: systemFeaturesContract,
-  setupStatus: setupStatusContract,
   trialApps: {
     info: trialAppInfoContract,
     datasets: trialAppDatasetsContract,

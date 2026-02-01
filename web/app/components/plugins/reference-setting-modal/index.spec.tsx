@@ -36,7 +36,9 @@ vi.mock('react-i18next', () => ({
 // Mock global public store
 const mockSystemFeatures = { enable_marketplace: true }
 vi.mock('@/context/global-public-context', () => ({
-  useSystemFeatures: () => mockSystemFeatures,
+  useGlobalPublicStore: (selector: (s: { systemFeatures: typeof mockSystemFeatures }) => typeof mockSystemFeatures) => {
+    return selector({ systemFeatures: mockSystemFeatures })
+  },
 }))
 
 // Mock Modal component

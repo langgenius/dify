@@ -20,8 +20,8 @@ import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage } from '@/context/i18n'
-import { useSystemFeatures } from '@/hooks/use-global-public'
 import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
@@ -179,7 +179,7 @@ const AllTools = ({
     plugins: notInstalledPlugins = [],
   } = useMarketplacePlugins()
 
-  const { enable_marketplace } = useSystemFeatures()
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   useEffect(() => {
     if (!enable_marketplace)

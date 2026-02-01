@@ -8,7 +8,7 @@ import { useReactFlow } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import {
   CUSTOM_NODE,
   NODE_LAYOUT_HORIZONTAL_PADDING,
@@ -73,7 +73,7 @@ export const useWorkflowMoveMode = () => {
     getNodesReadOnly,
   } = useNodesReadOnly()
   const { handleSelectionCancel } = useSelectionInteractions()
-  const isCollaborationEnabled = useSystemFeatures().enable_collaboration_mode
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
   const appDetail = useAppStore(state => state.appDetail)
   const isCommentModeAvailable = isCollaborationEnabled && (appDetail?.mode === 'workflow' || appDetail?.mode === 'advanced-chat')
 

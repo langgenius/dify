@@ -12,7 +12,7 @@ import Loading from '@/app/components/base/loading'
 import { SimpleSelect } from '@/app/components/base/select'
 import Toast from '@/app/components/base/toast'
 import { LICENSE_LINK } from '@/constants/link'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
 import { activateMember } from '@/service/common'
@@ -22,7 +22,7 @@ import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
-  const systemFeatures = useSystemFeatures()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)

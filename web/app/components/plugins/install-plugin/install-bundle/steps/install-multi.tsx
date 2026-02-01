@@ -4,7 +4,7 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
 import LoadingError from '../../base/loading-error'
 import { pluginInstallLimit } from '../../hooks/use-install-plugin-limit'
@@ -38,7 +38,7 @@ const InstallByDSLList = ({
   isFromMarketPlace,
   ref,
 }: Props) => {
-  const systemFeatures = useSystemFeatures()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   // DSL has id, to get plugin info to show more info
   const { isLoading: isFetchingMarketplaceDataById, data: infoGetById, error: infoByIdError } = useFetchPluginsInMarketPlaceByInfo(allPlugins.filter(d => d.type === 'marketplace').map((d) => {
     const dependecy = (d as GitHubItemAndMarketPlaceDependency).value

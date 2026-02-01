@@ -21,7 +21,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 import { cn } from '@/utils/classnames'
 import Divider from '../../base/divider'
@@ -79,7 +79,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
     workflowReadOnly,
     getWorkflowReadOnly,
   } = useWorkflowReadOnly()
-  const isCollaborationEnabled = useSystemFeatures().enable_collaboration_mode
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
 
   const ZOOM_IN_OUT_OPTIONS = [
     [

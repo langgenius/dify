@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { IS_CE_EDITION } from '@/config'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { LicenseStatus } from '@/types/feature'
 import { cn } from '@/utils/classnames'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -17,7 +17,7 @@ const NormalForm = () => {
   const { t } = useTranslation()
 
   const [isLoading, setIsLoading] = useState(true)
-  const systemFeatures = useSystemFeatures()
+  const { systemFeatures } = useGlobalPublicStore()
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
   const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)

@@ -56,10 +56,14 @@ vi.mock('../context', () => ({
 
 // Mock global public store (Zustand store)
 vi.mock('@/context/global-public-context', () => ({
-  useSystemFeatures: () => ({
-    ...defaultSystemFeatures,
-    ...mockState.systemFeatures,
-  }),
+  useGlobalPublicStore: (selector: (state: any) => any) => {
+    return selector({
+      systemFeatures: {
+        ...defaultSystemFeatures,
+        ...mockState.systemFeatures,
+      },
+    })
+  },
 }))
 
 // Mock useInstalledPluginList hook

@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useContextSelector } from 'use-context-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import ExploreContext from '@/context/explore-context'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import { AppTypeIcon } from '../../app/type-selector'
@@ -28,7 +28,7 @@ const AppCard = ({
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
-  const systemFeatures = useSystemFeatures()
+  const { systemFeatures } = useGlobalPublicStore()
   const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
   const setShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.setShowTryAppPanel)
   const showTryAPPPanel = useCallback((appId: string) => {

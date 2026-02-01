@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal/index'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetTryAppInfo } from '@/service/use-try-app'
 import Button from '../../base/button'
 import App from './app'
@@ -30,7 +30,7 @@ const TryApp: FC<Props> = ({
   onClose,
   onCreate,
 }) => {
-  const systemFeatures = useSystemFeatures()
+  const { systemFeatures } = useGlobalPublicStore()
   const isTrialApp = !!(app && app.can_trial && systemFeatures.enable_trial_app)
   const [type, setType] = useState<TypeEnum>(() => (app && !isTrialApp ? TypeEnum.DETAIL : TypeEnum.TRY))
   const { data: appDetail, isLoading } = useGetTryAppInfo(appId)

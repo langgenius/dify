@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
 import Toast from '../../base/toast'
 import { PermissionType } from '../types'
@@ -48,7 +48,7 @@ const useReferenceSetting = () => {
 }
 
 export const useCanInstallPluginFromMarketplace = () => {
-  const { enable_marketplace } = useSystemFeatures()
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const { canManagement } = useReferenceSetting()
 
   const canInstallPluginFromMarketplace = useMemo(() => {

@@ -5,12 +5,12 @@ import { useCallback, useEffect } from 'react'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
 import { SSOProtocol } from '@/types/feature'
 
 const ExternalMemberSSOAuth = () => {
-  const systemFeatures = useSystemFeatures()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const searchParams = useSearchParams()
   const router = useRouter()
 

@@ -23,7 +23,7 @@ export type OauthResponse = {
 
 export type SetupStatusResponse = {
   step: 'finished' | 'not_started'
-  setup_at?: string
+  setup_at?: Date
 }
 
 export type InitValidateStatusResponse = {

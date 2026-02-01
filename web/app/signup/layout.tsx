@@ -1,12 +1,12 @@
 'use client'
 import Header from '@/app/signin/_header'
 
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useSystemFeatures } from '@/hooks/use-global-public'
 import { cn } from '@/utils/classnames'
 
 export default function RegisterLayout({ children }: any) {
-  const systemFeatures = useSystemFeatures()
+  const { systemFeatures } = useGlobalPublicStore()
   useDocumentTitle('')
   return (
     <>

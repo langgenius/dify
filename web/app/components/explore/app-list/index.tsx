@@ -17,7 +17,7 @@ import Banner from '@/app/components/explore/banner/banner'
 import Category from '@/app/components/explore/category'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import ExploreContext from '@/context/explore-context'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import {
   DSLImportMode,
@@ -36,7 +36,7 @@ const Apps = ({
   onSuccess,
 }: AppsProps) => {
   const { t } = useTranslation()
-  const systemFeatures = useSystemFeatures()
+  const { systemFeatures } = useGlobalPublicStore()
   const { hasEditPermission } = useContext(ExploreContext)
   const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
 

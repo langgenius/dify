@@ -3,13 +3,13 @@
 import { RiHourglass2Fill } from '@remixicon/react'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { LicenseStatus } from '@/types/feature'
 import PremiumBadge from '../../base/premium-badge'
 
 const LicenseNav = () => {
   const { t } = useTranslation()
-  const systemFeatures = useSystemFeatures()
+  const { systemFeatures } = useGlobalPublicStore()
 
   if (systemFeatures.license?.status === LicenseStatus.EXPIRING) {
     const expiredAt = systemFeatures.license?.expired_at

@@ -16,8 +16,8 @@ import { useStore as useTagStore } from '@/app/components/base/tag-management/st
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useSystemFeatures } from '@/hooks/use-global-public'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 // Components
 import ExternalAPIPanel from '../external-api/external-api-panel'
@@ -27,7 +27,7 @@ import Datasets from './datasets'
 
 const List = () => {
   const { t } = useTranslation()
-  const systemFeatures = useSystemFeatures()
+  const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
   const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)

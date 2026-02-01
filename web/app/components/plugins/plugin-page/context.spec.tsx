@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import mocks
-import { useSystemFeatures } from '@/hooks/use-global-public'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 import { PluginPageContext, PluginPageContextProvider, usePluginPageContext } from './context'
 
@@ -11,7 +11,7 @@ vi.mock('nuqs', () => ({
 }))
 
 vi.mock('@/context/global-public-context', () => ({
-  useSystemFeatures: vi.fn(),
+  useGlobalPublicStore: vi.fn(),
 }))
 
 vi.mock('../hooks', () => ({
@@ -25,11 +25,12 @@ vi.mock('../hooks', () => ({
   ],
 }))
 
-// Helper function to mock useSystemFeatures with marketplace setting
+// Helper function to mock useGlobalPublicStore with marketplace setting
 const mockGlobalPublicStore = (enableMarketplace: boolean) => {
-  vi.mocked(useSystemFeatures).mockReturnValue({
-    enable_marketplace: enableMarketplace,
-  } as ReturnType<typeof useSystemFeatures>)
+  vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
+    const state = { systemFeatures: { enable_marketplace: enableMarketplace } }
+    return selector(state as Parameters<typeof selector>[0])
+  })
 }
 
 // Test component that uses the context
