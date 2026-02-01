@@ -12,7 +12,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import { getKeyboardKeyCodeBySystem, isEventTargetInputArea, isMac } from '@/app/components/workflow/utils/common'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
+import { getKeyboardKeyCodeBySystem, isEventTargetInputArea } from '@/app/components/workflow/utils/common'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useGetLanguage } from '@/context/i18n'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
@@ -356,14 +357,7 @@ const GotoAnything: FC<Props> = ({
                   </div>
                 )}
               </div>
-              <div className="text-xs text-text-quaternary">
-                <span className="system-kbd rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-800 dark:text-gray-100">
-                  {isMac() ? '⌘' : 'Ctrl'}
-                </span>
-                <span className="system-kbd ml-1 rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-800 dark:text-gray-100">
-                  K
-                </span>
-              </div>
+              <ShortcutsName keys={['ctrl', 'K']} textColor="secondary" />
             </div>
 
             <Command.List className="h-[240px] overflow-y-auto">

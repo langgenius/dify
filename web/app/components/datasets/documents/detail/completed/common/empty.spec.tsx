@@ -1,129 +1,153 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Empty from './empty'
 
-// Mock react-i18next
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      if (key === 'segment.empty')
-        return 'No results found'
-      if (key === 'segment.clearFilter')
-        return 'Clear Filter'
-      return key
-    },
-  }),
-}))
-
-describe('Empty Component', () => {
-  const defaultProps = {
-    onClearFilter: vi.fn(),
-  }
-
+describe('Empty', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
+  // Rendering tests
   describe('Rendering', () => {
-    it('should render empty state message', () => {
-      render(<Empty {...defaultProps} />)
+    it('should render without crashing', () => {
+      // Arrange & Act
+      const { container } = render(<Empty onClearFilter={vi.fn()} />)
 
-      expect(screen.getByText('No results found')).toBeInTheDocument()
+      // Assert
+      expect(container.firstChild).toBeInTheDocument()
+    })
+
+    it('should render the file list icon', () => {
+      // Arrange & Act
+      const { container } = render(<Empty onClearFilter={vi.fn()} />)
+
+      // Assert - RiFileList2Line icon should be rendered
+      const icon = container.querySelector('.h-6.w-6')
+      expect(icon).toBeInTheDocument()
+    })
+
+    it('should render empty message text', () => {
+      // Arrange & Act
+      render(<Empty onClearFilter={vi.fn()} />)
+
+      // Assert - i18n key format: datasetDocuments:segment.empty
+      expect(screen.getByText(/segment\.empty/i)).toBeInTheDocument()
     })
 
     it('should render clear filter button', () => {
-      render(<Empty {...defaultProps} />)
+      // Arrange & Act
+      render(<Empty onClearFilter={vi.fn()} />)
 
-      expect(screen.getByText('Clear Filter')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
-    it('should render icon', () => {
-      const { container } = render(<Empty {...defaultProps} />)
+    it('should render background empty cards', () => {
+      // Arrange & Act
+      const { container } = render(<Empty onClearFilter={vi.fn()} />)
 
-      // Check for the icon container
+      // Assert - should have 10 background cards
+      const emptyCards = container.querySelectorAll('.bg-background-section-burn')
+      expect(emptyCards).toHaveLength(10)
+    })
+  })
+
+  // User Interactions
+  describe('User Interactions', () => {
+    it('should call onClearFilter when clear filter button is clicked', () => {
+      // Arrange
+      const mockOnClearFilter = vi.fn()
+      render(<Empty onClearFilter={mockOnClearFilter} />)
+
+      // Act
+      fireEvent.click(screen.getByRole('button'))
+
+      // Assert
+      expect(mockOnClearFilter).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  // Structure tests
+  describe('Structure', () => {
+    it('should render the decorative lines', () => {
+      // Arrange & Act
+      const { container } = render(<Empty onClearFilter={vi.fn()} />)
+
+      // Assert - there should be 4 Line components (SVG elements)
+      const svgElements = container.querySelectorAll('svg')
+      expect(svgElements.length).toBeGreaterThanOrEqual(4)
+    })
+
+    it('should render mask overlay', () => {
+      // Arrange & Act
+      const { container } = render(<Empty onClearFilter={vi.fn()} />)
+
+      // Assert
+      const maskElement = container.querySelector('.bg-dataset-chunk-list-mask-bg')
+      expect(maskElement).toBeInTheDocument()
+    })
+
+    it('should render icon container with proper styling', () => {
+      // Arrange & Act
+      const { container } = render(<Empty onClearFilter={vi.fn()} />)
+
+      // Assert
       const iconContainer = container.querySelector('.shadow-lg')
       expect(iconContainer).toBeInTheDocument()
     })
 
-    it('should render decorative lines', () => {
-      const { container } = render(<Empty {...defaultProps} />)
+    it('should render clear filter button with accent text styling', () => {
+      // Arrange & Act
+      render(<Empty onClearFilter={vi.fn()} />)
 
-      // Check for SVG lines
-      const svgs = container.querySelectorAll('svg')
-      expect(svgs.length).toBeGreaterThan(0)
-    })
-
-    it('should render background cards', () => {
-      const { container } = render(<Empty {...defaultProps} />)
-
-      // Check for background empty cards (10 of them)
-      const backgroundCards = container.querySelectorAll('.rounded-xl.bg-background-section-burn')
-      expect(backgroundCards.length).toBe(10)
-    })
-
-    it('should render mask overlay', () => {
-      const { container } = render(<Empty {...defaultProps} />)
-
-      const maskOverlay = container.querySelector('.bg-dataset-chunk-list-mask-bg')
-      expect(maskOverlay).toBeInTheDocument()
+      // Assert
+      const button = screen.getByRole('button')
+      expect(button).toHaveClass('text-text-accent')
     })
   })
 
-  describe('Interactions', () => {
-    it('should call onClearFilter when clear filter button is clicked', () => {
-      const onClearFilter = vi.fn()
+  // Props tests
+  describe('Props', () => {
+    it('should accept onClearFilter callback prop', () => {
+      // Arrange
+      const mockCallback = vi.fn()
 
-      render(<Empty onClearFilter={onClearFilter} />)
+      // Act
+      render(<Empty onClearFilter={mockCallback} />)
+      fireEvent.click(screen.getByRole('button'))
 
-      const clearButton = screen.getByText('Clear Filter')
-      fireEvent.click(clearButton)
-
-      expect(onClearFilter).toHaveBeenCalledTimes(1)
+      // Assert
+      expect(mockCallback).toHaveBeenCalled()
     })
   })
 
-  describe('Memoization', () => {
-    it('should be memoized', () => {
-      // Empty is wrapped with React.memo
-      const { rerender } = render(<Empty {...defaultProps} />)
+  // Edge cases
+  describe('Edge Cases', () => {
+    it('should handle multiple clicks on clear filter button', () => {
+      // Arrange
+      const mockOnClearFilter = vi.fn()
+      render(<Empty onClearFilter={mockOnClearFilter} />)
 
-      // Same props should not cause re-render issues
-      rerender(<Empty {...defaultProps} />)
+      // Act
+      const button = screen.getByRole('button')
+      fireEvent.click(button)
+      fireEvent.click(button)
+      fireEvent.click(button)
 
-      expect(screen.getByText('No results found')).toBeInTheDocument()
+      // Assert
+      expect(mockOnClearFilter).toHaveBeenCalledTimes(3)
     })
-  })
-})
 
-describe('EmptyCard Component', () => {
-  it('should render within Empty component', () => {
-    const { container } = render(<Empty onClearFilter={vi.fn()} />)
+    it('should maintain structure when rerendered', () => {
+      // Arrange
+      const { rerender, container } = render(<Empty onClearFilter={vi.fn()} />)
 
-    // EmptyCard renders as background cards
-    const emptyCards = container.querySelectorAll('.h-32.w-full')
-    expect(emptyCards.length).toBe(10)
-  })
+      // Act
+      rerender(<Empty onClearFilter={vi.fn()} />)
 
-  it('should have correct opacity', () => {
-    const { container } = render(<Empty onClearFilter={vi.fn()} />)
-
-    const emptyCards = container.querySelectorAll('.opacity-30')
-    expect(emptyCards.length).toBe(10)
-  })
-})
-
-describe('Line Component', () => {
-  it('should render SVG lines within Empty component', () => {
-    const { container } = render(<Empty onClearFilter={vi.fn()} />)
-
-    // Line components render as SVG elements (4 Line components + 1 icon SVG)
-    const lines = container.querySelectorAll('svg')
-    expect(lines.length).toBeGreaterThanOrEqual(4)
-  })
-
-  it('should have gradient definition', () => {
-    const { container } = render(<Empty onClearFilter={vi.fn()} />)
-
-    const gradients = container.querySelectorAll('linearGradient')
-    expect(gradients.length).toBeGreaterThan(0)
+      // Assert
+      const emptyCards = container.querySelectorAll('.bg-background-section-burn')
+      expect(emptyCards).toHaveLength(10)
+    })
   })
 })

@@ -4,7 +4,7 @@ from typing import Any, Literal, cast
 
 from flask import abort, request
 from flask_restx import Resource, marshal_with  # type: ignore
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -15,6 +15,13 @@ from controllers.console.app.error import (
     ConversationCompletedError,
     DraftWorkflowNotExist,
     DraftWorkflowNotSync,
+)
+from controllers.console.app.workflow import workflow_model, workflow_pagination_model
+from controllers.console.app.workflow_run import (
+    workflow_run_detail_model,
+    workflow_run_node_execution_list_model,
+    workflow_run_node_execution_model,
+    workflow_run_pagination_model,
 )
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
@@ -29,13 +36,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from factories import variable_factory
-from fields.workflow_fields import workflow_fields, workflow_pagination_fields
-from fields.workflow_run_fields import (
-    workflow_run_detail_fields,
-    workflow_run_node_execution_fields,
-    workflow_run_node_execution_list_fields,
-    workflow_run_pagination_fields,
-)
 from libs import helper
 from libs.helper import TimestampField, UUIDStrOrEmpty
 from libs.login import current_account_with_tenant, current_user, login_required
@@ -149,7 +149,7 @@ class DraftRagPipelineApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_model)
     def get(self, pipeline: Pipeline):
         """
         Get draft rag pipeline's workflow
@@ -510,7 +510,7 @@ class RagPipelineDraftNodeRunApi(Resource):
     @edit_permission_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_node_execution_fields)
+    @marshal_with(workflow_run_node_execution_model)
     def post(self, pipeline: Pipeline, node_id: str):
         """
         Run draft workflow node
@@ -558,7 +558,7 @@ class PublishedRagPipelineApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_model)
     def get(self, pipeline: Pipeline):
         """
         Get published pipeline
@@ -653,7 +653,7 @@ class PublishedAllRagPipelineApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    @marshal_with(workflow_pagination_fields)
+    @marshal_with(workflow_pagination_model)
     def get(self, pipeline: Pipeline):
         """
         Get published workflows
@@ -697,7 +697,7 @@ class RagPipelineByIdApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_model)
     def patch(self, pipeline: Pipeline, workflow_id: str):
         """
         Update workflow attributes
@@ -819,7 +819,7 @@ class RagPipelineWorkflowRunListApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_pagination_fields)
+    @marshal_with(workflow_run_pagination_model)
     def get(self, pipeline: Pipeline):
         """
         Get workflow run list
@@ -847,7 +847,7 @@ class RagPipelineWorkflowRunDetailApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_detail_fields)
+    @marshal_with(workflow_run_detail_model)
     def get(self, pipeline: Pipeline, run_id):
         """
         Get workflow run detail
@@ -866,7 +866,7 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_node_execution_list_fields)
+    @marshal_with(workflow_run_node_execution_list_model)
     def get(self, pipeline: Pipeline, run_id: str):
         """
         Get workflow run node execution list
@@ -900,7 +900,7 @@ class RagPipelineWorkflowLastRunApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_node_execution_fields)
+    @marshal_with(workflow_run_node_execution_model)
     def get(self, pipeline: Pipeline, node_id: str):
         rag_pipeline_service = RagPipelineService()
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
@@ -941,7 +941,7 @@ class RagPipelineDatasourceVariableApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
-    @marshal_with(workflow_run_node_execution_fields)
+    @marshal_with(workflow_run_node_execution_model)
     def post(self, pipeline: Pipeline):
         """
         Set datasource variables
