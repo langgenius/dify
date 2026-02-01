@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Cài đặt truy xuất",
   "form.save": "Lưu",
   "form.searchModel": "Tìm kiếm mô hình",
+  "form.summaryAutoGen": "Tự động Tạo Tóm tắt",
+  "form.summaryAutoGenEnableTip": "Sau khi bật, tóm tắt sẽ được tạo tự động cho các tài liệu mới được thêm. Các tài liệu hiện có vẫn có thể được tóm tắt thủ công.",
+  "form.summaryAutoGenTip": "Tóm tắt được tạo tự động cho các tài liệu mới được thêm. Các tài liệu hiện có vẫn có thể được tóm tắt thủ công.",
+  "form.summaryInstructions": "Hướng dẫn",
+  "form.summaryInstructionsPlaceholder": "Mô tả các quy tắc hoặc phong cách cho tóm tắt được tạo tự động…",
+  "form.summaryModel": "Mô hình Tóm tắt",
   "form.upgradeHighQualityTip": "Sau khi nâng cấp lên chế độ Chất lượng cao, không thể hoàn nguyên về chế độ Tiết kiệm",
   "title": "Cài đặt Kiến thức"
 }

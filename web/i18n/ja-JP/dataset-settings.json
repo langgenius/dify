@@ -39,6 +39,12 @@
   "form.retrievalSettings": "検索設定",
   "form.save": "保存",
   "form.searchModel": "検索モデル",
+  "form.summaryAutoGen": "要約自動生成",
+  "form.summaryAutoGenEnableTip": "有効にすると、新しく追加されたドキュメントの要約が自動的に生成されます。既存のドキュメントは引き続き手動で要約できます。",
+  "form.summaryAutoGenTip": "新しく追加されたドキュメントの要約は自動的に生成されます。既存のドキュメントは引き続き手動で要約できます。",
+  "form.summaryInstructions": "指示",
+  "form.summaryInstructionsPlaceholder": "自動生成される要約のルールやスタイルを記述してください…",
+  "form.summaryModel": "要約モデル",
   "form.upgradeHighQualityTip": "高品質モードにアップグレードすると、経済的モードには戻せません。",
   "title": "ナレッジベースの設定"
 }

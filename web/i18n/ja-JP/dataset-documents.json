@@ -31,6 +31,7 @@
   "list.action.pause": "一時停止",
   "list.action.resume": "再開",
   "list.action.settings": "チャンク設定",
+  "list.action.summary": "要約を生成",
   "list.action.sync": "同期",
   "list.action.unarchive": "アーカイブ解除",
   "list.action.uploadFile": "新しいファイルをアップロード",
@@ -75,6 +76,9 @@
   "list.status.indexing": "インデックス化中",
   "list.status.paused": "一時停止中",
   "list.status.queuing": "キューイング中",
+  "list.summary.generating": "生成中...",
+  "list.summary.generatingSummary": "要約を生成中",
+  "list.summary.ready": "要約が完成しました",
   "list.table.header.action": "アクション",
   "list.table.header.chunkingMode": "チャンキングモード",
   "list.table.header.fileName": "ファイル名",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "検索結果",
   "segment.searchResults_other": "検索結果",
   "segment.searchResults_zero": "検索結果",
+  "segment.summary": "要約",
+  "segment.summaryPlaceholder": "より良い検索のために簡潔な要約を記入してください…",
   "segment.vectorHash": "ベクトルハッシュ："
 }

@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import type { Mock } from 'vitest'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -70,6 +73,12 @@ const createDefaultProps = (overrides: Partial<Parameters<typeof WaterCrawl>[0]>
 describe('WaterCrawl', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
   })
 
   // Tests for initial component rendering

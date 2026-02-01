@@ -757,13 +757,15 @@ class TestWorkflowToolManageService:
 
         # Setup workflow tool parameters with FILE type
         file_parameters = [
-            {
-                "name": "document",
-                "description": "Upload a document",
-                "form": "form",
-                "type": "file",
-                "required": False,
-            }
+            WorkflowToolParameterConfiguration.model_validate(
+                {
+                    "name": "document",
+                    "description": "Upload a document",
+                    "form": "form",
+                    "type": "file",
+                    "required": False,
+                }
+            )
         ]
 
         # Execute the method under test
@@ -830,13 +832,15 @@ class TestWorkflowToolManageService:
 
         # Setup workflow tool parameters with FILES type
         files_parameters = [
-            {
-                "name": "documents",
-                "description": "Upload multiple documents",
-                "form": "form",
-                "type": "files",
-                "required": False,
-            }
+            WorkflowToolParameterConfiguration.model_validate(
+                {
+                    "name": "documents",
+                    "description": "Upload multiple documents",
+                    "form": "form",
+                    "type": "files",
+                    "required": False,
+                }
+            )
         ]
 
         # Execute the method under test

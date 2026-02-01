@@ -15,11 +15,11 @@ import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
+import { downloadUrl } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
 import FileImageRender from '../file-image-render'
 import FileTypeIcon from '../file-type-icon'
 import {
-  downloadFile,
   fileIsUploaded,
   getFileAppearanceType,
   getFileExtension,
@@ -140,7 +140,7 @@ const FileInAttachmentItem = ({
             showDownloadAction && (
               <ActionButton onClick={(e) => {
                 e.stopPropagation()
-                downloadFile(url || base64Url || '', name)
+                downloadUrl({ url: url || base64Url || '', fileName: name, target: '_blank' })
               }}
               >
                 <RiDownloadLine className="h-4 w-4" />

@@ -71,7 +71,7 @@ class WorkflowToolManageService:
             label=label,
             icon=json.dumps(icon),
             description=description,
-            parameter_configuration=json.dumps(parameters),
+            parameter_configuration=json.dumps([p.model_dump() for p in parameters]),
             privacy_policy=privacy_policy,
             version=workflow.version,
         )
