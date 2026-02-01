@@ -198,7 +198,7 @@ class MCPTool(Tool):
                 "completion_price",
                 "latency",
                 "time_to_first_token",
-                "time_to_generate"
+                "time_to_generate",
             ):
                 if key in payload:
                     usage_dict[key] = payload[key]
