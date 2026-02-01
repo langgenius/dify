@@ -3,7 +3,9 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from pydantic import ValidationError
 
+from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow as WorkflowModel
 from services.account_service import AccountService, TenantService
@@ -130,20 +132,24 @@ class TestWorkflowToolManageService:
     def _create_test_workflow_tool_parameters(self):
         """Helper method to create valid workflow tool parameters."""
         return [
-            {
-                "name": "input_text",
-                "description": "Input text for processing",
-                "form": "form",
-                "type": "string",
-                "required": True,
-            },
-            {
-                "name": "output_format",
-                "description": "Output format specification",
-                "form": "form",
-                "type": "select",
-                "required": False,
-            },
+            WorkflowToolParameterConfiguration.model_validate(
+                {
+                    "name": "input_text",
+                    "description": "Input text for processing",
+                    "form": "form",
+                    "type": "string",
+                    "required": True,
+                }
+            ),
+            WorkflowToolParameterConfiguration.model_validate(
+                {
+                    "name": "output_format",
+                    "description": "Output format specification",
+                    "form": "form",
+                    "type": "select",
+                    "required": False,
+                }
+            ),
         ]
 
     def test_create_workflow_tool_success(self, db_session_with_containers, mock_external_service_dependencies):
@@ -208,7 +214,7 @@ class TestWorkflowToolManageService:
         assert created_tool_provider.label == tool_label
         assert created_tool_provider.icon == json.dumps(tool_icon)
         assert created_tool_provider.description == tool_description
-        assert created_tool_provider.parameter_configuration == json.dumps(tool_parameters)
+        assert created_tool_provider.parameter_configuration == json.dumps([p.model_dump() for p in tool_parameters])
         assert created_tool_provider.privacy_policy == tool_privacy_policy
         assert created_tool_provider.version == workflow.version
         assert created_tool_provider.user_id == account.id
@@ -353,18 +359,9 @@ class TestWorkflowToolManageService:
         app, account, workflow = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies
         )
-
-        # Setup invalid workflow tool parameters (missing required fields)
-        invalid_parameters = [
-            {
-                "name": "input_text",
-                # Missing description and form fields
-                "type": "string",
-                "required": True,
-            }
-        ]
         # Attempt to create workflow tool with invalid parameters
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValidationError) as exc_info:
+            # Setup invalid workflow tool parameters (missing required fields)
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
                 tenant_id=account.current_tenant.id,
@@ -373,7 +370,16 @@ class TestWorkflowToolManageService:
                 label=fake.word(),
                 icon={"type": "emoji", "emoji": "🔧"},
                 description=fake.text(max_nb_chars=200),
-                parameters=invalid_parameters,
+                parameters=[
+                    WorkflowToolParameterConfiguration.model_validate(
+                        {
+                            "name": "input_text",
+                            # Missing description and form fields
+                            "type": "string",
+                            "required": True,
+                        }
+                    )
+                ],
             )
 
         # Verify error message contains validation error
@@ -579,11 +585,12 @@ class TestWorkflowToolManageService:
 
         # Verify database state was updated
         db.session.refresh(created_tool)
+        assert created_tool is not None
         assert created_tool.name == updated_tool_name
         assert created_tool.label == updated_tool_label
         assert created_tool.icon == json.dumps(updated_tool_icon)
         assert created_tool.description == updated_tool_description
-        assert created_tool.parameter_configuration == json.dumps(updated_tool_parameters)
+        assert created_tool.parameter_configuration == json.dumps([p.model_dump() for p in updated_tool_parameters])
         assert created_tool.privacy_policy == updated_tool_privacy_policy
         assert created_tool.version == workflow.version
         assert created_tool.updated_at is not None
@@ -750,13 +757,15 @@ class TestWorkflowToolManageService:
 
         # Setup workflow tool parameters with FILE type
         file_parameters = [
-            {
-                "name": "document",
-                "description": "Upload a document",
-                "form": "form",
-                "type": "file",
-                "required": False,
-            }
+            WorkflowToolParameterConfiguration.model_validate(
+                {
+                    "name": "document",
+                    "description": "Upload a document",
+                    "form": "form",
+                    "type": "file",
+                    "required": False,
+                }
+            )
         ]
 
         # Execute the method under test
@@ -823,13 +832,15 @@ class TestWorkflowToolManageService:
 
         # Setup workflow tool parameters with FILES type
         files_parameters = [
-            {
-                "name": "documents",
-                "description": "Upload multiple documents",
-                "form": "form",
-                "type": "files",
-                "required": False,
-            }
+            WorkflowToolParameterConfiguration.model_validate(
+                {
+                    "name": "documents",
+                    "description": "Upload multiple documents",
+                    "form": "form",
+                    "type": "files",
+                    "required": False,
+                }
+            )
         ]
 
         # Execute the method under test

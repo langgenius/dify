@@ -53,7 +53,7 @@ select = [
     "S301", # suspicious-pickle-usage, disallow use of `pickle` and its wrappers.
     "S302", # suspicious-marshal-usage, disallow use of `marshal` module
     "S311", # suspicious-non-cryptographic-random-usage,
-    "TID",  # flake8-tidy-imports
+    "TID",   # flake8-tidy-imports
 
 ]
 
@@ -114,12 +114,9 @@ ignore = [
 "controllers/console/explore/trial.py" = ["TID251"]
 "controllers/console/human_input_form.py" = ["TID251"]
 "controllers/web/human_input_form.py" = ["TID251"]
-"controllers/console/datasets/rag_pipeline/rag_pipeline_workflow.py" = ["TID251"]
-"controllers/console/workspace/tool_providers.py" = ["TID251"]
 
 [lint.pyflakes]
 allowed-unused-imports = [
-    "_pytest.monkeypatch",
     "tests.integration_tests",
     "tests.unit_tests",
 ]
