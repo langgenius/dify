@@ -171,6 +171,19 @@ reg(ChangeEmailValidityPayload)
 reg(ChangeEmailResetPayload)
 reg(CheckEmailUniquePayload)
 
+integrate_fields = {
+    "provider": fields.String,
+    "created_at": TimestampField,
+    "is_bound": fields.Boolean,
+    "link": fields.String,
+}
+
+integrate_model = console_ns.model("AccountIntegrate", integrate_fields)
+integrate_list_model = console_ns.model(
+    "AccountIntegrateList",
+    {"data": fields.List(fields.Nested(integrate_model))},
+)
+
 
 @console_ns.route("/account/init")
 class AccountInitApi(Resource):
@@ -336,21 +349,10 @@ class AccountPasswordApi(Resource):
 
 @console_ns.route("/account/integrates")
 class AccountIntegrateApi(Resource):
-    integrate_fields = {
-        "provider": fields.String,
-        "created_at": TimestampField,
-        "is_bound": fields.Boolean,
-        "link": fields.String,
-    }
-
-    integrate_list_fields = {
-        "data": fields.List(fields.Nested(integrate_fields)),
-    }
-
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(integrate_list_fields)
+    @marshal_with(integrate_list_model)
     def get(self):
         account, _ = current_account_with_tenant()
 

@@ -162,6 +162,44 @@ vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: (path: string, _params?: Record<string, string | undefined>) => `https://marketplace.dify.ai${path}`,
 }))
 
+// Mock marketplace client used by marketplace utils
+vi.mock('@/service/client', () => ({
+  marketplaceClient: {
+    collections: vi.fn(async (_args?: unknown, _opts?: { signal?: AbortSignal }) => ({
+      data: {
+        collections: [
+          {
+            name: 'collection-1',
+            label: { 'en-US': 'Collection 1' },
+            description: { 'en-US': 'Desc' },
+            rule: '',
+            created_at: '2024-01-01',
+            updated_at: '2024-01-01',
+            searchable: true,
+            search_params: { query: '', sort_by: 'install_count', sort_order: 'DESC' },
+          },
+        ],
+      },
+    })),
+    collectionPlugins: vi.fn(async (_args?: unknown, _opts?: { signal?: AbortSignal }) => ({
+      data: {
+        plugins: [
+          { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
+        ],
+      },
+    })),
+    // Some utils paths may call searchAdvanced; provide a minimal stub
+    searchAdvanced: vi.fn(async (_args?: unknown, _opts?: { signal?: AbortSignal }) => ({
+      data: {
+        plugins: [
+          { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
+        ],
+        total: 1,
+      },
+    })),
+  },
+}))
+
 // Mock context/query-client
 vi.mock('@/context/query-client', () => ({
   TanstackQueryInitializer: ({ children }: { children: React.ReactNode }) => <div data-testid="query-initializer">{children}</div>,
@@ -1474,7 +1512,24 @@ describe('flatMap Coverage', () => {
 // ================================
 // Async Utils Tests
 // ================================
+
+// Narrow mock surface and avoid any in tests
+// Types are local to this spec to keep scope minimal
+
+type FnMock = ReturnType<typeof vi.fn>
+
+type MarketplaceClientMock = {
+  collectionPlugins: FnMock
+  collections: FnMock
+}
+
 describe('Async Utils', () => {
+  let marketplaceClientMock: MarketplaceClientMock
+
+  beforeAll(async () => {
+    const mod = await import('@/service/client')
+    marketplaceClientMock = mod.marketplaceClient as unknown as MarketplaceClientMock
+  })
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -1490,12 +1545,10 @@ describe('Async Utils', () => {
         { type: 'plugin', org: 'test', name: 'plugin2' },
       ]
 
-      globalThis.fetch = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ data: { plugins: mockPlugins } }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
+      // Adjusted to our mocked marketplaceClient instead of fetch
+      marketplaceClientMock.collectionPlugins.mockResolvedValueOnce({
+        data: { plugins: mockPlugins },
+      })
 
       const { getMarketplacePluginsByCollectionId } = await import('./utils')
       const result = await getMarketplacePluginsByCollectionId('test-collection', {
@@ -1504,12 +1557,13 @@ describe('Async Utils', () => {
         type: 'plugin',
       })
 
-      expect(globalThis.fetch).toHaveBeenCalled()
+      expect(marketplaceClientMock.collectionPlugins).toHaveBeenCalled()
       expect(result).toHaveLength(2)
     })
 
     it('should handle fetch error and return empty array', async () => {
-      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+      // Simulate error from client
+      marketplaceClientMock.collectionPlugins.mockRejectedValueOnce(new Error('Network error'))
 
       const { getMarketplacePluginsByCollectionId } = await import('./utils')
       const result = await getMarketplacePluginsByCollectionId('test-collection')
@@ -1519,25 +1573,18 @@ describe('Async Utils', () => {
 
     it('should pass abort signal when provided', async () => {
       const mockPlugins = [{ type: 'plugins', org: 'test', name: 'plugin1' }]
-      globalThis.fetch = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ data: { plugins: mockPlugins } }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
+      // Our client mock receives the signal as second arg
+      marketplaceClientMock.collectionPlugins.mockResolvedValueOnce({
+        data: { plugins: mockPlugins },
+      })
 
       const controller = new AbortController()
       const { getMarketplacePluginsByCollectionId } = await import('./utils')
       await getMarketplacePluginsByCollectionId('test-collection', {}, { signal: controller.signal })
 
-      // oRPC uses Request objects, so check that fetch was called with a Request containing the right URL
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        expect.any(Request),
-        expect.any(Object),
-      )
-      const call = vi.mocked(globalThis.fetch).mock.calls[0]
-      const request = call[0] as Request
-      expect(request.url).toContain('test-collection')
+      expect(marketplaceClientMock.collectionPlugins).toHaveBeenCalled()
+      const call = marketplaceClientMock.collectionPlugins.mock.calls[0]
+      expect(call[1]).toMatchObject({ signal: controller.signal })
     })
   })
 
@@ -1548,23 +1595,17 @@ describe('Async Utils', () => {
       ]
       const mockPlugins = [{ type: 'plugins', org: 'test', name: 'plugin1' }]
 
-      let callCount = 0
-      globalThis.fetch = vi.fn().mockImplementation(() => {
-        callCount++
-        if (callCount === 1) {
-          return Promise.resolve(
-            new Response(JSON.stringify({ data: { collections: mockCollections } }), {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' },
-            }),
-          )
+      // Simulate two-step client calls: collections then collectionPlugins
+      let stage = 0
+      marketplaceClientMock.collections.mockImplementationOnce(async () => {
+        stage = 1
+        return { data: { collections: mockCollections } }
+      })
+      marketplaceClientMock.collectionPlugins.mockImplementation(async () => {
+        if (stage === 1) {
+          return { data: { plugins: mockPlugins } }
         }
-        return Promise.resolve(
-          new Response(JSON.stringify({ data: { plugins: mockPlugins } }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        )
+        return { data: { plugins: [] } }
       })
 
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
@@ -1578,7 +1619,8 @@ describe('Async Utils', () => {
     })
 
     it('should handle fetch error and return empty data', async () => {
-      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+      // Simulate client error
+      marketplaceClientMock.collections.mockRejectedValueOnce(new Error('Network error'))
 
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
       const result = await getMarketplaceCollectionsAndPlugins()
@@ -1588,24 +1630,16 @@ describe('Async Utils', () => {
     })
 
     it('should append condition and type to URL when provided', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ data: { collections: [] } }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
-
+      // Assert that the client was called with query containing condition/type
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
       await getMarketplaceCollectionsAndPlugins({
         condition: 'category=tool',
         type: 'bundle',
       })
 
-      // oRPC uses Request objects, so check that fetch was called with a Request containing the right URL
-      expect(globalThis.fetch).toHaveBeenCalled()
-      const call = vi.mocked(globalThis.fetch).mock.calls[0]
-      const request = call[0] as Request
-      expect(request.url).toContain('condition=category%3Dtool')
+      expect(marketplaceClientMock.collections).toHaveBeenCalled()
+      const call = marketplaceClientMock.collections.mock.calls[0]
+      expect(call[0]).toMatchObject({ query: expect.objectContaining({ condition: 'category=tool', type: 'bundle' }) })
     })
   })
 })
