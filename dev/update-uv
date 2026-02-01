@@ -4,7 +4,7 @@
 set -e
 set -o pipefail
 
-SCRIPT_DIR="$(dirname "$0")"
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 REPO_ROOT="$(dirname "${SCRIPT_DIR}")"
 
 # rely on `poetry` in path

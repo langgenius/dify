@@ -1,7 +1,9 @@
 """Primarily used for testing merged cell scenarios"""
 
+import io
 import os
 import tempfile
+from pathlib import Path
 from types import SimpleNamespace
 
 from docx import Document
@@ -54,6 +56,42 @@ def test_parse_row():
     extractor = object.__new__(WordExtractor)
     for idx, row in enumerate(table.rows):
         assert extractor._parse_row(row, {}, 3) == gt[idx]
+
+
+def test_init_downloads_via_ssrf_proxy(monkeypatch):
+    doc = Document()
+    doc.add_paragraph("hello")
+    buf = io.BytesIO()
+    doc.save(buf)
+    docx_bytes = buf.getvalue()
+
+    calls: list[tuple[str, object]] = []
+
+    class FakeResponse:
+        status_code = 200
+        content = docx_bytes
+
+        def close(self) -> None:
+            calls.append(("close", None))
+
+    def fake_get(url: str, **kwargs):
+        calls.append(("get", (url, kwargs)))
+        return FakeResponse()
+
+    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=fake_get))
+
+    extractor = WordExtractor("https://example.com/test.docx", "tenant_id", "user_id")
+    try:
+        assert calls
+        assert calls[0][0] == "get"
+        url, kwargs = calls[0][1]
+        assert url == "https://example.com/test.docx"
+        assert kwargs.get("timeout") is None
+        assert extractor.web_path == "https://example.com/test.docx"
+        assert extractor.file_path != extractor.web_path
+        assert Path(extractor.file_path).read_bytes() == docx_bytes
+    finally:
+        extractor.temp_file.close()
 
 
 def test_extract_images_from_docx(monkeypatch):
