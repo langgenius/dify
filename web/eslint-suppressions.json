@@ -99,6 +99,11 @@
       "count": 1
     }
   },
+  "app/(humanInputLayout)/form/[token]/form.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
   "app/(shareLayout)/components/splash.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -256,9 +261,6 @@
     }
   },
   "app/components/app/app-publisher/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -805,7 +807,7 @@
   },
   "app/components/base/chat/chat-with-history/chat-wrapper.tsx": {
     "ts/no-explicit-any": {
-      "count": 6
+      "count": 7
     }
   },
   "app/components/base/chat/chat-with-history/context.tsx": {
@@ -854,9 +856,17 @@
       "count": 1
     }
   },
+  "app/components/base/chat/chat/answer/human-input-content/utils.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
   "app/components/base/chat/chat/answer/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
+      "count": 3
+    },
+    "ts/no-explicit-any": {
+      "count": 1
     }
   },
   "app/components/base/chat/chat/answer/workflow-process.tsx": {
@@ -892,7 +902,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 14
+      "count": 17
     }
   },
   "app/components/base/chat/chat/index.tsx": {
@@ -900,7 +910,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 1
+      "count": 3
     }
   },
   "app/components/base/chat/chat/type.ts": {
@@ -915,7 +925,7 @@
   },
   "app/components/base/chat/embedded-chatbot/chat-wrapper.tsx": {
     "ts/no-explicit-any": {
-      "count": 6
+      "count": 7
     }
   },
   "app/components/base/chat/embedded-chatbot/context.tsx": {
@@ -1323,7 +1333,7 @@
   },
   "app/components/base/markdown/react-markdown-wrapper.tsx": {
     "ts/no-explicit-any": {
-      "count": 8
+      "count": 9
     }
   },
   "app/components/base/mermaid/index.tsx": {
@@ -1437,7 +1447,7 @@
   },
   "app/components/base/prompt-editor/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 4
     }
   },
   "app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
@@ -1450,7 +1460,17 @@
       "count": 1
     }
   },
+  "app/components/base/prompt-editor/plugins/draggable-plugin/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
   "app/components/base/prompt-editor/plugins/history-block/component.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/prompt-editor/plugins/hitl-input-block/hitl-input-block-replacement-block.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1458,6 +1478,11 @@
   "app/components/base/prompt-editor/plugins/on-blur-or-focus-block.tsx": {
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "app/components/base/prompt-editor/plugins/shortcuts-popup-plugin/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
     }
   },
   "app/components/base/prompt-editor/plugins/update-block.tsx": {
@@ -3144,7 +3169,7 @@
   },
   "app/components/workflow/nodes/_base/components/before-run-form/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 8
+      "count": 11
     }
   },
   "app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars.tsx": {
@@ -3501,6 +3526,30 @@
   "app/components/workflow/nodes/http/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 5
+    }
+  },
+  "app/components/workflow/nodes/human-input/components/delivery-method/test-email-sender.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/nodes/human-input/components/form-content.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react/no-nested-component-definitions": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/human-input/components/variable-in-markdown.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 8
     }
   },
   "app/components/workflow/nodes/if-else/components/condition-list/condition-input.tsx": {
@@ -4001,7 +4050,7 @@
   },
   "app/components/workflow/panel/debug-and-preview/chat-wrapper.tsx": {
     "ts/no-explicit-any": {
-      "count": 5
+      "count": 6
     }
   },
   "app/components/workflow/panel/debug-and-preview/conversation-variable-modal.tsx": {
@@ -4011,13 +4060,18 @@
   },
   "app/components/workflow/panel/debug-and-preview/hooks.ts": {
     "ts/no-explicit-any": {
-      "count": 7
+      "count": 12
     }
   },
   "app/components/workflow/panel/env-panel/variable-modal.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     },
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/panel/human-input-form-list.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4033,11 +4087,8 @@
     }
   },
   "app/components/workflow/panel/workflow-preview.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/workflow/run/hooks.ts": {
@@ -4147,6 +4198,11 @@
     }
   },
   "app/components/workflow/store/workflow/workflow-draft-slice.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/store/workflow/workflow-slice.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4625,7 +4681,7 @@
   },
   "service/use-workflow.ts": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 3
     }
   },
   "service/utils.spec.ts": {
@@ -4665,7 +4721,7 @@
   },
   "types/workflow.ts": {
     "ts/no-explicit-any": {
-      "count": 15
+      "count": 17
     }
   },
   "utils/clipboard.ts": {
