@@ -150,7 +150,7 @@ const Answer: FC<AnswerProps> = ({
                   data={workflowProcess}
                   item={item}
                   hideProcessDetail={hideProcessDetail}
-                  readonly={hideProcessDetail && appData ? !appData.site.show_workflow_steps : undefined}
+                  readonly={hideProcessDetail && appData ? !appData.site?.show_workflow_steps : undefined}
                 />
               )
             }
@@ -212,7 +212,7 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && (
+              !!(item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined) && (
                 <ContentSwitch
                   count={item.siblingCount}
                   currentIndex={item.siblingIndex}

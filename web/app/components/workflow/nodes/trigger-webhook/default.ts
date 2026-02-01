@@ -8,7 +8,7 @@ import { createWebhookRawVariable } from './utils/raw-variable'
 const metaData = genNodeMetaData({
   sort: 3,
   type: BlockEnum.TriggerWebhook,
-  helpLinkUri: 'webhook-trigger',
+  helpLinkUri: 'trigger/webhook-trigger',
   isStart: true,
 })
 

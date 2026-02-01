@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "기술 자료를 찾을 수 없습니다.",
   "gotoAnything.emptyState.noPluginsFound": "플러그인을 찾을 수 없습니다.",
   "gotoAnything.emptyState.noWorkflowNodesFound": "워크플로 노드를 찾을 수 없습니다.",
-  "gotoAnything.emptyState.tryDifferentTerm": "다른 검색어를 시도하거나 {{mode}} 필터를 제거하세요",
+  "gotoAnything.emptyState.tryDifferentTerm": "다른 검색어를 시도하세요",
   "gotoAnything.emptyState.trySpecificSearch": "특정 검색을 위해 {{shortcuts}}를 사용해보세요",
   "gotoAnything.groups.apps": "앱",
   "gotoAnything.groups.commands": "명령어",

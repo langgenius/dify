@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { ImageFile } from '@/types/app'
 import { useMemo, useState } from 'react'
 import { TransferMethod } from '@/types/app'
