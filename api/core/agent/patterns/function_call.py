@@ -46,9 +46,7 @@ class FunctionCallStrategy(AgentPattern):
         total_usage: dict[str, LLMUsage | None] = {"usage": None}
         messages: list[PromptMessage] = list(prompt_messages)  # Create mutable copy
         final_text: str = ""
-        structured_output_payload: dict[str, Any] | None = None
         final_tool_args: dict[str, Any] = {"!!!": "!!!"}
-        output_text_payload: str | None = None
         finish_reason: str | None = None
         output_files: list[File] = []  # Track files produced by tools
 
@@ -139,6 +137,8 @@ class FunctionCallStrategy(AgentPattern):
                     tool_name, tool_args, tool_call_id, messages, round_log
                 )
                 tool_entity = self._find_tool_by_name(tool_name)
+                if not tool_entity:
+                    raise ValueError(f"Tool {tool_name} not found")
                 tool_outputs[tool_name] = tool_response
                 # Track files produced by tools
                 output_files.extend(tool_files)

@@ -74,10 +74,7 @@ class ReActStrategy(AgentPattern):
         total_usage: dict[str, Any] = {"usage": None}
         output_files: list[File] = []  # Track files produced by tools
         final_text: str = ""
-        structured_output_payload: dict[str, Any] | None = None
-        output_text_payload: str | None = None
         finish_reason: str | None = None
-        terminal_output_seen = False
         tool_instance_names = {tool.entity.identity.name for tool in self.tools}
         available_output_tool_names = {
             tool_name
@@ -178,11 +175,11 @@ class ReActStrategy(AgentPattern):
             else:
                 action_name = scratchpad.action.action_name
                 if action_name == OUTPUT_TEXT_TOOL and isinstance(scratchpad.action.action_input, dict):
-                    output_text_payload = scratchpad.action.action_input.get("text")
+                    pass  # output_text_payload = scratchpad.action.action_input.get("text")
                 elif action_name == FINAL_STRUCTURED_OUTPUT_TOOL and isinstance(scratchpad.action.action_input, dict):
                     data = scratchpad.action.action_input.get("data")
                     if isinstance(data, dict):
-                        structured_output_payload = data
+                        pass  # structured_output_payload = data
                 elif action_name == FINAL_OUTPUT_TOOL:
                     if isinstance(scratchpad.action.action_input, dict):
                         final_text = self._format_output_text(scratchpad.action.action_input.get("text"))
@@ -196,7 +193,7 @@ class ReActStrategy(AgentPattern):
                 output_files.extend(tool_files)
 
                 if action_name == terminal_tool_name:
-                    terminal_output_seen = True
+                    pass  # terminal_output_seen = True
                     react_state = False
                 else:
                     react_state = True

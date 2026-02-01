@@ -24,7 +24,7 @@ from core.model_runtime.entities import (
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.entities.tool_entities import ToolInvokeFrom, ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
 from models.model import Message
 
@@ -103,6 +103,9 @@ class AgentAppRunner(BaseAgentRunner):
             agent_strategy=self.config.strategy,
             tool_invoke_hook=tool_invoke_hook,
             instruction=instruction,
+            tenant_id=self.tenant_id,
+            invoke_from=self.application_generate_entity.invoke_from,
+            tool_invoke_from=ToolInvokeFrom.WORKFLOW,
         )
 
         # Initialize state variables
