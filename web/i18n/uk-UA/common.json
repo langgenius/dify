@@ -351,7 +351,7 @@
   "modelProvider.card.quota": "КВОТА",
   "modelProvider.card.quotaExhausted": "Квоту вичерпано",
   "modelProvider.card.removeKey": "Видалити ключ API",
-  "modelProvider.card.tip": "Кредити повідомлень підтримують моделі від OpenAI. Пріоритет буде надано оплаченій квоті. Безкоштовна квота буде використовуватися після вичерпання платної квоти.",
+  "modelProvider.card.tip": "Кредити повідомлень підтримують моделі від {{modelNames}}. Пріоритет буде надано оплаченій квоті. Безкоштовна квота буде використовуватися після вичерпання платної квоти.",
   "modelProvider.card.tokens": "Токени",
   "modelProvider.collapse": "Згорнути",
   "modelProvider.config": "Налаштування",
