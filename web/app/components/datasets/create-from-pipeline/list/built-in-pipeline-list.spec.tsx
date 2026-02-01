@@ -25,10 +25,7 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn((selector) => {
-    const state = { systemFeatures: { enable_marketplace: true } }
-    return selector(state)
-  }),
+  useSystemFeatures: vi.fn(() => ({ enable_marketplace: true })),
 }))
 
 const mockUsePipelineTemplateList = vi.fn()

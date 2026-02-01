@@ -3,13 +3,13 @@ import Loading from '@/app/components/base/loading'
 
 import Header from '@/app/signin/_header'
 import { AppContextProvider } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { useIsLogin } from '@/service/use-common'
 import { cn } from '@/utils/classnames'
 
 export default function SignInLayout({ children }: any) {
-  const { systemFeatures } = useGlobalPublicStore()
+  const systemFeatures = useSystemFeatures()
   useDocumentTitle('')
   const { isLoading, data: loginData } = useIsLogin()
   const isLoggedIn = loginData?.logged_in

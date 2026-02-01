@@ -51,11 +51,9 @@ vi.mock('@/context/provider-context', () => ({
 // Mock global public store - allow dynamic configuration
 let mockWebappAuthEnabled = false
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (s: any) => any) => selector({
-    systemFeatures: {
-      webapp_auth: { enabled: mockWebappAuthEnabled },
-      branding: { enabled: false },
-    },
+  useSystemFeatures: () => ({
+    webapp_auth: { enabled: mockWebappAuthEnabled },
+    branding: { enabled: false },
   }),
 }))
 

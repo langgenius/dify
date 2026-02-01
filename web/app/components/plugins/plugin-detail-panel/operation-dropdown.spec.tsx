@@ -11,8 +11,7 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: <T,>(selector: (state: { systemFeatures: { enable_marketplace: boolean } }) => T): T =>
-    selector({ systemFeatures: { enable_marketplace: true } }),
+  useSystemFeatures: () => ({ enable_marketplace: true }),
 }))
 
 vi.mock('@/utils/classnames', () => ({

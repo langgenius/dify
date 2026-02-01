@@ -11,7 +11,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { cn } from '@/utils/classnames'
 import { PluginSource } from '../types'
 
@@ -42,7 +42,7 @@ const OperationDropdown: FC<Props> = ({
     setOpen(!openRef.current)
   }, [setOpen])
 
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { enable_marketplace } = useSystemFeatures()
 
   return (
     <PortalToFollowElem

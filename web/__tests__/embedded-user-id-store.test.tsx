@@ -26,36 +26,10 @@ vi.mock('@/app/components/base/chat/utils', () => ({
   getProcessedSystemVariablesFromUrlParams: (...args: any[]) => mockGetProcessedSystemVariablesFromUrlParams(...args),
 }))
 
-// Use vi.hoisted to define mock state before vi.mock hoisting
-const { mockGlobalStoreState } = vi.hoisted(() => ({
-  mockGlobalStoreState: {
-    isGlobalPending: false,
-    setIsGlobalPending: vi.fn(),
-    systemFeatures: {},
-    setSystemFeatures: vi.fn(),
-  },
+vi.mock('@/context/global-public-context', () => ({
+  useSystemFeatures: vi.fn(() => ({})),
+  useIsSystemFeaturesPending: () => false,
 }))
-
-vi.mock('@/context/global-public-context', () => {
-  const useGlobalPublicStore = Object.assign(
-    (selector?: (state: typeof mockGlobalStoreState) => any) =>
-      selector ? selector(mockGlobalStoreState) : mockGlobalStoreState,
-    {
-      setState: (updater: any) => {
-        if (typeof updater === 'function')
-          Object.assign(mockGlobalStoreState, updater(mockGlobalStoreState) ?? {})
-
-        else
-          Object.assign(mockGlobalStoreState, updater)
-      },
-      __mockState: mockGlobalStoreState,
-    },
-  )
-  return {
-    useGlobalPublicStore,
-    useIsSystemFeaturesPending: () => false,
-  }
-})
 
 const TestConsumer = () => {
   const embeddedUserId = useWebAppStore(state => state.embeddedUserId)
@@ -91,7 +65,6 @@ const initialWebAppStore = (() => {
 })()
 
 beforeEach(() => {
-  mockGlobalStoreState.isGlobalPending = false
   mockGetProcessedSystemVariablesFromUrlParams.mockReset()
   useWebAppStore.setState(initialWebAppStore, true)
 })

@@ -16,8 +16,8 @@ import { ToastContext } from '@/app/components/base/toast'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import { IS_CE_EDITION, validPassword } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { updateUserProfile } from '@/service/common'
 import { useAppList } from '@/service/use-apps'
 import DeleteAccount from '../delete-account'
@@ -34,7 +34,7 @@ const descriptionClassName = `
 
 export default function AccountPage() {
   const { t } = useTranslation()
-  const { systemFeatures } = useGlobalPublicStore()
+  const systemFeatures = useSystemFeatures()
   const { data: appList } = useAppList({ page: 1, limit: 100, name: '' })
   const apps = appList?.data || []
   const { mutateUserProfile, userProfile } = useAppContext()

@@ -1,12 +1,12 @@
 'use client'
 import { useFavicon, useTitle } from 'ahooks'
 import { useEffect } from 'react'
-import { useGlobalPublicStore, useIsSystemFeaturesPending } from '@/context/global-public-context'
+import { useIsSystemFeaturesPending, useSystemFeatures } from '@/hooks/use-global-public'
 import { basePath } from '@/utils/var'
 
 export default function useDocumentTitle(title: string) {
   const isPending = useIsSystemFeaturesPending()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
   const prefix = title ? `${title} - ` : ''
   let titleStr = ''
   let favicon = ''

@@ -31,8 +31,8 @@ import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-butt
 import Indicator from '@/app/components/header/indicator'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
@@ -85,7 +85,7 @@ function AppCard({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showAccessControl, setShowAccessControl] = useState<boolean>(false)
   const { t } = useTranslation()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
   const { data: appAccessSubjects } = useAppWhiteListSubjects(appDetail?.id, systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
 
   const OPERATIONS_MAP = useMemo(() => {

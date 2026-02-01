@@ -9,7 +9,7 @@ import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { PermissionType } from '@/app/components/plugins/types'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import AutoUpdateSetting from './auto-update-setting'
 import { defaultValue as autoUpdateDefaultValue } from './auto-update-setting/config'
 import Label from './label'
@@ -30,7 +30,7 @@ const PluginSettingModal: FC<Props> = ({
   const { auto_upgrade: autoUpdateConfig, permission: privilege } = payload || {}
   const [tempPrivilege, setTempPrivilege] = useState<Permissions>(privilege)
   const [tempAutoUpdateConfig, setTempAutoUpdateConfig] = useState<AutoUpdateConfig>(autoUpdateConfig || autoUpdateDefaultValue)
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { enable_marketplace } = useSystemFeatures()
   const handlePrivilegeChange = useCallback((key: string) => {
     return (value: PermissionType) => {
       setTempPrivilege({

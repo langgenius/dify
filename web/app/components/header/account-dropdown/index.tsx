@@ -24,10 +24,10 @@ import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { useLogout } from '@/service/use-common'
 import { cn } from '@/utils/classnames'
 import AccountAbout from '../account-about'
@@ -43,7 +43,7 @@ export default function AppSelector() {
   `
   const router = useRouter()
   const [aboutVisible, setAboutVisible] = useState(false)
-  const { systemFeatures } = useGlobalPublicStore()
+  const systemFeatures = useSystemFeatures()
 
   const { t } = useTranslation()
   const docLink = useDocLink()

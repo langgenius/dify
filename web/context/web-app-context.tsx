@@ -8,9 +8,9 @@ import { useEffect } from 'react'
 import { create } from 'zustand'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
 import Loading from '@/app/components/base/loading'
+import { useIsSystemFeaturesPending } from '@/hooks/use-global-public'
 import { AccessMode } from '@/models/access-control'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
-import { useIsSystemFeaturesPending } from './global-public-context'
 
 type WebAppStore = {
   shareCode: string | null

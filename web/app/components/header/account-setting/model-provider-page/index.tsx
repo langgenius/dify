@@ -10,8 +10,8 @@ import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { cn } from '@/utils/classnames'
 import {
   CustomConfigurationStatusEnum,
@@ -41,7 +41,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const { data: speech2textDefaultModel, isLoading: isSpeech2textDefaultModelLoading } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { enable_marketplace } = useSystemFeatures()
   const isDefaultModelLoading = isTextGenerationDefaultModelLoading
     || isEmbeddingsDefaultModelLoading
     || isRerankDefaultModelLoading

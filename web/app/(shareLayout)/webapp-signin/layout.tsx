@@ -2,13 +2,13 @@
 
 import type { PropsWithChildren } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { cn } from '@/utils/classnames'
 
 export default function SignInLayout({ children }: PropsWithChildren) {
   const { t } = useTranslation()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
   useDocumentTitle(t('webapp.login', { ns: 'login' }))
   return (
     <>

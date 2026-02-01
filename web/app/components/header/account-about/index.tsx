@@ -9,7 +9,7 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Modal from '@/app/components/base/modal'
 import { IS_CE_EDITION } from '@/config'
 
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 
 type IAccountSettingProps = {
   langGeniusVersionInfo: LangGeniusVersionResponse
@@ -22,7 +22,7 @@ export default function AccountAbout({
 }: IAccountSettingProps) {
   const { t } = useTranslation()
   const isLatest = langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
 
   return (
     <Modal

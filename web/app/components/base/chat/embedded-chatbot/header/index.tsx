@@ -9,7 +9,7 @@ import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs
 import Divider from '@/app/components/base/divider'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Tooltip from '@/app/components/base/tooltip'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { cn } from '@/utils/classnames'
 import { isClient } from '@/utils/client'
 import {
@@ -45,7 +45,7 @@ const Header: FC<IHeaderProps> = ({
   const [parentOrigin, setParentOrigin] = useState('')
   const [showToggleExpandButton, setShowToggleExpandButton] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
 
   const handleMessageReceived = useCallback((event: MessageEvent) => {
     let currentParentOrigin = parentOrigin

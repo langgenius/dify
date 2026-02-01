@@ -13,7 +13,7 @@ import {
   createContext,
   useContextSelector,
 } from 'use-context-selector'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 
 export type PluginPageContextValue = {
@@ -63,7 +63,7 @@ export const PluginPageContextProvider = ({
   })
   const [currentPluginID, setCurrentPluginID] = useState<string | undefined>()
 
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { enable_marketplace } = useSystemFeatures()
   const tabs = usePluginPageTabs()
   const options = useMemo(() => {
     return enable_marketplace ? tabs : tabs.filter(tab => tab.value !== PLUGIN_PAGE_TABS_MAP.marketplace)

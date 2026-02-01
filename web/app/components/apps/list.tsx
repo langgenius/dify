@@ -24,7 +24,7 @@ import { useStore as useTagStore } from '@/app/components/base/tag-management/st
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { CheckModal } from '@/hooks/use-pay'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
@@ -61,7 +61,7 @@ const List: FC<Props> = ({
   controlRefreshList = 0,
 }) => {
   const { t } = useTranslation()
-  const { systemFeatures } = useGlobalPublicStore()
+  const systemFeatures = useSystemFeatures()
   const router = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)

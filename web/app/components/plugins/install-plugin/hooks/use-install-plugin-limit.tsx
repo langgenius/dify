@@ -1,6 +1,6 @@
 import type { Plugin, PluginManifestInMarket } from '../../types'
 import type { SystemFeatures } from '@/types/feature'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { InstallationScope } from '@/types/feature'
 
 type PluginProps = (Plugin | PluginManifestInMarket) & { from: 'github' | 'marketplace' | 'package' }
@@ -41,6 +41,6 @@ export function pluginInstallLimit(plugin: PluginProps, systemFeatures: SystemFe
 }
 
 export default function usePluginInstallLimit(plugin: PluginProps) {
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
   return pluginInstallLimit(plugin, systemFeatures)
 }

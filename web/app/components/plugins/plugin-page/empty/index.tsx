@@ -11,7 +11,7 @@ import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndD
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import Line from '../../marketplace/empty/line'
 import { usePluginPageContext } from '../context'
@@ -27,7 +27,7 @@ const Empty = () => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const { enable_marketplace, plugin_installation_permission } = useGlobalPublicStore(s => s.systemFeatures)
+  const { enable_marketplace, plugin_installation_permission } = useSystemFeatures()
   const setActiveTab = usePluginPageContext(v => v.setActiveTab)
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {

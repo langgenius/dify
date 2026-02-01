@@ -5,7 +5,7 @@ import { Description as DialogDescription, DialogTitle } from '@headlessui/react
 import { RiBuildingLine, RiGlobalLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import { useUpdateAccessMode } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
@@ -24,7 +24,7 @@ type AccessControlProps = {
 export default function AccessControl(props: AccessControlProps) {
   const { app, onClose, onConfirm } = props
   const { t } = useTranslation()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
   const setAppId = useAccessControlStore(s => s.setAppId)
   const specificGroups = useAccessControlStore(s => s.specificGroups)
   const specificMembers = useAccessControlStore(s => s.specificMembers)

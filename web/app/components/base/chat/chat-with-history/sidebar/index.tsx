@@ -17,7 +17,7 @@ import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/re
 import Confirm from '@/app/components/base/confirm'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { cn } from '@/utils/classnames'
 import { useChatWithHistoryContext } from '../context'
 
@@ -47,7 +47,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
     isResponding,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
   const [showConfirm, setShowConfirm] = useState<ConversationItem | null>(null)
   const [showRename, setShowRename] = useState<ConversationItem | null>(null)
 

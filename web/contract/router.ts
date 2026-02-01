@@ -1,6 +1,6 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
-import { systemFeaturesContract } from './console/system'
+import { setupStatusContract, systemFeaturesContract } from './console/system'
 import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
 import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
 
@@ -14,6 +14,7 @@ export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRout
 
 export const consoleRouterContract = {
   systemFeatures: systemFeaturesContract,
+  setupStatus: setupStatusContract,
   trialApps: {
     info: trialAppInfoContract,
     datasets: trialAppDatasetsContract,

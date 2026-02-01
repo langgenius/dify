@@ -181,7 +181,7 @@ vi.mock('@/context/mitt-context', () => ({
 
 // Mock global public context
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: () => ({}),
+  useSystemFeatures: () => ({}),
 }))
 
 // Mock useCanInstallPluginFromMarketplace

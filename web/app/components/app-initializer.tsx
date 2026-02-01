@@ -9,7 +9,7 @@ import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
-import { useSetupStatusQuery } from '@/context/global-public-context'
+import { useSetupStatusQuery } from '@/hooks/use-global-public'
 import { sendGAEvent } from '@/utils/gtag'
 import { resolvePostLoginRedirect } from '../signin/utils/post-login-redirect'
 import { trackEvent } from './base/amplitude'

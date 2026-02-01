@@ -56,9 +56,9 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
   }),
 }))
 
-// Mock useGlobalPublicStore
+// Mock useSystemFeatures
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: () => ({}),
+  useSystemFeatures: () => ({}),
 }))
 
 // Mock pluginInstallLimit
