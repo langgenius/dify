@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, deleteWorkflowCommentReply, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment, updateWorkflowComment, updateWorkflowCommentReply } from '@/service/workflow-comment'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
@@ -50,7 +50,7 @@ export const useWorkflowComment = () => {
     appId ? state.mentionableUsersCache[appId] ?? EMPTY_USERS : EMPTY_USERS
   ))
   const { userProfile } = useAppContext()
-  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
+  const isCollaborationEnabled = useSystemFeatures().enable_collaboration_mode
   const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
   const activeCommentIdRef = useRef<string | null>(null)
 

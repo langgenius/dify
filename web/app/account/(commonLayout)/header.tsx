@@ -5,13 +5,13 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import Avatar from './avatar'
 
 const Header = () => {
   const { t } = useTranslation()
   const router = useRouter()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
 
   const goToStudio = useCallback(() => {
     router.push('/apps')

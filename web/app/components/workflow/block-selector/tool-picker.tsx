@@ -20,7 +20,7 @@ import Toast from '@/app/components/base/toast'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import {
   createCustomCollection,
 } from '@/service/tools'
@@ -94,7 +94,7 @@ const ToolPicker: FC<Props> = ({
   }
   const [tags, setTags] = useState<string[]>([])
 
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { enable_marketplace } = useSystemFeatures()
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const invalidateCustomTools = useInvalidateAllCustomTools()

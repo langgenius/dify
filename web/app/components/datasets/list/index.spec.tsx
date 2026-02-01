@@ -34,10 +34,8 @@ vi.mock('@/context/app-context', () => ({
 
 // Mock global public context
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: () => ({
-    systemFeatures: {
-      branding: { enabled: false },
-    },
+  useSystemFeatures: () => ({
+    branding: { enabled: false },
   }),
 }))
 
@@ -333,10 +331,8 @@ describe('List', () => {
 
     it('should not show DatasetFooter when branding is enabled', async () => {
       vi.doMock('@/context/global-public-context', () => ({
-        useGlobalPublicStore: () => ({
-          systemFeatures: {
-            branding: { enabled: true },
-          },
+        useSystemFeatures: () => ({
+          branding: { enabled: true },
         }),
       }))
 

@@ -10,12 +10,12 @@ import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import { ZENDESK_FIELD_IDS } from '@/config'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import {
   useCurrentWorkspace,
   useLangGeniusVersion,
   useUserProfile,
 } from '@/service/use-common'
-import { useGlobalPublicStore } from './global-public-context'
 
 export type AppContextValue = {
   userProfile: UserProfileResponse
@@ -89,7 +89,7 @@ export type AppContextProviderProps = {
 
 export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
   const queryClient = useQueryClient()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
   const { data: userProfileResp } = useUserProfile()
   const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace, isFetching: isValidatingCurrentWorkspace } = useCurrentWorkspace()
   const langGeniusVersionQuery = useLangGeniusVersion(

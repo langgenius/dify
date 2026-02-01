@@ -24,9 +24,9 @@ import Tooltip from '@/app/components/base/tooltip'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { copyApp, deleteApp, exportAppBundle, exportAppConfig, updateAppInfo } from '@/service/apps'
@@ -67,7 +67,7 @@ export type AppCardProps = {
 const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()

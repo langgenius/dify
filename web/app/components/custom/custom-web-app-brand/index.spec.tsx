@@ -4,8 +4,8 @@ import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/i
 import { useToastContext } from '@/app/components/base/toast'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { updateCurrentWorkspace } from '@/service/common'
 import CustomWebAppBrand from './index'
 
@@ -22,7 +22,7 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
+  useSystemFeatures: vi.fn(),
 }))
 vi.mock('@/app/components/base/image-uploader/utils', () => ({
   imageUpload: vi.fn(),
@@ -34,7 +34,7 @@ const mockUseToastContext = vi.mocked(useToastContext)
 const mockUpdateCurrentWorkspace = vi.mocked(updateCurrentWorkspace)
 const mockUseAppContext = vi.mocked(useAppContext)
 const mockUseProviderContext = vi.mocked(useProviderContext)
-const mockUseGlobalPublicStore = vi.mocked(useGlobalPublicStore)
+const mockUseSystemFeatures = vi.mocked(useSystemFeatures)
 const mockImageUpload = vi.mocked(imageUpload)
 const mockGetImageUploadErrorMessage = vi.mocked(getImageUploadErrorMessage)
 
@@ -80,7 +80,7 @@ describe('CustomWebAppBrand', () => {
         workspace_logo: 'https://example.com/workspace-logo.png',
       },
     }
-    mockUseGlobalPublicStore.mockImplementation(selector => selector ? selector({ systemFeatures: systemFeaturesState } as any) : { systemFeatures: systemFeaturesState })
+    mockUseSystemFeatures.mockReturnValue(systemFeaturesState as ReturnType<typeof mockUseSystemFeatures>)
     mockGetImageUploadErrorMessage.mockReturnValue('upload error')
   })
 

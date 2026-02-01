@@ -68,8 +68,7 @@ vi.mock('@/context/app-context', () => ({
 // Mock global public store
 const mockEnableMarketplace = vi.fn(() => true)
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (s: any) => any) =>
-    selector({ systemFeatures: { enable_marketplace: mockEnableMarketplace() } }),
+  useSystemFeatures: () => ({ enable_marketplace: mockEnableMarketplace() }),
 }))
 
 // Mock Action component

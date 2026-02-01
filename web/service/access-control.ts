@@ -1,7 +1,7 @@
 import type { AccessControlAccount, AccessControlGroup, AccessMode, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { get, post } from './base'
 import { getUserCanAccess } from './share'
 
@@ -71,7 +71,7 @@ export const useUpdateAccessMode = () => {
 }
 
 export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }: { appId?: string, isInstalledApp?: boolean, enabled?: boolean }) => {
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
   return useQuery({
     queryKey: [NAME_SPACE, 'user-can-access-app', appId, systemFeatures.webapp_auth.enabled, isInstalledApp],
     queryFn: () => {

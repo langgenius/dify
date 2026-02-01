@@ -19,8 +19,8 @@ import Switch from '@/app/components/base/switch'
 import { useToastContext } from '@/app/components/base/toast'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import {
   updateCurrentWorkspace,
 } from '@/service/common'
@@ -40,7 +40,7 @@ const CustomWebAppBrand = () => {
   const [fileId, setFileId] = useState('')
   const [imgKey, setImgKey] = useState(() => Date.now())
   const [uploadProgress, setUploadProgress] = useState(0)
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
   const isSandbox = enableBilling && plan.type === Plan.sandbox
   const uploading = uploadProgress > 0 && uploadProgress < 100
   const webappLogo = currentWorkspace.custom_config?.replace_webapp_logo || ''

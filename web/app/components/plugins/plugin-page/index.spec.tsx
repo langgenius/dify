@@ -28,14 +28,9 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn((selector) => {
-    const state = {
-      systemFeatures: {
-        enable_marketplace: true,
-      },
-    }
-    return selector(state)
-  }),
+  useSystemFeatures: vi.fn(() => ({
+    enable_marketplace: true,
+  })),
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -629,14 +624,9 @@ describe('PluginPage Component', () => {
     it('should handle marketplace disabled', () => {
       // Mock marketplace disabled
       vi.mock('@/context/global-public-context', async () => ({
-        useGlobalPublicStore: vi.fn((selector) => {
-          const state = {
-            systemFeatures: {
-              enable_marketplace: false,
-            },
-          }
-          return selector(state)
-        }),
+        useSystemFeatures: vi.fn(() => ({
+          enable_marketplace: false,
+        })),
       }))
 
       vi.mocked(useQueryState).mockReturnValue(['discover', vi.fn()])

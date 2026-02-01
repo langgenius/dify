@@ -25,10 +25,10 @@ import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-m
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { API_PREFIX } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage, useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import useTheme from '@/hooks/use-theme'
 import { uninstallPlugin } from '@/service/plugins'
 import { useAllToolProviders, useInvalidateAllToolProviders } from '@/service/use-tools'
@@ -72,7 +72,7 @@ const DetailHeader = ({
   const { setShowUpdatePluginModal } = useModalContext()
   const { refreshModelProviders } = useProviderContext()
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { enable_marketplace } = useSystemFeatures()
 
   const {
     id,

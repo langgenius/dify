@@ -1,12 +1,12 @@
 'use client'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-
 import useDocumentTitle from '@/hooks/use-document-title'
+
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { cn } from '@/utils/classnames'
 import Header from './_header'
 
 export default function SignInLayout({ children }: any) {
-  const { systemFeatures } = useGlobalPublicStore()
+  const systemFeatures = useSystemFeatures()
   useDocumentTitle('')
   return (
     <>

@@ -16,7 +16,7 @@ import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hook
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { useStrategyProviders } from '@/service/use-strategy'
 import { cn } from '@/utils/classnames'
 import Tools from '../../../block-selector/tools'
@@ -95,7 +95,7 @@ export type AgentStrategySelectorProps = {
 }
 
 export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { enable_marketplace } = useSystemFeatures()
 
   const { value, onChange } = props
   const [open, setOpen] = useState(false)

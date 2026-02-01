@@ -11,8 +11,8 @@ import {
   useRef,
 } from 'react'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage } from '@/context/i18n'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { cn } from '@/utils/classnames'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
@@ -76,7 +76,7 @@ const DataSources = ({
     onSelect(BlockEnum.DataSource, toolDefaultValue && defaultValue)
   }, [onSelect])
 
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { enable_marketplace } = useSystemFeatures()
 
   const {
     queryPluginsWithDebounced: fetchPlugins,

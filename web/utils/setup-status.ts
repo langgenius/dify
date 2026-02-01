@@ -1,5 +1,5 @@
 import type { SetupStatusResponse } from '@/models/common'
-import { fetchSetupStatus } from '@/service/common'
+import { consoleClient } from '@/service/client'
 
 const SETUP_STATUS_KEY = 'setup_status'
 
@@ -10,7 +10,7 @@ export const fetchSetupStatusWithCache = async (): Promise<SetupStatusResponse> 
   if (isSetupStatusCached())
     return { step: 'finished' }
 
-  const status = await fetchSetupStatus()
+  const status = await consoleClient.setupStatus()
 
   if (status.step === 'finished')
     localStorage.setItem(SETUP_STATUS_KEY, 'finished')

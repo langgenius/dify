@@ -27,11 +27,11 @@ import Toast from '@/app/components/base/toast'
 import Res from '@/app/components/share/text-generation/result'
 import RunOnce from '@/app/components/share/text-generation/run-once'
 import { appDefaultIconBackground, BATCH_CONCURRENCY } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useSystemFeatures } from '@/hooks/use-global-public'
 import { changeLanguage } from '@/i18n-config/client'
 import { AccessMode } from '@/models/access-control'
 import { AppSourceType, fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
@@ -91,7 +91,7 @@ const TextGeneration: FC<IMainProps> = ({
     doSetInputs(newInputs)
     inputsRef.current = newInputs
   }, [])
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const systemFeatures = useSystemFeatures()
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [customConfig, setCustomConfig] = useState<Record<string, any> | null>(null)
