@@ -1,5 +1,4 @@
 from typing import Any, Literal
-from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -23,12 +22,13 @@ from fields.conversation_variable_fields import (
     build_conversation_variable_infinite_scroll_pagination_model,
     build_conversation_variable_model,
 )
+from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
 
 
 class ConversationListQuery(BaseModel):
-    last_id: UUID | None = Field(default=None, description="Last conversation ID for pagination")
+    last_id: UUIDStrOrEmpty | None = Field(default=None, description="Last conversation ID for pagination")
     limit: int = Field(default=20, ge=1, le=100, description="Number of conversations to return")
     sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = Field(
         default="-updated_at", description="Sort order for conversations"
@@ -48,7 +48,7 @@ class ConversationRenamePayload(BaseModel):
 
 
 class ConversationVariablesQuery(BaseModel):
-    last_id: UUID | None = Field(default=None, description="Last variable ID for pagination")
+    last_id: UUIDStrOrEmpty | None = Field(default=None, description="Last variable ID for pagination")
     limit: int = Field(default=20, ge=1, le=100, description="Number of variables to return")
     variable_name: str | None = Field(
         default=None, description="Filter variables by name", min_length=1, max_length=255

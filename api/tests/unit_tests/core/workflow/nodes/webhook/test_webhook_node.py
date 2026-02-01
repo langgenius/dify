@@ -75,7 +75,7 @@ def test_webhook_node_basic_initialization():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},
     )
 
@@ -118,7 +118,7 @@ def test_webhook_node_run_with_headers():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {
@@ -154,7 +154,7 @@ def test_webhook_node_run_with_query_params():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -190,7 +190,7 @@ def test_webhook_node_run_with_body_params():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -249,7 +249,7 @@ def test_webhook_node_run_with_file_params():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -302,7 +302,7 @@ def test_webhook_node_run_mixed_parameters():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {"Authorization": "Bearer token"},
@@ -342,7 +342,7 @@ def test_webhook_node_run_empty_webhook_data():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},  # No webhook_data
     )
 
@@ -368,7 +368,7 @@ def test_webhook_node_run_case_insensitive_headers():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {
@@ -398,7 +398,7 @@ def test_webhook_node_variable_pool_user_inputs():
 
     # Add some additional variables to the pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {"headers": {}, "query_params": {}, "body": {}, "files": {}},
             "other_var": "should_be_included",
@@ -429,7 +429,7 @@ def test_webhook_node_different_methods(method):
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
