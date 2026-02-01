@@ -446,7 +446,8 @@ Requirements:
 4. If images are included, describe their key information
 5. Do not use words like "好的", "ok", "I understand", "This text discusses", "The content mentions"
 6. Write directly without extra words
-7. If there is not enough content to generate a meaningful summary, return an empty string
+7. If there is not enough content to generate a meaningful summary, 
+   return an empty string without any explanation or prompt
 
 Output only the summary text. Start summarizing now:
 
