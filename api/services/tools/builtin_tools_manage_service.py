@@ -91,6 +91,8 @@ class BuiltinToolManageService:
         :return: the list of tools
         """
         provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+        if ToolManager.is_internal_builtin_provider(provider_controller.entity.identity.name):
+            return []
         tools = provider_controller.get_tools()
 
         result: list[ToolApiEntity] = []
@@ -541,6 +543,8 @@ class BuiltinToolManageService:
 
         for provider_controller in provider_controllers:
             try:
+                if ToolManager.is_internal_builtin_provider(provider_controller.entity.identity.name):
+                    continue
                 # handle include, exclude
                 if is_filtered(
                     include_set=dify_config.POSITION_TOOL_INCLUDES_SET,

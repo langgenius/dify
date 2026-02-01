@@ -67,6 +67,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+INTERNAL_BUILTIN_TOOL_PROVIDERS = {"agent_output"}
+
 
 class ApiProviderControllerItem(TypedDict):
     provider: ApiToolProvider
@@ -599,6 +601,10 @@ class ToolManager:
         cls._builtin_providers_loaded = False
 
     @classmethod
+    def is_internal_builtin_provider(cls, provider_name: str) -> bool:
+        return provider_name in INTERNAL_BUILTIN_TOOL_PROVIDERS
+
+    @classmethod
     def get_tool_label(cls, tool_name: str) -> Union[I18nObject, None]:
         """
         get the tool label
@@ -674,6 +680,8 @@ class ToolManager:
 
                 # append builtin providers
                 for provider in builtin_providers:
+                    if cls.is_internal_builtin_provider(provider.entity.identity.name):
+                        continue
                     # handle include, exclude
                     if is_filtered(
                         include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
