@@ -17,6 +17,7 @@ import useTheme from '@/hooks/use-theme'
 import { useGenerateStructuredOutputRules } from '@/service/use-common'
 import { ModelModeType, Theme } from '@/types/app'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import { useMittContext } from '../visual-editor/context'
 import { useVisualEditorStore } from '../visual-editor/store'
 import { SchemaGeneratorDark, SchemaGeneratorLight } from './assets'
@@ -37,9 +38,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   onApply,
   crossAxisOffset,
 }) => {
-  const localModel = localStorage.getItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL)
-    ? JSON.parse(localStorage.getItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL) as string) as Model
-    : null
+  const localModel = storage.get<Model>(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL)
   const [open, setOpen] = useState(false)
   const [view, setView] = useState(GeneratorView.promptEditor)
   const [model, setModel] = useState<Model>(localModel || {
@@ -61,9 +60,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
 
   useEffect(() => {
     if (defaultModel) {
-      const localModel = localStorage.getItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL)
-        ? JSON.parse(localStorage.getItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL) || '')
-        : null
+      const localModel = storage.get<Model>(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL)
       if (localModel) {
         setModel(localModel)
       }
@@ -96,7 +93,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
       mode: newValue.mode as ModelModeType,
     }
     setModel(newModel)
-    localStorage.setItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
+    storage.set(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL, newModel)
   }, [model, setModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
@@ -105,7 +102,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
       completion_params: newParams as CompletionParams,
     }
     setModel(newModel)
-    localStorage.setItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
+    storage.set(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL, newModel)
   }, [model, setModel])
 
   const { mutateAsync: generateStructuredOutputRules, isPending: isGenerating } = useGenerateStructuredOutputRules()

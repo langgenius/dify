@@ -27,6 +27,7 @@ import { useGetLanguage } from '@/context/i18n'
 import { languages } from '@/i18n-config/language'
 import { fetchContextGenerateSuggestedQuestions, generateContext } from '@/service/debug'
 import { AppModeEnum } from '@/types/app'
+import { storage } from '@/utils/storage'
 import { CONTEXT_GEN_STORAGE_SUFFIX, getContextGenStorageKey } from '../utils/storage'
 import useContextGenData from './use-context-gen-data'
 
@@ -272,10 +273,9 @@ const useContextGenerate = ({
   const [inputValue, setInputValue] = useState('')
   const [isGenerating, { setTrue: setGeneratingTrue, setFalse: setGeneratingFalse }] = useBoolean(false)
   const [modelOverride, setModelOverride] = useState<Model | null>(() => {
-    const stored = localStorage.getItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL)
-    if (!stored)
+    const parsed = storage.get<Model>(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL)
+    if (!parsed)
       return null
-    const parsed = JSON.parse(stored) as Model
     return {
       ...parsed,
       completion_params: (parsed.completion_params ?? {}) as CompletionParams,
@@ -328,7 +328,7 @@ const useContextGenerate = ({
       mode: newValue.mode as ModelModeType,
     }
     setModelOverride(newModel)
-    localStorage.setItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
+    storage.set(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL, newModel)
   }, [model])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
@@ -337,7 +337,7 @@ const useContextGenerate = ({
       completion_params: newParams as CompletionParams,
     }
     setModelOverride(newModel)
-    localStorage.setItem(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL, JSON.stringify(newModel))
+    storage.set(STORAGE_KEYS.LOCAL.GENERATOR.AUTO_GEN_MODEL, newModel)
   }, [model])
 
   const promptMessageCount = promptMessages?.length ?? 0

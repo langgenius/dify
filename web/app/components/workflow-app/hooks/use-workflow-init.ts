@@ -21,6 +21,7 @@ import {
   syncWorkflowDraft,
 } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
+import { storage } from '@/utils/storage'
 import { useWorkflowTemplate } from './use-workflow-template'
 
 const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean => {
@@ -87,9 +88,9 @@ export const useWorkflowInit = () => {
             const edgesData = isAdvancedChat ? edgesTemplate : []
 
             const runtimeStorageKey = `${STORAGE_KEYS.LOCAL.WORKFLOW.SANDBOX_RUNTIME_PREFIX}${appDetail.id}`
-            const enableSandboxRuntime = localStorage.getItem(runtimeStorageKey) === '1'
+            const enableSandboxRuntime = storage.getBoolean(runtimeStorageKey) === true
             if (enableSandboxRuntime)
-              localStorage.removeItem(runtimeStorageKey)
+              storage.remove(runtimeStorageKey)
 
             syncWorkflowDraft({
               url: `/apps/${appDetail.id}/workflows/draft`,

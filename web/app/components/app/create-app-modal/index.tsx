@@ -30,6 +30,7 @@ import { createApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import { basePath } from '@/utils/var'
 import AppIconPicker from '../../base/app-icon-picker'
 import ShortcutsName from '../../workflow/shortcuts-name'
@@ -98,7 +99,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       })
 
       if (runtimeMode === 'sandboxed' && (appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT))
-        localStorage.setItem(`${STORAGE_KEYS.LOCAL.WORKFLOW.SANDBOX_RUNTIME_PREFIX}${app.id}`, '1')
+        storage.set(`${STORAGE_KEYS.LOCAL.WORKFLOW.SANDBOX_RUNTIME_PREFIX}${app.id}`, true)
 
       // Track app creation success
       trackEvent('create_app', {
