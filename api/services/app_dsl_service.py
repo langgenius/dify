@@ -298,13 +298,11 @@ class AppDslService:
                 dependencies=check_dependencies_pending_data,
             )
 
-            self._session.commit()
-            if is_new_app:
-                app_was_created.send(app, account=account)
-
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
             draft_var_srv.delete_workflow_variables(app_id=app.id)
             self._session.commit()
+            if is_new_app:
+                app_was_created.send(app, account=account)
             return Import(
                 id=import_id,
                 status=status,
