@@ -69,11 +69,13 @@ class DatasourceNode(Node[DatasourceNodeData]):
         if datasource_type is None:
             raise DatasourceNodeError("Datasource type is not set")
 
+        datasource_type = DatasourceProviderType.value_of(datasource_type)
+
         datasource_runtime = DatasourceManager.get_datasource_runtime(
             provider_id=f"{node_data.plugin_id}/{node_data.provider_name}",
             datasource_name=node_data.datasource_name or "",
             tenant_id=self.tenant_id,
-            datasource_type=DatasourceProviderType.value_of(datasource_type),
+            datasource_type=datasource_type,
         )
         datasource_info["icon"] = datasource_runtime.get_icon_url(self.tenant_id)
 
