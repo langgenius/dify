@@ -36,5 +36,5 @@
   "tryApp.requirements": "Requirements",
   "tryApp.tabHeader.detail": "Orchestration Details",
   "tryApp.tabHeader.try": "Try it",
-  "tryApp.tryInfo": "This is a sample app. You can try up to 5 messages. To keep using it, click \"Create form this sample app\" and set it up!"
+  "tryApp.tryInfo": "This is a sample app. You can try up to 5 messages. To keep using it, click \"Create from this sample app\" and set it up!"
 }

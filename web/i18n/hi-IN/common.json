@@ -351,7 +351,7 @@
   "modelProvider.card.quota": "कोटा",
   "modelProvider.card.quotaExhausted": "कोटा समाप्त",
   "modelProvider.card.removeKey": "API कुंजी निकालें",
-  "modelProvider.card.tip": "संदेश क्रेडिट OpenAI के मॉडल का समर्थन करते हैं। भुगतान किए गए कोटा को प्राथमिकता दी जाएगी। भुगतान किए गए कोटा के समाप्त होने के बाद मुफ्त कोटा का उपयोग किया जाएगा।",
+  "modelProvider.card.tip": "संदेश क्रेडिट {{modelNames}} के मॉडल का समर्थन करते हैं। भुगतान किए गए कोटा को प्राथमिकता दी जाएगी। भुगतान किए गए कोटा के समाप्त होने के बाद मुफ्त कोटा का उपयोग किया जाएगा।",
   "modelProvider.card.tokens": "टोकन",
   "modelProvider.collapse": "संक्षिप्त करें",
   "modelProvider.config": "कॉन्फ़िग",
