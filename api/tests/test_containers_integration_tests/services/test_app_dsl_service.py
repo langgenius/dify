@@ -535,7 +535,9 @@ class TestAppDslService:
             assert apps_count == 0  # No new app should be in database
 
         # Verify variable deletion was called
-        mock_external_service_dependencies["draft_variable_service"].return_value.delete_workflow_variables.assert_called_once()
+        mock_external_service_dependencies[
+            "draft_variable_service"
+        ].return_value.delete_workflow_variables.assert_called_once()
 
     def test_confirm_import_workflow_sync_failure_rollback(
         self, db_session_with_containers, mock_external_service_dependencies
