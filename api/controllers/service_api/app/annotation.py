@@ -121,6 +121,11 @@ class AnnotationListApi(Resource):
             401: "Unauthorized - invalid API token",
         }
     )
+    @service_api_ns.response(
+        HTTPStatus.CREATED,
+        "Annotation created successfully",
+        service_api_ns.models[Annotation.__name__],
+    )
     @validate_app_token
     def post(self, app_model: App):
         """Create a new annotation."""
