@@ -77,6 +77,7 @@ from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.runtime import VariablePool
+from core.workflow.utils.variable_utils import fetch_files
 from extensions.ext_database import db
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
@@ -173,7 +174,7 @@ class LLMNode(Node[LLMNodeData]):
 
             # fetch files
             files = (
-                llm_utils.fetch_files(
+                fetch_files(
                     variable_pool=variable_pool,
                     selector=self.node_data.vision.configs.variable_selector,
                 )

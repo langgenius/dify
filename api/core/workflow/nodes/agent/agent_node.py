@@ -45,6 +45,7 @@ from core.workflow.nodes.agent.entities import AgentNodeData, AgentOldVersionMod
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.runtime import VariablePool
+from core.workflow.utils.variable_utils import fetch_files
 from extensions.ext_database import db
 from factories import file_factory
 from factories.agent_factory import get_plugin_agent_strategy
@@ -163,22 +164,6 @@ class AgentNode(Node[AgentNodeData]):
                 )
             )
 
-    def _fetch_files_from_variable_selector(
-        self,
-        *,
-        variable_pool: VariablePool,
-        selector: Sequence[str],
-    ) -> Sequence[File]:
-        """Fetch files from a variable selector."""
-        variable = variable_pool.get(list(selector))
-        if variable is None:
-            return []
-        elif isinstance(variable, FileSegment):
-            return [variable.value]
-        elif isinstance(variable, ArrayFileSegment):
-            return variable.value
-        return []
-
     def _generate_agent_parameters(
         self,
         *,
@@ -248,7 +233,7 @@ class AgentNode(Node[AgentNodeData]):
 
                     if parameter_name == "query":
                         if node_data.vision.enabled and node_data.vision.configs.variable_selector:
-                            vision_files = self._fetch_files_from_variable_selector(
+                            vision_files = fetch_files(
                                 variable_pool=variable_pool,
                                 selector=node_data.vision.configs.variable_selector,
                             )
