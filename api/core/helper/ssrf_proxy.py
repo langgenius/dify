@@ -230,3 +230,41 @@ def delete(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any)
 
 def head(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
     return make_request("HEAD", url, max_retries=max_retries, **kwargs)
+
+
+class SSRFProxy:
+    """
+    Adapter exposing SSRF-protected HTTP helpers behind HttpClientProtocol.
+
+    This is intentionally a thin wrapper over the existing module-level functions so callers can inject it
+    where a protocol-typed HTTP client is expected.
+    """
+
+    @property
+    def max_retries_exceeded_error(self) -> type[Exception]:
+        return max_retries_exceeded_error
+
+    @property
+    def request_error(self) -> type[Exception]:
+        return request_error
+
+    def get(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+        return get(url=url, max_retries=max_retries, **kwargs)
+
+    def head(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+        return head(url=url, max_retries=max_retries, **kwargs)
+
+    def post(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+        return post(url=url, max_retries=max_retries, **kwargs)
+
+    def put(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+        return put(url=url, max_retries=max_retries, **kwargs)
+
+    def delete(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+        return delete(url=url, max_retries=max_retries, **kwargs)
+
+    def patch(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+        return patch(url=url, max_retries=max_retries, **kwargs)
+
+
+ssrf_proxy = SSRFProxy()
