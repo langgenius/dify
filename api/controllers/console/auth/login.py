@@ -1,10 +1,10 @@
 from typing import Any
 
-import flask_login
-from flask import make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from quart import make_response, request
 
+import quart_login as flask_login
 import services
 from configs import dify_config
 from constants.languages import get_valid_language
@@ -87,7 +87,7 @@ class LoginApi(Resource):
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[LoginPayload.__name__])
     @decrypt_password_field
-    def post(self):
+    async def post(self):
         """Authenticate user and login."""
         args = LoginPayload.model_validate(console_ns.payload)
         request_email = args.email
@@ -151,7 +151,7 @@ class LoginApi(Resource):
 @console_ns.route("/logout")
 class LogoutApi(Resource):
     @setup_required
-    def post(self):
+    async def post(self):
         current_user, _ = current_account_with_tenant()
         account = current_user
         if isinstance(account, flask_login.AnonymousUserMixin):
@@ -174,7 +174,7 @@ class ResetPasswordSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
-    def post(self):
+    async def post(self):
         args = EmailPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
 
@@ -201,7 +201,7 @@ class ResetPasswordSendEmailApi(Resource):
 class EmailCodeLoginSendEmailApi(Resource):
     @setup_required
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
-    def post(self):
+    async def post(self):
         args = EmailPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
 
@@ -234,7 +234,7 @@ class EmailCodeLoginApi(Resource):
     @setup_required
     @console_ns.expect(console_ns.models[EmailCodeLoginPayload.__name__])
     @decrypt_code_field
-    def post(self):
+    async def post(self):
         args = EmailCodeLoginPayload.model_validate(console_ns.payload)
 
         original_email = args.email
@@ -300,7 +300,7 @@ class EmailCodeLoginApi(Resource):
 
 @console_ns.route("/refresh-token")
 class RefreshTokenApi(Resource):
-    def post(self):
+    async def post(self):
         # Get refresh token from cookie instead of request body
         refresh_token = extract_refresh_token(request)
 

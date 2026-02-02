@@ -1,8 +1,8 @@
 import logging
 from typing import Any, cast
 
-from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with, reqparse
+from quart import request
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -118,7 +118,7 @@ workflow_model = get_or_create_model("TrialWorkflow", workflow_fields_copy)
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):
-    def post(self, trial_app):
+    async def post(self, trial_app):
         """
         Run workflow
         """
@@ -160,7 +160,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
 
 
 class TrialAppWorkflowTaskStopApi(TrialAppResource):
-    def post(self, trial_app, task_id: str):
+    async def post(self, trial_app, task_id: str):
         """
         Stop workflow task
         """
@@ -184,7 +184,7 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
 
 class TrialChatApi(TrialAppResource):
     @trial_feature_enable
-    def post(self, trial_app):
+    async def post(self, trial_app):
         app_model = trial_app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -277,10 +277,10 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
 
 class TrialChatAudioApi(TrialAppResource):
     @trial_feature_enable
-    def post(self, trial_app):
+    async def post(self, trial_app):
         app_model = trial_app
 
-        file = request.files["file"]
+        file = (await request.files)["file"]
 
         try:
             if not isinstance(current_user, Account):
@@ -321,7 +321,7 @@ class TrialChatAudioApi(TrialAppResource):
 
 class TrialChatTextApi(TrialAppResource):
     @trial_feature_enable
-    def post(self, trial_app):
+    async def post(self, trial_app):
         app_model = trial_app
         try:
             parser = reqparse.RequestParser()
@@ -372,7 +372,7 @@ class TrialChatTextApi(TrialAppResource):
 
 class TrialCompletionApi(TrialAppResource):
     @trial_feature_enable
-    def post(self, trial_app):
+    async def post(self, trial_app):
         app_model = trial_app
         if app_model.mode != "completion":
             raise NotCompletionAppError()

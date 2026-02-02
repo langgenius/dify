@@ -1,5 +1,5 @@
 import pytest
-from flask import Flask
+from quart import Quart as Flask
 
 from core.tools.utils.parser import ApiBasedToolSchemaParser
 

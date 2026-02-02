@@ -1,6 +1,6 @@
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from quart import request
 
 from libs.helper import extract_remote_ip
 from libs.login import current_account_with_tenant, login_required

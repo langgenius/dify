@@ -6,7 +6,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
-from flask import abort, request
+from quart import abort, request
 
 from configs import dify_config
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
@@ -467,7 +467,7 @@ def decrypt_password_field(view: Callable[P, R]):
 
     Usage:
         @decrypt_password_field
-        def post(self):
+        async def post(self):
             args = LoginPayload.model_validate(console_ns.payload)
             # args.password is now decrypted
     """
@@ -489,7 +489,7 @@ def decrypt_code_field(view: Callable[P, R]):
 
     Usage:
         @decrypt_code_field
-        def post(self):
+        async def post(self):
             args = EmailCodeLoginPayload.model_validate(console_ns.payload)
             # args.code is now decrypted
     """

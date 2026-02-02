@@ -1,8 +1,8 @@
 import logging
 from typing import Literal
 
-from flask import request
 from pydantic import BaseModel, Field, TypeAdapter
+from quart import request
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.schema import register_schema_models
@@ -103,7 +103,7 @@ class MessageListApi(InstalledAppResource):
 )
 class MessageFeedbackApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
-    def post(self, installed_app, message_id):
+    async def post(self, installed_app, message_id):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 

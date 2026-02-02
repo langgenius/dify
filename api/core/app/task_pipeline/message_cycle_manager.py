@@ -4,7 +4,8 @@ import time
 from threading import Thread
 from typing import Union
 
-from flask import Flask, current_app
+from quart import Quart as Flask
+from quart import current_app
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

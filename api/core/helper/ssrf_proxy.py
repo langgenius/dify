@@ -42,36 +42,36 @@ request_error = httpx.RequestError
 max_retries_exceeded_error = MaxRetriesExceededError
 
 
-def _create_proxy_mounts() -> dict[str, httpx.HTTPTransport]:
+def _create_proxy_mounts() -> dict[str, httpx.AsyncHTTPTransport]:
     return {
-        "http://": httpx.HTTPTransport(
+        "http://": httpx.AsyncHTTPTransport(
             proxy=dify_config.SSRF_PROXY_HTTP_URL,
         ),
-        "https://": httpx.HTTPTransport(
+        "https://": httpx.AsyncHTTPTransport(
             proxy=dify_config.SSRF_PROXY_HTTPS_URL,
         ),
     }
 
 
-def _build_ssrf_client(verify: bool) -> httpx.Client:
+def _build_ssrf_client(verify: bool) -> httpx.AsyncClient:
     if dify_config.SSRF_PROXY_ALL_URL:
-        return httpx.Client(
+        return httpx.AsyncClient(
             proxy=dify_config.SSRF_PROXY_ALL_URL,
             verify=verify,
             limits=_SSRF_CLIENT_LIMITS,
         )
 
     if dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
-        return httpx.Client(
+        return httpx.AsyncClient(
             mounts=_create_proxy_mounts(),
             verify=verify,
             limits=_SSRF_CLIENT_LIMITS,
         )
 
-    return httpx.Client(verify=verify, limits=_SSRF_CLIENT_LIMITS)
+    return httpx.AsyncClient(verify=verify, limits=_SSRF_CLIENT_LIMITS)
 
 
-def _get_ssrf_client(ssl_verify_enabled: bool) -> httpx.Client:
+def _get_ssrf_client(ssl_verify_enabled: bool) -> httpx.AsyncClient:
     if not isinstance(ssl_verify_enabled, bool):
         raise ValueError("SSRF client verify flag must be a boolean")
 
@@ -130,7 +130,9 @@ def _inject_trace_headers(headers: Headers | None) -> Headers:
     return headers
 
 
-def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+async def make_request(
+    method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any
+) -> httpx.Response:
     # Convert requests-style allow_redirects to httpx-style follow_redirects
     if "allow_redirects" in kwargs:
         allow_redirects = kwargs.pop("allow_redirects")
@@ -173,13 +175,13 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
             if user_provided_host is not None:
                 headers["host"] = user_provided_host
             kwargs["headers"] = headers
-            response = client.request(method=method, url=url, **kwargs)
+            response = await client.request(method=method, url=url, **kwargs)
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):
                 # Check if this is a Squid SSRF rejection
-                server_header = response.headers.get("server", "").lower()
-                via_header = response.headers.get("via", "").lower()
+                server_header = (response.headers).get("server", "").lower()
+                via_header = (response.headers).get("via", "").lower()
 
                 # Squid typically identifies itself in Server or Via headers
                 if "squid" in server_header or "squid" in via_header:
@@ -208,27 +210,27 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
     raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
 
 
-def get(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+def get(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any):
     return make_request("GET", url, max_retries=max_retries, **kwargs)
 
 
-def post(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+def post(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any):
     return make_request("POST", url, max_retries=max_retries, **kwargs)
 
 
-def put(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+def put(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any):
     return make_request("PUT", url, max_retries=max_retries, **kwargs)
 
 
-def patch(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+def patch(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any):
     return make_request("PATCH", url, max_retries=max_retries, **kwargs)
 
 
-def delete(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+def delete(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any):
     return make_request("DELETE", url, max_retries=max_retries, **kwargs)
 
 
-def head(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
+def head(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any):
     return make_request("HEAD", url, max_retries=max_retries, **kwargs)
 
 

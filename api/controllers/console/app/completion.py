@@ -1,9 +1,9 @@
 import logging
 from typing import Any, Literal
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -88,7 +88,7 @@ class CompletionMessageApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, app_model):
+    async def post(self, app_model):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
@@ -135,7 +135,7 @@ class CompletionMessageStopApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, app_model, task_id):
+    async def post(self, app_model, task_id):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
 
@@ -163,7 +163,7 @@ class ChatMessageApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     @edit_permission_required
-    def post(self, app_model):
+    async def post(self, app_model):
         args_model = ChatMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
@@ -216,7 +216,7 @@ class ChatMessageStopApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def post(self, app_model, task_id):
+    async def post(self, app_model, task_id):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
 

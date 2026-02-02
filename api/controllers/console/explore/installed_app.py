@@ -1,9 +1,9 @@
 import logging
 from typing import Any
 
-from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
+from quart import request
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
@@ -130,7 +130,7 @@ class InstalledAppsListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("apps")
-    def post(self):
+    async def post(self):
         payload = InstalledAppCreatePayload.model_validate(console_ns.payload or {})
 
         recommended_app = db.session.query(RecommendedApp).where(RecommendedApp.app_id == payload.app_id).first()

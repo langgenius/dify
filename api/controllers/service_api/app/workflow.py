@@ -2,9 +2,9 @@ import logging
 from typing import Any, Literal
 
 from dateutil.parser import isoparse
-from flask import request
 from flask_restx import Namespace, Resource, fields
 from pydantic import BaseModel, Field
+from quart import request
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
@@ -134,7 +134,7 @@ class WorkflowRunApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser):
+    async def post(self, app_model: App, end_user: EndUser):
         """Execute a workflow.
 
         Runs a workflow with the provided inputs and returns the results.
@@ -191,7 +191,7 @@ class WorkflowRunByIdApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, workflow_id: str):
+    async def post(self, app_model: App, end_user: EndUser, workflow_id: str):
         """Run specific workflow by ID.
 
         Executes a specific workflow version identified by its ID.
@@ -253,7 +253,7 @@ class WorkflowTaskStopApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, task_id: str):
+    async def post(self, app_model: App, end_user: EndUser, task_id: str):
         """Stop a running workflow task."""
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:

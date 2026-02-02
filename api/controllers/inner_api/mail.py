@@ -26,7 +26,7 @@ class BaseMail(Resource):
     @inner_api_ns.doc("send_inner_mail")
     @inner_api_ns.doc(description="Send internal email")
     @inner_api_ns.expect(inner_api_ns.models[InnerMailPayload.__name__])
-    def post(self):
+    async def post(self):
         args = InnerMailPayload.model_validate(inner_api_ns.payload or {})
         send_inner_email_task.delay(
             to=args.to,
@@ -47,7 +47,7 @@ class EnterpriseMail(BaseMail):
     @inner_api_ns.doc(
         responses={200: "Email sent successfully", 401: "Unauthorized - invalid API key", 404: "Service not available"}
     )
-    def post(self):
+    async def post(self):
         """Send internal email for enterprise features.
 
         This endpoint allows sending internal emails for enterprise-specific
@@ -69,7 +69,7 @@ class BillingMail(BaseMail):
     @inner_api_ns.doc(
         responses={200: "Email sent successfully", 401: "Unauthorized - invalid API key", 404: "Service not available"}
     )
-    def post(self):
+    async def post(self):
         """Send internal email for billing notifications.
 
         This endpoint allows sending internal emails for billing-related

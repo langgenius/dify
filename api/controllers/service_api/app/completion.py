@@ -2,9 +2,9 @@ import logging
 from typing import Any, Literal
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -92,7 +92,7 @@ class CompletionApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser):
+    async def post(self, app_model: App, end_user: EndUser):
         """Create a completion for the given prompt.
 
         This endpoint generates a completion based on the provided inputs and query.
@@ -156,7 +156,7 @@ class CompletionStopApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, task_id: str):
+    async def post(self, app_model: App, end_user: EndUser, task_id: str):
         """Stop a running completion task."""
         if app_model.mode != AppMode.COMPLETION:
             raise AppUnavailableError()
@@ -187,7 +187,7 @@ class ChatApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser):
+    async def post(self, app_model: App, end_user: EndUser):
         """Send a message in a chat conversation.
 
         This endpoint handles chat messages for chat, agent chat, and advanced chat applications.
@@ -255,7 +255,7 @@ class ChatStopApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, task_id: str):
+    async def post(self, app_model: App, end_user: EndUser, task_id: str):
         """Stop a running chat message generation."""
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

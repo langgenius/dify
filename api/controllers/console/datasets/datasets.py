@@ -1,8 +1,8 @@
 from typing import Any, cast
 
-from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -57,7 +57,7 @@ from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
-# Register models for flask_restx to avoid dict type issues in Swagger
+# Register models for quart_restx to avoid dict type issues in Swagger
 dataset_base_model = get_or_create_model("DatasetBase", dataset_fields)
 
 tag_model = get_or_create_model("Tag", tag_fields)
@@ -358,7 +358,7 @@ class DatasetListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def post(self):
+    async def post(self):
         payload = DatasetCreatePayload.model_validate(console_ns.payload or {})
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -570,7 +570,7 @@ class DatasetIndexingEstimateApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.expect(console_ns.models[IndexingEstimatePayload.__name__])
-    def post(self):
+    async def post(self):
         payload = IndexingEstimatePayload.model_validate(console_ns.payload or {})
         args = payload.model_dump()
         _, current_tenant_id = current_account_with_tenant()
@@ -766,7 +766,7 @@ class DatasetApiKeyApi(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     @marshal_with(api_key_item_model)
-    def post(self):
+    async def post(self):
         _, current_tenant_id = current_account_with_tenant()
 
         current_key_count = (
@@ -831,7 +831,7 @@ class DatasetEnableApiApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, dataset_id, status):
+    async def post(self, dataset_id, status):
         dataset_id_str = str(dataset_id)
 
         DatasetService.update_dataset_api_status(dataset_id_str, status == "enable")

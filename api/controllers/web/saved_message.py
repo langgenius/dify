@@ -1,5 +1,5 @@
-from flask import request
 from pydantic import BaseModel, Field, TypeAdapter
+from quart import request
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_models
@@ -83,7 +83,7 @@ class SavedMessageListApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user):
+    async def post(self, app_model, end_user):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 

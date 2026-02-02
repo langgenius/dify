@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from quart import Quart as Flask
 
 from controllers.console.auth.oauth import (
     OAuthCallback,

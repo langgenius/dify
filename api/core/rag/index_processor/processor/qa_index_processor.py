@@ -8,7 +8,8 @@ from collections.abc import Mapping
 from typing import Any
 
 import pandas as pd
-from flask import Flask, current_app
+from quart import Quart as Flask
+from quart import current_app
 from werkzeug.datastructures import FileStorage
 
 from core.db.session_factory import session_factory

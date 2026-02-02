@@ -1,7 +1,7 @@
 import logging
 import re
 
-from flask import jsonify, request
+from quart import jsonify, request
 from werkzeug.exceptions import NotFound
 
 from controllers.trigger import bp

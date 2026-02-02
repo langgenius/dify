@@ -1,7 +1,7 @@
 from typing import Literal
 
-from flask import request
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 
 from configs import dify_config
 from controllers.fastopenapi import console_router

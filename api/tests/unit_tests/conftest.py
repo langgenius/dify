@@ -2,8 +2,10 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+import quart
 from sqlalchemy import create_engine
+
+from dify_app import DifyApp as Flask
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -12,6 +14,10 @@ ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
 
 CACHED_APP = Flask(__name__)
+
+# Ensure test modules importing Quart/Flask from quart get the sync-capable app.
+quart.Flask = Flask
+quart.Quart = Flask
 
 # set global mock for Redis client
 redis_mock = MagicMock()

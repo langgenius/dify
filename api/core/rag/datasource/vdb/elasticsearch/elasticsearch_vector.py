@@ -6,9 +6,9 @@ from urllib.parse import urlparse
 
 from elasticsearch import ConnectionError as ElasticsearchConnectionError
 from elasticsearch import Elasticsearch
-from flask import current_app
 from packaging.version import parse as parse_version
 from pydantic import BaseModel, model_validator
+from quart import current_app
 
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector

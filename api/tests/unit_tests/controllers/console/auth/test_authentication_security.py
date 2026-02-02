@@ -4,8 +4,8 @@ import base64
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
 from flask_restx import Api
+from quart import Quart as Flask
 
 import services.errors.account
 from controllers.console.auth.error import AuthenticationFailedError

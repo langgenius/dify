@@ -3,9 +3,10 @@ import logging
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from flask import make_response, redirect, request, send_file
-from flask_restx import Resource
-from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
+from flask_restx import (
+    Resource,
+)
+from quart import make_response, redirect, request, send_file
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -304,7 +305,7 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider):
+    async def post(self, provider):
         _, tenant_id = current_account_with_tenant()
 
         payload = BuiltinToolCredentialDeletePayload.model_validate(console_ns.payload or {})
@@ -322,7 +323,7 @@ class ToolBuiltinProviderAddApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, provider):
+    async def post(self, provider):
         user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
@@ -346,7 +347,7 @@ class ToolBuiltinProviderUpdateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider):
+    async def post(self, provider):
         user, tenant_id = current_account_with_tenant()
         user_id = user.id
 
@@ -395,7 +396,7 @@ class ToolApiProviderAddApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
@@ -465,7 +466,7 @@ class ToolApiProviderUpdateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
@@ -494,7 +495,7 @@ class ToolApiProviderDeleteApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
@@ -549,8 +550,8 @@ class ToolApiProviderSchemaApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        payload = ApiToolSchemaPayload.model_validate(console_ns.payload or {})
+    async def post(self):
+        args = parser_schema.parse_args()
 
         return ApiToolManageService.parser_api_schema(
             schema=payload.schema_,
@@ -563,8 +564,8 @@ class ToolApiProviderPreviousTestApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        payload = ApiToolTestPayload.model_validate(console_ns.payload or {})
+    async def post(self):
+        args = parser_pre.parse_args()
         _, current_tenant_id = current_account_with_tenant()
         return ApiToolManageService.test_api_tool_preview(
             current_tenant_id,
@@ -584,7 +585,7 @@ class ToolWorkflowProviderCreateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
@@ -612,7 +613,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         user, tenant_id = current_account_with_tenant()
         user_id = user.id
 
@@ -639,7 +640,7 @@ class ToolWorkflowProviderDeleteApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
@@ -874,7 +875,7 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, provider):
+    async def post(self, provider):
         current_user, current_tenant_id = current_account_with_tenant()
         payload = BuiltinProviderDefaultCredentialPayload.model_validate(console_ns.payload or {})
         return BuiltinToolManageService.set_default_provider(
@@ -889,8 +890,8 @@ class ToolOAuthCustomClient(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider: str):
-        payload = ToolOAuthCustomClientPayload.model_validate(console_ns.payload or {})
+    async def post(self, provider: str):
+        args = parser_custom.parse_args()
 
         _, tenant_id = current_account_with_tenant()
 
@@ -958,8 +959,8 @@ class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        payload = MCPProviderCreatePayload.model_validate(console_ns.payload or {})
+    async def post(self):
+        args = parser_mcp.parse_args()
         user, tenant_id = current_account_with_tenant()
 
         # Parse and validate models
@@ -1073,9 +1074,9 @@ class ToolMCPAuthApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        payload = MCPAuthPayload.model_validate(console_ns.payload or {})
-        provider_id = payload.provider_id
+    async def post(self):
+        args = parser_auth.parse_args()
+        provider_id = args["provider_id"]
         _, tenant_id = current_account_with_tenant()
 
         with Session(db.engine) as session, session.begin():

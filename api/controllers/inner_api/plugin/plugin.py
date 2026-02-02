@@ -50,7 +50,7 @@ class PluginInvokeLLMApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeLLM):
+    async def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeLLM):
         def generator():
             response = PluginModelBackwardsInvocation.invoke_llm(user_model.id, tenant_model, payload)
             return PluginModelBackwardsInvocation.convert_to_event_stream(response)
@@ -73,7 +73,9 @@ class PluginInvokeLLMWithStructuredOutputApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeLLMWithStructuredOutput):
+    async def post(
+        self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeLLMWithStructuredOutput
+    ):
         def generator():
             response = PluginModelBackwardsInvocation.invoke_llm_with_structured_output(
                 user_model.id, tenant_model, payload
@@ -98,7 +100,7 @@ class PluginInvokeTextEmbeddingApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTextEmbedding):
+    async def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTextEmbedding):
         try:
             return jsonable_encoder(
                 BaseBackwardsInvocationResponse(
@@ -124,7 +126,7 @@ class PluginInvokeRerankApi(Resource):
     @inner_api_ns.doc(
         responses={200: "Rerank successful", 401: "Unauthorized - invalid API key", 404: "Service not available"}
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeRerank):
+    async def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeRerank):
         try:
             return jsonable_encoder(
                 BaseBackwardsInvocationResponse(
@@ -154,7 +156,7 @@ class PluginInvokeTTSApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTTS):
+    async def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTTS):
         def generator():
             response = PluginModelBackwardsInvocation.invoke_tts(
                 user_id=user_model.id,
@@ -177,7 +179,7 @@ class PluginInvokeSpeech2TextApi(Resource):
     @inner_api_ns.doc(
         responses={200: "Speech2Text successful", 401: "Unauthorized - invalid API key", 404: "Service not available"}
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeSpeech2Text):
+    async def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeSpeech2Text):
         try:
             return jsonable_encoder(
                 BaseBackwardsInvocationResponse(
@@ -203,7 +205,7 @@ class PluginInvokeModerationApi(Resource):
     @inner_api_ns.doc(
         responses={200: "Moderation successful", 401: "Unauthorized - invalid API key", 404: "Service not available"}
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeModeration):
+    async def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeModeration):
         try:
             return jsonable_encoder(
                 BaseBackwardsInvocationResponse(
@@ -233,7 +235,7 @@ class PluginInvokeToolApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
+    async def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
         def generator():
             return PluginToolBackwardsInvocation.convert_to_event_stream(
                 PluginToolBackwardsInvocation.invoke_tool(
@@ -265,7 +267,9 @@ class PluginInvokeParameterExtractorNodeApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeParameterExtractorNode):
+    async def post(
+        self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeParameterExtractorNode
+    ):
         try:
             return jsonable_encoder(
                 BaseBackwardsInvocationResponse(
@@ -298,7 +302,9 @@ class PluginInvokeQuestionClassifierNodeApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeQuestionClassifierNode):
+    async def post(
+        self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeQuestionClassifierNode
+    ):
         try:
             return jsonable_encoder(
                 BaseBackwardsInvocationResponse(
@@ -331,7 +337,7 @@ class PluginInvokeAppApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
+    async def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
         response = PluginAppBackwardsInvocation.invoke_app(
             app_id=payload.app_id,
             user_id=user_model.id,
@@ -361,7 +367,7 @@ class PluginInvokeEncryptApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeEncrypt):
+    async def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeEncrypt):
         """
         encrypt or decrypt data
         """
@@ -388,7 +394,7 @@ class PluginInvokeSummaryApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeSummary):
+    async def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeSummary):
         try:
             return BaseBackwardsInvocationResponse(
                 data={
@@ -418,7 +424,7 @@ class PluginUploadFileRequestApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestRequestUploadFile):
+    async def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestRequestUploadFile):
         # generate signed url
         url = get_signed_file_url_for_plugin(
             filename=payload.filename,
@@ -444,7 +450,7 @@ class PluginFetchAppInfoApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestFetchAppInfo):
+    async def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestFetchAppInfo):
         return BaseBackwardsInvocationResponse(
             data=PluginAppBackwardsInvocation.fetch_app_info(payload.app_id, tenant_model.id)
         ).model_dump()

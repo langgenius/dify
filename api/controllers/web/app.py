@@ -1,8 +1,8 @@
 import logging
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
+from quart import request
 from werkzeug.exceptions import Unauthorized
 
 from constants import HEADER_NAME_APP_CODE

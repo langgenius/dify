@@ -8,8 +8,8 @@ from typing import Any
 
 import click
 import sqlalchemy as sa
-from flask import current_app
 from pydantic import TypeAdapter
+from quart import current_app
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
@@ -733,9 +733,9 @@ def upgrade_db():
             click.echo(click.style("Starting database migration.", fg="green"))
 
             # run db migration
-            import flask_migrate
+            import quart_migrate
 
-            flask_migrate.upgrade()
+            quart_migrate.upgrade()
 
             click.echo(click.style("Database migration successful!", fg="green"))
 

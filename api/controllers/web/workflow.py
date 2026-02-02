@@ -55,7 +55,7 @@ class WorkflowRunApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model: App, end_user: EndUser):
+    async def post(self, app_model: App, end_user: EndUser):
         """
         Run workflow
         """
@@ -108,7 +108,7 @@ class WorkflowTaskStopApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model: App, end_user: EndUser, task_id: str):
+    async def post(self, app_model: App, end_user: EndUser, task_id: str):
         """
         Stop workflow task
         """

@@ -2,7 +2,7 @@ import logging
 import re
 from datetime import UTC, datetime, timedelta
 
-from flask import Request
+from quart import Request
 from werkzeug.exceptions import Unauthorized
 from werkzeug.wrappers import Response
 

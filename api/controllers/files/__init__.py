@@ -1,5 +1,5 @@
-from flask import Blueprint
 from flask_restx import Namespace
+from quart import Blueprint
 
 from libs.external_api import ExternalApi
 

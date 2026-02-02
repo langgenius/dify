@@ -2,7 +2,7 @@ import json
 import os
 import threading
 
-from flask import Response
+from quart import Response
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -12,8 +12,8 @@ def init_app(app: DifyApp):
     @app.after_request
     def after_request(response):  # pyright: ignore[reportUnusedFunction]
         """Add Version headers to the response."""
-        response.headers.add("X-Version", dify_config.project.version)
-        response.headers.add("X-Env", dify_config.DEPLOY_ENV)
+        (response.headers).add("X-Version", dify_config.project.version)
+        (response.headers).add("X-Env", dify_config.DEPLOY_ENV)
         return response
 
     @app.route("/health")

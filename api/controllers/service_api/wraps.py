@@ -6,10 +6,9 @@ from enum import StrEnum, auto
 from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
-from flask import current_app, request
-from flask_login import user_logged_in
 from flask_restx import Resource
 from pydantic import BaseModel
+from quart import current_app, request
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
@@ -22,6 +21,7 @@ from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App
+from quart_login import user_logged_in
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
@@ -50,7 +50,7 @@ class FetchUserArg(BaseModel):
 def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: FetchUserArg | None = None):
     def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs):
+        async def decorated_view(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token("app")
 
             app_model = db.session.query(App).where(App.id == api_token.app_id).first()
@@ -76,9 +76,9 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                 if fetch_user_arg.fetch_from == WhereisUserArg.QUERY:
                     user_id = request.args.get("user")
                 elif fetch_user_arg.fetch_from == WhereisUserArg.JSON:
-                    user_id = request.get_json().get("user")
+                    user_id = (await request.get_json()).get("user")
                 elif fetch_user_arg.fetch_from == WhereisUserArg.FORM:
-                    user_id = request.form.get("user")
+                    user_id = (await (await request.form)).get("user")
                 else:
                     user_id = None
 

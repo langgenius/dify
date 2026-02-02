@@ -1,7 +1,7 @@
 import logging
 import time
 
-from flask import jsonify, request
+from quart import jsonify, request
 from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 
 from controllers.trigger import bp

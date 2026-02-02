@@ -20,7 +20,7 @@ class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
     )
     @service_api_ns.expect(service_api_ns.models[HitTestingPayload.__name__])
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id):
+    async def post(self, tenant_id, dataset_id):
         """Perform hit testing on a dataset.
 
         Tests retrieval performance for the specified dataset.

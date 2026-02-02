@@ -1,8 +1,8 @@
 from typing import Literal
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel
+from quart import request
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
@@ -35,7 +35,7 @@ class WebsiteCrawlApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         payload = WebsiteCrawlPayload.model_validate(console_ns.payload or {})
 
         # Create typed request and validate

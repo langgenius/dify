@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
-from flask import Flask
-from flask.views import MethodView as FlaskMethodView
+from quart import Quart as Flask
+from quart.views import MethodView as FlaskMethodView
 
 _NEEDS_METHOD_VIEW_CLEANUP = False
 if not hasattr(builtins, "MethodView"):

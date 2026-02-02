@@ -1,5 +1,6 @@
-from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData
+
+from quart_sqlalchemy import SQLAlchemy
 
 POSTGRES_INDEXES_NAMING_CONVENTION = {
     "ix": "%(column_0_label)s_idx",

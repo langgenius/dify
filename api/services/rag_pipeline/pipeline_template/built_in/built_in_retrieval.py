@@ -2,7 +2,7 @@ import json
 from os import path
 from pathlib import Path
 
-from flask import current_app
+from quart import current_app
 
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType

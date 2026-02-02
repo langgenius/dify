@@ -1,4 +1,4 @@
-from flask import Blueprint
+from quart import Blueprint
 
 # Create trigger blueprint
 bp = Blueprint("trigger", __name__, url_prefix="/triggers")

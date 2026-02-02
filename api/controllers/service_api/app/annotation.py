@@ -1,9 +1,8 @@
 from typing import Literal
 
-from flask import request
 from flask_restx import Namespace, Resource, fields
-from flask_restx.api import HTTPStatus
 from pydantic import BaseModel, Field
+from quart import request
 
 from controllers.common.schema import register_schema_models
 from controllers.console.wraps import edit_permission_required
@@ -12,6 +11,7 @@ from controllers.service_api.wraps import validate_app_token
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import annotation_fields, build_annotation_model
 from models.model import App
+from quart_restx.api import HTTPStatus
 from services.annotation_service import AppAnnotationService
 
 
@@ -42,7 +42,7 @@ class AnnotationReplyActionApi(Resource):
         }
     )
     @validate_app_token
-    def post(self, app_model: App, action: Literal["enable", "disable"]):
+    async def post(self, app_model: App, action: Literal["enable", "disable"]):
         """Enable or disable annotation reply feature."""
         args = AnnotationReplyActionPayload.model_validate(service_api_ns.payload or {}).model_dump()
         if action == "enable":
@@ -137,7 +137,7 @@ class AnnotationListApi(Resource):
     )
     @validate_app_token
     @service_api_ns.marshal_with(build_annotation_model(service_api_ns), code=HTTPStatus.CREATED)
-    def post(self, app_model: App):
+    async def post(self, app_model: App):
         """Create a new annotation."""
         args = AnnotationCreatePayload.model_validate(service_api_ns.payload or {}).model_dump()
         annotation = AppAnnotationService.insert_app_annotation_directly(args, app_model.id)

@@ -1,6 +1,6 @@
-from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
+from quart import request
 
 from constants.languages import languages
 from controllers.common.schema import get_or_create_model

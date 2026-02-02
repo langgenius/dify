@@ -8,7 +8,6 @@ from datetime import UTC, datetime
 from typing import Any, Union, cast
 from uuid import uuid4
 
-from flask_login import current_user
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -72,6 +71,7 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
+from quart_login import current_user
 from repositories.factory import DifyAPIRepositoryFactory
 from services.datasource_provider_service import DatasourceProviderService
 from services.entities.knowledge_entities.rag_pipeline_entities import (

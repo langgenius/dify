@@ -1,9 +1,9 @@
 import base64
 import secrets
 
-from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 from sqlalchemy.orm import Session
 
 from controllers.console import console_ns
@@ -72,7 +72,7 @@ class ForgotPasswordSendEmailApi(Resource):
     @console_ns.response(400, "Invalid email or rate limit exceeded")
     @setup_required
     @email_password_login_enabled
-    def post(self):
+    async def post(self):
         args = ForgotPasswordSendPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
 
@@ -118,7 +118,7 @@ class ForgotPasswordCheckApi(Resource):
     @console_ns.response(400, "Invalid code or token")
     @setup_required
     @email_password_login_enabled
-    def post(self):
+    async def post(self):
         args = ForgotPasswordCheckPayload.model_validate(console_ns.payload)
 
         user_email = args.email.lower()
@@ -168,7 +168,7 @@ class ForgotPasswordResetApi(Resource):
     @console_ns.response(400, "Invalid token or password mismatch")
     @setup_required
     @email_password_login_enabled
-    def post(self):
+    async def post(self):
         args = ForgotPasswordResetPayload.model_validate(console_ns.payload)
 
         # Validate passwords match

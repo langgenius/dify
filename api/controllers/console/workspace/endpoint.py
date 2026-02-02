@@ -1,8 +1,8 @@
 from typing import Any
 
-from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
+from quart import request
 
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
@@ -64,7 +64,7 @@ class EndpointCreateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         user, tenant_id = current_account_with_tenant()
 
         args = EndpointCreatePayload.model_validate(console_ns.payload)
@@ -170,7 +170,7 @@ class EndpointDeleteApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         user, tenant_id = current_account_with_tenant()
 
         args = EndpointIdPayload.model_validate(console_ns.payload)
@@ -197,7 +197,7 @@ class EndpointUpdateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         user, tenant_id = current_account_with_tenant()
 
         args = EndpointUpdatePayload.model_validate(console_ns.payload)
@@ -228,7 +228,7 @@ class EndpointEnableApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         user, tenant_id = current_account_with_tenant()
 
         args = EndpointIdPayload.model_validate(console_ns.payload)
@@ -255,7 +255,7 @@ class EndpointDisableApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         user, tenant_id = current_account_with_tenant()
 
         args = EndpointIdPayload.model_validate(console_ns.payload)

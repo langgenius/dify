@@ -84,7 +84,7 @@ class CompletionApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user):
+    async def post(self, app_model, end_user):
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
@@ -137,7 +137,7 @@ class CompletionStopApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user, task_id):
+    async def post(self, app_model, end_user, task_id):
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
@@ -166,7 +166,7 @@ class ChatApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user):
+    async def post(self, app_model, end_user):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -222,7 +222,7 @@ class ChatStopApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user, task_id):
+    async def post(self, app_model, end_user, task_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()

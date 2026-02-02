@@ -1,6 +1,6 @@
-from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 
 from constants.languages import supported_language
 from controllers.console import console_ns
@@ -103,7 +103,7 @@ class ActivateApi(Resource):
         ),
     )
     @console_ns.response(400, "Already activated or invalid token")
-    def post(self):
+    async def post(self):
         args = ActivatePayload.model_validate(console_ns.payload)
 
         normalized_request_email = args.email.lower() if args.email else None

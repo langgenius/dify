@@ -1,8 +1,8 @@
 import os
 
 import pytest
-from flask import Flask
 from packaging.version import Version
+from quart import Quart as Flask
 from yarl import URL
 
 from configs.app_config import DifyConfig

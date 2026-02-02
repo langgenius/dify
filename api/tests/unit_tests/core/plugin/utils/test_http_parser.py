@@ -1,5 +1,5 @@
 import pytest
-from flask import Request, Response
+from quart import Request, Response
 
 from core.plugin.utils.http_parser import (
     deserialize_request,

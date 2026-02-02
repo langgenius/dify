@@ -16,9 +16,29 @@ def _apply_cors_once(bp, /, **cors_kwargs):
     if getattr(bp, "_dify_cors_applied", False):
         return
 
-    from flask_cors import CORS
+    from quart_cors import cors
 
-    CORS(bp, **cors_kwargs)
+    allow_origin = cors_kwargs.get("origins")
+    allow_headers = set(cors_kwargs.get("allow_headers") or [])
+    allow_methods = set(cors_kwargs.get("methods") or [])
+    expose_headers = cors_kwargs.get("expose_headers")
+    allow_credentials = cors_kwargs.get("supports_credentials")
+
+    resources = cors_kwargs.get("resources")
+    if resources:
+        for config in resources.values():
+            allow_origin = allow_origin or config.get("origins")
+            allow_headers.update(config.get("allow_headers") or [])
+            allow_methods.update(config.get("methods") or [])
+
+    cors(
+        bp,
+        allow_origin=allow_origin,
+        allow_headers=sorted(allow_headers) if allow_headers else None,
+        allow_methods=sorted(allow_methods) if allow_methods else None,
+        expose_headers=expose_headers,
+        allow_credentials=allow_credentials,
+    )
     bp._dify_cors_applied = True
 
 

@@ -2,8 +2,8 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
 from flask_restx import Api
+from quart import Quart as Flask
 
 from controllers.console.workspace.tool_providers import ToolProviderMCPApi
 from core.db.session_factory import configure_session_factory

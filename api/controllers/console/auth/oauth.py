@@ -1,8 +1,8 @@
 import logging
 
 import httpx
-from flask import current_app, redirect, request
 from flask_restx import Resource
+from quart import current_app, redirect, request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 

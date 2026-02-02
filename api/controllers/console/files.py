@@ -1,7 +1,7 @@
 from typing import Literal
 
-from flask import request
 from flask_restx import Resource
+from quart import request
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -59,17 +59,17 @@ class FileApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("documents")
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
-    def post(self):
+    async def post(self):
         current_user, _ = current_account_with_tenant()
-        source_str = request.form.get("source")
+        source_str = (await request.form).get("source")
         source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
 
-        if "file" not in request.files:
+        if "file" not in (await request.files):
             raise NoFileUploadedError()
 
-        if len(request.files) > 1:
+        if len(await request.files) > 1:
             raise TooManyFilesError()
-        file = request.files["file"]
+        file = (await request.files)["file"]
 
         if not file.filename:
             raise FilenameNotExistsError

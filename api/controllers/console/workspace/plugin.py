@@ -2,9 +2,9 @@ import io
 from collections.abc import Mapping
 from typing import Any, Literal
 
-from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from quart import request, send_file
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -211,7 +211,7 @@ class PluginListLatestVersionsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         args = ParserLatest.model_validate(console_ns.payload)
 
         try:
@@ -228,7 +228,7 @@ class PluginListInstallationsFromIdsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         _, tenant_id = current_account_with_tenant()
 
         args = ParserLatest.model_validate(console_ns.payload)
@@ -280,10 +280,10 @@ class PluginUploadFromPkgApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
+    async def post(self):
         _, tenant_id = current_account_with_tenant()
 
-        file = request.files["pkg"]
+        file = (await request.files)["pkg"]
 
         # check file size
         if file.content_length > dify_config.PLUGIN_MAX_PACKAGE_SIZE:
@@ -305,7 +305,7 @@ class PluginUploadFromGithubApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
+    async def post(self):
         _, tenant_id = current_account_with_tenant()
 
         args = ParserGithubUpload.model_validate(console_ns.payload)
@@ -324,10 +324,10 @@ class PluginUploadFromBundleApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
+    async def post(self):
         _, tenant_id = current_account_with_tenant()
 
-        file = request.files["bundle"]
+        file = (await request.files)["bundle"]
 
         # check file size
         if file.content_length > dify_config.PLUGIN_MAX_BUNDLE_SIZE:
@@ -349,7 +349,7 @@ class PluginInstallFromPkgApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
+    async def post(self):
         _, tenant_id = current_account_with_tenant()
         args = ParserPluginIdentifiers.model_validate(console_ns.payload)
 
@@ -368,7 +368,7 @@ class PluginInstallFromGithubApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
+    async def post(self):
         _, tenant_id = current_account_with_tenant()
 
         args = ParserGithubInstall.model_validate(console_ns.payload)
@@ -394,7 +394,7 @@ class PluginInstallFromMarketplaceApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
+    async def post(self):
         _, tenant_id = current_account_with_tenant()
 
         args = ParserPluginIdentifiers.model_validate(console_ns.payload)
@@ -490,7 +490,7 @@ class PluginDeleteInstallTaskApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self, task_id: str):
+    async def post(self, task_id: str):
         _, tenant_id = current_account_with_tenant()
 
         try:
@@ -505,7 +505,7 @@ class PluginDeleteAllInstallTaskItemsApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
+    async def post(self):
         _, tenant_id = current_account_with_tenant()
 
         try:
@@ -520,7 +520,7 @@ class PluginDeleteInstallTaskItemApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self, task_id: str, identifier: str):
+    async def post(self, task_id: str, identifier: str):
         _, tenant_id = current_account_with_tenant()
 
         try:
@@ -536,7 +536,7 @@ class PluginUpgradeFromMarketplaceApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
+    async def post(self):
         _, tenant_id = current_account_with_tenant()
 
         args = ParserMarketplaceUpgrade.model_validate(console_ns.payload)
@@ -558,7 +558,7 @@ class PluginUpgradeFromGithubApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
+    async def post(self):
         _, tenant_id = current_account_with_tenant()
 
         args = ParserGithubUpgrade.model_validate(console_ns.payload)
@@ -585,7 +585,7 @@ class PluginUninstallApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
+    async def post(self):
         args = ParserUninstall.model_validate(console_ns.payload)
 
         _, tenant_id = current_account_with_tenant()
@@ -602,7 +602,7 @@ class PluginChangePermissionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         current_user, current_tenant_id = current_account_with_tenant()
         user = current_user
         if not user.is_admin_or_owner:
@@ -681,7 +681,7 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         """Fetch dynamic options using credentials directly (for edit mode)."""
         current_user, tenant_id = current_account_with_tenant()
         user_id = current_user.id
@@ -711,7 +711,7 @@ class PluginChangePreferencesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         user, tenant_id = current_account_with_tenant()
         if not user.is_admin_or_owner:
             raise Forbidden()
@@ -800,7 +800,7 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    async def post(self):
         # exclude one single plugin
         _, tenant_id = current_account_with_tenant()
 

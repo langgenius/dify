@@ -53,7 +53,7 @@ console_ns.schema_model(
     AppSiteUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
 
-# Register model for flask_restx to avoid dict type issues in Swagger
+# Register model for quart_restx to avoid dict type issues in Swagger
 app_site_model = console_ns.model("AppSite", app_site_fields)
 
 
@@ -72,7 +72,7 @@ class AppSite(Resource):
     @account_initialization_required
     @get_app_model
     @marshal_with(app_site_model)
-    def post(self, app_model):
+    async def post(self, app_model):
         args = AppSiteUpdatePayload.model_validate(console_ns.payload or {})
         current_user, _ = current_account_with_tenant()
         site = db.session.query(Site).where(Site.app_id == app_model.id).first()
@@ -122,7 +122,7 @@ class AppSiteAccessTokenReset(Resource):
     @account_initialization_required
     @get_app_model
     @marshal_with(app_site_model)
-    def post(self, app_model):
+    async def post(self, app_model):
         current_user, _ = current_account_with_tenant()
         site = db.session.query(Site).where(Site.app_id == app_model.id).first()
 

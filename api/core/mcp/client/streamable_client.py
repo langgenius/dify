@@ -391,7 +391,7 @@ class StreamableHTTPTransport:
         session_message = SessionMessage(JSONRPCMessage(jsonrpc_error))
         server_to_client_queue.put(session_message)
 
-    def post_writer(
+    async def post_writer(
         self,
         client: httpx.Client,
         client_to_server_queue: ClientToServerQueue,

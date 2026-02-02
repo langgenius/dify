@@ -81,7 +81,7 @@ register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessageP
 )
 class CompletionApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
-    def post(self, installed_app):
+    async def post(self, installed_app):
         app_model = installed_app.app
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
@@ -130,7 +130,7 @@ class CompletionApi(InstalledAppResource):
     endpoint="installed_app_stop_completion",
 )
 class CompletionStopApi(InstalledAppResource):
-    def post(self, installed_app, task_id):
+    async def post(self, installed_app, task_id):
         app_model = installed_app.app
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
@@ -154,7 +154,7 @@ class CompletionStopApi(InstalledAppResource):
 )
 class ChatApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    def post(self, installed_app):
+    async def post(self, installed_app):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -205,7 +205,7 @@ class ChatApi(InstalledAppResource):
     endpoint="installed_app_stop_chat_completion",
 )
 class ChatStopApi(InstalledAppResource):
-    def post(self, installed_app, task_id):
+    async def post(self, installed_app, task_id):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

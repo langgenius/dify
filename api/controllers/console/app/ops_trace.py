@@ -1,8 +1,8 @@
 from typing import Any
 
-from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
+from quart import request
 from werkzeug.exceptions import BadRequest
 
 from controllers.console import console_ns
@@ -71,7 +71,7 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
+    async def post(self, app_id):
         """Create a new trace app configuration"""
         args = TraceConfigPayload.model_validate(console_ns.payload)
 

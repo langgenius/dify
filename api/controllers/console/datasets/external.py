@@ -1,6 +1,6 @@
-from flask import request
 from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field
+from quart import request
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -142,7 +142,7 @@ class ExternalApiTemplateListApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.expect(console_ns.models[ExternalKnowledgeApiPayload.__name__])
-    def post(self):
+    async def post(self):
         current_user, current_tenant_id = current_account_with_tenant()
         payload = ExternalKnowledgeApiPayload.model_validate(console_ns.payload or {})
 
@@ -244,7 +244,7 @@ class ExternalDatasetCreateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self):
+    async def post(self):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, current_tenant_id = current_account_with_tenant()
         payload = ExternalDatasetCreatePayload.model_validate(console_ns.payload or {})
@@ -278,7 +278,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, dataset_id):
+    async def post(self, dataset_id):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -314,7 +314,7 @@ class BedrockRetrievalApi(Resource):
     @console_ns.doc(description="Bedrock retrieval test (internal use only)")
     @console_ns.expect(console_ns.models[BedrockRetrievalPayload.__name__])
     @console_ns.response(200, "Bedrock retrieval test completed")
-    def post(self):
+    async def post(self):
         payload = BedrockRetrievalPayload.model_validate(console_ns.payload or {})
 
         # Call the knowledge retrieval service

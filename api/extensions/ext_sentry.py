@@ -7,7 +7,7 @@ def init_app(app: DifyApp):
         import sentry_sdk
         from langfuse import parse_error
         from sentry_sdk.integrations.celery import CeleryIntegration
-        from sentry_sdk.integrations.flask import FlaskIntegration
+        from sentry_sdk.integrations.quart import QuartIntegration
         from werkzeug.exceptions import HTTPException
 
         from core.model_runtime.errors.invoke import InvokeRateLimitError
@@ -22,7 +22,7 @@ def init_app(app: DifyApp):
 
         sentry_sdk.init(
             dsn=dify_config.SENTRY_DSN,
-            integrations=[FlaskIntegration(), CeleryIntegration()],
+            integrations=[QuartIntegration(), CeleryIntegration()],
             ignore_errors=[
                 HTTPException,
                 ValueError,

@@ -1,8 +1,8 @@
 import json
 from typing import cast
 
-from flask import request
 from flask_restx import Resource, fields
+from quart import request
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -50,7 +50,7 @@ class ModelConfigResource(Resource):
     @edit_permission_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
-    def post(self, app_model):
+    async def post(self, app_model):
         """Modify app model config"""
         current_user, current_tenant_id = current_account_with_tenant()
         # validate config

@@ -3,7 +3,7 @@ import io
 from unittest.mock import patch
 
 import pytest
-from flask.views import MethodView
+from quart.views import MethodView
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import (
@@ -26,19 +26,21 @@ class TestFileUploadSecurity:
     # Test 1: Basic file validation
     def test_should_validate_file_presence(self):
         """Test that missing file is detected"""
-        from flask import Flask, request
+        from quart import Quart as Flask
+        from quart import request
 
         app = Flask(__name__)
 
         with app.test_request_context(method="POST", data={}):
             # Simulate the check in FileApi.post()
-            if "file" not in request.files:
+            if "file" not in (await request.files):
                 with pytest.raises(NoFileUploadedError):
                     raise NoFileUploadedError()
 
     def test_should_validate_multiple_files(self):
         """Test that multiple files are rejected"""
-        from flask import Flask, request
+        from quart import Quart as Flask
+        from quart import request
 
         app = Flask(__name__)
 
@@ -49,20 +51,21 @@ class TestFileUploadSecurity:
 
         with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
             # Simulate the check in FileApi.post()
-            if len(request.files) > 1:
+            if len(await request.files) > 1:
                 with pytest.raises(TooManyFilesError):
                     raise TooManyFilesError()
 
     def test_should_validate_empty_filename(self):
         """Test that empty filename is rejected"""
-        from flask import Flask, request
+        from quart import Quart as Flask
+        from quart import request
 
         app = Flask(__name__)
 
         file_data = {"file": (io.BytesIO(b"content"), "", "text/plain")}
 
         with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
-            file = request.files["file"]
+            file = (await request.files)["file"]
             if not file.filename:
                 with pytest.raises(FilenameNotExistsError):
                     raise FilenameNotExistsError

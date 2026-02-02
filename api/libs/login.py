@@ -4,13 +4,13 @@ from collections.abc import Callable
 from functools import wraps
 from typing import TYPE_CHECKING, Any
 
-from flask import current_app, g, has_request_context, request
-from flask_login.config import EXEMPT_METHODS
+from quart import current_app, g, has_request_context, request
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
 from libs.token import check_csrf_token
 from models import Account
+from quart_login.config import EXEMPT_METHODS
 
 if TYPE_CHECKING:
     from models.model import EndUser
@@ -47,7 +47,7 @@ def login_required(func: Callable[P, R]):
 
         @app.route('/post')
         @login_required
-        def post():
+        async def post():
             pass
 
     If there are only certain times you need to require that your user is
@@ -81,7 +81,7 @@ def login_required(func: Callable[P, R]):
         # we put csrf validation here for less conflicts
         # TODO: maybe find a better place for it.
         check_csrf_token(request, current_user.id)
-        return current_app.ensure_sync(func)(*args, **kwargs)
+        return (func)(*args, **kwargs)
 
     return decorated_view
 

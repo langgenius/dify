@@ -1,15 +1,15 @@
-import flask_restx
 from flask_restx import Resource, fields, marshal_with
-from flask_restx._http import HTTPStatus
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
+import quart_restx
 from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
 from models.model import ApiToken, App
+from quart_restx._http import HTTPStatus
 
 from . import console_ns
 from .wraps import account_initialization_required, edit_permission_required, setup_required
@@ -44,7 +44,7 @@ def _get_resource(resource_id, tenant_id, resource_model):
             ).scalar_one_or_none()
 
     if resource is None:
-        flask_restx.abort(HTTPStatus.NOT_FOUND, message=f"{resource_model.__name__} not found.")
+        quart_restx.abort(HTTPStatus.NOT_FOUND, message=f"{resource_model.__name__} not found.")
 
     return resource
 
@@ -74,7 +74,7 @@ class BaseApiKeyListResource(Resource):
 
     @marshal_with(api_key_item_model)
     @edit_permission_required
-    def post(self, resource_id):
+    async def post(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         _, current_tenant_id = current_account_with_tenant()
@@ -86,7 +86,7 @@ class BaseApiKeyListResource(Resource):
         )
 
         if current_key_count >= self.max_keys:
-            flask_restx.abort(
+            quart_restx.abort(
                 HTTPStatus.BAD_REQUEST,
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
                 custom="max_keys_exceeded",
@@ -129,7 +129,7 @@ class BaseApiKeyResource(Resource):
         )
 
         if key is None:
-            flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
+            quart_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
 
         db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
         db.session.commit()
@@ -152,7 +152,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc(params={"resource_id": "App ID"})
     @console_ns.response(201, "API key created successfully", api_key_item_model)
     @console_ns.response(400, "Maximum keys exceeded")
-    def post(self, resource_id):  # type: ignore
+    async def post(self, resource_id):  # type: ignore
         """Create a new API key for an app"""
         return super().post(resource_id)
 
@@ -192,7 +192,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc(params={"resource_id": "Dataset ID"})
     @console_ns.response(201, "API key created successfully", api_key_item_model)
     @console_ns.response(400, "Maximum keys exceeded")
-    def post(self, resource_id):  # type: ignore
+    async def post(self, resource_id):  # type: ignore
         """Create a new API key for a dataset"""
         return super().post(resource_id)
 

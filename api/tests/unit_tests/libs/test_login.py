@@ -1,10 +1,11 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, g
-from flask_login import LoginManager, UserMixin
+from quart import Quart as Flask
+from quart import g
 
 from libs.login import _get_user, current_user, login_required
+from quart_login import LoginManager, UserMixin
 
 
 class MockUser(UserMixin):

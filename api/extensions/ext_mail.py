@@ -1,7 +1,5 @@
 import logging
 
-from flask import Flask
-
 from configs import dify_config
 from dify_app import DifyApp
 
@@ -16,7 +14,7 @@ class Mail:
     def is_inited(self) -> bool:
         return self._client is not None
 
-    def init_app(self, app: Flask):
+    def init_app(self, app: DifyApp):
         mail_type = dify_config.MAIL_TYPE
         if not mail_type:
             logger.warning("MAIL_TYPE is not set")

@@ -4,7 +4,7 @@ import uuid
 from unittest import mock
 
 import pytest
-from flask.testing import FlaskClient
+from quart.testing import QuartClient as FlaskClient
 
 from controllers.console.app import model_config as model_config_api
 from controllers.console.app import wraps

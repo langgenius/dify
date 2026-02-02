@@ -1,6 +1,5 @@
-from flask import request
 from flask_restx import Resource
-from flask_restx.api import HTTPStatus
+from quart import request
 
 import services
 from controllers.common.errors import (
@@ -16,6 +15,7 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from extensions.ext_database import db
 from fields.file_fields import FileResponse
 from models import App, EndUser
+from quart_restx.api import HTTPStatus
 from services.file_service import FileService
 
 register_schema_models(service_api_ns, FileResponse)
@@ -36,19 +36,19 @@ class FileApi(Resource):
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))  # type: ignore
     @service_api_ns.response(HTTPStatus.CREATED, "File uploaded", service_api_ns.models[FileResponse.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    async def post(self, app_model: App, end_user: EndUser):
         """Upload a file for use in conversations.
 
         Accepts a single file upload via multipart/form-data.
         """
         # check file
-        if "file" not in request.files:
+        if "file" not in (await request.files):
             raise NoFileUploadedError()
 
-        if len(request.files) > 1:
+        if len(await request.files) > 1:
             raise TooManyFilesError()
 
-        file = request.files["file"]
+        file = (await request.files)["file"]
         if not file.mimetype:
             raise UnsupportedFileTypeError()
 

@@ -1,8 +1,8 @@
 import logging
 from typing import Literal
 
-from flask import request
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from quart import request
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.schema import register_schema_models
@@ -147,7 +147,7 @@ class MessageFeedbackApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user, message_id):
+    async def post(self, app_model, end_user, message_id):
         message_id = str(message_id)
 
         payload = MessageFeedbackPayload.model_validate(web_ns.payload or {})

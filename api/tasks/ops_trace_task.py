@@ -2,7 +2,7 @@ import json
 import logging
 
 from celery import shared_task
-from flask import current_app
+from quart import current_app
 
 from core.ops.entities.config_entity import OPS_FILE_PATH, OPS_TRACE_FAILED_KEY
 from core.ops.entities.trace_entity import trace_info_info_map

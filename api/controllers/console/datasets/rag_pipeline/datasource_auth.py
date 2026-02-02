@@ -1,8 +1,8 @@
 from typing import Any
 
-from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from quart import make_response, redirect, request
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -171,7 +171,7 @@ class DatasourceAuth(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, provider_id: str):
+    async def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
         payload = DatasourceCredentialPayload.model_validate(console_ns.payload or {})
@@ -212,7 +212,7 @@ class DatasourceAuthDeleteApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, provider_id: str):
+    async def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
         datasource_provider_id = DatasourceProviderID(provider_id)
@@ -237,7 +237,7 @@ class DatasourceAuthUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, provider_id: str):
+    async def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
         datasource_provider_id = DatasourceProviderID(provider_id)
@@ -288,7 +288,7 @@ class DatasourceAuthOauthCustomClient(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, provider_id: str):
+    async def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
         payload = DatasourceCustomClientPayload.model_validate(console_ns.payload or {})
@@ -324,7 +324,7 @@ class DatasourceAuthDefaultApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, provider_id: str):
+    async def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
         payload = DatasourceDefaultPayload.model_validate(console_ns.payload or {})
@@ -345,7 +345,7 @@ class DatasourceUpdateProviderNameApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, provider_id: str):
+    async def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
         payload = DatasourceUpdateNamePayload.model_validate(console_ns.payload or {})

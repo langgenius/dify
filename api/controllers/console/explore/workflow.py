@@ -45,7 +45,7 @@ register_schema_model(console_ns, WorkflowRunPayload)
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
 class InstalledAppWorkflowRunApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__])
-    def post(self, installed_app: InstalledApp):
+    async def post(self, installed_app: InstalledApp):
         """
         Run workflow
         """
@@ -84,7 +84,7 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop")
 class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
-    def post(self, installed_app: InstalledApp, task_id: str):
+    async def post(self, installed_app: InstalledApp, task_id: str):
         """
         Stop workflow task
         """

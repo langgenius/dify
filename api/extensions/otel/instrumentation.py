@@ -1,15 +1,16 @@
 import contextlib
 import logging
 
-import flask
+from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.metrics import get_meter, get_meter_provider
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span, get_tracer_provider
+from opentelemetry.trace import get_current_span, get_tracer_provider
 from opentelemetry.trace.status import StatusCode
+from quart import request
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -63,7 +64,7 @@ def instrument_exception_logging() -> None:
     logging.getLogger().addHandler(exception_handler)
 
 
-def init_flask_instrumentor(app: DifyApp) -> None:
+def init_asgi_instrumentor(app: DifyApp) -> None:
     meter = get_meter("http_metrics", version=dify_config.project.version)
     _http_response_counter = meter.create_counter(
         "http.server.response.count",
@@ -71,19 +72,27 @@ def init_flask_instrumentor(app: DifyApp) -> None:
         unit="{response}",
     )
 
-    def response_hook(span: Span, status: str, response_headers: list) -> None:
+    if hasattr(app, "asgi_app"):
+        app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)
+    else:
+        app.asgi_app = OpenTelemetryMiddleware(app)
+
+    if dify_config.DEBUG:
+        logger.info("Initializing ASGI instrumentor")
+
+    @app.after_request  # type: ignore[misc]
+    async def add_http_metrics(response):  # pyright: ignore[reportUnusedFunction]
+        span = get_current_span()
         if span and span.is_recording():
             try:
-                if status.startswith("2"):
+                status_code = response.status_code
+                if 200 <= status_code < 400:
                     span.set_status(StatusCode.OK)
                 else:
-                    span.set_status(StatusCode.ERROR, status)
+                    span.set_status(StatusCode.ERROR, str(status_code))
 
-                status = status.split(" ")[0]
-                status_code = int(status)
                 status_class = f"{status_code // 100}xx"
                 attributes: dict[str, str | int] = {"status_code": status_code, "status_class": status_class}
-                request = flask.request
                 if request and request.url_rule:
                     attributes[SpanAttributes.HTTP_TARGET] = str(request.url_rule.rule)
                 if request and request.method:
@@ -91,18 +100,17 @@ def init_flask_instrumentor(app: DifyApp) -> None:
                 _http_response_counter.add(1, attributes)
             except Exception:
                 logger.exception("Error setting status and attributes")
-
-    from opentelemetry.instrumentation.flask import FlaskInstrumentor
-
-    instrumentor = FlaskInstrumentor()
-    if dify_config.DEBUG:
-        logger.info("Initializing Flask instrumentor")
-    instrumentor.instrument_app(app, response_hook=response_hook)
+        return response
 
 
-def init_sqlalchemy_instrumentor(app: DifyApp) -> None:
-    with app.app_context():
-        engines = list(app.extensions["sqlalchemy"].engines.values())
+async def init_sqlalchemy_instrumentor(app: DifyApp) -> None:
+    from extensions.ext_database import db
+
+    async with app.app_context():
+        engines = [db.engine]
+        binds = app.config.get("SQLALCHEMY_BINDS") or {}
+        for bind_key in binds:
+            engines.append(db.get_engine(bind_key=bind_key))
         SQLAlchemyInstrumentor().instrument(enable_commenter=True, engines=engines)
 
 
@@ -116,10 +124,14 @@ def init_httpx_instrumentor() -> None:
 
 def init_instruments(app: DifyApp) -> None:
     if not is_celery_worker():
-        init_flask_instrumentor(app)
+        init_asgi_instrumentor(app)
         CeleryInstrumentor(tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()).instrument()
 
     instrument_exception_logging()
-    init_sqlalchemy_instrumentor(app)
+
+    async def _init_sqlalchemy() -> None:
+        await init_sqlalchemy_instrumentor(app)
+
+    app.before_serving(_init_sqlalchemy)
     init_redis_instrumentor()
     init_httpx_instrumentor()

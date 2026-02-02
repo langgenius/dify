@@ -1,4 +1,4 @@
-from flask import Response
+from quart import Response
 
 from controllers.common.file_response import enforce_download_for_html, is_html_content
 

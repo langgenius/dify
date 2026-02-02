@@ -2,9 +2,9 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
-from flask import jsonify, request
 from flask_restx import Resource
 from pydantic import BaseModel
+from quart import jsonify, request
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -108,7 +108,7 @@ def oauth_server_access_token_required(view: Callable[Concatenate[T, OAuthProvid
 class OAuthServerAppApi(Resource):
     @setup_required
     @oauth_server_client_id_required
-    def post(self, oauth_provider_app: OAuthProviderApp):
+    async def post(self, oauth_provider_app: OAuthProviderApp):
         payload = OAuthProviderRequest.model_validate(request.get_json())
         redirect_uri = payload.redirect_uri
 
@@ -131,7 +131,7 @@ class OAuthServerUserAuthorizeApi(Resource):
     @login_required
     @account_initialization_required
     @oauth_server_client_id_required
-    def post(self, oauth_provider_app: OAuthProviderApp):
+    async def post(self, oauth_provider_app: OAuthProviderApp):
         current_user, _ = current_account_with_tenant()
         account = current_user
         user_account_id = account.id
@@ -148,7 +148,7 @@ class OAuthServerUserAuthorizeApi(Resource):
 class OAuthServerUserTokenApi(Resource):
     @setup_required
     @oauth_server_client_id_required
-    def post(self, oauth_provider_app: OAuthProviderApp):
+    async def post(self, oauth_provider_app: OAuthProviderApp):
         payload = OAuthTokenRequest.model_validate(request.get_json())
 
         try:
@@ -199,7 +199,7 @@ class OAuthServerUserAccountApi(Resource):
     @setup_required
     @oauth_server_client_id_required
     @oauth_server_access_token_required
-    def post(self, oauth_provider_app: OAuthProviderApp, account: Account):
+    async def post(self, oauth_provider_app: OAuthProviderApp, account: Account):
         return jsonable_encoder(
             {
                 "name": account.name,

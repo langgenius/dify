@@ -2,9 +2,9 @@ import json
 import logging
 from typing import Any, Literal, cast
 
-from flask import abort, request
 from flask_restx import Resource, marshal_with  # type: ignore
 from pydantic import BaseModel, Field
+from quart import abort, request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -169,7 +169,7 @@ class DraftRagPipelineApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
-    def post(self, pipeline: Pipeline):
+    async def post(self, pipeline: Pipeline):
         """
         Sync draft workflow
         """
@@ -241,7 +241,7 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
-    def post(self, pipeline: Pipeline, node_id: str):
+    async def post(self, pipeline: Pipeline, node_id: str):
         """
         Run draft workflow iteration node
         """
@@ -276,7 +276,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline, node_id: str):
+    async def post(self, pipeline: Pipeline, node_id: str):
         """
         Run draft workflow loop node
         """
@@ -311,7 +311,7 @@ class DraftRagPipelineRunApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline):
+    async def post(self, pipeline: Pipeline):
         """
         Run draft workflow
         """
@@ -343,7 +343,7 @@ class PublishedRagPipelineRunApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline):
+    async def post(self, pipeline: Pipeline):
         """
         Run published workflow
         """
@@ -373,7 +373,7 @@ class PublishedRagPipelineRunApi(Resource):
 #     @login_required
 #     @account_initialization_required
 #     @get_rag_pipeline
-#     def post(self, pipeline: Pipeline, node_id: str):
+#     async def post(self, pipeline: Pipeline, node_id: str):
 #         """
 #         Run rag pipeline datasource
 #         """
@@ -415,7 +415,7 @@ class PublishedRagPipelineRunApi(Resource):
 #     @login_required
 #     @account_initialization_required
 #     @get_rag_pipeline
-#     def post(self, pipeline: Pipeline, node_id: str):
+#     async def post(self, pipeline: Pipeline, node_id: str):
 #         """
 #         Run rag pipeline datasource
 #         """
@@ -459,7 +459,7 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline, node_id: str):
+    async def post(self, pipeline: Pipeline, node_id: str):
         """
         Run rag pipeline datasource
         """
@@ -492,7 +492,7 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
     @edit_permission_required
     @account_initialization_required
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline, node_id: str):
+    async def post(self, pipeline: Pipeline, node_id: str):
         """
         Run rag pipeline datasource
         """
@@ -526,7 +526,7 @@ class RagPipelineDraftNodeRunApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @marshal_with(workflow_run_node_execution_model)
-    def post(self, pipeline: Pipeline, node_id: str):
+    async def post(self, pipeline: Pipeline, node_id: str):
         """
         Run draft workflow node
         """
@@ -554,7 +554,7 @@ class RagPipelineTaskStopApi(Resource):
     @edit_permission_required
     @account_initialization_required
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline, task_id: str):
+    async def post(self, pipeline: Pipeline, task_id: str):
         """
         Stop workflow task
         """
@@ -593,7 +593,7 @@ class PublishedRagPipelineApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline):
+    async def post(self, pipeline: Pipeline):
         """
         Publish workflow
         """
@@ -936,7 +936,7 @@ class RagPipelineTransformApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, dataset_id: str):
+    async def post(self, dataset_id: str):
         current_user, _ = current_account_with_tenant()
 
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
@@ -957,7 +957,7 @@ class RagPipelineDatasourceVariableApi(Resource):
     @get_rag_pipeline
     @edit_permission_required
     @marshal_with(workflow_run_node_execution_model)
-    def post(self, pipeline: Pipeline):
+    async def post(self, pipeline: Pipeline):
         """
         Set datasource variables
         """

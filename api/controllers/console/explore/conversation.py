@@ -1,7 +1,7 @@
 from typing import Any
 
-from flask import request
 from pydantic import BaseModel, Field, TypeAdapter, model_validator
+from quart import request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -123,7 +123,7 @@ class ConversationApi(InstalledAppResource):
 )
 class ConversationRenameApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[ConversationRenamePayload.__name__])
-    def post(self, installed_app, c_id):
+    async def post(self, installed_app, c_id):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

@@ -2,7 +2,7 @@ import json
 from os import path
 from pathlib import Path
 
-from flask import current_app
+from quart import current_app
 
 from services.recommend_app.recommend_app_base import RecommendAppRetrievalBase
 from services.recommend_app.recommend_app_type import RecommendAppType

@@ -1,8 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
-from flask_login import LoginManager, UserMixin
+from quart import Quart as Flask
 
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
@@ -17,6 +16,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from models.account import AccountStatus
+from quart_login import LoginManager, UserMixin
 from services.feature_service import LicenseStatus
 
 

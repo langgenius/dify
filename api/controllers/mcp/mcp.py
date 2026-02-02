@@ -1,8 +1,8 @@
 from typing import Any, Union
 
-from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field, ValidationError
+from quart import Response
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_model
@@ -48,7 +48,7 @@ class MCPAppApi(Resource):
             404: "Server or app not found",
         }
     )
-    def post(self, server_code: str):
+    async def post(self, server_code: str):
         """Handle MCP requests for a specific server.
 
         Processes JSON-RPC formatted requests according to the Model Context Protocol specification.

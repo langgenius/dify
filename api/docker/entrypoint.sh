@@ -10,7 +10,7 @@ export PYTHONIOENCODING=${PYTHONIOENCODING:-utf-8}
 
 if [[ "${MIGRATION_ENABLED}" == "true" ]]; then
   echo "Running migrations"
-  flask upgrade-db
+  quart upgrade-db
   # Pure migration mode
   if [[ "${MODE}" == "migration" ]]; then
   echo "Migration completed, exiting normally"
@@ -72,8 +72,8 @@ elif [[ "${MODE}" == "beat" ]]; then
   exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO}
 
 elif [[ "${MODE}" == "job" ]]; then
-  # Job mode: Run a one-time Flask command and exit
-  # Pass Flask command and arguments via container args
+  # Job mode: Run a one-time Quart command and exit
+  # Pass Quart command and arguments via container args
   # Example K8s usage:
   #   args:
   #   - create-tenant
@@ -97,15 +97,15 @@ elif [[ "${MODE}" == "job" ]]; then
     echo "  create-tenant, reset-password, reset-email, upgrade-db,"
     echo "  vdb-migrate, install-plugins, and more..."
     echo ""
-    echo "Run 'flask --help' to see all available commands."
+    echo "Run 'quart --help' to see all available commands."
     exit 1
   fi
 
-  echo "Running Flask job command: flask $*"
+  echo "Running Quart job command: quart $*"
   
   # Temporarily disable exit on error to capture exit code
   set +e
-  flask "$@"
+  quart "$@"
   JOB_EXIT_CODE=$?
   set -e
 
@@ -119,14 +119,12 @@ elif [[ "${MODE}" == "job" ]]; then
 
 else
   if [[ "${DEBUG}" == "true" ]]; then
-    exec flask run --host=${DIFY_BIND_ADDRESS:-0.0.0.0} --port=${DIFY_PORT:-5001} --debug
+    exec quart run --host=${DIFY_BIND_ADDRESS:-0.0.0.0} --port=${DIFY_PORT:-5001} --debug
   else
-    exec gunicorn \
+    exec hypercorn \
       --bind "${DIFY_BIND_ADDRESS:-0.0.0.0}:${DIFY_PORT:-5001}" \
       --workers ${SERVER_WORKER_AMOUNT:-1} \
-      --worker-class ${SERVER_WORKER_CLASS:-gevent} \
-      --worker-connections ${SERVER_WORKER_CONNECTIONS:-10} \
-      --timeout ${GUNICORN_TIMEOUT:-200} \
+      --keep-alive ${HYPERCORN_KEEP_ALIVE:-5} \
       app:app
   fi
 fi

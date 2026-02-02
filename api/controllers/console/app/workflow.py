@@ -3,9 +3,9 @@ import logging
 from collections.abc import Sequence
 from typing import Any
 
-from flask import abort, request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
+from quart import abort, request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 LISTENING_RETRY_IN = 2000
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
-# Register models for flask_restx to avoid dict type issues in Swagger
+# Register models for quart_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
 
 # Base models
@@ -254,7 +254,7 @@ class DraftWorkflowApi(Resource):
     @console_ns.response(400, "Invalid workflow configuration")
     @console_ns.response(403, "Permission denied")
     @edit_permission_required
-    def post(self, app_model: App):
+    async def post(self, app_model: App):
         """
         Sync draft workflow
         """
@@ -323,7 +323,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @edit_permission_required
-    def post(self, app_model: App):
+    async def post(self, app_model: App):
         """
         Run draft workflow
         """
@@ -369,7 +369,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    async def post(self, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
         """
@@ -407,7 +407,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    async def post(self, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
         """
@@ -445,7 +445,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    async def post(self, app_model: App, node_id: str):
         """
         Run draft workflow loop node
         """
@@ -483,7 +483,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    async def post(self, app_model: App, node_id: str):
         """
         Run draft workflow loop node
         """
@@ -520,7 +520,7 @@ class DraftWorkflowRunApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
-    def post(self, app_model: App):
+    async def post(self, app_model: App):
         """
         Run draft workflow
         """
@@ -558,7 +558,7 @@ class WorkflowTaskStopApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
-    def post(self, app_model: App, task_id: str):
+    async def post(self, app_model: App, task_id: str):
         """
         Stop workflow task
         """
@@ -587,7 +587,7 @@ class DraftWorkflowNodeRunApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @marshal_with(workflow_run_node_execution_model)
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    async def post(self, app_model: App, node_id: str):
         """
         Run draft workflow node
         """
@@ -650,7 +650,7 @@ class PublishedWorkflowApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
-    def post(self, app_model: App):
+    async def post(self, app_model: App):
         """
         Publish workflow
         """
@@ -750,7 +750,7 @@ class ConvertToWorkflowApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.COMPLETION])
     @edit_permission_required
-    def post(self, app_model: App):
+    async def post(self, app_model: App):
         """
         Convert basic mode of chatbot app to workflow mode
         Convert expert mode of chatbot app to workflow mode
@@ -954,7 +954,7 @@ class DraftWorkflowTriggerRunApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
-    def post(self, app_model: App):
+    async def post(self, app_model: App):
         """
         Poll for trigger events and execute full workflow when event arrives
         """
@@ -1018,7 +1018,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    async def post(self, app_model: App, node_id: str):
         """
         Poll for trigger events and execute single node when event arrives
         """
@@ -1098,7 +1098,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
-    def post(self, app_model: App):
+    async def post(self, app_model: App):
         """
         Full workflow debug when the start node is a trigger
         """

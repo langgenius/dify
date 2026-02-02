@@ -1,9 +1,9 @@
 from datetime import UTC, datetime, timedelta
 from typing import Literal, cast
 
-from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 from sqlalchemy import select
 
 from controllers.console import console_ns
@@ -34,7 +34,7 @@ from services.workflow_run_service import WorkflowRunService
 WORKFLOW_RUN_STATUS_CHOICES = ["running", "succeeded", "failed", "stopped", "partial-succeeded"]
 EXPORT_SIGNED_URL_EXPIRE_SECONDS = 3600
 
-# Register models for flask_restx to avoid dict type issues in Swagger
+# Register models for quart_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
 
 # Base models

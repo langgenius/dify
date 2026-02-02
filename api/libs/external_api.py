@@ -2,8 +2,9 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-from flask import Blueprint, Flask, current_app, got_request_exception
 from flask_restx import Api
+from quart import Blueprint, Quart, current_app
+from quart.signals import got_request_exception
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
 
@@ -108,7 +109,7 @@ def register_external_error_handlers(api: Api):
         data.setdefault("code", "unknown")
         data.setdefault("status", status_code)
 
-        # Note: Exception logging is handled by Flask/Flask-RESTX framework automatically
+        # Note: Exception logging is handled by Quart/Quart-RESTX framework automatically
         # Explicit log_exception call removed to avoid duplicate log entries
 
         return data, status_code
@@ -126,7 +127,7 @@ class ExternalApi(Api):
         }
     }
 
-    def __init__(self, app: Blueprint | Flask, *args, **kwargs):
+    def __init__(self, app: Blueprint | Quart, *args, **kwargs):
         kwargs.setdefault("authorizations", self._authorizations)
         kwargs.setdefault("security", "Bearer")
         kwargs["add_specs"] = dify_config.SWAGGER_UI_ENABLED

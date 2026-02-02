@@ -7,7 +7,7 @@ from typing import ParamSpec, TypeVar
 
 P = ParamSpec("P")
 R = TypeVar("R")
-from flask import abort, request
+from quart import abort, request
 
 from configs import dify_config
 from extensions.ext_database import db

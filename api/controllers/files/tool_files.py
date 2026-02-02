@@ -1,8 +1,8 @@
 from urllib.parse import quote
 
-from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from quart import Response, request
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import UnsupportedFileTypeError

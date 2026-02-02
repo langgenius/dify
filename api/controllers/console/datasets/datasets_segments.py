@@ -1,8 +1,8 @@
 import uuid
 
-from flask import request
 from flask_restx import Resource, marshal
 from pydantic import BaseModel, Field
+from quart import request
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
 from werkzeug.exceptions import Forbidden, NotFound
@@ -317,7 +317,7 @@ class DatasetDocumentSegmentAddApi(Resource):
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[SegmentCreatePayload.__name__])
-    def post(self, dataset_id, document_id):
+    async def post(self, dataset_id, document_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
         # check dataset
@@ -477,7 +477,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[BatchImportPayload.__name__])
-    def post(self, dataset_id, document_id):
+    async def post(self, dataset_id, document_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
         # check dataset
@@ -544,7 +544,7 @@ class ChildChunkAddApi(Resource):
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[ChildChunkCreatePayload.__name__])
-    def post(self, dataset_id, document_id, segment_id):
+    async def post(self, dataset_id, document_id, segment_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
         # check dataset

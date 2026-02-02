@@ -1,8 +1,8 @@
 import logging
 
-from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel
+from quart import request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
@@ -130,7 +130,7 @@ class AppTriggerEnableApi(Resource):
     @edit_permission_required
     @get_app_model(mode=AppMode.WORKFLOW)
     @marshal_with(trigger_model)
-    def post(self, app_model: App):
+    async def post(self, app_model: App):
         """Update app trigger (enable/disable)"""
         args = ParserEnable.model_validate(console_ns.payload)
 

@@ -2,9 +2,9 @@ import json
 from collections.abc import Generator
 from typing import Any, cast
 
-from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
+from quart import request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
@@ -316,7 +316,7 @@ class DataSourceNotionApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.expect(console_ns.models[NotionEstimatePayload.__name__])
-    def post(self):
+    async def post(self):
         _, current_tenant_id = current_account_with_tenant()
 
         payload = NotionEstimatePayload.model_validate(console_ns.payload or {})

@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Any
 
-from flask import Request, Response
+from quart import Request, Response
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse
@@ -416,7 +416,7 @@ class TriggerSubscriptionBuilderService:
             },
             response={
                 "status_code": response.status_code,
-                "headers": dict(response.headers),
+                "headers": dictresponse.headers,
                 "data": response.get_data(as_text=True),
             },
             created_at=datetime.now(),

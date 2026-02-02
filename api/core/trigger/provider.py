@@ -6,7 +6,7 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
-from flask import Request
+from quart import Request
 
 from core.entities.provider_entities import BasicProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType

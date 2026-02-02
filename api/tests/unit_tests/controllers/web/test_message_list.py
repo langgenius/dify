@@ -9,10 +9,10 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from flask import Flask
-from flask.views import MethodView
+from quart import Quart as Flask
+from quart.views import MethodView
 
-# Ensure flask_restx.api finds MethodView during import.
+# Ensure quart_restx.api finds MethodView during import.
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
 

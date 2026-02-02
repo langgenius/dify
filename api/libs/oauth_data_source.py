@@ -2,12 +2,12 @@ import urllib.parse
 from typing import Any
 
 import httpx
-from flask_login import current_user
 from sqlalchemy import select
 
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.source import DataSourceOauthBinding
+from quart_login import current_user
 
 
 class OAuthDataSource:

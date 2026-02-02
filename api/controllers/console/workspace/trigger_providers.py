@@ -1,9 +1,9 @@
 import logging
 from typing import Any
 
-from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, model_validator
+from quart import make_response, redirect, request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
@@ -144,7 +144,7 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider):
+    async def post(self, provider):
         """Add a new subscription instance for a trigger provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -189,7 +189,7 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider, subscription_builder_id):
+    async def post(self, provider, subscription_builder_id):
         """Verify and update a subscription instance for a trigger provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -221,7 +221,7 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider, subscription_builder_id):
+    async def post(self, provider, subscription_builder_id):
         """Update a subscription instance for a trigger provider"""
         user = current_user
         assert isinstance(user, Account)
@@ -278,7 +278,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider, subscription_builder_id):
+    async def post(self, provider, subscription_builder_id):
         """Build a subscription instance for a trigger provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -311,7 +311,7 @@ class TriggerSubscriptionUpdateApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, subscription_id: str):
+    async def post(self, subscription_id: str):
         """Update a subscription instance"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -369,7 +369,7 @@ class TriggerSubscriptionDeleteApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, subscription_id: str):
+    async def post(self, subscription_id: str):
         """Delete a subscription instance"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -598,7 +598,7 @@ class TriggerOAuthClientManageApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider):
+    async def post(self, provider):
         """Configure custom OAuth client for a provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -652,7 +652,7 @@ class TriggerSubscriptionVerifyApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider, subscription_id):
+    async def post(self, provider, subscription_id):
         """Verify credentials for an existing subscription (edit mode only)"""
         user = current_user
         assert user.current_tenant_id is not None

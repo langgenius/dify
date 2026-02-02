@@ -4,7 +4,6 @@ import sys
 from typing import Union
 
 from celery.signals import worker_init
-from flask_login import user_loaded_from_request, user_logged_in
 from opentelemetry import trace
 from opentelemetry.propagate import set_global_textmap
 from opentelemetry.propagators.b3 import B3Format
@@ -15,6 +14,7 @@ from configs import dify_config
 from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
 from libs.helper import extract_tenant_id
 from models import Account, EndUser
+from quart_login import user_loaded_from_request, user_logged_in
 
 logger = logging.getLogger(__name__)
 

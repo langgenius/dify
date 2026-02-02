@@ -1,13 +1,13 @@
 import uuid
 
 import sqlalchemy as sa
-from flask_login import current_user
 from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
 from models.dataset import Dataset
 from models.model import App, Tag, TagBinding
+from quart_login import current_user
 
 
 class TagService:

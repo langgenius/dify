@@ -373,7 +373,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         """
         import concurrent.futures
 
-        from flask import current_app
+        from quart import current_app
 
         # Capture Flask app context for worker threads
         flask_app = None

@@ -1,9 +1,9 @@
 import logging
 from typing import Literal
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter
+from quart import request
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -102,7 +102,7 @@ class MessageFeedbackApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, message_id):
+    async def post(self, app_model: App, end_user: EndUser, message_id):
         """Submit feedback for a message.
 
         Allows users to rate messages as like/dislike and provide optional feedback content.

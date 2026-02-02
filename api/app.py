@@ -1,6 +1,63 @@
 from __future__ import annotations
 
 import sys
+import types
+
+import quart_flask_patch  # noqa: F401
+from quart_flask_patch import request as flask_request
+
+
+def _install_flask_views_shim() -> None:
+    http_method_funcs = frozenset({"get", "post", "head", "options", "delete", "put", "trace", "patch"})
+
+    class View:
+        methods = None
+        provide_automatic_options = None
+        decorators = ()
+
+        def dispatch_request(self, *args, **kwargs):  # pragma: no cover
+            raise NotImplementedError()
+
+        @classmethod
+        def as_view(cls, name, *class_args, **class_kwargs):
+            def view(*args, **kwargs):
+                self = view.view_class(*class_args, **class_kwargs)
+                return self.dispatch_request(*args, **kwargs)
+
+            view.view_class = cls
+            view.__name__ = name
+            view.__doc__ = cls.__doc__
+            view.__module__ = cls.__module__
+
+            methods = cls.methods
+            if methods is None:
+                methods = {m.upper() for m in http_method_funcs if hasattr(cls, m)}
+            view.methods = methods
+
+            if cls.decorators:
+                for decorator in cls.decorators:
+                    view = decorator(view)
+            return view
+
+    class MethodView(View):
+        def dispatch_request(self, *args, **kwargs):
+            method = flask_request.method.lower()
+            handler = getattr(self, method, None)
+            if handler is None and method == "head":
+                handler = getattr(self, "get", None)
+            if handler is None:
+                raise AttributeError(f"Unimplemented method '{flask_request.method}'")
+            return handler(*args, **kwargs)
+
+    module = types.ModuleType("flask.views")
+    module.View = View
+    module.MethodView = MethodView
+    module.http_method_funcs = http_method_funcs
+    sys.modules["flask.views"] = module
+
+
+_install_flask_views_shim()
+
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
@@ -10,7 +67,7 @@ if TYPE_CHECKING:
 
 
 def is_db_command() -> bool:
-    if len(sys.argv) > 1 and sys.argv[0].endswith("flask") and sys.argv[1] == "db":
+    if len(sys.argv) > 1 and sys.argv[0].endswith(("quart", "flask")) and sys.argv[1] == "db":
         return True
     return False
 

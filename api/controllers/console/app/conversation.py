@@ -1,9 +1,9 @@
 from typing import Literal
 
 import sqlalchemy as sa
-from flask import abort, request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
+from quart import abort, request
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import NotFound
@@ -62,7 +62,7 @@ console_ns.schema_model(
     ChatConversationQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
 
-# Register models for flask_restx to avoid dict type issues in Swagger
+# Register models for quart_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
 
 # Base models

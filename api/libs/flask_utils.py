@@ -3,23 +3,25 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import TypeVar
 
-from flask import Flask, g
+from quart import g
+
+from dify_app import DifyApp
 
 T = TypeVar("T")
 
 
 @contextmanager
 def preserve_flask_contexts(
-    flask_app: Flask,
+    flask_app: DifyApp,
     context_vars: contextvars.Context,
 ) -> Iterator[None]:
     """
     A context manager that handles:
-    1. flask-login's UserProxy copy
+    1. quart-login's UserProxy copy
     2. ContextVars copy
     3. flask_app.app_context()
 
-    This context manager ensures that the Flask application context is properly set up,
+    This context manager ensures that the Quart application context is properly set up,
     the current user is preserved across context boundaries, and any provided context variables
     are set within the new context.
 
@@ -28,7 +30,7 @@ def preserve_flask_contexts(
         but it's not the recommend use, it's better to pass user directly in parameters.
 
     Args:
-        flask_app: The Flask application instance
+        flask_app: The Quart application instance
         context_vars: contextvars.Context object containing context variables to be set in the new context
 
     Yields:
@@ -37,7 +39,7 @@ def preserve_flask_contexts(
     Example:
         ```python
         with preserve_flask_contexts(flask_app, context_vars=context_vars):
-            # Code that needs Flask app context and context variables
+            # Code that needs Quart app context and context variables
             # Current user will be preserved if available
         ```
     """

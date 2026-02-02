@@ -9,7 +9,7 @@ from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
-from flask.views import MethodView
+from quart.views import MethodView
 
 # kombu references MethodView as a global when importing celery/kombu pools.
 if not hasattr(builtins, "MethodView"):

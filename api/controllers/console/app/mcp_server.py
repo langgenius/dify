@@ -15,7 +15,7 @@ from models.model import AppMCPServer
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
-# Register model for flask_restx to avoid dict type issues in Swagger
+# Register model for quart_restx to avoid dict type issues in Swagger
 app_server_model = console_ns.model("AppServer", app_server_fields)
 
 
@@ -67,7 +67,7 @@ class AppMCPServerController(Resource):
     @setup_required
     @marshal_with(app_server_model)
     @edit_permission_required
-    def post(self, app_model):
+    async def post(self, app_model):
         _, current_tenant_id = current_account_with_tenant()
         payload = MCPServerCreatePayload.model_validate(console_ns.payload or {})
 

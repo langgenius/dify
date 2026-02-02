@@ -2,15 +2,15 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
-from flask import current_app, request
-from flask_login import user_logged_in
 from pydantic import BaseModel
+from quart import current_app, request
 from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
 from libs.login import current_user
 from models.account import Tenant
 from models.model import DefaultEndUserSessionID, EndUser
+from quart_login import user_logged_in
 
 P = ParamSpec("P")
 R = TypeVar("R")

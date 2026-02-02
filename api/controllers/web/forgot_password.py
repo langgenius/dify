@@ -1,9 +1,9 @@
 import base64
 import secrets
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_models
@@ -66,7 +66,7 @@ class ForgotPasswordSendEmailApi(Resource):
             429: "Too many requests - rate limit exceeded",
         }
     )
-    def post(self):
+    async def post(self):
         payload = ForgotPasswordSendPayload.model_validate(web_ns.payload or {})
 
         request_email = payload.email
@@ -103,7 +103,7 @@ class ForgotPasswordCheckApi(Resource):
     @web_ns.doc(
         responses={200: "Token is valid", 400: "Bad request - invalid token format", 401: "Invalid or expired token"}
     )
-    def post(self):
+    async def post(self):
         payload = ForgotPasswordCheckPayload.model_validate(web_ns.payload or {})
 
         user_email = payload.email.lower()
@@ -156,7 +156,7 @@ class ForgotPasswordResetApi(Resource):
             404: "Account not found",
         }
     )
-    def post(self):
+    async def post(self):
         payload = ForgotPasswordResetPayload.model_validate(web_ns.payload or {})
 
         # Validate passwords match

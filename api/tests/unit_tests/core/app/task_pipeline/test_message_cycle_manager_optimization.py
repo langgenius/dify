@@ -3,7 +3,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from flask import current_app
+from quart import current_app
 
 from core.app.entities.task_entities import MessageStreamResponse, StreamEvent
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager

@@ -1,9 +1,9 @@
 import logging
 from typing import Literal
 
-from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
+from quart import request
 from sqlalchemy import exists, select
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -98,7 +98,7 @@ reg(ChatMessagesQuery)
 reg(MessageFeedbackPayload)
 reg(FeedbackExportQuery)
 
-# Register models for flask_restx to avoid dict type issues in Swagger
+# Register models for quart_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
 
 # Base models
@@ -307,7 +307,7 @@ class MessageFeedbackApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_model):
+    async def post(self, app_model):
         current_user, _ = current_account_with_tenant()
 
         args = MessageFeedbackPayload.model_validate(console_ns.payload)

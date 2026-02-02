@@ -2,7 +2,7 @@ import binascii
 from collections.abc import Generator, Mapping
 from typing import Any
 
-from flask import Request
+from quart import Request
 
 from core.plugin.entities.plugin_daemon import CredentialType, PluginTriggerProviderEntity
 from core.plugin.entities.request import (

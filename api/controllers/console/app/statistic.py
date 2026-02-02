@@ -1,9 +1,9 @@
 from decimal import Decimal
 
 import sqlalchemy as sa
-from flask import abort, jsonify, request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
+from quart import abort, jsonify, request
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model

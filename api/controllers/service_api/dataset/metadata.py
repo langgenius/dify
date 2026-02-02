@@ -1,6 +1,5 @@
 from typing import Literal
 
-from flask_login import current_user
 from flask_restx import marshal
 from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
@@ -9,6 +8,7 @@ from controllers.common.schema import register_schema_model, register_schema_mod
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
 from fields.dataset_fields import dataset_metadata_fields
+from quart_login import current_user
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
@@ -47,7 +47,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id):
+    async def post(self, tenant_id, dataset_id):
         """Create metadata for a dataset."""
         metadata_args = MetadataArgs.model_validate(service_api_ns.payload or {})
 
@@ -160,7 +160,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id, action: Literal["enable", "disable"]):
+    async def post(self, tenant_id, dataset_id, action: Literal["enable", "disable"]):
         """Enable or disable built-in metadata field."""
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -189,7 +189,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id):
+    async def post(self, tenant_id, dataset_id):
         """Update metadata for multiple documents."""
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)

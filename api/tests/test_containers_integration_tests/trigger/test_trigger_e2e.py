@@ -8,8 +8,9 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from flask import Flask, Response
-from flask.testing import FlaskClient
+from quart import Quart as Flask
+from quart import Response
+from quart.testing import QuartClient as FlaskClient
 from sqlalchemy.orm import Session
 
 from configs import dify_config
