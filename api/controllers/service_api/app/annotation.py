@@ -144,6 +144,11 @@ class AnnotationUpdateDeleteApi(Resource):
             404: "Annotation not found",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Annotation updated successfully",
+        service_api_ns.models[Annotation.__name__],
+    )
     @validate_app_token
     @edit_permission_required
     def put(self, app_model: App, annotation_id: str):
