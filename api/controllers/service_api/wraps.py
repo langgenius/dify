@@ -73,14 +73,14 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
 
             # If caller needs end-user context, attach EndUser to current_user
             if fetch_user_arg:
-                if fetch_user_arg.fetch_from == WhereisUserArg.QUERY:
-                    user_id = request.args.get("user")
-                elif fetch_user_arg.fetch_from == WhereisUserArg.JSON:
-                    user_id = request.get_json().get("user")
-                elif fetch_user_arg.fetch_from == WhereisUserArg.FORM:
-                    user_id = request.form.get("user")
-                else:
-                    user_id = None
+                user_id = None
+                match fetch_user_arg.fetch_from:
+                    case WhereisUserArg.QUERY:
+                        user_id = request.args.get("user")
+                    case WhereisUserArg.JSON:
+                        user_id = request.get_json().get("user")
+                    case WhereisUserArg.FORM:
+                        user_id = request.form.get("user")
 
                 if not user_id and fetch_user_arg.required:
                     raise ValueError("Arg user must be provided.")
