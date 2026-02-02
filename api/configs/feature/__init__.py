@@ -1281,6 +1281,20 @@ class WorkflowLogConfig(BaseSettings):
     )
 
 
+class SpecificWorkflowLogConfig(BaseSettings):
+    """Configuration for cleaning logs of specific workflows with independent retention policy."""
+
+    SPECIFIC_WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(
+        default=False, description="Enable specific workflow log cleanup task"
+    )
+    SPECIFIC_WORKFLOW_IDS: str = Field(
+        default="", description="Comma-separated list of workflow IDs to clean logs for"
+    )
+    SPECIFIC_WORKFLOW_LOG_RETENTION_DAYS: int = Field(
+        default=7, description="Retention days for specific workflow logs"
+    )
+
+
 class SwaggerUIConfig(BaseSettings):
     SWAGGER_UI_ENABLED: bool = Field(
         description="Whether to enable Swagger UI in api module",
@@ -1360,6 +1374,7 @@ class FeatureConfig(
     CeleryBeatConfig,
     CeleryScheduleTasksConfig,
     WorkflowLogConfig,
+    SpecificWorkflowLogConfig,
     WorkflowVariableTruncationConfig,
 ):
     pass

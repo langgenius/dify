@@ -165,6 +165,13 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.clean_workflow_runlogs_precise.clean_workflow_runlogs_precise",
             "schedule": crontab(minute="0", hour="2"),
         }
+    if dify_config.SPECIFIC_WORKFLOW_LOG_CLEANUP_ENABLED:
+        # 3:00 AM every day - clean logs for specific workflows
+        imports.append("schedule.clean_specific_workflow_logs")
+        beat_schedule["clean_specific_workflow_logs"] = {
+            "task": "schedule.clean_specific_workflow_logs.clean_specific_workflow_logs",
+            "schedule": crontab(minute="0", hour="3"),
+        }
     if dify_config.ENABLE_WORKFLOW_RUN_CLEANUP_TASK:
         # for saas only
         imports.append("schedule.clean_workflow_runs_task")
