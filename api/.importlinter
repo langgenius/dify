@@ -227,6 +227,9 @@ ignore_imports =
     core.workflow.nodes.knowledge_index.entities -> core.rag.retrieval.retrieval_methods
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.retrieval.retrieval_methods
     core.workflow.nodes.knowledge_index.knowledge_index_node -> models.dataset
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> services.summary_index_service
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> tasks.generate_summary_index_task
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.processor.paragraph_index_processor
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.rag.retrieval.retrieval_methods
     core.workflow.nodes.llm.node -> models.dataset
     core.workflow.nodes.agent.agent_node -> core.tools.utils.message_transformer
@@ -299,6 +302,58 @@ ignore_imports =
     core.workflow.workflow_entry -> models.enums
     core.workflow.nodes.agent.agent_node -> services
     core.workflow.nodes.tool.tool_node -> services
+
+[importlinter:contract:model-runtime-no-internal-imports]
+name = Model Runtime Internal Imports
+type = forbidden
+source_modules =
+    core.model_runtime
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    models
+    services
+    tasks
+    core.agent
+    core.app
+    core.base
+    core.callback_handler
+    core.datasource
+    core.db
+    core.entities
+    core.errors
+    core.extension
+    core.external_data_tool
+    core.file
+    core.helper
+    core.hosting_configuration
+    core.indexing_runner
+    core.llm_generator
+    core.logging
+    core.mcp
+    core.memory
+    core.model_manager
+    core.moderation
+    core.ops
+    core.plugin
+    core.prompt
+    core.provider_manager
+    core.rag
+    core.repositories
+    core.schemas
+    core.tools
+    core.trigger
+    core.variables
+    core.workflow
+ignore_imports =
+    core.model_runtime.model_providers.__base.ai_model -> configs
+    core.model_runtime.model_providers.__base.ai_model -> extensions.ext_redis
+    core.model_runtime.model_providers.__base.large_language_model -> configs
+    core.model_runtime.model_providers.__base.text_embedding_model -> core.entities.embedding_type
+    core.model_runtime.model_providers.model_provider_factory -> configs
+    core.model_runtime.model_providers.model_provider_factory -> extensions.ext_redis
+    core.model_runtime.model_providers.model_provider_factory -> models.provider_ids
 
 [importlinter:contract:rsc]
 name = RSC
