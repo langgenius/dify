@@ -472,19 +472,19 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                             filter.get("value"),
                             filters,
                         )
-                    conditions.append(
-                        Condition(
-                            name=filter.get("metadata_name"),  # type: ignore
-                            comparison_operator=filter.get("condition"),  # type: ignore
-                            value=filter.get("value"),
+                        conditions.append(
+                            Condition(
+                                name=filter.get("metadata_name"),  # type: ignore
+                                comparison_operator=filter.get("condition"),  # type: ignore
+                                value=filter.get("value"),
+                            )
                         )
+                    metadata_condition = MetadataCondition(
+                        logical_operator=node_data.metadata_filtering_conditions.logical_operator
+                        if node_data.metadata_filtering_conditions
+                        else "or",
+                        conditions=conditions,
                     )
-                metadata_condition = MetadataCondition(
-                    logical_operator=node_data.metadata_filtering_conditions.logical_operator
-                    if node_data.metadata_filtering_conditions
-                    else "or",
-                    conditions=conditions,
-                )
             case "manual":
                 if node_data.metadata_filtering_conditions:
                     conditions = []

@@ -120,7 +120,7 @@ class PipelineGenerator(BaseAppGenerator):
                 raise ValueError("Pipeline dataset is required")
         inputs: Mapping[str, Any] = args["inputs"]
         start_node_id: str = args["start_node_id"]
-        datasource_type: str = args["datasource_type"]
+        datasource_type = DatasourceProviderType(args["datasource_type"])
         datasource_info_list: list[Mapping[str, Any]] = self._format_datasource_info_list(
             datasource_type, args["datasource_info_list"], pipeline, workflow, start_node_id, user
         )
