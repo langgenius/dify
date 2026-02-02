@@ -11,10 +11,11 @@ from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
-from core.file import File, FileTransferMethod
+from core.file import File, FileTransferMethod, FileType, file_manager
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
+from core.model_runtime.entities.message_entities import TextPromptMessageContent
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.provider_manager import ProviderManager
@@ -26,7 +27,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.variables.segments import ArrayFileSegment, StringSegment
+from core.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from core.workflow.enums import (
     NodeType,
     SystemVariableKey,
@@ -44,6 +45,7 @@ from core.workflow.nodes.agent.entities import AgentNodeData, AgentOldVersionMod
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.runtime import VariablePool
+from core.workflow.utils.variable_utils import fetch_files
 from extensions.ext_database import db
 from factories import file_factory
 from factories.agent_factory import get_plugin_agent_strategy
@@ -208,11 +210,52 @@ class AgentNode(Node[AgentNodeData]):
                 except TypeError:
                     parameter_value = str(agent_input.value)
                 segment_group = variable_pool.convert_template(parameter_value)
-                parameter_value = segment_group.log if for_log else segment_group.text
+
+                if parameter_name in ("query", "instruction") and not for_log:
+                    contents: list[dict[str, Any]] = []
+                    has_file = False
+                    vision_detail = node_data.vision.configs.detail if node_data.vision.enabled else None
+
+                    for segment in segment_group.value:
+                        if isinstance(segment, (ArrayFileSegment, FileSegment)):
+                            files = segment.value if isinstance(segment, ArrayFileSegment) else [segment.value]
+                            for file in files:
+                                if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT}:
+                                    file_content = file_manager.to_prompt_message_content(
+                                        file, image_detail_config=vision_detail
+                                    )
+                                    contents.append(file_content.model_dump())
+                                    has_file = True
+                        else:
+                            text = segment.text
+                            if text:
+                                contents.append(TextPromptMessageContent(data=text).model_dump())
+
+                    if parameter_name == "query":
+                        if node_data.vision.enabled and node_data.vision.configs.variable_selector:
+                            vision_files = fetch_files(
+                                variable_pool=variable_pool,
+                                selector=node_data.vision.configs.variable_selector,
+                            )
+                            for file in vision_files:
+                                if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT}:
+                                    file_content = file_manager.to_prompt_message_content(
+                                        file, image_detail_config=vision_detail
+                                    )
+                                    contents.append(file_content.model_dump())
+                                    has_file = True
+
+                    if has_file:
+                        parameter_value = contents
+                    else:
+                        parameter_value = segment_group.text
+                else:
+                    parameter_value = segment_group.log if for_log else segment_group.text
+
                 # variable_pool.convert_template returns a string,
                 # so we need to convert it back to a dictionary
                 try:
-                    if not isinstance(agent_input.value, str):
+                    if not isinstance(agent_input.value, str) and isinstance(parameter_value, str):
                         parameter_value = json.loads(parameter_value)
                 except json.JSONDecodeError:
                     parameter_value = parameter_value

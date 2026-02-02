@@ -21,7 +21,6 @@ from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom,
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from core.workflow.entities import GraphInitParams
-from core.workflow.nodes.llm import llm_utils
 from core.workflow.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
@@ -34,6 +33,7 @@ from core.workflow.nodes.llm.file_saver import LLMFileSaver
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from core.workflow.utils.variable_utils import fetch_files
 from models.enums import UserFrom
 from models.provider import ProviderType
 
@@ -166,7 +166,7 @@ def test_fetch_files_with_file_segment():
     variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], file)
 
-    result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
+    result = fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == [file]
 
 
@@ -194,7 +194,7 @@ def test_fetch_files_with_array_file_segment():
     variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], ArrayFileSegment(value=files))
 
-    result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
+    result = fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == files
 
 
@@ -202,7 +202,7 @@ def test_fetch_files_with_none_segment():
     variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], NoneSegment())
 
-    result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
+    result = fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == []
 
 
@@ -210,13 +210,13 @@ def test_fetch_files_with_array_any_segment():
     variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], ArrayAnySegment(value=[]))
 
-    result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
+    result = fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == []
 
 
 def test_fetch_files_with_non_existent_variable():
     variable_pool = VariablePool.empty()
-    result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
+    result = fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == []
 
 
