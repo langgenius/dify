@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.file import helpers as file_helpers
 from core.helper.name_generator import generate_incremental_name
@@ -1387,6 +1388,46 @@ class DocumentService:
             )
         ).all()
         return documents
+
+    @staticmethod
+    def update_documents_need_summary(dataset_id: str, document_ids: Sequence[str], need_summary: bool = True) -> int:
+        """
+        Update need_summary field for multiple documents.
+
+        This method handles the case where documents were created when summary_index_setting was disabled,
+        and need to be updated when summary_index_setting is later enabled.
+
+        Args:
+            dataset_id: Dataset ID
+            document_ids: List of document IDs to update
+            need_summary: Value to set for need_summary field (default: True)
+
+        Returns:
+            Number of documents updated
+        """
+        if not document_ids:
+            return 0
+
+        document_id_list: list[str] = [str(document_id) for document_id in document_ids]
+
+        with session_factory.create_session() as session:
+            updated_count = (
+                session.query(Document)
+                .filter(
+                    Document.id.in_(document_id_list),
+                    Document.dataset_id == dataset_id,
+                    Document.doc_form != "qa_model",  # Skip qa_model documents
+                )
+                .update({Document.need_summary: need_summary}, synchronize_session=False)
+            )
+            session.commit()
+            logger.info(
+                "Updated need_summary to %s for %d documents in dataset %s",
+                need_summary,
+                updated_count,
+                dataset_id,
+            )
+            return updated_count
 
     @staticmethod
     def get_document_download_url(document: Document) -> str:
