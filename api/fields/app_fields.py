@@ -294,6 +294,7 @@ class AppDetail(ResponseModel):
 
 
 class AppDetailWithSite(AppDetail):
+    icon_type: str | None = None
     api_base_url: str | None = None
     max_active_requests: int | None = None
     deleted_tools: list[DeletedTool] = Field(default_factory=list)
