@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 from uuid import UUID
 
 from flask import abort, request
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_serializer
+from pydantic import BaseModel, Field, field_validator, model_serializer
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -117,6 +117,7 @@ class ResponseModel(BaseModel):
     FastOpenAPI serializes Pydantic models via `model_dump()` without `exclude_none=True`.
     Default to excluding `None` fields to keep legacy response shapes (e.g. return only `{"enabled": false}`).
     """
+
 
 def reg(model: type[BaseModel]) -> None:
     console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
@@ -307,7 +308,6 @@ class AnnotationExportApi(Resource):
         "Annotations exported successfully",
         console_ns.model("AnnotationList", {"data": fields.List(fields.Nested(build_annotation_model(console_ns)))}),
     )
-
     @model_serializer(mode="wrap")
     def _serialize(self, handler):
         def prune_none(value: Any) -> Any:
