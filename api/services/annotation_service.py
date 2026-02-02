@@ -524,7 +524,7 @@ class AppAnnotationService:
         annotation_hit_histories = db.paginate(
             select=stmt, page=page, per_page=limit, max_per_page=100, error_out=False
         )
-        return annotation_hit_histories.items, annotation_hit_histories.total
+        return annotation_hit_histories.items, annotation_hit_histories.total or 0
 
     @classmethod
     def get_annotation_by_id(cls, annotation_id: str) -> MessageAnnotation | None:
