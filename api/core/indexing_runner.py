@@ -369,7 +369,9 @@ class IndexingRunner:
         # Generate summary preview
         summary_index_setting = tmp_processing_rule.get("summary_index_setting")
         if summary_index_setting and summary_index_setting.get("enable") and preview_texts:
-            preview_texts = index_processor.generate_summary_preview(tenant_id, preview_texts, summary_index_setting)
+            preview_texts = index_processor.generate_summary_preview(
+                tenant_id, preview_texts, summary_index_setting, doc_language
+            )
 
         return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
