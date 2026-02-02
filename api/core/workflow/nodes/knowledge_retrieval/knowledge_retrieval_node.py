@@ -331,25 +331,25 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 case _:
                     reranking_model = None
                     weights = None
-                    all_documents = dataset_retrieval.multiple_retrieve(
-                        app_id=self.app_id,
-                        tenant_id=self.tenant_id,
-                        user_id=self.user_id,
-                        user_from=self.user_from.value,
-                        available_datasets=available_datasets,
-                        query=query,
-                        top_k=node_data.multiple_retrieval_config.top_k,
-                        score_threshold=node_data.multiple_retrieval_config.score_threshold
-                        if node_data.multiple_retrieval_config.score_threshold is not None
-                        else 0.0,
-                        reranking_mode=node_data.multiple_retrieval_config.reranking_mode,
-                        reranking_model=reranking_model,
-                        weights=weights,
-                        reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
-                        metadata_filter_document_ids=metadata_filter_document_ids,
-                        metadata_condition=metadata_condition,
-                        attachment_ids=[attachment.related_id for attachment in attachments] if attachments else None,
-                    )
+            all_documents = dataset_retrieval.multiple_retrieve(
+                app_id=self.app_id,
+                tenant_id=self.tenant_id,
+                user_id=self.user_id,
+                user_from=self.user_from.value,
+                available_datasets=available_datasets,
+                query=query,
+                top_k=node_data.multiple_retrieval_config.top_k,
+                score_threshold=node_data.multiple_retrieval_config.score_threshold
+                if node_data.multiple_retrieval_config.score_threshold is not None
+                else 0.0,
+                reranking_mode=node_data.multiple_retrieval_config.reranking_mode,
+                reranking_model=reranking_model,
+                weights=weights,
+                reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
+                metadata_filter_document_ids=metadata_filter_document_ids,
+                metadata_condition=metadata_condition,
+                attachment_ids=[attachment.related_id for attachment in attachments] if attachments else None,
+            )
         usage = self._merge_usage(usage, dataset_retrieval.llm_usage)
 
         dify_documents = [item for item in all_documents if item.provider == "dify"]
