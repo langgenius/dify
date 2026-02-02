@@ -8,4 +8,4 @@ export const systemFeaturesContract = base
     method: 'GET',
   })
   .input(type<unknown>())
-  .output(type<SystemFeatures>())
+  .output(type<{ features: SystemFeatures }>())

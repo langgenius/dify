@@ -22,10 +22,10 @@ const systemFeaturesQueryKey = ['systemFeatures'] as const
 const setupStatusQueryKey = ['setupStatus'] as const
 
 async function fetchSystemFeatures() {
-  const data = await consoleClient.systemFeatures()
+  const { features } = await consoleClient.systemFeatures()
   const { setSystemFeatures } = useGlobalPublicStore.getState()
-  setSystemFeatures({ ...defaultSystemFeatures, ...data })
-  return data
+  setSystemFeatures({ ...defaultSystemFeatures, ...features })
+  return features
 }
 
 export function useSystemFeaturesQuery() {
