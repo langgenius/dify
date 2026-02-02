@@ -303,52 +303,53 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         elif str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             if node_data.multiple_retrieval_config is None:
                 raise ValueError("multiple_retrieval_config is required")
-            if node_data.multiple_retrieval_config.reranking_mode == "reranking_model":
-                if node_data.multiple_retrieval_config.reranking_model:
-                    reranking_model = {
-                        "reranking_provider_name": node_data.multiple_retrieval_config.reranking_model.provider,
-                        "reranking_model_name": node_data.multiple_retrieval_config.reranking_model.model,
-                    }
-                else:
+            match node_data.multiple_retrieval_config.reranking_mode:
+                case "reranking_model":
+                    if node_data.multiple_retrieval_config.reranking_model:
+                        reranking_model = {
+                            "reranking_provider_name": node_data.multiple_retrieval_config.reranking_model.provider,
+                            "reranking_model_name": node_data.multiple_retrieval_config.reranking_model.model,
+                        }
+                    else:
+                        reranking_model = None
+                    weights = None
+                case "weighted_score":
+                    if node_data.multiple_retrieval_config.weights is None:
+                        raise ValueError("weights is required")
                     reranking_model = None
-                weights = None
-            elif node_data.multiple_retrieval_config.reranking_mode == "weighted_score":
-                if node_data.multiple_retrieval_config.weights is None:
-                    raise ValueError("weights is required")
-                reranking_model = None
-                vector_setting = node_data.multiple_retrieval_config.weights.vector_setting
-                weights = {
-                    "vector_setting": {
-                        "vector_weight": vector_setting.vector_weight,
-                        "embedding_provider_name": vector_setting.embedding_provider_name,
-                        "embedding_model_name": vector_setting.embedding_model_name,
-                    },
-                    "keyword_setting": {
-                        "keyword_weight": node_data.multiple_retrieval_config.weights.keyword_setting.keyword_weight
-                    },
-                }
-            else:
-                reranking_model = None
-                weights = None
-            all_documents = dataset_retrieval.multiple_retrieve(
-                app_id=self.app_id,
-                tenant_id=self.tenant_id,
-                user_id=self.user_id,
-                user_from=self.user_from.value,
-                available_datasets=available_datasets,
-                query=query,
-                top_k=node_data.multiple_retrieval_config.top_k,
-                score_threshold=node_data.multiple_retrieval_config.score_threshold
-                if node_data.multiple_retrieval_config.score_threshold is not None
-                else 0.0,
-                reranking_mode=node_data.multiple_retrieval_config.reranking_mode,
-                reranking_model=reranking_model,
-                weights=weights,
-                reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
-                metadata_filter_document_ids=metadata_filter_document_ids,
-                metadata_condition=metadata_condition,
-                attachment_ids=[attachment.related_id for attachment in attachments] if attachments else None,
-            )
+                    vector_setting = node_data.multiple_retrieval_config.weights.vector_setting
+                    weights = {
+                        "vector_setting": {
+                            "vector_weight": vector_setting.vector_weight,
+                            "embedding_provider_name": vector_setting.embedding_provider_name,
+                            "embedding_model_name": vector_setting.embedding_model_name,
+                        },
+                        "keyword_setting": {
+                            "keyword_weight": node_data.multiple_retrieval_config.weights.keyword_setting.keyword_weight
+                        },
+                    }
+                case _:
+                    reranking_model = None
+                    weights = None
+                    all_documents = dataset_retrieval.multiple_retrieve(
+                        app_id=self.app_id,
+                        tenant_id=self.tenant_id,
+                        user_id=self.user_id,
+                        user_from=self.user_from.value,
+                        available_datasets=available_datasets,
+                        query=query,
+                        top_k=node_data.multiple_retrieval_config.top_k,
+                        score_threshold=node_data.multiple_retrieval_config.score_threshold
+                        if node_data.multiple_retrieval_config.score_threshold is not None
+                        else 0.0,
+                        reranking_mode=node_data.multiple_retrieval_config.reranking_mode,
+                        reranking_model=reranking_model,
+                        weights=weights,
+                        reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
+                        metadata_filter_document_ids=metadata_filter_document_ids,
+                        metadata_condition=metadata_condition,
+                        attachment_ids=[attachment.related_id for attachment in attachments] if attachments else None,
+                    )
         usage = self._merge_usage(usage, dataset_retrieval.llm_usage)
 
         dify_documents = [item for item in all_documents if item.provider == "dify"]
@@ -453,23 +454,24 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         )
         filters: list[Any] = []
         metadata_condition = None
-        if node_data.metadata_filtering_mode == "disabled":
-            return None, None, usage
-        elif node_data.metadata_filtering_mode == "automatic":
-            automatic_metadata_filters, automatic_usage = self._automatic_metadata_filter_func(
-                dataset_ids, query, node_data
-            )
-            usage = self._merge_usage(usage, automatic_usage)
-            if automatic_metadata_filters:
-                conditions = []
-                for sequence, filter in enumerate(automatic_metadata_filters):
-                    DatasetRetrieval.process_metadata_filter_func(
-                        sequence,
-                        filter.get("condition", ""),
-                        filter.get("metadata_name", ""),
-                        filter.get("value"),
-                        filters,
-                    )
+        match node_data.metadata_filtering_mode:
+            case "disabled":
+                return None, None, usage
+            case "automatic":
+                automatic_metadata_filters, automatic_usage = self._automatic_metadata_filter_func(
+                    dataset_ids, query, node_data
+                )
+                usage = self._merge_usage(usage, automatic_usage)
+                if automatic_metadata_filters:
+                    conditions = []
+                    for sequence, filter in enumerate(automatic_metadata_filters):
+                        DatasetRetrieval.process_metadata_filter_func(
+                            sequence,
+                            filter.get("condition", ""),
+                            filter.get("metadata_name", ""),
+                            filter.get("value"),
+                            filters,
+                        )
                     conditions.append(
                         Condition(
                             name=filter.get("metadata_name"),  # type: ignore
@@ -483,43 +485,43 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     else "or",
                     conditions=conditions,
                 )
-        elif node_data.metadata_filtering_mode == "manual":
-            if node_data.metadata_filtering_conditions:
-                conditions = []
-                for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):  # type: ignore
-                    metadata_name = condition.name
-                    expected_value = condition.value
-                    if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
-                        if isinstance(expected_value, str):
-                            expected_value = self.graph_runtime_state.variable_pool.convert_template(
-                                expected_value
-                            ).value[0]
-                            if expected_value.value_type in {"number", "integer", "float"}:
-                                expected_value = expected_value.value
-                            elif expected_value.value_type == "string":
-                                expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()
-                            else:
-                                raise ValueError("Invalid expected metadata value type")
-                    conditions.append(
-                        Condition(
-                            name=metadata_name,
-                            comparison_operator=condition.comparison_operator,
-                            value=expected_value,
+            case "manual":
+                if node_data.metadata_filtering_conditions:
+                    conditions = []
+                    for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):  # type: ignore
+                        metadata_name = condition.name
+                        expected_value = condition.value
+                        if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
+                            if isinstance(expected_value, str):
+                                expected_value = self.graph_runtime_state.variable_pool.convert_template(
+                                    expected_value
+                                ).value[0]
+                                if expected_value.value_type in {"number", "integer", "float"}:
+                                    expected_value = expected_value.value
+                                elif expected_value.value_type == "string":
+                                    expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()
+                                else:
+                                    raise ValueError("Invalid expected metadata value type")
+                        conditions.append(
+                            Condition(
+                                name=metadata_name,
+                                comparison_operator=condition.comparison_operator,
+                                value=expected_value,
+                            )
                         )
+                        filters = DatasetRetrieval.process_metadata_filter_func(
+                            sequence,
+                            condition.comparison_operator,
+                            metadata_name,
+                            expected_value,
+                            filters,
+                        )
+                    metadata_condition = MetadataCondition(
+                        logical_operator=node_data.metadata_filtering_conditions.logical_operator,
+                        conditions=conditions,
                     )
-                    filters = DatasetRetrieval.process_metadata_filter_func(
-                        sequence,
-                        condition.comparison_operator,
-                        metadata_name,
-                        expected_value,
-                        filters,
-                    )
-                metadata_condition = MetadataCondition(
-                    logical_operator=node_data.metadata_filtering_conditions.logical_operator,
-                    conditions=conditions,
-                )
-        else:
-            raise ValueError("Invalid metadata filtering mode")
+            case _:
+                raise ValueError("Invalid metadata filtering mode")
         if filters:
             if (
                 node_data.metadata_filtering_conditions
