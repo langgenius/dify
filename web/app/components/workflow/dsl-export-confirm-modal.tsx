@@ -3,7 +3,7 @@ import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { RiCloseLine, RiLock2Line } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
@@ -13,7 +13,7 @@ import { cn } from '@/utils/classnames'
 
 export type DSLExportConfirmModalProps = {
   envList: EnvironmentVariable[]
-  onConfirm: (state: boolean) => void
+  onConfirm: (state: boolean) => void | Promise<void>
   onClose: () => void
 }
 
@@ -25,10 +25,13 @@ const DSLExportConfirmModal = ({
   const { t } = useTranslation()
 
   const [exportSecrets, setExportSecrets] = useState<boolean>(false)
+  const [exporting, startExport] = useTransition()
 
   const submit = () => {
-    onConfirm(exportSecrets)
-    onClose()
+    startExport(async () => {
+      await onConfirm(exportSecrets)
+      onClose()
+    })
   }
 
   return (
@@ -38,7 +41,7 @@ const DSLExportConfirmModal = ({
       className={cn('w-[480px] max-w-[480px]')}
     >
       <div className="title-2xl-semi-bold relative pb-6 text-text-primary">{t('env.export.title', { ns: 'workflow' })}</div>
-      <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onClose}>
+      <div className={cn('absolute right-4 top-4 p-2', exporting ? 'pointer-events-none opacity-50' : 'cursor-pointer')} onClick={onClose}>
         <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>
       <div className="relative">
@@ -77,8 +80,8 @@ const DSLExportConfirmModal = ({
         <div className="system-sm-medium cursor-pointer text-text-primary" onClick={() => setExportSecrets(!exportSecrets)}>{t('env.export.checkbox', { ns: 'workflow' })}</div>
       </div>
       <div className="flex flex-row-reverse pt-6">
-        <Button className="ml-2" variant="primary" onClick={submit}>{exportSecrets ? t('env.export.export', { ns: 'workflow' }) : t('env.export.ignore', { ns: 'workflow' })}</Button>
-        <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+        <Button className="ml-2" variant="primary" loading={exporting} disabled={exporting} onClick={submit}>{exportSecrets ? t('env.export.export', { ns: 'workflow' }) : t('env.export.ignore', { ns: 'workflow' })}</Button>
+        <Button disabled={exporting} onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
       </div>
     </Modal>
   )

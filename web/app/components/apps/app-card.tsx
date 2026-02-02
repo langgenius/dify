@@ -11,7 +11,7 @@ import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLi
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
@@ -79,6 +79,7 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showAccessControl, setShowAccessControl] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
+  const [exporting, startExport] = useTransition()
 
   const onConfirmDelete = useCallback(async () => {
     try {
@@ -186,14 +187,14 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
 
   const exportCheck = async () => {
     if (app.mode !== AppModeEnum.WORKFLOW && app.mode !== AppModeEnum.ADVANCED_CHAT) {
-      onExport()
+      await onExport()
       return
     }
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${app.id}/workflows/draft`)
       const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
       if (list.length === 0) {
-        onExport()
+        await onExport()
         return
       }
       setSecretEnvList(list)
@@ -235,11 +236,13 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
       e.preventDefault()
       setShowDuplicateModal(true)
     }
-    const onClickExport = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    const onClickExport = (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
-      exportCheck()
+      startExport(async () => {
+        await exportCheck()
+      })
     }
     const onClickSwitch = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
@@ -288,7 +291,7 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickDuplicate}>
           <span className="system-sm-regular text-text-secondary">{t('duplicate', { ns: 'app' })}</span>
         </button>
-        <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickExport}>
+        <button type="button" disabled={exporting || secretEnvList.length > 0} className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50" onClick={onClickExport}>
           <span className="system-sm-regular text-text-secondary">{t('export', { ns: 'app' })}</span>
         </button>
         {(app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT) && (
