@@ -54,7 +54,8 @@
     "storybook:build": "storybook build",
     "preinstall": "npx only-allow pnpm",
     "analyze": "ANALYZE=true pnpm build",
-    "knip": "knip"
+    "knip": "knip",
+    "openapi-ts": "openapi-ts && pnpm lint:fix gen"
   },
   "dependencies": {
     "@amplitude/analytics-browser": "2.33.1",
@@ -166,6 +167,7 @@
     "@antfu/eslint-config": "7.2.0",
     "@chromatic-com/storybook": "5.0.0",
     "@eslint-react/eslint-plugin": "2.8.1",
+    "@hey-api/openapi-ts": "0.90.9",
     "@mdx-js/loader": "3.1.1",
     "@mdx-js/react": "3.1.1",
     "@next/bundle-analyzer": "16.1.5",

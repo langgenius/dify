@@ -1,0 +1,1935 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Chat App API",
+    "description": "Chat applications support session persistence, allowing previous chat history to be used as context for responses. This can be applicable for chatbot, customer service AI, etc.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "{api_base_url}",
+      "description": "The base URL for the Chat App API. Replace {api_base_url} with the actual API base URL provided for your application (e.g., from props.appDetail.api_base_url).",
+      "variables": {
+        "api_base_url": {
+          "default": "https://api.dify.ai/v1",
+          "description": "Actual base URL of the API"
+        }
+      }
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "paths": {
+    "/chat-messages": {
+      "post": {
+        "summary": "Send Chat Message",
+        "description": "Send a request to the chat application.",
+        "operationId": "sendChatMessage",
+        "tags": ["Chat"],
+        "requestBody": {
+          "description": "Request body to send a chat message.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              },
+              "examples": {
+                "streaming_example": {
+                  "summary": "Streaming mode example with file",
+                  "value": {
+                    "inputs": {},
+                    "query": "What are the specs of the iPhone 13 Pro Max?",
+                    "response_mode": "streaming",
+                    "conversation_id": "",
+                    "user": "abc-123",
+                    "files": [
+                      {
+                        "type": "image",
+                        "transfer_method": "remote_url",
+                        "url": "https://cloud.dify.ai/logo/logo-site.png"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response. The content type and structure depend on the `response_mode` parameter in the request.\n- If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object.\n- If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkChatEvent` objects.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatCompletionResponse"
+                },
+                "examples": {
+                  "blockingResponse": {
+                    "summary": "Example of a blocking mode response",
+                    "value": {
+                      "event": "message",
+                      "task_id": "c3800678-a077-43df-a102-53f23ed20b88",
+                      "id": "9da23599-e713-473b-982c-4328d4f5c78a",
+                      "message_id": "9da23599-e713-473b-982c-4328d4f5c78a",
+                      "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2",
+                      "mode": "chat",
+                      "answer": "iPhone 13 Pro Max specs are listed here:...",
+                      "metadata": {
+                        "usage": {
+                          "prompt_tokens": 1033,
+                          "prompt_unit_price": "0.001",
+                          "prompt_price_unit": "0.001",
+                          "prompt_price": "0.0010330",
+                          "completion_tokens": 128,
+                          "completion_unit_price": "0.002",
+                          "completion_price_unit": "0.001",
+                          "completion_price": "0.0002560",
+                          "total_tokens": 1161,
+                          "total_price": "0.0012890",
+                          "currency": "USD",
+                          "latency": 0.7682376249867957
+                        },
+                        "retriever_resources": [
+                          {
+                            "position": 1,
+                            "dataset_id": "101b4c97-fc2e-463c-90b1-5261a4cdcafb",
+                            "dataset_name": "iPhone",
+                            "document_id": "8dd1ad74-0b5f-4175-b735-7d98bbbb4e00",
+                            "document_name": "iPhone List",
+                            "segment_id": "ed599c7f-2766-4294-9d1d-e5235a61270a",
+                            "score": 0.98457545,
+                            "content": "\"Model\",\"Release Date\",\"Display Size\",\"Resolution\",\"Processor\",\"RAM\",\"Storage\",\"Camera\",\"Battery\",\"Operating System\"\n\"iPhone 13 Pro Max\",\"September 24, 2021\",\"6.7 inch\",\"1284 x 2778\",\"Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard)\",\"6 GB\",\"128, 256, 512 GB, 1TB\",\"12 MP\",\"4352 mAh\",\"iOS 15\""
+                          }
+                        ]
+                      },
+                      "created_at": 1705407629
+                    }
+                  }
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "A stream of Server-Sent Events. Each event is a JSON object prefixed with 'data: ' and suffixed with '\\n\\n'. See `ChunkChatEvent` for possible event structures."
+                },
+                "examples": {
+                  "streamingResponseBasic": {
+                    "summary": "Example of a streaming mode response (Basic Assistant)",
+                    "value": "data: {\"event\": \"message\", \"task_id\":\"mock_task_id\", \"message_id\": \"5ad4cb98-f0c7-4085-b384-88c403be6290\", \"conversation_id\": \"45701982-8118-4bc5-8e9b-64562b4555f2\", \"answer\": \" I\", \"created_at\": 1679586595}\n\ndata: {\"event\": \"message_end\", \"task_id\":\"mock_task_id\", \"message_id\": \"5ad4cb98-f0c7-4085-b384-88c403be6290\", \"conversation_id\": \"45701982-8118-4bc5-8e9b-64562b4555f2\", \"metadata\": {\"usage\": {\"total_tokens\": 10, \"latency\": 1.0}}}\n\n"
+                  },
+                  "streamingResponseAgent": {
+                    "summary": "Example of a streaming mode response (Agent Assistant with agent_thought and message_file)",
+                    "value": "data: {\"event\": \"agent_thought\", \"id\": \"agent_thought_id_1\", \"task_id\": \"task123\", \"message_id\": \"msg123\", \"conversation_id\": \"conv123\", \"position\": 1, \"thought\": \"Thinking about calling a tool...\", \"tool\": \"dalle3\", \"tool_input\": \"{\\\"dalle3\\\": {\\\"prompt\\\": \\\"a cute cat\\\"}}\", \"created_at\": 1705395332}\n\ndata: {\"event\": \"message_file\", \"id\": \"file_id_1\", \"type\": \"image\", \"belongs_to\": \"assistant\", \"url\": \"https://example.com/cat.png\", \"conversation_id\": \"conv123\"}\n\ndata: {\"event\": \"agent_message\", \"task_id\": \"task123\", \"message_id\": \"msg123\", \"conversation_id\": \"conv123\", \"answer\": \"Here is the image: \", \"created_at\": 1705395333}\n\ndata: {\"event\": \"message_end\", \"task_id\":\"task123\", \"message_id\": \"msg123\", \"conversation_id\": \"conv123\", \"metadata\": {\"usage\": {\"total_tokens\": 50, \"latency\": 2.5}}}\n\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Possible error codes:\n- `invalid_param`: Abnormal parameter input.\n- `app_unavailable`: App configuration unavailable.\n- `provider_not_initialize`: No available model credential configuration.\n- `provider_quota_exceeded`: Model invocation quota insufficient.\n- `model_currently_not_support`: Current model unavailable.\n- `completion_request_error`: Text generation failed.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Conversation does not exist.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files/upload": {
+      "post": {
+        "summary": "File Upload",
+        "description": "Upload a file (currently only images are supported) for use when sending messages, enabling multimodal understanding of images and text. Supports png, jpg, jpeg, webp, gif formats. Uploaded files are for use by the current end-user only.",
+        "operationId": "uploadChatFile",
+        "tags": ["Files"],
+        "requestBody": {
+          "description": "File upload request. Requires multipart/form-data.",
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file", "user"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The file to be uploaded. Supported image types: png, jpg, jpeg, webp, gif."
+                  },
+                  "user": {
+                    "type": "string",
+                    "description": "User identifier, defined by the developer's rules, must be unique within the application. **Note**: The Service API does not share conversations created by the WebApp. Conversations created through the API are isolated from those created in the WebApp interface."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File uploaded successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileUploadResponse"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequestFile" },
+          "413": { "$ref": "#/components/responses/FileTooLarge" },
+          "415": { "$ref": "#/components/responses/UnsupportedFileTypeFile" },
+          "503": { "$ref": "#/components/responses/S3ErrorFile" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/files/{file_id}/preview": {
+      "get": {
+        "summary": "File Preview",
+        "description": "Preview or download uploaded files. This endpoint allows you to access files that have been previously uploaded via the File Upload API. Files can only be accessed if they belong to messages within the requesting application.",
+        "operationId": "previewChatFile",
+        "tags": ["Files"],
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "description": "The unique identifier of the file to preview, obtained from the File Upload API response.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "as_attachment",
+            "in": "query",
+            "required": false,
+            "description": "Whether to force download the file as an attachment. Default is `false` (preview in browser).",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File content returned successfully. Headers set based on file type and request parameters.",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/gif": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "headers": {
+              "Content-Type": {
+                "description": "MIME type of the file",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "File size in bytes (if available)",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Content-Disposition": {
+                "description": "Set to 'attachment' if as_attachment=true",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Caching headers for performance",
+                "schema": {
+                  "type": "string",
+                  "example": "public, max-age=3600"
+                }
+              },
+              "Accept-Ranges": {
+                "description": "Set to 'bytes' for audio/video files",
+                "schema": {
+                  "type": "string",
+                  "example": "bytes"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Possible error codes:\n- `invalid_param`: Abnormal parameter input.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. Possible error codes:\n- `file_access_denied`: File access denied or file does not belong to current application.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. Possible error codes:\n- `file_not_found`: File not found or has been deleted.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chat-messages/{task_id}/stop": {
+      "post": {
+        "summary": "Stop Chat Message Generation",
+        "description": "Stops a chat message generation task. Only supported in streaming mode.",
+        "operationId": "stopChatMessageGeneration",
+        "tags": ["Chat"],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "description": "Task ID, can be obtained from the streaming chunk return of a `/chat-messages` request.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user"],
+                "properties": {
+                  "user": {
+                    "type": "string",
+                    "description": "User identifier, must be consistent with the user passed in the send message interface. **Note**: The Service API does not share conversations created by the WebApp. Conversations created through the API are isolated from those created in the WebApp interface."
+                  }
+                }
+              },
+              "examples": {
+                "example": {
+                  "value": {
+                    "user": "abc-123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/SuccessResult" }
+        }
+      }
+    },
+    "/messages/{message_id}/feedbacks": {
+      "post": {
+        "summary": "Message Feedback",
+        "description": "End-users can provide feedback messages, facilitating application developers to optimize expected outputs.",
+        "operationId": "postChatMessageFeedback",
+        "tags": ["Feedback"],
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "description": "Message ID for which feedback is being provided.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageFeedbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/SuccessResult" }
+        }
+      }
+    },
+    "/app/feedbacks": {
+      "get": {
+        "summary": "Get feedbacks of application",
+        "description": "Get application's feedbacks.",
+        "operationId": "getChatAppFeedbacks",
+        "tags": ["Feedback"],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "(optional) Pagination page number. Default: 1",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "(optional) Records per page. Default: 20",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of application feedbacks.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppFeedbacksResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/messages/{message_id}/suggested": {
+      "get": {
+        "summary": "Next Suggested Questions",
+        "description": "Get next questions suggestions for the current message.",
+        "operationId": "getSuggestedQuestions",
+        "tags": ["Chat"],
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "description": "Message ID.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user",
+            "in": "query",
+            "required": true,
+            "description": "User identifier. **Note**: The Service API does not share conversations created by the WebApp. Conversations created through the API are isolated from those created in the WebApp interface.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved suggested questions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestedQuestionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/messages": {
+      "get": {
+        "summary": "Get Conversation History Messages",
+        "description": "Returns historical chat records in a scrolling load format, with the first page returning the latest `{limit}` messages, i.e., in reverse order.",
+        "operationId": "getConversationHistory",
+        "tags": ["Conversations"],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "query",
+            "required": true,
+            "description": "Conversation ID.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "user",
+            "in": "query",
+            "required": true,
+            "description": "User identifier. **Note**: The Service API does not share conversations created by the WebApp. Conversations created through the API are isolated from those created in the WebApp interface.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "first_id",
+            "in": "query",
+            "required": false,
+            "description": "The ID of the first chat record on the current page, default is null (for fetching the latest). For subsequent pages, use the ID of the first message from the current list to get older messages.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "How many chat history messages to return in one request, default is 20.",
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved conversation history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conversations": {
+      "get": {
+        "summary": "Get Conversations",
+        "description": "Retrieve the conversation list for the current user, defaulting to the most recent 20 entries.",
+        "operationId": "getConversationsList",
+        "tags": ["Conversations"],
+        "parameters": [
+          {
+            "name": "user",
+            "in": "query",
+            "required": true,
+            "description": "User identifier. **Note**: The Service API does not share conversations created by the WebApp. Conversations created through the API are isolated from those created in the WebApp interface.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "last_id",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) The ID of the last record on the current page (for pagination).",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) How many records to return. Default 20, Min 1, Max 100.",
+            "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "description": "Sorting Field. Default: -updated_at. '-' prefix for descending.",
+            "schema": {
+              "type": "string",
+              "enum": ["created_at", "-created_at", "updated_at", "-updated_at"],
+              "default": "-updated_at"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved conversations list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationsListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conversations/{conversation_id}": {
+      "delete": {
+        "summary": "Delete Conversation",
+        "description": "Delete a conversation.",
+        "operationId": "deleteConversation",
+        "tags": ["Conversations"],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "description": "Conversation ID.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user"],
+                "properties": {
+                  "user": {
+                    "type": "string",
+                    "description": "The user identifier. **Note**: The Service API does not share conversations created by the WebApp. Conversations created through the API are isolated from those created in the WebApp interface."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Conversation deleted successfully. No Content." }
+        }
+      }
+    },
+    "/conversations/{conversation_id}/name": {
+      "post": {
+        "summary": "Conversation Rename",
+        "description": "Rename the session. The session name is used for display on clients that support multiple sessions.",
+        "operationId": "renameConversation",
+        "tags": ["Conversations"],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "description": "Conversation ID.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationRenameRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Conversation renamed successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationRenameResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conversations/{conversation_id}/variables": {
+      "get": {
+        "summary": "Get Conversation Variables",
+        "description": "Retrieve variables from a specific conversation.",
+        "operationId": "getConversationVariables",
+        "tags": ["Conversations"],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the conversation to retrieve variables from.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "user",
+            "in": "query",
+            "required": true,
+            "description": "The user identifier.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "last_id",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) The ID of the last record on the current page (for pagination).",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) How many records to return. Default 20, Min 1, Max 100.",
+            "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 }
+          },
+          {
+            "name": "variable_name",
+            "in": "query",
+            "required": false,
+            "description": "(Optional) Filter variables by a specific name.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved conversation variables.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ConversationVariablesResponse" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/ConversationNotFound" }
+        }
+      }
+    },
+    "/audio-to-text": {
+      "post": {
+        "summary": "Speech to Text",
+        "description": "Convert audio file to text. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm. File size limit: 15MB.",
+        "operationId": "audioToText",
+        "tags": ["TTS"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/AudioToTextRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully converted audio to text.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioToTextResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/text-to-audio": {
+      "post": {
+        "summary": "Text to Audio",
+        "description": "Convert text to speech.",
+        "operationId": "textToAudioChat",
+        "tags": ["TTS"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/TextToAudioFormRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Audio file generated successfully.",
+            "content": {
+              "audio/wav": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "The generated audio file."
+                }
+              }
+            },
+            "headers": {
+              "Content-Type": {
+                "description": "The content type of the response, typically `audio/wav` or `audio/mp3`.",
+                "schema": {
+                  "type": "string",
+                  "example": "audio/wav"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/info": {
+      "get": {
+        "summary": "Get Application Basic Information",
+        "description": "Used to get basic information about this application.",
+        "operationId": "getChatAppInfo",
+        "tags": ["Application"],
+        "responses": {
+          "200": {
+            "description": "Basic information of the application.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppInfoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/parameters": {
+      "get": {
+        "summary": "Get Application Parameters Information",
+        "description": "Used at the start of entering the page to obtain information such as features, input parameter names, types, and default values.",
+        "operationId": "getChatAppParameters",
+        "tags": ["Application"],
+        "parameters": [
+          {
+            "name": "user",
+            "in": "query",
+            "required": true,
+            "description": "User identifier, defined by the developer's rules, must be unique within the application.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Application parameters information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatAppParametersResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meta": {
+      "get": {
+        "summary": "Get Application Meta Information",
+        "description": "Used to get icons of tools in this application.",
+        "operationId": "getChatAppMeta",
+        "tags": ["Application"],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved application meta information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppMetaResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site": {
+      "get": {
+        "summary": "Get Application WebApp Settings",
+        "description": "Used to get the WebApp settings of the application.",
+        "operationId": "getChatWebAppSettings",
+        "tags": ["Application"],
+        "responses": {
+          "200": {
+            "description": "WebApp settings of the application.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAppSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps/annotations": {
+      "get": {
+        "summary": "Get Annotation List",
+        "description": "Retrieves a list of annotations for the application.",
+        "operationId": "getAnnotationList",
+        "tags": ["Annotations"],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of items returned, default 20, range 1-100.",
+            "required": false,
+            "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved annotation list.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AnnotationListResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Annotation",
+        "description": "Creates a new annotation.",
+        "operationId": "createAnnotation",
+        "tags": ["Annotations"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateAnnotationRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Annotation created successfully.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AnnotationItem" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps/annotations/{annotation_id}": {
+      "put": {
+        "summary": "Update Annotation",
+        "description": "Updates an existing annotation.",
+        "operationId": "updateAnnotation",
+        "tags": ["Annotations"],
+        "parameters": [
+          {
+            "name": "annotation_id",
+            "in": "path",
+            "required": true,
+            "description": "Annotation ID.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateAnnotationRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Annotation updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AnnotationItem" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Annotation",
+        "description": "Deletes an annotation.",
+        "operationId": "deleteAnnotation",
+        "tags": ["Annotations"],
+        "parameters": [
+          {
+            "name": "annotation_id",
+            "in": "path",
+            "required": true,
+            "description": "Annotation ID.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "Annotation deleted successfully. No Content." }
+        }
+      }
+    },
+    "/apps/annotation-reply/{action}": {
+      "post": {
+        "summary": "Initial Annotation Reply Settings",
+        "description": "Enable or disable annotation reply settings and configure embedding models. This interface is executed asynchronously.",
+        "operationId": "initialAnnotationReplySettings",
+        "tags": ["Annotations"],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "description": "Action, can only be 'enable' or 'disable'.",
+            "schema": { "type": "string", "enum": ["enable", "disable"] }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InitialAnnotationReplySettingsRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Annotation reply settings task initiated.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InitialAnnotationReplySettingsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps/annotation-reply/{action}/status/{job_id}": {
+      "get": {
+        "summary": "Query Initial Annotation Reply Settings Task Status",
+        "description": "Queries the status of an asynchronously executed annotation reply settings task.",
+        "operationId": "getInitialAnnotationReplySettingsStatus",
+        "tags": ["Annotations"],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "description": "Action, must be the same as in the initial settings call ('enable' or 'disable').",
+            "schema": { "type": "string", "enum": ["enable", "disable"] }
+          },
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "description": "Job ID obtained from the initial settings call.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved task status.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InitialAnnotationReplySettingsStatusResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API_KEY",
+        "description": "API Key authentication. For all API requests, include your API Key in the `Authorization` HTTP Header, prefixed with 'Bearer '. Example: `Authorization: Bearer {API_KEY}`. **Strongly recommend storing your API Key on the server-side, not shared or stored on the client-side, to avoid possible API-Key leakage that can lead to serious consequences.**"
+      }
+    },
+    "responses": {
+      "BadRequestFile": {
+        "description": "Bad Request for file operations. Possible error codes:\n- `no_file_uploaded`: A file must be provided.\n- `too_many_files`: Currently only one file is accepted.\n- `unsupported_preview`: The file does not support preview.\n- `unsupported_estimate`: The file does not support estimation.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      },
+      "FileTooLarge": {
+        "description": "`file_too_large`: The file is too large.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      },
+      "UnsupportedFileTypeFile": {
+        "description": "`unsupported_file_type`: Unsupported extension. (Note: The description for `/files/upload` lists image types, while this generic error mentions document files. This might indicate a context-specific message from the backend).",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      },
+      "S3ErrorFile": {
+        "description": "Service Unavailable for S3 operations. Possible error codes:\n- `s3_connection_failed`: Unable to connect to S3 service.\n- `s3_permission_denied`: No permission to upload files to S3.\n- `s3_file_too_large`: File exceeds S3 size limit.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      },
+      "InternalServerError": {
+        "description": "Internal server error.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      },
+      "SuccessResult": {
+        "description": "Operation successful.",
+        "content": { "application/json": { "schema": { "type": "object", "properties": { "result": { "type": "string", "example": "success" } } } } }
+      },
+      "ConversationNotFound": {
+        "description": "Conversation not found. Error code: `conversation_not_exists`",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      }
+    },
+    "schemas": {
+      "ChatRequest": {
+        "type": "object",
+        "required": ["query", "user"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "User Input/Question content."
+          },
+          "inputs": {
+            "type": "object",
+            "description": "Allows the entry of various variable values defined by the App. Contains key/value pairs. Default {}.",
+            "additionalProperties": true,
+            "default": {}
+          },
+          "response_mode": {
+            "type": "string",
+            "enum": ["streaming", "blocking"],
+            "description": "Mode of response return. `streaming` (recommended) uses SSE. `blocking` returns after completion (may be interrupted for long processes; not supported in Agent Assistant mode). Cloudflare timeout is 100s.",
+            "default": "streaming"
+          },
+          "user": {
+            "type": "string",
+            "description": "User identifier, unique within the application. **Note**: The Service API does not share conversations created by the WebApp. Conversations created through the API are isolated from those created in the WebApp interface."
+          },
+          "conversation_id": {
+            "type": "string",
+            "description": "Conversation ID to continue a conversation. Pass the previous message's conversation_id."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputFileObject"
+            },
+            "description": "File list (images) for Vision-capable models."
+          },
+          "auto_generate_name": {
+            "type": "boolean",
+            "description": "Auto-generate conversation title. Default `true`. If `false`, use conversation rename API with `auto_generate: true` for async title generation.",
+            "default": true
+          }
+        }
+      },
+      "InputFileObject": {
+        "type": "object",
+        "required": ["type", "transfer_method"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["image"],
+            "description": "Supported type: `image`."
+          },
+          "transfer_method": {
+            "type": "string",
+            "enum": ["remote_url", "local_file"],
+            "description": "Transfer method, `remote_url` for image URL / `local_file` for file upload"
+          },
+          "url": {
+            "type": "string",
+            "format": "url",
+            "description": "Image URL (when the transfer method is `remote_url`)"
+          },
+          "upload_file_id": {
+            "type": "string",
+            "description": "Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)"
+          }
+        },
+        "anyOf": [
+          {
+            "properties": {
+              "transfer_method": { "enum": ["remote_url"] },
+              "url": { "type": "string", "format": "url" }
+            },
+            "required": ["url"],
+            "not": { "required": ["upload_file_id"] }
+          },
+          {
+            "properties": {
+              "transfer_method": { "enum": ["local_file"] },
+              "upload_file_id": { "type": "string" }
+            },
+            "required": ["upload_file_id"],
+            "not": { "required": ["url"] }
+          }
+        ]
+      },
+      "ChatCompletionResponse": {
+        "type": "object",
+        "description": "Response object for blocking mode chat completion.",
+        "properties": {
+          "event": {
+            "type": "string",
+            "description": "Event type, fixed as `message`.",
+            "example": "message"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Task ID for request tracking and stop response API."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique ID of this response/message event."
+          },
+          "message_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique message ID."
+          },
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Conversation ID."
+          },
+          "mode": {
+            "type": "string",
+            "description": "App mode, fixed as `chat`.",
+            "example": "chat"
+          },
+          "answer": {
+            "type": "string",
+            "description": "Complete response content."
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "usage": { "$ref": "#/components/schemas/Usage" },
+              "retriever_resources": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/RetrieverResource" }
+              }
+            }
+          },
+          "created_at": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Message creation timestamp (Unix epoch seconds)."
+          }
+        }
+      },
+      "ChunkChatEvent": {
+        "type": "object",
+        "description": "Base schema for Server-Sent Event chunks in streaming mode.",
+        "required": ["event"],
+        "properties": {
+          "event": {
+            "type": "string",
+            "description": "The type of event.",
+            "enum": ["message", "agent_message", "tts_message", "tts_message_end", "agent_thought", "message_file", "message_end", "message_replace", "error", "ping"]
+          }
+        },
+        "discriminator": {
+          "propertyName": "event",
+          "mapping": {
+            "message": "#/components/schemas/StreamEventChatMessage",
+            "agent_message": "#/components/schemas/StreamEventChatAgentMessage",
+            "tts_message": "#/components/schemas/StreamEventChatTtsMessage",
+            "tts_message_end": "#/components/schemas/StreamEventChatTtsMessageEnd",
+            "agent_thought": "#/components/schemas/StreamEventChatAgentThought",
+            "message_file": "#/components/schemas/StreamEventChatMessageFile",
+            "message_end": "#/components/schemas/StreamEventChatMessageEnd",
+            "message_replace": "#/components/schemas/StreamEventChatMessageReplace",
+            "error": "#/components/schemas/StreamEventChatError",
+            "ping": "#/components/schemas/StreamEventChatPing"
+          }
+        }
+      },
+      "StreamEventBase": {
+        "type": "object",
+        "properties": {
+          "task_id": { "type": "string", "format": "uuid", "description": "Task ID." },
+          "message_id": { "type": "string", "format": "uuid", "description": "Unique message ID." },
+          "conversation_id": { "type": "string", "format": "uuid", "description": "Conversation ID." },
+          "created_at": { "type": "integer", "format": "int64", "description": "Creation timestamp." }
+        }
+      },
+      "StreamEventChatMessage": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ChunkChatEvent" },
+          { "$ref": "#/components/schemas/StreamEventBase" },
+          {
+            "type": "object",
+            "required": ["answer"],
+            "properties": {
+              "answer": { "type": "string", "description": "LLM returned text chunk." }
+            }
+          }
+        ]
+      },
+      "StreamEventChatAgentMessage": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ChunkChatEvent" },
+          { "$ref": "#/components/schemas/StreamEventBase" },
+          {
+            "type": "object",
+            "required": ["answer"],
+            "properties": {
+              "answer": { "type": "string", "description": "LLM returned text chunk (Agent mode)." }
+            }
+          }
+        ]
+      },
+      "StreamEventChatTtsMessage": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ChunkChatEvent" },
+          { "$ref": "#/components/schemas/StreamEventBase" },
+          {
+            "type": "object",
+            "description": "TTS audio stream event (base64 encoded Mp3). Available if auto-play enabled.",
+            "required": ["audio"],
+            "properties": {
+              "audio": { "type": "string", "format": "byte", "description": "Base64 encoded audio chunk." }
+            }
+          }
+        ]
+      },
+      "StreamEventChatTtsMessageEnd": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ChunkChatEvent" },
+          { "$ref": "#/components/schemas/StreamEventBase" },
+          {
+            "type": "object",
+            "description": "TTS audio stream end event.",
+            "required": ["audio"],
+            "properties": {
+              "audio": { "type": "string", "description": "Empty string for end event." }
+            }
+          }
+        ]
+      },
+      "StreamEventChatAgentThought": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ChunkChatEvent" },
+          { "$ref": "#/components/schemas/StreamEventBase" },
+          {
+            "type": "object",
+            "description": "Agent thought, LLM thinking, tool call details (Agent mode).",
+            "required": ["id", "position"],
+            "properties": {
+              "id": { "type": "string", "format": "uuid", "description": "Agent thought ID." },
+              "position": { "type": "integer", "description": "Position of this thought in the sequence for the message." },
+              "thought": { "type": "string", "description": "What LLM is thinking." },
+              "observation": { "type": "string", "description": "Response from tool calls." },
+              "tool": { "type": "string", "description": "List of tools called, split by ';'." },
+              "tool_input": { "type": "string", "description": "Input of tools in JSON format. Example: {\"dalle3\": {\"prompt\": \"a cute cat\"}}." },
+              "message_files": {
+                "type": "array",
+                "items": { "type": "string", "format": "uuid" },
+                "description": "File IDs of files related to this thought (e.g., generated by a tool)."
+              }
+            }
+          }
+        ]
+      },
+      "StreamEventChatMessageFile": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ChunkChatEvent" },
+          {
+            "type": "object",
+            "description": "Message file event, a new file created by a tool.",
+            "required": ["id", "type", "belongs_to", "url", "conversation_id"],
+            "properties": {
+              "id": { "type": "string", "format": "uuid", "description": "File unique ID." },
+              "type": { "type": "string", "enum": ["image"], "description": "File type, currently only 'image'." },
+              "belongs_to": { "type": "string", "enum": ["assistant"], "description": "Who this file belongs to, always 'assistant' here." },
+              "url": { "type": "string", "format": "url", "description": "Remote URL of the file." },
+              "conversation_id": { "type": "string", "format": "uuid", "description": "Conversation ID." }
+            }
+          }
+        ]
+      },
+      "StreamEventChatMessageEnd": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ChunkChatEvent" },
+          { "$ref": "#/components/schemas/StreamEventBase" },
+          {
+            "type": "object",
+            "description": "Message end event, streaming has ended.",
+            "required": ["metadata"],
+            "properties": {
+              "metadata": {
+                "type": "object",
+                "properties": {
+                  "usage": { "$ref": "#/components/schemas/Usage" },
+                  "retriever_resources": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/RetrieverResource" }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "StreamEventChatMessageReplace": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ChunkChatEvent" },
+          { "$ref": "#/components/schemas/StreamEventBase" },
+          {
+            "type": "object",
+            "description": "Message content replacement event (e.g., due to content moderation).",
+            "required": ["answer"],
+            "properties": {
+              "answer": { "type": "string", "description": "Replacement content." }
+            }
+          }
+        ]
+      },
+      "StreamEventChatError": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ChunkChatEvent" },
+          { "$ref": "#/components/schemas/StreamEventBase" },
+          {
+            "type": "object",
+            "description": "Error event during streaming.",
+            "required": ["status", "code", "message"],
+            "properties": {
+              "status": { "type": "integer", "description": "HTTP status code." },
+              "code": { "type": "string", "description": "Error code." },
+              "message": { "type": "string", "description": "Error message." }
+            }
+          }
+        ]
+      },
+      "StreamEventChatPing": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ChunkChatEvent" },
+          {
+            "type": "object",
+            "description": "Ping event to keep connection alive."
+          }
+        ]
+      },
+      "Usage": {
+        "type": "object",
+        "description": "Model usage information.",
+        "properties": {
+          "prompt_tokens": { "type": "integer" },
+          "prompt_unit_price": { "type": "string", "format": "decimal" },
+          "prompt_price_unit": { "type": "string", "format": "decimal" },
+          "prompt_price": { "type": "string", "format": "decimal" },
+          "completion_tokens": { "type": "integer" },
+          "completion_unit_price": { "type": "string", "format": "decimal" },
+          "completion_price_unit": { "type": "string", "format": "decimal" },
+          "completion_price": { "type": "string", "format": "decimal" },
+          "total_tokens": { "type": "integer" },
+          "total_price": { "type": "string", "format": "decimal" },
+          "currency": { "type": "string", "example": "USD" },
+          "latency": { "type": "number", "format": "double" }
+        }
+      },
+      "RetrieverResource": {
+        "type": "object",
+        "description": "Citation and Attribution information for a resource.",
+        "properties": {
+          "position": { "type": "integer", "description": "Position of the resource in the list." },
+          "dataset_id": { "type": "string", "format": "uuid", "description": "ID of the dataset." },
+          "dataset_name": { "type": "string", "description": "Name of the dataset." },
+          "document_id": { "type": "string", "format": "uuid", "description": "ID of the document." },
+          "document_name": { "type": "string", "description": "Name of the document." },
+          "segment_id": { "type": "string", "format": "uuid", "description": "ID of the specific segment within the document." },
+          "score": { "type": "number", "format": "float", "description": "Relevance score of the resource." },
+          "content": { "type": "string", "description": "Content snippet from the resource." }
+        }
+      },
+      "FileUploadResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "size": { "type": "integer" },
+          "extension": { "type": "string" },
+          "mime_type": { "type": "string" },
+          "created_by": { "type": "string", "format": "uuid" },
+          "created_at": { "type": "integer", "format": "int64" }
+        }
+      },
+      "MessageFeedbackRequest": {
+        "type": "object",
+        "required": ["user"],
+        "properties": {
+          "rating": {
+            "type": "string",
+            "enum": ["like", "dislike", null],
+            "nullable": true
+          },
+          "user": { "type": "string" },
+          "content": { "type": "string" }
+        }
+      },
+      "AppFeedbacksResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/FeedbackItem" }
+          }
+        }
+      },
+      "FeedbackItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "app_id": { "type": "string", "format": "uuid" },
+          "conversation_id": { "type": "string", "format": "uuid" },
+          "message_id": { "type": "string", "format": "uuid" },
+          "rating": { "type": "string", "enum": ["like", "dislike", null], "nullable": true },
+          "content": { "type": "string" },
+          "from_source": { "type": "string" },
+          "from_end_user_id": { "type": "string", "format": "uuid" },
+          "from_account_id": { "type": "string", "format": "uuid", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SuggestedQuestionsResponse": {
+        "type": "object",
+        "properties": {
+          "result": { "type": "string", "example": "success" },
+          "data": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["a", "b", "c"]
+          }
+        }
+      },
+      "ConversationHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer" },
+          "has_more": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ConversationMessageItem" }
+          }
+        }
+      },
+      "ConversationMessageItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "conversation_id": { "type": "string", "format": "uuid" },
+          "inputs": { "type": "object", "additionalProperties": true },
+          "query": { "type": "string" },
+          "answer": { "type": "string" },
+          "message_files": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/MessageFileItem" }
+          },
+          "feedback": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "rating": { "type": "string", "enum": ["like", "dislike"] }
+            }
+          },
+          "retriever_resources": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RetrieverResource" }
+          },
+          "agent_thoughts": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AgentThoughtItem" }
+          },
+          "created_at": { "type": "integer", "format": "int64" }
+        }
+      },
+      "MessageFileItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string", "description": "File type, e.g., 'image'." },
+          "url": { "type": "string", "format": "url", "description": "Preview image URL." },
+          "belongs_to": { "type": "string", "enum": ["user", "assistant"], "description": "Who this file belongs to." }
+        }
+      },
+      "AgentThoughtItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "description": "Agent thought ID." },
+          "message_id": { "type": "string", "format": "uuid", "description": "Unique message ID this thought belongs to." },
+          "position": { "type": "integer", "description": "Position of this thought." },
+          "thought": { "type": "string", "description": "What LLM is thinking." },
+          "tool": { "type": "string", "description": "Tools called, split by ';'." },
+          "tool_input": { "type": "string", "description": "Input of tools in JSON format." },
+          "observation": { "type": "string", "description": "Response from tool calls." },
+          "files": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" },
+            "description": "File IDs related to this thought (from example, Markdown text says 'message_files')."
+          },
+          "created_at": { "type": "integer", "format": "int64", "description": "Creation timestamp." }
+        }
+      },
+      "ConversationsListResponse": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer" },
+          "has_more": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ConversationListItem" }
+          }
+        }
+      },
+      "ConversationListItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "inputs": { "type": "object", "additionalProperties": true },
+          "status": { "type": "string" },
+          "introduction": { "type": "string" },
+          "created_at": { "type": "integer", "format": "int64" },
+          "updated_at": { "type": "integer", "format": "int64" }
+        }
+      },
+      "ConversationRenameRequest": {
+        "type": "object",
+        "required": ["user"],
+        "properties": {
+          "name": { "type": "string", "description": "(Optional) The name of the conversation. Omit if auto_generate is true." },
+          "auto_generate": { "type": "boolean", "default": false, "description": "(Optional) Automatically generate the title. Default false." },
+          "user": { "type": "string", "description": "The user identifier." }
+        }
+      },
+      "ConversationRenameResponse": {
+        "$ref": "#/components/schemas/ConversationListItem"
+      },
+      "ConversationVariablesResponse": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Number of items per page." },
+          "has_more": { "type": "boolean", "description": "Whether there is a next page." },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ConversationVariableItem" }
+          }
+        }
+      },
+      "ConversationVariableItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "description": "Variable ID." },
+          "name": { "type": "string", "description": "Variable name." },
+          "value_type": { "type": "string", "description": "Variable type (string, number, object, json, etc.)." },
+          "value": { "type": "string", "description": "Variable value (can be a JSON string for complex types)." },
+          "description": { "type": "string", "description": "Variable description." },
+          "created_at": { "type": "integer", "format": "int64", "description": "Creation timestamp." },
+          "updated_at": { "type": "integer", "format": "int64", "description": "Last update timestamp." }
+        }
+      },
+      "AudioToTextRequest": {
+        "type": "object",
+        "required": ["file", "user"],
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "Audio file. Supported: mp3, mp4, mpeg, mpga, m4a, wav, webm. Limit: 15MB."
+          },
+          "user": {
+            "type": "string",
+            "description": "User identifier."
+          }
+        }
+      },
+      "AudioToTextResponse": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string", "description": "Output text from speech recognition." }
+        }
+      },
+      "TextToAudioFormRequest": {
+        "type": "object",
+        "required": ["user"],
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Message ID (priority if both text and message_id provided)."
+          },
+          "text": {
+            "type": "string",
+            "description": "Speech content."
+          },
+          "user": {
+            "type": "string",
+            "description": "User identifier."
+          }
+        },
+        "description": "Requires `user`. Provide either `message_id` or `text`."
+      },
+      "AppInfoResponse": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "ChatAppParametersResponse": {
+        "type": "object",
+        "properties": {
+          "opening_statement": { "type": "string" },
+          "suggested_questions": { "type": "array", "items": { "type": "string" } },
+          "suggested_questions_after_answer": {
+            "type": "object",
+            "properties": { "enabled": { "type": "boolean" } }
+          },
+          "speech_to_text": {
+            "type": "object",
+            "properties": { "enabled": { "type": "boolean" } }
+          },
+          "text_to_speech": {
+            "type": "object",
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "voice": { "type": "string" },
+              "language": { "type": "string" },
+              "autoPlay": { "type": "string", "enum": ["enabled", "disabled"] }
+            }
+          },
+          "retriever_resource": {
+            "type": "object",
+            "properties": { "enabled": { "type": "boolean" } }
+          },
+          "annotation_reply": {
+            "type": "object",
+            "properties": { "enabled": { "type": "boolean" } }
+          },
+          "user_input_form": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/UserInputFormItem" }
+          },
+          "file_upload": {
+            "type": "object",
+            "properties": {
+              "image": {
+                "type": "object",
+                "properties": {
+                  "enabled": { "type": "boolean" },
+                  "number_limits": { "type": "integer" },
+                  "detail": { "type": "string" },
+                  "transfer_methods": { "type": "array", "items": { "type": "string", "enum": ["remote_url", "local_file"] } }
+                }
+              }
+            }
+          },
+          "system_parameters": {
+            "type": "object",
+            "properties": {
+              "file_size_limit": { "type": "integer" },
+              "image_file_size_limit": { "type": "integer" },
+              "audio_file_size_limit": { "type": "integer" },
+              "video_file_size_limit": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "UserInputFormItem": {
+        "type": "object",
+        "oneOf": [
+          { "$ref": "#/components/schemas/TextInputControlWrapper" },
+          { "$ref": "#/components/schemas/ParagraphControlWrapper" },
+          { "$ref": "#/components/schemas/SelectControlWrapper" }
+        ]
+      },
+      "TextInputControlWrapper": {
+        "type": "object",
+        "properties": { "text-input": { "$ref": "#/components/schemas/TextInputControl" } },
+        "required": ["text-input"]
+      },
+      "ParagraphControlWrapper": {
+        "type": "object",
+        "properties": { "paragraph": { "$ref": "#/components/schemas/ParagraphControl" } },
+        "required": ["paragraph"]
+      },
+      "SelectControlWrapper": {
+        "type": "object",
+        "properties": { "select": { "$ref": "#/components/schemas/SelectControl" } },
+        "required": ["select"]
+      },
+      "TextInputControl": {
+        "type": "object",
+        "required": ["label", "variable", "required"],
+        "properties": { "label": { "type": "string" }, "variable": { "type": "string" }, "required": { "type": "boolean" }, "default": { "type": "string" } }
+      },
+      "ParagraphControl": {
+        "type": "object",
+        "required": ["label", "variable", "required"],
+        "properties": { "label": { "type": "string" }, "variable": { "type": "string" }, "required": { "type": "boolean" }, "default": { "type": "string" } }
+      },
+      "SelectControl": {
+        "type": "object",
+        "required": ["label", "variable", "required", "options"],
+        "properties": { "label": { "type": "string" }, "variable": { "type": "string" }, "required": { "type": "boolean" }, "default": { "type": "string" }, "options": { "type": "array", "items": { "type": "string" } } }
+      },
+      "AppMetaResponse": {
+        "type": "object",
+        "properties": {
+          "tool_icons": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                { "type": "string", "format": "url", "description": "URL of the icon." },
+                { "$ref": "#/components/schemas/ToolIconDetail" }
+              ]
+            },
+            "description": "Tool icons. Keys are tool names."
+          }
+        }
+      },
+      "ToolIconDetail": {
+        "type": "object",
+        "properties": {
+          "background": { "type": "string", "description": "Background color in hex format." },
+          "content": { "type": "string", "description": "Emoji content." }
+        }
+      },
+      "WebAppSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "chat_color_theme": { "type": "string" },
+          "chat_color_theme_inverted": { "type": "boolean" },
+          "icon_type": { "type": "string", "enum": ["emoji", "image"] },
+          "icon": { "type": "string" },
+          "icon_background": { "type": "string" },
+          "icon_url": { "type": "string", "format": "url", "nullable": true },
+          "description": { "type": "string" },
+          "copyright": { "type": "string" },
+          "privacy_policy": { "type": "string" },
+          "custom_disclaimer": { "type": "string" },
+          "default_language": { "type": "string" },
+          "show_workflow_steps": { "type": "boolean" },
+          "use_icon_as_answer_icon": { "type": "boolean" }
+        }
+      },
+      "AnnotationListResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/AnnotationItem" } },
+          "has_more": { "type": "boolean" },
+          "limit": { "type": "integer" },
+          "total": { "type": "integer" },
+          "page": { "type": "integer" }
+        }
+      },
+      "AnnotationItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "question": { "type": "string" },
+          "answer": { "type": "string" },
+          "hit_count": { "type": "integer" },
+          "created_at": { "type": "integer", "format": "int64" }
+        }
+      },
+      "CreateAnnotationRequest": {
+        "type": "object",
+        "required": ["question", "answer"],
+        "properties": {
+          "question": { "type": "string" },
+          "answer": { "type": "string" }
+        }
+      },
+      "UpdateAnnotationRequest": {
+        "type": "object",
+        "required": ["question", "answer"],
+        "properties": {
+          "question": { "type": "string" },
+          "answer": { "type": "string" }
+        }
+      },
+      "InitialAnnotationReplySettingsRequest": {
+        "type": "object",
+        "required": ["score_threshold"],
+        "properties": {
+          "embedding_provider_name": { "type": "string", "description": "Specified embedding model provider name (Optional)." },
+          "embedding_model_name": { "type": "string", "description": "Specified embedding model name (Optional)." },
+          "score_threshold": { "type": "number", "format": "float", "description": "Similarity threshold for matching annotated replies." }
+        }
+      },
+      "InitialAnnotationReplySettingsResponse": {
+        "type": "object",
+        "properties": {
+          "job_id": { "type": "string", "format": "uuid" },
+          "job_status": { "type": "string" }
+        }
+      },
+      "InitialAnnotationReplySettingsStatusResponse": {
+        "type": "object",
+        "properties": {
+          "job_id": { "type": "string", "format": "uuid" },
+          "job_status": { "type": "string" },
+          "error_msg": { "type": "string", "nullable": true }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer" },
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  },
+  "tags": [
+    { "name": "Chat", "description": "Operations related to chat messages and interactions." },
+    { "name": "Files", "description": "File upload and preview operations." },
+    { "name": "Feedback", "description": "User feedback operations." },
+    { "name": "Conversations", "description": "Operations related to managing conversations." },
+    { "name": "TTS", "description": "Text-to-Speech and Speech-to-Text operations." },
+    { "name": "Application", "description": "Operations to retrieve application settings and information." },
+    { "name": "Annotations", "description": "Operations related to managing annotations for direct replies." }
+  ]
+}

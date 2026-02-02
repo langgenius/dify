@@ -1,0 +1,4679 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Service API",
+    "description": "API for application services",
+    "version": "1.0"
+  },
+  "servers": [
+    {
+      "url": "/v1"
+    }
+  ],
+  "security": [
+    {
+      "Bearer": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "service_api",
+      "description": "Service operations"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "operationId": "get_index_api",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/app/feedbacks": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Get all feedbacks for the application",
+        "description": "Get all feedbacks for the application\nReturns paginated list of all feedback submitted for messages in this app.",
+        "operationId": "get_app_feedbacks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackListQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Feedbacks retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/apps/annotation-reply/{action}": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Enable or disable annotation reply feature",
+        "description": "Enable or disable annotation reply feature",
+        "operationId": "annotation_reply_action",
+        "parameters": [
+          {
+            "name": "action",
+            "in": "path",
+            "description": "Action to perform: 'enable' or 'disable'",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationReplyActionPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Action completed successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/apps/annotation-reply/{action}/status/{job_id}": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Get the status of an annotation reply action job",
+        "description": "Get the status of an annotation reply action job",
+        "operationId": "get_annotation_reply_action_status",
+        "parameters": [
+          {
+            "name": "action",
+            "in": "path",
+            "description": "Action type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "job_id",
+            "in": "path",
+            "description": "Job ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job status retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Job not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/apps/annotations": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "List annotations for the application",
+        "description": "List annotations for the application",
+        "operationId": "list_annotations",
+        "parameters": [
+          {
+            "name": "X-Fields",
+            "in": "header",
+            "description": "An optional fields mask",
+            "schema": {
+              "type": "string",
+              "format": "mask"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Annotations retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Create a new annotation",
+        "description": "Create a new annotation",
+        "operationId": "create_annotation",
+        "parameters": [
+          {
+            "name": "X-Fields",
+            "in": "header",
+            "description": "An optional fields mask",
+            "schema": {
+              "type": "string",
+              "format": "mask"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationCreatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Annotation created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Annotation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/apps/annotations/{annotation_id}": {
+      "put": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Update an existing annotation",
+        "description": "Update an existing annotation",
+        "operationId": "update_annotation",
+        "parameters": [
+          {
+            "name": "annotation_id",
+            "in": "path",
+            "description": "Annotation ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Fields",
+            "in": "header",
+            "description": "An optional fields mask",
+            "schema": {
+              "type": "string",
+              "format": "mask"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationCreatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Annotation updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Annotation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {}
+          },
+          "404": {
+            "description": "Annotation not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      },
+      "delete": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Delete an annotation",
+        "description": "Delete an annotation",
+        "operationId": "delete_annotation",
+        "parameters": [
+          {
+            "name": "annotation_id",
+            "in": "path",
+            "description": "Annotation ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Annotation deleted successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {}
+          },
+          "404": {
+            "description": "Annotation not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/audio-to-text": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Convert audio to text using speech-to-text",
+        "description": "Convert audio to text using speech-to-text\nAccepts an audio file upload and returns the transcribed text.",
+        "operationId": "audio_to_text",
+        "responses": {
+          "200": {
+            "description": "Audio successfully transcribed",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - no audio or invalid audio",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "413": {
+            "description": "Audio file too large",
+            "content": {}
+          },
+          "415": {
+            "description": "Unsupported audio type",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/chat-messages": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Send a message in a chat conversation",
+        "description": "Send a message in a chat conversation\nThis endpoint handles chat messages for chat, agent chat, and advanced chat applications.\nSupports conversation management and both blocking and streaming response modes.",
+        "operationId": "create_chat_message",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequestPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Message sent successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid parameters or workflow issues",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Conversation or workflow not found",
+            "content": {}
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/chat-messages/{task_id}/stop": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Stop a running chat message generation",
+        "description": "Stop a running chat message generation",
+        "operationId": "stop_chat_message",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "The ID of the task to stop",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task stopped successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/completion-messages": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Create a completion for the given prompt",
+        "description": "Create a completion for the given prompt\nThis endpoint generates a completion based on the provided inputs and query.\nSupports both blocking and streaming response modes.",
+        "operationId": "create_completion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompletionRequestPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Completion created successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid parameters",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Conversation not found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/completion-messages/{task_id}/stop": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Stop a running completion task",
+        "description": "Stop a running completion task",
+        "operationId": "stop_completion",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "The ID of the task to stop",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task stopped successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/conversations": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "List all conversations for the current user",
+        "description": "List all conversations for the current user\nSupports pagination using last_id and limit parameters.",
+        "operationId": "list_conversations",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationListQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Conversations retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Last conversation not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/conversations/{c_id}": {
+      "delete": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Delete a specific conversation",
+        "description": "Delete a specific conversation",
+        "operationId": "delete_conversation",
+        "parameters": [
+          {
+            "name": "c_id",
+            "in": "path",
+            "description": "Conversation ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Conversation deleted successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Conversation not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/conversations/{c_id}/name": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Rename a conversation or auto-generate a name",
+        "description": "Rename a conversation or auto-generate a name",
+        "operationId": "rename_conversation",
+        "parameters": [
+          {
+            "name": "c_id",
+            "in": "path",
+            "description": "Conversation ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationRenamePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Conversation renamed successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Conversation not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/conversations/{c_id}/variables": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "List all variables for a conversation",
+        "description": "List all variables for a conversation\nConversational variables are only available for chat applications.",
+        "operationId": "list_conversation_variables",
+        "parameters": [
+          {
+            "name": "c_id",
+            "in": "path",
+            "description": "Conversation ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Fields",
+            "in": "header",
+            "description": "An optional fields mask",
+            "schema": {
+              "type": "string",
+              "format": "mask"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationVariablesQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Variables retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationVariableInfiniteScrollPagination"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Conversation not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/conversations/{c_id}/variables/{variable_id}": {
+      "put": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Update a conversation variable's value",
+        "description": "Update a conversation variable's value\nAllows updating the value of a specific conversation variable.\nThe value must match the variable's expected type.",
+        "operationId": "update_conversation_variable",
+        "parameters": [
+          {
+            "name": "c_id",
+            "in": "path",
+            "description": "Conversation ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "variable_id",
+            "in": "path",
+            "description": "Variable ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Fields",
+            "in": "header",
+            "description": "An optional fields mask",
+            "schema": {
+              "type": "string",
+              "format": "mask"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationVariableUpdatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Variable updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationVariable"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - type mismatch",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Conversation or variable not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Resource for getting datasets",
+        "description": "List all datasets",
+        "operationId": "list_datasets",
+        "responses": {
+          "200": {
+            "description": "Datasets retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Resource for creating datasets",
+        "description": "Create a new dataset",
+        "operationId": "create_dataset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasetCreatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Dataset created successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid parameters",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/tags": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Get all knowledge type tags",
+        "description": "Get all knowledge type tags",
+        "operationId": "list_dataset_tags",
+        "parameters": [
+          {
+            "name": "X-Fields",
+            "in": "header",
+            "description": "An optional fields mask",
+            "schema": {
+              "type": "string",
+              "format": "mask"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tags retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSetTag"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Add a knowledge type tag",
+        "description": "Add a knowledge type tag",
+        "operationId": "create_dataset_tag",
+        "parameters": [
+          {
+            "name": "X-Fields",
+            "in": "header",
+            "description": "An optional fields mask",
+            "schema": {
+              "type": "string",
+              "format": "mask"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagCreatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Tag created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSetTag"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      },
+      "delete": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Delete a knowledge type tag",
+        "description": "Delete a knowledge type tag",
+        "operationId": "delete_dataset_tag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagDeletePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Tag deleted successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      },
+      "patch": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Update a knowledge type tag",
+        "operationId": "update_dataset_tag",
+        "parameters": [
+          {
+            "name": "X-Fields",
+            "in": "header",
+            "description": "An optional fields mask",
+            "schema": {
+              "type": "string",
+              "format": "mask"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagUpdatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Tag updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSetTag"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/tags/binding": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Bind tags to a dataset",
+        "operationId": "bind_dataset_tags",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagBindingPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Tags bound successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/tags/unbinding": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Unbind a tag from a dataset",
+        "operationId": "unbind_dataset_tag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagUnbindingPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Tag unbound successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/{dataset_id}": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Get a specific dataset by ID",
+        "operationId": "get_dataset",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dataset retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset not found",
+            "content": {}
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Deletes a dataset given its ID",
+        "description": "Delete a dataset\nArgs:\n    _: ignore\n    dataset_id (UUID): The ID of the dataset to be deleted.\n\nReturns:\n    dict: A dictionary with a key 'result' and a value 'success'\n          if the dataset was successfully deleted. Omitted in HTTP response.\n    int: HTTP status code 204 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.",
+        "operationId": "delete_dataset",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Dataset deleted successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset not found",
+            "content": {}
+          },
+          "409": {
+            "description": "Conflict - dataset is in use",
+            "content": {}
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Update an existing dataset",
+        "operationId": "update_dataset",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasetUpdatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Dataset updated successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/{dataset_id}/document/create-by-file": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Create a new document by uploading a file",
+        "operationId": "create_document_by_file",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document created successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid file or parameters",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/document/create-by-text": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Create a new document by providing text content",
+        "operationId": "create_document_by_text",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentTextCreatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Document created successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid parameters",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/{dataset_id}/document/create_by_file": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Create a new document by uploading a file",
+        "operationId": "create_document_by_file",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document created successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid file or parameters",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/document/create_by_text": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Create a new document by providing text content",
+        "operationId": "create_document_by_text",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentTextCreatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Document created successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid parameters",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/{dataset_id}/documents": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "List all documents in a dataset",
+        "operationId": "list_documents",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Documents retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/documents/metadata": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Update metadata for multiple documents",
+        "description": "Update metadata for multiple documents",
+        "operationId": "update_documents_metadata",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetadataOperationData"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Documents metadata updated successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/{dataset_id}/documents/status/{action}": {
+      "patch": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Batch update document status",
+        "description": "Batch update document status\nArgs:\n    tenant_id: tenant id\n    dataset_id: dataset id\n    action: action to perform (Literal[\"enable\", \"disable\", \"archive\", \"un_archive\"])\n\nReturns:\n    dict: A dictionary with a key 'result' and a value 'success'\n    int: HTTP status code 200 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.\n    Forbidden: If the user does not have permission.\n    InvalidActionError: If the action is invalid or cannot be performed.",
+        "operationId": "update_document_status",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "description": "Action to perform: 'enable', 'disable', 'archive', or 'un_archive'",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document status updated successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid action",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/documents/{batch}/indexing-status": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Get indexing status for documents in a batch",
+        "operationId": "get_document_indexing_status",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "batch",
+            "in": "path",
+            "description": "Batch ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Indexing status retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset or documents not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Get a specific document by ID",
+        "operationId": "get_document",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {}
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {}
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Delete document",
+        "description": "Delete a document",
+        "operationId": "delete_document",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Document deleted successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - document is archived",
+            "content": {}
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/segments": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "List segments in a document",
+        "operationId": "list_segments",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SegmentListQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Segments retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset or document not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      },
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Create segments in a document",
+        "operationId": "create_segments",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SegmentCreatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Segments created successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - segments data is missing",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset or document not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Get a specific segment by ID",
+        "operationId": "get_segment",
+        "parameters": [
+          {
+            "name": "segment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Segment retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset, document, or segment not found",
+            "content": {}
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Update a specific segment",
+        "operationId": "update_segment",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "segment_id",
+            "in": "path",
+            "description": "Segment ID to update",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SegmentUpdatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Segment updated successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset, document, or segment not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      },
+      "delete": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Delete a specific segment",
+        "operationId": "delete_segment",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "segment_id",
+            "in": "path",
+            "description": "Segment ID to delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Segment deleted successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset, document, or segment not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "List child chunks for a segment",
+        "operationId": "list_child_chunks",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "segment_id",
+            "in": "path",
+            "description": "Parent segment ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChildChunkListQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Child chunks retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset, document, or segment not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      },
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Create a new child chunk for a segment",
+        "operationId": "create_child_chunk",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "segment_id",
+            "in": "path",
+            "description": "Parent segment ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChildChunkCreatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Child chunk created successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset, document, or segment not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}": {
+      "delete": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Delete a specific child chunk",
+        "operationId": "delete_child_chunk",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "segment_id",
+            "in": "path",
+            "description": "Parent segment ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "child_chunk_id",
+            "in": "path",
+            "description": "Child chunk ID to delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Child chunk deleted successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset, document, segment, or child chunk not found",
+            "content": {}
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Update a specific child chunk",
+        "operationId": "update_child_chunk",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "segment_id",
+            "in": "path",
+            "description": "Parent segment ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "child_chunk_id",
+            "in": "path",
+            "description": "Child chunk ID to update",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChildChunkUpdatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Child chunk updated successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset, document, segment, or child chunk not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/update-by-file": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Update an existing document by uploading a file",
+        "operationId": "update_document_by_file",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document updated successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/update-by-text": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Update an existing document by providing text content",
+        "operationId": "update_document_by_text",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentTextUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Document updated successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/update_by_file": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Update an existing document by uploading a file",
+        "operationId": "update_document_by_file",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document updated successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/update_by_text": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "description": "Update an existing document by providing text content",
+        "operationId": "update_document_by_text",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentTextUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Document updated successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/{dataset_id}/hit-testing": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Perform hit testing on a dataset",
+        "description": "Perform hit testing on a dataset\nTests retrieval performance for the specified dataset.",
+        "operationId": "dataset_hit_testing",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hit testing results",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/metadata": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Get all metadata for a dataset",
+        "description": "Get all metadata for a dataset",
+        "operationId": "get_dataset_metadata",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metadata retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset not found",
+            "content": {}
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Create metadata for a dataset",
+        "description": "Create metadata for a dataset",
+        "operationId": "create_dataset_metadata",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetadataArgs"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Metadata created successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/{dataset_id}/metadata/built-in": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Get all built-in metadata fields",
+        "description": "Get all built-in metadata fields",
+        "operationId": "get_built_in_fields",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Built-in fields retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/metadata/built-in/{action}": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Enable or disable built-in metadata field",
+        "description": "Enable or disable built-in metadata field",
+        "operationId": "toggle_built_in_field",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "description": "Action to perform: 'enable' or 'disable'",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action completed successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/metadata/{metadata_id}": {
+      "delete": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Delete metadata",
+        "description": "Delete metadata",
+        "operationId": "delete_dataset_metadata",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "metadata_id",
+            "in": "path",
+            "description": "Metadata ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Metadata deleted successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset or metadata not found",
+            "content": {}
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Update metadata name",
+        "description": "Update metadata name",
+        "operationId": "update_dataset_metadata",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "metadata_id",
+            "in": "path",
+            "description": "Metadata ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetadataUpdatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Metadata updated successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset or metadata not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/datasets/{dataset_id}/retrieve": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Perform hit testing on a dataset",
+        "description": "Perform hit testing on a dataset\nTests retrieval performance for the specified dataset.",
+        "operationId": "dataset_hit_testing",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hit testing results",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Dataset not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/tags": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Get all knowledge type tags",
+        "description": "Get tags bound to a specific dataset",
+        "operationId": "get_dataset_tags_binding_status",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "description": "Dataset ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tags retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/files/upload": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Upload a file for use in conversations",
+        "description": "Upload a file for use in conversations\nAccepts a single file upload via multipart/form-data.",
+        "operationId": "upload_file",
+        "responses": {
+          "201": {
+            "description": "File uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - no file or invalid file",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "413": {
+            "description": "File too large",
+            "content": {}
+          },
+          "415": {
+            "description": "Unsupported file type",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/files/{file_id}/preview": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Preview/Download a file that was uploaded via Service API",
+        "description": "Preview or download a file uploaded via Service API\nProvides secure file preview/download functionality.\nFiles can only be accessed if they belong to messages within the requesting app's context.",
+        "operationId": "preview_file",
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "description": "UUID of the file to preview",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FilePreviewQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "File retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - file access denied",
+            "content": {}
+          },
+          "404": {
+            "description": "File not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/info": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Get app information",
+        "description": "Get basic application information\nReturns basic information about the application including name, description, tags, and mode.",
+        "operationId": "get_app_info",
+        "responses": {
+          "200": {
+            "description": "Application info retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Application not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/messages": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "List messages in a conversation",
+        "description": "List messages in a conversation\nRetrieves messages with pagination support using first_id.",
+        "operationId": "list_messages",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageListQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Messages retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Conversation or first message not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/messages/{message_id}/feedbacks": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Submit feedback for a message",
+        "description": "Submit feedback for a message\nAllows users to rate messages as like/dislike and provide optional feedback content.",
+        "operationId": "create_message_feedback",
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "description": "Message ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageFeedbackPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Feedback submitted successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Message not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/messages/{message_id}/suggested": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Get suggested follow-up questions for a message",
+        "description": "Get suggested follow-up questions for a message\nReturns AI-generated follow-up questions based on the message content.",
+        "operationId": "get_suggested_questions",
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "description": "Message ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Suggested questions retrieved successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Suggested questions feature is disabled",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Message not found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/meta": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Get app metadata",
+        "description": "Get application metadata\nReturns metadata about the application including configuration and settings.",
+        "operationId": "get_app_meta",
+        "responses": {
+          "200": {
+            "description": "Metadata retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Application not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/parameters": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Retrieve app parameters",
+        "description": "Retrieve application input parameters and configuration\nReturns the input form parameters and configuration for the application.",
+        "operationId": "get_app_parameters",
+        "responses": {
+          "200": {
+            "description": "Parameters retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Application not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/site": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Retrieve app site info",
+        "description": "Get application site configuration\nReturns the site configuration for the application including theme, icons, and text.",
+        "operationId": "get_app_site",
+        "responses": {
+          "200": {
+            "description": "Site configuration retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden - site not found or tenant archived",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/text-to-audio": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Convert text to audio using text-to-speech",
+        "description": "Convert text to audio using text-to-speech\nConverts the provided text to audio using the specified voice.",
+        "operationId": "text_to_audio",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextToAudioPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Text successfully converted to audio",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid parameters",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/workflows/logs": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Get workflow app logs",
+        "description": "Get workflow execution logs\nReturns paginated workflow execution logs with filtering options.",
+        "operationId": "get_workflow_logs",
+        "parameters": [
+          {
+            "name": "X-Fields",
+            "in": "header",
+            "description": "An optional fields mask",
+            "schema": {
+              "type": "string",
+              "format": "mask"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowLogQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Logs retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowAppLogPagination"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/workflows/run": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Execute a workflow",
+        "description": "Execute a workflow\nRuns a workflow with the provided inputs and returns the results.\nSupports both blocking and streaming response modes.",
+        "operationId": "run_workflow",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowRunPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Workflow executed successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid parameters or workflow issues",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Workflow not found",
+            "content": {}
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/workflows/run/{workflow_run_id}": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Get a workflow task running detail",
+        "description": "Get workflow run details\nReturns detailed information about a specific workflow run.",
+        "operationId": "get_workflow_run_detail",
+        "parameters": [
+          {
+            "name": "workflow_run_id",
+            "in": "path",
+            "description": "Workflow run ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Fields",
+            "in": "header",
+            "description": "An optional fields mask",
+            "schema": {
+              "type": "string",
+              "format": "mask"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workflow run details retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowRun"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Workflow run not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/workflows/tasks/{task_id}/stop": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Stop a running workflow task",
+        "description": "Stop a running workflow task",
+        "operationId": "stop_workflow_task",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Task ID to stop",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task stopped successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/workflows/{workflow_id}/run": {
+      "post": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Run specific workflow by ID",
+        "description": "Execute a specific workflow by ID\nExecutes a specific workflow version identified by its ID.",
+        "operationId": "run_workflow_by_id",
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "description": "Workflow ID to execute",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowRunPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Workflow executed successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid parameters or workflow issues",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          },
+          "404": {
+            "description": "Workflow not found",
+            "content": {}
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/workspaces/current/models/model-types/{model_type}": {
+      "get": {
+        "tags": [
+          "service_api"
+        ],
+        "summary": "Get available models by model type",
+        "description": "Get available models by model type\nReturns a list of available models for the specified model type.",
+        "operationId": "get_available_models",
+        "parameters": [
+          {
+            "name": "model_type",
+            "in": "path",
+            "description": "Type of model to retrieve",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Models retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token",
+            "content": {}
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnnotationReplyActionPayload": {
+        "title": "AnnotationReplyActionPayload",
+        "required": [
+          "embedding_model_name",
+          "embedding_provider_name",
+          "score_threshold"
+        ],
+        "type": "object",
+        "properties": {
+          "score_threshold": {
+            "title": "Score Threshold",
+            "type": "number",
+            "description": "Score threshold for annotation matching"
+          },
+          "embedding_provider_name": {
+            "title": "Embedding Provider Name",
+            "type": "string",
+            "description": "Embedding provider name"
+          },
+          "embedding_model_name": {
+            "title": "Embedding Model Name",
+            "type": "string",
+            "description": "Embedding model name"
+          }
+        }
+      },
+      "AnnotationCreatePayload": {
+        "title": "AnnotationCreatePayload",
+        "required": [
+          "answer",
+          "question"
+        ],
+        "type": "object",
+        "properties": {
+          "question": {
+            "title": "Question",
+            "type": "string",
+            "description": "Annotation question"
+          },
+          "answer": {
+            "title": "Answer",
+            "type": "string",
+            "description": "Annotation answer"
+          }
+        }
+      },
+      "AnnotationList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Annotation"
+            }
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          }
+        }
+      },
+      "Annotation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "object",
+            "properties": {}
+          },
+          "hit_count": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      "TextToAudioPayload": {
+        "title": "TextToAudioPayload",
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "title": "Message Id",
+            "type": "object",
+            "description": "Message ID"
+          },
+          "voice": {
+            "title": "Voice",
+            "type": "object",
+            "description": "Voice to use for TTS"
+          },
+          "text": {
+            "title": "Text",
+            "type": "object",
+            "description": "Text to convert to audio"
+          },
+          "streaming": {
+            "title": "Streaming",
+            "type": "object",
+            "description": "Enable streaming response"
+          }
+        }
+      },
+      "CompletionRequestPayload": {
+        "title": "CompletionRequestPayload",
+        "required": [
+          "inputs"
+        ],
+        "type": "object",
+        "properties": {
+          "inputs": {
+            "title": "Inputs",
+            "type": "object",
+            "additionalProperties": true
+          },
+          "query": {
+            "title": "Query",
+            "type": "string",
+            "default": ""
+          },
+          "files": {
+            "title": "Files",
+            "type": "object"
+          },
+          "response_mode": {
+            "title": "Response Mode",
+            "type": "object"
+          },
+          "retriever_from": {
+            "title": "Retriever From",
+            "type": "string",
+            "default": "dev"
+          }
+        }
+      },
+      "ChatRequestPayload": {
+        "title": "ChatRequestPayload",
+        "required": [
+          "inputs",
+          "query"
+        ],
+        "type": "object",
+        "properties": {
+          "inputs": {
+            "title": "Inputs",
+            "type": "object",
+            "additionalProperties": true
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "files": {
+            "title": "Files",
+            "type": "object"
+          },
+          "response_mode": {
+            "title": "Response Mode",
+            "type": "object"
+          },
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "object",
+            "description": "Conversation UUID"
+          },
+          "retriever_from": {
+            "title": "Retriever From",
+            "type": "string",
+            "default": "dev"
+          },
+          "auto_generate_name": {
+            "title": "Auto Generate Name",
+            "type": "boolean",
+            "description": "Auto generate conversation name",
+            "default": true
+          },
+          "workflow_id": {
+            "title": "Workflow Id",
+            "type": "object",
+            "description": "Workflow ID for advanced chat"
+          }
+        }
+      },
+      "ConversationListQuery": {
+        "title": "ConversationListQuery",
+        "type": "object",
+        "properties": {
+          "last_id": {
+            "title": "Last Id",
+            "type": "object",
+            "description": "Last conversation ID for pagination"
+          },
+          "limit": {
+            "title": "Limit",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer",
+            "description": "Number of conversations to return"
+          },
+          "sort_by": {
+            "title": "Sort By",
+            "type": "string",
+            "description": "Sort order for conversations",
+            "default": "-updated_at",
+            "enum": [
+              "created_at",
+              "-created_at",
+              "updated_at",
+              "-updated_at"
+            ]
+          }
+        }
+      },
+      "ConversationRenamePayload": {
+        "title": "ConversationRenamePayload",
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "object",
+            "description": "New conversation name (required if auto_generate is false)"
+          },
+          "auto_generate": {
+            "title": "Auto Generate",
+            "type": "boolean",
+            "description": "Auto-generate conversation name",
+            "default": false
+          }
+        }
+      },
+      "ConversationVariablesQuery": {
+        "title": "ConversationVariablesQuery",
+        "type": "object",
+        "properties": {
+          "last_id": {
+            "title": "Last Id",
+            "type": "object",
+            "description": "Last variable ID for pagination"
+          },
+          "limit": {
+            "title": "Limit",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer",
+            "description": "Number of variables to return"
+          },
+          "variable_name": {
+            "title": "Variable Name",
+            "type": "object",
+            "description": "Filter variables by name"
+          }
+        }
+      },
+      "ConversationVariableInfiniteScrollPagination": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConversationVariable"
+            }
+          }
+        }
+      },
+      "ConversationVariable": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "value_type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "object",
+            "properties": {}
+          },
+          "updated_at": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      "ConversationVariableUpdatePayload": {
+        "title": "ConversationVariableUpdatePayload",
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "title": "Value",
+            "type": "object"
+          }
+        }
+      },
+      "FileResponse": {
+        "title": "FileResponse",
+        "required": [
+          "id",
+          "name",
+          "size"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "extension": {
+            "title": "Extension",
+            "type": "object"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "object"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "object"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "object"
+          },
+          "preview_url": {
+            "title": "Preview Url",
+            "type": "object"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "object"
+          },
+          "original_url": {
+            "title": "Original Url",
+            "type": "object"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "object"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "object"
+          },
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "object"
+          },
+          "file_key": {
+            "title": "File Key",
+            "type": "object"
+          }
+        }
+      },
+      "FilePreviewQuery": {
+        "title": "FilePreviewQuery",
+        "type": "object",
+        "properties": {
+          "as_attachment": {
+            "title": "As Attachment",
+            "type": "boolean",
+            "description": "Download as attachment",
+            "default": false
+          }
+        }
+      },
+      "MessageListQuery": {
+        "title": "MessageListQuery",
+        "required": [
+          "conversation_id"
+        ],
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "string",
+            "format": "uuid"
+          },
+          "first_id": {
+            "title": "First Id",
+            "type": "object"
+          },
+          "limit": {
+            "title": "Limit",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer",
+            "description": "Number of messages to return"
+          }
+        }
+      },
+      "MessageFeedbackPayload": {
+        "title": "MessageFeedbackPayload",
+        "type": "object",
+        "properties": {
+          "rating": {
+            "title": "Rating",
+            "type": "object",
+            "description": "Feedback rating"
+          },
+          "content": {
+            "title": "Content",
+            "type": "object",
+            "description": "Feedback content"
+          }
+        }
+      },
+      "FeedbackListQuery": {
+        "title": "FeedbackListQuery",
+        "type": "object",
+        "properties": {
+          "page": {
+            "title": "Page",
+            "minimum": 1,
+            "type": "integer",
+            "description": "Page number"
+          },
+          "limit": {
+            "title": "Limit",
+            "maximum": 101,
+            "minimum": 1,
+            "type": "integer",
+            "description": "Number of feedbacks per page"
+          }
+        }
+      },
+      "WorkflowRun": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workflow_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "inputs": {
+            "type": "object",
+            "properties": {}
+          },
+          "outputs": {
+            "type": "object",
+            "properties": {}
+          },
+          "error": {
+            "type": "string"
+          },
+          "total_steps": {
+            "type": "integer"
+          },
+          "total_tokens": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "object",
+            "properties": {}
+          },
+          "finished_at": {
+            "type": "object",
+            "properties": {}
+          },
+          "elapsed_time": {
+            "type": "number"
+          }
+        }
+      },
+      "WorkflowRunPayload": {
+        "title": "WorkflowRunPayload",
+        "required": [
+          "inputs"
+        ],
+        "type": "object",
+        "properties": {
+          "inputs": {
+            "title": "Inputs",
+            "type": "object",
+            "additionalProperties": true
+          },
+          "files": {
+            "title": "Files",
+            "type": "object"
+          },
+          "response_mode": {
+            "title": "Response Mode",
+            "type": "object"
+          }
+        }
+      },
+      "WorkflowLogQuery": {
+        "title": "WorkflowLogQuery",
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "title": "Keyword",
+            "type": "object"
+          },
+          "status": {
+            "title": "Status",
+            "type": "object"
+          },
+          "created_at__before": {
+            "title": "Created At  Before",
+            "type": "object"
+          },
+          "created_at__after": {
+            "title": "Created At  After",
+            "type": "object"
+          },
+          "created_by_end_user_session_id": {
+            "title": "Created By End User Session Id",
+            "type": "object"
+          },
+          "created_by_account": {
+            "title": "Created By Account",
+            "type": "object"
+          },
+          "page": {
+            "title": "Page",
+            "maximum": 99999,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "limit": {
+            "title": "Limit",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      },
+      "WorkflowAppLogPagination": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowAppLogPartial"
+            }
+          }
+        }
+      },
+      "WorkflowAppLogPartial": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workflow_run": {
+            "$ref": "#/components/schemas/WorkflowRunForLog"
+          },
+          "details": {
+            "type": "object",
+            "properties": {}
+          },
+          "created_from": {
+            "type": "string"
+          },
+          "created_by_role": {
+            "type": "string"
+          },
+          "created_by_account": {
+            "$ref": "#/components/schemas/SimpleAccount"
+          },
+          "created_by_end_user": {
+            "$ref": "#/components/schemas/SimpleEndUser"
+          },
+          "created_at": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      },
+      "WorkflowRunForLog": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "triggered_from": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "elapsed_time": {
+            "type": "number"
+          },
+          "total_tokens": {
+            "type": "integer"
+          },
+          "total_steps": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "object",
+            "properties": {}
+          },
+          "finished_at": {
+            "type": "object",
+            "properties": {}
+          },
+          "exceptions_count": {
+            "type": "integer"
+          }
+        }
+      },
+      "SimpleAccount": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        }
+      },
+      "SimpleEndUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "is_anonymous": {
+            "type": "boolean"
+          },
+          "session_id": {
+            "type": "string"
+          }
+        }
+      },
+      "DatasetCreatePayload": {
+        "title": "DatasetCreatePayload",
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "maxLength": 400,
+            "type": "string",
+            "description": "Dataset description (max 400 chars)",
+            "default": ""
+          },
+          "indexing_technique": {
+            "title": "Indexing Technique",
+            "type": "object"
+          },
+          "permission": {
+            "type": "object"
+          },
+          "external_knowledge_api_id": {
+            "title": "External Knowledge Api Id",
+            "type": "object"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string",
+            "default": "vendor"
+          },
+          "external_knowledge_id": {
+            "title": "External Knowledge Id",
+            "type": "object"
+          },
+          "retrieval_model": {
+            "type": "object"
+          },
+          "embedding_model": {
+            "title": "Embedding Model",
+            "type": "object"
+          },
+          "embedding_model_provider": {
+            "title": "Embedding Model Provider",
+            "type": "object"
+          }
+        }
+      },
+      "DatasetUpdatePayload": {
+        "title": "DatasetUpdatePayload",
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "object"
+          },
+          "description": {
+            "title": "Description",
+            "type": "object",
+            "description": "Dataset description (max 400 chars)"
+          },
+          "indexing_technique": {
+            "title": "Indexing Technique",
+            "type": "object"
+          },
+          "permission": {
+            "type": "object"
+          },
+          "embedding_model": {
+            "title": "Embedding Model",
+            "type": "object"
+          },
+          "embedding_model_provider": {
+            "title": "Embedding Model Provider",
+            "type": "object"
+          },
+          "retrieval_model": {
+            "type": "object"
+          },
+          "partial_member_list": {
+            "title": "Partial Member List",
+            "type": "object"
+          },
+          "external_retrieval_model": {
+            "title": "External Retrieval Model",
+            "type": "object"
+          },
+          "external_knowledge_id": {
+            "title": "External Knowledge Id",
+            "type": "object"
+          },
+          "external_knowledge_api_id": {
+            "title": "External Knowledge Api Id",
+            "type": "object"
+          }
+        }
+      },
+      "TagDeletePayload": {
+        "title": "TagDeletePayload",
+        "required": [
+          "tag_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tag_id": {
+            "title": "Tag Id",
+            "type": "string"
+          }
+        }
+      },
+      "TagCreatePayload": {
+        "title": "TagCreatePayload",
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "TagUpdatePayload": {
+        "title": "TagUpdatePayload",
+        "required": [
+          "name",
+          "tag_id"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tag_id": {
+            "title": "Tag Id",
+            "type": "string"
+          }
+        }
+      },
+      "DataSetTag": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "binding_count": {
+            "type": "string"
+          }
+        }
+      },
+      "TagBindingPayload": {
+        "title": "TagBindingPayload",
+        "required": [
+          "tag_ids",
+          "target_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tag_ids": {
+            "title": "Tag Ids",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          }
+        }
+      },
+      "TagUnbindingPayload": {
+        "title": "TagUnbindingPayload",
+        "required": [
+          "tag_id",
+          "target_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tag_id": {
+            "title": "Tag Id",
+            "type": "string"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          }
+        }
+      },
+      "DocumentTextCreatePayload": {
+        "title": "DocumentTextCreatePayload",
+        "required": [
+          "name",
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "process_rule": {
+            "type": "object"
+          },
+          "original_document_id": {
+            "title": "Original Document Id",
+            "type": "object"
+          },
+          "doc_form": {
+            "title": "Doc Form",
+            "type": "string",
+            "default": "text_model"
+          },
+          "doc_language": {
+            "title": "Doc Language",
+            "type": "string",
+            "default": "English"
+          },
+          "indexing_technique": {
+            "title": "Indexing Technique",
+            "type": "object"
+          },
+          "retrieval_model": {
+            "type": "object"
+          },
+          "embedding_model": {
+            "title": "Embedding Model",
+            "type": "object"
+          },
+          "embedding_model_provider": {
+            "title": "Embedding Model Provider",
+            "type": "object"
+          }
+        }
+      },
+      "DocumentTextUpdate": {
+        "title": "DocumentTextUpdate",
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "object"
+          },
+          "text": {
+            "title": "Text",
+            "type": "object"
+          },
+          "process_rule": {
+            "type": "object"
+          },
+          "doc_form": {
+            "title": "Doc Form",
+            "type": "string",
+            "default": "text_model"
+          },
+          "doc_language": {
+            "title": "Doc Language",
+            "type": "string",
+            "default": "English"
+          },
+          "retrieval_model": {
+            "type": "object"
+          }
+        }
+      },
+      "MetadataArgs": {
+        "title": "MetadataArgs",
+        "required": [
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "title": "Type",
+            "type": "string",
+            "enum": [
+              "string",
+              "number",
+              "time"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        }
+      },
+      "MetadataUpdatePayload": {
+        "title": "MetadataUpdatePayload",
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        }
+      },
+      "MetadataOperationData": {
+        "title": "MetadataOperationData",
+        "required": [
+          "operation_data"
+        ],
+        "type": "object",
+        "properties": {
+          "operation_data": {
+            "title": "Operation Data",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentMetadataOperation"
+            }
+          }
+        },
+        "description": "Metadata operation data"
+      },
+      "SegmentListQuery": {
+        "title": "SegmentListQuery",
+        "type": "object",
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keyword": {
+            "title": "Keyword",
+            "type": "object"
+          }
+        }
+      },
+      "SegmentCreatePayload": {
+        "title": "SegmentCreatePayload",
+        "type": "object",
+        "properties": {
+          "segments": {
+            "title": "Segments",
+            "type": "object"
+          }
+        }
+      },
+      "SegmentUpdatePayload": {
+        "title": "SegmentUpdatePayload",
+        "required": [
+          "segment"
+        ],
+        "type": "object",
+        "properties": {
+          "segment": {
+            "$ref": "#/components/schemas/SegmentUpdateArgs"
+          }
+        }
+      },
+      "ChildChunkListQuery": {
+        "title": "ChildChunkListQuery",
+        "type": "object",
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "keyword": {
+            "title": "Keyword",
+            "type": "object"
+          },
+          "page": {
+            "title": "Page",
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      },
+      "ChildChunkCreatePayload": {
+        "title": "ChildChunkCreatePayload",
+        "required": [
+          "content"
+        ],
+        "type": "object",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        }
+      },
+      "ChildChunkUpdatePayload": {
+        "title": "ChildChunkUpdatePayload",
+        "required": [
+          "content"
+        ],
+        "type": "object",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        }
+      },
+      "DatasetListQuery": {
+        "title": "DatasetListQuery",
+        "type": "object",
+        "properties": {
+          "page": {
+            "title": "Page",
+            "type": "integer",
+            "description": "Page number"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer",
+            "description": "Number of items per page"
+          },
+          "keyword": {
+            "title": "Keyword",
+            "type": "object",
+            "description": "Search keyword"
+          },
+          "include_all": {
+            "title": "Include All",
+            "type": "boolean",
+            "description": "Include all datasets",
+            "default": false
+          },
+          "tag_ids": {
+            "title": "Tag Ids",
+            "type": "array",
+            "description": "Filter by tag IDs",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RetrievalMethod": {
+        "title": "RetrievalMethod",
+        "type": "string",
+        "enum": [
+          "semantic_search",
+          "full_text_search",
+          "hybrid_search",
+          "keyword_search"
+        ]
+      },
+      "ProcessRule": {
+        "title": "ProcessRule",
+        "required": [
+          "mode"
+        ],
+        "type": "object",
+        "properties": {
+          "mode": {
+            "title": "Mode",
+            "type": "string",
+            "enum": [
+              "automatic",
+              "custom",
+              "hierarchical"
+            ]
+          },
+          "rules": {
+            "type": "object"
+          }
+        }
+      },
+      "RetrievalModel": {
+        "title": "RetrievalModel",
+        "required": [
+          "reranking_enable",
+          "score_threshold_enabled",
+          "search_method",
+          "top_k"
+        ],
+        "type": "object",
+        "properties": {
+          "search_method": {
+            "$ref": "#/components/schemas/RetrievalMethod"
+          },
+          "reranking_enable": {
+            "title": "Reranking Enable",
+            "type": "boolean"
+          },
+          "reranking_model": {
+            "type": "object"
+          },
+          "reranking_mode": {
+            "title": "Reranking Mode",
+            "type": "object"
+          },
+          "top_k": {
+            "title": "Top K",
+            "type": "integer"
+          },
+          "score_threshold_enabled": {
+            "title": "Score Threshold Enabled",
+            "type": "boolean"
+          },
+          "score_threshold": {
+            "title": "Score Threshold",
+            "type": "object"
+          },
+          "weights": {
+            "type": "object"
+          }
+        }
+      },
+      "DocumentListQuery": {
+        "title": "DocumentListQuery",
+        "type": "object",
+        "properties": {
+          "page": {
+            "title": "Page",
+            "type": "integer",
+            "description": "Page number"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer",
+            "description": "Number of items per page"
+          },
+          "keyword": {
+            "title": "Keyword",
+            "type": "object",
+            "description": "Search keyword"
+          },
+          "status": {
+            "title": "Status",
+            "type": "object",
+            "description": "Document status filter"
+          }
+        }
+      },
+      "MetadataDetail": {
+        "title": "MetadataDetail",
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "object"
+          }
+        }
+      },
+      "DocumentMetadataOperation": {
+        "title": "DocumentMetadataOperation",
+        "required": [
+          "document_id",
+          "metadata_list"
+        ],
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "metadata_list": {
+            "title": "Metadata List",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetadataDetail"
+            }
+          },
+          "partial_update": {
+            "title": "Partial Update",
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "SegmentUpdateArgs": {
+        "title": "SegmentUpdateArgs",
+        "type": "object",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "object"
+          },
+          "answer": {
+            "title": "Answer",
+            "type": "object"
+          },
+          "keywords": {
+            "title": "Keywords",
+            "type": "object"
+          },
+          "regenerate_child_chunks": {
+            "title": "Regenerate Child Chunks",
+            "type": "boolean",
+            "default": false
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "object"
+          },
+          "attachment_ids": {
+            "title": "Attachment Ids",
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "ParseError": {
+        "description": "When a mask can't be parsed",
+        "content": {}
+      },
+      "MaskError": {
+        "description": "When any error occurs on mask",
+        "content": {}
+      },
+      "HTTPException": {
+        "content": {}
+      },
+      "ValueError": {
+        "content": {}
+      },
+      "AppInvokeQuotaExceededError": {
+        "content": {}
+      },
+      "Exception": {
+        "content": {}
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "apiKey",
+        "description": "Type: Bearer {your-api-key}",
+        "name": "Authorization",
+        "in": "header"
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}
