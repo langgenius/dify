@@ -118,11 +118,194 @@ class ResponseModel(BaseModel):
     Default to excluding `None` fields to keep legacy response shapes (e.g. return only `{"enabled": false}`).
     """
 
-    model_config = ConfigDict(
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
+def reg(model: type[BaseModel]) -> None:
+    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(AnnotationReplyPayload)
+reg(AnnotationSettingUpdatePayload)
+reg(AnnotationListQuery)
+reg(CreateAnnotationPayload)
+reg(UpdateAnnotationPayload)
+reg(AnnotationReplyStatusQuery)
+reg(AnnotationFilePayload)
+
+
+@console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>")
+class AnnotationReplyActionApi(Resource):
+    @console_ns.doc("annotation_reply_action")
+    @console_ns.doc(description="Enable or disable annotation reply for an app")
+    @console_ns.doc(params={"app_id": "Application ID", "action": "Action to perform (enable/disable)"})
+    @console_ns.expect(console_ns.models[AnnotationReplyPayload.__name__])
+    @console_ns.response(200, "Action completed successfully")
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_resource_check("annotation")
+    @edit_permission_required
+    def post(self, app_id, action: Literal["enable", "disable"]):
+        app_id = str(app_id)
+        args = AnnotationReplyPayload.model_validate(console_ns.payload)
+        match action:
+            case "enable":
+                result = AppAnnotationService.enable_app_annotation(args.model_dump(), app_id)
+            case "disable":
+                result = AppAnnotationService.disable_app_annotation(app_id)
+        return result, 200
+
+
+@console_ns.route("/apps/<uuid:app_id>/annotation-setting")
+class AppAnnotationSettingDetailApi(Resource):
+    @console_ns.doc("get_annotation_setting")
+    @console_ns.doc(description="Get annotation settings for an app")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Annotation settings retrieved successfully")
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    def get(self, app_id):
+        app_id = str(app_id)
+        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app_id)
+        return result, 200
+
+
+@console_ns.route("/apps/<uuid:app_id>/annotation-settings/<uuid:annotation_setting_id>")
+class AppAnnotationSettingUpdateApi(Resource):
+    @console_ns.doc("update_annotation_setting")
+    @console_ns.doc(description="Update annotation settings for an app")
+    @console_ns.doc(params={"app_id": "Application ID", "annotation_setting_id": "Annotation setting ID"})
+    @console_ns.expect(console_ns.models[AnnotationSettingUpdatePayload.__name__])
+    @console_ns.response(200, "Settings updated successfully")
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    def post(self, app_id, annotation_setting_id):
+        app_id = str(app_id)
+        annotation_setting_id = str(annotation_setting_id)
+
+        args = AnnotationSettingUpdatePayload.model_validate(console_ns.payload)
+
+        result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, args.model_dump())
+        return result, 200
+
+
+@console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>/status/<uuid:job_id>")
+class AnnotationReplyActionStatusApi(Resource):
+    @console_ns.doc("get_annotation_reply_action_status")
+    @console_ns.doc(description="Get status of annotation reply action job")
+    @console_ns.doc(params={"app_id": "Application ID", "job_id": "Job ID", "action": "Action type"})
+    @console_ns.response(200, "Job status retrieved successfully")
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_resource_check("annotation")
+    @edit_permission_required
+    def get(self, app_id, job_id, action):
+        job_id = str(job_id)
+        app_annotation_job_key = f"{action}_app_annotation_job_{str(job_id)}"
+        cache_result = redis_client.get(app_annotation_job_key)
+        if cache_result is None:
+            raise ValueError("The job does not exist.")
+
+        job_status = cache_result.decode()
+        error_msg = ""
+        if job_status == "error":
+            app_annotation_error_key = f"{action}_app_annotation_error_{str(job_id)}"
+            error_msg = redis_client.get(app_annotation_error_key).decode()
+
+        return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
+
+
+@console_ns.route("/apps/<uuid:app_id>/annotations")
+class AnnotationApi(Resource):
+    @console_ns.doc("list_annotations")
+    @console_ns.doc(description="Get annotations for an app with pagination")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[AnnotationListQuery.__name__])
+    @console_ns.response(200, "Annotations retrieved successfully")
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    def get(self, app_id):
+        args = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        page = args.page
+        limit = args.limit
+        keyword = args.keyword
+
+        app_id = str(app_id)
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(app_id, page, limit, keyword)
+        response = {
+            "data": marshal(annotation_list, annotation_fields),
+            "has_more": len(annotation_list) == limit,
+            "limit": limit,
+            "total": total,
+            "page": page,
+        }
+        return response, 200
+
+    @console_ns.doc("create_annotation")
+    @console_ns.doc(description="Create a new annotation for an app")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[CreateAnnotationPayload.__name__])
+    @console_ns.response(201, "Annotation created successfully", build_annotation_model(console_ns))
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_resource_check("annotation")
+    @marshal_with(annotation_fields)
+    @edit_permission_required
+    def post(self, app_id):
+        app_id = str(app_id)
+        args = CreateAnnotationPayload.model_validate(console_ns.payload)
+        data = args.model_dump(exclude_none=True)
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(data, app_id)
+        return annotation
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    def delete(self, app_id):
+        app_id = str(app_id)
+
+        # Use request.args.getlist to get annotation_ids array directly
+        annotation_ids = request.args.getlist("annotation_id")
+
+        # If annotation_ids are provided, handle batch deletion
+        if annotation_ids:
+            # Check if any annotation_ids contain empty strings or invalid values
+            if not all(annotation_id.strip() for annotation_id in annotation_ids if annotation_id):
+                return {
+                    "code": "bad_request",
+                    "message": "annotation_ids are required if the parameter is provided.",
+                }, 400
+
+            result = AppAnnotationService.delete_app_annotations_in_batch(app_id, annotation_ids)
+            return result, 204
+        # If no annotation_ids are provided, handle clearing all annotations
+        else:
+            AppAnnotationService.clear_all_annotations(app_id)
+            return {"result": "success"}, 204
+
+
+@console_ns.route("/apps/<uuid:app_id>/annotations/export")
+class AnnotationExportApi(Resource):
+    @console_ns.doc("export_annotations")
+    @console_ns.doc(description="Export all annotations for an app with CSV injection protection")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(
+        200,
+        "Annotations exported successfully",
+        console_ns.model("AnnotationList", {"data": fields.List(fields.Nested(build_annotation_model(console_ns)))}),
     )
 
     @model_serializer(mode="wrap")
