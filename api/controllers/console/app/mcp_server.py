@@ -57,7 +57,7 @@ class AppMCPServerController(Resource):
     @get_app_model(mode=None)
     def get(self, app_model):
         server = db.session.query(AppMCPServer).where(AppMCPServer.app_id == app_model.id).first()
-        return AppServer.model_validate(server, from_attributes=True).model_dump(mode="json") if server else None
+        return _dump_server(server)
 
     @console_ns.doc("create_app_mcp_server")
     @console_ns.doc(description="Create MCP server configuration for an application")
