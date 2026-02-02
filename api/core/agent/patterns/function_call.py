@@ -175,7 +175,7 @@ class FunctionCallStrategy(AgentPattern):
         elif isinstance(output_text, str):
             output_payload = output_text
         else:
-            raise ValueError("Final output is not a string or structured data.")
+            raise ValueError(f"Final output ({final_tool_args}) is not a string or structured data.")
 
         return AgentResult(
             output=output_payload,
