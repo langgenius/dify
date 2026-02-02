@@ -1399,11 +1399,6 @@
       "count": 2
     }
   },
-  "app/components/base/notion-page-selector/page-selector/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
   "app/components/base/pagination/index.tsx": {
     "unicorn/prefer-number-properties": {
       "count": 1
@@ -1848,12 +1843,7 @@
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/connect/index.spec.tsx": {

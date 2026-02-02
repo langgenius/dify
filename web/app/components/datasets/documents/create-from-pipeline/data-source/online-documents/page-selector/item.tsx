@@ -1,9 +1,7 @@
-import type { ListChildComponentProps } from 'react-window'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
-import * as React from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { areEqual } from 'react-window'
 import Checkbox from '@/app/components/base/checkbox'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Radio from '@/app/components/base/radio/ui'
@@ -23,36 +21,40 @@ type NotionPageItem = {
   depth: number
 } & DataSourceNotionPage
 
-const Item = ({ index, style, data }: ListChildComponentProps<{
-  dataList: NotionPageItem[]
-  handleToggle: (index: number) => void
+type ItemProps = {
+  virtualStart: number
+  virtualSize: number
+  current: NotionPageItem
+  onToggle: (pageId: string) => void
   checkedIds: Set<string>
   disabledCheckedIds: Set<string>
-  handleCheck: (index: number) => void
+  onCheck: (pageId: string) => void
   canPreview?: boolean
-  handlePreview: (index: number) => void
+  onPreview: (pageId: string) => void
   listMapWithChildrenAndDescendants: NotionPageTreeMap
   searchValue: string
   previewPageId: string
   pagesMap: DataSourceNotionPageMap
   isMultipleChoice?: boolean
-}>) => {
+}
+
+const Item = ({
+  virtualStart,
+  virtualSize,
+  current,
+  onToggle,
+  checkedIds,
+  disabledCheckedIds,
+  onCheck,
+  canPreview,
+  onPreview,
+  listMapWithChildrenAndDescendants,
+  searchValue,
+  previewPageId,
+  pagesMap,
+  isMultipleChoice,
+}: ItemProps) => {
   const { t } = useTranslation()
-  const {
-    dataList,
-    handleToggle,
-    checkedIds,
-    disabledCheckedIds,
-    handleCheck,
-    canPreview,
-    handlePreview,
-    listMapWithChildrenAndDescendants,
-    searchValue,
-    previewPageId,
-    pagesMap,
-    isMultipleChoice,
-  } = data
-  const current = dataList[index]
   const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[current.page_id]
   const hasChild = currentWithChildrenAndDescendants.descendants.size > 0
   const ancestors = currentWithChildrenAndDescendants.ancestors
@@ -65,7 +67,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
         <div
           className="mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
           style={{ marginLeft: current.depth * 8 }}
-          onClick={() => handleToggle(index)}
+          onClick={() => onToggle(current.page_id)}
         >
           {
             current.expand
@@ -88,7 +90,15 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
   return (
     <div
       className={cn('group flex cursor-pointer items-center rounded-md pl-2 pr-[2px] hover:bg-state-base-hover', previewPageId === current.page_id && 'bg-state-base-hover')}
-      style={{ ...style, top: style.top as number + 8, left: 8, right: 8, width: 'calc(100% - 16px)' }}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 8,
+        right: 8,
+        width: 'calc(100% - 16px)',
+        height: virtualSize,
+        transform: `translateY(${virtualStart + 8}px)`,
+      }}
     >
       {isMultipleChoice
         ? (
@@ -96,9 +106,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
               className="mr-2 shrink-0"
               checked={checkedIds.has(current.page_id)}
               disabled={disabled}
-              onCheck={() => {
-                handleCheck(index)
-              }}
+              onCheck={() => onCheck(current.page_id)}
             />
           )
         : (
@@ -106,9 +114,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
               className="mr-2 shrink-0"
               isChecked={checkedIds.has(current.page_id)}
               disabled={disabled}
-              onCheck={() => {
-                handleCheck(index)
-              }}
+              onCheck={() => onCheck(current.page_id)}
             />
           )}
       {!searchValue && renderArrow()}
@@ -129,7 +135,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
             className="ml-1 hidden h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-xs
             font-medium leading-4 text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]
             hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover group-hover:flex"
-            onClick={() => handlePreview(index)}
+            onClick={() => onPreview(current.page_id)}
           >
             {t('dataSource.notion.selector.preview', { ns: 'common' })}
           </div>
@@ -149,4 +155,4 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
   )
 }
 
-export default React.memo(Item, areEqual)
+export default memo(Item)

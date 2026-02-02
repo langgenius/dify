@@ -11,21 +11,18 @@ import { recursivePushInParentDescendants } from './utils'
 
 // Note: react-i18next uses global mock from web/vitest.setup.ts
 
-// Mock react-window FixedSizeList - renders items directly for testing
-vi.mock('react-window', () => ({
-  FixedSizeList: ({ children: ItemComponent, itemCount, itemData, itemKey }: any) => (
-    <div data-testid="virtual-list">
-      {Array.from({ length: itemCount }).map((_, index) => (
-        <ItemComponent
-          key={itemKey?.(index, itemData) || index}
-          index={index}
-          style={{ top: index * 28, left: 0, right: 0, width: '100%', position: 'absolute' }}
-          data={itemData}
-        />
-      ))}
-    </div>
-  ),
-  areEqual: (prevProps: any, nextProps: any) => prevProps === nextProps,
+// Mock @tanstack/react-virtual useVirtualizer hook - renders items directly for testing
+vi.mock('@tanstack/react-virtual', () => ({
+  useVirtualizer: ({ count, getItemKey }: { count: number, getItemKey?: (index: number) => string }) => ({
+    getVirtualItems: () =>
+      Array.from({ length: count }).map((_, index) => ({
+        index,
+        key: getItemKey ? getItemKey(index) : index,
+        start: index * 28,
+        size: 28,
+      })),
+    getTotalSize: () => count * 28,
+  }),
 }))
 
 // Note: NotionIcon from @/app/components/base/ is NOT mocked - using real component per testing guidelines
@@ -119,7 +116,7 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert
-      expect(screen.getByTestId('virtual-list')).toBeInTheDocument()
+      expect(screen.getByText('Test Page')).toBeInTheDocument()
     })
 
     it('should render empty state when list is empty', () => {
@@ -134,7 +131,7 @@ describe('PageSelector', () => {
 
       // Assert
       expect(screen.getByText('common.dataSource.notion.selector.noSearchResult')).toBeInTheDocument()
-      expect(screen.queryByTestId('virtual-list')).not.toBeInTheDocument()
+      expect(screen.queryByText('Test Page')).not.toBeInTheDocument()
     })
 
     it('should render items using FixedSizeList', () => {
@@ -1166,7 +1163,7 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert
-      expect(screen.getByTestId('virtual-list')).toBeInTheDocument()
+      expect(screen.getByText('Test Page')).toBeInTheDocument()
     })
 
     it('should handle special characters in page name', () => {
@@ -1340,7 +1337,7 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert
-      expect(screen.getByTestId('virtual-list')).toBeInTheDocument()
+      expect(screen.getByText('Test Page')).toBeInTheDocument()
       if (propVariation.canPreview)
         expect(screen.getByText('common.dataSource.notion.selector.preview')).toBeInTheDocument()
       else
