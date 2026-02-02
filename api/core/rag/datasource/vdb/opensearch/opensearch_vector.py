@@ -67,11 +67,11 @@ class OpenSearchConfig(BaseModel):
         }
 
         match self.auth_method:
-            case "basic":
+            case AuthMethod.BASIC:
                 logger.info("Using basic authentication for OpenSearch Vector DB")
 
                 params["http_auth"] = (self.user, self.password)
-            case "aws_managed_iam":
+            case AuthMethod.AWS_MANAGED_IAM:
                 logger.info("Using AWS managed IAM role for OpenSearch Vector DB")
 
                 params["http_auth"] = self.create_aws_managed_iam_auth()
