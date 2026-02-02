@@ -294,16 +294,10 @@ class AppDetail(ResponseModel):
 
 
 class AppDetailWithSite(AppDetail):
-    icon_type: str | None = None
     api_base_url: str | None = None
     max_active_requests: int | None = None
     deleted_tools: list[DeletedTool] = Field(default_factory=list)
     site: Site | None = None
-
-    @computed_field(return_type=str | None)  # type: ignore[misc]
-    @property
-    def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
 
 
 class AppPagination(ResponseModel):
