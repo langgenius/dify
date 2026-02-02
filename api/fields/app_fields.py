@@ -147,7 +147,7 @@ class AppDetailKernel(ResponseModel):
 
     @field_validator("icon_type", mode="before")
     @classmethod
-    def _normalize_icon_type(cls, value: str | IconType | None) -> str | None:
+    def _normalize_icon_type(cls, value: str | IconType | None) -> str | IconType | None:
         if isinstance(value, IconType):
             return value
         return value
