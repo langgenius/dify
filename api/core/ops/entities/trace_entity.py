@@ -114,6 +114,50 @@ class GenerateNameTraceInfo(BaseTraceInfo):
     tenant_id: str
 
 
+class WorkflowNodeTraceInfo(BaseTraceInfo):
+    workflow_id: str
+    workflow_run_id: str
+    tenant_id: str
+    node_execution_id: str
+    node_id: str
+    node_type: str
+    title: str
+
+    status: str
+    error: str | None = None
+    elapsed_time: float
+
+    index: int
+    predecessor_node_id: str | None = None
+
+    total_tokens: int = 0
+    total_price: float = 0.0
+    currency: str | None = None
+
+    model_provider: str | None = None
+    model_name: str | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+
+    tool_name: str | None = None
+
+    iteration_id: str | None = None
+    iteration_index: int | None = None
+    loop_id: str | None = None
+    loop_index: int | None = None
+    parallel_id: str | None = None
+
+    node_inputs: Mapping[str, Any] | None = None
+    node_outputs: Mapping[str, Any] | None = None
+    process_data: Mapping[str, Any] | None = None
+
+    model_config = ConfigDict(protected_namespaces=())
+
+
+class DraftNodeExecutionTrace(WorkflowNodeTraceInfo):
+    pass
+
+
 class TaskData(BaseModel):
     app_id: str
     trace_info_type: str
@@ -128,12 +172,15 @@ trace_info_info_map = {
     "DatasetRetrievalTraceInfo": DatasetRetrievalTraceInfo,
     "ToolTraceInfo": ToolTraceInfo,
     "GenerateNameTraceInfo": GenerateNameTraceInfo,
+    "WorkflowNodeTraceInfo": WorkflowNodeTraceInfo,
+    "DraftNodeExecutionTrace": DraftNodeExecutionTrace,
 }
 
 
 class TraceTaskName(StrEnum):
     CONVERSATION_TRACE = "conversation"
     WORKFLOW_TRACE = "workflow"
+    DRAFT_NODE_EXECUTION_TRACE = "draft_node_execution"
     MESSAGE_TRACE = "message"
     MODERATION_TRACE = "moderation"
     SUGGESTED_QUESTION_TRACE = "suggested_question"
@@ -141,3 +188,4 @@ class TraceTaskName(StrEnum):
     TOOL_TRACE = "tool"
     GENERATE_NAME_TRACE = "generate_conversation_name"
     DATASOURCE_TRACE = "datasource"
+    NODE_EXECUTION_TRACE = "node_execution"

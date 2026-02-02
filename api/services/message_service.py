@@ -10,6 +10,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
+from events.feedback_event import feedback_was_created
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
@@ -178,6 +179,9 @@ class MessageService:
             db.session.add(feedback)
 
         db.session.commit()
+
+        if feedback and rating:
+            feedback_was_created.send(feedback, tenant_id=app_model.tenant_id)
 
         return feedback
 

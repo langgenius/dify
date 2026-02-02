@@ -39,12 +39,25 @@ def process_trace_tasks(file_info):
         trace_info["documents"] = [Document.model_validate(doc) for doc in trace_info["documents"]]
 
     try:
+        trace_type = trace_info_info_map.get(trace_info_type)
+        if trace_type:
+            trace_info = trace_type(**trace_info)
+
+        # process enterprise trace separately
+        from enterprise.telemetry.exporter import is_enterprise_telemetry_enabled
+
+        if is_enterprise_telemetry_enabled():
+            from enterprise.telemetry.enterprise_trace import EnterpriseOtelTrace
+
+            try:
+                EnterpriseOtelTrace().trace(trace_info)
+            except Exception:
+                logger.warning("Enterprise trace failed for app_id: %s", app_id, exc_info=True)
+
         if trace_instance:
             with current_app.app_context():
-                trace_type = trace_info_info_map.get(trace_info_type)
-                if trace_type:
-                    trace_info = trace_type(**trace_info)
                 trace_instance.trace(trace_info)
+
         logger.info("Processing trace tasks success, app_id: %s", app_id)
     except Exception as e:
         logger.info("error:\n\n\n%s\n\n\n\n", e)

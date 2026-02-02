@@ -3,6 +3,7 @@ import os
 from datetime import datetime, timedelta
 
 from langfuse import Langfuse
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -30,7 +31,7 @@ from core.ops.utils import filter_none_values
 from core.repositories import DifyCoreRepositoryFactory
 from core.workflow.enums import NodeType
 from extensions.ext_database import db
-from models import EndUser, WorkflowNodeExecutionTriggeredFrom
+from models import EndUser, Message, WorkflowNodeExecutionTriggeredFrom
 from models.enums import MessageStatus
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,50 @@ class LangFuseDataTrace(BaseTraceInstance):
         metadata = trace_info.metadata
         metadata["workflow_app_log_id"] = trace_info.workflow_app_log_id
 
-        if trace_info.message_id:
+        # Check for parent_trace_context to detect nested workflow
+        parent_trace_context = trace_info.metadata.get("parent_trace_context")
+
+        if parent_trace_context:
+            # Nested workflow: create span under outer trace
+            outer_trace_id = parent_trace_context.get("trace_id")
+            parent_node_execution_id = parent_trace_context.get("parent_node_execution_id")
+            parent_conversation_id = parent_trace_context.get("parent_conversation_id")
+            parent_workflow_run_id = parent_trace_context.get("parent_workflow_run_id")
+
+            # Resolve outer trace_id: try message_id lookup first, fallback to workflow_run_id
+            if parent_conversation_id:
+                session_factory = sessionmaker(bind=db.engine)
+                with session_factory() as session:
+                    message_data_stmt = select(Message.id).where(
+                        Message.conversation_id == parent_conversation_id,
+                        Message.workflow_run_id == parent_workflow_run_id,
+                    )
+                    resolved_message_id = session.scalar(message_data_stmt)
+                    if resolved_message_id:
+                        outer_trace_id = resolved_message_id
+                    else:
+                        outer_trace_id = parent_workflow_run_id
+            else:
+                outer_trace_id = parent_workflow_run_id
+
+            # Create inner workflow span under outer trace
+            workflow_span_data = LangfuseSpan(
+                id=trace_info.workflow_run_id,
+                name=TraceTaskName.WORKFLOW_TRACE,
+                input=dict(trace_info.workflow_run_inputs),
+                output=dict(trace_info.workflow_run_outputs),
+                trace_id=outer_trace_id,
+                parent_observation_id=parent_node_execution_id,
+                start_time=trace_info.start_time,
+                end_time=trace_info.end_time,
+                metadata=metadata,
+                level=LevelEnum.DEFAULT if trace_info.error == "" else LevelEnum.ERROR,
+                status_message=trace_info.error or "",
+            )
+            self.add_span(langfuse_span_data=workflow_span_data)
+            # Use outer_trace_id for all node spans/generations
+            trace_id = outer_trace_id
+        elif trace_info.message_id:
             trace_id = trace_info.trace_id or trace_info.message_id
             name = TraceTaskName.MESSAGE_TRACE
             trace_data = LangfuseTrace(
@@ -174,6 +218,11 @@ class LangFuseDataTrace(BaseTraceInstance):
                     }
                 )
 
+            # Determine parent_observation_id for nested workflows
+            node_parent_observation_id = None
+            if parent_trace_context or trace_info.message_id:
+                node_parent_observation_id = trace_info.workflow_run_id
+
             # add generation span
             if process_data and process_data.get("model_mode") == "chat":
                 total_token = metadata.get("total_tokens", 0)
@@ -206,7 +255,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                     metadata=metadata,
                     level=(LevelEnum.DEFAULT if status == "succeeded" else LevelEnum.ERROR),
                     status_message=trace_info.error or "",
-                    parent_observation_id=trace_info.workflow_run_id if trace_info.message_id else None,
+                    parent_observation_id=node_parent_observation_id,
                     usage=generation_usage,
                 )
 
@@ -225,7 +274,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                     metadata=metadata,
                     level=(LevelEnum.DEFAULT if status == "succeeded" else LevelEnum.ERROR),
                     status_message=trace_info.error or "",
-                    parent_observation_id=trace_info.workflow_run_id if trace_info.message_id else None,
+                    parent_observation_id=node_parent_observation_id,
                 )
 
                 self.add_span(langfuse_span_data=span_data)
