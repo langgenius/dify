@@ -94,6 +94,11 @@ class AnnotationListApi(Resource):
             401: "Unauthorized - invalid API token",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Annotations retrieved successfully",
+        service_api_ns.models[AnnotationList.__name__],
+    )
     @validate_app_token
     def get(self, app_model: App):
         """List annotations for the application."""
