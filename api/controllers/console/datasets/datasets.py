@@ -1,3 +1,5 @@
+from controllers.console.datasets.hit_testing import _get_or_create_model
+from libs.helper import AppIconUrlField
 from typing import Any, cast
 
 from flask import request
@@ -95,6 +97,22 @@ dataset_detail_fields_copy["icon_info"] = fields.Nested(icon_info_model)
 dataset_detail_model = get_or_create_model("DatasetDetail", dataset_detail_fields_copy)
 
 file_info_model = get_or_create_model("DatasetFileInfo", file_info_fields)
+
+app_detail_kernel_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "description": fields.String,
+    "mode": fields.String(attribute="mode_compatible_with_agent"),
+    "icon_type": fields.String,
+    "icon": fields.String,
+    "icon_background": fields.String,
+    "icon_url": AppIconUrlField,
+}
+
+related_app_list = {
+    "data": fields.List(fields.Nested(app_detail_kernel_fields)),
+    "total": fields.Integer,
+}
 
 dataset_query_detail_model = _get_or_create_model("DatasetQueryDetail", dataset_query_detail_fields)
 register_schema_models(console_ns, AppDetailKernel, RelatedAppList)
