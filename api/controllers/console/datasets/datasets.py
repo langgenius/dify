@@ -1,5 +1,3 @@
-from controllers.console.datasets.hit_testing import _get_or_create_model
-from libs.helper import AppIconUrlField
 from typing import Any, cast
 
 from flask import request
@@ -18,6 +16,7 @@ from controllers.console.apikey import (
 )
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
+from controllers.console.datasets.hit_testing import _get_or_create_model
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
@@ -53,6 +52,7 @@ from fields.dataset_fields import (
     weighted_score_fields,
 )
 from fields.document_fields import document_status_fields
+from libs.helper import AppIconUrlField
 from libs.login import current_account_with_tenant, login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum
