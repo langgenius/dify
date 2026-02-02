@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { DocMetadataItem } from '../types'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { RiAddLine, RiCloseLine, RiDraftLine, RiEditLine } from '@remixicon/react'
+import { RiAddLine, RiDeleteBinLine, RiDraftLine, RiEditLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -241,7 +241,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                               </Tooltip>
                             </div>
                             <div className="h-full w-px bg-divider-regular" />
-                            <div className="grow">
+                            <div className="w-0 grow overflow-hidden">
                               {isVariable
                                 ? (
                                     <VarReferencePicker
@@ -259,7 +259,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                                     />
                                   )
                                 : (
-                                    <div className="h-full grow px-2">
+                                    <div className="flex h-full w-full items-center px-2">
                                       {(() => {
                                         const metadataType = getMetadataType(item.metadata_id)
 
@@ -267,7 +267,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                                         if (metadataType === DataType.time) {
                                           return (
                                             <Datepicker
-                                              className="h-full"
+                                              className="h-full w-full"
                                               value={item.value as number}
                                               onChange={value => handleDocMetadataValueChange(index, value || 0)}
                                             />
@@ -278,7 +278,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                                         if (metadataType === DataType.number) {
                                           return (
                                             <InputNumber
-                                              className="h-full border-none bg-transparent p-0"
+                                              className="h-full w-full border-none bg-transparent p-0"
                                               value={item.value as number}
                                               onChange={value => handleDocMetadataValueChange(index, value)}
                                               readOnly={readonly}
@@ -308,9 +308,9 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                           <button
                             type="button"
                             onClick={() => handleRemoveDocMetadata(index)}
-                            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
                           >
-                            <RiCloseLine className="size-4" />
+                            <RiDeleteBinLine className="size-4" />
                           </button>
                         )}
                       </div>
