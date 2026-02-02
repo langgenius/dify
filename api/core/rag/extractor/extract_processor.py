@@ -126,25 +126,37 @@ class ExtractProcessor:
                             case ".docx":
                                 extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                             case ".doc":
-                                extractor = UnstructuredWordExtractor(file_path, unstructured_api_url, unstructured_api_key)
+                                extractor = UnstructuredWordExtractor(
+                                    file_path, unstructured_api_url, unstructured_api_key
+                                )
                             case ".csv":
                                 extractor = CSVExtractor(file_path, autodetect_encoding=True)
                             case ".msg":
-                                extractor = UnstructuredMsgExtractor(file_path, unstructured_api_url, unstructured_api_key)
+                                extractor = UnstructuredMsgExtractor(
+                                    file_path, unstructured_api_url, unstructured_api_key
+                                )
                             case ".eml":
                                 extractor = UnstructuredEmailExtractor(
                                     file_path, unstructured_api_url, unstructured_api_key
                                 )
                             case ".ppt":
-                                extractor = UnstructuredPPTExtractor(file_path, unstructured_api_url, unstructured_api_key)
+                                extractor = UnstructuredPPTExtractor(
+                                    file_path, unstructured_api_url, unstructured_api_key
+                                )
                                 # You must first specify the API key
                                 # because unstructured_api_key is necessary to parse .ppt documents
                             case ".pptx":
-                                extractor = UnstructuredPPTXExtractor(file_path, unstructured_api_url, unstructured_api_key)
+                                extractor = UnstructuredPPTXExtractor(
+                                    file_path, unstructured_api_url, unstructured_api_key
+                                )
                             case ".xml":
-                                extractor = UnstructuredXmlExtractor(file_path, unstructured_api_url, unstructured_api_key)
+                                extractor = UnstructuredXmlExtractor(
+                                    file_path, unstructured_api_url, unstructured_api_key
+                                )
                             case ".epub":
-                                extractor = UnstructuredEpubExtractor(file_path, unstructured_api_url, unstructured_api_key)
+                                extractor = UnstructuredEpubExtractor(
+                                    file_path, unstructured_api_url, unstructured_api_key
+                                )
                             case _:
                                 # txt
                                 extractor = TextExtractor(file_path, autodetect_encoding=True)
