@@ -67,6 +67,9 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
   },
+  experimental: {
+    turbopackFileSystemCacheForDev: false,
+  },
 }
 
 export default withBundleAnalyzer(withMDX(nextConfig))

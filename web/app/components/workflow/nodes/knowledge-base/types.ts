@@ -48,6 +48,13 @@ export type DocMetadataItem = {
   value: string | number | string[] // string[] for ValueSelector
 }
 
+export type SummaryIndexSetting = {
+  enable?: boolean
+  model_name?: string
+  model_provider_name?: string
+  summary_prompt?: string
+}
+
 export type KnowledgeBaseNodeType = CommonNodeType & {
   index_chunk_variable_selector: string[]
   chunk_structure?: ChunkStructureEnum
@@ -60,4 +67,5 @@ export type KnowledgeBaseNodeType = CommonNodeType & {
   doc_metadata?: DocMetadataItem[]
   _embeddingModelList?: Model[]
   _rerankModelList?: Model[]
+  summary_index_setting?: SummaryIndexSetting
 }

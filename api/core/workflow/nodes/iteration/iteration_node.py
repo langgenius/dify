@@ -397,7 +397,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             return outputs
 
         # Check if all non-None outputs are lists
-        non_none_outputs = [output for output in outputs if output is not None]
+        non_none_outputs: list[object] = [output for output in outputs if output is not None]
         if not non_none_outputs:
             return outputs
 
@@ -591,7 +591,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         from core.app.workflow.node_factory import DifyNodeFactory
         from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine
+        from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
         from core.workflow.graph_engine.command_channels import InMemoryChannel
         from core.workflow.runtime import GraphRuntimeState
 
@@ -640,6 +640,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             graph=iteration_graph,
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
+            config=GraphEngineConfig(),
         )
 
         return graph_engine

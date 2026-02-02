@@ -168,3 +168,5 @@ class KnowledgeIndexNodeData(BaseNodeData):
     chunk_structure: str
     index_chunk_variable_selector: list[str]
     doc_metadata: list[DocMetadata] | None = None
+    indexing_technique: str | None = None
+    summary_index_setting: dict | None = None
