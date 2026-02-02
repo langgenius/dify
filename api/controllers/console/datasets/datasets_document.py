@@ -953,23 +953,24 @@ class DocumentProcessingApi(DocumentResource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
-        if action == "pause":
-            if document.indexing_status != "indexing":
-                raise InvalidActionError("Document not in indexing state.")
+        match action:
+            case "pause":
+                if document.indexing_status != "indexing":
+                    raise InvalidActionError("Document not in indexing state.")
 
-            document.paused_by = current_user.id
-            document.paused_at = naive_utc_now()
-            document.is_paused = True
-            db.session.commit()
+                document.paused_by = current_user.id
+                document.paused_at = naive_utc_now()
+                document.is_paused = True
+                db.session.commit()
 
-        elif action == "resume":
-            if document.indexing_status not in {"paused", "error"}:
-                raise InvalidActionError("Document not in paused or error state.")
+            case "resume":
+                if document.indexing_status not in {"paused", "error"}:
+                    raise InvalidActionError("Document not in paused or error state.")
 
-            document.paused_by = None
-            document.paused_at = None
-            document.is_paused = False
-            db.session.commit()
+                document.paused_by = None
+                document.paused_at = None
+                document.is_paused = False
+                db.session.commit()
 
         return {"result": "success"}, 200
 
