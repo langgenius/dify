@@ -97,6 +97,7 @@ register_schema_models(
     Annotation,
     AnnotationList,
     AnnotationExportList,
+    AnnotationHitHistory,
     AnnotationHitHistoryList,
 )
 
