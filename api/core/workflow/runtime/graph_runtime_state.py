@@ -12,7 +12,6 @@ from pydantic import BaseModel, Field
 from pydantic.json import pydantic_encoder
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.entities.pause_reason import PauseReason
 from core.workflow.enums import NodeExecutionType, NodeState, NodeType
 from core.workflow.runtime.variable_pool import VariablePool
 
