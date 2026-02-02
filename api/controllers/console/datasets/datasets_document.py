@@ -1020,14 +1020,16 @@ class DocumentMetadataApi(DocumentResource):
             raise ValueError("doc_metadata must be a dictionary.")
         metadata_schema: dict = cast(dict, DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type])
 
-        document.doc_metadata = {}
+        updated_metadata: dict[str, Any] = {}
         if doc_type == "others":
-            document.doc_metadata = doc_metadata
+            updated_metadata = doc_metadata
         else:
             for key, value_type in metadata_schema.items():
                 value = doc_metadata.get(key)
                 if value is not None and isinstance(value, value_type):
-                    document.doc_metadata[key] = value
+                    updated_metadata[key] = value
+
+        document.doc_metadata = updated_metadata
 
         document.doc_type = doc_type
         document.updated_at = naive_utc_now()

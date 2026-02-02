@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
@@ -157,6 +157,7 @@ class InstalledAppsListApi(Resource):
             # todo: position
             recommended_app.install_count += 1
 
+            tenant_id = cast(str, current_tenant_id)
             new_installed_app = InstalledApp(
                 app_id=payload.app_id,
                 tenant_id=current_tenant_id,

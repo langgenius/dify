@@ -564,7 +564,7 @@ class WorkflowDraftVariableService:
             override_model_configs=None,
             mode=app.mode,
             name="Draft Debugging Conversation",
-            inputs={},
+            _inputs={},
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,
