@@ -45,10 +45,12 @@ class AnnotationReplyActionApi(Resource):
     def post(self, app_model: App, action: Literal["enable", "disable"]):
         """Enable or disable annotation reply feature."""
         args = AnnotationReplyActionPayload.model_validate(service_api_ns.payload or {}).model_dump()
-        if action == "enable":
-            result = AppAnnotationService.enable_app_annotation(args, app_model.id)
-        elif action == "disable":
-            result = AppAnnotationService.disable_app_annotation(app_model.id)
+        result = {}
+        match action:
+            case "enable":
+                result = AppAnnotationService.enable_app_annotation(args, app_model.id)
+            case "disable":
+                result = AppAnnotationService.disable_app_annotation(app_model.id)
         return result, 200
 
 

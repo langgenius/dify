@@ -168,10 +168,11 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        if action == "enable":
-            MetadataService.enable_built_in_field(dataset)
-        elif action == "disable":
-            MetadataService.disable_built_in_field(dataset)
+        match action:
+            case "enable":
+                MetadataService.enable_built_in_field(dataset)
+            case "disable":
+                MetadataService.disable_built_in_field(dataset)
         return {"result": "success"}, 200
 
 
