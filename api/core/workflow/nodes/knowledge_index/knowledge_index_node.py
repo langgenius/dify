@@ -19,7 +19,14 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.template import Template
 from core.workflow.runtime import VariablePool
 from extensions.ext_database import db
-from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document, DocumentSegment, DocumentSegmentSummary
+from models.dataset import (
+    Dataset,
+    DatasetMetadata,
+    DatasetMetadataBinding,
+    Document,
+    DocumentSegment,
+    DocumentSegmentSummary,
+)
 from services.summary_index_service import SummaryIndexService
 from tasks.generate_summary_index_task import generate_summary_index_task
 
