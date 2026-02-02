@@ -18,7 +18,7 @@ import {
   useWorkflowReadOnly,
 } from '../hooks'
 import { useStore, useWorkflowStore } from '../store'
-import { BlockEnum, ControlMode } from '../types'
+import { BlockEnum, ControlMode, WorkflowRunningStatus } from '../types'
 import {
   getLayoutByDagre,
   getLayoutForChildNodes,
@@ -36,12 +36,17 @@ export const useWorkflowInteractions = () => {
   const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
 
   const handleCancelDebugAndPreviewPanel = useCallback(() => {
+    const { workflowRunningData } = workflowStore.getState()
+    const runningStatus = workflowRunningData?.result?.status
+    const isActiveRun = runningStatus === WorkflowRunningStatus.Running || runningStatus === WorkflowRunningStatus.Waiting
     workflowStore.setState({
       showDebugAndPreviewPanel: false,
-      workflowRunningData: undefined,
+      ...(isActiveRun ? {} : { workflowRunningData: undefined }),
     })
-    handleNodeCancelRunningStatus()
-    handleEdgeCancelRunningStatus()
+    if (!isActiveRun) {
+      handleNodeCancelRunningStatus()
+      handleEdgeCancelRunningStatus()
+    }
   }, [workflowStore, handleNodeCancelRunningStatus, handleEdgeCancelRunningStatus])
 
   return {

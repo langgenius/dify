@@ -21,7 +21,7 @@ import {
 import { BlockEnum } from '../../types'
 import ConversationVariableModal from './conversation-variable-modal'
 import Empty from './empty'
-import { useChat } from './hooks'
+import { useChat } from './hooks/use-chat'
 import UserInput from './user-input'
 
 type ChatWrapperProps = {
