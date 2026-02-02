@@ -280,6 +280,11 @@ class AppDetail(ResponseModel):
     access_mode: str | None = None
     tags: list[Tag] = Field(default_factory=list)
 
+    @computed_field(return_type=str | None)  # type: ignore[misc]
+    @property
+    def icon_url(self) -> str | None:
+        return _build_icon_url(self.icon_type, self.icon)
+
     @field_validator("icon_type", mode="before")
     @classmethod
     def _normalize_icon_type(cls, value: str | IconType | None) -> str | None:
