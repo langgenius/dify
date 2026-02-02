@@ -208,6 +208,8 @@ class AgentNode(Node[AgentNodeData]):
                 except TypeError:
                     parameter_value = str(agent_input.value)
                 segment_group = variable_pool.convert_template(parameter_value)
+                if parameter.type == "array[tools]":
+                    segment_group.escape_string_variables()
                 parameter_value = segment_group.log if for_log else segment_group.text
                 # variable_pool.convert_template returns a string,
                 # so we need to convert it back to a dictionary
