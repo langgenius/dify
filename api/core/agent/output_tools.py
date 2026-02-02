@@ -91,7 +91,7 @@ def build_agent_output_tools(
         raw_tool._invoke = invoke_tool  # pyright: ignore[reportPrivateUsage]
         tools.append(raw_tool)
     else:
-        raw_tool = get_tool_runtime(FINAL_STRUCTURED_OUTPUT_TOOL)
+        raw_tool = get_tool_runtime(FINAL_OUTPUT_TOOL)
 
         def invoke_tool(
             user_id: str,
