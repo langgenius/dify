@@ -4,7 +4,6 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useStore } from '@/app/components/workflow/store'
-import { useAppContext } from '@/context/app-context'
 import { useSandboxFileDownloadUrl } from '@/service/use-sandbox-file'
 import { getArtifactPath } from './constants'
 import { getFileExtension } from './utils/file-utils'
@@ -13,14 +12,13 @@ import ReadOnlyFilePreview from './viewer/read-only-file-preview'
 const ArtifactContentPanel = () => {
   const { t } = useTranslation('workflow')
   const activeTabId = useStore(s => s.activeTabId)
-  const { userProfile } = useAppContext()
-  const sandboxId = userProfile?.id
+  const appId = useStore(s => s.appId)
 
   const path = activeTabId ? getArtifactPath(activeTabId) : undefined
   const fileName = path?.split('/').pop() ?? ''
   const extension = getFileExtension(fileName)
 
-  const { data: ticket, isLoading } = useSandboxFileDownloadUrl(sandboxId, path)
+  const { data: ticket, isLoading } = useSandboxFileDownloadUrl(appId, path)
 
   if (isLoading) {
     return (
