@@ -321,8 +321,8 @@ class EnterpriseExporter:
     def attach_log_handler(self) -> None:
         if not self._log_handler:
             return
-        root_logger = logging.getLogger()
-        if self._log_handler in root_logger.handlers:
+        telemetry_logger = logging.getLogger("dify.telemetry")
+        if self._log_handler in telemetry_logger.handlers:
             return
         try:
             from core.logging.filters import IdentityContextFilter, TraceContextFilter
@@ -331,4 +331,4 @@ class EnterpriseExporter:
             self._log_handler.addFilter(IdentityContextFilter())
         except Exception:
             logger.exception("Failed to attach log filters to enterprise handler")
-        root_logger.addHandler(self._log_handler)
+        telemetry_logger.addHandler(self._log_handler)
