@@ -41,7 +41,7 @@ class TriggerEventNodeData(BaseNodeData):
                 raise ValueError("value must be a string, int, float, bool or dict")
             return type
 
-    title: str
+    title: str = "trigger_plugin"
     desc: str | None = None
     plugin_id: str = Field(..., description="Plugin ID")
     provider_id: str = Field(..., description="Provider ID")

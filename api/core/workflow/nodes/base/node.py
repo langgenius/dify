@@ -196,7 +196,7 @@ class Node(Generic[NodeDataT]):
                 if not isinstance(candidate, type) or not issubclass(candidate, BaseNodeData):
                     raise TypeError(f"{cls.__name__} must parameterize Node with a BaseNodeData subtype")
 
-                return candidate
+                return candidate  # type: ignore[return-value]
 
         return None
 

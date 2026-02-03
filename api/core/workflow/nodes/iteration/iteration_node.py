@@ -469,10 +469,16 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         iteration_node_ids = set()
 
         # Find all nodes that belong to this loop
-        nodes = graph_config.get("nodes", [])
-        for node in nodes:
-            node_data = node.get("data", {})
-            if node_data.get("iteration_id") == node_id:
+        nodes_value = graph_config.get("nodes", [])
+        for node in nodes_value:
+            if not isinstance(node, Mapping):
+                continue
+
+            node_data_value = node.get("data", {})
+            if not isinstance(node_data_value, Mapping):
+                continue
+
+            if node_data_value.get("iteration_id") == node_id:
                 in_iteration_node_id = node.get("id")
                 if in_iteration_node_id:
                     iteration_node_ids.add(in_iteration_node_id)
