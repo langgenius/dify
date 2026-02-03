@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DSLImportStatus } from '@/models/app'
 import UpdateDSLModal from './update-dsl-modal'
@@ -648,6 +648,8 @@ describe('UpdateDSLModal', () => {
     })
 
     it('should show error modal when import status is PENDING', async () => {
+      vi.useFakeTimers()
+
       mockImportDSL.mockResolvedValue({
         id: 'import-id',
         status: DSLImportStatus.PENDING,
@@ -660,20 +662,27 @@ describe('UpdateDSLModal', () => {
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
 
-      await waitFor(() => {
-        const importButton = screen.getByText('common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      }, { timeout: 1000 })
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } })
+        // Process microtasks for FileReader mock
+        await vi.runAllTimersAsync()
+      })
 
       const importButton = screen.getByText('common.overwriteAndImport')
-      fireEvent.click(importButton)
+      expect(importButton).not.toBeDisabled()
 
-      // Wait for the error modal to be shown after setTimeout
-      await waitFor(() => {
-        expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      await act(async () => {
+        fireEvent.click(importButton)
+        // Flush the promise resolution from mockImportDSL
+        await Promise.resolve()
+        // Advance past the 300ms setTimeout in the component
+        await vi.advanceTimersByTimeAsync(350)
+      })
+
+      expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+
+      vi.useRealTimers()
     })
 
     it('should show version info in error modal', async () => {
