@@ -193,5 +193,3 @@ class BaseNodeData(ABC, BaseModel):
         if self.default_value:
             return {item.key: item.value for item in self.default_value}
         return {}
-
-
