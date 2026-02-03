@@ -4,7 +4,7 @@ import sys
 
 from pydantic import TypeAdapter, with_config
 
-from core.workflow.nodes.base import BaseNodeData
+from core.workflow.entities.base_node import BaseNodeData
 
 if sys.version_info >= (3, 12):
     from typing import TypedDict
