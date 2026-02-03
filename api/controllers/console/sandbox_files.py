@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from fastapi.encoders import jsonable_encoder
 from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
@@ -68,16 +69,15 @@ class SandboxFilesApi(Resource):
         args = SandboxFileListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
         account, tenant_id = current_account_with_tenant()
         sandbox_id = account.id
-        return [
-            e.__dict__
-            for e in SandboxFileService.list_files(
+        return jsonable_encoder(
+            SandboxFileService.list_files(
                 tenant_id=tenant_id,
                 app_id=app_id,
                 sandbox_id=sandbox_id,
                 path=args.path,
                 recursive=args.recursive,
             )
-        ]
+        )
 
 
 @console_ns.route("/apps/<string:app_id>/sandbox/files/download")
@@ -100,4 +100,4 @@ class SandboxFileDownloadApi(Resource):
         res = SandboxFileService.download_file(
             tenant_id=tenant_id, app_id=app_id, sandbox_id=sandbox_id, path=payload.path
         )
-        return res.__dict__
+        return jsonable_encoder(res)
