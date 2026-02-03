@@ -2,8 +2,8 @@ from typing import Literal, Union
 
 from pydantic import BaseModel, Field
 
-from core.workflow.nodes.base import BaseNodeData
 from core.workflow.enums import NodeType
+from core.workflow.nodes.base import BaseNodeData
 
 
 class TriggerScheduleNodeData(BaseNodeData):
