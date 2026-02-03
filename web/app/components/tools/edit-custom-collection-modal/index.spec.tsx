@@ -172,6 +172,9 @@ describe('EditCustomCollectionModal', () => {
         expect(parseParamsSchemaMock).toHaveBeenCalledWith('{}')
       })
 
+      // Flush pending state updates from parseParamsSchema promise resolution
+      await act(async () => {})
+
       await act(async () => {
         fireEvent.click(screen.getByText('common.operation.save'))
       })
@@ -183,6 +186,10 @@ describe('EditCustomCollectionModal', () => {
           schema_type: 'openapi',
           credentials: {
             auth_type: 'none',
+          },
+          icon: {
+            content: '🕵️',
+            background: '#FEF7C3',
           },
           labels: [],
         }))
