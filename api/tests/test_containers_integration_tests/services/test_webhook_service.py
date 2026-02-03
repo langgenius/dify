@@ -1,6 +1,5 @@
 import json
 from io import BytesIO
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,27 +7,12 @@ from faker import Faker
 from flask import Flask
 from werkzeug.datastructures import FileStorage
 
-from core.workflow.entities.graph_config import NodeConfigDictAdapter
-from core.workflow.enums import NodeType
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.account_service import AccountService, TenantService
 from services.trigger.webhook_service import WebhookService
-
-
-def _as_webhook_node_config(data: dict[str, Any]) -> Any:
-    return NodeConfigDictAdapter.validate_python(
-        {
-            "id": "webhook-node",
-            "data": {
-                "type": NodeType.TRIGGER_WEBHOOK.value,
-                "title": "Webhook",
-                **data,
-            },
-        }
-    )
 
 
 class TestWebhookService:
@@ -290,8 +274,8 @@ class TestWebhookService:
             json={"message": "hello"},
         ):
             webhook_trigger = MagicMock()
-            node_config = _as_webhook_node_config(
-                {
+            node_config = {
+                "data": {
                     "method": "post",
                     "content_type": "application/json",
                     "headers": [
@@ -301,7 +285,7 @@ class TestWebhookService:
                     "params": [{"name": "version", "required": True}],
                     "body": [{"name": "message", "type": "string", "required": True}],
                 }
-            )
+            }
 
             result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
@@ -319,7 +303,7 @@ class TestWebhookService:
             headers={"Content-Type": "application/json"},
         ):
             webhook_trigger = MagicMock()
-            node_config = _as_webhook_node_config({"method": "post", "content_type": "application/json"})
+            node_config = {"data": {"method": "post", "content_type": "application/json"}}
 
             with pytest.raises(ValueError, match="HTTP method mismatch"):
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
@@ -334,13 +318,13 @@ class TestWebhookService:
             headers={"Content-Type": "application/json"},
         ):
             webhook_trigger = MagicMock()
-            node_config = _as_webhook_node_config(
-                {
+            node_config = {
+                "data": {
                     "method": "post",
                     "content_type": "application/json",
                     "headers": [{"name": "Authorization", "required": True}],
                 }
-            )
+            }
 
             with pytest.raises(ValueError, match="Required header missing: Authorization"):
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
@@ -356,14 +340,14 @@ class TestWebhookService:
             json={"message": "hello"},
         ):
             webhook_trigger = MagicMock()
-            node_config = _as_webhook_node_config(
-                {
+            node_config = {
+                "data": {
                     "method": "post",
                     "content_type": "application/json",
                     "headers": [{"name": "Authorization", "required": True}],
                     "body": [{"name": "message", "type": "string", "required": True}],
                 }
-            )
+            }
 
             result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
@@ -380,14 +364,14 @@ class TestWebhookService:
             json={"message": "hello"},
         ):
             webhook_trigger = MagicMock()
-            node_config = _as_webhook_node_config(
-                {
+            node_config = {
+                "data": {
                     "method": "post",
                     "content_type": "application/json",
                     "params": [{"name": "version", "required": True}],
                     "body": [{"name": "message", "type": "string", "required": True}],
                 }
-            )
+            }
 
             with pytest.raises(ValueError, match="Required parameter missing: version"):
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
@@ -403,13 +387,13 @@ class TestWebhookService:
             json={},
         ):
             webhook_trigger = MagicMock()
-            node_config = _as_webhook_node_config(
-                {
+            node_config = {
+                "data": {
                     "method": "post",
                     "content_type": "application/json",
                     "body": [{"name": "message", "type": "string", "required": True}],
                 }
-            )
+            }
 
             with pytest.raises(ValueError, match="Required body parameter missing: message"):
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
@@ -427,13 +411,13 @@ class TestWebhookService:
             webhook_trigger = MagicMock()
             webhook_trigger.tenant_id = "tenant"
             webhook_trigger.created_by = "user"
-            node_config = _as_webhook_node_config(
-                {
+            node_config = {
+                "data": {
                     "method": "post",
                     "content_type": "multipart/form-data",
                     "body": [{"name": "file", "type": "file", "required": True}],
                 }
-            )
+            }
 
             result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
@@ -489,7 +473,7 @@ class TestWebhookService:
 
     def test_generate_webhook_response_default(self):
         """Test webhook response generation with default values."""
-        node_config = _as_webhook_node_config({})
+        node_config = {"data": {}}
 
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
@@ -499,7 +483,7 @@ class TestWebhookService:
 
     def test_generate_webhook_response_custom_json(self):
         """Test webhook response generation with custom JSON response."""
-        node_config = _as_webhook_node_config({"status_code": 201, "response_body": '{"result": "created", "id": 123}'})
+        node_config = {"data": {"status_code": 201, "response_body": '{"result": "created", "id": 123}'}}
 
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
@@ -509,7 +493,7 @@ class TestWebhookService:
 
     def test_generate_webhook_response_custom_text(self):
         """Test webhook response generation with custom text response."""
-        node_config = _as_webhook_node_config({"status_code": 202, "response_body": "Request accepted for processing"})
+        node_config = {"data": {"status_code": 202, "response_body": "Request accepted for processing"}}
 
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
@@ -518,7 +502,7 @@ class TestWebhookService:
 
     def test_generate_webhook_response_invalid_json(self):
         """Test webhook response generation with invalid JSON response."""
-        node_config = _as_webhook_node_config({"status_code": 400, "response_body": '{"invalid": json}'})
+        node_config = {"data": {"status_code": 400, "response_body": '{"invalid": json}'}}
 
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 

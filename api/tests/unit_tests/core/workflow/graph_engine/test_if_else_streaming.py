@@ -3,7 +3,6 @@ import time
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.workflow.entities import GraphInitParams
-from core.workflow.enums import NodeType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
     GraphRunStartedEvent,
@@ -56,7 +55,7 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
     variable_pool.add(("branch", "value"), branch_value)
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
-    start_config = {"id": "start", "data": StartNodeData(type=NodeType.START, title="Start", variables=[]).model_dump()}
+    start_config = {"id": "start", "data": StartNodeData(title="Start", variables=[]).model_dump()}
     start_node = StartNode(
         id=start_config["id"],
         config=start_config,
@@ -66,7 +65,6 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
 
     def _create_llm_node(node_id: str, title: str, prompt_text: str) -> MockLLMNode:
         llm_data = LLMNodeData(
-            type=NodeType.LLM,
             title=title,
             model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode=LLMMode.CHAT, completion_params={}),
             prompt_template=[
@@ -93,7 +91,6 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
     llm_initial = _create_llm_node("llm_initial", "Initial LLM", "Initial stream")
 
     if_else_data = IfElseNodeData(
-        type=NodeType.IF_ELSE,
         title="IfElse",
         cases=[
             IfElseNodeData.Case(
@@ -124,7 +121,6 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
     llm_secondary = _create_llm_node("llm_secondary", "Secondary LLM", "Secondary")
 
     end_primary_data = EndNodeData(
-        type=NodeType.END,
         title="End Primary",
         outputs=[
             OutputVariableEntity(
@@ -145,7 +141,6 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
     )
 
     end_secondary_data = EndNodeData(
-        type=NodeType.END,
         title="End Secondary",
         outputs=[
             OutputVariableEntity(

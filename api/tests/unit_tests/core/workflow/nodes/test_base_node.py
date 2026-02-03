@@ -49,7 +49,7 @@ def test_node_hydrates_data_during_initialization():
 
     node = _SampleNode(
         id="node-1",
-        config={"id": "node-1", "data": {"type": "answer", "title": "Sample", "foo": "bar"}},
+        config={"id": "node-1", "data": {"title": "Sample", "foo": "bar"}},
         graph_init_params=init_params,
         graph_runtime_state=runtime_state,
     )

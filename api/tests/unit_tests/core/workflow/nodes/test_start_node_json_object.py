@@ -6,7 +6,6 @@ from pydantic import ValidationError as PydanticValidationError
 
 from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.workflow.entities import GraphInitParams
-from core.workflow.enums import NodeType
 from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.nodes.start.start_node import StartNode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
@@ -22,7 +21,7 @@ def make_start_node(user_inputs, variables):
 
     config = {
         "id": "start",
-        "data": StartNodeData(type=NodeType.START, title="Start", variables=variables).model_dump(),
+        "data": StartNodeData(title="Start", variables=variables).model_dump(),
     }
 
     graph_runtime_state = GraphRuntimeState(

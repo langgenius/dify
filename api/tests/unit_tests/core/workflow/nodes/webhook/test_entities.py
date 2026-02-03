@@ -1,7 +1,6 @@
 import pytest
 from pydantic import ValidationError
 
-from core.workflow.enums import NodeType
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
@@ -103,7 +102,7 @@ def test_webhook_body_parameter_types():
 
 def test_webhook_data_creation_minimal():
     """Test WebhookData creation with minimal required fields."""
-    data = WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test Webhook")
+    data = WebhookData(title="Test Webhook")
 
     assert data.title == "Test Webhook"
     assert data.method == Method.GET  # Default
@@ -135,7 +134,6 @@ def test_webhook_data_creation_full():
 
     # Use the alias for content_type to test it properly
     data = WebhookData(
-        type=NodeType.TRIGGER_WEBHOOK,
         title="Full Webhook Test",
         desc="A comprehensive webhook test",
         method=Method.POST,
@@ -164,17 +162,16 @@ def test_webhook_data_creation_full():
 
 def test_webhook_data_content_type_alias():
     """Test WebhookData content_type accepts both strings and enum values."""
-    data1 = WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test", content_type="application/json")
+    data1 = WebhookData(title="Test", content_type="application/json")
     assert data1.content_type == ContentType.JSON
 
-    data2 = WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test", content_type=ContentType.FORM_DATA)
+    data2 = WebhookData(title="Test", content_type=ContentType.FORM_DATA)
     assert data2.content_type == ContentType.FORM_DATA
 
 
 def test_webhook_data_model_dump():
     """Test WebhookData model serialization."""
     data = WebhookData(
-        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook",
         method=Method.POST,
         content_type=ContentType.JSON,
@@ -202,7 +199,6 @@ def test_webhook_data_model_dump():
 def test_webhook_data_model_dump_with_alias():
     """Test WebhookData model serialization includes alias."""
     data = WebhookData(
-        type=NodeType.TRIGGER_WEBHOOK,
         title="Test Webhook",
         content_type=ContentType.FORM_DATA,
     )
@@ -214,29 +210,29 @@ def test_webhook_data_model_dump_with_alias():
 
 def test_webhook_data_validation_errors():
     """Test WebhookData validation errors."""
-    # WebhookData has safe defaults for optional fields
-    default_data = WebhookData(type=NodeType.TRIGGER_WEBHOOK)
-    assert default_data.title == ""
+    # Title is required (inherited from BaseNodeData)
+    with pytest.raises(ValidationError):
+        WebhookData()
 
     # Invalid method
     with pytest.raises(ValidationError):
-        WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test", method="invalid_method")
+        WebhookData(title="Test", method="invalid_method")
 
     # Invalid content_type
     with pytest.raises(ValidationError):
-        WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test", content_type="invalid/type")
+        WebhookData(title="Test", content_type="invalid/type")
 
     # Invalid status_code (should be int) - use non-numeric string
     with pytest.raises(ValidationError):
-        WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test", status_code="invalid")
+        WebhookData(title="Test", status_code="invalid")
 
     # Invalid timeout (should be int) - use non-numeric string
     with pytest.raises(ValidationError):
-        WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test", timeout="invalid")
+        WebhookData(title="Test", timeout="invalid")
 
     # Valid cases that should NOT raise errors
     # These should work fine (pydantic converts string numbers to int)
-    valid_data = WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test", status_code="200", timeout="30")
+    valid_data = WebhookData(title="Test", status_code="200", timeout="30")
     assert valid_data.status_code == 200
     assert valid_data.timeout == 30
 
@@ -244,14 +240,14 @@ def test_webhook_data_validation_errors():
 def test_webhook_data_sequence_fields():
     """Test WebhookData sequence field behavior."""
     # Test empty sequences
-    data = WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test")
+    data = WebhookData(title="Test")
     assert data.headers == []
     assert data.params == []
     assert data.body == []
 
     # Test immutable sequences
     headers = [WebhookParameter(name="test")]
-    data = WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test", headers=headers)
+    data = WebhookData(title="Test", headers=headers)
 
     # Original list shouldn't affect the model
     headers.append(WebhookParameter(name="test2"))
@@ -307,6 +303,6 @@ def test_webhook_data_inheritance():
     assert issubclass(WebhookData, BaseNodeData)
 
     # Test that instances have BaseNodeData properties
-    data = WebhookData(type=NodeType.TRIGGER_WEBHOOK, title="Test")
+    data = WebhookData(title="Test")
     assert hasattr(data, "title")
     assert hasattr(data, "desc")  # Inherited from BaseNodeData

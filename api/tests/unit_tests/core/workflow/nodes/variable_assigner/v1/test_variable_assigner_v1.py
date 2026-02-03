@@ -6,7 +6,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
 from core.variables import ArrayStringVariable, StringVariable
 from core.workflow.entities import GraphInitParams
-from core.workflow.enums import NodeType
 from core.workflow.graph import Graph
 from core.workflow.graph_events.node import NodeRunSucceededEvent
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
@@ -90,7 +89,6 @@ def test_overwrite_string_variable():
     node_config = {
         "id": "node_id",
         "data": {
-            "type": NodeType.VARIABLE_ASSIGNER,
             "title": "test",
             "assigned_variable_selector": ["conversation", conversation_variable.name],
             "write_mode": WriteMode.OVER_WRITE,
@@ -187,7 +185,6 @@ def test_append_variable_to_array():
     node_config = {
         "id": "node_id",
         "data": {
-            "type": NodeType.VARIABLE_ASSIGNER,
             "title": "test",
             "assigned_variable_selector": ["conversation", conversation_variable.name],
             "write_mode": WriteMode.APPEND,
@@ -273,7 +270,6 @@ def test_clear_array():
     node_config = {
         "id": "node_id",
         "data": {
-            "type": NodeType.VARIABLE_ASSIGNER,
             "title": "test",
             "assigned_variable_selector": ["conversation", conversation_variable.name],
             "write_mode": WriteMode.CLEAR,

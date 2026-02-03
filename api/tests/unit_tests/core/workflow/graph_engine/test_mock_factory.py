@@ -5,10 +5,9 @@ This module provides a MockNodeFactory that automatically detects and mocks node
 requiring external services (LLM, Agent, Tool, Knowledge Retrieval, HTTP Request).
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.enums import NodeType
 from core.workflow.nodes.base.node import Node
 
@@ -75,19 +74,32 @@ class MockNodeFactory(DifyNodeFactory):
             NodeType.CODE: MockCodeNode,
         }
 
-    def create_node(self, node_config: NodeConfigDict) -> Node:
+    def create_node(self, node_config: dict[str, Any]) -> Node:
         """
         Create a node instance, using mock implementations for third-party service nodes.
 
         :param node_config: Node configuration dictionary
         :return: Node instance (real or mocked)
         """
-        node_data = node_config["data"]
-        node_type = node_data.type
+        # Get node type from config
+        node_data = node_config.get("data", {})
+        node_type_str = node_data.get("type")
+
+        if not node_type_str:
+            # Fall back to parent implementation for nodes without type
+            return super().create_node(node_config)
+
+        try:
+            node_type = NodeType(node_type_str)
+        except ValueError:
+            # Unknown node type, use parent implementation
+            return super().create_node(node_config)
 
         # Check if this node type should be mocked
         if node_type in self._mock_node_types:
-            node_id = node_config["id"]
+            node_id = node_config.get("id")
+            if not node_id:
+                raise ValueError("Node config missing id")
 
             # Create mock node instance
             mock_class = self._mock_node_types[node_type]

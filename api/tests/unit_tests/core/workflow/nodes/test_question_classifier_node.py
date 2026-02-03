@@ -1,11 +1,9 @@
 from core.model_runtime.entities import ImagePromptMessageContent
-from core.workflow.enums import NodeType
 from core.workflow.nodes.question_classifier import QuestionClassifierNodeData
 
 
 def test_init_question_classifier_node_data():
     data = {
-        "type": NodeType.QUESTION_CLASSIFIER,
         "title": "test classifier node",
         "query_variable_selector": ["id", "name"],
         "model": {"provider": "openai", "name": "gpt-3.5-turbo", "mode": "completion", "completion_params": {}},
@@ -39,7 +37,6 @@ def test_init_question_classifier_node_data():
 
 def test_init_question_classifier_node_data_without_vision_config():
     data = {
-        "type": NodeType.QUESTION_CLASSIFIER,
         "title": "test classifier node",
         "query_variable_selector": ["id", "name"],
         "model": {"provider": "openai", "name": "gpt-3.5-turbo", "mode": "completion", "completion_params": {}},

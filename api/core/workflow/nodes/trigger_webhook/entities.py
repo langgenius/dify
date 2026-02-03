@@ -79,6 +79,7 @@ class WebhookData(BaseNodeData):
     class SyncMode(StrEnum):
         SYNC = "async"  # only support
 
+    type: NodeType = NodeType.TRIGGER_WEBHOOK
     method: Method = Method.GET
     content_type: ContentType = Field(default=ContentType.JSON)
     headers: Sequence[WebhookParameter] = Field(default_factory=list)

@@ -6,7 +6,6 @@ to ensure they work correctly with the TableTestRunner.
 """
 
 from configs import dify_config
-from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.nodes.code.limits import CodeNodeLimits
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
@@ -557,7 +556,7 @@ class TestMockNodeFactory:
         }
 
         # Create node through factory
-        node = factory.create_node(NodeConfigDictAdapter.validate_python(node_config))
+        node = factory.create_node(node_config)
 
         # Verify the correct mock type was created
         assert isinstance(node, MockTemplateTransformNode)
@@ -610,7 +609,7 @@ class TestMockNodeFactory:
         }
 
         # Create node through factory
-        node = factory.create_node(NodeConfigDictAdapter.validate_python(node_config))
+        node = factory.create_node(node_config)
 
         # Verify the correct mock type was created
         assert isinstance(node, MockCodeNode)

@@ -3,7 +3,6 @@ import time
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.workflow.entities import GraphInitParams
-from core.workflow.enums import NodeType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
     GraphRunPausedEvent,
@@ -56,7 +55,7 @@ def _build_llm_human_llm_graph(mock_config: MockConfig) -> tuple[Graph, GraphRun
     )
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
-    start_config = {"id": "start", "data": StartNodeData(type=NodeType.START, title="Start", variables=[]).model_dump()}
+    start_config = {"id": "start", "data": StartNodeData(title="Start", variables=[]).model_dump()}
     start_node = StartNode(
         id=start_config["id"],
         config=start_config,
@@ -66,7 +65,6 @@ def _build_llm_human_llm_graph(mock_config: MockConfig) -> tuple[Graph, GraphRun
 
     def _create_llm_node(node_id: str, title: str, prompt_text: str) -> MockLLMNode:
         llm_data = LLMNodeData(
-            type=NodeType.LLM,
             title=title,
             model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode=LLMMode.CHAT, completion_params={}),
             prompt_template=[
@@ -93,7 +91,6 @@ def _build_llm_human_llm_graph(mock_config: MockConfig) -> tuple[Graph, GraphRun
     llm_first = _create_llm_node("llm_initial", "Initial LLM", "Initial prompt")
 
     human_data = HumanInputNodeData(
-        type=NodeType.HUMAN_INPUT,
         title="Human Input",
         required_variables=["human.input_ready"],
         pause_reason="Awaiting human input",
@@ -109,7 +106,6 @@ def _build_llm_human_llm_graph(mock_config: MockConfig) -> tuple[Graph, GraphRun
     llm_second = _create_llm_node("llm_resume", "Follow-up LLM", "Follow-up prompt")
 
     end_data = EndNodeData(
-        type=NodeType.END,
         title="End",
         outputs=[
             OutputVariableEntity(

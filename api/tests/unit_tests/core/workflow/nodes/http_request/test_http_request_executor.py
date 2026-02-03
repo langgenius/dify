@@ -1,6 +1,5 @@
 import pytest
 
-from core.workflow.enums import NodeType
 from core.workflow.nodes.http_request import (
     BodyData,
     HttpRequestNodeAuthorization,
@@ -24,7 +23,6 @@ def test_executor_with_json_body_and_number_variable():
 
     # Prepare the node data
     node_data = HttpRequestNodeData(
-        type=NodeType.HTTP_REQUEST,
         title="Test JSON Body with Number Variable",
         method="post",
         url="https://api.example.com/data",
@@ -78,7 +76,6 @@ def test_executor_with_json_body_and_object_variable():
 
     # Prepare the node data
     node_data = HttpRequestNodeData(
-        type=NodeType.HTTP_REQUEST,
         title="Test JSON Body with Object Variable",
         method="post",
         url="https://api.example.com/data",
@@ -134,7 +131,6 @@ def test_executor_with_json_body_and_nested_object_variable():
 
     # Prepare the node data
     node_data = HttpRequestNodeData(
-        type=NodeType.HTTP_REQUEST,
         title="Test JSON Body with Nested Object Variable",
         method="post",
         url="https://api.example.com/data",
@@ -185,7 +181,6 @@ def test_extract_selectors_from_template_with_newline():
     variable_pool = VariablePool(system_variables=SystemVariable.default())
     variable_pool.add(("node_id", "custom_query"), "line1\nline2")
     node_data = HttpRequestNodeData(
-        type=NodeType.HTTP_REQUEST,
         title="Test JSON Body with Nested Object Variable",
         method="post",
         url="https://api.example.com/data",
@@ -218,7 +213,6 @@ def test_executor_with_form_data():
 
     # Prepare the node data
     node_data = HttpRequestNodeData(
-        type=NodeType.HTTP_REQUEST,
         title="Test Form Data",
         method="post",
         url="https://api.example.com/upload",
@@ -285,7 +279,6 @@ def test_executor_with_form_data():
 def test_init_headers():
     def create_executor(headers: str) -> Executor:
         node_data = HttpRequestNodeData(
-            type=NodeType.HTTP_REQUEST,
             title="test",
             method="get",
             url="http://example.com",
@@ -320,7 +313,6 @@ def test_init_headers():
 def test_init_params():
     def create_executor(params: str) -> Executor:
         node_data = HttpRequestNodeData(
-            type=NodeType.HTTP_REQUEST,
             title="test",
             method="get",
             url="http://example.com",
@@ -365,7 +357,6 @@ def test_empty_api_key_raises_error_bearer():
     """Test that empty API key raises AuthorizationConfigError for bearer auth."""
     variable_pool = VariablePool(system_variables=SystemVariable.default())
     node_data = HttpRequestNodeData(
-        type=NodeType.HTTP_REQUEST,
         title="test",
         method="get",
         url="http://example.com",
@@ -390,7 +381,6 @@ def test_empty_api_key_raises_error_basic():
     """Test that empty API key raises AuthorizationConfigError for basic auth."""
     variable_pool = VariablePool(system_variables=SystemVariable.default())
     node_data = HttpRequestNodeData(
-        type=NodeType.HTTP_REQUEST,
         title="test",
         method="get",
         url="http://example.com",
@@ -415,7 +405,6 @@ def test_empty_api_key_raises_error_custom():
     """Test that empty API key raises AuthorizationConfigError for custom auth."""
     variable_pool = VariablePool(system_variables=SystemVariable.default())
     node_data = HttpRequestNodeData(
-        type=NodeType.HTTP_REQUEST,
         title="test",
         method="get",
         url="http://example.com",
@@ -440,7 +429,6 @@ def test_whitespace_only_api_key_raises_error():
     """Test that whitespace-only API key raises AuthorizationConfigError."""
     variable_pool = VariablePool(system_variables=SystemVariable.default())
     node_data = HttpRequestNodeData(
-        type=NodeType.HTTP_REQUEST,
         title="test",
         method="get",
         url="http://example.com",
@@ -465,7 +453,6 @@ def test_valid_api_key_works():
     """Test that valid API key works correctly for bearer auth."""
     variable_pool = VariablePool(system_variables=SystemVariable.default())
     node_data = HttpRequestNodeData(
-        type=NodeType.HTTP_REQUEST,
         title="test",
         method="get",
         url="http://example.com",
@@ -506,7 +493,6 @@ def test_executor_with_json_body_and_unquoted_uuid_variable():
     variable_pool.add(["pre_node_id", "uuid"], test_uuid)
 
     node_data = HttpRequestNodeData(
-        type=NodeType.HTTP_REQUEST,
         title="Test JSON Body with Unquoted UUID Variable",
         method="post",
         url="https://api.example.com/data",
@@ -551,7 +537,6 @@ def test_executor_with_json_body_and_unquoted_uuid_with_newlines():
     variable_pool.add(["pre_node_id", "uuid"], test_uuid)
 
     node_data = HttpRequestNodeData(
-        type=NodeType.HTTP_REQUEST,
         title="Test JSON Body with Unquoted UUID and Newlines",
         method="post",
         url="https://api.example.com/data",
@@ -591,7 +576,6 @@ def test_executor_with_json_body_preserves_numbers_and_strings():
     variable_pool.add(["node", "id"], "abc-123")
 
     node_data = HttpRequestNodeData(
-        type=NodeType.HTTP_REQUEST,
         title="Test JSON Body with mixed types",
         method="post",
         url="https://api.example.com/data",

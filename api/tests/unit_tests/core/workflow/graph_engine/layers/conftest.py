@@ -72,7 +72,6 @@ def mock_tool_node():
     node.node_type = NodeType.TOOL
 
     tool_data = ToolNodeData(
-        type=NodeType.TOOL,
         title="Test Tool Node",
         desc=None,
         provider_id="test-provider-id",

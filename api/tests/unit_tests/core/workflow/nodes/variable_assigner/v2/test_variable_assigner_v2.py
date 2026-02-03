@@ -6,7 +6,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
 from core.variables import ArrayStringVariable
 from core.workflow.entities import GraphInitParams
-from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from core.workflow.graph import Graph
 from core.workflow.nodes.variable_assigner.v2 import VariableAssignerNode
 from core.workflow.nodes.variable_assigner.v2.enums import InputType, Operation
@@ -120,7 +119,6 @@ def test_remove_first_from_array():
     node_config = {
         "id": "node_id",
         "data": {
-            "type": "assigner",
             "title": "test",
             "version": "2",
             "items": [
@@ -205,7 +203,6 @@ def test_remove_last_from_array():
     node_config = {
         "id": "node_id",
         "data": {
-            "type": "assigner",
             "title": "test",
             "version": "2",
             "items": [
@@ -287,7 +284,6 @@ def test_remove_first_from_empty_array():
     node_config = {
         "id": "node_id",
         "data": {
-            "type": "assigner",
             "title": "test",
             "version": "2",
             "items": [
@@ -369,7 +365,6 @@ def test_remove_last_from_empty_array():
     node_config = {
         "id": "node_id",
         "data": {
-            "type": "assigner",
             "title": "test",
             "version": "2",
             "items": [
@@ -431,6 +426,6 @@ def test_node_factory_creates_variable_assigner_node():
         graph_runtime_state=graph_runtime_state,
     )
 
-    node = node_factory.create_node(NodeConfigDictAdapter.validate_python(graph_config["nodes"][0]))
+    node = node_factory.create_node(graph_config["nodes"][0])
 
     assert isinstance(node, VariableAssignerNode)

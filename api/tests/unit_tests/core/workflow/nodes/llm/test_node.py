@@ -21,7 +21,6 @@ from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom,
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from core.workflow.entities import GraphInitParams
-from core.workflow.enums import NodeType
 from core.workflow.nodes.llm import llm_utils
 from core.workflow.nodes.llm.entities import (
     ContextConfig,
@@ -54,7 +53,6 @@ class MockTokenBufferMemory:
 @pytest.fixture
 def llm_node_data() -> LLMNodeData:
     return LLMNodeData(
-        type=NodeType.LLM,
         title="Test LLM",
         model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
         prompt_template=[],
@@ -711,7 +709,6 @@ class TestReasoningFormat:
         """Test that reasoning_format defaults to 'tagged' for backward compatibility"""
 
         node_data = LLMNodeData(
-            type=NodeType.LLM,
             title="Test LLM",
             model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
             prompt_template=[],

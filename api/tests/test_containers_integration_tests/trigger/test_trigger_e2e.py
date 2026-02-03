@@ -18,7 +18,6 @@ from core.trigger.debug import event_selectors
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.event_selectors import PluginTriggerDebugEventPoller, WebhookTriggerDebugEventPoller
 from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
-from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from core.workflow.enums import NodeType
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant
@@ -641,7 +640,6 @@ def test_schedule_visual_cron_conversion(
         "id": "schedule-node",
         "data": {
             "type": NodeType.TRIGGER_SCHEDULE.value,
-            "title": "Schedule",
             "mode": mode,
             "timezone": "UTC",
         },
@@ -653,7 +651,7 @@ def test_schedule_visual_cron_conversion(
     else:
         node_config["data"]["cron_expression"] = cron_expression
 
-    config = ScheduleService.to_schedule_config(NodeConfigDictAdapter.validate_python(node_config))
+    config = ScheduleService.to_schedule_config(node_config)
 
     assert config.cron_expression == expected_cron, f"Expected {expected_cron}, got {config.cron_expression}"
     assert config.timezone == "UTC"

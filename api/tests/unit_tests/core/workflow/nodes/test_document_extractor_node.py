@@ -40,7 +40,6 @@ def graph_init_params() -> GraphInitParams:
 @pytest.fixture
 def document_extractor_node(graph_init_params):
     node_data = DocumentExtractorNodeData(
-        type=NodeType.DOCUMENT_EXTRACTOR,
         title="Test Document Extractor",
         variable_selector=["node_id", "variable_name"],
     )

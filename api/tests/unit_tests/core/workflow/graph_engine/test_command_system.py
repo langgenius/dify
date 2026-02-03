@@ -39,7 +39,7 @@ def test_abort_command():
     # Create mock nodes with required attributes - using shared runtime state
     start_node = StartNode(
         id="start",
-        config={"id": "start", "data": {"type": "start", "title": "start", "variables": []}},
+        config={"id": "start", "data": {"title": "start", "variables": []}},
         graph_init_params=GraphInitParams(
             tenant_id="test_tenant",
             app_id="test_app",
@@ -149,7 +149,7 @@ def test_pause_command():
 
     start_node = StartNode(
         id="start",
-        config={"id": "start", "data": {"type": "start", "title": "start", "variables": []}},
+        config={"id": "start", "data": {"title": "start", "variables": []}},
         graph_init_params=GraphInitParams(
             tenant_id="test_tenant",
             app_id="test_app",
@@ -205,7 +205,7 @@ def test_update_variables_command_updates_pool():
 
     start_node = StartNode(
         id="start",
-        config={"id": "start", "data": {"type": "start", "title": "start", "variables": []}},
+        config={"id": "start", "data": {"title": "start", "variables": []}},
         graph_init_params=GraphInitParams(
             tenant_id="test_tenant",
             app_id="test_app",
