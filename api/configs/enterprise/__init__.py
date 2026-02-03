@@ -50,6 +50,11 @@ class EnterpriseTelemetryConfig(BaseSettings):
         default="",
     )
 
+    ENTERPRISE_OTLP_PROTOCOL: str = Field(
+        description="OTLP protocol: 'http' or 'grpc' (default: http).",
+        default="http",
+    )
+
     ENTERPRISE_INCLUDE_CONTENT: bool = Field(
         description="Include input/output content in traces (privacy toggle).",
         default=True,
