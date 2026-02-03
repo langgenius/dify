@@ -1,3 +1,4 @@
+import type { QueryClient } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEventListener } from 'ahooks'
 import isDeepEqual from 'fast-deep-equal'
@@ -12,6 +13,7 @@ import { consoleQuery } from '@/service/client'
 import { useUpdateAppAssetFileContent } from '@/service/use-app-asset'
 import { skillCollaborationManager } from '../../collaboration/skills/skill-collaboration-manager'
 import { START_TAB_ID } from '../constants'
+import { SkillSaveContext } from './skill-save-context'
 
 type SaveSnapshot = {
   content: string
@@ -39,13 +41,6 @@ export type SaveResult = {
 export type FallbackEntry = {
   content: string
   metadata?: Record<string, unknown>
-}
-
-type SkillSaveContextValue = {
-  saveFile: (fileId: string, options?: SaveFileOptions) => Promise<SaveResult>
-  saveAllDirty: () => void
-  registerFallback: (fileId: string, entry: FallbackEntry) => void
-  unregisterFallback: (fileId: string) => void
 }
 
 type SkillSaveProviderProps = {
@@ -79,7 +74,17 @@ const normalizeMetadata = (
   return nextMetadata
 }
 
-const SkillSaveContext = React.createContext<SkillSaveContextValue | null>(null)
+const patchFileContentCache = (
+  qc: QueryClient,
+  queryKey: readonly unknown[],
+  serialized: string,
+) => {
+  qc.setQueryData<CachedFileContent>(queryKey, (existing) => {
+    if (!existing || typeof existing !== 'object')
+      return { content: serialized }
+    return { ...existing, content: serialized }
+  })
+}
 
 export const SkillSaveProvider = ({
   appId,
@@ -88,7 +93,7 @@ export const SkillSaveProvider = ({
   const { t } = useTranslation()
   const storeApi = useWorkflowStore()
   const queryClient = useQueryClient()
-  const updateContent = useUpdateAppAssetFileContent()
+  const { mutateAsync: updateFileContent } = useUpdateAppAssetFileContent()
   const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
   const queueRef = useRef<Map<string, Promise<SaveResult>>>(new Map())
   const fallbackRegistryRef = useRef<Map<string, FallbackEntry>>(new Map())
@@ -155,17 +160,11 @@ export const SkillSaveProvider = ({
     const queryKey = consoleQuery.appAsset.getFileContent.queryKey({
       input: { params: { appId, nodeId: fileId } },
     })
-    const existing = queryClient.getQueryData<CachedFileContent>(queryKey)
     const serialized = JSON.stringify({
       content: snapshot.content,
       ...(snapshot.metadata ? { metadata: snapshot.metadata } : {}),
     })
-    const nextData: CachedFileContent & { content: string } = {
-      ...(existing && typeof existing === 'object' ? existing : {}),
-      content: serialized,
-    }
-
-    queryClient.setQueryData(queryKey, nextData)
+    patchFileContentCache(queryClient, queryKey, serialized)
   }, [appId, queryClient])
 
   const performSave = useCallback(async (
@@ -186,7 +185,7 @@ export const SkillSaveProvider = ({
     }
 
     try {
-      await updateContent.mutateAsync({
+      await updateFileContent({
         appId,
         nodeId: fileId,
         payload: {
@@ -220,7 +219,7 @@ export const SkillSaveProvider = ({
     catch (error) {
       return { saved: false, error }
     }
-  }, [appId, buildSnapshot, isCollaborationEnabled, storeApi, updateCachedContent, updateContent])
+  }, [appId, buildSnapshot, isCollaborationEnabled, storeApi, updateCachedContent, updateFileContent])
 
   const saveFile = useCallback(async (
     fileId: string,
@@ -297,7 +296,7 @@ export const SkillSaveProvider = ({
     }
   }, { target: typeof window !== 'undefined' ? window : undefined })
 
-  const value = useMemo<SkillSaveContextValue>(() => ({
+  const value = useMemo(() => ({
     saveFile,
     saveAllDirty,
     registerFallback,
@@ -320,11 +319,7 @@ export const SkillSaveProvider = ({
         content: payload.content,
         ...(payload.metadata ? { metadata: payload.metadata } : {}),
       })
-      const existing = queryClient.getQueryData<CachedFileContent>(queryKey)
-      queryClient.setQueryData(queryKey, {
-        ...(existing && typeof existing === 'object' ? existing : {}),
-        content: serialized,
-      })
+      patchFileContentCache(queryClient, queryKey, serialized)
 
       const state = storeApi.getState()
       state.clearDraftContent(fileId)
@@ -341,12 +336,4 @@ export const SkillSaveProvider = ({
       {children}
     </SkillSaveContext.Provider>
   )
-}
-
-export const useSkillSaveManager = () => {
-  const context = React.useContext(SkillSaveContext)
-  if (!context)
-    throw new Error('Missing SkillSaveProvider in the tree')
-
-  return context
 }

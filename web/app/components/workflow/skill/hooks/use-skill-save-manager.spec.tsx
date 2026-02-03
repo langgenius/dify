@@ -5,7 +5,8 @@ import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/client'
 import { START_TAB_ID } from '../constants'
-import { SkillSaveProvider, useSkillSaveManager } from './use-skill-save-manager'
+import { useSkillSaveManager } from './skill-save-context'
+import { SkillSaveProvider } from './use-skill-save-manager'
 
 const { mockMutateAsync, mockToastNotify } = vi.hoisted(() => ({
   mockMutateAsync: vi.fn(),

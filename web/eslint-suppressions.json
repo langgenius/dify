@@ -4123,11 +4123,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/skill/hooks/use-skill-save-manager.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
   "app/components/workflow/store/workflow/debug/inspect-vars-slice.ts": {
     "ts/no-explicit-any": {
       "count": 2

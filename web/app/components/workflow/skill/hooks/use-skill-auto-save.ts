@@ -1,5 +1,5 @@
 import { useEventListener, useUnmount } from 'ahooks'
-import { useSkillSaveManager } from './use-skill-save-manager'
+import { useSkillSaveManager } from './skill-save-context'
 
 export function useSkillAutoSave(): void {
   const { saveAllDirty } = useSkillSaveManager()
