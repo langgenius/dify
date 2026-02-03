@@ -1,0 +1,42 @@
+name: Deploy Dify via SSH
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            if ! command -v docker >/dev/null 2>&1; then
+              sudo apt update
+              sudo apt install -y docker.io
+              sudo systemctl enable --now docker
+              sudo usermod -aG docker $USER
+            fi
+
+            if [ ! -d "$HOME/dify" ]; then
+              git clone https://github.com/badbsallyy/dify.git $HOME/dify
+            fi
+
+            cd $HOME/dify
+            git pull
+
+            # Beispiel: Docker Build + Run
+            docker build -t dify:latest .
+            docker stop dify || true
+            docker rm dify || true
+            docker run -d --name dify -p 3000:3000 dify:latest
