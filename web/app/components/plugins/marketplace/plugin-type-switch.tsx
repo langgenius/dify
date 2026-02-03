@@ -2,6 +2,7 @@
 import type { ActivePluginType } from './constants'
 import { useTranslation } from '#i18n'
 import {
+  RiApps2Line,
   RiArchive2Line,
   RiBrain2Line,
   RiDatabase2Line,
@@ -17,13 +18,17 @@ import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './cons
 
 type PluginTypeSwitchProps = {
   className?: string
+  variant?: 'default' | 'hero'
 }
 const PluginTypeSwitch = ({
   className,
+  variant = 'default',
 }: PluginTypeSwitchProps) => {
   const { t } = useTranslation()
   const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
   const setSearchMode = useSetAtom(searchModeAtom)
+
+  const isHeroVariant = variant === 'hero'
 
   const options: Array<{
     value: ActivePluginType
@@ -32,8 +37,8 @@ const PluginTypeSwitch = ({
   }> = [
     {
       value: PLUGIN_TYPE_SEARCH_MAP.all,
-      text: t('category.all', { ns: 'plugin' }),
-      icon: null,
+      text: isHeroVariant ? t('category.allTypes', { ns: 'plugin' }) : t('category.all', { ns: 'plugin' }),
+      icon: isHeroVariant ? <RiApps2Line className="mr-1.5 h-4 w-4" /> : null,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
@@ -72,9 +77,25 @@ const PluginTypeSwitch = ({
     },
   ]
 
+  const getItemClassName = (isActive: boolean) => {
+    if (isHeroVariant) {
+      return cn(
+        'system-md-medium flex h-8 cursor-pointer items-center rounded-lg px-3 text-text-primary-on-surface transition-all',
+        isActive
+          ? 'bg-components-button-secondary-bg text-saas-dify-blue-inverted'
+          : 'hover:bg-state-base-hover',
+      )
+    }
+    return cn(
+      'system-md-medium flex h-8 cursor-pointer items-center rounded-xl border border-transparent px-3 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+      isActive && 'border-components-main-nav-nav-button-border !bg-components-main-nav-nav-button-bg-active !text-components-main-nav-nav-button-text-active shadow-xs',
+    )
+  }
+
   return (
     <div className={cn(
-      'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
+      'flex shrink-0 items-center space-x-2',
+      !isHeroVariant && 'justify-center bg-background-body py-3',
       className,
     )}
     >
@@ -82,10 +103,7 @@ const PluginTypeSwitch = ({
         options.map(option => (
           <div
             key={option.value}
-            className={cn(
-              'system-md-medium flex h-8 cursor-pointer items-center rounded-xl border border-transparent px-3 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-              activePluginType === option.value && 'border-components-main-nav-nav-button-border !bg-components-main-nav-nav-button-bg-active !text-components-main-nav-nav-button-text-active shadow-xs',
-            )}
+            className={getItemClassName(activePluginType === option.value)}
             onClick={() => {
               handleActivePluginTypeChange(option.value)
               if (PLUGIN_CATEGORY_WITH_COLLECTIONS.has(option.value)) {
