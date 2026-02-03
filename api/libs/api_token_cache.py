@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class CachedApiToken:
     """
     Simple data class to represent a cached API token.
-    
+
     This is NOT a SQLAlchemy model instance, but a plain Python object
     that mimics the ApiToken model interface for read-only access.
     """
@@ -110,7 +110,7 @@ class ApiTokenCache:
 
         try:
             data = json.loads(cached_data)
-            
+
             # Create a simple data object (NOT a SQLAlchemy model instance)
             # This is safe because it's just a plain Python object with attributes
             token_obj = CachedApiToken(

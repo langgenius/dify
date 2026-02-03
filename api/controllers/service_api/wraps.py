@@ -358,18 +358,18 @@ def validate_and_get_api_token(scope: str | None = None):
 def _async_update_token_last_used_at(auth_token: str, scope: str | None):
     """
     Asynchronously update the last_used_at timestamp for a token.
-    
+
     This schedules a Celery task to update the database without blocking
     the current request. The start time is passed to ensure only older
     records are updated, providing natural concurrency control.
     """
     try:
         from tasks.update_api_token_last_used_task import update_api_token_last_used_task
-        
+
         # Record the request start time for concurrency control
         start_time = naive_utc_now()
         start_time_iso = start_time.isoformat()
-        
+
         # Fire and forget - don't wait for result
         update_api_token_last_used_task.delay(auth_token, scope, start_time_iso)
         logger.debug("Scheduled async update for last_used_at (scope: %s, start_time: %s)", scope, start_time_iso)

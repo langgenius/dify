@@ -20,10 +20,10 @@ logger = logging.getLogger(__name__)
 def update_api_token_last_used_task(self, token: str, scope: str | None, start_time_iso: str):
     """
     Asynchronously update the last_used_at timestamp for an API token.
-    
+
     Uses timestamp comparison to ensure only updates when last_used_at is older
     than the request start time, providing natural concurrency control.
-    
+
     Args:
         token: The API token string
         scope: The token type/scope (e.g., 'app', 'dataset')
@@ -31,10 +31,10 @@ def update_api_token_last_used_task(self, token: str, scope: str | None, start_t
     """
     try:
         # Parse start_time from ISO format
-        start_time = datetime.fromisoformat(start_time_iso)    
+        start_time = datetime.fromisoformat(start_time_iso)
         # Update database
         current_time = naive_utc_now()
-        
+
         with Session(db.engine, expire_on_commit=False) as session:
             update_stmt = (
                 update(ApiToken)
@@ -46,7 +46,7 @@ def update_api_token_last_used_task(self, token: str, scope: str | None, start_t
                 .values(last_used_at=current_time)
             )
             result = session.execute(update_stmt)
-            
+
             if hasattr(result, "rowcount") and result.rowcount > 0:
                 session.commit()
                 logger.info("Updated last_used_at for token (async): %s... (scope: %s)", token[:10], scope)
@@ -54,7 +54,7 @@ def update_api_token_last_used_task(self, token: str, scope: str | None, start_t
             else:
                 logger.debug("No update needed for token: %s... (already up-to-date)", token[:10])
                 return {"status": "no_update_needed", "reason": "last_used_at >= start_time"}
-                
+
     except Exception as e:
         logger.warning("Failed to update last_used_at for token (async): %s", e)
         # Don't retry on failure to avoid blocking the queue
