@@ -24,6 +24,10 @@ from controllers.service_api.wraps import (
 from enums.cloud_plan import CloudPlan
 from models.account import TenantStatus
 from models.model import ApiToken
+from tests.unit_tests.conftest import (
+    setup_mock_dataset_tenant_query,
+    setup_mock_tenant_account_query,
+)
 
 
 class TestValidateAndGetApiToken:
@@ -88,9 +92,12 @@ class TestValidateAndGetApiToken:
     def test_invalid_token_raises_unauthorized(self, mock_now, mock_db, mock_session_class, app):
         """Test that invalid token raises Unauthorized."""
         # Arrange
-        mock_now.return_value = MagicMock()
+        from datetime import datetime
+
+        mock_now.return_value = datetime(2024, 1, 1, 12, 0, 0)
 
         mock_session = MagicMock()
+        mock_session.execute.return_value.rowcount = 0
         mock_session.scalar.return_value = None
         mock_session_class.return_value.__enter__ = Mock(return_value=mock_session)
         mock_session_class.return_value.__exit__ = Mock(return_value=False)
@@ -114,7 +121,8 @@ class TestValidateAppToken:
 
     @patch("controllers.service_api.wraps.db")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    def test_valid_app_token_allows_access(self, mock_validate_token, mock_db, app):
+    @patch("controllers.service_api.wraps.current_app")
+    def test_valid_app_token_allows_access(self, mock_current_app, mock_validate_token, mock_db, app):
         """Test that valid app token allows access to decorated view."""
         # Arrange
         mock_api_token = Mock()
@@ -130,6 +138,13 @@ class TestValidateAppToken:
 
         mock_tenant = Mock()
         mock_tenant.status = TenantStatus.NORMAL
+        mock_tenant.id = mock_api_token.tenant_id
+
+        mock_account = Mock()
+        mock_account.id = str(uuid.uuid4())
+
+        mock_ta = Mock()
+        mock_ta.account_id = mock_account.id
 
         # Use side_effect to return app first, then tenant
         mock_db.session.query.return_value.where.return_value.first.side_effect = [
@@ -137,16 +152,23 @@ class TestValidateAppToken:
             mock_tenant,
         ]
 
+        # Mock the tenant owner query
+        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_ta)
+
+        # Mock the account query
+        mock_db.session.query.return_value.where.return_value.first.return_value = mock_account
+
         @validate_app_token
-        def protected_view(app_model, **kwargs):
-            return {"success": True, "app": app_model}
+        def protected_view(app_model):
+            return {"success": True, "app_id": app_model.id}
 
         # Act
-        with app.test_request_context("/", method="GET"):
+        with app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}):
             result = protected_view()
 
         # Assert
         assert result["success"] is True
+        assert result["app_id"] == mock_app.id
 
     @patch("controllers.service_api.wraps.db")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
@@ -449,26 +471,26 @@ class TestValidateDatasetToken:
         mock_ta.account_id = str(uuid.uuid4())
 
         mock_account = Mock()
+        mock_account.id = mock_ta.account_id
         mock_account.current_tenant = mock_tenant
 
-        # Set up mock query chain for tenant account join query
-        query_result = (mock_tenant, mock_ta)
-        mock_query = mock_db.session.query.return_value.where.return_value.where.return_value.where.return_value.where
-        mock_query.one_or_none.return_value = query_result
+        # Mock the tenant account join query
+        setup_mock_dataset_tenant_query(mock_db, mock_tenant, mock_ta)
 
-        # Set up separate mock for account query
+        # Mock the account query
         mock_db.session.query.return_value.where.return_value.first.return_value = mock_account
 
         @validate_dataset_token
-        def protected_view(tenant_id_param, **kwargs):
-            return {"success": True, "tenant_id": tenant_id_param}
+        def protected_view(tenant_id):
+            return {"success": True, "tenant_id": tenant_id}
 
         # Act
-        with app.test_request_context("/", method="GET"):
+        with app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}):
             result = protected_view()
 
         # Assert
         assert result["success"] is True
+        assert result["tenant_id"] == tenant_id
 
     @patch("controllers.service_api.wraps.db")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
