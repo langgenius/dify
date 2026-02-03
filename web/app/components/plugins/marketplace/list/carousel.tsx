@@ -23,6 +23,8 @@ type ScrollState = {
   totalPages: number
 }
 
+const SCROLL_OVERLAP_RATIO = 0.5
+
 const defaultScrollState: ScrollState = {
   canScrollLeft: false,
   canScrollRight: false,
@@ -127,23 +129,7 @@ const Carousel = ({
       scrollStateRef.current = calculateScrollState(container)
   }, [children, calculateScrollState])
 
-  const scroll = useCallback((direction: 'left' | 'right') => {
-    const container = containerRef.current
-    if (!container)
-      return
-
-    const scrollAmount = container.clientWidth - (itemWidth / 2)
-    const newScrollLeft = direction === 'left'
-      ? container.scrollLeft - scrollAmount
-      : container.scrollLeft + scrollAmount
-
-    container.scrollTo({
-      left: newScrollLeft,
-      behavior: 'smooth',
-    })
-  }, [itemWidth])
-
-  const scrollToPage = useCallback((pageIndex: number) => {
+  const scrollToPage = useCallback((pageIndex: number, instant = false) => {
     const container = containerRef.current
     if (!container)
       return
@@ -153,9 +139,37 @@ const Carousel = ({
 
     container.scrollTo({
       left: scrollLeft,
-      behavior: 'smooth',
+      behavior: instant ? 'instant' : 'smooth',
     })
   }, [itemWidth, gap])
+
+  const scroll = useCallback((direction: 'left' | 'right') => {
+    const container = containerRef.current
+    if (!container)
+      return
+
+    // Handle looping
+    if (direction === 'left' && !scrollState.canScrollLeft) {
+      // At first page, loop to last page
+      scrollToPage(scrollState.totalPages - 1, true)
+      return
+    }
+    if (direction === 'right' && !scrollState.canScrollRight) {
+      // At last page, loop to first page
+      scrollToPage(0, true)
+      return
+    }
+
+    const scrollAmount = container.clientWidth - (itemWidth * SCROLL_OVERLAP_RATIO)
+    const newScrollLeft = direction === 'left'
+      ? container.scrollLeft - scrollAmount
+      : container.scrollLeft + scrollAmount
+
+    container.scrollTo({
+      left: newScrollLeft,
+      behavior: 'smooth',
+    })
+  }, [itemWidth, scrollState.canScrollLeft, scrollState.canScrollRight, scrollState.totalPages, scrollToPage])
 
   // Auto-play functionality
   useEffect(() => {
@@ -163,10 +177,13 @@ const Carousel = ({
       return
 
     const interval = setInterval(() => {
-      const nextPage = scrollState.canScrollRight
-        ? scrollState.currentPage + 1
-        : 0 // Loop back to first page
-      scrollToPage(nextPage)
+      if (scrollState.canScrollRight) {
+        scrollToPage(scrollState.currentPage + 1)
+      }
+      else {
+        // Loop back to first page instantly (no animation)
+        scrollToPage(0, true)
+      }
     }, autoPlayInterval)
 
     return () => clearInterval(interval)
@@ -206,13 +223,13 @@ const Carousel = ({
           <div className="flex items-center gap-1">
             <NavButton
               direction="left"
-              disabled={!scrollState.canScrollLeft}
+              disabled={scrollState.totalPages <= 1}
               onClick={() => scroll('left')}
               Icon={RiArrowLeftSLine}
             />
             <NavButton
               direction="right"
-              disabled={!scrollState.canScrollRight}
+              disabled={scrollState.totalPages <= 1}
               onClick={() => scroll('right')}
               Icon={RiArrowRightSLine}
             />

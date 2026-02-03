@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { cn } from '@/utils/classnames'
 import DownloadCount from './download-count'
 
@@ -22,8 +23,16 @@ const OrgInfo = ({
       <div className={cn('system-xs-regular flex h-4 items-center gap-2 text-text-tertiary', className)}>
         {orgName && (
           <span className="shrink-0">
-            by
-            {orgName}
+            <span className="mr-1 text-text-tertiary">by</span>
+            <Link
+              href={`/creators/${orgName}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-text-secondary hover:underline"
+              onClick={e => e.stopPropagation()}
+            >
+              {orgName}
+            </Link>
           </span>
         )}
         <span className="shrink-0">·</span>

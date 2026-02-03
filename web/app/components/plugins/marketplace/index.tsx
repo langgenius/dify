@@ -1,8 +1,8 @@
 import type { SearchParams } from 'nuqs'
 import { TanstackQueryInitializer } from '@/context/query-client'
-import { Description } from './description'
 import { HydrateQueryClient } from './hydration-server'
 import ListWrapper from './list/list-wrapper'
+import MarketplaceHeader from './marketplace-header'
 
 type MarketplaceProps = {
   showInstallButton?: boolean
@@ -19,7 +19,7 @@ const Marketplace = async ({
   return (
     <TanstackQueryInitializer>
       <HydrateQueryClient searchParams={searchParams}>
-        <Description className="mx-12 mt-1" />
+        <MarketplaceHeader descriptionClassName="mx-12 mt-1" />
         <ListWrapper
           showInstallButton={showInstallButton}
         />

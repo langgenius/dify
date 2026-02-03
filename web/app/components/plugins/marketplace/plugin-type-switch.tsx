@@ -1,20 +1,16 @@
 'use client'
 import type { ActivePluginType } from './constants'
+import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useTranslation } from '#i18n'
 import {
   RiApps2Line,
   RiArchive2Line,
-  RiBrain2Line,
-  RiDatabase2Line,
-  RiHammerLine,
-  RiPuzzle2Line,
-  RiSpeakAiLine,
 } from '@remixicon/react'
 import { useSetAtom } from 'jotai'
-import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
 import { cn } from '@/utils/classnames'
 import { searchModeAtom, useActivePluginType } from './atoms'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
+import { MARKETPLACE_TYPE_ICON_COMPONENTS } from './plugin-type-icons'
 
 type PluginTypeSwitchProps = {
   className?: string
@@ -30,6 +26,15 @@ const PluginTypeSwitch = ({
 
   const isHeroVariant = variant === 'hero'
 
+  const getTypeIcon = (value: ActivePluginType) => {
+    if (value === PLUGIN_TYPE_SEARCH_MAP.all)
+      return isHeroVariant ? <RiApps2Line className="mr-1.5 h-4 w-4" /> : null
+    if (value === PLUGIN_TYPE_SEARCH_MAP.bundle)
+      return <RiArchive2Line className="mr-1.5 h-4 w-4" />
+    const Icon = MARKETPLACE_TYPE_ICON_COMPONENTS[value as PluginCategoryEnum]
+    return Icon ? <Icon className="mr-1.5 h-4 w-4" /> : null
+  }
+
   const options: Array<{
     value: ActivePluginType
     text: string
@@ -38,42 +43,42 @@ const PluginTypeSwitch = ({
     {
       value: PLUGIN_TYPE_SEARCH_MAP.all,
       text: isHeroVariant ? t('category.allTypes', { ns: 'plugin' }) : t('category.all', { ns: 'plugin' }),
-      icon: isHeroVariant ? <RiApps2Line className="mr-1.5 h-4 w-4" /> : null,
+      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.all),
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
       text: t('category.models', { ns: 'plugin' }),
-      icon: <RiBrain2Line className="mr-1.5 h-4 w-4" />,
+      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.model),
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
       text: t('category.tools', { ns: 'plugin' }),
-      icon: <RiHammerLine className="mr-1.5 h-4 w-4" />,
+      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.tool),
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
       text: t('category.datasources', { ns: 'plugin' }),
-      icon: <RiDatabase2Line className="mr-1.5 h-4 w-4" />,
+      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.datasource),
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.trigger,
       text: t('category.triggers', { ns: 'plugin' }),
-      icon: <TriggerIcon className="mr-1.5 h-4 w-4" />,
+      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.trigger),
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
       text: t('category.agents', { ns: 'plugin' }),
-      icon: <RiSpeakAiLine className="mr-1.5 h-4 w-4" />,
+      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.agent),
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
       text: t('category.extensions', { ns: 'plugin' }),
-      icon: <RiPuzzle2Line className="mr-1.5 h-4 w-4" />,
+      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.extension),
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.bundle,
       text: t('category.bundles', { ns: 'plugin' }),
-      icon: <RiArchive2Line className="mr-1.5 h-4 w-4" />,
+      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.bundle),
     },
   ]
 

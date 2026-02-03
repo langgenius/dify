@@ -18,7 +18,7 @@ type ListWithCollectionProps = {
 }
 
 const PARTNERS_COLLECTION_NAME = 'partners'
-const GRID_DISPLAY_LIMIT = 8 // 2 rows × 4 columns
+const GRID_DISPLAY_LIMIT = 8 // show up to 8 items
 
 const ListWithCollection = ({
   marketplaceCollections,
@@ -62,8 +62,8 @@ const ListWithCollection = ({
         {rows.map(columnPlugins => (
           <div
             key={`column-${columnPlugins[0]?.plugin_id}`}
-            className="flex shrink-0 flex-col gap-3"
-            style={{ scrollSnapAlign: 'start', width: 'calc((100% - 36px) / 4)' }}
+            className="flex w-[calc((100%-0px)/1)] shrink-0 flex-col gap-3 sm:w-[calc((100%-12px)/2)] lg:w-[calc((100%-24px)/3)] xl:w-[calc((100%-36px)/4)]"
+            style={{ scrollSnapAlign: 'start' }}
           >
             {columnPlugins.map(plugin => (
               <div key={plugin.plugin_id}>
@@ -77,11 +77,11 @@ const ListWithCollection = ({
   }
 
   const renderGridCollection = (collection: MarketplaceCollection, plugins: Plugin[]) => {
-    // Other collections: Fixed 2 rows × 4 columns grid
+    // Other collections: responsive grid
     const displayPlugins = plugins.slice(0, GRID_DISPLAY_LIMIT)
 
     return (
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {displayPlugins.map(plugin => (
           <div key={plugin.plugin_id}>
             {renderPluginCard(plugin)}
