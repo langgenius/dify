@@ -66,8 +66,12 @@ const getDetailUrl = (
   locale: string,
   theme: string,
 ): string => {
-  if (source === PluginSource.github)
-    return `https://github.com/${meta!.repo}`
+  if (source === PluginSource.github) {
+    const repo = meta?.repo
+    if (!repo)
+      return ''
+    return `https://github.com/${repo}`
+  }
   if (source === PluginSource.marketplace)
     return getMarketplaceUrl(`/plugins/${author}/${name}`, { language: locale, theme })
   return ''
@@ -192,7 +196,7 @@ const DetailHeader = ({
                     uppercase={false}
                     text={(
                       <>
-                        <div>{isFromGitHub ? meta!.version : version}</div>
+                        <div>{isFromGitHub ? (meta?.version ?? version ?? '') : version}</div>
                         {isFromMarketplace && !isReadmeView && <RiArrowLeftRightLine className="ml-1 h-3 w-3 text-text-tertiary" />}
                       </>
                     )}

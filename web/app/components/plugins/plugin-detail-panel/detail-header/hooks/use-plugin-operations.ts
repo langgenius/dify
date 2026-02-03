@@ -76,7 +76,7 @@ export const usePluginOperations = ({
         },
         payload: {
           type: PluginSource.github,
-          category: detail.declaration.category,
+          category,
           github: {
             originalPackageInfo: {
               id: detail.plugin_unique_identifier,

@@ -2498,14 +2498,6 @@
       "count": 2
     }
   },
-  "app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
     "ts/no-explicit-any": {
       "count": 1

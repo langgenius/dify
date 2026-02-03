@@ -98,6 +98,9 @@ function mapBasicAppInputItem(
 
   // Default to text-input if no specific type matched
   const textInput = item['text-input'] as Record<string, unknown> | undefined
+  if (!textInput)
+    return null
+
   return {
     ...textInput,
     type: 'text-input',

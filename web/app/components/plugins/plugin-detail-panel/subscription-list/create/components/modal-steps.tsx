@@ -191,8 +191,8 @@ export const AutoParametersForm = ({
               credential_id: credentialId,
             }
           : undefined,
-        fieldClassName: schema.type === FormTypeEnum.boolean ? 'flex items-center justify-between' : undefined,
-        labelClassName: schema.type === FormTypeEnum.boolean ? 'mb-0' : undefined,
+        fieldClassName: normalizedType === FormTypeEnum.boolean ? 'flex items-center justify-between' : undefined,
+        labelClassName: normalizedType === FormTypeEnum.boolean ? 'mb-0' : undefined,
       }
     }) as FormSchema[], [schemas, pluginId, provider, credentialId])
 

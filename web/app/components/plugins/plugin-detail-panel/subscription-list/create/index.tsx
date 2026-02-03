@@ -18,11 +18,7 @@ import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
 import { CommonCreateModal } from './common-modal'
 import { OAuthClientSettingsModal } from './oauth-client'
-
-export enum CreateButtonType {
-  FULL_BUTTON = 'full-button',
-  ICON_BUTTON = 'icon-button',
-}
+import { CreateButtonType, DEFAULT_METHOD } from './types'
 
 type Props = {
   className?: string
@@ -31,8 +27,6 @@ type Props = {
 }
 
 const MAX_COUNT = 10
-
-export const DEFAULT_METHOD = 'default'
 
 export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BUTTON, shape = 'square' }: Props) => {
   const { t } = useTranslation()
@@ -104,7 +98,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
         show: supportedMethods.includes(SupportedCreationMethods.MANUAL),
       },
     ]
-  }, [t, oauthConfig, supportedMethods, onClickClientSettings])
+  }, [t, oauthConfig, supportedMethods, methodType, onClickClientSettings])
 
   const onChooseCreateType = async (type: SupportedCreationMethods) => {
     if (type === SupportedCreationMethods.OAUTH) {
@@ -160,7 +154,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
       <CustomSelect<Option & { show: boolean, extra?: React.ReactNode, tag?: React.ReactNode }>
         options={allOptions.filter(option => option.show)}
         value={methodType}
-        onChange={value => onChooseCreateType(value as any)}
+        onChange={value => onChooseCreateType(value as SupportedCreationMethods)}
         containerProps={{
           open: (methodType === DEFAULT_METHOD || (methodType === SupportedCreationMethods.OAUTH && supportedMethods.length === 1)) ? undefined : false,
           placement: 'bottom-start',
@@ -254,3 +248,5 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     </>
   )
 }
+
+export { CreateButtonType, DEFAULT_METHOD } from './types'

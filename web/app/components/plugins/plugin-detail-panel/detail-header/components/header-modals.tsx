@@ -93,10 +93,10 @@ const HeaderModals: FC<HeaderModalsProps> = ({
         <UpdateFromMarketplace
           pluginId={detail.plugin_id}
           payload={{
-            category: detail.declaration.category,
+            category: detail.declaration?.category ?? '',
             originalPackageInfo: {
               id: detail.plugin_unique_identifier,
-              payload: detail.declaration,
+              payload: detail.declaration ?? undefined,
             },
             targetPackageInfo: {
               id: targetVersion.unique_identifier || '',
