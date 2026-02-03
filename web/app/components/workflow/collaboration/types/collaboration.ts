@@ -73,6 +73,7 @@ export type CollaborationEventType
     | 'workflow_restore_request'
     | 'workflow_restore_intent'
     | 'workflow_restore_complete'
+    | 'workflow_history_action'
 
 export type CollaborationUpdate = {
   type: CollaborationEventType

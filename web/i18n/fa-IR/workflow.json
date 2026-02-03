@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "متغیرهای مکالمه",
   "chatVariable.storedContent": "محتوای ذخیره شده",
   "chatVariable.updatedAt": "به‌روزرسانی شده در ",
+  "collaboration.historyAction.generic": "یک همکار عملیات برگرداندن/انجام مجدد را انجام داد",
   "comments.actions.addComment": "افزودن نظر",
   "comments.actions.deleteReply": "حذف پاسخ",
   "comments.actions.editReply": "ویرایش پاسخ",

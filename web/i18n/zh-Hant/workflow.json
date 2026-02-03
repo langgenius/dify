@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "對話變數",
   "chatVariable.storedContent": "已儲存內容",
   "chatVariable.updatedAt": "更新於 ",
+  "collaboration.historyAction.generic": "協作者執行了復原/重做操作",
   "comments.actions.addComment": "新增評論",
   "comments.actions.deleteReply": "刪除回覆",
   "comments.actions.editReply": "編輯回覆",

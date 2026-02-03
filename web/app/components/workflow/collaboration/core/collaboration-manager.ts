@@ -679,8 +679,23 @@ export class CollaborationManager {
     })
   }
 
+  emitHistoryAction(action: 'undo' | 'redo' | 'jump'): void {
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
+      return
+
+    this.sendCollaborationEvent({
+      type: 'workflow_history_action',
+      data: { action },
+      timestamp: Date.now(),
+    })
+  }
+
   onUndoRedoStateChange(callback: (state: { canUndo: boolean, canRedo: boolean }) => void): () => void {
     return this.eventEmitter.on('undoRedoStateChange', callback)
+  }
+
+  onHistoryAction(callback: (payload: { action: 'undo' | 'redo' | 'jump', userId?: string }) => void): () => void {
+    return this.eventEmitter.on('historyAction', callback)
   }
 
   emitRestoreRequest(data: RestoreRequestData): void {
@@ -1075,6 +1090,11 @@ export class CollaborationManager {
       }
       else if (update.type === 'workflow_restore_complete') {
         this.eventEmitter.emit('restoreComplete', update.data as RestoreCompleteData)
+      }
+      else if (update.type === 'workflow_history_action') {
+        const data = update.data as { action?: 'undo' | 'redo' | 'jump' } | undefined
+        if (data?.action)
+          this.eventEmitter.emit('historyAction', { action: data.action, userId: update.userId })
       }
     })
 

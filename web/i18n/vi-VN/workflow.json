@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "Biến Hội Thoại",
   "chatVariable.storedContent": "Nội dung đã lưu",
   "chatVariable.updatedAt": "Cập nhật lúc ",
+  "collaboration.historyAction.generic": "Một cộng tác viên đã thực hiện hoàn tác/làm lại",
   "comments.actions.addComment": "Thêm bình luận",
   "comments.actions.deleteReply": "Delete reply",
   "comments.actions.editReply": "Edit reply",

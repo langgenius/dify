@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "ตัวแปรการสนทนา",
   "chatVariable.storedContent": "เนื้อหาที่เก็บไว้",
   "chatVariable.updatedAt": "อัพเดทเมื่อ",
+  "collaboration.historyAction.generic": "ผู้ร่วมงานได้ทำการยกเลิก/ทำซ้ำ",
   "comments.actions.addComment": "เพิ่มความคิดเห็น",
   "comments.actions.deleteReply": "Delete reply",
   "comments.actions.editReply": "Edit reply",

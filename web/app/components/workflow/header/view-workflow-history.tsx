@@ -20,6 +20,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
 import Divider from '../../base/divider'
+import { collaborationManager } from '../collaboration'
 import {
   useNodesReadOnly,
   useWorkflowHistory,
@@ -76,6 +77,8 @@ const ViewWorkflowHistory = () => {
 
     setEdges(edges)
     setNodes(nodes)
+    if (collaborationManager.isConnected())
+      collaborationManager.emitHistoryAction('jump')
   }, [currentHistoryStateIndex, reactFlowStore, redo, store, undo])
 
   const calculateStepLabel = useCallback((index: number) => {

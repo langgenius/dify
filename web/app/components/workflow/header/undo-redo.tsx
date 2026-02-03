@@ -5,9 +5,9 @@ import {
 } from '@remixicon/react'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import { useWorkflowHistoryStore } from '@/app/components/workflow/workflow-history-store'
 import { cn } from '@/utils/classnames'
 import Divider from '../../base/divider'
 import TipPopup from '../operator/tip-popup'
@@ -15,32 +15,18 @@ import TipPopup from '../operator/tip-popup'
 export type UndoRedoProps = { handleUndo: () => void, handleRedo: () => void }
 const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
   const { t } = useTranslation()
+  const { store } = useWorkflowHistoryStore()
   const [buttonsDisabled, setButtonsDisabled] = useState({ undo: true, redo: true })
 
   useEffect(() => {
-    // Update button states based on Loro's UndoManager
-    const updateButtonStates = () => {
+    const unsubscribe = store.temporal.subscribe((state) => {
       setButtonsDisabled({
-        undo: !collaborationManager.canUndo(),
-        redo: !collaborationManager.canRedo(),
-      })
-    }
-
-    // Initial state
-    Promise.resolve().then(() => {
-      updateButtonStates()
-    })
-
-    // Listen for undo/redo state changes
-    const unsubscribe = collaborationManager.onUndoRedoStateChange((state) => {
-      setButtonsDisabled({
-        undo: !state.canUndo,
-        redo: !state.canRedo,
+        undo: state.pastStates.length === 0,
+        redo: state.futureStates.length === 0,
       })
     })
-
     return () => unsubscribe()
-  }, [])
+  }, [store])
 
   const { nodesReadOnly } = useNodesReadOnly()
 

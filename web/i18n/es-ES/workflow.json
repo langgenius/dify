@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "Variables de Conversación",
   "chatVariable.storedContent": "Contenido almacenado",
   "chatVariable.updatedAt": "Actualizado el ",
+  "collaboration.historyAction.generic": "Un colaborador realizó deshacer/rehacer",
   "comments.actions.addComment": "Añadir comentario",
   "comments.actions.deleteReply": "Eliminar respuesta",
   "comments.actions.editReply": "Editar respuesta",

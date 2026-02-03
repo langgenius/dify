@@ -105,6 +105,7 @@
   "chatVariable.panelTitle": "Variables de Conversation",
   "chatVariable.storedContent": "Contenu stocké",
   "chatVariable.updatedAt": "Mis à jour le ",
+  "collaboration.historyAction.generic": "Un collaborateur a effectué une annulation/une réexécution",
   "comments.actions.addComment": "Ajouter un commentaire",
   "comments.actions.deleteReply": "Supprimer la réponse",
   "comments.actions.editReply": "Modifier la réponse",

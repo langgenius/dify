@@ -340,7 +340,11 @@ export const useNodesInteractions = () => {
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
   const configsMap = useHooksStore(s => s.configsMap)
 
-  const { saveStateToHistory } = useWorkflowHistory()
+  const {
+    saveStateToHistory,
+    undo,
+    redo,
+  } = useWorkflowHistory()
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
 
   const clearContextGenStorageByParam = useCallback((toolNodeId: string, paramKey: string) => {
@@ -2490,17 +2494,20 @@ export const useNodesInteractions = () => {
     if (getNodesReadOnly() || getWorkflowReadOnly())
       return
 
-    // Use collaborative undo from Loro
-    collaborationManager.undo()
+    undo()
     const { edges, nodes } = workflowHistoryStore.getState()
     if (edges.length === 0 && nodes.length === 0)
       return
     const { setNodes, setEdges } = collaborativeWorkflow.getState()
 
-    setEdges(edges)
-    setNodes(nodes)
+    const shouldBroadcast = collaborationManager.isConnected()
+    setEdges(edges, shouldBroadcast)
+    setNodes(nodes, shouldBroadcast)
+    if (shouldBroadcast)
+      collaborationManager.emitHistoryAction('undo')
   }, [
     collaborativeWorkflow,
+    undo,
     workflowHistoryStore,
     getNodesReadOnly,
     getWorkflowReadOnly,
@@ -2510,17 +2517,20 @@ export const useNodesInteractions = () => {
     if (getNodesReadOnly() || getWorkflowReadOnly())
       return
 
-    // Use collaborative redo from Loro
-    collaborationManager.redo()
+    redo()
     const { edges, nodes } = workflowHistoryStore.getState()
     if (edges.length === 0 && nodes.length === 0)
       return
     const { setNodes, setEdges } = collaborativeWorkflow.getState()
 
-    setEdges(edges)
-    setNodes(nodes)
+    const shouldBroadcast = collaborationManager.isConnected()
+    setEdges(edges, shouldBroadcast)
+    setNodes(nodes, shouldBroadcast)
+    if (shouldBroadcast)
+      collaborationManager.emitHistoryAction('redo')
   }, [
     collaborativeWorkflow,
+    redo,
     workflowHistoryStore,
     getNodesReadOnly,
     getWorkflowReadOnly,
