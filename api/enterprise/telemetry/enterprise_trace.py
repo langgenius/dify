@@ -163,6 +163,7 @@ class EnterpriseOtelTrace:
             attributes=log_attrs,
             signal="span_detail",
             trace_id_source=info.workflow_run_id,
+            span_id_source=info.workflow_run_id,
             tenant_id=info.metadata.get("tenant_id"),
             user_id=info.metadata.get("user_id"),
         )
@@ -287,6 +288,7 @@ class EnterpriseOtelTrace:
             attributes=log_attrs,
             signal="span_detail",
             trace_id_source=info.workflow_run_id,
+            span_id_source=info.node_execution_id,
             tenant_id=info.tenant_id,
             user_id=info.metadata.get("user_id"),
         )

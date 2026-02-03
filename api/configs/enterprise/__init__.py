@@ -30,8 +30,18 @@ class EnterpriseTelemetryConfig(BaseSettings):
         default=False,
     )
 
+    ENTERPRISE_OTEL_LOGS_ENABLED: bool = Field(
+        description="Enable enterprise OTEL log export (requires enterprise telemetry enabled).",
+        default=False,
+    )
+
     ENTERPRISE_OTLP_ENDPOINT: str = Field(
         description="Enterprise OTEL collector endpoint.",
+        default="",
+    )
+
+    ENTERPRISE_OTLP_LOGS_ENDPOINT: str = Field(
+        description="Enterprise OTEL logs endpoint (defaults to ENTERPRISE_OTLP_ENDPOINT + /v1/logs).",
         default="",
     )
 

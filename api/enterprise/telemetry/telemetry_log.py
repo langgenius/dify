@@ -26,12 +26,24 @@ def compute_trace_id_hex(uuid_str: str | None) -> str:
         return ""
 
 
+def compute_span_id_hex(uuid_str: str | None) -> str:
+    if not uuid_str:
+        return ""
+    try:
+        from enterprise.telemetry.id_generator import compute_deterministic_span_id
+
+        return f"{compute_deterministic_span_id(uuid_str):016x}"
+    except (ValueError, AttributeError):
+        return ""
+
+
 def emit_telemetry_log(
     *,
     event_name: str,
     attributes: dict[str, Any],
     signal: str = "metric_only",
     trace_id_source: str | None = None,
+    span_id_source: str | None = None,
     tenant_id: str | None = None,
     user_id: str | None = None,
 ) -> None:
@@ -65,6 +77,9 @@ def emit_telemetry_log(
     trace_id_hex = compute_trace_id_hex(trace_id_source)
     if trace_id_hex:
         extra["trace_id"] = trace_id_hex
+    span_id_hex = compute_span_id_hex(span_id_source)
+    if span_id_hex:
+        extra["span_id"] = span_id_hex
     if tenant_id:
         extra["tenant_id"] = tenant_id
     if user_id:
@@ -78,6 +93,7 @@ def emit_metric_only_event(
     event_name: str,
     attributes: dict[str, Any],
     trace_id_source: str | None = None,
+    span_id_source: str | None = None,
     tenant_id: str | None = None,
     user_id: str | None = None,
 ) -> None:
@@ -86,6 +102,7 @@ def emit_metric_only_event(
         attributes=attributes,
         signal="metric_only",
         trace_id_source=trace_id_source,
+        span_id_source=span_id_source,
         tenant_id=tenant_id,
         user_id=user_id,
     )

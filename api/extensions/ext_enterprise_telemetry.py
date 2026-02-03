@@ -37,6 +37,7 @@ def init_app(app: DifyApp) -> None:
 
     _exporter = EnterpriseExporter(dify_config)
     atexit.register(_exporter.shutdown)
+    _exporter.attach_log_handler()
 
     # Import to trigger @signal.connect decorator registration
     import enterprise.telemetry.event_handlers  # noqa: F401  # type: ignore[reportUnusedImport]
