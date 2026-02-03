@@ -136,7 +136,7 @@ class AudioService:
             message = db.session.query(Message).where(Message.id == message_id).first()
             if message is None:
                 return None
-            if message.answer == "" and message.status in {MessageStatus.NORMAL, MessageStatus.PAUSED}:
+            if message.answer == "" and message.status == MessageStatus.NORMAL:
                 return None
 
             else:

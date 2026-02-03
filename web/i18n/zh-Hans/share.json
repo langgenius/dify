@@ -58,14 +58,5 @@
   "generation.tabs.create": "运行一次",
   "generation.tabs.saved": "已保存",
   "generation.title": "AI 智能书写",
-  "humanInput.completed": "此请求似乎在其他地方得到了处理。",
-  "humanInput.expirationTimeNowOrFuture": "此操作将在 {{relativeTime}}过期。",
-  "humanInput.expired": "此请求似乎已过期。",
-  "humanInput.expiredTip": "此操作已过期。",
-  "humanInput.formNotFound": "表单不存在。",
-  "humanInput.rateLimitExceeded": "请求过于频繁，请稍后再试。",
-  "humanInput.recorded": "您的输入已被记录。",
-  "humanInput.sorry": "抱歉！",
-  "humanInput.thanks": "谢谢！",
   "login.backToHome": "返回首页"
 }

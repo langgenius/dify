@@ -4,13 +4,14 @@ from typing import TYPE_CHECKING, final
 from typing_extensions import override
 
 from configs import dify_config
-from core.file import file_manager
-from core.helper import ssrf_proxy
+from core.file.file_manager import file_manager
 from core.helper.code_executor.code_executor import CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
+from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.enums import NodeType
-from core.workflow.graph import NodeFactory
+from core.workflow.graph.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.limits import CodeNodeLimits
@@ -22,7 +23,6 @@ from core.workflow.nodes.template_transform.template_renderer import (
     Jinja2TemplateRenderer,
 )
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
-from libs.typing import is_str, is_str_dict
 
 if TYPE_CHECKING:
     from core.workflow.entities import GraphInitParams
@@ -47,9 +47,9 @@ class DifyNodeFactory(NodeFactory):
         code_providers: Sequence[type[CodeNodeProvider]] | None = None,
         code_limits: CodeNodeLimits | None = None,
         template_renderer: Jinja2TemplateRenderer | None = None,
-        http_request_http_client: HttpClientProtocol = ssrf_proxy,
+        http_request_http_client: HttpClientProtocol | None = None,
         http_request_tool_file_manager_factory: Callable[[], ToolFileManager] = ToolFileManager,
-        http_request_file_manager: FileManagerProtocol = file_manager,
+        http_request_file_manager: FileManagerProtocol | None = None,
     ) -> None:
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
@@ -68,12 +68,12 @@ class DifyNodeFactory(NodeFactory):
             max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
         )
         self._template_renderer = template_renderer or CodeExecutorJinja2TemplateRenderer()
-        self._http_request_http_client = http_request_http_client
+        self._http_request_http_client = http_request_http_client or ssrf_proxy
         self._http_request_tool_file_manager_factory = http_request_tool_file_manager_factory
-        self._http_request_file_manager = http_request_file_manager
+        self._http_request_file_manager = http_request_file_manager or file_manager
 
     @override
-    def create_node(self, node_config: dict[str, object]) -> Node:
+    def create_node(self, node_config: NodeConfigDict) -> Node:
         """
         Create a Node instance from node configuration data using the traditional mapping.
 
@@ -82,23 +82,14 @@ class DifyNodeFactory(NodeFactory):
         :raises ValueError: if node type is unknown or configuration is invalid
         """
         # Get node_id from config
-        node_id = node_config.get("id")
-        if not is_str(node_id):
-            raise ValueError("Node config missing id")
+        node_id = node_config["id"]
 
         # Get node type from config
-        node_data = node_config.get("data", {})
-        if not is_str_dict(node_data):
-            raise ValueError(f"Node {node_id} missing data information")
-
-        node_type_str = node_data.get("type")
-        if not is_str(node_type_str):
-            raise ValueError(f"Node {node_id} missing or invalid type information")
-
+        node_data = node_config["data"]
         try:
-            node_type = NodeType(node_type_str)
+            node_type = NodeType(node_data["type"])
         except ValueError:
-            raise ValueError(f"Unknown node type: {node_type_str}")
+            raise ValueError(f"Unknown node type: {node_data['type']}")
 
         # Get node class
         node_mapping = NODE_TYPE_CLASSES_MAPPING.get(node_type)
