@@ -1,9 +1,10 @@
 'use client'
 
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
 import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
+import * as React from 'react'
+import { useEffect } from 'react'
 import { AMPLITUDE_API_KEY, IS_CLOUD_EDITION } from '@/config'
 
 export type IAmplitudeProps = {
@@ -53,7 +54,7 @@ const pageNameEnrichmentPlugin = (): amplitude.Types.EnrichmentPlugin => {
 }
 
 const AmplitudeProvider: FC<IAmplitudeProps> = ({
-  sessionReplaySampleRate = 1,
+  sessionReplaySampleRate = 0.5,
 }) => {
   useEffect(() => {
     // Only enable in Saas edition with valid API key
@@ -67,6 +68,7 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
         pageViews: true,
         formInteractions: true,
         fileDownloads: true,
+        attribution: true,
       },
     })
 

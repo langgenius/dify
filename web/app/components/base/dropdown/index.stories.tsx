@@ -1,7 +1,8 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { fn } from 'storybook/test'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { Item } from '.'
 import { useState } from 'react'
-import Dropdown, { type Item } from '.'
+import { fn } from 'storybook/test'
+import Dropdown from '.'
 
 const PRIMARY_ITEMS: Item[] = [
   { value: 'rename', text: 'Rename' },
@@ -46,7 +47,9 @@ const DropdownDemo = (props: React.ComponentProps<typeof Dropdown>) => {
         }}
       />
       <div className="rounded-lg border border-divider-subtle bg-components-panel-bg px-3 py-2 text-xs text-text-secondary">
-        Last action: <span className="font-mono text-text-primary">{lastAction}</span>
+        Last action:
+        {' '}
+        <span className="font-mono text-text-primary">{lastAction}</span>
       </div>
     </div>
   )

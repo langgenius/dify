@@ -1,66 +1,66 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "16",
-			"height": "16",
-			"viewBox": "0 0 16 16",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"id": "Icon",
-					"clip-path": "url(#clip0_17340_931)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Icon_2",
-							"d": "M4.66671 14.6673V7.33398M1.33337 8.66732V13.334C1.33337 14.0704 1.93033 14.6673 2.66671 14.6673H11.6175C12.6047 14.6673 13.4442 13.9471 13.5943 12.9714L14.3122 8.30477C14.4986 7.09325 13.5613 6.00065 12.3355 6.00065H10C9.63185 6.00065 9.33337 5.70217 9.33337 5.33398V2.97788C9.33337 2.06998 8.59738 1.33398 7.68948 1.33398C7.47293 1.33398 7.27669 1.46151 7.18875 1.6594L4.84267 6.93808C4.73567 7.17883 4.49692 7.33398 4.23346 7.33398H2.66671C1.93033 7.33398 1.33337 7.93094 1.33337 8.66732Z",
-							"stroke": "currentColor",
-							"stroke-width": "1.5",
-							"stroke-linecap": "round",
-							"stroke-linejoin": "round"
-						},
-						"children": []
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "clipPath",
-						"attributes": {
-							"id": "clip0_17340_931"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "rect",
-								"attributes": {
-									"width": "16",
-									"height": "16",
-									"fill": "white"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "ThumbsUp"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "Icon",
+          "clip-path": "url(#clip0_17340_931)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Icon_2",
+              "d": "M4.66671 14.6673V7.33398M1.33337 8.66732V13.334C1.33337 14.0704 1.93033 14.6673 2.66671 14.6673H11.6175C12.6047 14.6673 13.4442 13.9471 13.5943 12.9714L14.3122 8.30477C14.4986 7.09325 13.5613 6.00065 12.3355 6.00065H10C9.63185 6.00065 9.33337 5.70217 9.33337 5.33398V2.97788C9.33337 2.06998 8.59738 1.33398 7.68948 1.33398C7.47293 1.33398 7.27669 1.46151 7.18875 1.6594L4.84267 6.93808C4.73567 7.17883 4.49692 7.33398 4.23346 7.33398H2.66671C1.93033 7.33398 1.33337 7.93094 1.33337 8.66732Z",
+              "stroke": "currentColor",
+              "stroke-width": "1.5",
+              "stroke-linecap": "round",
+              "stroke-linejoin": "round"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "clipPath",
+            "attributes": {
+              "id": "clip0_17340_931"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "rect",
+                "attributes": {
+                  "width": "16",
+                  "height": "16",
+                  "fill": "white"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "ThumbsUp"
 }

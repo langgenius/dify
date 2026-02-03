@@ -1,4 +1,6 @@
-import React, { type FC, useCallback, useState } from 'react'
+import type { FC } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Textarea from '@/app/components/base/textarea'
@@ -33,28 +35,28 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
   // }, [])
 
   return (
-    <div className='border-t border-divider-subtle'>
+    <div className="border-t border-divider-subtle">
       {/* {showAdvancedOptions ? ( */}
-      <div className='flex flex-col gap-y-1 px-2 py-1.5'>
-        <div className='flex w-full items-center gap-x-2'>
-          <span className='system-2xs-medium-uppercase text-text-tertiary'>
-            {t('workflow.nodes.llm.jsonSchema.stringValidations')}
+      <div className="flex flex-col gap-y-1 px-2 py-1.5">
+        <div className="flex w-full items-center gap-x-2">
+          <span className="system-2xs-medium-uppercase text-text-tertiary">
+            {t('nodes.llm.jsonSchema.stringValidations', { ns: 'workflow' })}
           </span>
-          <div className='grow'>
-            <Divider type='horizontal' className='my-0 h-px bg-line-divider-bg' />
+          <div className="grow">
+            <Divider type="horizontal" className="my-0 h-px bg-line-divider-bg" />
           </div>
         </div>
-        <div className='flex flex-col'>
-          <div className='system-xs-medium flex h-6 items-center text-text-secondary'>
+        <div className="flex flex-col">
+          <div className="system-xs-medium flex h-6 items-center text-text-secondary">
             Enum
           </div>
           <Textarea
-            size='small'
-            className='min-h-6'
+            size="small"
+            className="min-h-6"
             value={enumValue}
             onChange={handleEnumChange}
             onBlur={handleEnumBlur}
-            placeholder={'abcd, 1, 1.5, etc.'}
+            placeholder="abcd, 1, 1.5, etc."
           />
         </div>
       </div>

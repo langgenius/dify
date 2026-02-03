@@ -1,76 +1,76 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "24",
-			"height": "24",
-			"viewBox": "0 0 24 24",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"id": "Baichuan"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Union",
-							"fill-rule": "evenodd",
-							"clip-rule": "evenodd",
-							"d": "M8.58154 1.7793H5.52779L3.34655 6.20409V17.7335L0.916016 22.2206H6.21333L8.58154 17.7335V1.7793ZM10.5761 1.7793H15.8111V22.2206H10.5761V1.7793ZM22.9166 1.7793H17.6816V6.01712H22.9166V1.7793ZM22.9166 7.38818H17.6816V22.2206H22.9166V7.38818Z",
-							"fill": "url(#paint0_radial_11622_96084)"
-						},
-						"children": []
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "radialGradient",
-						"attributes": {
-							"id": "paint0_radial_11622_96084",
-							"cx": "0",
-							"cy": "0",
-							"r": "1",
-							"gradientUnits": "userSpaceOnUse",
-							"gradientTransform": "translate(5.5 5.5) rotate(45) scale(20.5061 22.0704)"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"stop-color": "#FEBD3F"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "0.77608",
-									"stop-color": "#FF6933"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "Baichuan"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "Baichuan"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Union",
+              "fill-rule": "evenodd",
+              "clip-rule": "evenodd",
+              "d": "M8.58154 1.7793H5.52779L3.34655 6.20409V17.7335L0.916016 22.2206H6.21333L8.58154 17.7335V1.7793ZM10.5761 1.7793H15.8111V22.2206H10.5761V1.7793ZM22.9166 1.7793H17.6816V6.01712H22.9166V1.7793ZM22.9166 7.38818H17.6816V22.2206H22.9166V7.38818Z",
+              "fill": "url(#paint0_radial_11622_96084)"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "radialGradient",
+            "attributes": {
+              "id": "paint0_radial_11622_96084",
+              "cx": "0",
+              "cy": "0",
+              "r": "1",
+              "gradientUnits": "userSpaceOnUse",
+              "gradientTransform": "translate(5.5 5.5) rotate(45) scale(20.5061 22.0704)"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "stop-color": "#FEBD3F"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "0.77608",
+                  "stop-color": "#FF6933"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Baichuan"
 }

@@ -2,11 +2,11 @@ import base64
 import secrets
 
 from flask import request
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailCodeError,
@@ -21,7 +21,6 @@ from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password, valid_password
-from models import Account
 from services.account_service import AccountService, TenantService
 from services.feature_service import FeatureService
 
@@ -50,8 +49,31 @@ class ForgotPasswordResetPayload(BaseModel):
         return valid_password(value)
 
 
-for model in (ForgotPasswordSendPayload, ForgotPasswordCheckPayload, ForgotPasswordResetPayload):
-    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+class ForgotPasswordEmailResponse(BaseModel):
+    result: str = Field(description="Operation result")
+    data: str | None = Field(default=None, description="Reset token")
+    code: str | None = Field(default=None, description="Error code if account not found")
+
+
+class ForgotPasswordCheckResponse(BaseModel):
+    is_valid: bool = Field(description="Whether code is valid")
+    email: EmailStr = Field(description="Email address")
+    token: str = Field(description="New reset token")
+
+
+class ForgotPasswordResetResponse(BaseModel):
+    result: str = Field(description="Operation result")
+
+
+register_schema_models(
+    console_ns,
+    ForgotPasswordSendPayload,
+    ForgotPasswordCheckPayload,
+    ForgotPasswordResetPayload,
+    ForgotPasswordEmailResponse,
+    ForgotPasswordCheckResponse,
+    ForgotPasswordResetResponse,
+)
 
 
 @console_ns.route("/forgot-password")
@@ -62,20 +84,14 @@ class ForgotPasswordSendEmailApi(Resource):
     @console_ns.response(
         200,
         "Email sent successfully",
-        console_ns.model(
-            "ForgotPasswordEmailResponse",
-            {
-                "result": fields.String(description="Operation result"),
-                "data": fields.String(description="Reset token"),
-                "code": fields.String(description="Error code if account not found"),
-            },
-        ),
+        console_ns.models[ForgotPasswordEmailResponse.__name__],
     )
     @console_ns.response(400, "Invalid email or rate limit exceeded")
     @setup_required
     @email_password_login_enabled
     def post(self):
         args = ForgotPasswordSendPayload.model_validate(console_ns.payload)
+        normalized_email = args.email.lower()
 
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
@@ -87,11 +103,11 @@ class ForgotPasswordSendEmailApi(Resource):
             language = "en-US"
 
         with Session(db.engine) as session:
-            account = session.execute(select(Account).filter_by(email=args.email)).scalar_one_or_none()
+            account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
 
         token = AccountService.send_reset_password_email(
             account=account,
-            email=args.email,
+            email=normalized_email,
             language=language,
             is_allow_register=FeatureService.get_system_features().is_allow_register,
         )
@@ -107,14 +123,7 @@ class ForgotPasswordCheckApi(Resource):
     @console_ns.response(
         200,
         "Code verified successfully",
-        console_ns.model(
-            "ForgotPasswordCheckResponse",
-            {
-                "is_valid": fields.Boolean(description="Whether code is valid"),
-                "email": fields.String(description="Email address"),
-                "token": fields.String(description="New reset token"),
-            },
-        ),
+        console_ns.models[ForgotPasswordCheckResponse.__name__],
     )
     @console_ns.response(400, "Invalid code or token")
     @setup_required
@@ -122,9 +131,9 @@ class ForgotPasswordCheckApi(Resource):
     def post(self):
         args = ForgotPasswordCheckPayload.model_validate(console_ns.payload)
 
-        user_email = args.email
+        user_email = args.email.lower()
 
-        is_forgot_password_error_rate_limit = AccountService.is_forgot_password_error_rate_limit(args.email)
+        is_forgot_password_error_rate_limit = AccountService.is_forgot_password_error_rate_limit(user_email)
         if is_forgot_password_error_rate_limit:
             raise EmailPasswordResetLimitError()
 
@@ -132,11 +141,16 @@ class ForgotPasswordCheckApi(Resource):
         if token_data is None:
             raise InvalidTokenError()
 
-        if user_email != token_data.get("email"):
+        token_email = token_data.get("email")
+        if not isinstance(token_email, str):
+            raise InvalidEmailError()
+        normalized_token_email = token_email.lower()
+
+        if user_email != normalized_token_email:
             raise InvalidEmailError()
 
         if args.code != token_data.get("code"):
-            AccountService.add_forgot_password_error_rate_limit(args.email)
+            AccountService.add_forgot_password_error_rate_limit(user_email)
             raise EmailCodeError()
 
         # Verified, revoke the first token
@@ -144,11 +158,11 @@ class ForgotPasswordCheckApi(Resource):
 
         # Refresh token data by generating a new token
         _, new_token = AccountService.generate_reset_password_token(
-            user_email, code=args.code, additional_data={"phase": "reset"}
+            token_email, code=args.code, additional_data={"phase": "reset"}
         )
 
-        AccountService.reset_forgot_password_error_rate_limit(args.email)
-        return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
+        AccountService.reset_forgot_password_error_rate_limit(user_email)
+        return {"is_valid": True, "email": normalized_token_email, "token": new_token}
 
 
 @console_ns.route("/forgot-password/resets")
@@ -159,7 +173,7 @@ class ForgotPasswordResetApi(Resource):
     @console_ns.response(
         200,
         "Password reset successfully",
-        console_ns.model("ForgotPasswordResetResponse", {"result": fields.String(description="Operation result")}),
+        console_ns.models[ForgotPasswordResetResponse.__name__],
     )
     @console_ns.response(400, "Invalid token or password mismatch")
     @setup_required
@@ -187,9 +201,8 @@ class ForgotPasswordResetApi(Resource):
         password_hashed = hash_password(args.new_password, salt)
 
         email = reset_data.get("email", "")
-
         with Session(db.engine) as session:
-            account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
+            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
             if account:
                 self._update_existing_account(account, password_hashed, salt, session)

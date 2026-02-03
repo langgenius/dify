@@ -1,13 +1,13 @@
 'use client'
 
 import {
-  useEffect,
-  useMemo,
-} from 'react'
-import {
   useRouter,
   useSearchParams,
 } from 'next/navigation'
+import {
+  useEffect,
+  useMemo,
+} from 'react'
 import EducationApplyPage from '@/app/education-apply/education-apply-page'
 import { useProviderContext } from '@/context/provider-context'
 

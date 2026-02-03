@@ -1,10 +1,9 @@
-import {
-  useCallback,
-  useMemo,
-  useRef,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { useEdges, useStoreApi } from 'reactflow'
+import type { AgentNodeType } from '../nodes/agent/types'
+import type { DataSourceNodeType } from '../nodes/data-source/types'
+import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
+import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
+import type { ToolNodeType } from '../nodes/tool/types'
+import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type {
   CommonEdgeType,
   CommonNodeType,
@@ -12,51 +11,53 @@ import type {
   Node,
   ValueSelector,
 } from '../types'
-import { BlockEnum } from '../types'
+import type { Emoji } from '@/app/components/tools/types'
+import type { DataSet } from '@/models/datasets'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
+import {
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { useEdges, useStoreApi } from 'reactflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { useToastContext } from '@/app/components/base/toast'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { MAX_TREE_DEPTH } from '@/config'
+import { useGetLanguage } from '@/context/i18n'
+import { fetchDatasets } from '@/service/datasets'
+import { useStrategyProviders } from '@/service/use-strategy'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { AppModeEnum } from '@/types/app'
+import {
+  CUSTOM_NODE,
+} from '../constants'
+import { useDatasetsDetailStore } from '../datasets-detail-store/store'
+import {
+  useGetToolIcon,
+  useNodesMetaData,
+} from '../hooks'
+import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 import {
   useStore,
   useWorkflowStore,
 } from '../store'
+import { BlockEnum } from '../types'
 import {
   getDataSourceCheckParams,
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
 import { getTriggerCheckParams } from '../utils/trigger'
-import {
-  CUSTOM_NODE,
-} from '../constants'
-import {
-  useGetToolIcon,
-  useNodesMetaData,
-} from '../hooks'
-import type { ToolNodeType } from '../nodes/tool/types'
-import type { DataSourceNodeType } from '../nodes/data-source/types'
-import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
-import { useToastContext } from '@/app/components/base/toast'
-import { useGetLanguage } from '@/context/i18n'
-import type { AgentNodeType } from '../nodes/agent/types'
-import { useStrategyProviders } from '@/service/use-strategy'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
-import { useDatasetsDetailStore } from '../datasets-detail-store/store'
-import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
-import type { DataSet } from '@/models/datasets'
-import { fetchDatasets } from '@/service/datasets'
-import { MAX_TREE_DEPTH } from '@/config'
 import useNodesAvailableVarList, { useGetNodesAvailableVarList } from './use-nodes-available-var-list'
-import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
-import type { Emoji } from '@/app/components/tools/types'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { AppModeEnum } from '@/types/app'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 
 export type ChecklistItem = {
   id: string
@@ -170,7 +171,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         // Check if plugin is installed for plugin-dependent nodes first
         let errorMessage: string | undefined
         if (isPluginMissing)
-          errorMessage = t('workflow.nodes.common.pluginNotInstalled')
+          errorMessage = t('nodes.common.pluginNotInstalled', { ns: 'workflow' })
         else if (validator)
           errorMessage = validator(checkData, t, moreDataForCheckValid).errorMessage
 
@@ -184,10 +185,10 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
               if (usedNode) {
                 const usedVar = usedNode.vars.find(v => v.variable === variable?.[1])
                 if (!usedVar)
-                  errorMessage = t('workflow.errorMsg.invalidVariable')
+                  errorMessage = t('errorMsg.invalidVariable', { ns: 'workflow' })
               }
               else {
-                errorMessage = t('workflow.errorMsg.invalidVariable')
+                errorMessage = t('errorMsg.invalidVariable', { ns: 'workflow' })
               }
             }
           }
@@ -223,8 +224,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         list.push({
           id: 'start-node-required',
           type: BlockEnum.Start,
-          title: t('workflow.panel.startNode'),
-          errorMessage: t('workflow.common.needStartNode'),
+          title: t('panel.startNode', { ns: 'workflow' }),
+          errorMessage: t('common.needStartNode', { ns: 'workflow' }),
           canNavigate: false,
         })
       }
@@ -237,8 +238,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         list.push({
           id: `${type}-need-added`,
           type,
-          title: t(`workflow.blocks.${type}`),
-          errorMessage: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }),
+          // We don't have enough type info for t() here
+
+          title: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }),
+
+          errorMessage: t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) }),
           canNavigate: false,
         })
       }
@@ -310,7 +314,7 @@ export const useChecklistBeforePublish = () => {
     const { validNodes, maxDepth } = getValidTreeNodes(filteredNodes, edges)
 
     if (maxDepth > MAX_TREE_DEPTH) {
-      notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEPTH }) })
+      notify({ type: 'error', message: t('common.maxTreeDepth', { ns: 'workflow', depth: MAX_TREE_DEPTH }) })
       return false
     }
     // Before publish, we need to fetch datasets detail, in case of the settings of datasets have been changed
@@ -374,12 +378,12 @@ export const useChecklistBeforePublish = () => {
           if (usedNode) {
             const usedVar = usedNode.vars.find(v => v.variable === variable?.[1])
             if (!usedVar) {
-              notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.errorMsg.invalidVariable')}` })
+              notify({ type: 'error', message: `[${node.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}` })
               return false
             }
           }
           else {
-            notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.errorMsg.invalidVariable')}` })
+            notify({ type: 'error', message: `[${node.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}` })
             return false
           }
         }
@@ -390,7 +394,7 @@ export const useChecklistBeforePublish = () => {
       const isUnconnected = !validNodes.find(n => n.id === node.id)
 
       if (isUnconnected && !canSkipConnectionCheck) {
-        notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.common.needConnectTip')}` })
+        notify({ type: 'error', message: `[${node.data.title}] ${t('common.needConnectTip', { ns: 'workflow' })}` })
         return false
       }
     }
@@ -398,7 +402,7 @@ export const useChecklistBeforePublish = () => {
     if (shouldCheckStartNode) {
       const startNodesFiltered = nodes.filter(node => START_NODE_TYPES.includes(node.data.type as BlockEnum))
       if (startNodesFiltered.length === 0) {
-        notify({ type: 'error', message: t('workflow.common.needStartNode') })
+        notify({ type: 'error', message: t('common.needStartNode', { ns: 'workflow' }) })
         return false
       }
     }
@@ -409,7 +413,7 @@ export const useChecklistBeforePublish = () => {
       const type = isRequiredNodesType[i]
 
       if (!filteredNodes.find(node => node.data.type === type)) {
-        notify({ type: 'error', message: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }) })
+        notify({ type: 'error', message: t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) }) })
         return false
       }
     }
@@ -431,7 +435,7 @@ export const useWorkflowRunValidation = () => {
 
   const validateBeforeRun = useCallback(() => {
     if (needWarningNodes.length > 0) {
-      notify({ type: 'error', message: t('workflow.panel.checklistTip') })
+      notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
       return false
     }
     return true

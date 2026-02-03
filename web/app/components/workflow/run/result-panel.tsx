@@ -1,22 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import StatusPanel from './status'
-import MetaData from './meta'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import type {
   AgentLogItemWithChildren,
   NodeTracing,
 } from '@/types/workflow'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { hasRetryNode } from '@/app/components/workflow/utils'
+import { useTranslation } from 'react-i18next'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log'
 import { IterationLogTrigger } from '@/app/components/workflow/run/iteration-log'
 import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
-import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { hasRetryNode } from '@/app/components/workflow/utils'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
+import MetaData from './meta'
+import StatusPanel from './status'
 
 export type ResultPanelProps = {
   nodeInfo?: NodeTracing
@@ -80,8 +80,8 @@ const ResultPanel: FC<ResultPanelProps> = ({
   const isToolNode = nodeInfo?.node_type === BlockEnum.Tool && !!nodeInfo?.agentLog?.length
 
   return (
-    <div className='bg-components-panel-bg py-2'>
-      <div className='px-4 py-2'>
+    <div className="bg-components-panel-bg py-2">
+      <div className="px-4 py-2">
         <StatusPanel
           status={status}
           time={elapsed_time}
@@ -91,7 +91,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           isListening={isListening}
         />
       </div>
-      <div className='px-4'>
+      <div className="px-4">
         {
           isIterationNode && handleShowIterationResultList && (
             <IterationLogTrigger
@@ -125,41 +125,41 @@ const ResultPanel: FC<ResultPanelProps> = ({
           )
         }
       </div>
-      <div className='flex flex-col gap-2 px-4 py-2'>
+      <div className="flex flex-col gap-2 px-4 py-2">
         <CodeEditor
           readOnly
-          title={<div>{t('workflow.common.input').toLocaleUpperCase()}</div>}
+          title={<div>{t('common.input', { ns: 'workflow' }).toLocaleUpperCase()}</div>}
           language={CodeLanguage.json}
           value={inputs}
           isJSONStringifyBeauty
-          footer={inputs_truncated && <LargeDataAlert textHasNoExport className='mx-1 mb-1 mt-2 h-7' />}
+          footer={inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mb-1 mt-2 h-7" />}
         />
         {process_data && (
           <CodeEditor
             readOnly
-            title={<div>{t('workflow.common.processData').toLocaleUpperCase()}</div>}
+            title={<div>{t('common.processData', { ns: 'workflow' }).toLocaleUpperCase()}</div>}
             language={CodeLanguage.json}
             value={process_data}
             isJSONStringifyBeauty
-            footer={process_data_truncated && <LargeDataAlert textHasNoExport className='mx-1 mb-1 mt-2 h-7' />}
+            footer={process_data_truncated && <LargeDataAlert textHasNoExport className="mx-1 mb-1 mt-2 h-7" />}
           />
         )}
         {(outputs || status === 'running') && (
           <CodeEditor
             readOnly
-            title={<div>{t('workflow.common.output').toLocaleUpperCase()}</div>}
+            title={<div>{t('common.output', { ns: 'workflow' }).toLocaleUpperCase()}</div>}
             language={CodeLanguage.json}
             value={outputs}
             isJSONStringifyBeauty
             tip={<ErrorHandleTip type={execution_metadata?.error_strategy} />}
-            footer={outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={outputs_full_content?.download_url} className='mx-1 mb-1 mt-2 h-7' />}
+            footer={outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={outputs_full_content?.download_url} className="mx-1 mb-1 mt-2 h-7" />}
           />
         )}
       </div>
-      <div className='px-4 py-2'>
-        <div className='divider-subtle h-[0.5px]' />
+      <div className="px-4 py-2">
+        <div className="divider-subtle h-[0.5px]" />
       </div>
-      <div className='px-4 py-2'>
+      <div className="px-4 py-2">
         <MetaData
           status={status}
           executor={created_by}

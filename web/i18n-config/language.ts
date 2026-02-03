@@ -1,53 +1,63 @@
-import data from './languages.json'
+import type { DocLanguage } from '@/types/doc-paths'
+import data from './languages'
+
 export type Item = {
   value: number | string
   name: string
   example: string
 }
 
-export type I18nText = {
-  'en-US': string
-  'zh-Hans': string
-  'zh-Hant': string
-  'pt-BR': string
-  'es-ES': string
-  'fr-FR': string
-  'de-DE': string
-  'ja-JP': string
-  'ko-KR': string
-  'ru-RU': string
-  'it-IT': string
-  'th-TH': string
-  'id-ID': string
-  'uk-UA': string
-  'vi-VN': string
-  'ro-RO': string
-  'pl-PL': string
-  'hi-IN': string
-  'tr-TR': string
-  'fa-IR': string
-  'sl-SI': string
-  'ar-TN': string
-}
+export type I18nText = Record<typeof LanguagesSupported[number], string>
 
 export const languages = data.languages
 
-export const LanguagesSupported = languages.filter(item => item.supported).map(item => item.value)
+// for compatibility
+export type Locale = 'ja_JP' | 'zh_Hans' | 'en_US' | (typeof languages[number])['value']
 
-export const getLanguage = (locale: string) => {
+export const LanguagesSupported: Locale[] = languages.filter(item => item.supported).map(item => item.value)
+
+export const getLanguage = (locale: Locale): Locale => {
   if (['zh-Hans', 'ja-JP'].includes(locale))
-    return locale.replace('-', '_')
+    return locale.replace('-', '_') as Locale
 
-  return LanguagesSupported[0].replace('-', '_')
+  return LanguagesSupported[0].replace('-', '_') as Locale
 }
 
-const DOC_LANGUAGE: Record<string, string> = {
-  'zh-Hans': 'zh-hans',
-  'ja-JP': 'ja-jp',
+const DOC_LANGUAGE: Record<string, DocLanguage | undefined> = {
+  'zh-Hans': 'zh',
+  'ja-JP': 'ja',
   'en-US': 'en',
 }
 
-export const getDocLanguage = (locale: string) => {
+export const localeMap: Record<Locale, string> = {
+  'en-US': 'en',
+  'en_US': 'en',
+  'zh-Hans': 'zh-cn',
+  'zh_Hans': 'zh-cn',
+  'zh-Hant': 'zh-tw',
+  'pt-BR': 'pt-br',
+  'es-ES': 'es',
+  'fr-FR': 'fr',
+  'de-DE': 'de',
+  'ja-JP': 'ja',
+  'ja_JP': 'ja',
+  'ko-KR': 'ko',
+  'ru-RU': 'ru',
+  'it-IT': 'it',
+  'th-TH': 'th',
+  'id-ID': 'id',
+  'uk-UA': 'uk',
+  'vi-VN': 'vi',
+  'ro-RO': 'ro',
+  'pl-PL': 'pl',
+  'hi-IN': 'hi',
+  'tr-TR': 'tr',
+  'fa-IR': 'fa',
+  'sl-SI': 'sl',
+  'ar-TN': 'ar',
+}
+
+export const getDocLanguage = (locale: string): DocLanguage => {
   return DOC_LANGUAGE[locale] || 'en'
 }
 

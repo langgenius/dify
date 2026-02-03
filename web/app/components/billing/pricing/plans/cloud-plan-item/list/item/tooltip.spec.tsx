@@ -3,7 +3,7 @@ import Tooltip from './tooltip'
 
 describe('Tooltip', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering the info tooltip container

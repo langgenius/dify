@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import type { Props as CreateContentProps } from './create-content'
-import CreateContent from './create-content'
+import * as React from 'react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../../base/portal-to-follow-elem'
+import CreateContent from './create-content'
 
 type Props = {
   open: boolean
@@ -24,7 +24,7 @@ const CreateMetadataModal: FC<Props> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='left-start'
+      placement="left-start"
       offset={{
         mainAxis: popupLeft,
         crossAxis: -38,
@@ -35,10 +35,10 @@ const CreateMetadataModal: FC<Props> = ({
       >
         {trigger}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
+      <PortalToFollowElemContent className="z-[1000]">
         <CreateContent {...createContentProps} onClose={() => setOpen(false)} onBack={() => setOpen(false)} />
       </PortalToFollowElemContent>
-    </PortalToFollowElem >
+    </PortalToFollowElem>
 
   )
 }

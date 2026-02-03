@@ -2,10 +2,10 @@ import {
   memo,
 } from 'react'
 
+import CandidateNodeMain from './candidate-node-main'
 import {
   useStore,
 } from './store'
-import CandidateNodeMain from './candidate-node-main'
 
 const CandidateNode = () => {
   const candidateNode = useStore(s => s.candidateNode)

@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import Slider from '@/app/components/base/slider'
 
 export type InputNumberWithSliderProps = {
@@ -38,11 +39,11 @@ const InputNumberWithSlider: FC<InputNumberWithSliderProps> = ({
   }, [onChange])
 
   return (
-    <div className='flex h-8 items-center justify-between space-x-2'>
+    <div className="flex h-8 items-center justify-between space-x-2">
       <input
         value={value}
-        className='block h-8 w-12 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-[13px] text-components-input-text-filled outline-none'
-        type='number'
+        className="block h-8 w-12 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-[13px] text-components-input-text-filled outline-none"
+        type="number"
         min={min}
         max={max}
         step={1}
@@ -51,7 +52,7 @@ const InputNumberWithSlider: FC<InputNumberWithSliderProps> = ({
         disabled={readonly}
       />
       <Slider
-        className='grow'
+        className="grow"
         value={value}
         min={min}
         max={max}

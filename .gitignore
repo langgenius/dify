@@ -139,7 +139,6 @@ pyrightconfig.json
 .idea/'
 
 .DS_Store
-web/.vscode/settings.json
 
 # Intellij IDEA Files
 .idea/*
@@ -196,6 +195,7 @@ docker/nginx/ssl/*
 !docker/nginx/ssl/.gitkeep
 docker/middleware.env
 docker/docker-compose.override.yaml
+docker/env-backup/*
 
 sdks/python-client/build
 sdks/python-client/dist
@@ -205,7 +205,6 @@ sdks/python-client/dify_client.egg-info
 !.vscode/launch.json.template
 !.vscode/README.md
 api/.vscode
-web/.vscode
 # vscode Code History Extension
 .history
 
@@ -220,15 +219,6 @@ plugins.jsonl
 # mise
 mise.toml
 
-# Next.js build output
-.next/
-
-# PWA generated files
-web/public/sw.js
-web/public/sw.js.map
-web/public/workbox-*.js
-web/public/workbox-*.js.map
-web/public/fallback-*.js
 
 # AI Assistant
 .roo/
@@ -245,3 +235,4 @@ scripts/stress-test/reports/
 
 # settings
 *.local.json
+*.local.md

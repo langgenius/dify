@@ -24,7 +24,6 @@ def upgrade():
     conn = op.get_bind()
     
     if _is_pg(conn):
-        # PostgreSQL: Keep original syntax
         with op.batch_alter_table('pinned_conversations', schema=None) as batch_op:
             batch_op.add_column(sa.Column('created_by_role', sa.String(length=255), server_default=sa.text("'end_user'::character varying"), nullable=False))
             batch_op.drop_index('pinned_conversation_conversation_idx')
@@ -35,7 +34,6 @@ def upgrade():
             batch_op.drop_index('saved_message_message_idx')
             batch_op.create_index('saved_message_message_idx', ['app_id', 'message_id', 'created_by_role', 'created_by'], unique=False)
     else:
-        # MySQL: Use compatible syntax
         with op.batch_alter_table('pinned_conversations', schema=None) as batch_op:
             batch_op.add_column(sa.Column('created_by_role', sa.String(length=255), server_default=sa.text("'end_user'"), nullable=False))
             batch_op.drop_index('pinned_conversation_conversation_idx')

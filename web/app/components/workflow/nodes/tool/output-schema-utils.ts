@@ -1,13 +1,14 @@
+import type { SchemaTypeDefinition } from '@/service/use-common'
 import { VarType } from '@/app/components/workflow/types'
 import { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 
 /**
  * Normalizes a JSON Schema type to a simple string type.
  * Handles complex schemas with oneOf, anyOf, allOf.
  */
 export const normalizeJsonSchemaType = (schema: any): string | undefined => {
-  if (!schema) return undefined
+  if (!schema)
+    return undefined
   const { type, properties, items, oneOf, anyOf, allOf } = schema
 
   if (Array.isArray(type))
@@ -51,7 +52,7 @@ export const pickItemSchema = (schema: any) => {
 export const resolveVarType = (
   schema: any,
   schemaTypeDefinitions?: SchemaTypeDefinition[],
-): { type: VarType; schemaType?: string } => {
+): { type: VarType, schemaType?: string } => {
   const schemaType = getMatchedSchemaType(schema, schemaTypeDefinitions)
   const normalizedType = normalizeJsonSchemaType(schema)
 

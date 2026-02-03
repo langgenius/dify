@@ -1,6 +1,32 @@
+import type { BasicPlan, BillingQuota, CurrentPlanInfoBackend } from '../type'
 import dayjs from 'dayjs'
-import type { BillingQuota, CurrentPlanInfoBackend } from '../type'
 import { ALL_PLANS, NUM_INFINITE } from '@/app/components/billing/config'
+
+/**
+ * Parse vectorSpace string from ALL_PLANS config and convert to MB
+ * @example "50MB" -> 50, "5GB" -> 5120, "20GB" -> 20480
+ */
+export const parseVectorSpaceToMB = (vectorSpace: string): number => {
+  const match = vectorSpace.match(/^(\d+)(MB|GB)$/i)
+  if (!match)
+    return 0
+
+  const value = Number.parseInt(match[1], 10)
+  const unit = match[2].toUpperCase()
+
+  return unit === 'GB' ? value * 1024 : value
+}
+
+/**
+ * Get the vector space limit in MB for a given plan type from ALL_PLANS config
+ */
+export const getPlanVectorSpaceLimitMB = (planType: BasicPlan): number => {
+  const planInfo = ALL_PLANS[planType]
+  if (!planInfo)
+    return 0
+
+  return parseVectorSpaceToMB(planInfo.vectorSpace)
+}
 
 const parseLimit = (limit: number) => {
   if (limit === 0)

@@ -1,32 +1,31 @@
+import type {
+  PluginDefaultValue,
+  TriggerDefaultValue,
+} from '@/app/components/workflow/block-selector/types'
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import dynamic from 'next/dynamic'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
-import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
-import { generateNewNode } from '@/app/components/workflow/utils'
-import { useStore } from '@/app/components/workflow/store'
 import { useStoreApi } from 'reactflow'
-import PluginDependency from '../../workflow/plugin-dependency'
+import { DSL_EXPORT_CHECK, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import {
   useAutoGenerateWebhookUrl,
   useDSL,
   usePanelInteractions,
 } from '@/app/components/workflow/hooks'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { generateNewNode } from '@/app/components/workflow/utils'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import PluginDependency from '../../workflow/plugin-dependency'
+import { useAvailableNodesMetaData } from '../hooks'
+import { useAutoOnboarding } from '../hooks/use-auto-onboarding'
 import WorkflowHeader from './workflow-header'
 import WorkflowPanel from './workflow-panel'
-import dynamic from 'next/dynamic'
-import { BlockEnum } from '@/app/components/workflow/types'
-import type {
-  PluginDefaultValue,
-  TriggerDefaultValue,
-} from '@/app/components/workflow/block-selector/types'
-import { useAutoOnboarding } from '../hooks/use-auto-onboarding'
-import { useAvailableNodesMetaData } from '../hooks'
 
 const Features = dynamic(() => import('@/app/components/workflow/features'), {
   ssr: false,

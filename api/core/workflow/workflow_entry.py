@@ -7,12 +7,14 @@ from typing import Any
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.workflow.layers.observability import ObservabilityLayer
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.file.models import File
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine
+from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
@@ -23,6 +25,7 @@ from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
+from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
 from models.enums import UserFrom
 from models.workflow import Workflow
@@ -78,6 +81,12 @@ class WorkflowEntry:
             graph=graph,
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
+            config=GraphEngineConfig(
+                min_workers=dify_config.GRAPH_ENGINE_MIN_WORKERS,
+                max_workers=dify_config.GRAPH_ENGINE_MAX_WORKERS,
+                scale_up_threshold=dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD,
+                scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
+            ),
         )
 
         # Add debug logging layer when in debug mode
@@ -97,6 +106,10 @@ class WorkflowEntry:
             max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
         self.graph_engine.layer(limits_layer)
+
+        # Add observability layer when OTel is enabled
+        if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():
+            self.graph_engine.layer(ObservabilityLayer())
 
     def run(self) -> Generator[GraphEngineEvent, None, None]:
         graph_engine = self.graph_engine
@@ -132,12 +145,10 @@ class WorkflowEntry:
         :return:
         """
         node_config = workflow.get_node_config_by_id(node_id)
-        node_config_data = node_config.get("data", {})
+        node_config_data = node_config["data"]
 
-        # Get node class
-        node_type = NodeType(node_config_data.get("type"))
-        node_version = node_config_data.get("version", "1")
-        node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
+        # Get node type
+        node_type = NodeType(node_config_data["type"])
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
@@ -153,12 +164,12 @@ class WorkflowEntry:
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         # init workflow run state
-        node = node_cls(
-            id=str(uuid.uuid4()),
-            config=node_config,
+        node_factory = DifyNodeFactory(
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
+        node = node_factory.create_node(node_config)
+        node_cls = type(node)
 
         try:
             # variable selector to variable mapping
@@ -185,8 +196,7 @@ class WorkflowEntry:
             )
 
         try:
-            # run node
-            generator = node.run()
+            generator = cls._traced_node_run(node)
         except Exception as e:
             logger.exception(
                 "error while running node, workflow_id=%s, node_id=%s, node_type=%s, node_version=%s",
@@ -273,7 +283,7 @@ class WorkflowEntry:
 
         # init variable pool
         variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+            system_variables=SystemVariable.default(),
             user_inputs={},
             environment_variables=[],
         )
@@ -319,8 +329,7 @@ class WorkflowEntry:
                 tenant_id=tenant_id,
             )
 
-            # run node
-            generator = node.run()
+            generator = cls._traced_node_run(node)
 
             return node, generator
         except Exception as e:
@@ -426,3 +435,26 @@ class WorkflowEntry:
                         input_value = current_variable.value | input_value
 
                 variable_pool.add([variable_node_id] + variable_key_list, input_value)
+
+    @staticmethod
+    def _traced_node_run(node: Node) -> Generator[GraphNodeEventBase, None, None]:
+        """
+        Wraps a node's run method with OpenTelemetry tracing and returns a generator.
+        """
+        # Wrap node.run() with ObservabilityLayer hooks to produce node-level spans
+        layer = ObservabilityLayer()
+        layer.on_graph_start()
+        node.ensure_execution_id()
+
+        def _gen():
+            error: Exception | None = None
+            layer.on_node_run_start(node)
+            try:
+                yield from node.run()
+            except Exception as exc:
+                error = exc
+                raise
+            finally:
+                layer.on_node_run_end(node, error)
+
+        return _gen()

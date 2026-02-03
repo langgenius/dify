@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import RetrievalParamConfig from '../retrieval-param-config'
-import { RETRIEVE_METHOD } from '@/types/app'
 import type { RetrievalConfig } from '@/types/app'
-import OptionCard from '../../settings/option-card'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { VectorSearch } from '@/app/components/base/icons/src/vender/knowledge'
+import { RETRIEVE_METHOD } from '@/types/app'
 import { EffectColor } from '../../settings/chunk-structure/types'
+import OptionCard from '../../settings/option-card'
+import RetrievalParamConfig from '../retrieval-param-config'
 
 type Props = {
   disabled?: boolean
@@ -26,15 +26,15 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
     <OptionCard
       id={RETRIEVE_METHOD.keywordSearch}
       disabled={disabled}
-      icon={<VectorSearch className='size-4' />}
-      iconActiveColor='text-util-colors-purple-purple-600'
-      title={t('dataset.retrieval.keyword_search.title')}
-      description={t('dataset.retrieval.keyword_search.description')}
+      icon={<VectorSearch className="size-4" />}
+      iconActiveColor="text-util-colors-purple-purple-600"
+      title={t('retrieval.keyword_search.title', { ns: 'dataset' })}
+      description={t('retrieval.keyword_search.description', { ns: 'dataset' })}
       isActive
       effectColor={EffectColor.purple}
       showEffectColor
       showChildren
-      className='gap-x-2'
+      className="gap-x-2"
     >
       <RetrievalParamConfig
         type={RETRIEVE_METHOD.keywordSearch}

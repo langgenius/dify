@@ -1,6 +1,7 @@
-import { del, get, patch, post } from './base'
-import type { App, AppCategory } from '@/models/explore'
 import type { AccessMode } from '@/models/access-control'
+import type { Banner } from '@/models/app'
+import type { App, AppCategory } from '@/models/explore'
+import { del, get, patch } from './base'
 
 export const fetchAppList = () => {
   return get<{
@@ -9,20 +10,13 @@ export const fetchAppList = () => {
   }>('/explore/apps')
 }
 
+// eslint-disable-next-line ts/no-explicit-any
 export const fetchAppDetail = (id: string): Promise<any> => {
   return get(`/explore/apps/${id}`)
 }
 
 export const fetchInstalledAppList = (app_id?: string | null) => {
   return get(`/installed-apps${app_id ? `?app_id=${app_id}` : ''}`)
-}
-
-export const installApp = (id: string) => {
-  return post('/installed-apps', {
-    body: {
-      app_id: id,
-    },
-  })
 }
 
 export const uninstallApp = (id: string) => {
@@ -37,10 +31,11 @@ export const updatePinStatus = (id: string, isPinned: boolean) => {
   })
 }
 
-export const getToolProviders = () => {
-  return get('/workspaces/current/tool-providers')
-}
-
 export const getAppAccessModeByAppId = (appId: string) => {
   return get<{ accessMode: AccessMode }>(`/enterprise/webapp/app/access-mode?appId=${appId}`)
+}
+
+export const fetchBanners = (language?: string): Promise<Banner[]> => {
+  const url = language ? `/explore/banners?language=${language}` : '/explore/banners'
+  return get<Banner[]>(url)
 }

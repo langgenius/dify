@@ -1,34 +1,34 @@
 import type { FC } from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type {
+  ModelItem,
+  ModelProvider,
+} from '../declarations'
+import type { ModelProviderQuotaGetPaid } from '../utils'
 import {
   RiArrowRightSLine,
   RiInformation2Fill,
   RiLoader2Line,
 } from '@remixicon/react'
-import type {
-  ModelItem,
-  ModelProvider,
-} from '../declarations'
-import { ConfigurationMethodEnum } from '../declarations'
-import {
-  MODEL_PROVIDER_QUOTA_GET_PAID,
-  modelTypeFormat,
-} from '../utils'
-import ProviderIcon from '../provider-icon'
-import ModelBadge from '../model-badge'
-import CredentialPanel from './credential-panel'
-import QuotaPanel from './quota-panel'
-import ModelList from './model-list'
-import { fetchModelProviderModelList } from '@/service/common'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { IS_CE_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
-import cn from '@/utils/classnames'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   AddCustomModel,
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { IS_CE_EDITION } from '@/config'
+import { useAppContext } from '@/context/app-context'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { fetchModelProviderModelList } from '@/service/common'
+import { cn } from '@/utils/classnames'
+import { ConfigurationMethodEnum } from '../declarations'
+import ModelBadge from '../model-badge'
+import ProviderIcon from '../provider-icon'
+import {
+  MODEL_PROVIDER_QUOTA_GET_PAID,
+  modelTypeFormat,
+} from '../utils'
+import CredentialPanel from './credential-panel'
+import ModelList from './model-list'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
@@ -49,7 +49,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const systemConfig = provider.system_configuration
   const hasModelList = fetched && !!modelList.length
   const { isCurrentWorkspaceManager } = useAppContext()
-  const showQuota = systemConfig.enabled && [...MODEL_PROVIDER_QUOTA_GET_PAID].includes(provider.provider) && !IS_CE_EDITION
+  const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(provider.provider as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
   const showCredential = configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && isCurrentWorkspaceManager
 
   const getModelList = async (providerName: string) => {
@@ -88,13 +88,13 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         provider.provider === 'langgenius/anthropic/anthropic' && 'bg-third-party-model-bg-anthropic',
       )}
     >
-      <div className='flex rounded-t-xl py-2 pl-3 pr-2'>
-        <div className='grow px-1 pb-0.5 pt-1'>
+      <div className="flex rounded-t-xl py-2 pl-3 pr-2">
+        <div className="grow px-1 pb-0.5 pt-1">
           <ProviderIcon
-            className='mb-2'
+            className="mb-2"
             provider={provider}
           />
-          <div className='flex gap-0.5'>
+          <div className="flex gap-0.5">
             {
               provider.supported_model_types.map(modelType => (
                 <ModelBadge key={modelType}>
@@ -105,13 +105,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           </div>
         </div>
         {
-          showQuota && (
-            <QuotaPanel
-              provider={provider}
-            />
-          )
-        }
-        {
           showCredential && (
             <CredentialPanel
               provider={provider}
@@ -121,44 +114,44 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       </div>
       {
         collapsed && (
-          <div className='system-xs-medium group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pl-2 pr-[11px] text-text-tertiary'>
-            {(showQuota || !notConfigured) && (
+          <div className="system-xs-medium group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pl-2 pr-[11px] text-text-tertiary">
+            {(showModelProvider || !notConfigured) && (
               <>
-                <div className='flex h-6 items-center pl-1 pr-1.5 leading-6 group-hover:hidden'>
+                <div className="flex h-6 items-center pl-1 pr-1.5 leading-6 group-hover:hidden">
                   {
                     hasModelList
-                      ? t('common.modelProvider.modelsNum', { num: modelList.length })
-                      : t('common.modelProvider.showModels')
+                      ? t('modelProvider.modelsNum', { ns: 'common', num: modelList.length })
+                      : t('modelProvider.showModels', { ns: 'common' })
                   }
-                  {!loading && <RiArrowRightSLine className='h-4 w-4' />}
+                  {!loading && <RiArrowRightSLine className="h-4 w-4" />}
                 </div>
                 <div
-                  className='hidden h-6 cursor-pointer items-center rounded-lg pl-1 pr-1.5 hover:bg-components-button-ghost-bg-hover group-hover:flex'
+                  className="hidden h-6 cursor-pointer items-center rounded-lg pl-1 pr-1.5 hover:bg-components-button-ghost-bg-hover group-hover:flex"
                   onClick={handleOpenModelList}
                 >
                   {
                     hasModelList
-                      ? t('common.modelProvider.showModelsNum', { num: modelList.length })
-                      : t('common.modelProvider.showModels')
+                      ? t('modelProvider.showModelsNum', { ns: 'common', num: modelList.length })
+                      : t('modelProvider.showModels', { ns: 'common' })
                   }
-                  {!loading && <RiArrowRightSLine className='h-4 w-4' />}
+                  {!loading && <RiArrowRightSLine className="h-4 w-4" />}
                   {
                     loading && (
-                      <RiLoader2Line className='ml-0.5 h-3 w-3 animate-spin' />
+                      <RiLoader2Line className="ml-0.5 h-3 w-3 animate-spin" />
                     )
                   }
                 </div>
               </>
             )}
-            {!showQuota && notConfigured && (
-              <div className='flex h-6 items-center pl-1 pr-1.5'>
-                <RiInformation2Fill className='mr-1 h-4 w-4 text-text-accent' />
-                <span className='system-xs-medium text-text-secondary'>{t('common.modelProvider.configureTip')}</span>
+            {!showModelProvider && notConfigured && (
+              <div className="flex h-6 items-center pl-1 pr-1.5">
+                <RiInformation2Fill className="mr-1 h-4 w-4 text-text-accent" />
+                <span className="system-xs-medium text-text-secondary">{t('modelProvider.configureTip', { ns: 'common' })}</span>
               </div>
             )}
             {
               configurationMethods.includes(ConfigurationMethodEnum.customizableModel) && isCurrentWorkspaceManager && (
-                <div className='flex grow justify-end'>
+                <div className="flex grow justify-end">
                   <ManageCustomModelCredentials
                     provider={provider}
                     currentCustomConfigurationModelFixedFields={undefined}

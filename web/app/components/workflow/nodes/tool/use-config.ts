@@ -1,23 +1,21 @@
+import type { ToolNodeType, ToolVarInputs } from './types'
+import type { InputVar } from '@/app/components/workflow/types'
+import { useBoolean } from 'ahooks'
+import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
-import { useBoolean } from 'ahooks'
-import { useWorkflowStore } from '../../store'
-import type { ToolNodeType, ToolVarInputs } from './types'
+import Toast from '@/app/components/base/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { CollectionType } from '@/app/components/tools/types'
-import { updateBuiltInToolCredential } from '@/service/tools'
 import {
   getConfiguredValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
-import Toast from '@/app/components/base/toast'
-import type { InputVar } from '@/app/components/workflow/types'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
-import { canFindTool } from '@/utils'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { updateBuiltInToolCredential } from '@/service/tools'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -25,6 +23,8 @@ import {
   useAllWorkflowTools,
   useInvalidToolsByType,
 } from '@/service/use-tools'
+import { canFindTool } from '@/utils'
+import { useWorkflowStore } from '../../store'
 
 const useConfig = (id: string, payload: ToolNodeType) => {
   const workflowStore = useWorkflowStore()
@@ -87,7 +87,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
       Toast.notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
       invalidToolsByType()
       hideSetAuthModal()
@@ -133,7 +133,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
             if (typeof value === 'string')
               newConfig[key] = value === 'true' || value === '1'
 
-            if (typeof value === 'number') newConfig[key] = value === 1
+            if (typeof value === 'number')
+              newConfig[key] = value === 1
           }
 
           if (schema?.type === 'number-input') {
@@ -149,7 +150,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   )
   const [notSetDefaultValue, setNotSetDefaultValue] = useState(false)
   const toolSettingValue = useMemo(() => {
-    if (notSetDefaultValue) return tool_configurations
+    if (notSetDefaultValue)
+      return tool_configurations
     return getConfiguredValue(tool_configurations, toolSettingSchema)
   }, [notSetDefaultValue, toolSettingSchema, tool_configurations])
   const setToolSettingValue = useCallback(
@@ -172,7 +174,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         draft.tool_configurations = getConfiguredValue(
           tool_configurations,
           toolSettingSchema,
-        )
+        ) as ToolVarInputs
       }
       if (
         !draft.tool_parameters
@@ -181,14 +183,15 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         draft.tool_parameters = getConfiguredValue(
           tool_parameters,
           toolInputVarSchema,
-        )
+        ) as ToolVarInputs
       }
     })
     return inputsWithDefaultValue
   }
 
   useEffect(() => {
-    if (!currTool) return
+    if (!currTool)
+      return
     const inputsWithDefaultValue = formattingParameters()
     const { setControlPromptEditorRerenderKey } = workflowStore.getState()
     setInputs(inputsWithDefaultValue)
@@ -231,7 +234,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const outputSchema = useMemo(() => {
     const res: any[] = []
     const output_schema = currTool?.output_schema
-    if (!output_schema || !output_schema.properties) return res
+    if (!output_schema || !output_schema.properties)
+      return res
 
     Object.keys(output_schema.properties).forEach((outputKey) => {
       const output = output_schema.properties[outputKey]
@@ -266,7 +270,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
   const hasObjectOutput = useMemo(() => {
     const output_schema = currTool?.output_schema
-    if (!output_schema || !output_schema.properties) return false
+    if (!output_schema || !output_schema.properties)
+      return false
     const properties = output_schema.properties
     return Object.keys(properties).some(
       key => properties[key].type === 'object',

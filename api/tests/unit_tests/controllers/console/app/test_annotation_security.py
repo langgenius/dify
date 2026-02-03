@@ -9,6 +9,7 @@ import io
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pandas.errors import ParserError
 from werkzeug.datastructures import FileStorage
 
 from configs import dify_config
@@ -250,21 +251,22 @@ class TestAnnotationImportServiceValidation:
         """Test that invalid CSV format is handled gracefully."""
         from services.annotation_service import AppAnnotationService
 
-        # Create CSV with only one column (should require at least 2 columns for question and answer)
-        csv_content = "single_column_header\nonly_one_value"
-
+        # Any content is fine once we force ParserError
+        csv_content = 'invalid,csv,format\nwith,unbalanced,quotes,and"stuff'
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
 
-        with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
+        with (
+            patch("services.annotation_service.current_account_with_tenant") as mock_auth,
+            patch("services.annotation_service.pd.read_csv", side_effect=ParserError("malformed CSV")),
+        ):
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
 
             result = AppAnnotationService.batch_import_app_annotations("app_id", file)
 
-            # Should return error message about invalid format (less than 2 columns)
             assert "error_msg" in result
-            assert "at least 2 columns" in result["error_msg"].lower()
+            assert "malformed" in result["error_msg"].lower()
 
     def test_valid_import_succeeds(self, mock_app, mock_db_session):
         """Test that valid import request succeeds."""

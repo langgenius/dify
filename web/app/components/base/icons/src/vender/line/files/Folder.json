@@ -1,39 +1,39 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "14",
-			"height": "14",
-			"viewBox": "0 0 14 14",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"id": "folder"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Icon",
-							"d": "M12.8327 11.0833C12.8327 11.3928 12.7098 11.6895 12.491 11.9083C12.2722 12.1271 11.9754 12.25 11.666 12.25H2.33268C2.02326 12.25 1.72652 12.1271 1.50772 11.9083C1.28893 11.6895 1.16602 11.3928 1.16602 11.0833V2.91667C1.16602 2.60725 1.28893 2.3105 1.50772 2.09171C1.72652 1.87292 2.02326 1.75 2.33268 1.75H5.24935L6.41602 3.5H11.666C11.9754 3.5 12.2722 3.62292 12.491 3.84171C12.7098 4.0605 12.8327 4.35725 12.8327 4.66667V11.0833Z",
-							"stroke": "currentColor",
-							"stroke-width": "1.5",
-							"stroke-linecap": "round",
-							"stroke-linejoin": "round"
-						},
-						"children": []
-					}
-				]
-			}
-		]
-	},
-	"name": "Folder"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "14",
+      "height": "14",
+      "viewBox": "0 0 14 14",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "folder"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Icon",
+              "d": "M12.8327 11.0833C12.8327 11.3928 12.7098 11.6895 12.491 11.9083C12.2722 12.1271 11.9754 12.25 11.666 12.25H2.33268C2.02326 12.25 1.72652 12.1271 1.50772 11.9083C1.28893 11.6895 1.16602 11.3928 1.16602 11.0833V2.91667C1.16602 2.60725 1.28893 2.3105 1.50772 2.09171C1.72652 1.87292 2.02326 1.75 2.33268 1.75H5.24935L6.41602 3.5H11.666C11.9754 3.5 12.2722 3.62292 12.491 3.84171C12.7098 4.0605 12.8327 4.35725 12.8327 4.66667V11.0833Z",
+              "stroke": "currentColor",
+              "stroke-width": "1.5",
+              "stroke-linecap": "round",
+              "stroke-linejoin": "round"
+            },
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Folder"
 }

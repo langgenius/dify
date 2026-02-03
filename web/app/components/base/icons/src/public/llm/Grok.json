@@ -1,0 +1,72 @@
+{
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "40",
+      "height": "40",
+      "viewBox": "0 0 40 40",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "rect",
+        "attributes": {
+          "width": "40",
+          "height": "40",
+          "fill": "white"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "clip-path": "url(#clip0_3892_95659)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M15.745 24.54L26.715 16.35C27.254 15.95 28.022 16.106 28.279 16.73C29.628 20.018 29.025 23.971 26.341 26.685C23.658 29.399 19.924 29.995 16.511 28.639L12.783 30.384C18.13 34.081 24.623 33.166 28.681 29.06C31.9 25.805 32.897 21.368 31.965 17.367L31.973 17.376C30.622 11.498 32.305 9.149 35.755 4.345L36 4L31.46 8.59V8.576L15.743 24.544M13.48 26.531C9.643 22.824 10.305 17.085 13.58 13.776C16 11.327 19.968 10.328 23.432 11.797L27.152 10.06C26.482 9.57 25.622 9.043 24.637 8.673C20.182 6.819 14.848 7.742 11.227 11.401C7.744 14.924 6.648 20.341 8.53 24.962C9.935 28.416 7.631 30.86 5.31 33.326C4.49 34.2 3.666 35.074 3 36L13.478 26.534",
+              "fill": "black"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "clipPath",
+            "attributes": {
+              "id": "clip0_3892_95659"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "rect",
+                "attributes": {
+                  "width": "33",
+                  "height": "32",
+                  "fill": "white",
+                  "transform": "translate(3 4)"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Grok"
+}

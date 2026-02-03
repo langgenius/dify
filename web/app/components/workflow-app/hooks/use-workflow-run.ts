@@ -1,35 +1,34 @@
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { Node } from '@/app/components/workflow/types'
+import type { IOtherOptions } from '@/service/base'
+import type { VersionHistory } from '@/types/workflow'
+import { noop } from 'es-toolkit/function'
+import { produce } from 'immer'
+import { usePathname } from 'next/navigation'
 import { useCallback, useRef } from 'react'
 import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import { produce } from 'immer'
 import { v4 as uuidV4 } from 'uuid'
-import { usePathname } from 'next/navigation'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import type { Node } from '@/app/components/workflow/types'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { trackEvent } from '@/app/components/base/amplitude'
+import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import Toast from '@/app/components/base/toast'
+import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import type { IOtherOptions } from '@/service/base'
-import Toast from '@/app/components/base/toast'
-import { handleStream, ssePost } from '@/service/base'
-import { stopWorkflowRun } from '@/service/workflow'
-import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
-import type AudioPlayer from '@/app/components/base/audio-btn/audio'
-import type { VersionHistory } from '@/types/workflow'
-import { noop } from 'lodash-es'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { handleStream, post, ssePost } from '@/service/base'
+import { ContentType } from '@/service/fetch'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { stopWorkflowRun } from '@/service/workflow'
+import { AppModeEnum } from '@/types/app'
 import { useSetWorkflowVarsWithValue } from '../../workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useConfigsMap } from './use-configs-map'
-import { post } from '@/service/base'
-import { ContentType } from '@/service/fetch'
-import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
-import { AppModeEnum } from '@/types/app'
-import { trackEvent } from '@/app/components/base/amplitude'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 type HandleRunMode = TriggerType
 type HandleRunOptions = {
@@ -668,8 +667,7 @@ export const useWorkflowRun = () => {
         },
       },
     )
-  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace],
-  )
+  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace])
 
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {

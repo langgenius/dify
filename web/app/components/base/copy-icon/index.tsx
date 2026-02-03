@@ -1,50 +1,43 @@
 'use client'
-import React, { useState } from 'react'
+import { useClipboard } from 'foxact/use-clipboard'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { debounce } from 'lodash-es'
-import copy from 'copy-to-clipboard'
-import Tooltip from '../tooltip'
 import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
+import Tooltip from '../tooltip'
 
 type Props = {
   content: string
 }
 
-const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
+const prefixEmbedded = 'overview.appInfo.embedded'
 
 const CopyIcon = ({ content }: Props) => {
   const { t } = useTranslation()
-  const [isCopied, setIsCopied] = useState<boolean>(false)
+  const { copied, copy, reset } = useClipboard()
 
-  const onClickCopy = debounce(() => {
+  const handleCopy = useCallback(() => {
     copy(content)
-    setIsCopied(true)
-  }, 100)
-
-  const onMouseLeave = debounce(() => {
-    setIsCopied(false)
-  }, 100)
+  }, [copy, content])
 
   return (
     <Tooltip
       popupContent={
-        (isCopied
-          ? t(`${prefixEmbedded}.copied`)
-          : t(`${prefixEmbedded}.copy`)) || ''
+        (copied
+          ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
+          : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
       }
     >
-      <div onMouseLeave={onMouseLeave}>
-        {!isCopied
+      <div onMouseLeave={reset}>
+        {!copied
           ? (
-            <Copy className='mx-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary' onClick={onClickCopy} />
-          )
+              <Copy className="mx-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary" onClick={handleCopy} />
+            )
           : (
-            <CopyCheck className='mx-1 h-3.5 w-3.5 text-text-tertiary' />
-          )
-        }
+              <CopyCheck className="mx-1 h-3.5 w-3.5 text-text-tertiary" />
+            )}
       </div>
     </Tooltip>
   )

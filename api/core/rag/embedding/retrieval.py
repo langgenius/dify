@@ -20,3 +20,4 @@ class RetrievalSegments(BaseModel):
     child_chunks: list[RetrievalChildChunk] | None = None
     score: float | None = None
     files: list[dict[str, str | int]] | None = None
+    summary: str | None = None  # Summary content if retrieved via summary index

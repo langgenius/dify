@@ -1,21 +1,21 @@
-import {
-  getOutgoers,
-} from 'reactflow'
-import { v4 as uuid4 } from 'uuid'
-import {
-  uniqBy,
-} from 'lodash-es'
 import type {
   Edge,
   Node,
 } from '../types'
+import {
+  uniqBy,
+} from 'es-toolkit/compat'
+import {
+  getOutgoers,
+} from 'reactflow'
+import { v4 as uuid4 } from 'uuid'
 import {
   BlockEnum,
 } from '../types'
 
 export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
   // child node means in iteration or loop. Set value to iteration(or loop) may cause variable not exit problem in backend.
-  if(isChildNode && nodeType === BlockEnum.Assigner)
+  if (isChildNode && nodeType === BlockEnum.Assigner)
     return false
   return nodeType === BlockEnum.LLM
     || nodeType === BlockEnum.KnowledgeRetrieval

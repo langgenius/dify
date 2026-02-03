@@ -1,13 +1,13 @@
-import { AudioBlock, Img, Link, MarkdownButton, MarkdownForm, Paragraph, PluginImg, PluginParagraph, ScriptBlock, ThinkBlock, VideoBlock } from '@/app/components/base/markdown-blocks'
-import { ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
-import dynamic from 'next/dynamic'
 import type { FC } from 'react'
+import dynamic from 'next/dynamic'
 import ReactMarkdown from 'react-markdown'
 import RehypeKatex from 'rehype-katex'
 import RehypeRaw from 'rehype-raw'
 import RemarkBreaks from 'remark-breaks'
 import RemarkGfm from 'remark-gfm'
 import RemarkMath from 'remark-math'
+import { AudioBlock, Img, Link, MarkdownButton, MarkdownForm, Paragraph, PluginImg, PluginParagraph, ScriptBlock, ThinkBlock, VideoBlock } from '@/app/components/base/markdown-blocks'
+import { ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
 import { customUrlTransform } from './markdown-utils'
 
 const CodeBlock = dynamic(() => import('@/app/components/base/markdown-blocks/code-block'), { ssr: false })
@@ -30,7 +30,7 @@ export const ReactMarkdownWrapper: FC<ReactMarkdownWrapperProps> = (props) => {
   return (
     <ReactMarkdown
       remarkPlugins={[
-        RemarkGfm,
+        [RemarkGfm, { singleTilde: false }],
         [RemarkMath, { singleDollarTextMath: ENABLE_SINGLE_DOLLAR_LATEX }],
         RemarkBreaks,
       ]}

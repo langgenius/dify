@@ -17,7 +17,7 @@ export const useBlocks = () => {
   return BLOCKS.map((block) => {
     return {
       ...block,
-      title: t(`workflow.blocks.${block.type}`),
+      title: t(`blocks.${block.type}`, { ns: 'workflow' }),
     }
   })
 }
@@ -28,7 +28,7 @@ export const useStartBlocks = () => {
   return START_BLOCKS.map((block) => {
     return {
       ...block,
-      title: t(`workflow.blocks.${block.type}`),
+      title: t(`blocks.${block.type}`, { ns: 'workflow' }),
     }
   })
 }
@@ -56,20 +56,19 @@ export const useTabs = ({
   const tabs = useMemo(() => {
     const tabConfigs = [{
       key: TabsEnum.Blocks,
-      name: t('workflow.tabs.blocks'),
+      name: t('tabs.blocks', { ns: 'workflow' }),
       show: !noBlocks,
     }, {
       key: TabsEnum.Sources,
-      name: t('workflow.tabs.sources'),
+      name: t('tabs.sources', { ns: 'workflow' }),
       show: !noSources,
     }, {
       key: TabsEnum.Tools,
-      name: t('workflow.tabs.tools'),
+      name: t('tabs.tools', { ns: 'workflow' }),
       show: !noTools,
-    },
-    {
+    }, {
       key: TabsEnum.Start,
-      name: t('workflow.tabs.start'),
+      name: t('tabs.start', { ns: 'workflow' }),
       show: shouldShowStartTab,
       disabled: shouldDisableStartTab,
     }]
@@ -130,19 +129,19 @@ export const useToolTabs = (isHideMCPTools?: boolean) => {
   const tabs = [
     {
       key: ToolTypeEnum.All,
-      name: t('workflow.tabs.allTool'),
+      name: t('tabs.allTool', { ns: 'workflow' }),
     },
     {
       key: ToolTypeEnum.BuiltIn,
-      name: t('workflow.tabs.plugin'),
+      name: t('tabs.plugin', { ns: 'workflow' }),
     },
     {
       key: ToolTypeEnum.Custom,
-      name: t('workflow.tabs.customTool'),
+      name: t('tabs.customTool', { ns: 'workflow' }),
     },
     {
       key: ToolTypeEnum.Workflow,
-      name: t('workflow.tabs.workflowTool'),
+      name: t('tabs.workflowTool', { ns: 'workflow' }),
     },
   ]
   if (!isHideMCPTools) {

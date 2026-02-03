@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import Avatar from '.'
 
 const meta = {
@@ -53,7 +53,10 @@ export const CustomSizes: Story = {
       {[24, 32, 48, 64].map(size => (
         <div key={size} className="flex flex-col items-center gap-2">
           <Avatar {...args} size={size} avatar="https://i.pravatar.cc/96?u=size-test" />
-          <span className="text-xs text-text-tertiary">{size}px</span>
+          <span className="text-xs text-text-tertiary">
+            {size}
+            px
+          </span>
         </div>
       ))}
     </div>

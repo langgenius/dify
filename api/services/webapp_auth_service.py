@@ -12,6 +12,7 @@ from libs.passport import PassportService
 from libs.password import compare_password
 from models import Account, AccountStatus
 from models.model import App, EndUser, Site
+from services.account_service import AccountService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
@@ -32,7 +33,7 @@ class WebAppAuthService:
     @staticmethod
     def authenticate(email: str, password: str) -> Account:
         """authenticate account with email and password"""
-        account = db.session.query(Account).filter_by(email=email).first()
+        account = AccountService.get_account_by_email_with_case_fallback(email)
         if not account:
             raise AccountNotFoundError()
 
@@ -52,7 +53,7 @@ class WebAppAuthService:
 
     @classmethod
     def get_user_through_email(cls, email: str):
-        account = db.session.query(Account).where(Account.email == email).first()
+        account = AccountService.get_account_by_email_with_case_fallback(email)
         if not account:
             return None
 

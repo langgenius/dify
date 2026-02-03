@@ -1,7 +1,7 @@
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
-import type { DataSet } from '@/models/datasets'
-import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { QueryObserverResult, RefetchOptions } from '@tanstack/react-query'
+import type { IndexingType } from '@/app/components/datasets/create/step-two'
+import type { DataSet } from '@/models/datasets'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 
 type DatasetDetailContextValue = {
   indexingTechnique?: IndexingType

@@ -1,76 +1,72 @@
 'use client'
-import { useCallback, useMemo, useRef, useState } from 'react'
-import DataSourceOptions from './data-source-options'
-import type { CrawlResultItem, DocumentItem, CustomFile as File, FileIndexingEstimateResponse } from '@/models/datasets'
-import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
-import { useProviderContextSelector } from '@/context/provider-context'
-import type { NotionPage } from '@/models/common'
-import OnlineDocuments from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents'
-import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import WebsiteCrawl from '@/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl'
-import OnlineDrive from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-drive'
-import Actions from './actions'
-import { useTranslation } from 'react-i18next'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
-import LeftHeader from './left-header'
-import { usePublishedPipelineInfo, useRunPublishedPipeline } from '@/service/use-pipeline'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import Loading from '@/app/components/base/loading'
-import type { Node } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import FilePreview from './preview/file-preview'
-import OnlineDocumentPreview from './preview/online-document-preview'
-import WebsitePreview from './preview/web-preview'
-import ProcessDocuments from './process-documents'
-import ChunkPreview from './preview/chunk-preview'
-import Processing from './processing'
-import type {
-  InitialDocumentDetail,
-  OnlineDriveFile,
-  PublishedPipelineRunPreviewResponse,
-  PublishedPipelineRunResponse,
-} from '@/models/pipeline'
-import { DatasourceType } from '@/models/pipeline'
-import { TransferMethod } from '@/types/app'
-import { useAddDocumentsSteps, useLocalFile, useOnlineDocument, useOnlineDrive, useWebsiteCrawl } from './hooks'
-import DataSourceProvider from './data-source/store/provider'
-import { useDataSourceStore } from './data-source/store'
-import { useFileUploadConfig } from '@/service/use-common'
-import UpgradeCard from '../../create/step-one/upgrade-card'
-import Divider from '@/app/components/base/divider'
+import type { Node } from '@/app/components/workflow/types'
+import type { FileIndexingEstimateResponse } from '@/models/datasets'
+import type { InitialDocumentDetail } from '@/models/pipeline'
 import { useBoolean } from 'ahooks'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
-import { trackEvent } from '@/app/components/base/amplitude'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useProviderContextSelector } from '@/context/provider-context'
+import { DatasourceType } from '@/models/pipeline'
+import { useFileUploadConfig } from '@/service/use-common'
+import { usePublishedPipelineInfo } from '@/service/use-pipeline'
+import { useDataSourceStore } from './data-source/store'
+import DataSourceProvider from './data-source/store/provider'
+import {
+  useAddDocumentsSteps,
+  useDatasourceActions,
+  useDatasourceUIState,
+  useLocalFile,
+  useOnlineDocument,
+  useOnlineDrive,
+  useWebsiteCrawl,
+} from './hooks'
+import LeftHeader from './left-header'
+import { StepOneContent, StepThreeContent, StepTwoContent } from './steps'
+import { StepOnePreview, StepTwoPreview } from './steps/preview-panel'
 
 const CreateFormPipeline = () => {
   const { t } = useTranslation()
   const plan = useProviderContextSelector(state => state.plan)
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+  const dataSourceStore = useDataSourceStore()
+
+  // Core state
   const [datasource, setDatasource] = useState<Datasource>()
   const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(undefined)
   const [batchId, setBatchId] = useState('')
   const [documents, setDocuments] = useState<InitialDocumentDetail[]>([])
-  const dataSourceStore = useDataSourceStore()
 
-  const isPreview = useRef(false)
-  const formRef = useRef<any>(null)
-
+  // Data fetching
   const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(pipelineId || '')
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
 
+  const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
+    file_size_limit: 15,
+    batch_count_limit: 5,
+  }, [fileUploadConfigResponse])
+
+  // Steps management
   const {
     steps,
     currentStep,
     handleNextStep: doHandleNextStep,
     handleBackStep,
   } = useAddDocumentsSteps()
+
+  // Datasource-specific hooks
   const {
     localFileList,
     allFileLoaded,
     currentLocalFile,
     hidePreviewLocalFile,
   } = useLocalFile()
+
   const {
     currentWorkspace,
     onlineDocuments,
@@ -79,12 +75,14 @@ const CreateFormPipeline = () => {
     hidePreviewOnlineDocument,
     clearOnlineDocumentData,
   } = useOnlineDocument()
+
   const {
     websitePages,
     currentWebsite,
     hideWebsitePreview,
     clearWebsiteCrawlData,
   } = useWebsiteCrawl()
+
   const {
     onlineDriveFileList,
     selectedFileIds,
@@ -92,43 +90,50 @@ const CreateFormPipeline = () => {
     clearOnlineDriveData,
   } = useOnlineDrive()
 
-  const datasourceType = useMemo(() => datasource?.nodeData.provider_type, [datasource])
+  // Computed values
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
-  const isShowVectorSpaceFull = useMemo(() => {
-    if (!datasource)
-      return false
-    if (datasourceType === DatasourceType.localFile)
-      return allFileLoaded && isVectorSpaceFull && enableBilling
-    if (datasourceType === DatasourceType.onlineDocument)
-      return onlineDocuments.length > 0 && isVectorSpaceFull && enableBilling
-    if (datasourceType === DatasourceType.websiteCrawl)
-      return websitePages.length > 0 && isVectorSpaceFull && enableBilling
-    if (datasourceType === DatasourceType.onlineDrive)
-      return onlineDriveFileList.length > 0 && isVectorSpaceFull && enableBilling
-    return false
-  }, [allFileLoaded, datasource, datasourceType, enableBilling, isVectorSpaceFull, onlineDocuments.length, onlineDriveFileList.length, websitePages.length])
   const supportBatchUpload = !enableBilling || plan.type !== 'sandbox'
 
+  // UI state
+  const {
+    datasourceType,
+    isShowVectorSpaceFull,
+    nextBtnDisabled,
+    showSelect,
+    totalOptions,
+    selectedOptions,
+    tip,
+  } = useDatasourceUIState({
+    datasource,
+    allFileLoaded,
+    localFileListLength: localFileList.length,
+    onlineDocumentsLength: onlineDocuments.length,
+    websitePagesLength: websitePages.length,
+    selectedFileIdsLength: selectedFileIds.length,
+    onlineDriveFileList,
+    isVectorSpaceFull,
+    enableBilling,
+    currentWorkspacePagesLength: currentWorkspace?.pages.length ?? 0,
+    fileUploadConfig,
+  })
+
+  // Plan upgrade modal
   const [isShowPlanUpgradeModal, {
     setTrue: showPlanUpgradeModal,
     setFalse: hidePlanUpgradeModal,
   }] = useBoolean(false)
+
+  // Next step with batch upload check
   const handleNextStep = useCallback(() => {
     if (!supportBatchUpload) {
-      let isMultiple = false
-      if (datasourceType === DatasourceType.localFile && localFileList.length > 1)
-        isMultiple = true
-
-      if (datasourceType === DatasourceType.onlineDocument && onlineDocuments.length > 1)
-        isMultiple = true
-
-      if (datasourceType === DatasourceType.websiteCrawl && websitePages.length > 1)
-        isMultiple = true
-
-      if (datasourceType === DatasourceType.onlineDrive && selectedFileIds.length > 1)
-        isMultiple = true
-
-      if (isMultiple) {
+      const multipleCheckMap: Record<string, number> = {
+        [DatasourceType.localFile]: localFileList.length,
+        [DatasourceType.onlineDocument]: onlineDocuments.length,
+        [DatasourceType.websiteCrawl]: websitePages.length,
+        [DatasourceType.onlineDrive]: selectedFileIds.length,
+      }
+      const count = datasourceType ? multipleCheckMap[datasourceType] : 0
+      if (count > 1) {
         showPlanUpgradeModal()
         return
       }
@@ -136,479 +141,129 @@ const CreateFormPipeline = () => {
     doHandleNextStep()
   }, [datasourceType, doHandleNextStep, localFileList.length, onlineDocuments.length, selectedFileIds.length, showPlanUpgradeModal, supportBatchUpload, websitePages.length])
 
-  const nextBtnDisabled = useMemo(() => {
-    if (!datasource) return true
-    if (datasourceType === DatasourceType.localFile)
-      return isShowVectorSpaceFull || !localFileList.length || !allFileLoaded
-    if (datasourceType === DatasourceType.onlineDocument)
-      return isShowVectorSpaceFull || !onlineDocuments.length
-    if (datasourceType === DatasourceType.websiteCrawl)
-      return isShowVectorSpaceFull || !websitePages.length
-    if (datasourceType === DatasourceType.onlineDrive)
-      return isShowVectorSpaceFull || !selectedFileIds.length
-    return false
-  }, [datasource, datasourceType, isShowVectorSpaceFull, localFileList.length, allFileLoaded, onlineDocuments.length, websitePages.length, selectedFileIds.length])
+  // Datasource actions
+  const {
+    isPreview,
+    formRef,
+    isIdle,
+    isPending,
+    onClickProcess,
+    onClickPreview,
+    handleSubmit,
+    handlePreviewFileChange,
+    handlePreviewOnlineDocumentChange,
+    handlePreviewWebsiteChange,
+    handlePreviewOnlineDriveFileChange,
+    handleSelectAll,
+    handleSwitchDataSource,
+    handleCredentialChange,
+  } = useDatasourceActions({
+    datasource,
+    datasourceType,
+    pipelineId,
+    dataSourceStore,
+    setEstimateData,
+    setBatchId,
+    setDocuments,
+    handleNextStep,
+    PagesMapAndSelectedPagesId,
+    currentWorkspacePages: currentWorkspace?.pages,
+    clearOnlineDocumentData,
+    clearWebsiteCrawlData,
+    clearOnlineDriveData,
+    setDatasource,
+  })
 
-  const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
-    file_size_limit: 15,
-    batch_count_limit: 5,
-  }, [fileUploadConfigResponse])
-
-  const showSelect = useMemo(() => {
-    if (datasourceType === DatasourceType.onlineDocument) {
-      const pagesCount = currentWorkspace?.pages.length ?? 0
-      return pagesCount > 0
-    }
-    if (datasourceType === DatasourceType.onlineDrive) {
-      const isBucketList = onlineDriveFileList.some(file => file.type === 'bucket')
-      return !isBucketList && onlineDriveFileList.filter((item) => {
-        return item.type !== 'bucket'
-      }).length > 0
-    }
-    return false
-  }, [currentWorkspace?.pages.length, datasourceType, onlineDriveFileList])
-
-  const totalOptions = useMemo(() => {
-    if (datasourceType === DatasourceType.onlineDocument)
-      return currentWorkspace?.pages.length
-    if (datasourceType === DatasourceType.onlineDrive) {
-      return onlineDriveFileList.filter((item) => {
-        return item.type !== 'bucket'
-      }).length
-    }
-  }, [currentWorkspace?.pages.length, datasourceType, onlineDriveFileList])
-
-  const selectedOptions = useMemo(() => {
-    if (datasourceType === DatasourceType.onlineDocument)
-      return onlineDocuments.length
-    if (datasourceType === DatasourceType.onlineDrive)
-      return selectedFileIds.length
-  }, [datasourceType, onlineDocuments.length, selectedFileIds.length])
-
-  const tip = useMemo(() => {
-    if (datasourceType === DatasourceType.onlineDocument)
-      return t('datasetPipeline.addDocuments.selectOnlineDocumentTip', { count: 50 })
-    if (datasourceType === DatasourceType.onlineDrive) {
-      return t('datasetPipeline.addDocuments.selectOnlineDriveTip', {
-        count: fileUploadConfig.batch_count_limit,
-        fileSize: fileUploadConfig.file_size_limit,
-      })
-    }
-    return ''
-  }, [datasourceType, fileUploadConfig.batch_count_limit, fileUploadConfig.file_size_limit, t])
-
-  const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
-
-  const handlePreviewChunks = useCallback(async (data: Record<string, any>) => {
-    if (!datasource)
-      return
-    const {
-      previewLocalFileRef,
-      previewOnlineDocumentRef,
-      previewWebsitePageRef,
-      previewOnlineDriveFileRef,
-      currentCredentialId,
-    } = dataSourceStore.getState()
-    const datasourceInfoList: Record<string, any>[] = []
-    if (datasourceType === DatasourceType.localFile) {
-      const { id, name, type, size, extension, mime_type } = previewLocalFileRef.current as File
-      const documentInfo = {
-        related_id: id,
-        name,
-        type,
-        size,
-        extension,
-        mime_type,
-        url: '',
-        transfer_method: TransferMethod.local_file,
-        credential_id: currentCredentialId,
-      }
-      datasourceInfoList.push(documentInfo)
-    }
-    if (datasourceType === DatasourceType.onlineDocument) {
-      const { workspace_id, ...rest } = previewOnlineDocumentRef.current!
-      const documentInfo = {
-        workspace_id,
-        page: rest,
-        credential_id: currentCredentialId,
-      }
-      datasourceInfoList.push(documentInfo)
-    }
-    if (datasourceType === DatasourceType.websiteCrawl) {
-      datasourceInfoList.push({
-        ...previewWebsitePageRef.current!,
-        credential_id: currentCredentialId,
-      })
-    }
-    if (datasourceType === DatasourceType.onlineDrive) {
-      const { bucket } = dataSourceStore.getState()
-      const { id, type, name } = previewOnlineDriveFileRef.current!
-      datasourceInfoList.push({
-        bucket,
-        id,
-        name,
-        type,
-        credential_id: currentCredentialId,
-      })
-    }
-    await runPublishedPipeline({
-      pipeline_id: pipelineId!,
-      inputs: data,
-      start_node_id: datasource.nodeId,
-      datasource_type: datasourceType as DatasourceType,
-      datasource_info_list: datasourceInfoList,
-      is_preview: true,
-    }, {
-      onSuccess: (res) => {
-        setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
-      },
-    })
-  }, [datasource, datasourceType, runPublishedPipeline, pipelineId, dataSourceStore])
-
-  const handleProcess = useCallback(async (data: Record<string, any>) => {
-    if (!datasource)
-      return
-    const { currentCredentialId } = dataSourceStore.getState()
-    const datasourceInfoList: Record<string, any>[] = []
-    if (datasourceType === DatasourceType.localFile) {
-      const {
-        localFileList,
-      } = dataSourceStore.getState()
-      localFileList.forEach((file) => {
-        const { id, name, type, size, extension, mime_type } = file.file
-        const documentInfo = {
-          related_id: id,
-          name,
-          type,
-          size,
-          extension,
-          mime_type,
-          url: '',
-          transfer_method: TransferMethod.local_file,
-          credential_id: currentCredentialId,
-        }
-        datasourceInfoList.push(documentInfo)
-      })
-    }
-    if (datasourceType === DatasourceType.onlineDocument) {
-      const {
-        onlineDocuments,
-      } = dataSourceStore.getState()
-      onlineDocuments.forEach((page) => {
-        const { workspace_id, ...rest } = page
-        const documentInfo = {
-          workspace_id,
-          page: rest,
-          credential_id: currentCredentialId,
-        }
-        datasourceInfoList.push(documentInfo)
-      })
-    }
-    if (datasourceType === DatasourceType.websiteCrawl) {
-      const {
-        websitePages,
-      } = dataSourceStore.getState()
-      websitePages.forEach((websitePage) => {
-        datasourceInfoList.push({
-          ...websitePage,
-          credential_id: currentCredentialId,
-        })
-      })
-    }
-    if (datasourceType === DatasourceType.onlineDrive) {
-      const {
-        bucket,
-        selectedFileIds,
-        onlineDriveFileList,
-      } = dataSourceStore.getState()
-      selectedFileIds.forEach((id) => {
-        const file = onlineDriveFileList.find(file => file.id === id)
-        datasourceInfoList.push({
-          bucket,
-          id: file?.id,
-          name: file?.name,
-          type: file?.type,
-          credential_id: currentCredentialId,
-        })
-      })
-    }
-    await runPublishedPipeline({
-      pipeline_id: pipelineId!,
-      inputs: data,
-      start_node_id: datasource.nodeId,
-      datasource_type: datasourceType as DatasourceType,
-      datasource_info_list: datasourceInfoList,
-      is_preview: false,
-    }, {
-      onSuccess: (res) => {
-        setBatchId((res as PublishedPipelineRunResponse).batch || '')
-        setDocuments((res as PublishedPipelineRunResponse).documents || [])
-        handleNextStep()
-        trackEvent('dataset_document_added', {
-          data_source_type: datasourceType,
-          indexing_technique: 'pipeline',
-        })
-      },
-    })
-  }, [dataSourceStore, datasource, datasourceType, handleNextStep, pipelineId, runPublishedPipeline])
-
-  const onClickProcess = useCallback(() => {
-    isPreview.current = false
-    formRef.current?.submit()
-  }, [])
-
-  const onClickPreview = useCallback(() => {
-    isPreview.current = true
-    formRef.current?.submit()
-  }, [])
-
-  const handleSubmit = useCallback((data: Record<string, any>) => {
-    if (isPreview.current)
-      handlePreviewChunks(data)
-    else
-      handleProcess(data)
-  }, [handlePreviewChunks, handleProcess])
-
-  const handlePreviewFileChange = useCallback((file: DocumentItem) => {
-    const { previewLocalFileRef } = dataSourceStore.getState()
-    previewLocalFileRef.current = file
-    onClickPreview()
-  }, [dataSourceStore, onClickPreview])
-
-  const handlePreviewOnlineDocumentChange = useCallback((page: NotionPage) => {
-    const { previewOnlineDocumentRef } = dataSourceStore.getState()
-    previewOnlineDocumentRef.current = page
-    onClickPreview()
-  }, [dataSourceStore, onClickPreview])
-
-  const handlePreviewWebsiteChange = useCallback((website: CrawlResultItem) => {
-    const { previewWebsitePageRef } = dataSourceStore.getState()
-    previewWebsitePageRef.current = website
-    onClickPreview()
-  }, [dataSourceStore, onClickPreview])
-
-  const handlePreviewOnlineDriveFileChange = useCallback((file: OnlineDriveFile) => {
-    const { previewOnlineDriveFileRef } = dataSourceStore.getState()
-    previewOnlineDriveFileRef.current = file
-    onClickPreview()
-  }, [dataSourceStore, onClickPreview])
-
-  const handleSelectAll = useCallback(() => {
-    const {
-      onlineDocuments,
-      onlineDriveFileList,
-      selectedFileIds,
-      setOnlineDocuments,
-      setSelectedFileIds,
-      setSelectedPagesId,
-    } = dataSourceStore.getState()
-    if (datasourceType === DatasourceType.onlineDocument) {
-      const allIds = currentWorkspace?.pages.map(page => page.page_id) || []
-      if (onlineDocuments.length < allIds.length) {
-        const selectedPages = Array.from(allIds).map(pageId => PagesMapAndSelectedPagesId[pageId])
-        setOnlineDocuments(selectedPages)
-        setSelectedPagesId(new Set(allIds))
-      }
-      else {
-        setOnlineDocuments([])
-        setSelectedPagesId(new Set())
-      }
-    }
-    if (datasourceType === DatasourceType.onlineDrive) {
-      const allKeys = onlineDriveFileList.filter((item) => {
-        return item.type !== 'bucket'
-      }).map(file => file.id)
-      if (selectedFileIds.length < allKeys.length)
-        setSelectedFileIds(allKeys)
-      else
-        setSelectedFileIds([])
-    }
-  }, [PagesMapAndSelectedPagesId, currentWorkspace?.pages, dataSourceStore, datasourceType])
-
-  const clearDataSourceData = useCallback((dataSource: Datasource) => {
-    const providerType = dataSource.nodeData.provider_type
-    if (providerType === DatasourceType.onlineDocument)
-      clearOnlineDocumentData()
-    else if (providerType === DatasourceType.websiteCrawl)
-      clearWebsiteCrawlData()
-    else if (providerType === DatasourceType.onlineDrive)
-      clearOnlineDriveData()
-  }, [clearOnlineDocumentData, clearOnlineDriveData, clearWebsiteCrawlData])
-
-  const handleSwitchDataSource = useCallback((dataSource: Datasource) => {
-    const {
-      setCurrentCredentialId,
-      currentNodeIdRef,
-    } = dataSourceStore.getState()
-    clearDataSourceData(dataSource)
-    setCurrentCredentialId('')
-    currentNodeIdRef.current = dataSource.nodeId
-    setDatasource(dataSource)
-  }, [clearDataSourceData, dataSourceStore])
-
-  const handleCredentialChange = useCallback((credentialId: string) => {
-    const { setCurrentCredentialId } = dataSourceStore.getState()
-    clearDataSourceData(datasource!)
-    setCurrentCredentialId(credentialId)
-  }, [clearDataSourceData, dataSourceStore, datasource])
-
-  if (isFetchingPipelineInfo) {
-    return (
-      <Loading type='app' />
-    )
-  }
+  if (isFetchingPipelineInfo)
+    return <Loading type="app" />
 
   return (
-    <div
-      className='relative flex h-[calc(100vh-56px)] w-full min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
-    >
-      <div className='h-full min-w-0 flex-1'>
-        <div className='flex h-full flex-col px-14'>
+    <div className="relative flex h-[calc(100vh-56px)] w-full min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
+      <div className="h-full min-w-0 flex-1">
+        <div className="flex h-full flex-col px-14">
           <LeftHeader
             steps={steps}
-            title={t('datasetPipeline.addDocuments.title')}
+            title={t('addDocuments.title', { ns: 'datasetPipeline' })}
             currentStep={currentStep}
           />
-          <div className='grow overflow-y-auto'>
-            {
-              currentStep === 1 && (
-                <div className='flex flex-col gap-y-5 pt-4'>
-                  <DataSourceOptions
-                    datasourceNodeId={datasource?.nodeId || ''}
-                    onSelect={handleSwitchDataSource}
-                    pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
-                  />
-                  {datasourceType === DatasourceType.localFile && (
-                    <LocalFile
-                      allowedExtensions={datasource!.nodeData.fileExtensions || []}
-                      supportBatchUpload={supportBatchUpload}
-                    />
-                  )}
-                  {datasourceType === DatasourceType.onlineDocument && (
-                    <OnlineDocuments
-                      nodeId={datasource!.nodeId}
-                      nodeData={datasource!.nodeData}
-                      onCredentialChange={handleCredentialChange}
-                    />
-                  )}
-                  {datasourceType === DatasourceType.websiteCrawl && (
-                    <WebsiteCrawl
-                      nodeId={datasource!.nodeId}
-                      nodeData={datasource!.nodeData}
-                      onCredentialChange={handleCredentialChange}
-                    />
-                  )}
-                  {datasourceType === DatasourceType.onlineDrive && (
-                    <OnlineDrive
-                      nodeId={datasource!.nodeId}
-                      nodeData={datasource!.nodeData}
-                      onCredentialChange={handleCredentialChange}
-                    />
-                  )}
-                  {isShowVectorSpaceFull && (
-                    <VectorSpaceFull />
-                  )}
-                  <Actions
-                    showSelect={showSelect}
-                    totalOptions={totalOptions}
-                    selectedOptions={selectedOptions}
-                    onSelectAll={handleSelectAll}
-                    disabled={nextBtnDisabled}
-                    handleNextStep={handleNextStep}
-                    tip={tip}
-                  />
-                  {
-                    !supportBatchUpload && datasourceType === DatasourceType.localFile && localFileList.length > 0 && (
-                      <>
-                        <Divider type='horizontal' className='my-4 h-px bg-divider-subtle' />
-                        <UpgradeCard />
-                      </>
-                    )
-                  }
-                </div>
-              )
-            }
-            {
-              currentStep === 2 && (
-                <ProcessDocuments
-                  ref={formRef}
-                  dataSourceNodeId={datasource!.nodeId}
-                  isRunning={isPending}
-                  onProcess={onClickProcess}
-                  onPreview={onClickPreview}
-                  onSubmit={handleSubmit}
-                  onBack={handleBackStep}
-                />
-              )
-            }
-            {
-              currentStep === 3 && (
-                <Processing
-                  batchId={batchId}
-                  documents={documents}
-                />
-              )
-            }
+          <div className="grow overflow-y-auto">
+            {currentStep === 1 && (
+              <StepOneContent
+                datasource={datasource}
+                datasourceType={datasourceType}
+                pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
+                supportBatchUpload={supportBatchUpload}
+                localFileListLength={localFileList.length}
+                isShowVectorSpaceFull={isShowVectorSpaceFull}
+                showSelect={showSelect}
+                totalOptions={totalOptions}
+                selectedOptions={selectedOptions}
+                tip={tip}
+                nextBtnDisabled={nextBtnDisabled}
+                onSelectDataSource={handleSwitchDataSource}
+                onCredentialChange={handleCredentialChange}
+                onSelectAll={handleSelectAll}
+                onNextStep={handleNextStep}
+              />
+            )}
+            {currentStep === 2 && (
+              <StepTwoContent
+                formRef={formRef}
+                dataSourceNodeId={datasource!.nodeId}
+                isRunning={isPending}
+                onProcess={onClickProcess}
+                onPreview={onClickPreview}
+                onSubmit={handleSubmit}
+                onBack={handleBackStep}
+              />
+            )}
+            {currentStep === 3 && (
+              <StepThreeContent
+                batchId={batchId}
+                documents={documents}
+              />
+            )}
           </div>
         </div>
       </div>
-      {/* Preview */}
-      {
-        currentStep === 1 && (
-          <div className='h-full min-w-0 flex-1'>
-            <div className='flex h-full flex-col pl-2 pt-2'>
-              {currentLocalFile && (
-                <FilePreview
-                  file={currentLocalFile}
-                  hidePreview={hidePreviewLocalFile}
-                />
-              )}
-              {currentDocument && (
-                <OnlineDocumentPreview
-                  datasourceNodeId={datasource!.nodeId}
-                  currentPage={currentDocument}
-                  hidePreview={hidePreviewOnlineDocument}
-                />
-              )}
-              {currentWebsite && (
-                <WebsitePreview
-                  currentWebsite={currentWebsite}
-                  hidePreview={hideWebsitePreview}
-                />
-              )}
-            </div>
-          </div>
-        )
-      }
-      {
-        currentStep === 2 && (
-          <div className='h-full min-w-0 flex-1'>
-            <div className='flex h-full flex-col pl-2 pt-2'>
-              <ChunkPreview
-                dataSourceType={datasourceType as DatasourceType}
-                localFiles={localFileList.map(file => file.file)}
-                onlineDocuments={onlineDocuments}
-                websitePages={websitePages}
-                onlineDriveFiles={selectedOnlineDriveFileList}
-                isIdle={isIdle}
-                isPending={isPending && isPreview.current}
-                estimateData={estimateData}
-                onPreview={onClickPreview}
-                handlePreviewFileChange={handlePreviewFileChange}
-                handlePreviewOnlineDocumentChange={handlePreviewOnlineDocumentChange}
-                handlePreviewWebsitePageChange={handlePreviewWebsiteChange}
-                handlePreviewOnlineDriveFileChange={handlePreviewOnlineDriveFileChange}
-              />
-            </div>
-          </div>
-        )
-      }
+
+      {/* Preview Panel */}
+      {currentStep === 1 && (
+        <StepOnePreview
+          datasource={datasource}
+          currentLocalFile={currentLocalFile}
+          currentDocument={currentDocument}
+          currentWebsite={currentWebsite}
+          hidePreviewLocalFile={hidePreviewLocalFile}
+          hidePreviewOnlineDocument={hidePreviewOnlineDocument}
+          hideWebsitePreview={hideWebsitePreview}
+        />
+      )}
+      {currentStep === 2 && (
+        <StepTwoPreview
+          datasourceType={datasourceType}
+          localFileList={localFileList}
+          onlineDocuments={onlineDocuments}
+          websitePages={websitePages}
+          selectedOnlineDriveFileList={selectedOnlineDriveFileList}
+          isIdle={isIdle}
+          isPendingPreview={isPending && isPreview.current}
+          estimateData={estimateData}
+          onPreview={onClickPreview}
+          handlePreviewFileChange={handlePreviewFileChange}
+          handlePreviewOnlineDocumentChange={handlePreviewOnlineDocumentChange}
+          handlePreviewWebsitePageChange={handlePreviewWebsiteChange}
+          handlePreviewOnlineDriveFileChange={handlePreviewOnlineDriveFileChange}
+        />
+      )}
+
+      {/* Plan Upgrade Modal */}
       {isShowPlanUpgradeModal && (
         <PlanUpgradeModal
           show
           onClose={hidePlanUpgradeModal}
-          title={t('billing.upgrade.uploadMultiplePages.title')!}
-          description={t('billing.upgrade.uploadMultiplePages.description')!}
+          title={t('upgrade.uploadMultiplePages.title', { ns: 'billing' })!}
+          description={t('upgrade.uploadMultiplePages.description', { ns: 'billing' })!}
         />
       )}
     </div>

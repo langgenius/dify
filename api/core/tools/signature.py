@@ -7,12 +7,12 @@ import time
 from configs import dify_config
 
 
-def sign_tool_file(tool_file_id: str, extension: str) -> str:
+def sign_tool_file(tool_file_id: str, extension: str, for_external: bool = True) -> str:
     """
     sign file to get a temporary url for plugin access
     """
-    # Use internal URL for plugin/tool file access in Docker environments
-    base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+    # Use internal URL for plugin/tool file access in Docker environments, unless for_external is True
+    base_url = dify_config.FILES_URL if for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
     file_preview_url = f"{base_url}/files/tools/{tool_file_id}{extension}"
 
     timestamp = str(int(time.time()))

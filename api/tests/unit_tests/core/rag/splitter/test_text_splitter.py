@@ -901,6 +901,13 @@ class TestFixedRecursiveCharacterTextSplitter:
         # Verify no empty chunks
         assert all(len(chunk) > 0 for chunk in result)
 
+    def test_double_slash_n(self):
+        data = "chunk 1\n\nsubchunk 1.\nsubchunk 2.\n\n---\n\nchunk 2\n\nsubchunk 1\nsubchunk 2."
+        separator = "\\n\\n---\\n\\n"
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator=separator)
+        chunks = splitter.split_text(data)
+        assert chunks == ["chunk 1\n\nsubchunk 1.\nsubchunk 2.", "chunk 2\n\nsubchunk 1\nsubchunk 2."]
+
 
 # ============================================================================
 # Test Metadata Preservation

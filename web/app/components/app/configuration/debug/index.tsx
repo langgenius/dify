@@ -1,54 +1,56 @@
 'use client'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { produce, setAutoFreeze } from 'immer'
-import cloneDeep from 'lodash-es/cloneDeep'
-import { useBoolean } from 'ahooks'
+import type { DebugWithSingleModelRefType } from './debug-with-single-model'
+import type { ModelAndParameter } from './types'
+import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import type { Inputs } from '@/models/debug'
+import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
 import {
   RiAddLine,
   RiEqualizer2Line,
   RiSparklingFill,
 } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import { noop } from 'es-toolkit/function'
+import { cloneDeep } from 'es-toolkit/object'
+import { produce, setAutoFreeze } from 'immer'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
-import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
-import FormattingChanged from '../base/warning-mask/formatting-changed'
+import ChatUserInput from '@/app/components/app/configuration/debug/chat-user-input'
+import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import TextGeneration from '@/app/components/app/text-generate/item'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import AgentLogModal from '@/app/components/base/agent-log-modal'
+import Button from '@/app/components/base/button'
+import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
+import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
+import PromptLogModal from '@/app/components/base/prompt-log-modal'
+import { ToastContext } from '@/app/components/base/toast'
+import TooltipPlus from '@/app/components/base/tooltip'
+import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG, IS_CE_EDITION } from '@/config'
+import ConfigContext from '@/context/debug-configuration'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useProviderContext } from '@/context/provider-context'
+import { sendCompletionMessage } from '@/service/debug'
+import { AppSourceType } from '@/service/share'
+import { AppModeEnum, ModelModeType, TransferMethod } from '@/types/app'
+import { formatBooleanInputs, promptVariablesToUserInputsForm } from '@/utils/model-config'
 import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
+import FormattingChanged from '../base/warning-mask/formatting-changed'
+import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import DebugWithMultipleModel from './debug-with-multiple-model'
 import DebugWithSingleModel from './debug-with-single-model'
-import type { DebugWithSingleModelRefType } from './debug-with-single-model'
-import type { ModelAndParameter } from './types'
 import {
   APP_CHAT_WITH_MULTIPLE_MODEL,
   APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
 } from './types'
-import { AppModeEnum, ModelModeType, TransferMethod } from '@/types/app'
-import ChatUserInput from '@/app/components/app/configuration/debug/chat-user-input'
-import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
-import ConfigContext from '@/context/debug-configuration'
-import { ToastContext } from '@/app/components/base/toast'
-import { sendCompletionMessage } from '@/service/debug'
-import Button from '@/app/components/base/button'
-import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
-import TooltipPlus from '@/app/components/base/tooltip'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
-import { formatBooleanInputs, promptVariablesToUserInputsForm } from '@/utils/model-config'
-import TextGeneration from '@/app/components/app/text-generate/item'
-import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG, IS_CE_EDITION } from '@/config'
-import type { Inputs } from '@/models/debug'
-import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useProviderContext } from '@/context/provider-context'
-import AgentLogModal from '@/app/components/base/agent-log-modal'
-import PromptLogModal from '@/app/components/base/prompt-log-modal'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { noop } from 'lodash-es'
 
 type IDebug = {
   isAPIKeySet: boolean
@@ -71,6 +73,7 @@ const Debug: FC<IDebug> = ({
 }) => {
   const { t } = useTranslation()
   const {
+    readonly,
     appId,
     mode,
     modelModeType,
@@ -147,11 +150,11 @@ const Debug: FC<IDebug> = ({
     if (isAdvancedMode && mode !== AppModeEnum.COMPLETION) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
-          notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty') })
+          notify({ type: 'error', message: t('otherError.historyNoBeEmpty', { ns: 'appDebug' }) })
           return false
         }
         if (!hasSetBlockStatus.query) {
-          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty') })
+          notify({ type: 'error', message: t('otherError.queryNoBeEmpty', { ns: 'appDebug' }) })
           return false
         }
       }
@@ -172,12 +175,12 @@ const Debug: FC<IDebug> = ({
     })
 
     if (hasEmptyInput) {
-      logError(t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }))
+      logError(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }))
       return false
     }
 
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return false
     }
     return !hasEmptyInput
@@ -202,7 +205,7 @@ const Debug: FC<IDebug> = ({
 
   const sendTextCompletion = async () => {
     if (isResponding) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 
@@ -390,73 +393,86 @@ const Debug: FC<IDebug> = ({
   return (
     <>
       <div className="shrink-0">
-        <div className='flex items-center justify-between px-4 pb-2 pt-3'>
-          <div className='system-xl-semibold text-text-primary'>{t('appDebug.inputs.title')}</div>
-          <div className='flex items-center'>
+        <div className="flex items-center justify-between px-4 pb-2 pt-3">
+          <div className="system-xl-semibold text-text-primary">{t('inputs.title', { ns: 'appDebug' })}</div>
+          <div className="flex items-center">
             {
               debugWithMultipleModel
                 ? (
-                  <>
-                    <Button
-                      variant='ghost-accent'
-                      onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
-                      disabled={multipleModelConfigs.length >= 4}
-                    >
-                      <RiAddLine className='mr-1 h-3.5 w-3.5' />
-                      {t('common.modelProvider.addModel')}({multipleModelConfigs.length}/4)
-                    </Button>
-                    <div className='mx-2 h-[14px] w-[1px] bg-divider-regular' />
-                  </>
-                )
+                    <>
+                      <Button
+                        variant="ghost-accent"
+                        onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
+                        disabled={multipleModelConfigs.length >= 4}
+                      >
+                        <RiAddLine className="mr-1 h-3.5 w-3.5" />
+                        {t('modelProvider.addModel', { ns: 'common' })}
+                        (
+                        {multipleModelConfigs.length}
+                        /4)
+                      </Button>
+                      <div className="mx-2 h-[14px] w-[1px] bg-divider-regular" />
+                    </>
+                  )
                 : null
             }
             {mode !== AppModeEnum.COMPLETION && (
               <>
-                <TooltipPlus
-                  popupContent={t('common.operation.refresh')}
-                >
-                  <ActionButton onClick={clearConversation}>
-                    <RefreshCcw01 className='h-4 w-4' />
-                  </ActionButton>
-                </TooltipPlus>
-                {varList.length > 0 && (
-                  <div className='relative ml-1 mr-2'>
+                {
+                  !readonly && (
                     <TooltipPlus
-                      popupContent={t('workflow.panel.userInputField')}
+                      popupContent={t('operation.refresh', { ns: 'common' })}
                     >
-                      <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
-                        <RiEqualizer2Line className='h-4 w-4' />
+                      <ActionButton onClick={clearConversation}>
+                        <RefreshCcw01 className="h-4 w-4" />
                       </ActionButton>
+
                     </TooltipPlus>
-                    {expanded && <div className='absolute bottom-[-14px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg' />}
-                  </div>
-                )}
+                  )
+                }
+
+                {
+                  varList.length > 0 && (
+                    <div className="relative ml-1 mr-2">
+                      <TooltipPlus
+                        popupContent={t('panel.userInputField', { ns: 'workflow' })}
+                      >
+                        <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => !readonly && setExpanded(!expanded)}>
+                          <RiEqualizer2Line className="h-4 w-4" />
+                        </ActionButton>
+                      </TooltipPlus>
+                      {expanded && <div className="absolute bottom-[-14px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
+                    </div>
+                  )
+                }
               </>
             )}
           </div>
         </div>
         {mode !== AppModeEnum.COMPLETION && expanded && (
-          <div className='mx-3'>
+          <div className="mx-3">
             <ChatUserInput inputs={inputs} />
           </div>
         )}
-        {mode === AppModeEnum.COMPLETION && (
-          <PromptValuePanel
-            appType={mode as AppModeEnum}
-            onSend={handleSendTextCompletion}
-            inputs={inputs}
-            visionConfig={{
-              ...features.file! as VisionSettings,
-              transfer_methods: features.file!.allowed_file_upload_methods || [],
-              image_file_size_limit: features.file?.fileUploadConfig?.image_file_size_limit,
-            }}
-            onVisionFilesChange={setCompletionFiles}
-          />
-        )}
+        {
+          mode === AppModeEnum.COMPLETION && (
+            <PromptValuePanel
+              appType={mode as AppModeEnum}
+              onSend={handleSendTextCompletion}
+              inputs={inputs}
+              visionConfig={{
+                ...features.file! as VisionSettings,
+                transfer_methods: features.file!.allowed_file_upload_methods || [],
+                image_file_size_limit: features.file?.fileUploadConfig?.image_file_size_limit,
+              }}
+              onVisionFilesChange={setCompletionFiles}
+            />
+          )
+        }
       </div>
       {
         debugWithMultipleModel && (
-          <div className='mt-3 grow overflow-hidden' ref={ref}>
+          <div className="mt-3 grow overflow-hidden" ref={ref}>
             <DebugWithMultipleModel
               multipleModelConfigs={multipleModelConfigs}
               onMultipleModelConfigsChange={onMultipleModelConfigsChange}
@@ -491,7 +507,7 @@ const Debug: FC<IDebug> = ({
           <div className="flex grow flex-col" ref={ref}>
             {/* Chat */}
             {mode !== AppModeEnum.COMPLETION && (
-              <div className='h-0 grow overflow-hidden'>
+              <div className="h-0 grow overflow-hidden">
                 <DebugWithSingleModel
                   ref={debugWithSingleModelRef}
                   checkCanSend={checkCanSend}
@@ -503,15 +519,15 @@ const Debug: FC<IDebug> = ({
               <>
                 {(completionRes || isResponding) && (
                   <>
-                    <div className='mx-4 mt-3'><GroupName name={t('appDebug.result')} /></div>
-                    <div className='mx-3 mb-8'>
+                    <div className="mx-4 mt-3"><GroupName name={t('result', { ns: 'appDebug' })} /></div>
+                    <div className="mx-3 mb-8">
                       <TextGeneration
+                        appSourceType={AppSourceType.webApp}
                         className="mt-2"
                         content={completionRes}
                         isLoading={!completionRes && isResponding}
                         isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
                         isResponding={isResponding}
-                        isInstalledApp={false}
                         messageId={messageId}
                         isError={false}
                         onRetry={noop}
@@ -521,9 +537,9 @@ const Debug: FC<IDebug> = ({
                   </>
                 )}
                 {!completionRes && !isResponding && (
-                  <div className='flex grow flex-col items-center justify-center gap-2'>
-                    <RiSparklingFill className='h-12 w-12 text-text-empty-state-icon' />
-                    <div className='system-sm-regular text-text-quaternary'>{t('appDebug.noResult')}</div>
+                  <div className="flex grow flex-col items-center justify-center gap-2">
+                    <RiSparklingFill className="h-12 w-12 text-text-empty-state-icon" />
+                    <div className="system-sm-regular text-text-quaternary">{t('noResult', { ns: 'appDebug' })}</div>
                   </div>
                 )}
               </>
@@ -546,13 +562,15 @@ const Debug: FC<IDebug> = ({
           </div>
         )
       }
-      {isShowFormattingChangeConfirm && (
-        <FormattingChanged
-          onConfirm={handleConfirm}
-          onCancel={handleCancel}
-        />
-      )}
-      {!isAPIKeySet && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
+      {
+        isShowFormattingChangeConfirm && (
+          <FormattingChanged
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+          />
+        )
+      }
+      {!isAPIKeySet && !readonly && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
     </>
   )
 }

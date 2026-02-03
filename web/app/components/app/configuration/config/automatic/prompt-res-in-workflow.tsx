@@ -1,11 +1,11 @@
 'use client'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import type { FC } from 'react'
-import React from 'react'
-import PromptRes from './prompt-res'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useTranslation } from 'react-i18next'
+import PromptRes from './prompt-res'
 
 type Props = {
   value: string
@@ -41,7 +41,7 @@ const PromptResInWorkflow: FC<Props> = ({
           }
           if (node.data.type === BlockEnum.Start) {
             acc.sys = {
-              title: t('workflow.blocks.start'),
+              title: t('blocks.start', { ns: 'workflow' }),
               type: BlockEnum.Start,
             }
           }

@@ -1,16 +1,16 @@
 import type { FC } from 'react'
-import React from 'react'
 import type { EndNodeType } from './types'
 import type { NodeProps, Variable } from '@/app/components/workflow/types'
+import * as React from 'react'
 import {
   useIsChatMode,
   useWorkflow,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
-import { BlockEnum } from '@/app/components/workflow/types'
 import {
   VariableLabelInNode,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 const Node: FC<NodeProps<EndNodeType>> = ({
   id,
@@ -36,7 +36,7 @@ const Node: FC<NodeProps<EndNodeType>> = ({
     return null
 
   return (
-    <div className='mb-1 space-y-0.5 px-3 py-1'>
+    <div className="mb-1 space-y-0.5 px-3 py-1">
       {filteredOutputs.map(({ value_selector }, index) => {
         const node = getNode(value_selector[0])
         const varType = getCurrentVariableType({

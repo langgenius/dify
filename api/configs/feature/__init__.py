@@ -218,7 +218,7 @@ class PluginConfig(BaseSettings):
 
     PLUGIN_DAEMON_TIMEOUT: PositiveFloat | None = Field(
         description="Timeout in seconds for requests to the plugin daemon (set to None to disable)",
-        default=300.0,
+        default=600.0,
     )
 
     INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
@@ -241,6 +241,11 @@ class PluginConfig(BaseSettings):
     PLUGIN_MAX_BUNDLE_SIZE: PositiveInt = Field(
         description="Maximum allowed size for plugin bundles in bytes",
         default=15728640 * 12,
+    )
+
+    PLUGIN_MODEL_SCHEMA_CACHE_TTL: PositiveInt = Field(
+        description="TTL in seconds for caching plugin model schemas in Redis",
+        default=60 * 60,
     )
 
 
@@ -585,6 +590,11 @@ class LoggingConfig(BaseSettings):
     LOG_LEVEL: str = Field(
         description="Logging level, default to INFO. Set to ERROR for production environments.",
         default="INFO",
+    )
+
+    LOG_OUTPUT_FORMAT: Literal["text", "json"] = Field(
+        description="Log output format: 'text' for human-readable, 'json' for structured JSON logs.",
+        default="text",
     )
 
     LOG_FILE: str | None = Field(
@@ -944,6 +954,12 @@ class MailConfig(BaseSettings):
         default=False,
     )
 
+    SMTP_LOCAL_HOSTNAME: str | None = Field(
+        description="Override the local hostname used in SMTP HELO/EHLO. "
+        "Useful behind NAT or when the default hostname causes rejections.",
+        default=None,
+    )
+
     EMAIL_SEND_IP_LIMIT_PER_MINUTE: PositiveInt = Field(
         description="Maximum number of emails allowed to be sent from the same IP address in a minute",
         default=50,
@@ -952,6 +968,16 @@ class MailConfig(BaseSettings):
     SENDGRID_API_KEY: str | None = Field(
         description="API key for SendGrid service",
         default=None,
+    )
+
+    ENABLE_TRIAL_APP: bool = Field(
+        description="Enable trial app",
+        default=False,
+    )
+
+    ENABLE_EXPLORE_BANNER: bool = Field(
+        description="Enable explore banner",
+        default=False,
     )
 
 
@@ -1094,6 +1120,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
     )
     ENABLE_CLEAN_MESSAGES: bool = Field(
         description="Enable clean messages task",
+        default=False,
+    )
+    ENABLE_WORKFLOW_RUN_CLEANUP_TASK: bool = Field(
+        description="Enable scheduled workflow run cleanup task",
         default=False,
     )
     ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(
@@ -1252,42 +1282,15 @@ class WorkflowLogConfig(BaseSettings):
 
 
 class SwaggerUIConfig(BaseSettings):
-    """
-    Configuration for Swagger UI documentation.
-
-    Security Note: Swagger UI is automatically disabled in PRODUCTION environment
-    to prevent API information disclosure. Set SWAGGER_UI_ENABLED=true explicitly
-    to enable in production if needed.
-    """
-
-    SWAGGER_UI_ENABLED: bool | None = Field(
-        description="Whether to enable Swagger UI in api module. "
-        "Automatically disabled in PRODUCTION environment for security. "
-        "Set to true explicitly to enable in production.",
-        default=None,
+    SWAGGER_UI_ENABLED: bool = Field(
+        description="Whether to enable Swagger UI in api module",
+        default=True,
     )
 
     SWAGGER_UI_PATH: str = Field(
         description="Swagger UI page path in api module",
         default="/swagger-ui.html",
     )
-
-    @property
-    def swagger_ui_enabled(self) -> bool:
-        """
-        Compute whether Swagger UI should be enabled.
-
-        If SWAGGER_UI_ENABLED is explicitly set, use that value.
-        Otherwise, disable in PRODUCTION environment for security.
-        """
-        if self.SWAGGER_UI_ENABLED is not None:
-            return self.SWAGGER_UI_ENABLED
-
-        # Auto-disable in production environment
-        import os
-
-        deploy_env = os.environ.get("DEPLOY_ENV", "PRODUCTION")
-        return deploy_env.upper() != "PRODUCTION"
 
 
 class YanfaAuthConfig(BaseSettings):
@@ -1346,6 +1349,25 @@ class TenantIsolatedTaskQueueConfig(BaseSettings):
     )
 
 
+class SandboxExpiredRecordsCleanConfig(BaseSettings):
+    SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD: NonNegativeInt = Field(
+        description="Graceful period in days for sandbox records clean after subscription expiration",
+        default=21,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum number of records to process in each batch",
+        default=1000,
+    )
+    SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: PositiveInt = Field(
+        description="Retention days for sandbox expired workflow_run records and message records",
+        default=30,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL: PositiveInt = Field(
+        description="Lock TTL for sandbox expired records clean task in seconds",
+        default=90000,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1371,6 +1393,7 @@ class FeatureConfig(
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,
+    SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,

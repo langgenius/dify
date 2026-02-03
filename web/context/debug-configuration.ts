@@ -1,6 +1,8 @@
 import type { RefObject } from 'react'
-import { createContext, useContext } from 'use-context-selector'
-import { PromptMode } from '@/models/debug'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Collection } from '@/app/components/tools/types'
+import type { ExternalDataTool } from '@/models/common'
+import type { DataSet } from '@/models/datasets'
 import type {
   AnnotationReplyConfig,
   BlockStatus,
@@ -19,17 +21,15 @@ import type {
   SuggestedQuestionsAfterAnswerConfig,
   TextToSpeechConfig,
 } from '@/models/debug'
-import type { ExternalDataTool } from '@/models/common'
-import type { DataSet } from '@/models/datasets'
 import type { VisionSettings } from '@/types/app'
-import { AppModeEnum } from '@/types/app'
-import { ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
+import { noop } from 'es-toolkit/function'
+import { createContext, useContext } from 'use-context-selector'
 import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Collection } from '@/app/components/tools/types'
-import { noop } from 'lodash-es'
+import { PromptMode } from '@/models/debug'
+import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 
 type IDebugConfiguration = {
+  readonly?: boolean
   appId: string
   isAPIKeySet: boolean
   isTrailFinished: boolean
@@ -109,6 +109,7 @@ type IDebugConfiguration = {
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
+  readonly: false,
   appId: '',
   isAPIKeySet: false,
   isTrailFinished: false,

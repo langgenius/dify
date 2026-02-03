@@ -1,3 +1,5 @@
+import type { ModelProviderQuotaGetPaid } from './model-provider'
+
 export enum SSOProtocol {
   SAML = 'saml',
   OIDC = 'oidc',
@@ -26,10 +28,11 @@ type License = {
 }
 
 export type SystemFeatures = {
+  trial_models: ModelProviderQuotaGetPaid[]
   plugin_installation_permission: {
-    plugin_installation_scope: InstallationScope,
+    plugin_installation_scope: InstallationScope
     restrict_to_marketplace_only: boolean
-  },
+  }
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: SSOProtocol | ''
   sso_enforced_for_web: boolean
@@ -59,9 +62,12 @@ export type SystemFeatures = {
     allow_email_code_login: boolean
     allow_email_password_login: boolean
   }
+  enable_trial_app: boolean
+  enable_explore_banner: boolean
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
+  trial_models: [],
   plugin_installation_permission: {
     plugin_installation_scope: InstallationScope.ALL,
     restrict_to_marketplace_only: false,
@@ -98,6 +104,8 @@ export const defaultSystemFeatures: SystemFeatures = {
     allow_email_code_login: false,
     allow_email_password_login: false,
   },
+  enable_trial_app: false,
+  enable_explore_banner: false,
 }
 
 export enum DatasetAttr {
@@ -131,4 +139,5 @@ export enum DatasetAttr {
   NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL = 'next-public-zendesk-field-id-email',
   NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID = 'next-public-zendesk-field-id-workspace-id',
   NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN = 'next-public-zendesk-field-id-plan',
+  DATA_PUBLIC_BATCH_CONCURRENCY = 'data-public-batch-concurrency',
 }

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import contextlib
 from collections.abc import Mapping
@@ -55,7 +57,7 @@ class ToolProviderType(StrEnum):
     MCP = auto()
 
     @classmethod
-    def value_of(cls, value: str) -> "ToolProviderType":
+    def value_of(cls, value: str) -> ToolProviderType:
         """
         Get value of given mode.
 
@@ -79,7 +81,7 @@ class ApiProviderSchemaType(StrEnum):
     OPENAI_ACTIONS = auto()
 
     @classmethod
-    def value_of(cls, value: str) -> "ApiProviderSchemaType":
+    def value_of(cls, value: str) -> ApiProviderSchemaType:
         """
         Get value of given mode.
 
@@ -102,7 +104,7 @@ class ApiProviderAuthType(StrEnum):
     API_KEY_QUERY = auto()
 
     @classmethod
-    def value_of(cls, value: str) -> "ApiProviderAuthType":
+    def value_of(cls, value: str) -> ApiProviderAuthType:
         """
         Get value of given mode.
 
@@ -128,7 +130,7 @@ class ToolInvokeMessage(BaseModel):
         text: str
 
     class JsonMessage(BaseModel):
-        json_object: dict
+        json_object: dict | list
         suppress_output: bool = Field(default=False, description="Whether to suppress JSON output in result string")
 
     class BlobMessage(BaseModel):
@@ -142,7 +144,14 @@ class ToolInvokeMessage(BaseModel):
         end: bool = Field(..., description="Whether the chunk is the last chunk")
 
     class FileMessage(BaseModel):
-        pass
+        file_marker: str = Field(default="file_marker")
+
+        @model_validator(mode="before")
+        @classmethod
+        def validate_file_message(cls, values):
+            if isinstance(values, dict) and "file_marker" not in values:
+                raise ValueError("Invalid FileMessage: missing file_marker")
+            return values
 
     class VariableMessage(BaseModel):
         variable_name: str = Field(..., description="The name of the variable")
@@ -153,11 +162,11 @@ class ToolInvokeMessage(BaseModel):
         @classmethod
         def transform_variable_value(cls, values):
             """
-            Only basic types and lists are allowed.
+            Only basic types, lists, and None are allowed.
             """
             value = values.get("variable_value")
-            if not isinstance(value, dict | list | str | int | float | bool):
-                raise ValueError("Only basic types and lists are allowed.")
+            if value is not None and not isinstance(value, dict | list | str | int | float | bool):
+                raise ValueError("Only basic types, lists, and None are allowed.")
 
             # if stream is true, the value must be a string
             if values.get("stream"):
@@ -232,10 +241,22 @@ class ToolInvokeMessage(BaseModel):
 
     @field_validator("message", mode="before")
     @classmethod
-    def decode_blob_message(cls, v):
+    def decode_blob_message(cls, v, info: ValidationInfo):
+        # 处理 blob 解码
         if isinstance(v, dict) and "blob" in v:
             with contextlib.suppress(Exception):
                 v["blob"] = base64.b64decode(v["blob"])
+
+        # Force correct message type based on type field
+        # Only wrap dict types to avoid wrapping already parsed Pydantic model objects
+        if info.data and isinstance(info.data, dict) and isinstance(v, dict):
+            msg_type = info.data.get("type")
+            if msg_type == cls.MessageType.JSON:
+                if "json_object" not in v:
+                    v = {"json_object": v}
+            elif msg_type == cls.MessageType.FILE:
+                v = {"file_marker": "file_marker"}
+
         return v
 
     @field_serializer("message")
@@ -307,7 +328,7 @@ class ToolParameter(PluginParameter):
         typ: ToolParameterType,
         required: bool,
         options: list[str] | None = None,
-    ) -> "ToolParameter":
+    ) -> ToolParameter:
         """
         get a simple tool parameter
 
@@ -429,14 +450,14 @@ class ToolInvokeMeta(BaseModel):
     tool_config: dict | None = None
 
     @classmethod
-    def empty(cls) -> "ToolInvokeMeta":
+    def empty(cls) -> ToolInvokeMeta:
         """
         Get an empty instance of ToolInvokeMeta
         """
         return cls(time_cost=0.0, error=None, tool_config={})
 
     @classmethod
-    def error_instance(cls, error: str) -> "ToolInvokeMeta":
+    def error_instance(cls, error: str) -> ToolInvokeMeta:
         """
         Get an instance of ToolInvokeMeta with error
         """

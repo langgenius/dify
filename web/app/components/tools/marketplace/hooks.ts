@@ -4,13 +4,13 @@ import {
   useMemo,
   useRef,
 } from 'react'
+import { SCROLL_BOTTOM_THRESHOLD } from '@/app/components/plugins/marketplace/constants'
 import {
   useMarketplaceCollectionsAndPlugins,
   useMarketplacePlugins,
 } from '@/app/components/plugins/marketplace/hooks'
-import { SCROLL_BOTTOM_THRESHOLD } from '@/app/components/plugins/marketplace/constants'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useAllToolProviders } from '@/service/use-tools'
 
 export const useMarketplace = (searchPluginText: string, filterPluginTags: string[]) => {

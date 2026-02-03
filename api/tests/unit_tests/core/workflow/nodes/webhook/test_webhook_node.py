@@ -1,8 +1,10 @@
+from unittest.mock import patch
+
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod, FileType
-from core.variables import StringVariable
+from core.variables import FileVariable, StringVariable
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.trigger_webhook.entities import (
@@ -27,25 +29,33 @@ def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) 
         "data": webhook_data.model_dump(),
     }
 
+    graph_init_params = GraphInitParams(
+        tenant_id="1",
+        app_id="1",
+        workflow_type=WorkflowType.WORKFLOW,
+        workflow_id="1",
+        graph_config={},
+        user_id="1",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.SERVICE_API,
+        call_depth=0,
+    )
+    runtime_state = GraphRuntimeState(
+        variable_pool=variable_pool,
+        start_at=0,
+    )
     node = TriggerWebhookNode(
         id="1",
         config=node_config,
-        graph_init_params=GraphInitParams(
-            tenant_id="1",
-            app_id="1",
-            workflow_type=WorkflowType.WORKFLOW,
-            workflow_id="1",
-            graph_config={},
-            user_id="1",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.SERVICE_API,
-            call_depth=0,
-        ),
-        graph_runtime_state=GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=0,
-        ),
+        graph_init_params=graph_init_params,
+        graph_runtime_state=runtime_state,
     )
+
+    # Provide tenant_id for conversion path
+    runtime_state.app_config = type("_AppCfg", (), {"tenant_id": "1"})()
+
+    # Compatibility alias for some nodes referencing `self.node_id`
+    node.node_id = node.id
 
     return node
 
@@ -65,7 +75,7 @@ def test_webhook_node_basic_initialization():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},
     )
 
@@ -108,7 +118,7 @@ def test_webhook_node_run_with_headers():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {
@@ -144,7 +154,7 @@ def test_webhook_node_run_with_query_params():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -180,7 +190,7 @@ def test_webhook_node_run_with_body_params():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -239,27 +249,34 @@ def test_webhook_node_run_with_file_params():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
                 "query_params": {},
                 "body": {},
                 "files": {
-                    "upload": file1,
-                    "document": file2,
+                    "upload": file1.to_dict(),
+                    "document": file2.to_dict(),
                 },
             }
         },
     )
 
     node = create_webhook_node(data, variable_pool)
-    result = node._run()
+    # Mock the file factory to avoid DB-dependent validation on upload_file_id
+    with patch("factories.file_factory.build_from_mapping") as mock_file_factory:
+
+        def _to_file(mapping, tenant_id, config=None, strict_type_validation=False):
+            return File.model_validate(mapping)
+
+        mock_file_factory.side_effect = _to_file
+        result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert result.outputs["upload"] == file1
-    assert result.outputs["document"] == file2
-    assert result.outputs["missing_file"] is None
+    assert isinstance(result.outputs["upload"], FileVariable)
+    assert isinstance(result.outputs["document"], FileVariable)
+    assert result.outputs["upload"].value.filename == "image.jpg"
 
 
 def test_webhook_node_run_mixed_parameters():
@@ -285,25 +302,33 @@ def test_webhook_node_run_mixed_parameters():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {"Authorization": "Bearer token"},
                 "query_params": {"version": "v1"},
                 "body": {"message": "Test message"},
-                "files": {"upload": file_obj},
+                "files": {"upload": file_obj.to_dict()},
             }
         },
     )
 
     node = create_webhook_node(data, variable_pool)
-    result = node._run()
+    # Mock the file factory to avoid DB-dependent validation on upload_file_id
+    with patch("factories.file_factory.build_from_mapping") as mock_file_factory:
+
+        def _to_file(mapping, tenant_id, config=None, strict_type_validation=False):
+            return File.model_validate(mapping)
+
+        mock_file_factory.side_effect = _to_file
+        result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs["Authorization"] == "Bearer token"
     assert result.outputs["version"] == "v1"
     assert result.outputs["message"] == "Test message"
-    assert result.outputs["upload"] == file_obj
+    assert isinstance(result.outputs["upload"], FileVariable)
+    assert result.outputs["upload"].value.filename == "test.jpg"
     assert "_webhook_raw" in result.outputs
 
 
@@ -317,7 +342,7 @@ def test_webhook_node_run_empty_webhook_data():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},  # No webhook_data
     )
 
@@ -343,7 +368,7 @@ def test_webhook_node_run_case_insensitive_headers():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {
@@ -373,7 +398,7 @@ def test_webhook_node_variable_pool_user_inputs():
 
     # Add some additional variables to the pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {"headers": {}, "query_params": {}, "body": {}, "files": {}},
             "other_var": "should_be_included",
@@ -404,7 +429,7 @@ def test_webhook_node_different_methods(method):
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},

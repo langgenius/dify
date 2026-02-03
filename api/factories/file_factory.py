@@ -1,3 +1,4 @@
+import logging
 import mimetypes
 import os
 import re
@@ -16,6 +17,8 @@ from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUpl
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from models import MessageFile, ToolFile, UploadFile
+
+logger = logging.getLogger(__name__)
 
 
 def build_from_message_files(
@@ -112,7 +115,18 @@ def build_from_mappings(
     # TODO(QuantumGhost): Performance concern - each mapping triggers a separate database query.
     # Implement batch processing to reduce database load when handling multiple files.
     # Filter out None/empty mappings to avoid errors
-    valid_mappings = [m for m in mappings if m and m.get("transfer_method")]
+    def is_valid_mapping(m: Mapping[str, Any]) -> bool:
+        if not m or not m.get("transfer_method"):
+            return False
+        # For REMOTE_URL transfer method, ensure url or remote_url is provided and not None
+        transfer_method = m.get("transfer_method")
+        if transfer_method == FileTransferMethod.REMOTE_URL:
+            url = m.get("url") or m.get("remote_url")
+            if not url:
+                return False
+        return True
+
+    valid_mappings = [m for m in mappings if is_valid_mapping(m)]
     files = [
         build_from_mapping(
             mapping=mapping,
@@ -356,15 +370,20 @@ def _build_from_tool_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
+    # Backward/interop compatibility: allow tool_file_id to come from related_id or URL
+    tool_file_id = mapping.get("tool_file_id")
+
+    if not tool_file_id:
+        raise ValueError(f"ToolFile {tool_file_id} not found")
     tool_file = db.session.scalar(
         select(ToolFile).where(
-            ToolFile.id == mapping.get("tool_file_id"),
+            ToolFile.id == tool_file_id,
             ToolFile.tenant_id == tenant_id,
         )
     )
 
     if tool_file is None:
-        raise ValueError(f"ToolFile {mapping.get('tool_file_id')} not found")
+        raise ValueError(f"ToolFile {tool_file_id} not found")
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
 
@@ -402,10 +421,13 @@ def _build_from_datasource_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
+    datasource_file_id = mapping.get("datasource_file_id")
+    if not datasource_file_id:
+        raise ValueError(f"DatasourceFile {datasource_file_id} not found")
     datasource_file = (
         db.session.query(UploadFile)
         .where(
-            UploadFile.id == mapping.get("datasource_file_id"),
+            UploadFile.id == datasource_file_id,
             UploadFile.tenant_id == tenant_id,
         )
         .first()

@@ -2,43 +2,33 @@
 
 ## Introduction
 
-This directory contains the internationalization (i18n) files for this project.
+This directory contains i18n tooling and configuration. Translation files live under `web/i18n`.
 
 ## File Structure
 
 ```
-├── [  24]  README.md
-├── [ 704]  en-US
-│   ├── [2.4K]  app-annotation.ts
-│   ├── [5.2K]  app-api.ts
-│   ├── [ 16K]  app-debug.ts
-│   ├── [2.1K]  app-log.ts
-│   ├── [5.3K]  app-overview.ts
-│   ├── [1.9K]  app.ts
-│   ├── [4.1K]  billing.ts
-│   ├── [ 17K]  common.ts
-│   ├── [ 859]  custom.ts
-│   ├── [5.7K]  dataset-creation.ts
-│   ├── [ 10K]  dataset-documents.ts
-│   ├── [ 761]  dataset-hit-testing.ts
-│   ├── [1.7K]  dataset-settings.ts
-│   ├── [2.0K]  dataset.ts
-│   ├── [ 941]  explore.ts
-│   ├── [  52]  layout.ts
-│   ├── [2.3K]  login.ts
-│   ├── [  52]  register.ts
-│   ├── [2.5K]  share.ts
-│   └── [2.8K]  tools.ts
-├── [1.6K]  i18next-config.ts
-├── [ 634]  index.ts
-├── [4.4K]  language.ts
+web/i18n
+├── en-US
+│   ├── app.json
+│   ├── app-debug.json
+│   ├── common.json
+│   └── ...
+└── zh-Hans
+    └── ...
+
+web/i18n-config
+├── language.ts
+├── i18next-config.ts
+└── ...
 ```
 
-We use English as the default language. The i18n files are organized by language and then by module. For example, the English translation for the `app` module is in `en-US/app.ts`.
+We use English as the default language. Translation files are organized by language and then by module. For example, the English translation for the `app` module is in `web/i18n/en-US/app.json`.
 
-If you want to add a new language or modify an existing translation, you can create a new file for the language or modify the existing file. The file name should be the language code (e.g., `zh-Hans` for Chinese) and the file extension should be `.ts`.
+Translation files are JSON with flat keys (dot notation). i18next is configured with `keySeparator: false`, so dots are part of the key. The namespace is the camelCase file name (for example, `app-debug.json` -> `appDebug`), so use `useTranslation('appDebug')` or `t('key', { ns: 'appDebug' })`.
 
-For example, if you want to add french translation, you can create a new folder `fr-FR` and add the translation files in it.
+If you want to add a new language or modify an existing translation, create or update the `.json` files in the language folder.
+
+For example, if you want to add French translation, you can create a new folder `fr-FR` and add the translation files in it.
 
 By default we will use `LanguagesSupported` to determine which languages are supported. For example, in login page and settings page, we will use `LanguagesSupported` to determine which languages are supported and display them in the language selection dropdown.
 
@@ -51,35 +41,11 @@ cd web/i18n
 cp -r en-US id-ID
 ```
 
-2. Modify the translation files in the new folder.
+2. Modify the translation `.json` files in the new folder. Keep keys flat (for example, `dialog.title`).
 
-1. Add type to new language in the `language.ts` file.
-
-```typescript
-export type I18nText = {
-  'en-US': string
-  'zh-Hans': string
-  'pt-BR': string
-  'es-ES': string
-  'fr-FR': string
-  'de-DE': string
-  'ja-JP': string
-  'ko-KR': string
-  'ru-RU': string
-  'it-IT': string
-  'uk-UA': string
-  'id-ID': string
-  'tr-TR': string
-  'fa-IR': string
-  'ar-TN': string
-  'YOUR_LANGUAGE_CODE': string
-}
-```
-
-4. Add the new language to the `language.json` file.
+1. Add the new language to the `languages.ts` file.
 
 ```typescript
-
 export const languages = [
   {
     value: 'en-US',
@@ -172,29 +138,52 @@ export const languages = [
     supported: true,
   },
   // Add your language here 👇
-  ...
+  // ...
   // Add your language here 👆
 ]
 ```
 
-5. Don't forget to mark the supported field as `true` if the language is supported.
+4. Don't forget to mark the supported field as `true` if the language is supported.
 
-1. Sometime you might need to do some changes in the server side. Please change this file as well. 👇
+1. Sometimes you might need to do some changes in the server side. Please change this file as well. 👇
    https://github.com/langgenius/dify/blob/61e4bbabaf2758354db4073cbea09fdd21a5bec1/api/constants/languages.py#L5
+
+> Note: `I18nText` type is automatically derived from `LanguagesSupported`, so you don't need to manually add types.
 
 ## Clean Up
 
-That's it! You have successfully added a new language to the project. If you want to remove a language, you can simply delete the folder and remove the language from the `language.ts` file.
+That's it! You have successfully added a new language to the project. If you want to remove a language, you can simply delete the folder and remove the language from the `languages.ts` file.
 
-We have a list of languages that we support in the `language.ts` file. But some of them are not supported yet. So, they are marked as `false`. If you want to support a language, you can follow the steps above and mark the supported field as `true`.
+We have a list of languages that we support in the `languages.ts` file. But some of them are not supported yet. So, they are marked as `false`. If you want to support a language, you can follow the steps above and mark the supported field as `true`.
 
 ## Utility scripts
 
-- Auto-fill translations: `pnpm run auto-gen-i18n -- --file app common --lang zh-Hans ja-JP [--dry-run]`
-  - Use space-separated values; repeat `--file` / `--lang` as needed. Defaults to all en-US files and all supported locales except en-US.
-  - Protects placeholders (`{{var}}`, `${var}`, `<tag>`) before translation and restores them after.
-- Check missing/extra keys: `pnpm run check-i18n -- --file app billing --lang zh-Hans [--auto-remove]`
-  - Use space-separated values; repeat `--file` / `--lang` as needed. Returns non-zero on missing/extra keys (CI will fail); `--auto-remove` deletes extra keys automatically.
-- Generate types: `pnpm run gen:i18n-types`; verify sync: `pnpm run check:i18n-types`.
+- Check missing/extra keys: `pnpm run i18n:check --file app billing --lang zh-Hans [--auto-remove]`
+  - Use space-separated values; repeat `--file` / `--lang` as needed. Returns non-zero on missing/extra keys; `--auto-remove` deletes extra keys automatically.
 
-Workflows: `.github/workflows/translate-i18n-base-on-english.yml` auto-runs the translation generator on en-US changes to main; `.github/workflows/web-tests.yml` checks i18n keys and type sync on web changes.
+## Automatic Translation
+
+Translation is handled automatically by Claude Code GitHub Actions. When changes are pushed to `web/i18n/en-US/*.json` on the main branch:
+
+1. Claude Code analyzes the git diff to detect changes
+1. Identifies three types of changes:
+   - **ADD**: New keys that need translation
+   - **UPDATE**: Modified keys that need re-translation (even if target language has existing translation)
+   - **DELETE**: Removed keys that need to be deleted from other languages
+1. Runs `i18n:check` to verify the initial sync status.
+1. Translates missing/updated keys while preserving placeholders (`{{var}}`, `${var}`, `<tag>`) and removes deleted keys.
+1. Runs `lint:fix` to sort JSON keys and `i18n:check` again to ensure everything is synchronized.
+1. Creates a PR with the translations.
+
+### Manual Trigger
+
+To manually trigger translation:
+
+1. Go to Actions > "Translate i18n Files with Claude Code"
+1. Click "Run workflow"
+1. Optionally configure:
+   - **files**: Specific files to translate (space-separated, e.g., "app common")
+   - **languages**: Specific languages to translate (space-separated, e.g., "zh-Hans ja-JP")
+   - **mode**: `incremental` (default, only changes) or `full` (check all keys)
+
+Workflow: `.github/workflows/translate-i18n-claude.yml`

@@ -1,5 +1,4 @@
 import re
-import sys
 from collections.abc import Mapping
 from typing import Any
 
@@ -109,11 +108,8 @@ def register_external_error_handlers(api: Api):
         data.setdefault("code", "unknown")
         data.setdefault("status", status_code)
 
-        # Log stack
-        exc_info: Any = sys.exc_info()
-        if exc_info[1] is None:
-            exc_info = (None, None, None)
-        current_app.log_exception(exc_info)
+        # Note: Exception logging is handled by Flask/Flask-RESTX framework automatically
+        # Explicit log_exception call removed to avoid duplicate log entries
 
         return data, status_code
 
@@ -131,28 +127,12 @@ class ExternalApi(Api):
     }
 
     def __init__(self, app: Blueprint | Flask, *args, **kwargs):
-        import logging
-        import os
-
         kwargs.setdefault("authorizations", self._authorizations)
         kwargs.setdefault("security", "Bearer")
-
-        # Security: Use computed swagger_ui_enabled which respects DEPLOY_ENV
-        swagger_enabled = dify_config.swagger_ui_enabled
-        kwargs["add_specs"] = swagger_enabled
-        kwargs["doc"] = dify_config.SWAGGER_UI_PATH if swagger_enabled else False
+        kwargs["add_specs"] = dify_config.SWAGGER_UI_ENABLED
+        kwargs["doc"] = dify_config.SWAGGER_UI_PATH if dify_config.SWAGGER_UI_ENABLED else False
 
         # manual separate call on construction and init_app to ensure configs in kwargs effective
         super().__init__(app=None, *args, **kwargs)
         self.init_app(app, **kwargs)
         register_external_error_handlers(self)
-
-        # Security: Log warning when Swagger is enabled in production environment
-        deploy_env = os.environ.get("DEPLOY_ENV", "PRODUCTION")
-        if swagger_enabled and deploy_env.upper() == "PRODUCTION":
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                "SECURITY WARNING: Swagger UI is ENABLED in PRODUCTION environment. "
-                "This may expose sensitive API documentation. "
-                "Set SWAGGER_UI_ENABLED=false or remove the explicit setting to disable."
-            )
