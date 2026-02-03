@@ -23,6 +23,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { handleStream, post, ssePost } from '@/service/base'
 import { ContentType } from '@/service/fetch'
+import { useInvalidateSandboxFiles } from '@/service/use-sandbox-file'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -66,6 +67,7 @@ export const useWorkflowRun = () => {
   const configsMap = useConfigsMap()
   const { flowId, flowType } = configsMap
   const invalidAllLastRun = useInvalidAllLastRun(flowType, flowId)
+  const invalidateSandboxFiles = useInvalidateSandboxFiles()
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     ...configsMap,
@@ -392,6 +394,7 @@ export const useWorkflowRun = () => {
         if (isInWorkflowDebug) {
           fetchInspectVars({})
           invalidAllLastRun()
+          invalidateSandboxFiles()
         }
       },
       onNodeStarted: (params) => {
@@ -667,7 +670,7 @@ export const useWorkflowRun = () => {
         },
       },
     )
-  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace])
+  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, invalidateSandboxFiles, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace])
 
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {

@@ -3,8 +3,8 @@ import type {
   SandboxFileNode,
   SandboxFileTreeNode,
 } from '@/types/sandbox-file'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useMemo } from 'react'
 import { consoleClient, consoleQuery } from '@/service/client'
 
 type UseGetSandboxFilesOptions = {
@@ -48,6 +48,15 @@ export function useSandboxFileDownloadUrl(
     }),
     enabled: !!appId && !!path,
   })
+}
+
+export function useInvalidateSandboxFiles() {
+  const queryClient = useQueryClient()
+  return useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.sandboxFile.listFiles.key(),
+    })
+  }, [queryClient])
 }
 
 export function useDownloadSandboxFile(appId: string | undefined) {

@@ -8,6 +8,7 @@ import { v4 as uuidV4 } from 'uuid'
 import { getProcessedInputs } from '@/app/components/base/chat/chat/utils'
 import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { useToastContext } from '@/app/components/base/toast'
+import { useInvalidateSandboxFiles } from '@/service/use-sandbox-file'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { TransferMethod } from '@/types/app'
 import { useSetWorkflowVarsWithValue, useWorkflowRun } from '../../../hooks'
@@ -44,6 +45,7 @@ export function useChatMessageSender({
 
   const configsMap = useHooksStore(s => s.configsMap)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
+  const invalidateSandboxFiles = useInvalidateSandboxFiles()
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const setConversationId = useStore(s => s.setConversationId)
   const setTargetMessageId = useStore(s => s.setTargetMessageId)
@@ -268,6 +270,7 @@ export function useChatMessageSender({
           handleResponding(false)
           fetchInspectVars({})
           invalidAllLastRun()
+          invalidateSandboxFiles()
 
           if (hasError) {
             if (errorMessage) {
@@ -398,6 +401,7 @@ export function useChatMessageSender({
     startRun,
     fetchInspectVars,
     invalidAllLastRun,
+    invalidateSandboxFiles,
     workflowStore,
   ])
 
