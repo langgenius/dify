@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from flask import current_app, g, has_request_context, request
 from flask_login.config import EXEMPT_METHODS
+from werkzeug.exceptions import Unauthorized
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
@@ -42,7 +43,7 @@ def login_required(func: Callable[P, R]):
     """
     If you decorate a view with this, it will ensure that the current user is
     logged in and authenticated before calling the actual view. (If they are
-    not, it calls the :attr:`LoginManager.unauthorized` callback.) For
+    not, it raises an Unauthorized exception.) For
     example::
 
         @app.route('/post')
@@ -54,7 +55,7 @@ def login_required(func: Callable[P, R]):
     logged in, you can do so with::
 
         if not current_user.is_authenticated:
-            return current_app.login_manager.unauthorized()
+            raise Unauthorized("Unauthorized.")
 
     ...which is essentially the code that this function adds to your views.
 
@@ -77,7 +78,7 @@ def login_required(func: Callable[P, R]):
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
             pass
         elif current_user is not None and not current_user.is_authenticated:
-            return current_app.login_manager.unauthorized()  # type: ignore
+            raise Unauthorized("Unauthorized.")
         # we put csrf validation here for less conflicts
         # TODO: maybe find a better place for it.
         check_csrf_token(request, current_user.id)

@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask, g
 from flask_login import LoginManager, UserMixin
+from werkzeug.exceptions import Unauthorized
 
 from libs.login import _get_user, current_user, login_required
 
@@ -33,9 +34,6 @@ class TestLoginRequired:
         # Initialize login manager
         login_manager = LoginManager()
         login_manager.init_app(app)
-
-        # Mock unauthorized handler
-        login_manager.unauthorized = MagicMock(return_value="Unauthorized")
 
         # Add a dummy user loader to prevent exceptions
         @login_manager.user_loader
@@ -71,9 +69,8 @@ class TestLoginRequired:
             # Mock unauthenticated user
             mock_user = MockUser("test_user", is_authenticated=False)
             with patch("libs.login._get_user", return_value=mock_user):
-                result = protected_view()
-                assert result == "Unauthorized"
-                setup_app.login_manager.unauthorized.assert_called_once()
+                with pytest.raises(Unauthorized):
+                    protected_view()
 
     @patch("libs.login.check_csrf_token", mock_csrf_check)
     def test_login_disabled_allows_unauthenticated_access(self, setup_app: Flask):
@@ -92,8 +89,6 @@ class TestLoginRequired:
 
                     result = protected_view()
                     assert result == "Protected content"
-                    # Ensure unauthorized was not called
-                    setup_app.login_manager.unauthorized.assert_not_called()
 
     @patch("libs.login.check_csrf_token", mock_csrf_check)
     def test_options_request_bypasses_authentication(self, setup_app: Flask):
@@ -109,8 +104,6 @@ class TestLoginRequired:
             with patch("libs.login._get_user", return_value=mock_user):
                 result = protected_view()
                 assert result == "Protected content"
-                # Ensure unauthorized was not called
-                setup_app.login_manager.unauthorized.assert_not_called()
 
     @patch("libs.login.check_csrf_token", mock_csrf_check)
     def test_flask_2_compatibility(self, setup_app: Flask):
