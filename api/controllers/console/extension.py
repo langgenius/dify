@@ -1,4 +1,4 @@
-from typing import TypeAlias
+from typing import Any
 
 from flask import request
 from flask_restx import Resource
@@ -20,13 +20,10 @@ class CodeBasedExtensionQuery(BaseModel):
     module: str = Field(description="Extension module name")
 
 
-JSONValue: TypeAlias = dict[str, "JSONValue"] | list["JSONValue"] | str | int | float | bool | None
-
-
 class CodeBasedExtensionData(BaseModel):
     name: str = Field(description="Extension name")
-    label: dict[str, JSONValue] | None = Field(default=None, description="Extension label")
-    form_schema: list[dict[str, JSONValue]] | None = Field(default=None, description="Extension form schema")
+    label: dict[str, Any] | None = Field(default=None, description="Extension label")
+    form_schema: list[dict[str, Any]] | None = Field(default=None, description="Extension form schema")
 
 
 class CodeBasedExtensionResponse(BaseModel):
