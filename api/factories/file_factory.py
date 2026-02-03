@@ -41,10 +41,22 @@ def build_from_message_file(
     tenant_id: str,
     config: FileUploadConfig | None,
 ):
+    file_type_from_db = message_file.type
+    should_use_custom = False
+    if config:
+        if config.allowed_file_types:
+            non_custom_types = [t for t in config.allowed_file_types if t != FileType.CUSTOM]
+            if not non_custom_types:
+                should_use_custom = True
+        elif config.allowed_file_extensions:
+            should_use_custom = True
+
+    type_to_use = "custom" if should_use_custom else file_type_from_db
+
     mapping = {
         "transfer_method": message_file.transfer_method,
         "url": message_file.url,
-        "type": message_file.type,
+        "type": type_to_use,
     }
 
     # Only include id if it exists (message_file has been committed to DB)
@@ -94,8 +106,10 @@ def build_from_mapping(
         strict_type_validation=strict_type_validation,
     )
 
+    validation_file_type = file.original_type or file.type
+
     if config and not _is_file_valid_with_config(
-        input_file_type=mapping.get("type", FileType.CUSTOM),
+        input_file_type=validation_file_type.value,
         file_extension=file.extension or "",
         file_transfer_method=file.transfer_method,
         config=config,
@@ -186,6 +200,8 @@ def _build_from_local_file(
     else:
         file_type = detected_file_type
 
+    original_type = FileType(specified_type) if specified_type else None
+
     return File(
         id=mapping.get("id"),
         filename=row.name,
@@ -193,6 +209,7 @@ def _build_from_local_file(
         mime_type=row.mime_type,
         tenant_id=tenant_id,
         type=file_type,
+        original_type=original_type,
         transfer_method=transfer_method,
         remote_url=row.source_url,
         related_id=mapping.get("upload_file_id"),
@@ -237,6 +254,7 @@ def _build_from_remote_url(
         else:
             file_type = detected_file_type
 
+        original_type = FileType(specified_type) if specified_type else None
         return File(
             id=mapping.get("id"),
             filename=upload_file.name,
@@ -244,6 +262,7 @@ def _build_from_remote_url(
             mime_type=upload_file.mime_type,
             tenant_id=tenant_id,
             type=file_type,
+            original_type=original_type,
             transfer_method=transfer_method,
             remote_url=helpers.get_signed_file_url(upload_file_id=str(upload_file_id)),
             related_id=mapping.get("upload_file_id"),
@@ -268,11 +287,14 @@ def _build_from_remote_url(
     else:
         file_type = detected_file_type
 
+    original_type = FileType(specified_type) if specified_type else None
+
     return File(
         id=mapping.get("id"),
         filename=filename,
         tenant_id=tenant_id,
         type=file_type,
+        original_type=original_type,
         transfer_method=transfer_method,
         remote_url=url,
         mime_type=mime_type,
@@ -398,12 +420,14 @@ def _build_from_tool_file(
         file_type = FileType(specified_type)
     else:
         file_type = detected_file_type
+    original_type = FileType(specified_type) if specified_type else None
 
     return File(
         id=mapping.get("id"),
         tenant_id=tenant_id,
         filename=tool_file.name,
         type=file_type,
+        original_type=original_type,
         transfer_method=transfer_method,
         remote_url=tool_file.original_url,
         related_id=tool_file.id,
@@ -449,12 +473,14 @@ def _build_from_datasource_file(
         file_type = FileType(specified_type)
     else:
         file_type = detected_file_type
+    original_type = FileType(specified_type) if specified_type else None
 
     return File(
         id=mapping.get("datasource_file_id"),
         tenant_id=tenant_id,
         filename=datasource_file.name,
         type=file_type,
+        original_type=original_type,
         transfer_method=FileTransferMethod.TOOL_FILE,
         remote_url=datasource_file.source_url,
         related_id=datasource_file.id,
