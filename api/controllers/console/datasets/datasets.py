@@ -51,6 +51,7 @@ from fields.dataset_fields import (
     weighted_score_fields,
 )
 from fields.document_fields import document_status_fields
+from libs.api_token_cache import ApiTokenCache
 from libs.login import current_account_with_tenant, login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum
@@ -819,6 +820,9 @@ class DatasetApiDeleteApi(Resource):
 
         if key is None:
             console_ns.abort(404, message="API key not found")
+
+        # Invalidate cache before deleting from databas
+        ApiTokenCache.delete(key.token, key.type)
 
         db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
         db.session.commit()

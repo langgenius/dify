@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
+from libs.api_token_cache import ApiTokenCache
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
@@ -130,6 +131,9 @@ class BaseApiKeyResource(Resource):
 
         if key is None:
             flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
+
+        # Invalidate cache before deleting from database
+        ApiTokenCache.delete(key.token, key.type)
 
         db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
         db.session.commit()

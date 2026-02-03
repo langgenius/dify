@@ -14,6 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from configs import dify_config
 from core.db.session_factory import session_factory
 from extensions.ext_database import db
+from libs.api_token_cache import ApiTokenCache
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from models import (
     ApiToken,
@@ -134,6 +135,12 @@ def _delete_app_mcp_servers(tenant_id: str, app_id: str):
 
 def _delete_app_api_tokens(tenant_id: str, app_id: str):
     def del_api_token(session, api_token_id: str):
+        # Fetch token details for cache invalidation
+        token_obj = session.query(ApiToken).where(ApiToken.id == api_token_id).first()
+        if token_obj:
+            # Invalidate cache before deletion
+            ApiTokenCache.delete(token_obj.token, token_obj.type)
+
         session.query(ApiToken).where(ApiToken.id == api_token_id).delete(synchronize_session=False)
 
     _delete_records(
