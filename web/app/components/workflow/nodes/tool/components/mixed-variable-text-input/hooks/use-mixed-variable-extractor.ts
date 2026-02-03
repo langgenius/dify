@@ -385,8 +385,6 @@ export function useMixedVariableExtractor({
       nextData.vision = nestedNodeData.vision
     if (Object.prototype.hasOwnProperty.call(nestedNodeData, 'memory'))
       nextData.memory = nestedNodeData.memory
-    if (Object.prototype.hasOwnProperty.call(nestedNodeData, 'computer_use'))
-      nextData.computer_use = nestedNodeData.computer_use
 
     if (Object.keys(nextData).length === 0)
       return
