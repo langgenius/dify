@@ -253,10 +253,10 @@ class ApiTokenCache:
             # This is a safer approach when scope is unknown
             pattern = f"{CACHE_KEY_PREFIX}:*:{token}"
             try:
-                keys = redis_client.keys(pattern)
-                if keys:
-                    redis_client.delete(*keys)
-                    logger.info("Deleted %d cache entries for token", len(keys))
+                keys_to_delete = list(redis_client.scan_iter(match=pattern))
+                if keys_to_delete:
+                    redis_client.delete(*keys_to_delete)
+                    logger.info("Deleted %d cache entries for token", len(keys_to_delete))
                 return True
             except Exception as e:
                 logger.warning("Failed to delete token cache with pattern: %s", e)

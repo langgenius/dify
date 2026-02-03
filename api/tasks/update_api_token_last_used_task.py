@@ -16,7 +16,7 @@ from models.model import ApiToken
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="dataset", bind=True, max_retries=3)
+@shared_task(queue="dataset", bind=True)
 def update_api_token_last_used_task(self, token: str, scope: str | None, start_time_iso: str):
     """
     Asynchronously update the last_used_at timestamp for an API token.
