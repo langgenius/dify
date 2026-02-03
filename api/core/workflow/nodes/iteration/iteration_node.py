@@ -11,6 +11,7 @@ from core.variables import IntegerVariable, NoneSegment
 from core.variables.segments import ArrayAnySegment, ArraySegment
 from core.variables.variables import Variable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
+from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from core.workflow.enums import (
     NodeExecutionType,
     NodeType,
@@ -460,13 +461,10 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: IterationNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = IterationNodeData.model_validate(node_data)
-
         variable_mapping: dict[str, Sequence[str]] = {
-            f"{node_id}.input_selector": typed_node_data.iterator_selector,
+            f"{node_id}.input_selector": node_data.iterator_selector,
         }
         iteration_node_ids = set()
 
@@ -497,7 +495,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                 node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
                 sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                    graph_config=graph_config, config=sub_node_config
+                    graph_config=graph_config, config=NodeConfigDictAdapter.validate_python(sub_node_config)
                 )
                 sub_node_variable_mapping = cast(dict[str, Sequence[str]], sub_node_variable_mapping)
             except NotImplementedError:

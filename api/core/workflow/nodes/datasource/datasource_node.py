@@ -256,7 +256,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: DatasourceNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -265,7 +265,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
         :param node_data: node data
         :return:
         """
-        typed_node_data = DatasourceNodeData.model_validate(node_data)
+        typed_node_data = node_data
         result = {}
         if typed_node_data.datasource_parameters:
             for parameter_name in typed_node_data.datasource_parameters:
