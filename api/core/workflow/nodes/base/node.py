@@ -64,7 +64,7 @@ logger = logging.getLogger(__name__)
 class Node(Generic[NodeDataT]):
     node_type: ClassVar[NodeType]
     execution_type: NodeExecutionType = NodeExecutionType.EXECUTABLE
-    _node_data_type: ClassVar[type[NodeDataT]]
+    _node_data_type: ClassVar[type[NodeDataT]]  # type: ignore[misc]  # assigned per-subclass in __init_subclass__
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """
