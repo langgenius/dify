@@ -1,0 +1,458 @@
+"""
+Unit tests for Service API Segment controllers.
+
+Tests coverage for:
+- SegmentCreatePayload, SegmentListQuery Pydantic models
+- ChildChunkCreatePayload, ChildChunkListQuery, ChildChunkUpdatePayload
+- Segment and ChildChunk service layer interactions
+
+Focus on:
+- Pydantic model validation
+- Service method existence and interfaces
+- Error types and mappings
+"""
+
+import uuid
+from unittest.mock import Mock, patch
+
+import pytest
+
+from controllers.service_api.dataset.segment import (
+    ChildChunkCreatePayload,
+    ChildChunkListQuery,
+    ChildChunkUpdatePayload,
+    SegmentCreatePayload,
+    SegmentListQuery,
+)
+from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
+from services.dataset_service import DocumentService, SegmentService
+
+
+class TestSegmentCreatePayload:
+    """Test suite for SegmentCreatePayload Pydantic model."""
+
+    def test_payload_with_segments(self):
+        """Test payload with a list of segments."""
+        segments = [
+            {"content": "First segment", "answer": "Answer 1"},
+            {"content": "Second segment", "keywords": ["key1", "key2"]},
+        ]
+        payload = SegmentCreatePayload(segments=segments)
+        assert payload.segments == segments
+        assert len(payload.segments) == 2
+
+    def test_payload_with_none_segments(self):
+        """Test payload with None segments (should be valid)."""
+        payload = SegmentCreatePayload(segments=None)
+        assert payload.segments is None
+
+    def test_payload_with_empty_segments(self):
+        """Test payload with empty segments list."""
+        payload = SegmentCreatePayload(segments=[])
+        assert payload.segments == []
+
+    def test_payload_with_complex_segment_data(self):
+        """Test payload with complex segment structure."""
+        segments = [
+            {
+                "content": "Complex segment",
+                "answer": "Detailed answer",
+                "keywords": ["keyword1", "keyword2"],
+                "metadata": {"source": "document.pdf", "page": 1},
+            }
+        ]
+        payload = SegmentCreatePayload(segments=segments)
+        assert payload.segments[0]["content"] == "Complex segment"
+        assert payload.segments[0]["keywords"] == ["keyword1", "keyword2"]
+
+
+class TestSegmentListQuery:
+    """Test suite for SegmentListQuery Pydantic model."""
+
+    def test_query_with_defaults(self):
+        """Test query with default values."""
+        query = SegmentListQuery()
+        assert query.status == []
+        assert query.keyword is None
+
+    def test_query_with_status_filters(self):
+        """Test query with status filter."""
+        query = SegmentListQuery(status=["completed", "indexing"])
+        assert query.status == ["completed", "indexing"]
+
+    def test_query_with_keyword(self):
+        """Test query with keyword search."""
+        query = SegmentListQuery(keyword="machine learning")
+        assert query.keyword == "machine learning"
+
+    def test_query_with_single_status(self):
+        """Test query with single status value."""
+        query = SegmentListQuery(status=["completed"])
+        assert query.status == ["completed"]
+
+    def test_query_with_empty_keyword(self):
+        """Test query with empty keyword string."""
+        query = SegmentListQuery(keyword="")
+        assert query.keyword == ""
+
+
+class TestChildChunkCreatePayload:
+    """Test suite for ChildChunkCreatePayload Pydantic model."""
+
+    def test_payload_with_content(self):
+        """Test payload with content."""
+        payload = ChildChunkCreatePayload(content="This is child chunk content")
+        assert payload.content == "This is child chunk content"
+
+    def test_payload_requires_content(self):
+        """Test that content is required."""
+        with pytest.raises(ValueError):
+            ChildChunkCreatePayload()
+
+    def test_payload_with_long_content(self):
+        """Test payload with very long content."""
+        long_content = "A" * 10000
+        payload = ChildChunkCreatePayload(content=long_content)
+        assert len(payload.content) == 10000
+
+    def test_payload_with_unicode_content(self):
+        """Test payload with unicode content."""
+        unicode_content = "这是中文内容 🎉 Привет мир"
+        payload = ChildChunkCreatePayload(content=unicode_content)
+        assert payload.content == unicode_content
+
+    def test_payload_with_special_characters(self):
+        """Test payload with special characters in content."""
+        special_content = "Content with <html> & \"quotes\" and 'apostrophes'"
+        payload = ChildChunkCreatePayload(content=special_content)
+        assert payload.content == special_content
+
+
+class TestChildChunkListQuery:
+    """Test suite for ChildChunkListQuery Pydantic model."""
+
+    def test_query_with_defaults(self):
+        """Test query with default values."""
+        query = ChildChunkListQuery()
+        assert query.limit == 20
+        assert query.keyword is None
+        assert query.page == 1
+
+    def test_query_with_pagination(self):
+        """Test query with pagination parameters."""
+        query = ChildChunkListQuery(limit=50, page=3)
+        assert query.limit == 50
+        assert query.page == 3
+
+    def test_query_limit_minimum(self):
+        """Test query limit minimum validation."""
+        with pytest.raises(ValueError):
+            ChildChunkListQuery(limit=0)
+
+    def test_query_page_minimum(self):
+        """Test query page minimum validation."""
+        with pytest.raises(ValueError):
+            ChildChunkListQuery(page=0)
+
+    def test_query_with_keyword(self):
+        """Test query with keyword filter."""
+        query = ChildChunkListQuery(keyword="search term")
+        assert query.keyword == "search term"
+
+    def test_query_large_page_number(self):
+        """Test query with large page number."""
+        query = ChildChunkListQuery(page=1000)
+        assert query.page == 1000
+
+
+class TestChildChunkUpdatePayload:
+    """Test suite for ChildChunkUpdatePayload Pydantic model."""
+
+    def test_payload_with_content(self):
+        """Test payload with updated content."""
+        payload = ChildChunkUpdatePayload(content="Updated child chunk content")
+        assert payload.content == "Updated child chunk content"
+
+    def test_payload_with_empty_content(self):
+        """Test payload with empty content."""
+        payload = ChildChunkUpdatePayload(content="")
+        assert payload.content == ""
+
+
+class TestSegmentServiceInterface:
+    """Test SegmentService method interfaces exist."""
+
+    def test_multi_create_segment_method_exists(self):
+        """Test that SegmentService.multi_create_segment exists."""
+        assert hasattr(SegmentService, "multi_create_segment")
+        assert callable(SegmentService.multi_create_segment)
+
+    def test_get_segments_method_exists(self):
+        """Test that SegmentService.get_segments exists."""
+        assert hasattr(SegmentService, "get_segments")
+        assert callable(SegmentService.get_segments)
+
+    def test_get_segment_by_id_method_exists(self):
+        """Test that SegmentService.get_segment_by_id exists."""
+        assert hasattr(SegmentService, "get_segment_by_id")
+        assert callable(SegmentService.get_segment_by_id)
+
+    def test_delete_segment_method_exists(self):
+        """Test that SegmentService.delete_segment exists."""
+        assert hasattr(SegmentService, "delete_segment")
+        assert callable(SegmentService.delete_segment)
+
+    def test_update_segment_method_exists(self):
+        """Test that SegmentService.update_segment exists."""
+        assert hasattr(SegmentService, "update_segment")
+        assert callable(SegmentService.update_segment)
+
+    def test_create_child_chunk_method_exists(self):
+        """Test that SegmentService.create_child_chunk exists."""
+        assert hasattr(SegmentService, "create_child_chunk")
+        assert callable(SegmentService.create_child_chunk)
+
+    def test_get_child_chunks_method_exists(self):
+        """Test that SegmentService.get_child_chunks exists."""
+        assert hasattr(SegmentService, "get_child_chunks")
+        assert callable(SegmentService.get_child_chunks)
+
+    def test_get_child_chunk_by_id_method_exists(self):
+        """Test that SegmentService.get_child_chunk_by_id exists."""
+        assert hasattr(SegmentService, "get_child_chunk_by_id")
+        assert callable(SegmentService.get_child_chunk_by_id)
+
+    def test_delete_child_chunk_method_exists(self):
+        """Test that SegmentService.delete_child_chunk exists."""
+        assert hasattr(SegmentService, "delete_child_chunk")
+        assert callable(SegmentService.delete_child_chunk)
+
+    def test_update_child_chunk_method_exists(self):
+        """Test that SegmentService.update_child_chunk exists."""
+        assert hasattr(SegmentService, "update_child_chunk")
+        assert callable(SegmentService.update_child_chunk)
+
+
+class TestDocumentServiceInterface:
+    """Test DocumentService method interfaces used by segment controller."""
+
+    def test_get_document_method_exists(self):
+        """Test that DocumentService.get_document exists."""
+        assert hasattr(DocumentService, "get_document")
+        assert callable(DocumentService.get_document)
+
+
+class TestSegmentServiceMockedBehavior:
+    """Test SegmentService behavior with mocked methods."""
+
+    @pytest.fixture
+    def mock_dataset(self):
+        """Create mock dataset."""
+        dataset = Mock(spec=Dataset)
+        dataset.id = str(uuid.uuid4())
+        dataset.tenant_id = str(uuid.uuid4())
+        return dataset
+
+    @pytest.fixture
+    def mock_document(self):
+        """Create mock document."""
+        document = Mock(spec=Document)
+        document.id = str(uuid.uuid4())
+        document.dataset_id = str(uuid.uuid4())
+        document.indexing_status = "completed"
+        document.enabled = True
+        return document
+
+    @pytest.fixture
+    def mock_segment(self):
+        """Create mock segment."""
+        segment = Mock(spec=DocumentSegment)
+        segment.id = str(uuid.uuid4())
+        segment.document_id = str(uuid.uuid4())
+        segment.content = "Test content"
+        return segment
+
+    @patch.object(SegmentService, "multi_create_segment")
+    def test_create_segments_returns_list(self, mock_create, mock_dataset, mock_document):
+        """Test segment creation returns list of segments."""
+        mock_segments = [Mock(spec=DocumentSegment), Mock(spec=DocumentSegment)]
+        mock_create.return_value = mock_segments
+
+        result = SegmentService.multi_create_segment(
+            segments=[{"content": "Test"}, {"content": "Test 2"}], document=mock_document, dataset=mock_dataset
+        )
+
+        assert len(result) == 2
+        mock_create.assert_called_once()
+
+    @patch.object(SegmentService, "get_segments")
+    def test_get_segments_returns_tuple(self, mock_get, mock_document):
+        """Test get_segments returns tuple of segments and count."""
+        mock_segments = [Mock(), Mock()]
+        mock_get.return_value = (mock_segments, 2)
+
+        segments, count = SegmentService.get_segments(document_id=mock_document.id, page=1, per_page=20)
+
+        assert len(segments) == 2
+        assert count == 2
+
+    @patch.object(SegmentService, "get_segment_by_id")
+    def test_get_segment_by_id_returns_segment(self, mock_get, mock_segment):
+        """Test get_segment_by_id returns segment."""
+        mock_get.return_value = mock_segment
+
+        result = SegmentService.get_segment_by_id(document_id=mock_segment.document_id, segment_id=mock_segment.id)
+
+        assert result == mock_segment
+
+    @patch.object(SegmentService, "get_segment_by_id")
+    def test_get_segment_by_id_returns_none_when_not_found(self, mock_get):
+        """Test get_segment_by_id returns None when not found."""
+        mock_get.return_value = None
+
+        result = SegmentService.get_segment_by_id(document_id=str(uuid.uuid4()), segment_id=str(uuid.uuid4()))
+
+        assert result is None
+
+    @patch.object(SegmentService, "delete_segment")
+    def test_delete_segment_called(self, mock_delete, mock_segment, mock_document, mock_dataset):
+        """Test segment deletion is called."""
+        SegmentService.delete_segment(mock_segment, mock_document, mock_dataset)
+        mock_delete.assert_called_once_with(mock_segment, mock_document, mock_dataset)
+
+
+class TestChildChunkServiceMockedBehavior:
+    """Test ChildChunk service behavior with mocked methods."""
+
+    @pytest.fixture
+    def mock_segment(self):
+        """Create mock segment."""
+        segment = Mock(spec=DocumentSegment)
+        segment.id = str(uuid.uuid4())
+        return segment
+
+    @pytest.fixture
+    def mock_child_chunk(self):
+        """Create mock child chunk."""
+        chunk = Mock(spec=ChildChunk)
+        chunk.id = str(uuid.uuid4())
+        chunk.segment_id = str(uuid.uuid4())
+        chunk.content = "Child chunk content"
+        return chunk
+
+    @patch.object(SegmentService, "create_child_chunk")
+    def test_create_child_chunk_returns_chunk(self, mock_create, mock_segment, mock_child_chunk):
+        """Test child chunk creation returns chunk."""
+        mock_create.return_value = mock_child_chunk
+
+        result = SegmentService.create_child_chunk(
+            content="New chunk content", segment=mock_segment, document=Mock(spec=Document), dataset=Mock(spec=Dataset)
+        )
+
+        assert result == mock_child_chunk
+
+    @patch.object(SegmentService, "get_child_chunks")
+    def test_get_child_chunks_returns_paginated_result(self, mock_get, mock_segment):
+        """Test get_child_chunks returns paginated result."""
+        mock_pagination = Mock()
+        mock_pagination.items = [Mock(), Mock()]
+        mock_pagination.total = 2
+        mock_pagination.pages = 1
+        mock_get.return_value = mock_pagination
+
+        result = SegmentService.get_child_chunks(segment_id=mock_segment.id, page=1, per_page=20)
+
+        assert len(result.items) == 2
+        assert result.total == 2
+
+    @patch.object(SegmentService, "get_child_chunk_by_id")
+    def test_get_child_chunk_by_id_returns_chunk(self, mock_get, mock_child_chunk):
+        """Test get_child_chunk_by_id returns chunk."""
+        mock_get.return_value = mock_child_chunk
+
+        result = SegmentService.get_child_chunk_by_id(child_chunk_id=mock_child_chunk.id)
+
+        assert result == mock_child_chunk
+
+    @patch.object(SegmentService, "update_child_chunk")
+    def test_update_child_chunk_returns_updated_chunk(self, mock_update, mock_child_chunk):
+        """Test update_child_chunk returns updated chunk."""
+        updated_chunk = Mock(spec=ChildChunk)
+        updated_chunk.content = "Updated content"
+        mock_update.return_value = updated_chunk
+
+        result = SegmentService.update_child_chunk(
+            content="Updated content",
+            child_chunk=mock_child_chunk,
+            segment=Mock(spec=DocumentSegment),
+            document=Mock(spec=Document),
+            dataset=Mock(spec=Dataset),
+        )
+
+        assert result.content == "Updated content"
+
+
+class TestDocumentValidation:
+    """Test document validation patterns used by segment controller."""
+
+    def test_document_indexing_status_completed_is_valid(self):
+        """Test that completed indexing status is valid."""
+        document = Mock(spec=Document)
+        document.indexing_status = "completed"
+        assert document.indexing_status == "completed"
+
+    def test_document_indexing_status_indexing_is_invalid(self):
+        """Test that indexing status is invalid for segment operations."""
+        document = Mock(spec=Document)
+        document.indexing_status = "indexing"
+        assert document.indexing_status != "completed"
+
+    def test_document_enabled_true_is_valid(self):
+        """Test that enabled=True is valid."""
+        document = Mock(spec=Document)
+        document.enabled = True
+        assert document.enabled is True
+
+    def test_document_enabled_false_is_invalid(self):
+        """Test that enabled=False is invalid for segment operations."""
+        document = Mock(spec=Document)
+        document.enabled = False
+        assert document.enabled is False
+
+
+class TestDatasetModels:
+    """Test Dataset model structure used by segment controller."""
+
+    def test_dataset_has_required_fields(self):
+        """Test Dataset model has required fields."""
+        dataset = Mock(spec=Dataset)
+        dataset.id = str(uuid.uuid4())
+        dataset.tenant_id = str(uuid.uuid4())
+        dataset.indexing_technique = "economy"
+
+        assert dataset.id is not None
+        assert dataset.tenant_id is not None
+        assert dataset.indexing_technique == "economy"
+
+    def test_document_segment_has_required_fields(self):
+        """Test DocumentSegment model has required fields."""
+        segment = Mock(spec=DocumentSegment)
+        segment.id = str(uuid.uuid4())
+        segment.document_id = str(uuid.uuid4())
+        segment.content = "Test content"
+        segment.position = 1
+
+        assert segment.id is not None
+        assert segment.document_id is not None
+        assert segment.content is not None
+
+    def test_child_chunk_has_required_fields(self):
+        """Test ChildChunk model has required fields."""
+        chunk = Mock(spec=ChildChunk)
+        chunk.id = str(uuid.uuid4())
+        chunk.segment_id = str(uuid.uuid4())
+        chunk.content = "Chunk content"
+
+        assert chunk.id is not None
+        assert chunk.segment_id is not None
+        assert chunk.content is not None

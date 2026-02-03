@@ -12,6 +12,7 @@ from werkzeug.exceptions import Forbidden
 from controllers.service_api.app.site import AppSiteApi
 from models.account import TenantStatus
 from models.model import App, Site
+from tests.unit_tests.conftest import setup_mock_tenant_account_query
 
 
 class TestAppSiteApi:
@@ -91,10 +92,7 @@ class TestAppSiteApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        mock_wraps_db.session.query.return_value.join.return_value.join.return_value.where.return_value.one_or_none.return_value = (
-            mock_tenant,
-            mock_account,
-        )
+        setup_mock_tenant_account_query(mock_wraps_db, mock_tenant, mock_account)
 
         # Mock site.db for site query
         mock_db.session.query.return_value.where.return_value.first.return_value = mock_site
@@ -136,10 +134,7 @@ class TestAppSiteApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        mock_wraps_db.session.query.return_value.join.return_value.join.return_value.where.return_value.one_or_none.return_value = (
-            mock_tenant,
-            mock_account,
-        )
+        setup_mock_tenant_account_query(mock_wraps_db, mock_tenant, mock_account)
 
         # Mock site query to return None
         mock_db.session.query.return_value.where.return_value.first.return_value = None
@@ -175,10 +170,7 @@ class TestAppSiteApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        mock_wraps_db.session.query.return_value.join.return_value.join.return_value.where.return_value.one_or_none.return_value = (
-            mock_tenant,
-            mock_account,
-        )
+        setup_mock_tenant_account_query(mock_wraps_db, mock_tenant, mock_account)
 
         # Mock site query
         mock_db.session.query.return_value.where.return_value.first.return_value = mock_site
@@ -218,10 +210,7 @@ class TestAppSiteApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        mock_wraps_db.session.query.return_value.join.return_value.join.return_value.where.return_value.one_or_none.return_value = (
-            mock_tenant,
-            mock_account,
-        )
+        setup_mock_tenant_account_query(mock_wraps_db, mock_tenant, mock_account)
 
         mock_site = Mock(spec=Site)
         mock_site.id = str(uuid.uuid4())

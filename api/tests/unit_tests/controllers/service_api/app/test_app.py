@@ -11,6 +11,7 @@ from flask import Flask
 from controllers.service_api.app.app import AppInfoApi, AppMetaApi, AppParameterApi
 from controllers.service_api.app.error import AppUnavailableError
 from models.model import App, AppMode
+from tests.unit_tests.conftest import setup_mock_tenant_account_query
 
 
 class TestAppParameterApi:
@@ -67,10 +68,7 @@ class TestAppParameterApi:
         # Mock tenant owner info for login
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        mock_db.session.query.return_value.join.return_value.join.return_value.where.return_value.one_or_none.return_value = (
-            mock_tenant,
-            mock_account,
-        )
+        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -111,10 +109,7 @@ class TestAppParameterApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        mock_db.session.query.return_value.join.return_value.join.return_value.where.return_value.one_or_none.return_value = (
-            mock_tenant,
-            mock_account,
-        )
+        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -152,10 +147,7 @@ class TestAppParameterApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        mock_db.session.query.return_value.join.return_value.join.return_value.where.return_value.one_or_none.return_value = (
-            mock_tenant,
-            mock_account,
-        )
+        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
 
         # Act & Assert
         with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -191,10 +183,7 @@ class TestAppParameterApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        mock_db.session.query.return_value.join.return_value.join.return_value.where.return_value.one_or_none.return_value = (
-            mock_tenant,
-            mock_account,
-        )
+        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
 
         # Act & Assert
         with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -252,10 +241,7 @@ class TestAppMetaApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        mock_db.session.query.return_value.join.return_value.join.return_value.where.return_value.one_or_none.return_value = (
-            mock_tenant,
-            mock_account,
-        )
+        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/meta", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -318,10 +304,7 @@ class TestAppInfoApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        mock_db.session.query.return_value.join.return_value.join.return_value.where.return_value.one_or_none.return_value = (
-            mock_tenant,
-            mock_account,
-        )
+        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -373,10 +356,7 @@ class TestAppInfoApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        mock_db.session.query.return_value.join.return_value.join.return_value.where.return_value.one_or_none.return_value = (
-            mock_tenant,
-            mock_account,
-        )
+        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -419,10 +399,7 @@ class TestAppInfoApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        mock_db.session.query.return_value.join.return_value.join.return_value.where.return_value.one_or_none.return_value = (
-            mock_tenant,
-            mock_account,
-        )
+        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -469,10 +446,7 @@ class TestAppInfoApi:
 
         mock_account = Mock()
         mock_account.current_tenant = mock_tenant
-        mock_db.session.query.return_value.join.return_value.join.return_value.where.return_value.one_or_none.return_value = (
-            mock_tenant,
-            mock_account,
-        )
+        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account)
 
         # Act
         with app.test_request_context("/info", method="GET", headers={"Authorization": "Bearer test_token"}):
