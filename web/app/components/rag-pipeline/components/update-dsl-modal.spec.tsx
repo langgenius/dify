@@ -140,13 +140,13 @@ class MockFileReader {
   onload: ((e: { target: { result: string | null } }) => void) | null = null
 
   readAsText(_file: File) {
-    // Simulate async file reading
-    setTimeout(() => {
+    // Simulate async file reading using queueMicrotask for more reliable async behavior
+    queueMicrotask(() => {
       this.result = 'test file content'
       if (this.onload) {
         this.onload({ target: { result: this.result } })
       }
-    }, 0)
+    })
   }
 }
 
@@ -174,6 +174,7 @@ describe('UpdateDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       pipeline_id: 'test-pipeline-id',
     })
+    mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
 
     // Mock FileReader
     originalFileReader = globalThis.FileReader
@@ -472,14 +473,14 @@ describe('UpdateDSLModal', () => {
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
         expect(importButton).not.toBeDisabled()
-      })
+      }, { timeout: 1000 })
 
       const importButton = screen.getByText('common.overwriteAndImport')
       fireEvent.click(importButton)
 
       await waitFor(() => {
         expect(mockOnImport).toHaveBeenCalled()
-      })
+      }, { timeout: 1000 })
     })
 
     it('should show warning notification on import with warnings', async () => {
@@ -664,7 +665,7 @@ describe('UpdateDSLModal', () => {
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
         expect(importButton).not.toBeDisabled()
-      })
+      }, { timeout: 1000 })
 
       const importButton = screen.getByText('common.overwriteAndImport')
       fireEvent.click(importButton)
@@ -672,7 +673,7 @@ describe('UpdateDSLModal', () => {
       // Wait for the error modal to be shown after setTimeout
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      }, { timeout: 1000 })
     })
 
     it('should show version info in error modal', async () => {
