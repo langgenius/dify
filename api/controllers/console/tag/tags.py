@@ -1,4 +1,5 @@
 from typing import Literal
+from flask_restx import Namespace, fields
 
 from flask import request
 from flask_restx import Resource, marshal_with
