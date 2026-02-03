@@ -1,5 +1,6 @@
 import json
 import logging
+import threading
 import time
 
 import flask
@@ -11,6 +12,9 @@ from configs import dify_config
 from core.helper.trace_id_helper import get_trace_id_from_otel_context
 
 logger = logging.getLogger(__name__)
+
+# Per-process lock to protect registration in multithreaded environments
+_lock = threading.Lock()
 
 
 def _is_content_type_json(content_type: str) -> bool:
@@ -102,8 +106,21 @@ def _log_request_finished(_sender, response, **_extra):
 
 
 def init_app(app: Flask):
-    """Initialize the request logging extension."""
-    if not dify_config.ENABLE_REQUEST_LOGGING:
-        return
-    request_started.connect(_log_request_started, app)
-    request_finished.connect(_log_request_finished, app)
+    """Initialize the request logging extension.
+
+    Idempotent per Flask app instance: handlers are registered once per app.
+    """
+    with _lock:
+        if not dify_config.ENABLE_REQUEST_LOGGING:
+            return
+
+        # Track registration on the specific app instance to avoid cross-app leakage
+        if not hasattr(app, "extensions"):
+            app.extensions = {}
+        key = "dify_request_logging_registered"
+        if app.extensions.get(key):
+            return
+
+        request_started.connect(_log_request_started, app)
+        request_finished.connect(_log_request_finished, app)
+        app.extensions[key] = True
