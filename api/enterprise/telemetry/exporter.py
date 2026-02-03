@@ -1,7 +1,7 @@
 """Enterprise OTEL exporter — shared by EnterpriseOtelTrace, event handlers, and direct instrumentation.
 
-Uses its own TracerProvider (configurable sampling, separate from ext_otel.py infrastructure)
-and the global MeterProvider (shared with ext_otel.py — both target the same collector).
+Uses dedicated TracerProvider, LoggerProvider, and MeterProvider instances (configurable sampling,
+independent from ext_otel.py infrastructure).
 
 Initialized once during Flask extension init (single-threaded via ext_enterprise_telemetry.py).
 Accessed via ``ext_enterprise_telemetry.get_enterprise_exporter()`` from any thread/process.
@@ -13,14 +13,18 @@ import uuid
 from datetime import datetime
 from typing import Any, cast
 
-from opentelemetry import metrics, trace
+from opentelemetry import trace
 from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter as GRPCLogExporter
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter as GRPCMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GRPCSpanExporter
 from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter as HTTPLogExporter
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter as HTTPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HTTPSpanExporter
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -92,6 +96,16 @@ class _ExporterFactory:
         if not logs_endpoint:
             return None, "Enterprise OTEL logs enabled but endpoint is empty"
         return HTTPLogExporter(endpoint=logs_endpoint, headers=self._http_headers), ""
+
+    def create_metric_exporter(self) -> HTTPMetricExporter | GRPCMetricExporter:
+        if self._protocol == "grpc":
+            return GRPCMetricExporter(
+                endpoint=self._endpoint or None,
+                headers=self._grpc_headers,
+                insecure=True,
+            )
+        metric_endpoint = f"{self._endpoint}/v1/metrics" if self._endpoint else ""
+        return HTTPMetricExporter(endpoint=metric_endpoint or None, headers=self._http_headers)
 
     def _append_logs_path(self) -> str:
         if not self._endpoint:
@@ -186,7 +200,12 @@ class EnterpriseExporter:
 
         self._init_logs_pipeline(factory, resource)
 
-        meter = metrics.get_meter("dify.enterprise")
+        metric_exporter = factory.create_metric_exporter()
+        self._meter_provider = MeterProvider(
+            resource=resource,
+            metric_readers=[PeriodicExportingMetricReader(metric_exporter)],
+        )
+        meter = self._meter_provider.get_meter("dify.enterprise")
         self._counters = {
             EnterpriseTelemetryCounter.TOKENS: meter.create_counter("dify.tokens.total", unit="{token}"),
             EnterpriseTelemetryCounter.REQUESTS: meter.create_counter("dify.requests.total", unit="{request}"),
@@ -317,6 +336,7 @@ class EnterpriseExporter:
         self._tracer_provider.shutdown()
         if self._log_provider:
             self._log_provider.shutdown()
+        self._meter_provider.shutdown()
 
     def attach_log_handler(self) -> None:
         if not self._log_handler:
