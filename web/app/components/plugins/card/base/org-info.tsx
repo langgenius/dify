@@ -1,10 +1,12 @@
 import { cn } from '@/utils/classnames'
+import DownloadCount from './download-count'
 
 type Props = {
   className?: string
   orgName?: string
-  packageName: string
+  packageName?: string
   packageNameClassName?: string
+  downloadCount?: number
 }
 
 const OrgInfo = ({
@@ -12,7 +14,25 @@ const OrgInfo = ({
   orgName,
   packageName,
   packageNameClassName,
+  downloadCount,
 }: Props) => {
+  // New format: "by {orgName} · {downloadCount} installs" (for marketplace cards)
+  if (downloadCount !== undefined) {
+    return (
+      <div className={cn('system-xs-regular flex h-4 items-center gap-2 text-text-tertiary', className)}>
+        {orgName && (
+          <span className="shrink-0">
+            by
+            {orgName}
+          </span>
+        )}
+        <span className="shrink-0">·</span>
+        <DownloadCount downloadCount={downloadCount} />
+      </div>
+    )
+  }
+
+  // Legacy format: "{orgName} / {packageName}" (for plugin detail panels)
   return (
     <div className={cn('flex h-4 items-center space-x-0.5', className)}>
       {orgName && (
@@ -21,9 +41,11 @@ const OrgInfo = ({
           <span className="system-xs-regular shrink-0 text-text-quaternary">/</span>
         </>
       )}
-      <span className={cn('system-xs-regular w-0 shrink-0 grow truncate text-text-tertiary', packageNameClassName)}>
-        {packageName}
-      </span>
+      {packageName && (
+        <span className={cn('system-xs-regular w-0 shrink-0 grow truncate text-text-tertiary', packageNameClassName)}>
+          {packageName}
+        </span>
+      )}
     </div>
   )
 }

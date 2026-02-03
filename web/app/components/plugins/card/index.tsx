@@ -50,7 +50,7 @@ const Card = ({
   const locale = useGetLanguage()
   const { t } = useTranslation()
   const { categoriesMap } = useCategories(true)
-  const { category, type, name, org, label, brief, icon, icon_dark, verified, badges = [] } = payload
+  const { category, type, org, label, brief, icon, icon_dark, verified, badges = [], install_count } = payload
   const { theme } = useTheme()
   const iconSrc = theme === Theme.dark && icon_dark ? icon_dark : icon
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
@@ -86,7 +86,7 @@ const Card = ({
             <OrgInfo
               className="mt-0.5"
               orgName={org}
-              packageName={name}
+              downloadCount={install_count}
             />
           </div>
         </div>

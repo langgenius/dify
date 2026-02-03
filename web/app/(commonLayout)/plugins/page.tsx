@@ -6,7 +6,7 @@ const PluginList = () => {
   return (
     <PluginPage
       plugins={<PluginsPanel />}
-      marketplace={<Marketplace pluginTypeSwitchClassName="top-[60px]" />}
+      marketplace={<Marketplace />}
     />
   )
 }

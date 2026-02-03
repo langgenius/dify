@@ -50,7 +50,6 @@ const CardWrapperComponent = ({
           payload={plugin}
           footer={(
             <CardMoreInfo
-              downloadCount={plugin.install_count}
               tags={tagLabels}
             />
           )}
@@ -88,7 +87,7 @@ const CardWrapperComponent = ({
 
   return (
     <a
-      className="group relative inline-block cursor-pointer rounded-xl"
+      className="group relative block cursor-pointer rounded-xl"
       href={getPluginDetailLinkInMarketplace(plugin)}
     >
       <Card
@@ -96,7 +95,6 @@ const CardWrapperComponent = ({
         payload={plugin}
         footer={(
           <CardMoreInfo
-            downloadCount={plugin.install_count}
             tags={tagLabels}
           />
         )}

@@ -27,6 +27,7 @@ import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
+import SearchBoxWrapper from '../marketplace/search-box/search-box-wrapper'
 import {
   PluginPageContextProvider,
   usePluginPageContext,
@@ -140,23 +141,17 @@ const PluginPage = ({
       id="marketplace-container"
       ref={containerRef}
       style={{ scrollbarGutter: 'stable' }}
-      className={cn('relative flex grow flex-col overflow-y-auto border-t border-divider-subtle', isPluginsTab
-        ? 'rounded-t-xl bg-components-panel-bg'
-        : 'bg-background-body')}
+      className="relative flex grow flex-col overflow-y-auto rounded-t-xl border-t border-divider-subtle bg-components-panel-bg"
     >
-      <div
-        className={cn(
-          'sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pb-2 pt-4',
-          isExploringMarketplace && 'bg-background-body',
-        )}
-      >
+      <div className="sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pb-2 pt-4">
         <div className="flex w-full items-center justify-between">
-          <div className="flex-1">
+          <div className="flex flex-1 items-center justify-start gap-2">
             <TabSlider
               value={isPluginsTab ? PLUGIN_PAGE_TABS_MAP.plugins : PLUGIN_PAGE_TABS_MAP.marketplace}
               onChange={setActiveTab}
               options={options}
             />
+            <SearchBoxWrapper wrapperClassName="w-[360px] mx-0" inputClassName="p-0" />
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {
