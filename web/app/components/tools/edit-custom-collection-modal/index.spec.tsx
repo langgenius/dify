@@ -173,10 +173,8 @@ describe('EditCustomCollectionModal', () => {
         expect(parseParamsSchemaMock).toHaveBeenCalledWith('{}')
       })
 
-      // Wait for the async useEffect to complete and update schema_type
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 0))
-      })
+      // Flush pending state updates from parseParamsSchema promise resolution
+      await act(async () => {})
 
       await act(async () => {
         fireEvent.click(screen.getByText('common.operation.save'))

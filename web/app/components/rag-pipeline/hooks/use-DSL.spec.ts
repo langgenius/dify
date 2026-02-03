@@ -33,21 +33,19 @@ vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
 }))
 
+const mockDownloadBlob = vi.fn()
+vi.mock('@/utils/download', () => ({
+  downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
+}))
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
 }))
 
-// Mock workflow constants
 vi.mock('@/app/components/workflow/constants', () => ({
   DSL_EXPORT_CHECK: 'DSL_EXPORT_CHECK',
-}))
-
-// Mock downloadBlob utility
-const mockDownloadBlob = vi.fn()
-vi.mock('@/utils/download', () => ({
-  downloadBlob: (params: unknown) => mockDownloadBlob(params),
 }))
 
 // ============================================================================
@@ -93,9 +91,7 @@ describe('useDSL', () => {
         await result.current.handleExportDSL()
       })
 
-      await waitFor(() => {
-        expect(mockDownloadBlob).toHaveBeenCalled()
-      })
+      expect(mockDownloadBlob).toHaveBeenCalled()
     })
 
     it('should set correct download filename', async () => {
@@ -105,27 +101,25 @@ describe('useDSL', () => {
         await result.current.handleExportDSL()
       })
 
-      await waitFor(() => {
-        expect(mockDownloadBlob).toHaveBeenCalledWith({
-          data: expect.any(Blob),
+      expect(mockDownloadBlob).toHaveBeenCalledWith(
+        expect.objectContaining({
           fileName: 'Test Knowledge Base.pipeline',
-        })
-      })
+        }),
+      )
     })
 
-    it('should call downloadBlob with correct blob data', async () => {
+    it('should pass blob data to downloadBlob', async () => {
       const { result } = renderHook(() => useDSL())
 
       await act(async () => {
         await result.current.handleExportDSL()
       })
 
-      await waitFor(() => {
-        expect(mockDownloadBlob).toHaveBeenCalled()
-        const callArgs = mockDownloadBlob.mock.calls[0][0]
-        expect(callArgs.data).toBeInstanceOf(Blob)
-        expect(callArgs.fileName).toBe('Test Knowledge Base.pipeline')
-      })
+      expect(mockDownloadBlob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.any(Blob),
+        }),
+      )
     })
 
     it('should handle export error', async () => {
