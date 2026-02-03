@@ -206,7 +206,7 @@ class Node(Generic[NodeDataT]):
     def __init__(
         self,
         id: str,
-        config: dict[str, Any], # NodeConfigDict
+        config: dict[str, Any],  # NodeConfigDict
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
     ) -> None:
