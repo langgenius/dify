@@ -522,6 +522,27 @@ class TraceTask:
                     cls._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         return cls._workflow_run_repo
 
+    @classmethod
+    def _get_user_id_from_metadata(cls, metadata: dict[str, Any]) -> str:
+        """Extract user ID from metadata, prioritizing end_user over account.
+
+        Returns the actual user ID (end_user or account) who invoked the workflow,
+        regardless of invoke_from context.
+        """
+        # Priority 1: End user (external users via API/WebApp)
+        if user_id := metadata.get("from_end_user_id"):
+            return f"end_user:{user_id}"
+
+        # Priority 2: Account user (internal users via console/debugger)
+        if user_id := metadata.get("from_account_id"):
+            return f"account:{user_id}"
+
+        # Priority 3: User (internal users via console/debugger)
+        if user_id := metadata.get("user_id"):
+            return f"user:{user_id}"
+
+        return "anonymous"
+
     def __init__(
         self,
         trace_type: Any,
@@ -672,6 +693,7 @@ class TraceTask:
             message_id=message_id,
             start_time=workflow_run.created_at,
             end_time=workflow_run.finished_at,
+            invoked_by=self._get_user_id_from_metadata(metadata),
         )
         return workflow_trace_info
 
@@ -1083,6 +1105,7 @@ class TraceTask:
             node_inputs=node_data.get("node_inputs"),
             node_outputs=node_data.get("node_outputs"),
             process_data=node_data.get("process_data"),
+            invoked_by=self._get_user_id_from_metadata(metadata),
         )
 
     def draft_node_execution_trace(self, **kwargs) -> DraftNodeExecutionTrace | dict:

@@ -52,6 +52,8 @@ class WorkflowTraceInfo(BaseTraceInfo):
     query: str
     metadata: dict[str, Any]
 
+    invoked_by: str | None = None
+
 
 class MessageTraceInfo(BaseTraceInfo):
     conversation_model: str
@@ -150,6 +152,8 @@ class WorkflowNodeTraceInfo(BaseTraceInfo):
     node_inputs: Mapping[str, Any] | None = None
     node_outputs: Mapping[str, Any] | None = None
     process_data: Mapping[str, Any] | None = None
+
+    invoked_by: str | None = None
 
     model_config = ConfigDict(protected_namespaces=())
 

@@ -21,3 +21,6 @@ class DifySpanAttributes:
 
     INVOKE_FROM = "dify.invoke_from"
     """Invocation source, e.g. SERVICE_API, WEB_APP, DEBUGGER."""
+
+    INVOKED_BY = "dify.invoked_by"
+    """Invoked by, e.g. end_user, account, user."""

@@ -110,6 +110,7 @@ class EnterpriseOtelTrace:
             "dify.invoke_from": info.metadata.get("triggered_from"),
             "dify.conversation.id": info.conversation_id,
             "dify.message.id": info.message_id,
+            "dify.invoked_by": info.invoked_by,
         }
 
         trace_correlation_override: str | None = None
@@ -230,6 +231,7 @@ class EnterpriseOtelTrace:
             "dify.node.iteration_id": info.iteration_id,
             "dify.node.loop_id": info.loop_id,
             "dify.node.parallel_id": info.parallel_id,
+            "dify.node.invoked_by": info.invoked_by,
         }
 
         trace_correlation_override = trace_correlation_override_param
