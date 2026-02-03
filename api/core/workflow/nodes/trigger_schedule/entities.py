@@ -2,6 +2,7 @@ from typing import Literal, Union
 
 from pydantic import BaseModel, Field
 
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 
 
@@ -10,6 +11,7 @@ class TriggerScheduleNodeData(BaseNodeData):
     Trigger Schedule Node Data
     """
 
+    type: NodeType = NodeType.TRIGGER_SCHEDULE
     mode: str = Field(default="visual", description="Schedule mode: visual or cron")
     frequency: str | None = Field(default=None, description="Frequency for visual mode: hourly, daily, weekly, monthly")
     cron_expression: str | None = Field(default=None, description="Cron expression for cron mode")

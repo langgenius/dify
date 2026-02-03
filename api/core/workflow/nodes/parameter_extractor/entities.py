@@ -9,6 +9,7 @@ from pydantic import (
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.variables.types import SegmentType
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.llm.entities import ModelConfig, VisionConfig
 
@@ -83,6 +84,7 @@ class ParameterExtractorNodeData(BaseNodeData):
     Parameter Extractor Node Data.
     """
 
+    type: NodeType = NodeType.PARAMETER_EXTRACTOR
     model: ModelConfig
     query: list[str]
     parameters: list[ParameterConfig]

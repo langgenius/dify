@@ -2,6 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.utils.condition.entities import Condition
 
@@ -10,6 +11,8 @@ class IfElseNodeData(BaseNodeData):
     """
     If Else Node Data.
     """
+
+    type: NodeType = NodeType.IF_ELSE
 
     class Case(BaseModel):
         """

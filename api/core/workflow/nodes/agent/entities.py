@@ -5,10 +5,12 @@ from pydantic import BaseModel
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base.entities import BaseNodeData
 
 
 class AgentNodeData(BaseNodeData):
+    type: NodeType = NodeType.AGENT
     agent_strategy_provider_name: str  # redundancy
     agent_strategy_name: str
     agent_strategy_label: str  # redundancy

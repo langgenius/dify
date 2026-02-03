@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.llm import ModelConfig, VisionConfig
 
@@ -11,6 +12,7 @@ class ClassConfig(BaseModel):
 
 
 class QuestionClassifierNodeData(BaseNodeData):
+    type: NodeType = NodeType.QUESTION_CLASSIFIER
     query_variable_selector: list[str]
     model: ModelConfig
     classes: list[ClassConfig]
