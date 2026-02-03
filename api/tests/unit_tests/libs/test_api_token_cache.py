@@ -174,15 +174,16 @@ class TestApiTokenCache:
     @patch("libs.api_token_cache.redis_client")
     def test_delete_without_scope(self, mock_redis):
         """Test deleting token cache without scope (delete all)."""
-        mock_redis.keys.return_value = [
+        # Mock scan_iter to return an iterator of keys
+        mock_redis.scan_iter.return_value = iter([
             b"api_token:app:test-token",
             b"api_token:dataset:test-token",
-        ]
+        ])
 
         result = ApiTokenCache.delete("test-token", None)
 
         assert result is True
-        mock_redis.keys.assert_called_once()
+        mock_redis.scan_iter.assert_called_once()
         mock_redis.delete.assert_called_once()
 
     @patch("libs.api_token_cache.redis_client")
