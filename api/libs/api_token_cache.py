@@ -145,79 +145,19 @@ class ApiTokenCache:
         cached_data = redis_client.get(cache_key)
 
         if cached_data is None:
-            logger.debug("Cache miss for token key: %s", cache_key)
-            return None
-
-        # Decode bytes to string
-        if isinstance(cached_data, bytes):
-            cached_data = cached_data.decode("utf-8")
-
-        logger.debug("Cache hit for token key: %s", cache_key)
-        return ApiTokenCache._deserialize_token(cached_data)
-
-    @staticmethod
-    @redis_fallback(default_return=False)
-    def set(token: str, scope: str | None, api_token: Any | None, ttl: int = CACHE_TTL_SECONDS) -> bool:
-        """
-        Set API token in cache.
-
-        Args:
-            token: The API token string
-            scope: The token type/scope
-            api_token: ApiToken instance to cache (None for non-existent tokens)
-            ttl: Time to live in seconds
-
-        Returns:
-            True if successful, False otherwise
-        """
-        cache_key = ApiTokenCache._make_cache_key(token, scope)
-
-        if api_token is None:
-            # Cache null value to prevent cache penetration
-            cached_value = "null"
-            ttl = CACHE_NULL_TTL_SECONDS
-        else:
-            cached_value = ApiTokenCache._serialize_token(api_token)
-
-        try:
-            redis_client.setex(cache_key, ttl, cached_value)
-            logger.debug("Cached token with key: %s, ttl: %ss", cache_key, ttl)
-            return True
-        except Exception as e:
-            logger.warning("Failed to cache token: %s", e)
-            return False
-
-    @staticmethod
-    @redis_fallback(default_return=False)
-    def delete(token: str, scope: str | None = None) -> bool:
-        """
-        Delete API token from cache.
-
-        Args:
-            token: The API token string
-            scope: The token type/scope (None to delete all scopes)
-
-        Returns:
-            True if successful, False otherwise
-        """
         if scope is None:
             # Delete all possible scopes for this token
             # This is a safer approach when scope is unknown
             pattern = f"{CACHE_KEY_PREFIX}:*:{token}"
             try:
-                keys = redis_client.keys(pattern)
-                if keys:
-                    redis_client.delete(*keys)
-                    logger.info("Deleted %d cache entries for token", len(keys))
+                keys_to_delete = [key for key in redis_client.scan_iter(match=pattern)]
+                if keys_to_delete:
+                    redis_client.delete(*keys_to_delete)
+                    logger.info("Deleted %d cache entries for token", len(keys_to_delete))
                 return True
             except Exception as e:
                 logger.warning("Failed to delete token cache with pattern: %s", e)
                 return False
-        else:
-            cache_key = ApiTokenCache._make_cache_key(token, scope)
-            try:
-                redis_client.delete(cache_key)
-                logger.info("Deleted cache for key: %s", cache_key)
                 return True
             except Exception as e:
                 logger.warning("Failed to delete token cache: %s", e)
