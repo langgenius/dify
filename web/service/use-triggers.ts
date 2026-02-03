@@ -72,8 +72,6 @@ export const useAllTriggerPlugins = (enabled = true) => {
       return response.map(convertToTriggerWithProvider)
     },
     enabled,
-    staleTime: 0,
-    gcTime: 0,
   })
 }
 
@@ -99,8 +97,6 @@ export const useTriggerProviderInfo = (provider: string, enabled = true) => {
     queryKey: consoleQuery.triggers.providerInfo.queryKey({ input: { params: { provider } } }),
     queryFn: () => consoleClient.triggers.providerInfo({ params: { provider } }),
     enabled: enabled && !!provider,
-    staleTime: 0,
-    gcTime: 0,
   })
 }
 
@@ -361,8 +357,6 @@ export const useTriggerPluginDynamicOptions = (payload: {
     },
     enabled: enabled && !!payload.plugin_id && !!payload.provider && !!payload.action && !!payload.parameter && !!payload.credential_id,
     retry: 0,
-    staleTime: 0,
-    gcTime: 0,
   })
 }
 
