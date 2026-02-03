@@ -46,7 +46,7 @@ def update_api_token_last_used_task(self, token: str, scope: str | None, start_t
                 .values(last_used_at=current_time)
             )
             result = session.execute(update_stmt)
-            
+
             # Check if any rows were updated
             rowcount = getattr(result, "rowcount", 0)
             if rowcount > 0:
