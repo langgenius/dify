@@ -508,16 +508,19 @@ class ChatConversationApi(Resource):
                 case "created_at" | "-created_at" | _:
                     query = query.where(Conversation.created_at <= end_datetime_utc)
 
-        if args.annotation_status == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
-                MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
-            )
-        elif args.annotation_status == "not_annotated":
-            query = (
-                query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
-                .group_by(Conversation.id)
-                .having(func.count(MessageAnnotation.id) == 0)
-            )
+        match args.annotation_status:
+            case "annotated":
+                query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
+                    MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+                )
+            case "not_annotated":
+                query = (
+                    query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
+                    .group_by(Conversation.id)
+                    .having(func.count(MessageAnnotation.id) == 0)
+                )
+            case "all":
+                pass
 
         if app_model.mode == AppMode.ADVANCED_CHAT:
             query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
