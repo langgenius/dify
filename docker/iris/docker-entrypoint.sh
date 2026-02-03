@@ -1,12 +1,9 @@
 #!/bin/bash
 set -e
 
-# IRIS configuration flag file
-IRIS_CONFIG_DONE="/opt/iris/.iris-configured"
-
-# Function to configure IRIS
+# Function to configure IRIS (idempotent - safe to run multiple times)
 configure_iris() {
-    echo "Configuring IRIS for first-time setup..."
+    echo "Running IRIS initialization..."
 
     # Wait for IRIS to be fully started
     sleep 5
@@ -14,25 +11,18 @@ configure_iris() {
     # Execute the initialization script
     iris session IRIS < /iris-init.script
 
-    # Mark configuration as done
-    touch "$IRIS_CONFIG_DONE"
-
-    echo "IRIS configuration completed."
+    echo "IRIS initialization completed."
 }
 
-# Start IRIS in background for initial configuration if not already configured
-if [ ! -f "$IRIS_CONFIG_DONE" ]; then
-    echo "First-time IRIS setup detected. Starting IRIS for configuration..."
+# Start IRIS for initialization
+echo "Starting IRIS for initialization..."
+iris start IRIS
 
-    # Start IRIS
-    iris start IRIS
+# Configure IRIS (idempotent)
+configure_iris
 
-    # Configure IRIS
-    configure_iris
-
-    # Stop IRIS
-    iris stop IRIS quietly
-fi
+# Stop IRIS
+iris stop IRIS quietly
 
 # Run the original IRIS entrypoint
 exec /iris-main "$@"
