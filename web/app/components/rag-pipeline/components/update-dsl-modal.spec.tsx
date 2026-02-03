@@ -648,7 +648,7 @@ describe('UpdateDSLModal', () => {
     })
 
     it('should show error modal when import status is PENDING', async () => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ shouldAdvanceTime: true })
 
       mockImportDSL.mockResolvedValue({
         id: 'import-id',
