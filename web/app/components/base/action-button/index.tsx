@@ -18,7 +18,6 @@ const actionButtonVariants = cva(
     variants: {
       size: {
         xs: 'action-btn-xs',
-        s: 'action-btn-s',
         m: 'action-btn-m',
         l: 'action-btn-l',
         xl: 'action-btn-xl',

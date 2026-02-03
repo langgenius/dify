@@ -75,9 +75,6 @@ export type ChatProps = {
   noSpacing?: boolean
   inputDisabled?: boolean
   sidebarCollapseState?: boolean
-  hideAvatar?: boolean
-  onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
-  getHumanInputNodeData?: (nodeID: string) => any
 }
 
 const Chat: FC<ChatProps> = ({
@@ -119,9 +116,6 @@ const Chat: FC<ChatProps> = ({
   noSpacing,
   inputDisabled,
   sidebarCollapseState,
-  hideAvatar,
-  onHumanInputFormSubmit,
-  getHumanInputNodeData,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -271,7 +265,6 @@ const Chat: FC<ChatProps> = ({
       onAnnotationRemoved={onAnnotationRemoved}
       disableFeedback={disableFeedback}
       onFeedback={onFeedback}
-      getHumanInputNodeData={getHumanInputNodeData}
     >
       <div className={cn('relative h-full', isTryApp && 'flex flex-col')}>
         <div
@@ -302,8 +295,6 @@ const Chat: FC<ChatProps> = ({
                       hideProcessDetail={hideProcessDetail}
                       noChatInput={noChatInput}
                       switchSibling={switchSibling}
-                      hideAvatar={hideAvatar}
-                      onHumanInputFormSubmit={onHumanInputFormSubmit}
                     />
                   )
                 }
@@ -315,7 +306,6 @@ const Chat: FC<ChatProps> = ({
                     theme={themeBuilder?.theme}
                     enableEdit={config?.questionEditEnable}
                     switchSibling={switchSibling}
-                    hideAvatar={hideAvatar}
                   />
                 )
               })

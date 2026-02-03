@@ -68,7 +68,7 @@ const BaseCard = ({
             handleId="target"
           />
           {
-            data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && data.type !== BlockEnum.HumanInput && (
+            data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && (
               <NodeSourceHandle
                 id={id}
                 data={data}

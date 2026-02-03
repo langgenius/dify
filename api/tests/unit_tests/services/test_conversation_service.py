@@ -508,12 +508,9 @@ class TestConversationServiceMessageCreation:
     within conversations.
     """
 
-    @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db.session")
     @patch("services.message_service.ConversationService.get_conversation")
-    def test_pagination_by_first_id_without_first_id(
-        self, mock_get_conversation, mock_db_session, mock_create_extra_repo
-    ):
+    def test_pagination_by_first_id_without_first_id(self, mock_get_conversation, mock_db_session):
         """
         Test message pagination without specifying first_id.
 
@@ -543,9 +540,6 @@ class TestConversationServiceMessageCreation:
         mock_query.order_by.return_value = mock_query  # ORDER BY returns self for chaining
         mock_query.limit.return_value = mock_query  # LIMIT returns self for chaining
         mock_query.all.return_value = messages  # Final .all() returns the messages
-        mock_repository = MagicMock()
-        mock_repository.get_by_message_ids.return_value = [[] for _ in messages]
-        mock_create_extra_repo.return_value = mock_repository
 
         # Act - Call the pagination method without first_id
         result = MessageService.pagination_by_first_id(
@@ -562,10 +556,9 @@ class TestConversationServiceMessageCreation:
         # Verify conversation was looked up with correct parameters
         mock_get_conversation.assert_called_once_with(app_model=app_model, user=user, conversation_id=conversation.id)
 
-    @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db.session")
     @patch("services.message_service.ConversationService.get_conversation")
-    def test_pagination_by_first_id_with_first_id(self, mock_get_conversation, mock_db_session, mock_create_extra_repo):
+    def test_pagination_by_first_id_with_first_id(self, mock_get_conversation, mock_db_session):
         """
         Test message pagination with first_id specified.
 
@@ -597,9 +590,6 @@ class TestConversationServiceMessageCreation:
         mock_query.limit.return_value = mock_query  # LIMIT returns self for chaining
         mock_query.first.return_value = first_message  # First message returned
         mock_query.all.return_value = messages  # Remaining messages returned
-        mock_repository = MagicMock()
-        mock_repository.get_by_message_ids.return_value = [[] for _ in messages]
-        mock_create_extra_repo.return_value = mock_repository
 
         # Act - Call the pagination method with first_id
         result = MessageService.pagination_by_first_id(
@@ -694,10 +684,9 @@ class TestConversationServiceMessageCreation:
         assert result.data == []
         assert result.has_more is False
 
-    @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db.session")
     @patch("services.message_service.ConversationService.get_conversation")
-    def test_pagination_with_has_more_flag(self, mock_get_conversation, mock_db_session, mock_create_extra_repo):
+    def test_pagination_with_has_more_flag(self, mock_get_conversation, mock_db_session):
         """
         Test that has_more flag is correctly set when there are more messages.
 
@@ -727,9 +716,6 @@ class TestConversationServiceMessageCreation:
         mock_query.order_by.return_value = mock_query  # ORDER BY returns self for chaining
         mock_query.limit.return_value = mock_query  # LIMIT returns self for chaining
         mock_query.all.return_value = messages  # Final .all() returns the messages
-        mock_repository = MagicMock()
-        mock_repository.get_by_message_ids.return_value = [[] for _ in messages]
-        mock_create_extra_repo.return_value = mock_repository
 
         # Act
         result = MessageService.pagination_by_first_id(
@@ -744,10 +730,9 @@ class TestConversationServiceMessageCreation:
         assert len(result.data) == limit  # Extra message should be removed
         assert result.has_more is True  # Flag should be set
 
-    @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db.session")
     @patch("services.message_service.ConversationService.get_conversation")
-    def test_pagination_with_ascending_order(self, mock_get_conversation, mock_db_session, mock_create_extra_repo):
+    def test_pagination_with_ascending_order(self, mock_get_conversation, mock_db_session):
         """
         Test message pagination with ascending order.
 
@@ -776,9 +761,6 @@ class TestConversationServiceMessageCreation:
         mock_query.order_by.return_value = mock_query  # ORDER BY returns self for chaining
         mock_query.limit.return_value = mock_query  # LIMIT returns self for chaining
         mock_query.all.return_value = messages  # Final .all() returns the messages
-        mock_repository = MagicMock()
-        mock_repository.get_by_message_ids.return_value = [[] for _ in messages]
-        mock_create_extra_repo.return_value = mock_repository
 
         # Act
         result = MessageService.pagination_by_first_id(

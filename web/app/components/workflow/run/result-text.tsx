@@ -9,7 +9,6 @@ import StatusContainer from '@/app/components/workflow/run/status-container'
 
 type ResultTextProps = {
   isRunning?: boolean
-  isPaused?: boolean
   outputs?: any
   error?: string
   onClick?: () => void
@@ -18,7 +17,6 @@ type ResultTextProps = {
 
 const ResultText: FC<ResultTextProps> = ({
   isRunning,
-  isPaused,
   outputs,
   error,
   onClick,
@@ -39,7 +37,7 @@ const ResultText: FC<ResultTextProps> = ({
           </StatusContainer>
         </div>
       )}
-      {!isPaused && !isRunning && !outputs && !error && !allFiles?.length && (
+      {!isRunning && !outputs && !error && !allFiles?.length && (
         <div className="mt-[120px] flex flex-col items-center px-4 py-2 text-[13px] leading-[18px] text-gray-500">
           <ImageIndentLeft className="h-6 w-6 text-gray-400" />
           <div className="mr-2">{t('resultEmpty.title', { ns: 'runLog' })}</div>
