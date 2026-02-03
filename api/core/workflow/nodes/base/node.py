@@ -237,6 +237,8 @@ class Node(Generic[NodeDataT]):
         if isinstance(config["data"], BaseNodeData):
             self._node_data = self._node_data_type.model_validate(config["data"], from_attributes=True)
         elif isinstance(config["data"], dict):
+            if "type" not in config["data"]:
+                config["data"]["type"] = self.node_type
             self._node_data = self._node_data_type.model_validate(config["data"])
         else:
             raise TypeError(f"node config 'data' field must be a dict or {self._node_data_type.__name__} instance")
