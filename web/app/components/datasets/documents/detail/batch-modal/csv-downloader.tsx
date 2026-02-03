@@ -2,13 +2,11 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useCSVDownloader,
-} from 'react-papaparse'
 import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { ChunkingMode } from '@/models/datasets'
+import { downloadCSV } from '@/utils/csv'
 
 const CSV_TEMPLATE_QA_EN = [
   ['question', 'answer'],
@@ -34,7 +32,6 @@ const CSV_TEMPLATE_CN = [
 const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const { CSVDownloader, Type } = useCSVDownloader()
 
   const getTemplate = () => {
     if (locale === LanguagesSupported[1]) {
@@ -45,6 +42,10 @@ const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
     if (docForm === ChunkingMode.qa)
       return CSV_TEMPLATE_QA_EN
     return CSV_TEMPLATE_EN
+  }
+
+  const handleDownload = () => {
+    downloadCSV(getTemplate(), 'template', { bom: true })
   }
 
   return (
@@ -113,18 +114,16 @@ const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
           </table>
         )}
       </div>
-      <CSVDownloader
+      <button
+        type="button"
         className="mt-2 block cursor-pointer"
-        type={Type.Link}
-        filename="template"
-        bom={true}
-        data={getTemplate()}
+        onClick={handleDownload}
       >
         <div className="flex h-[18px] items-center space-x-1 text-xs font-medium text-text-accent">
           <DownloadIcon className="mr-1 h-3 w-3" />
           {t('list.batchModal.template', { ns: 'datasetDocuments' })}
         </div>
-      </CSVDownloader>
+      </button>
     </div>
 
   )

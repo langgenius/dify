@@ -551,8 +551,8 @@ describe('WorkflowOnboardingModal', () => {
 
       // Assert
       const escKey = screen.getByText('workflow.onboarding.escTip.key')
-      expect(escKey.closest('kbd')).toBeInTheDocument()
-      expect(escKey.closest('kbd')).toHaveClass('system-kbd')
+      expect(escKey.closest('.system-kbd')).toBeInTheDocument()
+      expect(escKey.closest('.system-kbd')).toHaveClass('system-kbd')
     })
 
     it('should have descriptive text for ESC functionality', () => {

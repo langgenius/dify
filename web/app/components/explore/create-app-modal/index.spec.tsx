@@ -85,6 +85,10 @@ vi.mock('@/context/provider-context', () => ({
   },
 }))
 
+vi.mock('@/app/components/workflow/shortcuts-name', () => ({
+  default: () => null,
+}))
+
 type ConfirmPayload = Parameters<CreateAppModalProps['onConfirm']>[0]
 
 const setup = (overrides: Partial<CreateAppModalProps> = {}) => {

@@ -140,7 +140,7 @@ class MockFileReader {
   onload: ((e: { target: { result: string | null } }) => void) | null = null
 
   readAsText(_file: File) {
-    // Simulate async file reading
+    // Simulate async file reading with setTimeout for predictable test behavior
     setTimeout(() => {
       this.result = 'test file content'
       if (this.onload) {

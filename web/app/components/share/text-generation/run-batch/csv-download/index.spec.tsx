@@ -1,28 +1,17 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import CSVDownload from './index'
 
-const mockType = { Link: 'mock-link' }
-let capturedProps: Record<string, unknown> | undefined
+const mockDownloadCSV = vi.fn()
 
-vi.mock('react-papaparse', () => ({
-  useCSVDownloader: () => {
-    const CSVDownloader = ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
-      capturedProps = props
-      return <div data-testid="csv-downloader" className={props.className as string}>{children}</div>
-    }
-    return {
-      CSVDownloader,
-      Type: mockType,
-    }
-  },
+vi.mock('@/utils/csv', () => ({
+  downloadCSV: (...args: unknown[]) => mockDownloadCSV(...args),
 }))
 
 describe('CSVDownload', () => {
   const vars = [{ name: 'prompt' }, { name: 'context' }]
 
   beforeEach(() => {
-    capturedProps = undefined
     vi.clearAllMocks()
   })
 
@@ -35,15 +24,22 @@ describe('CSVDownload', () => {
     expect(screen.getByText('context share.generation.field')).toBeInTheDocument()
   })
 
-  it('should configure CSV downloader with template data', () => {
+  it('should render download template button', () => {
     render(<CSVDownload vars={vars} />)
 
-    expect(capturedProps?.filename).toBe('template')
-    expect(capturedProps?.type).toBe(mockType.Link)
-    expect(capturedProps?.bom).toBe(true)
-    expect(capturedProps?.data).toEqual([
-      { prompt: '', context: '' },
-    ])
     expect(screen.getByText('share.generation.downloadTemplate')).toBeInTheDocument()
+    expect(screen.getByRole('button')).toBeInTheDocument()
+  })
+
+  it('should call downloadCSV with template data when clicked', () => {
+    render(<CSVDownload vars={vars} />)
+
+    fireEvent.click(screen.getByRole('button'))
+
+    expect(mockDownloadCSV).toHaveBeenCalledWith(
+      [{ prompt: '', context: '' }],
+      'template',
+      { bom: true },
+    )
   })
 })

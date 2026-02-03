@@ -168,8 +168,14 @@ describe('EditCustomCollectionModal', () => {
       const schemaInput = screen.getByPlaceholderText('tools.createTool.schemaPlaceHolder')
       fireEvent.change(schemaInput, { target: { value: '{}' } })
 
+      // Wait for parseParamsSchema to be called and its async state updates to complete
       await waitFor(() => {
         expect(parseParamsSchemaMock).toHaveBeenCalledWith('{}')
+      })
+
+      // Flush all pending microtasks to ensure state updates from parseParamsSchema are applied
+      await act(async () => {
+        await Promise.resolve()
       })
 
       await act(async () => {

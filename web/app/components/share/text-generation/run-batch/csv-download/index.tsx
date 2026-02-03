@@ -2,10 +2,8 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useCSVDownloader,
-} from 'react-papaparse'
 import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
+import { downloadCSV } from '@/utils/csv'
 
 export type ICSVDownloadProps = {
   vars: { name: string }[]
@@ -15,7 +13,6 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
   vars,
 }) => {
   const { t } = useTranslation()
-  const { CSVDownloader, Type } = useCSVDownloader()
   const addQueryContentVars = [...vars]
   const template = (() => {
     const res: Record<string, string> = {}
@@ -24,6 +21,10 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
     })
     return res
   })()
+
+  const handleDownload = () => {
+    downloadCSV([template], 'template', { bom: true })
+  }
 
   return (
     <div className="mt-6">
@@ -50,23 +51,16 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
           </tbody>
         </table>
       </div>
-      <CSVDownloader
+      <button
+        type="button"
         className="mt-2 block cursor-pointer"
-        type={Type.Link}
-        filename="template"
-        bom={true}
-        config={{
-          // delimiter: ';',
-        }}
-        data={[
-          template,
-        ]}
+        onClick={handleDownload}
       >
         <div className="system-xs-medium flex h-[18px] items-center space-x-1 text-text-accent">
           <DownloadIcon className="h-3 w-3" />
           <span>{t('generation.downloadTemplate', { ns: 'share' })}</span>
         </div>
-      </CSVDownloader>
+      </button>
     </div>
 
   )

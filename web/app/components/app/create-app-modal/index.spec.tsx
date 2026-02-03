@@ -46,6 +46,9 @@ vi.mock('@/context/i18n', () => ({
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
+vi.mock('@/app/components/workflow/shortcuts-name', () => ({
+  default: () => null,
+}))
 
 const mockNotify = vi.fn()
 const mockUseRouter = vi.mocked(useRouter)

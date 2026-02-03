@@ -1,21 +1,11 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import ResDownload from './index'
 
-const mockType = { Link: 'mock-link' }
-let capturedProps: Record<string, unknown> | undefined
+const mockDownloadCSV = vi.fn()
 
-vi.mock('react-papaparse', () => ({
-  useCSVDownloader: () => {
-    const CSVDownloader = ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
-      capturedProps = props
-      return <div data-testid="csv-downloader" className={props.className as string}>{children}</div>
-    }
-    return {
-      CSVDownloader,
-      Type: mockType,
-    }
-  },
+vi.mock('@/utils/csv', () => ({
+  downloadCSV: (...args: unknown[]) => mockDownloadCSV(...args),
 }))
 
 describe('ResDownload', () => {
@@ -23,25 +13,26 @@ describe('ResDownload', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    capturedProps = undefined
   })
 
-  it('should render desktop download button with CSV downloader props', () => {
+  it('should render desktop download button', () => {
     render(<ResDownload isMobile={false} values={values} />)
 
-    expect(screen.getByTestId('csv-downloader')).toBeInTheDocument()
     expect(screen.getByText('common.operation.download')).toBeInTheDocument()
-    expect(capturedProps?.data).toEqual(values)
-    expect(capturedProps?.filename).toBe('result')
-    expect(capturedProps?.bom).toBe(true)
-    expect(capturedProps?.type).toBe(mockType.Link)
   })
 
   it('should render mobile action button without desktop label', () => {
     render(<ResDownload isMobile={true} values={values} />)
 
-    expect(screen.getByTestId('csv-downloader')).toBeInTheDocument()
     expect(screen.queryByText('common.operation.download')).not.toBeInTheDocument()
-    expect(screen.getByRole('button')).toBeInTheDocument()
+  })
+
+  it('should call downloadCSV with correct params when clicked', () => {
+    const { container } = render(<ResDownload isMobile={false} values={values} />)
+
+    const outerButton = container.querySelector('button[type="button"]') as HTMLButtonElement
+    fireEvent.click(outerButton)
+
+    expect(mockDownloadCSV).toHaveBeenCalledWith(values, 'result', { bom: true })
   })
 })

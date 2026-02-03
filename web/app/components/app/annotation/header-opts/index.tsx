@@ -10,9 +10,6 @@ import {
 import * as React from 'react'
 import { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useCSVDownloader,
-} from 'react-papaparse'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import CustomPopover from '@/app/components/base/popover'
@@ -21,6 +18,7 @@ import { LanguagesSupported } from '@/i18n-config/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
 
 import { cn } from '@/utils/classnames'
+import { downloadCSV } from '@/utils/csv'
 import { downloadBlob } from '@/utils/download'
 import Button from '../../../base/button'
 import AddAnnotationModal from '../add-annotation-modal'
@@ -45,7 +43,6 @@ const HeaderOptions: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const { CSVDownloader, Type } = useCSVDownloader()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
   const annotationUnavailable = list.length === 0
 
@@ -60,6 +57,14 @@ const HeaderOptions: FC<Props> = ({
     const content = listTransformer(list).join('\n')
     const file = new Blob([content], { type: 'application/jsonl' })
     downloadBlob({ data: file, fileName: `annotations-${locale}.jsonl` })
+  }
+
+  const handleCSVDownload = () => {
+    const csvData = [
+      locale !== LanguagesSupported[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
+      ...list.map(item => [item.question, item.answer]),
+    ]
+    downloadCSV(csvData, `annotations-${locale}`, { bom: true })
   }
 
   const fetchList = React.useCallback(async () => {
@@ -125,19 +130,9 @@ const HeaderOptions: FC<Props> = ({
                 'absolute left-1 top-[1px] z-10 min-w-[100px] origin-top-right -translate-x-full rounded-xl border-[0.5px] border-components-panel-on-panel-item-bg bg-components-panel-bg py-1 shadow-xs',
               )}
             >
-              <CSVDownloader
-                type={Type.Link}
-                filename={`annotations-${locale}`}
-                bom={true}
-                data={[
-                  locale !== LanguagesSupported[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
-                  ...list.map(item => [item.question, item.answer]),
-                ]}
-              >
-                <button type="button" disabled={annotationUnavailable} className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
-                  <span className="system-sm-regular grow text-left text-text-secondary">CSV</span>
-                </button>
-              </CSVDownloader>
+              <button type="button" disabled={annotationUnavailable} onClick={handleCSVDownload} className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
+                <span className="system-sm-regular grow text-left text-text-secondary">CSV</span>
+              </button>
               <button type="button" disabled={annotationUnavailable} className={cn('mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50', '!border-0')} onClick={JSONLOutput}>
                 <span className="system-sm-regular grow text-left text-text-secondary">JSONL</span>
               </button>

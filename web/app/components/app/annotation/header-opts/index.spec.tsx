@@ -127,21 +127,10 @@ vi.mock('@headlessui/react', () => {
   }
 })
 
-let lastCSVDownloaderProps: Record<string, unknown> | undefined
-const mockCSVDownloader = vi.fn(({ children, ...props }) => {
-  lastCSVDownloaderProps = props
-  return (
-    <div data-testid="csv-downloader">
-      {children}
-    </div>
-  )
-})
+const mockDownloadCSV = vi.fn()
 
-vi.mock('react-papaparse', () => ({
-  useCSVDownloader: () => ({
-    CSVDownloader: (props: any) => mockCSVDownloader(props),
-    Type: { Link: 'link' },
-  }),
+vi.mock('@/utils/csv', () => ({
+  downloadCSV: (...args: unknown[]) => mockDownloadCSV(...args),
 }))
 
 vi.mock('@/service/annotation', () => ({
@@ -173,7 +162,7 @@ const renderComponent = (
   props: Partial<HeaderOptionsProps> = {},
   locale: Locale = LanguagesSupported[0],
 ) => {
-  ;(useLocale as Mock).mockReturnValue(locale)
+  ; (useLocale as Mock).mockReturnValue(locale)
 
   const defaultProps: HeaderOptionsProps = {
     appId: 'test-app-id',
@@ -237,8 +226,7 @@ describe('HeaderOptions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
-    mockCSVDownloader.mockClear()
-    lastCSVDownloaderProps = undefined
+    mockDownloadCSV.mockClear()
     mockedFetchAnnotations.mockResolvedValue({ data: [] })
   })
 
@@ -258,16 +246,18 @@ describe('HeaderOptions', () => {
     expect(csvButton).not.toBeDisabled()
     expect(jsonButton).not.toBeDisabled()
 
+    // Click CSV button to trigger download
+    await user.click(csvButton)
+
     await waitFor(() => {
-      expect(lastCSVDownloaderProps).toMatchObject({
-        bom: true,
-        filename: 'annotations-en-US',
-        type: 'link',
-        data: [
+      expect(mockDownloadCSV).toHaveBeenCalledWith(
+        [
           ['Question', 'Answer'],
           ['Question 1', 'Answer 1'],
         ],
-      })
+        'annotations-en-US',
+        { bom: true },
+      )
     })
   })
 
@@ -281,10 +271,6 @@ describe('HeaderOptions', () => {
 
     expect(csvButton).toBeDisabled()
     expect(jsonButton).toBeDisabled()
-
-    expect(lastCSVDownloaderProps).toMatchObject({
-      data: [['Question', 'Answer']],
-    })
   })
 
   it('should open the add annotation modal and forward the onAdd callback', async () => {
@@ -353,8 +339,6 @@ describe('HeaderOptions', () => {
     renderComponent({}, LanguagesSupported[1])
 
     await expandExportMenu(user)
-
-    await waitFor(() => expect(mockCSVDownloader).toHaveBeenCalled())
 
     const { jsonButton } = await getExportButtons()
     await user.click(jsonButton)
