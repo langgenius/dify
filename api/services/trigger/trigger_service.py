@@ -206,99 +206,126 @@ class TriggerService:
                 f"maximum allowed is {cls.MAX_PLUGIN_TRIGGER_NODES_PER_WORKFLOW}"
             )
 
-        not_found_in_cache: list[Mapping[str, Any]] = []
-        for node_info in nodes_in_graph:
-            node_id = node_info["node_id"]
-            # firstly check if the node exists in cache
-            if not redis_client.get(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_id}"):
-                not_found_in_cache.append(node_info)
-                continue
+        # Use distributed lock to prevent concurrent sync operations
+        lock_key = f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:apps:{app.id}:lock"
+        lock = redis_client.lock(lock_key, timeout=30)
+        if not lock.acquire(blocking=True, blocking_timeout=10):
+            logger.warning("Failed to acquire lock for app_id=%s, skipping sync", app.id)
+            return
 
-        with Session(db.engine) as session:
-            try:
-                # lock the concurrent plugin trigger creation
-                redis_client.lock(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:apps:{app.id}:lock", timeout=10)
-                # fetch the non-cached nodes from DB
-                all_records = session.scalars(
-                    select(WorkflowPluginTrigger).where(
-                        WorkflowPluginTrigger.app_id == app.id,
-                        WorkflowPluginTrigger.tenant_id == app.tenant_id,
-                    )
-                ).all()
+        try:
+            with Session(db.engine) as session:
+                try:
+                    # Fetch all existing records from DB (database is the source of truth)
+                    all_records = session.scalars(
+                        select(WorkflowPluginTrigger).where(
+                            WorkflowPluginTrigger.app_id == app.id,
+                            WorkflowPluginTrigger.tenant_id == app.tenant_id,
+                        )
+                    ).all()
 
-                nodes_id_in_db = {node.node_id: node for node in all_records}
-                nodes_id_in_graph = {node["node_id"] for node in nodes_in_graph}
+                    nodes_id_in_db = {node.node_id: node for node in all_records}
+                    nodes_id_in_graph = {node["node_id"] for node in nodes_in_graph}
 
-                # get the nodes not found both in cache and DB
-                nodes_not_found = [
-                    node_info for node_info in not_found_in_cache if node_info["node_id"] not in nodes_id_in_db
-                ]
+                    # Find nodes that exist in graph but not in DB (use DB as source of truth, not cache)
+                    nodes_not_found = [
+                        node_info for node_info in nodes_in_graph if node_info["node_id"] not in nodes_id_in_db
+                    ]
 
-                # create new plugin trigger records
-                for node_info in nodes_not_found:
-                    plugin_trigger = WorkflowPluginTrigger(
-                        app_id=app.id,
-                        tenant_id=app.tenant_id,
-                        node_id=node_info["node_id"],
-                        provider_id=node_info["provider_id"],
-                        event_name=node_info["event_name"],
-                        subscription_id=node_info["subscription_id"],
-                    )
-                    session.add(plugin_trigger)
-                    session.flush()  # Get the ID for caching
-
-                    cache = Cache(
-                        record_id=plugin_trigger.id,
-                        node_id=node_info["node_id"],
-                        provider_id=node_info["provider_id"],
-                        event_name=node_info["event_name"],
-                        subscription_id=node_info["subscription_id"],
-                    )
-                    redis_client.set(
-                        f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_info['node_id']}",
-                        cache.model_dump_json(),
-                        ex=60 * 60,
-                    )
-                session.commit()
-
-                # Update existing records if subscription_id changed
-                for node_info in nodes_in_graph:
-                    node_id = node_info["node_id"]
-                    if node_id in nodes_id_in_db:
-                        existing_record = nodes_id_in_db[node_id]
-                        if (
-                            existing_record.subscription_id != node_info["subscription_id"]
-                            or existing_record.provider_id != node_info["provider_id"]
-                            or existing_record.event_name != node_info["event_name"]
-                        ):
-                            existing_record.subscription_id = node_info["subscription_id"]
-                            existing_record.provider_id = node_info["provider_id"]
-                            existing_record.event_name = node_info["event_name"]
-                            session.add(existing_record)
-
-                            # Update cache
-                            cache = Cache(
-                                record_id=existing_record.id,
-                                node_id=node_id,
-                                provider_id=node_info["provider_id"],
-                                event_name=node_info["event_name"],
-                                subscription_id=node_info["subscription_id"],
+                    # Clear stale cache entries before creating new records
+                    for node_info in nodes_not_found:
+                        cache_key = f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_info['node_id']}"
+                        if redis_client.exists(cache_key):
+                            logger.warning(
+                                "Clearing stale cache for node_id=%s (cache exists but DB record missing)",
+                                node_info["node_id"],
                             )
-                            redis_client.set(
-                                f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_id}",
-                                cache.model_dump_json(),
-                                ex=60 * 60,
-                            )
-                session.commit()
+                            redis_client.delete(cache_key)
 
-                # delete the nodes not found in the graph
-                for node_id in nodes_id_in_db:
-                    if node_id not in nodes_id_in_graph:
-                        session.delete(nodes_id_in_db[node_id])
+                    # Stage all database operations in a single transaction for atomicity
+
+                    # 1. Create new plugin trigger records
+                    created_triggers: list[tuple[WorkflowPluginTrigger, Mapping[str, Any]]] = []
+                    for node_info in nodes_not_found:
+                        plugin_trigger = WorkflowPluginTrigger(
+                            app_id=app.id,
+                            tenant_id=app.tenant_id,
+                            node_id=node_info["node_id"],
+                            provider_id=node_info["provider_id"],
+                            event_name=node_info["event_name"],
+                            subscription_id=node_info["subscription_id"],
+                        )
+                        session.add(plugin_trigger)
+                        created_triggers.append((plugin_trigger, node_info))
+
+                    # 2. Update existing records if subscription_id changed
+                    updated_triggers: list[tuple[WorkflowPluginTrigger, Mapping[str, Any]]] = []
+                    for node_info in nodes_in_graph:
+                        node_id = node_info["node_id"]
+                        if node_id in nodes_id_in_db:
+                            existing_record = nodes_id_in_db[node_id]
+                            if (
+                                existing_record.subscription_id != node_info["subscription_id"]
+                                or existing_record.provider_id != node_info["provider_id"]
+                                or existing_record.event_name != node_info["event_name"]
+                            ):
+                                existing_record.subscription_id = node_info["subscription_id"]
+                                existing_record.provider_id = node_info["provider_id"]
+                                existing_record.event_name = node_info["event_name"]
+                                session.add(existing_record)
+                                updated_triggers.append((existing_record, node_info))
+
+                    # 3. Delete nodes not found in the graph
+                    deleted_node_ids: list[str] = []
+                    for node_id in nodes_id_in_db:
+                        if node_id not in nodes_id_in_graph:
+                            session.delete(nodes_id_in_db[node_id])
+                            deleted_node_ids.append(node_id)
+
+                    # Single atomic commit for all database operations
+                    session.flush()
+                    session.commit()
+
+                    # Update cache only after successful DB commit (all-or-nothing)
+                    # 1. Cache for created records
+                    for plugin_trigger, node_info in created_triggers:
+                        cache = Cache(
+                            record_id=plugin_trigger.id,
+                            node_id=node_info["node_id"],
+                            provider_id=node_info["provider_id"],
+                            event_name=node_info["event_name"],
+                            subscription_id=node_info["subscription_id"],
+                        )
+                        redis_client.set(
+                            f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_info['node_id']}",
+                            cache.model_dump_json(),
+                            ex=60 * 60,
+                        )
+
+                    # 2. Cache for updated records
+                    for existing_record, node_info in updated_triggers:
+                        cache = Cache(
+                            record_id=existing_record.id,
+                            node_id=node_info["node_id"],
+                            provider_id=node_info["provider_id"],
+                            event_name=node_info["event_name"],
+                            subscription_id=node_info["subscription_id"],
+                        )
+                        redis_client.set(
+                            f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_info['node_id']}",
+                            cache.model_dump_json(),
+                            ex=60 * 60,
+                        )
+
+                    # 3. Delete cache for removed records
+                    for node_id in deleted_node_ids:
                         redis_client.delete(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_id}")
-                session.commit()
+
+                except Exception:
+                    logger.exception("Failed to sync plugin trigger relationships for app %s", app.id)
+                    raise
+        finally:
+            try:
+                lock.release()
             except Exception:
-                logger.exception("Failed to sync plugin trigger relationships for app %s", app.id)
-                raise
-            finally:
-                redis_client.delete(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:apps:{app.id}:lock")
+                logger.warning("Failed to release lock for app_id=%s, lock may have expired", app.id)
