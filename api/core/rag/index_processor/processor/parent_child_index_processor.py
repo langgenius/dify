@@ -358,7 +358,11 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         }
 
     def generate_summary_preview(
-        self, tenant_id: str, preview_texts: list[PreviewDetail], summary_index_setting: dict
+        self,
+        tenant_id: str,
+        preview_texts: list[PreviewDetail],
+        summary_index_setting: dict,
+        doc_language: str | None = None,
     ) -> list[PreviewDetail]:
         """
         For each parent chunk in preview_texts, concurrently call generate_summary to generate a summary
@@ -389,6 +393,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                         tenant_id=tenant_id,
                         text=preview.content,
                         summary_index_setting=summary_index_setting,
+                        document_language=doc_language,
                     )
                     preview.summary = summary
             else:
@@ -397,6 +402,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     tenant_id=tenant_id,
                     text=preview.content,
                     summary_index_setting=summary_index_setting,
+                    document_language=doc_language,
                 )
                 preview.summary = summary
 
