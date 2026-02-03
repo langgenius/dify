@@ -156,6 +156,49 @@ class ApiTokenCache:
         return ApiTokenCache._deserialize_token(cached_data)
 
     @staticmethod
+    def _add_to_tenant_index(tenant_id: str | None, cache_key: str) -> None:
+        """
+        Add cache key to tenant index for efficient invalidation.
+        
+        Maintains a Redis SET: tenant_tokens:{tenant_id} containing all cache keys
+        for that tenant. This allows O(1) tenant-wide invalidation.
+        
+        Args:
+            tenant_id: The tenant ID
+            cache_key: The cache key to add to the index
+        """
+        if not tenant_id:
+            return
+        
+        try:
+            index_key = f"tenant_tokens:{tenant_id}"
+            redis_client.sadd(index_key, cache_key)
+            # Set TTL on the index itself (slightly longer than cache TTL)
+            redis_client.expire(index_key, CACHE_TTL_SECONDS + 60)
+        except Exception as e:
+            # Don't fail if index update fails
+            logger.warning("Failed to update tenant index: %s", e)
+
+    @staticmethod
+    def _remove_from_tenant_index(tenant_id: str | None, cache_key: str) -> None:
+        """
+        Remove cache key from tenant index.
+        
+        Args:
+            tenant_id: The tenant ID
+            cache_key: The cache key to remove from the index
+        """
+        if not tenant_id:
+            return
+        
+        try:
+            index_key = f"tenant_tokens:{tenant_id}"
+            redis_client.srem(index_key, cache_key)
+        except Exception as e:
+            # Don't fail if index update fails
+            logger.warning("Failed to remove from tenant index: %s", e)
+
+    @staticmethod
     @redis_fallback(default_return=False)
     def set(token: str, scope: str | None, api_token: Any | None, ttl: int = CACHE_TTL_SECONDS) -> bool:
         """
@@ -181,6 +224,11 @@ class ApiTokenCache:
 
         try:
             redis_client.setex(cache_key, ttl, cached_value)
+            
+            # Add to tenant index for efficient tenant-wide invalidation
+            if api_token is not None and hasattr(api_token, 'tenant_id'):
+                ApiTokenCache._add_to_tenant_index(api_token.tenant_id, cache_key)
+            
             logger.debug("Cached token with key: %s, ttl: %ss", cache_key, ttl)
             return True
         except Exception as e:
@@ -216,7 +264,26 @@ class ApiTokenCache:
         else:
             cache_key = ApiTokenCache._make_cache_key(token, scope)
             try:
+                # Try to get tenant_id before deleting (for index cleanup)
+                tenant_id = None
+                try:
+                    cached_data = redis_client.get(cache_key)
+                    if cached_data and cached_data != b"null":
+                        if isinstance(cached_data, bytes):
+                            cached_data = cached_data.decode("utf-8")
+                        data = json.loads(cached_data)
+                        tenant_id = data.get("tenant_id")
+                except Exception as e:
+                    # If we can't get tenant_id, just delete the key without index cleanup
+                    logger.debug("Failed to get tenant_id for cache cleanup: %s", e)
+                
+                # Delete the cache key
                 redis_client.delete(cache_key)
+                
+                # Remove from tenant index
+                if tenant_id:
+                    ApiTokenCache._remove_from_tenant_index(tenant_id, cache_key)
+                
                 logger.info("Deleted cache for key: %s", cache_key)
                 return True
             except Exception as e:
@@ -230,32 +297,83 @@ class ApiTokenCache:
         Invalidate all API token caches for a specific tenant.
         Use this when tenant status changes or tokens are batch updated.
 
+        Uses a two-tier approach:
+        1. Try to use tenant index (fast, O(n) where n = tenant's tokens)
+        2. Fallback to full scan if index doesn't exist (slow, O(N) where N = all tokens)
+
         Args:
             tenant_id: The tenant ID
 
         Returns:
             True if successful, False otherwise
         """
-        # Note: This requires scanning, which can be slow on large Redis instances
-        # Consider using a separate index if this becomes a bottleneck
         try:
+            # Try using tenant index first (efficient approach)
+            index_key = f"tenant_tokens:{tenant_id}"
+            cache_keys = redis_client.smembers(index_key)
+            
+            if cache_keys:
+                # Index exists - use it (fast path)
+                deleted_count = 0
+                for cache_key in cache_keys:
+                    if isinstance(cache_key, bytes):
+                        cache_key = cache_key.decode("utf-8")
+                    redis_client.delete(cache_key)
+                    deleted_count += 1
+                
+                # Delete the index itself
+                redis_client.delete(index_key)
+                
+                logger.info(
+                    "Invalidated %d token cache entries for tenant: %s (via index)",
+                    deleted_count,
+                    tenant_id,
+                )
+                return True
+            
+            # Index doesn't exist - fallback to scanning (slow path)
+            logger.info("Tenant index not found, falling back to full scan for tenant: %s", tenant_id)
+            
             pattern = f"{CACHE_KEY_PREFIX}:*"
             cursor = 0
             deleted_count = 0
+            checked_count = 0
 
             while True:
                 cursor, keys = redis_client.scan(cursor, match=pattern, count=100)
                 if keys:
-                    # Filter keys by checking if they contain the tenant_id
-                    # This is a simple approach; for production, consider maintaining a separate index
                     for key in keys:
-                        redis_client.delete(key)
-                        deleted_count += 1
+                        checked_count += 1
+                        try:
+                            # Fetch and check if this token belongs to the tenant
+                            cached_data = redis_client.get(key)
+                            if cached_data:
+                                # Decode if bytes
+                                if isinstance(cached_data, bytes):
+                                    cached_data = cached_data.decode("utf-8")
+                                
+                                # Skip null values
+                                if cached_data == "null":
+                                    continue
+                                
+                                # Deserialize and check tenant_id
+                                data = json.loads(cached_data)
+                                if data.get("tenant_id") == tenant_id:
+                                    redis_client.delete(key)
+                                    deleted_count += 1
+                        except (json.JSONDecodeError, Exception) as e:
+                            logger.warning("Failed to check cache key %s: %s", key, e)
+                            continue
 
                 if cursor == 0:
                     break
 
-            logger.info("Invalidated %s token cache entries for tenant: %s", deleted_count, tenant_id)
+            logger.info(
+                "Invalidated %d token cache entries for tenant: %s (checked %d keys via scan)",
+                deleted_count,
+                tenant_id,
+                checked_count,
+            )
             return True
         except Exception as e:
             logger.warning("Failed to invalidate tenant token cache: %s", e)
