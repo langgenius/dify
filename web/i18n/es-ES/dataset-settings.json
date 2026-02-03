@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Configuración de recuperación",
   "form.save": "Guardar",
   "form.searchModel": "Buscar modelo",
+  "form.summaryAutoGen": "Generación Automática de Resumen",
+  "form.summaryAutoGenEnableTip": "Una vez habilitado, los resúmenes se generarán automáticamente para documentos recién agregados. Los documentos existentes aún se pueden resumir manualmente.",
+  "form.summaryAutoGenTip": "Los resúmenes se generan automáticamente para documentos recién agregados. Los documentos existentes aún se pueden resumir manualmente.",
+  "form.summaryInstructions": "Instrucciones",
+  "form.summaryInstructionsPlaceholder": "Describa las reglas o el estilo para resúmenes generados automáticamente…",
+  "form.summaryModel": "Modelo de Resumen",
   "form.upgradeHighQualityTip": "Una vez que se actualiza al modo de alta calidad, no está disponible volver al modo económico",
   "title": "Configuración del conjunto de datos"
 }
