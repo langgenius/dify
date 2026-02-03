@@ -159,17 +159,17 @@ class ApiTokenCache:
     def _add_to_tenant_index(tenant_id: str | None, cache_key: str) -> None:
         """
         Add cache key to tenant index for efficient invalidation.
-        
+
         Maintains a Redis SET: tenant_tokens:{tenant_id} containing all cache keys
         for that tenant. This allows O(1) tenant-wide invalidation.
-        
+
         Args:
             tenant_id: The tenant ID
             cache_key: The cache key to add to the index
         """
         if not tenant_id:
             return
-        
+
         try:
             index_key = f"tenant_tokens:{tenant_id}"
             redis_client.sadd(index_key, cache_key)
@@ -183,14 +183,14 @@ class ApiTokenCache:
     def _remove_from_tenant_index(tenant_id: str | None, cache_key: str) -> None:
         """
         Remove cache key from tenant index.
-        
+
         Args:
             tenant_id: The tenant ID
             cache_key: The cache key to remove from the index
         """
         if not tenant_id:
             return
-        
+
         try:
             index_key = f"tenant_tokens:{tenant_id}"
             redis_client.srem(index_key, cache_key)
@@ -224,11 +224,11 @@ class ApiTokenCache:
 
         try:
             redis_client.setex(cache_key, ttl, cached_value)
-            
+
             # Add to tenant index for efficient tenant-wide invalidation
-            if api_token is not None and hasattr(api_token, 'tenant_id'):
+            if api_token is not None and hasattr(api_token, "tenant_id"):
                 ApiTokenCache._add_to_tenant_index(api_token.tenant_id, cache_key)
-            
+
             logger.debug("Cached token with key: %s, ttl: %ss", cache_key, ttl)
             return True
         except Exception as e:
@@ -276,14 +276,14 @@ class ApiTokenCache:
                 except Exception as e:
                     # If we can't get tenant_id, just delete the key without index cleanup
                     logger.debug("Failed to get tenant_id for cache cleanup: %s", e)
-                
+
                 # Delete the cache key
                 redis_client.delete(cache_key)
-                
+
                 # Remove from tenant index
                 if tenant_id:
                     ApiTokenCache._remove_from_tenant_index(tenant_id, cache_key)
-                
+
                 logger.info("Deleted cache for key: %s", cache_key)
                 return True
             except Exception as e:
@@ -311,7 +311,7 @@ class ApiTokenCache:
             # Try using tenant index first (efficient approach)
             index_key = f"tenant_tokens:{tenant_id}"
             cache_keys = redis_client.smembers(index_key)
-            
+
             if cache_keys:
                 # Index exists - use it (fast path)
                 deleted_count = 0
@@ -320,20 +320,20 @@ class ApiTokenCache:
                         cache_key = cache_key.decode("utf-8")
                     redis_client.delete(cache_key)
                     deleted_count += 1
-                
+
                 # Delete the index itself
                 redis_client.delete(index_key)
-                
+
                 logger.info(
                     "Invalidated %d token cache entries for tenant: %s (via index)",
                     deleted_count,
                     tenant_id,
                 )
                 return True
-            
+
             # Index doesn't exist - fallback to scanning (slow path)
             logger.info("Tenant index not found, falling back to full scan for tenant: %s", tenant_id)
-            
+
             pattern = f"{CACHE_KEY_PREFIX}:*"
             cursor = 0
             deleted_count = 0
@@ -351,11 +351,11 @@ class ApiTokenCache:
                                 # Decode if bytes
                                 if isinstance(cached_data, bytes):
                                     cached_data = cached_data.decode("utf-8")
-                                
+
                                 # Skip null values
                                 if cached_data == "null":
                                     continue
-                                
+
                                 # Deserialize and check tenant_id
                                 data = json.loads(cached_data)
                                 if data.get("tenant_id") == tenant_id:
