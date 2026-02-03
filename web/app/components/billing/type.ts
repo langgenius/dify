@@ -118,7 +118,6 @@ export type CurrentPlanInfoBackend = {
   knowledge_pipeline: {
     publish_enabled: boolean
   }
-  human_input_email_delivery_enabled: boolean
 }
 
 export type SubscriptionItem = {

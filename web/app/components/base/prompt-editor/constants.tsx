@@ -4,7 +4,6 @@ import { SupportUploadFileTypes } from '../../workflow/types'
 export const CONTEXT_PLACEHOLDER_TEXT = '{{#context#}}'
 export const HISTORY_PLACEHOLDER_TEXT = '{{#histories#}}'
 export const QUERY_PLACEHOLDER_TEXT = '{{#query#}}'
-export const REQUEST_URL_PLACEHOLDER_TEXT = '{{#url#}}'
 export const CURRENT_PLACEHOLDER_TEXT = '{{#current#}}'
 export const ERROR_MESSAGE_PLACEHOLDER_TEXT = '{{#error_message#}}'
 export const LAST_RUN_PLACEHOLDER_TEXT = '{{#last_run#}}'
@@ -29,12 +28,6 @@ export const checkHasQueryBlock = (text: string) => {
   if (!text)
     return false
   return text.includes(QUERY_PLACEHOLDER_TEXT)
-}
-
-export const checkHasRequestURLBlock = (text: string) => {
-  if (!text)
-    return false
-  return text.includes(REQUEST_URL_PLACEHOLDER_TEXT)
 }
 
 /*

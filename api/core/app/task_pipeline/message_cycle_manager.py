@@ -82,11 +82,10 @@ class MessageCycleManager:
         if isinstance(self._application_generate_entity, CompletionAppGenerateEntity):
             return None
 
-        is_first_message = self._application_generate_entity.is_new_conversation
+        is_first_message = self._application_generate_entity.conversation_id is None
         extras = self._application_generate_entity.extras
         auto_generate_conversation_name = extras.get("auto_generate_conversation_name", True)
 
-        thread: Thread | None = None
         if auto_generate_conversation_name and is_first_message:
             # start generate thread
             # time.sleep not block other logic
@@ -102,10 +101,9 @@ class MessageCycleManager:
             thread.daemon = True
             thread.start()
 
-        if is_first_message:
-            self._application_generate_entity.is_new_conversation = False
+            return thread
 
-        return thread
+        return None
 
     def _generate_conversation_name_worker(self, flask_app: Flask, conversation_id: str, query: str):
         with flask_app.app_context():

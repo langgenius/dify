@@ -11,7 +11,12 @@ vi.mock('@/app/components/base/modal', () => ({
     onClose,
     children,
     closable,
-  }: any) {
+  }: {
+    isShow: boolean
+    onClose: () => void
+    children: React.ReactNode
+    closable?: boolean
+  }) {
     if (!isShow)
       return null
 
@@ -39,7 +44,10 @@ vi.mock('./start-node-selection-panel', () => ({
   default: function MockStartNodeSelectionPanel({
     onSelectUserInput,
     onSelectTrigger,
-  }: any) {
+  }: {
+    onSelectUserInput: () => void
+    onSelectTrigger: (type: BlockEnum, config?: Record<string, unknown>) => void
+  }) {
     return (
       <div data-testid="start-node-selection-panel">
         <button data-testid="select-user-input" onClick={onSelectUserInput}>
@@ -551,9 +559,8 @@ describe('WorkflowOnboardingModal', () => {
 
       // Assert
       const escKey = screen.getByText('workflow.onboarding.escTip.key')
-      // ShortcutsName component renders a div with system-kbd class, not a kbd element
+      // ShortcutsName renders a <div> with class system-kbd, not a <kbd> element
       expect(escKey.closest('.system-kbd')).toBeInTheDocument()
-      expect(escKey.closest('.system-kbd')).toHaveClass('system-kbd')
     })
 
     it('should have descriptive text for ESC functionality', () => {

@@ -32,7 +32,7 @@ const RunMode = ({
     handleWorkflowRunAllTriggersInWorkflow,
   } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
-  const { warningNodes } = useWorkflowRunValidation()
+  const { validateBeforeRun, warningNodes } = useWorkflowRunValidation()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isListening = useStore(s => s.isListening)
 
@@ -98,7 +98,14 @@ const RunMode = ({
       // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types
       console.log('TODO: Handle trigger execution for type:', option.type, 'nodeId:', option.nodeId)
     }
-  }, [warningNodes, notify, t, handleWorkflowStartRunInWorkflow, handleWorkflowTriggerScheduleRunInWorkflow, handleWorkflowTriggerWebhookRunInWorkflow, handleWorkflowTriggerPluginRunInWorkflow, handleWorkflowRunAllTriggersInWorkflow])
+  }, [
+    validateBeforeRun,
+    handleWorkflowStartRunInWorkflow,
+    handleWorkflowTriggerScheduleRunInWorkflow,
+    handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow,
+  ])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {

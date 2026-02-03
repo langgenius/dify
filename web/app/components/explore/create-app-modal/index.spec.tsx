@@ -166,7 +166,7 @@ describe('CreateAppModal', () => {
     it('should not render modal content when hidden', () => {
       setup({ show: false })
 
-      expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /common\.operation\.create/ })).not.toBeInTheDocument()
     })
   })
 

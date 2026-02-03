@@ -39,53 +39,39 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-describe('useDSL', () => {
-  let originalCreateObjectURL: typeof URL.createObjectURL
-  let originalRevokeObjectURL: typeof URL.revokeObjectURL
-  let mockCreateObjectURL: ReturnType<typeof vi.fn<(obj: Blob | MediaSource) => string>>
-  let mockRevokeObjectURL: ReturnType<typeof vi.fn<(url: string) => void>>
-  let mockClick: ReturnType<typeof vi.fn<() => void>>
+// Mock workflow constants
+vi.mock('@/app/components/workflow/constants', () => ({
+  DSL_EXPORT_CHECK: 'DSL_EXPORT_CHECK',
+}))
 
+// Mock downloadBlob utility
+const mockDownloadBlob = vi.fn()
+vi.mock('@/utils/download', () => ({
+  downloadBlob: (params: unknown) => mockDownloadBlob(params),
+}))
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+describe('useDSL', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetState.mockReturnValue({ pipelineId: 'test-pipeline-id', knowledgeName: 'test-knowledge' })
+
+    // Default store state
+    mockGetState.mockReturnValue({
+      pipelineId: 'test-pipeline-id',
+      knowledgeName: 'Test Knowledge Base',
+    })
+
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
     mockExportPipelineConfig.mockResolvedValue({ data: 'yaml-content' })
     mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: [] })
-
-    // Save originals
-    originalCreateObjectURL = URL.createObjectURL
-    originalRevokeObjectURL = URL.revokeObjectURL
-
-    // Setup URL mocks with correct types
-    mockCreateObjectURL = vi.fn<(obj: Blob | MediaSource) => string>().mockReturnValue('blob:test-url')
-    mockRevokeObjectURL = vi.fn<(url: string) => void>()
-    URL.createObjectURL = mockCreateObjectURL
-    URL.revokeObjectURL = mockRevokeObjectURL
-
-    // Setup click mock
-    mockClick = vi.fn<() => void>()
   })
 
   afterEach(() => {
-    // Restore originals
-    URL.createObjectURL = originalCreateObjectURL
-    URL.revokeObjectURL = originalRevokeObjectURL
-    vi.restoreAllMocks()
+    vi.clearAllMocks()
   })
-
-  // Helper to setup anchor element mock
-  const setupAnchorMock = () => {
-    const realCreateElement = document.createElement.bind(document)
-    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
-      if (tagName === 'a') {
-        const anchor = realCreateElement('a')
-        ;(anchor as HTMLAnchorElement).click = mockClick
-        return anchor
-      }
-      return realCreateElement(tagName)
-    })
-  }
 
   describe('handleExportDSL', () => {
     it('should return early when pipelineId is not set', async () => {
@@ -101,8 +87,6 @@ describe('useDSL', () => {
     })
 
     it('should create and download file', async () => {
-      setupAnchorMock()
-
       const { result } = renderHook(() => useDSL())
 
       await act(async () => {
@@ -110,20 +94,11 @@ describe('useDSL', () => {
       })
 
       await waitFor(() => {
-        expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
-        expect(mockExportPipelineConfig).toHaveBeenCalledWith({
-          pipelineId: 'test-pipeline-id',
-          include: false,
-        })
-        expect(document.createElement).toHaveBeenCalledWith('a')
-        expect(mockCreateObjectURL).toHaveBeenCalled()
-        expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:test-url')
+        expect(mockDownloadBlob).toHaveBeenCalled()
       })
     })
 
-    it('should trigger download click', async () => {
-      setupAnchorMock()
-
+    it('should set correct download filename', async () => {
       const { result } = renderHook(() => useDSL())
 
       await act(async () => {
@@ -131,7 +106,25 @@ describe('useDSL', () => {
       })
 
       await waitFor(() => {
-        expect(mockClick).toHaveBeenCalled()
+        expect(mockDownloadBlob).toHaveBeenCalledWith({
+          data: expect.any(Blob),
+          fileName: 'Test Knowledge Base.pipeline',
+        })
+      })
+    })
+
+    it('should call downloadBlob with correct blob data', async () => {
+      const { result } = renderHook(() => useDSL())
+
+      await act(async () => {
+        await result.current.handleExportDSL()
+      })
+
+      await waitFor(() => {
+        expect(mockDownloadBlob).toHaveBeenCalled()
+        const callArgs = mockDownloadBlob.mock.calls[0][0]
+        expect(callArgs.data).toBeInstanceOf(Blob)
+        expect(callArgs.fileName).toBe('Test Knowledge Base.pipeline')
       })
     })
 
@@ -153,8 +146,6 @@ describe('useDSL', () => {
     })
 
     it('should pass include parameter', async () => {
-      setupAnchorMock()
-
       const { result } = renderHook(() => useDSL())
 
       await act(async () => {
@@ -184,7 +175,6 @@ describe('useDSL', () => {
     })
 
     it('should call handleExportDSL directly when no secret variables', async () => {
-      setupAnchorMock()
       mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: [] })
 
       const { result } = renderHook(() => useDSL())

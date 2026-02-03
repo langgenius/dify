@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from sqlalchemy import select
 
-from models.engine import db
+from extensions.ext_database import db
 from models.model import Message
 
 

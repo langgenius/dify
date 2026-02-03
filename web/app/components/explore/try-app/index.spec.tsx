@@ -16,6 +16,15 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
+// Mock IS_CLOUD_EDITION to be true so Try tab is shown
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 const mockUseGetTryAppInfo = vi.fn()
 
 vi.mock('@/service/use-try-app', () => ({

@@ -9,6 +9,9 @@
 # CODEOWNERS file
 /.github/CODEOWNERS @laipz8200 @crazywoola
 
+# Agents
+/.agents/skills/ @hyoban
+
 # Docs
 /docs/ @crazywoola
 
