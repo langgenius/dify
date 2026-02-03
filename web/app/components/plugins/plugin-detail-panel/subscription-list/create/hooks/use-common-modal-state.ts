@@ -237,6 +237,15 @@ export const useCommonModalState = ({
 
   // Handle verify
   const handleVerify = useCallback(() => {
+    // Guard against uninitialized state
+    if (!detail?.provider || !subscriptionBuilder?.id) {
+      Toast.notify({
+        type: 'error',
+        message: 'Subscription builder not initialized',
+      })
+      return
+    }
+
     const apiKeyCredentialsFormValues = apiKeyCredentialsFormRef.current?.getFormValues({}) || DEFAULT_FORM_VALUES
     const credentials = apiKeyCredentialsFormValues.values
 
@@ -255,8 +264,8 @@ export const useCommonModalState = ({
 
     verifyCredentials(
       {
-        provider: detail?.provider || '',
-        subscriptionBuilderId: subscriptionBuilder?.id || '',
+        provider: detail.provider,
+        subscriptionBuilderId: subscriptionBuilder.id,
         credentials,
       },
       {

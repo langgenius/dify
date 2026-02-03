@@ -164,11 +164,18 @@ export const useOAuthClientState = ({
     }
 
     if (isCustom) {
+      // Short-circuit if no schema to validate
+      if (!oauthClientSchema?.length) {
+        return
+      }
+
       const clientFormValues = clientFormRef.current?.getFormValues({}) as {
         values: TriggerOAuthClientParams
         isCheckValidated: boolean
-      }
-      if (!clientFormValues.isCheckValidated)
+      } | undefined
+
+      // Handle missing ref or form values
+      if (!clientFormValues || !clientFormValues.isCheckValidated)
         return
 
       const clientParams = { ...clientFormValues.values }
@@ -194,7 +201,7 @@ export const useOAuthClientState = ({
         })
       },
     })
-  }, [clientType, providerName, oauthConfig?.params, configureOAuth, handleAuthorization, onClose, t])
+  }, [clientType, providerName, oauthClientSchema, oauthConfig?.params, configureOAuth, handleAuthorization, onClose, t])
 
   // Polling effect for authorization verification
   useEffect(() => {

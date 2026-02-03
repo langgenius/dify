@@ -205,7 +205,12 @@ export function useAppInputsFormSchema({
     if (!currentApp)
       return []
 
+    // For workflow apps, wait until workflow data is available
+    if (!isBasicApp && !currentWorkflow)
+      return []
+
     // Build base schema based on app type
+    // Note: currentWorkflow is guaranteed to be defined here due to the early return above
     const baseSchema = isBasicApp
       ? buildBasicAppSchema(currentApp, fileUploadConfig)
       : buildWorkflowSchema(currentWorkflow!, fileUploadConfig)
