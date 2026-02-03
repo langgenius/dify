@@ -1707,7 +1707,7 @@ dev = [
     { name = "types-openpyxl", specifier = "~=3.1.5" },
     { name = "types-pexpect", specifier = "~=4.9.0" },
     { name = "types-protobuf", specifier = "~=5.29.1" },
-    { name = "types-psutil", specifier = "~=7.0.0" },
+    { name = "types-psutil", specifier = "~=7.2.2" },
     { name = "types-psycopg2", specifier = "~=2.9.21" },
     { name = "types-pygments", specifier = "~=2.19.0" },
     { name = "types-pymysql", specifier = "~=1.1.0" },
@@ -6508,11 +6508,11 @@ wheels = [
 
 [[package]]
 name = "types-psutil"
-version = "7.0.0.20251116"
+version = "7.2.2.20260130"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/47/ec/c1e9308b91582cad1d7e7d3007fd003ef45a62c2500f8219313df5fc3bba/types_psutil-7.0.0.20251116.tar.gz", hash = "sha256:92b5c78962e55ce1ed7b0189901a4409ece36ab9fd50c3029cca7e681c606c8a", size = 22192, upload-time = "2025-11-16T03:10:32.859Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/14/fc5fb0a6ddfadf68c27e254a02ececd4d5c7fdb0efcb7e7e917a183497fb/types_psutil-7.2.2.20260130.tar.gz", hash = "sha256:15b0ab69c52841cf9ce3c383e8480c620a4d13d6a8e22b16978ebddac5590950", size = 26535, upload-time = "2026-01-30T03:58:14.116Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/0e/11ba08a5375c21039ed5f8e6bba41e9452fb69f0e2f7ee05ed5cca2a2cdf/types_psutil-7.0.0.20251116-py3-none-any.whl", hash = "sha256:74c052de077c2024b85cd435e2cba971165fe92a5eace79cbeb821e776dbc047", size = 25376, upload-time = "2025-11-16T03:10:31.813Z" },
+    { url = "https://files.pythonhosted.org/packages/17/d7/60974b7e31545d3768d1770c5fe6e093182c3bfd819429b33133ba6b3e89/types_psutil-7.2.2.20260130-py3-none-any.whl", hash = "sha256:15523a3caa7b3ff03ac7f9b78a6470a59f88f48df1d74a39e70e06d2a99107da", size = 32876, upload-time = "2026-01-30T03:58:13.172Z" },
 ]
 
 [[package]]

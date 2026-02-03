@@ -124,7 +124,7 @@ describe('CreateAppModal', () => {
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
     fireEvent.change(nameInput, { target: { value: 'My App' } })
-    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Create' }))
+    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => expect(mockCreateApp).toHaveBeenCalledWith({
       name: 'My App',
@@ -152,7 +152,7 @@ describe('CreateAppModal', () => {
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
     fireEvent.change(nameInput, { target: { value: 'My App' } })
-    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Create' }))
+    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => expect(mockCreateApp).toHaveBeenCalled())
     expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'boom' })

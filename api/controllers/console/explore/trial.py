@@ -9,7 +9,7 @@ import services
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
 from controllers.common.schema import get_or_create_model
-from controllers.console import api, console_ns
+from controllers.console import api
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -51,7 +51,7 @@ from fields.app_fields import (
     tag_fields,
 )
 from fields.dataset_fields import dataset_fields
-from fields.member_fields import build_simple_account_model
+from fields.member_fields import simple_account_fields
 from fields.workflow_fields import (
     conversation_variable_fields,
     pipeline_variable_fields,
@@ -103,7 +103,7 @@ app_detail_fields_with_site_copy["tags"] = fields.List(fields.Nested(tag_model))
 app_detail_fields_with_site_copy["site"] = fields.Nested(site_model)
 app_detail_with_site_model = get_or_create_model("TrialAppDetailWithSite", app_detail_fields_with_site_copy)
 
-simple_account_model = build_simple_account_model(console_ns)
+simple_account_model = get_or_create_model("SimpleAccount", simple_account_fields)
 conversation_variable_model = get_or_create_model("TrialConversationVariable", conversation_variable_fields)
 pipeline_variable_model = get_or_create_model("TrialPipelineVariable", pipeline_variable_fields)
 
