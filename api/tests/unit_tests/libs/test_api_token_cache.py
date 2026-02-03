@@ -183,8 +183,16 @@ class TestApiTokenCache:
         result = ApiTokenCache.delete("test-token", None)
 
         assert result is True
+        # Verify scan_iter was called with the correct pattern
         mock_redis.scan_iter.assert_called_once()
-        mock_redis.delete.assert_called_once()
+        call_args = mock_redis.scan_iter.call_args
+        assert call_args[1]["match"] == f"{CACHE_KEY_PREFIX}:*:test-token"
+        
+        # Verify delete was called with all matched keys
+        mock_redis.delete.assert_called_once_with(
+            b"api_token:app:test-token",
+            b"api_token:dataset:test-token",
+        )
 
     @patch("libs.api_token_cache.redis_client")
     def test_redis_fallback_on_exception(self, mock_redis):
