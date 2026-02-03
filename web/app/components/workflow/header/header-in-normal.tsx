@@ -5,7 +5,6 @@ import {
 } from 'react'
 import { useNodes } from 'reactflow'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
-import Divider from '../../base/divider'
 import {
   useNodesInteractions,
   useNodesReadOnly,
@@ -75,7 +74,6 @@ const HeaderInNormal = ({
       </div>
       <div className="flex items-center gap-2">
         <OnlineUsers />
-        <Divider type="vertical" className="mx-auto h-3.5" />
         <RunAndHistory {...runAndHistoryProps} />
         <div className="shrink-0 cursor-pointer rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px]">
           {components?.chatVariableTrigger}
