@@ -680,7 +680,9 @@ describe('UpdateDSLModal', () => {
         await vi.advanceTimersByTimeAsync(350)
       })
 
-      expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+      })
 
       vi.useRealTimers()
     })
