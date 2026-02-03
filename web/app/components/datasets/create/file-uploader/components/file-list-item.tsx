@@ -1,6 +1,6 @@
 'use client'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
-import { RiDeleteBinLine } from '@remixicon/react'
+import { RiDeleteBinLine, RiErrorWarningFill } from '@remixicon/react'
 import dynamic from 'next/dynamic'
 import { useMemo } from 'react'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
@@ -73,7 +73,7 @@ const FileListItem = ({
           />
         )}
         {isError && (
-          <span className="text-text-destructive">!</span>
+          <RiErrorWarningFill className="size-4 text-text-destructive" />
         )}
         <span
           className="flex h-6 w-6 cursor-pointer items-center justify-center"

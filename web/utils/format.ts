@@ -154,11 +154,17 @@ export const formatToLocalTime = (time: Dayjs, local: Locale, format: string) =>
  * @param fileName file name
  * @example getFileExtension('document.pdf') will return 'pdf'
  * @example getFileExtension('archive.tar.gz') will return 'gz'
+ * @example getFileExtension('.gitignore') will return '' (hidden file with no extension)
+ * @example getFileExtension('.hidden.txt') will return 'txt'
  */
 export const getFileExtension = (fileName: string): string => {
   if (!fileName)
     return ''
 
-  const arr = fileName.split('.')
-  return arr.length > 1 ? arr[arr.length - 1].toLowerCase() : ''
+  // Handle hidden files (starting with dot) by finding dot after the first character
+  const dotIndex = fileName.indexOf('.', fileName.startsWith('.') ? 1 : 0)
+  if (dotIndex === -1 || dotIndex === fileName.length - 1)
+    return ''
+
+  return fileName.slice(dotIndex + 1).split('.').pop()?.toLowerCase() ?? ''
 }
