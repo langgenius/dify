@@ -233,3 +233,5 @@ To protect your privacy, please avoid posting security issues on GitHub. Instead
 ## License
 
 This repository is licensed under the [Dify Open Source License](LICENSE), based on Apache 2.0 with additional conditions.
+
+- [AgentMarket](https://agentmarket.cloud) - B2A marketplace for AI agents. 189 listings, 28M+ energy records, enterprise-ready API.
