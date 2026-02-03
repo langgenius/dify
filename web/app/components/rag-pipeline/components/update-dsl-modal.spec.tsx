@@ -665,8 +665,8 @@ describe('UpdateDSLModal', () => {
 
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [file] } })
-        // Process microtasks for FileReader mock
-        await vi.runAllTimersAsync()
+        // Flush microtasks scheduled by the FileReader mock (which uses queueMicrotask)
+        await new Promise<void>((resolve) => queueMicrotask(resolve))
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
