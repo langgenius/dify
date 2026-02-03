@@ -117,7 +117,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model_parameters=payload.completion_params,
             tools=payload.tools,
             stop=payload.stop,
-            user=user_id
+            user=user_id,
         )
 
         if response.usage:

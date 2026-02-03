@@ -253,9 +253,11 @@ class BaseAgentRunner(AppRunner):
             # save tool entity
             tool_instances[dataset_tool.entity.identity.name] = dataset_tool
 
-        output_tools = build_agent_output_tools(tenant_id=self.tenant_id,
-                                                invoke_from=self.application_generate_entity.invoke_from,
-                                                tool_invoke_from=ToolInvokeFrom.AGENT)
+        output_tools = build_agent_output_tools(
+            tenant_id=self.tenant_id,
+            invoke_from=self.application_generate_entity.invoke_from,
+            tool_invoke_from=ToolInvokeFrom.AGENT,
+        )
         for tool in output_tools:
             tool_instances[tool.entity.identity.name] = tool
 

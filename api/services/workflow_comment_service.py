@@ -69,9 +69,7 @@ class WorkflowCommentService:
         if not candidate_user_ids:
             return []
 
-        app_name = session.scalar(
-            select(App.name).where(App.id == app_id, App.tenant_id == tenant_id)
-        ) or "Dify app"
+        app_name = session.scalar(select(App.name).where(App.id == app_id, App.tenant_id == tenant_id)) or "Dify app"
         commenter_name = session.scalar(select(Account.name).where(Account.id == mentioner_id)) or "Dify user"
         comment_excerpt = WorkflowCommentService._format_comment_excerpt(content)
 
@@ -368,9 +366,7 @@ class WorkflowCommentService:
             mentioned_user_ids = WorkflowCommentService._filter_valid_mentioned_user_ids(mentioned_user_ids or [])
             for user_id in mentioned_user_ids:
                 # Create mention linking to specific reply
-                mention = WorkflowCommentMention(
-                    comment_id=comment_id, reply_id=reply.id, mentioned_user_id=user_id
-                )
+                mention = WorkflowCommentMention(comment_id=comment_id, reply_id=reply.id, mentioned_user_id=user_id)
                 session.add(mention)
 
             mention_email_payloads = WorkflowCommentService._build_mention_email_payloads(

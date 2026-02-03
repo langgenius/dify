@@ -101,6 +101,7 @@ def build_agent_output_tools(
             message_id: str | None = None,
         ) -> ToolInvokeMessage:
             return ToolInvokeMessage(message=ToolInvokeMessage.TextMessage(text=TERMINAL_OUTPUT_MESSAGE))
+
         raw_tool._invoke = invoke_tool  # pyright: ignore[reportPrivateUsage]
         tools.append(raw_tool)
 

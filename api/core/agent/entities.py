@@ -194,6 +194,7 @@ class AgentResult(BaseModel):
     """
     Agent execution result.
     """
+
     output: str | dict = Field(default="", description="The generated output")
     files: list[Any] = Field(default_factory=list, description="Files produced during execution")
     usage: Any | None = Field(default=None, description="LLM usage statistics")

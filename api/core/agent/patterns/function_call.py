@@ -30,10 +30,7 @@ class FunctionCallStrategy(AgentPattern):
     """Function Call strategy using model's native tool calling capability."""
 
     def run(
-        self,
-        prompt_messages: list[PromptMessage],
-        model_parameters: dict[str, Any],
-        stop: list[str]
+        self, prompt_messages: list[PromptMessage], model_parameters: dict[str, Any], stop: list[str]
     ) -> Generator[LLMResultChunk | AgentLog, None, AgentResult]:
         """Execute the function call agent strategy."""
         # Convert tools to prompt format
@@ -144,9 +141,7 @@ class FunctionCallStrategy(AgentPattern):
                 output_files.extend(tool_files)
                 if tool_response == TERMINAL_OUTPUT_MESSAGE:
                     function_call_state = False
-                    final_tool_args = tool_entity.transform_tool_parameters_type(
-                        tool_args
-                    )
+                    final_tool_args = tool_entity.transform_tool_parameters_type(tool_args)
 
             yield self._finish_log(
                 round_log,

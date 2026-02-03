@@ -43,7 +43,7 @@ class StrategyFactory:
         agent_strategy: AgentEntity.Strategy | None = None,
         tool_invoke_hook: ToolInvokeHook | None = None,
         instruction: str = "",
-        structured_output_schema: Mapping[str, Any] | None = None
+        structured_output_schema: Mapping[str, Any] | None = None,
     ) -> AgentPattern:
         """
         Create an appropriate strategy based on model features.
@@ -71,7 +71,7 @@ class StrategyFactory:
             tenant_id=tenant_id,
             invoke_from=invoke_from,
             tool_invoke_from=tool_invoke_from,
-            structured_output_schema=structured_output_schema
+            structured_output_schema=structured_output_schema,
         )
 
         tools.extend(output_tools)

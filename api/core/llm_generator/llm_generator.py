@@ -563,7 +563,7 @@ class LLMGenerator:
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 output_model=SuggestedQuestionsOutput,
-                model_parameters=completion_params
+                model_parameters=completion_params,
             )
 
             return {"questions": response.questions, "error": ""}
@@ -849,11 +849,14 @@ Generate {language} code to extract/transform available variables for the target
         try:
             from core.llm_generator.output_parser.structured_output import invoke_llm_with_pydantic_model
 
-            response = invoke_llm_with_pydantic_model(provider=model_instance.provider, model_schema=model_schema,
-                                                      model_instance=model_instance,
-                                                      prompt_messages=list(prompt_messages),
-                                                      output_model=InstructionModifyOutput,
-                                                      model_parameters=model_parameters)
+            response = invoke_llm_with_pydantic_model(
+                provider=model_instance.provider,
+                model_schema=model_schema,
+                model_instance=model_instance,
+                prompt_messages=list(prompt_messages),
+                output_model=InstructionModifyOutput,
+                model_parameters=model_parameters,
+            )
             return response.model_dump(mode="python")
         except InvokeError as e:
             error = str(e)
