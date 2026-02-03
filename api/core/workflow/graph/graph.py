@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import Protocol, cast, final
+from typing import Any, Protocol, cast, final
 
 from pydantic import TypeAdapter
 
@@ -28,7 +28,7 @@ class NodeFactory(Protocol):
     allowing for different node creation strategies while maintaining type safety.
     """
 
-    def create_node(self, node_config: NodeConfigDict) -> Node:
+    def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
         """
         Create a Node instance from node configuration data.
 
