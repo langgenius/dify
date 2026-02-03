@@ -23,7 +23,6 @@ from . import (
     feature,
     files,
     forgot_password,
-    human_input_form,
     login,
     message,
     passport,
@@ -31,7 +30,6 @@ from . import (
     saved_message,
     site,
     workflow,
-    workflow_events,
 )
 
 api.add_namespace(web_ns)
@@ -46,7 +44,6 @@ __all__ = [
     "feature",
     "files",
     "forgot_password",
-    "human_input_form",
     "login",
     "message",
     "passport",
@@ -55,5 +52,4 @@ __all__ = [
     "site",
     "web_ns",
     "workflow",
-    "workflow_events",
 ]

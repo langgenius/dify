@@ -13,8 +13,7 @@ export const useAvailableNodesMetaData = () => {
   const docLink = useDocLink()
 
   const mergedNodesMetaData = useMemo(() => [
-    // RAG pipeline doesn't support human-input node temporarily
-    ...WORKFLOW_COMMON_NODES.filter(node => node.metaData.type !== BlockEnum.HumanInput),
+    ...WORKFLOW_COMMON_NODES,
     {
       ...dataSourceDefault,
       defaultValue: {
@@ -48,7 +47,7 @@ export const useAvailableNodesMetaData = () => {
         title,
       },
     }
-  }), [helpLinkUri, mergedNodesMetaData, t])
+  }), [mergedNodesMetaData, t])
 
   const availableNodesMetaDataMap = useMemo(() => availableNodesMetaData.reduce((acc, node) => {
     acc![node.metaData.type] = node

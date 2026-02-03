@@ -2,7 +2,7 @@ import base64
 import json
 import secrets
 import string
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from copy import deepcopy
 from typing import Any, Literal
 from urllib.parse import urlencode, urlparse
@@ -11,9 +11,9 @@ import httpx
 from json_repair import repair_json
 
 from configs import dify_config
-from core.file import file_manager
 from core.file.enums import FileTransferMethod
-from core.helper import ssrf_proxy
+from core.file.file_manager import file_manager as default_file_manager
+from core.helper.ssrf_proxy import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.runtime import VariablePool
 
@@ -79,8 +79,8 @@ class Executor:
         timeout: HttpRequestNodeTimeout,
         variable_pool: VariablePool,
         max_retries: int = dify_config.SSRF_DEFAULT_MAX_RETRIES,
-        http_client: HttpClientProtocol = ssrf_proxy,
-        file_manager: FileManagerProtocol = file_manager,
+        http_client: HttpClientProtocol | None = None,
+        file_manager: FileManagerProtocol | None = None,
     ):
         # If authorization API key is present, convert the API key using the variable pool
         if node_data.authorization.type == "api-key":
@@ -107,8 +107,8 @@ class Executor:
         self.data = None
         self.json = None
         self.max_retries = max_retries
-        self._http_client = http_client
-        self._file_manager = file_manager
+        self._http_client = http_client or ssrf_proxy
+        self._file_manager = file_manager or default_file_manager
 
         # init template
         self.variable_pool = variable_pool
@@ -336,7 +336,7 @@ class Executor:
         """
         do http request depending on api bundle
         """
-        _METHOD_MAP = {
+        _METHOD_MAP: dict[str, Callable[..., httpx.Response]] = {
             "get": self._http_client.get,
             "head": self._http_client.head,
             "post": self._http_client.post,
@@ -348,7 +348,7 @@ class Executor:
         if method_lc not in _METHOD_MAP:
             raise InvalidHttpMethodError(f"Invalid http method {self.method}")
 
-        request_args = {
+        request_args: dict[str, Any] = {
             "data": self.data,
             "files": self.files,
             "json": self.json,
@@ -361,14 +361,13 @@ class Executor:
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
-            response: httpx.Response = _METHOD_MAP[method_lc](
+            response = _METHOD_MAP[method_lc](
                 url=self.url,
                 **request_args,
                 max_retries=self.max_retries,
             )
         except (self._http_client.max_retries_exceeded_error, self._http_client.request_error) as e:
             raise HttpRequestNodeError(str(e)) from e
-        # FIXME: fix type ignore, this maybe httpx type issue
         return response
 
     def invoke(self) -> Response:

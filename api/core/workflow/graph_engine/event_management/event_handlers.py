@@ -192,13 +192,9 @@ class EventHandler:
             self._event_collector.collect(edge_event)
 
         # Enqueue ready nodes
-        if self._graph_execution.is_paused:
-            for node_id in ready_nodes:
-                self._graph_runtime_state.register_deferred_node(node_id)
-        else:
-            for node_id in ready_nodes:
-                self._state_manager.enqueue_node(node_id)
-                self._state_manager.start_execution(node_id)
+        for node_id in ready_nodes:
+            self._state_manager.enqueue_node(node_id)
+            self._state_manager.start_execution(node_id)
 
         # Update execution tracking
         self._state_manager.finish_execution(event.node_id)

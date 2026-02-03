@@ -2,13 +2,11 @@
 GraphEngine configuration models.
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class GraphEngineConfig(BaseModel):
     """Configuration for GraphEngine worker pool scaling."""
-
-    model_config = ConfigDict(frozen=True)
 
     min_workers: int = 1
     max_workers: int = 5
