@@ -28,8 +28,8 @@ const Contribute = ({ onRefreshData }: Props) => {
       message: t('api.actionSuccess', { ns: 'common' }),
     })
     setIsShowEditCustomCollectionModal(false)
-    onRefreshData()
     invalidateCustomTools()
+    onRefreshData()
   }
 
   return (
