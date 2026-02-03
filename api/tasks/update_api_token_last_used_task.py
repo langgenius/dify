@@ -46,11 +46,13 @@ def update_api_token_last_used_task(self, token: str, scope: str | None, start_t
                 .values(last_used_at=current_time)
             )
             result = session.execute(update_stmt)
-
-            if hasattr(result, "rowcount") and result.rowcount > 0:
+            
+            # Check if any rows were updated
+            rowcount = getattr(result, "rowcount", 0)
+            if rowcount > 0:
                 session.commit()
                 logger.info("Updated last_used_at for token (async): %s... (scope: %s)", token[:10], scope)
-                return {"status": "updated", "rowcount": result.rowcount, "start_time": start_time_iso}
+                return {"status": "updated", "rowcount": rowcount, "start_time": start_time_iso}
             else:
                 logger.debug("No update needed for token: %s... (already up-to-date)", token[:10])
                 return {"status": "no_update_needed", "reason": "last_used_at >= start_time"}
