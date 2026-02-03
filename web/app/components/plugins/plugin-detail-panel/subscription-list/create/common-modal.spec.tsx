@@ -441,7 +441,8 @@ describe('CommonCreateModal', () => {
     })
 
     it('should call onConfirm handler when confirm button is clicked', () => {
-      render(<CommonCreateModal {...defaultProps} />)
+      // Provide builder so the guard passes and credentials check is reached
+      render(<CommonCreateModal {...defaultProps} builder={createMockSubscriptionBuilder()} />)
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -1450,7 +1451,8 @@ describe('CommonCreateModal', () => {
       })
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
 
-      render(<CommonCreateModal {...defaultProps} />)
+      // Provide builder so the guard passes and credentials check is reached
+      render(<CommonCreateModal {...defaultProps} builder={createMockSubscriptionBuilder()} />)
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
