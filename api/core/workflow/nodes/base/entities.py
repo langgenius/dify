@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from enum import StrEnum
 from typing import Any, Union
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core.workflow.enums import ErrorStrategy, NodeType
 
@@ -176,7 +176,7 @@ class BaseNodeData(ABC, BaseModel):
     version: str = "1"
     error_strategy: ErrorStrategy | None = None
     default_value: list[DefaultValue] | None = None
-    retry_config: RetryConfig = RetryConfig()
+    retry_config: RetryConfig = Field(default_factory=RetryConfig)
 
     @property
     def default_value_dict(self) -> dict[str, Any]:
