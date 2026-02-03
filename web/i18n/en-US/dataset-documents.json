@@ -31,6 +31,7 @@
   "list.action.pause": "Pause",
   "list.action.resume": "Resume",
   "list.action.settings": "Chunking Settings",
+  "list.action.summary": "Generate summary",
   "list.action.sync": "Sync",
   "list.action.unarchive": "Unarchive",
   "list.action.uploadFile": "Upload new file",
@@ -75,6 +76,9 @@
   "list.status.indexing": "Indexing",
   "list.status.paused": "Paused",
   "list.status.queuing": "Queuing",
+  "list.summary.generating": "Generating...",
+  "list.summary.generatingSummary": "Generating summary",
+  "list.summary.ready": "Summary ready",
   "list.table.header.action": "ACTION",
   "list.table.header.chunkingMode": "CHUNKING MODE",
   "list.table.header.fileName": "NAME",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "RESULT",
   "segment.searchResults_other": "RESULTS",
   "segment.searchResults_zero": "RESULT",
+  "segment.summary": "SUMMARY",
+  "segment.summaryPlaceholder": "Write a brief summary for better retrieval…",
   "segment.vectorHash": "Vector hash: "
 }
