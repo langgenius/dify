@@ -7,7 +7,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FolderSpark from '@/app/components/base/icons/src/vender/workflow/FolderSpark'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { useAppContext } from '@/context/app-context'
 import { useDownloadSandboxFile, useSandboxFilesTree } from '@/service/use-sandbox-file'
 import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
@@ -19,14 +18,13 @@ type ArtifactsSectionProps = {
 
 const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
   const { t } = useTranslation('workflow')
-  const { userProfile } = useAppContext()
-  const sandboxId = userProfile?.id
+  const appId = useStore(s => s.appId)
 
   const [isExpanded, setIsExpanded] = useState(false)
 
-  const { data: treeData, hasFiles, isLoading } = useSandboxFilesTree(sandboxId)
+  const { data: treeData, hasFiles, isLoading } = useSandboxFilesTree(appId)
 
-  const { mutateAsync: fetchDownloadUrl, isPending: isDownloading } = useDownloadSandboxFile(sandboxId)
+  const { mutateAsync: fetchDownloadUrl, isPending: isDownloading } = useDownloadSandboxFile(appId)
   const storeApi = useWorkflowStore()
   const selectedArtifactPath = useStore(s => s.selectedArtifactPath)
 

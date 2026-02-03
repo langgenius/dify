@@ -12,11 +12,11 @@ import { FileDownload01 } from '@/app/components/base/icons/src/vender/line/file
 import Loading from '@/app/components/base/loading'
 import ArtifactsTree from '@/app/components/workflow/skill/file-tree/artifacts-tree'
 import ReadOnlyFilePreview from '@/app/components/workflow/skill/viewer/read-only-file-preview'
-import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { useDownloadSandboxFile, useSandboxFileDownloadUrl, useSandboxFilesTree } from '@/service/use-sandbox-file'
 import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
+import { useStore } from '../store'
 import InspectLayout from './inspect-layout'
 import SplitPanel from './split-panel'
 
@@ -55,16 +55,15 @@ const formatFileSize = (bytes: number | null): string => {
 
 const ArtifactsTab = (headerProps: InspectHeaderProps) => {
   const { t } = useTranslation('workflow')
-  const { userProfile } = useAppContext()
-  const sandboxId = userProfile?.id
+  const appId = useStore(s => s.appId)
 
-  const { data: treeData, hasFiles, isLoading } = useSandboxFilesTree(sandboxId, {
-    enabled: !!sandboxId,
+  const { data: treeData, hasFiles, isLoading } = useSandboxFilesTree(appId, {
+    enabled: !!appId,
   })
-  const { mutateAsync: fetchDownloadUrl, isPending: isDownloading } = useDownloadSandboxFile(sandboxId)
+  const { mutateAsync: fetchDownloadUrl, isPending: isDownloading } = useDownloadSandboxFile(appId)
   const [selectedFile, setSelectedFile] = useState<SandboxFileTreeNode | null>(null)
   const { data: downloadUrlData, isLoading: isDownloadUrlLoading } = useSandboxFileDownloadUrl(
-    sandboxId,
+    appId,
     selectedFile?.path,
   )
 
