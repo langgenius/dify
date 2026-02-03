@@ -206,7 +206,7 @@ class Node(Generic[NodeDataT]):
     def __init__(
         self,
         id: str,
-        config: NodeConfigDict,
+        config: dict[str, Any], # NodeConfigDict
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
     ) -> None:
@@ -223,13 +223,23 @@ class Node(Generic[NodeDataT]):
         self.graph_runtime_state = graph_runtime_state
         self.state: NodeState = NodeState.UNKNOWN  # node execution state
 
+        if "id" not in config:
+            raise ValueError("node config missing required 'id' field")
         node_id = config["id"]
 
         self._node_id = node_id
         self._node_execution_id: str = ""
         self._start_at = naive_utc_now()
 
-        self._node_data = self._node_data_type.model_validate(config["data"], from_attributes=True)
+        if "data" not in config:
+            raise ValueError(f"node config for node {node_id} missing required 'data' field")
+
+        if isinstance(config["data"], BaseNodeData):
+            self._node_data = self._node_data_type.model_validate(config["data"], from_attributes=True)
+        elif isinstance(config["data"], dict):
+            self._node_data = self._node_data_type.model_validate(config["data"])
+        else:
+            raise TypeError(f"node config 'data' field must be a dict or {self._node_data_type.__name__} instance")
 
         self.post_init()
 
