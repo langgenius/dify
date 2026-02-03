@@ -136,8 +136,7 @@ def _delete_batch(session: Session, workflow_run_ids: Sequence[str], attempt_cou
                 ]
                 for model in message_related_models:
                     session.query(model).where(model.message_id.in_(message_id_list)).delete(synchronize_session=False)  # type: ignore
-                    # error: "DeclarativeAttributeIntercept" has no attribute "message_id". But this type is only in lib
-                    # and these 6 types all have the message_id field.
+                    # error: "DeclarativeAttributeIntercept" has no attribute "message_id". But this type is only in lib and these 6 types all have the message_id field.
 
                 session.query(Message).where(Message.workflow_run_id.in_(workflow_run_ids)).delete(
                     synchronize_session=False
