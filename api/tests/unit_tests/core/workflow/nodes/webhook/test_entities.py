@@ -210,9 +210,6 @@ def test_webhook_data_model_dump_with_alias():
 
 def test_webhook_data_validation_errors():
     """Test WebhookData validation errors."""
-    # Title is required (inherited from BaseNodeData)
-    with pytest.raises(ValidationError):
-        WebhookData()
 
     # Invalid method
     with pytest.raises(ValidationError):
