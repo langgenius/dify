@@ -1,8 +1,7 @@
 from typing import Literal
-from flask_restx import Namespace, fields
 
 from flask import request
-from flask_restx import Resource, marshal_with
+from flask_restx import Namespace, Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
@@ -11,7 +10,6 @@ from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from libs.login import current_account_with_tenant, login_required
 from services.tag_service import TagService
-
 
 dataset_tag_fields = {
     "id": fields.String,
@@ -23,6 +21,7 @@ dataset_tag_fields = {
 
 def build_dataset_tag_fields(api_or_ns: Namespace):
     return api_or_ns.model("DataSetTag", dataset_tag_fields)
+
 
 class TagBasePayload(BaseModel):
     name: str = Field(description="Tag name", min_length=1, max_length=50)
