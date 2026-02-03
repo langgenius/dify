@@ -357,6 +357,7 @@ export const useTriggerPluginDynamicOptions = (payload: {
     },
     enabled: enabled && !!payload.plugin_id && !!payload.provider && !!payload.action && !!payload.parameter && !!payload.credential_id,
     retry: 0,
+    staleTime: 0,
   })
 }
 
