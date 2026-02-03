@@ -102,7 +102,7 @@ vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: (url: string, callback: (data: unknown) => void) => mockOpenOAuthPopup(url, callback),
 }))
 
-// Mock toast
+// Mock toast - needs mock due to DOM manipulation and async behavior
 const mockToastNotify = vi.fn()
 vi.mock('@/app/components/base/toast', () => ({
   default: {
@@ -118,7 +118,7 @@ Object.assign(navigator, {
   },
 })
 
-// Mock Modal component
+// Mock Modal - needs mock due to Portal usage which doesn't work well in jsdom
 vi.mock('@/app/components/base/modal/modal', () => ({
   default: ({
     children,
@@ -161,24 +161,7 @@ vi.mock('@/app/components/base/modal/modal', () => ({
   ),
 }))
 
-// Mock Button component
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, variant, className }: {
-    children: React.ReactNode
-    onClick?: () => void
-    variant?: string
-    className?: string
-  }) => (
-    <button
-      data-testid={`button-${variant || 'default'}`}
-      onClick={onClick}
-      className={className}
-    >
-      {children}
-    </button>
-  ),
-}))
-// Configurable form mock values
+// Mock BaseForm - needs mock to control form values in tests
 let mockFormValues: { values: Record<string, string>, isCheckValidated: boolean } = {
   values: { client_id: 'test-client-id', client_secret: 'test-client-secret' },
   isCheckValidated: true,
@@ -208,25 +191,6 @@ vi.mock('@/app/components/base/form/components/base', () => ({
       </div>
     )
   }),
-}))
-
-// Mock OptionCard component
-vi.mock('@/app/components/workflow/nodes/_base/components/option-card', () => ({
-  default: ({ title, onSelect, selected, className }: {
-    title: string
-    onSelect: () => void
-    selected: boolean
-    className?: string
-  }) => (
-    <div
-      data-testid={`option-card-${title}`}
-      onClick={onSelect}
-      className={`${className} ${selected ? 'selected' : ''}`}
-      data-selected={selected}
-    >
-      {title}
-    </div>
-  ),
 }))
 
 // ============================================================================
@@ -265,8 +229,8 @@ describe('OAuthClientSettingsModal', () => {
     it('should render client type selector when system_configured is true', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      expect(screen.getByTestId('option-card-pluginTrigger.subscription.addType.options.oauth.default')).toBeInTheDocument()
-      expect(screen.getByTestId('option-card-pluginTrigger.subscription.addType.options.oauth.custom')).toBeInTheDocument()
+      expect(screen.getByText('pluginTrigger.subscription.addType.options.oauth.default')).toBeInTheDocument()
+      expect(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom')).toBeInTheDocument()
     })
 
     it('should not render client type selector when system_configured is false', () => {
@@ -276,7 +240,7 @@ describe('OAuthClientSettingsModal', () => {
 
       render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithoutSystemConfigured} />)
 
-      expect(screen.queryByTestId('option-card-pluginTrigger.subscription.addType.options.oauth.default')).not.toBeInTheDocument()
+      expect(screen.queryByText('pluginTrigger.subscription.addType.options.oauth.default')).not.toBeInTheDocument()
     })
 
     it('should render redirect URI info when custom client type is selected', () => {
@@ -319,29 +283,32 @@ describe('OAuthClientSettingsModal', () => {
     it('should default to Default client type when system_configured is true', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      const defaultCard = screen.getByTestId('option-card-pluginTrigger.subscription.addType.options.oauth.default')
-      expect(defaultCard).toHaveAttribute('data-selected', 'true')
+      // Default card should have selected styling (border-[1.5px] indicates selected)
+      const defaultCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.default').closest('div')
+      expect(defaultCard).toHaveClass('border-[1.5px]')
     })
 
     it('should switch to Custom client type when Custom card is clicked', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      const customCard = screen.getByTestId('option-card-pluginTrigger.subscription.addType.options.oauth.custom')
-      fireEvent.click(customCard)
+      const customCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')
+      fireEvent.click(customCard!)
 
-      expect(customCard).toHaveAttribute('data-selected', 'true')
+      // Custom card should now have selected styling
+      expect(customCard).toHaveClass('border-[1.5px]')
     })
 
     it('should switch back to Default client type when Default card is clicked', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      const customCard = screen.getByTestId('option-card-pluginTrigger.subscription.addType.options.oauth.custom')
-      fireEvent.click(customCard)
+      const customCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')
+      fireEvent.click(customCard!)
 
-      const defaultCard = screen.getByTestId('option-card-pluginTrigger.subscription.addType.options.oauth.default')
-      fireEvent.click(defaultCard)
+      const defaultCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.default').closest('div')
+      fireEvent.click(defaultCard!)
 
-      expect(defaultCard).toHaveAttribute('data-selected', 'true')
+      // Default card should have selected styling again
+      expect(defaultCard).toHaveClass('border-[1.5px]')
     })
   })
 
@@ -852,8 +819,8 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom
-      const customCard = screen.getByTestId('option-card-pluginTrigger.subscription.addType.options.oauth.custom')
-      fireEvent.click(customCard)
+      const customCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')
+      fireEvent.click(customCard!)
 
       fireEvent.click(screen.getByTestId('modal-cancel'))
 
@@ -1054,7 +1021,7 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      const customCard = screen.getByTestId('option-card-pluginTrigger.subscription.addType.options.oauth.custom')
+      const customCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!
       fireEvent.click(customCard)
 
       fireEvent.click(screen.getByTestId('modal-cancel'))
@@ -1077,7 +1044,7 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      fireEvent.click(screen.getByTestId('option-card-pluginTrigger.subscription.addType.options.oauth.custom'))
+      fireEvent.click(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!)
 
       fireEvent.click(screen.getByTestId('modal-cancel'))
 
@@ -1104,7 +1071,7 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      fireEvent.click(screen.getByTestId('option-card-pluginTrigger.subscription.addType.options.oauth.custom'))
+      fireEvent.click(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!)
 
       fireEvent.click(screen.getByTestId('modal-cancel'))
 
@@ -1131,7 +1098,7 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      fireEvent.click(screen.getByTestId('option-card-pluginTrigger.subscription.addType.options.oauth.custom'))
+      fireEvent.click(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!)
 
       fireEvent.click(screen.getByTestId('modal-cancel'))
 
@@ -1158,7 +1125,7 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      fireEvent.click(screen.getByTestId('option-card-pluginTrigger.subscription.addType.options.oauth.custom'))
+      fireEvent.click(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!)
 
       fireEvent.click(screen.getByTestId('modal-cancel'))
 

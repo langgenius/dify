@@ -2,7 +2,7 @@ import type { Option } from '@/app/components/base/select/custom'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { RiAddLine, RiEqualizer2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionButton, ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
@@ -43,7 +43,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
   const detail = usePluginStore(state => state.detail)
 
   const { data: providerInfo } = useTriggerProviderInfo(detail?.provider || '')
-  const supportedMethods = providerInfo?.supported_creation_methods || []
+  const supportedMethods = useMemo(() => providerInfo?.supported_creation_methods || [], [providerInfo?.supported_creation_methods])
   const { data: oauthConfig, refetch: refetchOAuthConfig } = useTriggerOAuthConfig(detail?.provider || '', supportedMethods.includes(SupportedCreationMethods.OAUTH))
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
 
@@ -63,11 +63,11 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     }
   }, [t])
 
-  const onClickClientSettings = (e: React.MouseEvent<HTMLDivElement | HTMLButtonElement>) => {
+  const onClickClientSettings = useCallback((e: React.MouseEvent<HTMLDivElement | HTMLButtonElement>) => {
     e.stopPropagation()
     e.preventDefault()
     showClientSettingsModal()
-  }
+  }, [showClientSettingsModal])
 
   const allOptions = useMemo(() => {
     const showCustomBadge = oauthConfig?.custom_enabled && oauthConfig?.custom_configured
@@ -104,7 +104,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
         show: supportedMethods.includes(SupportedCreationMethods.MANUAL),
       },
     ]
-  }, [t, oauthConfig, supportedMethods, methodType])
+  }, [t, oauthConfig, supportedMethods, onClickClientSettings])
 
   const onChooseCreateType = async (type: SupportedCreationMethods) => {
     if (type === SupportedCreationMethods.OAUTH) {
