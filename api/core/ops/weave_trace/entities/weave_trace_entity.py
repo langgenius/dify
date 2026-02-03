@@ -82,6 +82,8 @@ class WeaveTraceModel(WeaveTokenUsage, WeaveMultiModel):
                                 "file_list": file_list,
                             },
                         }
+                    case _:
+                        pass
                 return data
             else:
                 return {

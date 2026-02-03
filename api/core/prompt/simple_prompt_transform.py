@@ -128,6 +128,8 @@ class SimplePromptTransform(PromptTransform):
                     variables["#query#"] = query or ""
                 case "#histories#":
                     variables["#histories#"] = histories or ""
+                case _:
+                    pass
 
         prompt_template = prompt_template_config["prompt_template"]
         if not isinstance(prompt_template, PromptTemplateParser):

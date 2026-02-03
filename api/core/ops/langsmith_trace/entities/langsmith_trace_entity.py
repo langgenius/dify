@@ -84,6 +84,8 @@ class LangSmithRunModel(LangSmithTokenUsage, LangSmithMultiModel):
                             "file_list": file_list,
                         },
                     }
+                case _:
+                    pass
         elif isinstance(v, list):
             data = {}
             if len(v) > 0 and isinstance(v[0], dict):
@@ -103,6 +105,8 @@ class LangSmithRunModel(LangSmithTokenUsage, LangSmithMultiModel):
                                 "file_list": file_list,
                             },
                         }
+                    case _:
+                        pass
                 return data
             else:
                 return {
