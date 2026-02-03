@@ -13,7 +13,12 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 from sqlalchemy import select
 
 from core.agent.entities import AgentEntity, AgentLog, AgentResult, AgentToolEntity, ExecutionContext
-from core.agent.output_tools import build_agent_output_tools
+from core.agent.output_tools import (
+    FINAL_OUTPUT_TOOL,
+    FINAL_STRUCTURED_OUTPUT_TOOL,
+    OUTPUT_TEXT_TOOL,
+    build_agent_output_tools,
+)
 from core.agent.patterns import StrategyFactory
 from core.app.entities.app_asset_entities import AppAssetFileTree
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -2268,6 +2273,25 @@ class LLMNode(Node[LLMNodeData]):
                 ),
                 is_final=False,
             )
+            output_tool_names = {OUTPUT_TEXT_TOOL, FINAL_OUTPUT_TOOL, FINAL_STRUCTURED_OUTPUT_TOOL}
+            if tool_name in output_tool_names:
+                content = ""
+                if tool_name in (OUTPUT_TEXT_TOOL, FINAL_OUTPUT_TOOL):
+                    content = payload.tool_args["text"]
+                elif tool_name == FINAL_STRUCTURED_OUTPUT_TOOL:
+                    content = json.dumps(payload.tool_args["data"], ensure_ascii=False)
+
+                if content:
+                    yield StreamChunkEvent(
+                        selector=[self._node_id, "text"],
+                        chunk=content,
+                        is_final=False,
+                    )
+                    yield StreamChunkEvent(
+                        selector=[self._node_id, "generation", "content"],
+                        chunk=content,
+                        is_final=False,
+                    )
 
         if output.log_type == AgentLog.LogType.TOOL_CALL and output.status != AgentLog.LogStatus.START:
             tool_name = payload.tool_name
