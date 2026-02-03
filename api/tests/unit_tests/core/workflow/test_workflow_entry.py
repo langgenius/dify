@@ -11,12 +11,12 @@ from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
+from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.limits import CodeNodeLimits
 from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
-from core.workflow.entities.graph_config import NodeConfigDictAdapter
 
 
 @pytest.fixture(autouse=True)
