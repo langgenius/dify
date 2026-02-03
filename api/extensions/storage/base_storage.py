@@ -39,7 +39,13 @@ class BaseStorage(ABC):
         """
         raise NotImplementedError("This storage backend doesn't support scanning")
 
-    def get_download_url(self, filename: str, expires_in: int = 3600) -> str:
+    def get_download_url(
+        self,
+        filename: str,
+        expires_in: int = 3600,
+        *,
+        download_filename: str | None = None,
+    ) -> str:
         """
         Generate a pre-signed URL for downloading a file.
 
@@ -49,6 +55,9 @@ class BaseStorage(ABC):
         Args:
             filename: The file path/key in storage
             expires_in: URL validity duration in seconds (default: 1 hour)
+            download_filename: If provided, the browser will use this as the downloaded
+                file name instead of the storage key. Implemented via response header
+                override (e.g., Content-Disposition) where supported.
 
         Returns:
             Pre-signed URL string
@@ -58,9 +67,21 @@ class BaseStorage(ABC):
         """
         raise NotImplementedError("This storage backend doesn't support pre-signed URLs")
 
-    def get_download_urls(self, filenames: list[str], expires_in: int = 3600) -> list[str]:
+    def get_download_urls(
+        self,
+        filenames: list[str],
+        expires_in: int = 3600,
+        *,
+        download_filenames: list[str] | None = None,
+    ) -> list[str]:
         """
         Generate pre-signed URLs for downloading multiple files.
+
+        Args:
+            filenames: List of file paths/keys in storage
+            expires_in: URL validity duration in seconds (default: 1 hour)
+            download_filenames: If provided, must match len(filenames). Each element
+                specifies the download filename for the corresponding file.
         """
         raise NotImplementedError("This storage backend doesn't support pre-signed URLs")
 

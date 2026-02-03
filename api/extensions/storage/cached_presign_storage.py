@@ -1,6 +1,8 @@
 """Storage wrapper that caches presigned download URLs."""
 
+import hashlib
 import logging
+from itertools import starmap
 
 from extensions.ext_redis import redis_client
 from extensions.storage.base_storage import BaseStorage
@@ -39,23 +41,31 @@ class CachedPresignStorage(StorageWrapper):
         super().delete(filename)
         self.invalidate([filename])
 
-    def get_download_url(self, filename: str, expires_in: int = 3600) -> str:
+    def get_download_url(
+        self,
+        filename: str,
+        expires_in: int = 3600,
+        *,
+        download_filename: str | None = None,
+    ) -> str:
         """Get a presigned download URL, using cache when available.
 
         Args:
             filename: The file path/key in storage
             expires_in: URL validity duration in seconds (default: 1 hour)
+            download_filename: If provided, the browser will use this as the downloaded
+                file name. Cache keys include this value to avoid conflicts.
 
         Returns:
             Presigned URL string
         """
-        cache_key = self._cache_key(filename)
+        cache_key = self._cache_key(filename, download_filename)
 
         cached = self._get_cached(cache_key)
         if cached:
             return cached
 
-        url = self._storage.get_download_url(filename, expires_in)
+        url = self._storage.get_download_url(filename, expires_in, download_filename=download_filename)
         self._set_cached(cache_key, url, expires_in)
 
         return url
@@ -64,12 +74,16 @@ class CachedPresignStorage(StorageWrapper):
         self,
         filenames: list[str],
         expires_in: int = 3600,
+        *,
+        download_filenames: list[str] | None = None,
     ) -> list[str]:
         """Batch get download URLs with cache.
 
         Args:
             filenames: List of file paths/keys in storage
             expires_in: URL validity duration in seconds (default: 1 hour)
+            download_filenames: If provided, must match len(filenames). Each element
+                specifies the download filename for the corresponding file.
 
         Returns:
             List of presigned URLs in the same order as filenames
@@ -77,22 +91,32 @@ class CachedPresignStorage(StorageWrapper):
         if not filenames:
             return []
 
-        cache_keys = [self._cache_key(f) for f in filenames]
+        # Build cache keys including download_filename for uniqueness
+        if download_filenames is None:
+            cache_keys = [self._cache_key(f, None) for f in filenames]
+        else:
+            cache_keys = list(starmap(self._cache_key, zip(filenames, download_filenames, strict=True)))
+
         cached_values = self._get_cached_batch(cache_keys)
 
         # Build results list, tracking which indices need fetching
         results: list[str | None] = list(cached_values)
         uncached_indices: list[int] = []
         uncached_filenames: list[str] = []
+        uncached_download_filenames: list[str | None] = []
 
         for i, (filename, cached) in enumerate(zip(filenames, cached_values)):
             if not cached:
                 uncached_indices.append(i)
                 uncached_filenames.append(filename)
+                uncached_download_filenames.append(download_filenames[i] if download_filenames else None)
 
         # Batch fetch uncached URLs from storage
         if uncached_filenames:
-            uncached_urls = [self._storage.get_download_url(f, expires_in) for f in uncached_filenames]
+            uncached_urls = [
+                self._storage.get_download_url(f, expires_in, download_filename=df)
+                for f, df in zip(uncached_filenames, uncached_download_filenames, strict=True)
+            ]
 
             # Fill results at correct positions
             for idx, url in zip(uncached_indices, uncached_urls):
@@ -119,8 +143,19 @@ class CachedPresignStorage(StorageWrapper):
         except Exception:
             logger.warning("Failed to invalidate presign cache", exc_info=True)
 
-    def _cache_key(self, filename: str) -> str:
-        """Generate cache key for a filename."""
+    def _cache_key(self, filename: str, download_filename: str | None = None) -> str:
+        """Generate cache key for a filename.
+
+        When download_filename is provided, its hash is appended to the key to ensure
+        different download names for the same storage key get separate cache entries.
+        We use a hash (truncated MD5) instead of the raw string because:
+        - download_filename may contain special characters unsafe for Redis keys
+        - Hash collisions only cause a cache miss, no functional impact
+        """
+        if download_filename:
+            # Use first 16 chars of MD5 hex digest (64 bits) - sufficient for cache key uniqueness
+            name_hash = hashlib.md5(download_filename.encode("utf-8")).hexdigest()[:16]
+            return f"{self._cache_key_prefix}:{filename}::{name_hash}"
         return f"{self._cache_key_prefix}:{filename}"
 
     def _compute_ttl(self, expires_in: int) -> int:

@@ -32,10 +32,22 @@ class DummyStorage(BaseStorage):
     def delete(self, filename: str):
         return None
 
-    def get_download_url(self, filename: str, expires_in: int = 3600) -> str:
+    def get_download_url(
+        self,
+        filename: str,
+        expires_in: int = 3600,
+        *,
+        download_filename: str | None = None,
+    ) -> str:
         raise NotImplementedError
 
-    def get_download_urls(self, filenames: list[str], expires_in: int = 3600) -> list[str]:
+    def get_download_urls(
+        self,
+        filenames: list[str],
+        expires_in: int = 3600,
+        *,
+        download_filenames: list[str] | None = None,
+    ) -> list[str]:
         raise NotImplementedError
 
     def get_upload_url(self, filename: str, expires_in: int = 3600) -> str:

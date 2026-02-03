@@ -44,11 +44,23 @@ class StorageWrapper(BaseStorage):
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         return self._storage.scan(path, files=files, directories=directories)
 
-    def get_download_url(self, filename: str, expires_in: int = 3600) -> str:
-        return self._storage.get_download_url(filename, expires_in)
+    def get_download_url(
+        self,
+        filename: str,
+        expires_in: int = 3600,
+        *,
+        download_filename: str | None = None,
+    ) -> str:
+        return self._storage.get_download_url(filename, expires_in, download_filename=download_filename)
 
-    def get_download_urls(self, filenames: list[str], expires_in: int = 3600) -> list[str]:
-        return self._storage.get_download_urls(filenames, expires_in)
+    def get_download_urls(
+        self,
+        filenames: list[str],
+        expires_in: int = 3600,
+        *,
+        download_filenames: list[str] | None = None,
+    ) -> list[str]:
+        return self._storage.get_download_urls(filenames, expires_in, download_filenames=download_filenames)
 
     def get_upload_url(self, filename: str, expires_in: int = 3600) -> str:
         return self._storage.get_upload_url(filename, expires_in)

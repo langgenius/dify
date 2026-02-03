@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Generator
+from urllib.parse import quote
 
 import boto3
 from botocore.client import BaseClient, Config
@@ -105,23 +106,73 @@ class AwsS3Storage(BaseStorage):
     def delete(self, filename):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)
 
-    def get_download_url(self, filename: str, expires_in: int = 3600) -> str:
+    def get_download_url(
+        self,
+        filename: str,
+        expires_in: int = 3600,
+        *,
+        download_filename: str | None = None,
+    ) -> str:
+        """Generate a presigned download URL.
+
+        Args:
+            filename: The S3 object key
+            expires_in: URL validity duration in seconds
+            download_filename: If provided, sets Content-Disposition header so browser
+                downloads the file with this name instead of the S3 key.
+        """
+        params: dict = {"Bucket": self.bucket_name, "Key": filename}
+        if download_filename:
+            # RFC 5987 / RFC 6266: Use both filename and filename* for compatibility.
+            # filename* with UTF-8 encoding handles non-ASCII characters.
+            encoded = quote(download_filename)
+            params["ResponseContentDisposition"] = f"attachment; filename=\"{encoded}\"; filename*=UTF-8''{encoded}"
         url: str = self.client.generate_presigned_url(
             ClientMethod="get_object",
-            Params={"Bucket": self.bucket_name, "Key": filename},
+            Params=params,
             ExpiresIn=expires_in,
         )
         return url
 
-    def get_download_urls(self, filenames: list[str], expires_in: int = 3600) -> list[str]:
-        return [
-            self.client.generate_presigned_url(
-                ClientMethod="get_object",
-                Params={"Bucket": self.bucket_name, "Key": filename},
-                ExpiresIn=expires_in,
+    def get_download_urls(
+        self,
+        filenames: list[str],
+        expires_in: int = 3600,
+        *,
+        download_filenames: list[str] | None = None,
+    ) -> list[str]:
+        """Generate presigned download URLs for multiple files.
+
+        Args:
+            filenames: List of S3 object keys
+            expires_in: URL validity duration in seconds
+            download_filenames: If provided, must match len(filenames). Sets
+                Content-Disposition for each file.
+        """
+        if download_filenames is None:
+            return [
+                self.client.generate_presigned_url(
+                    ClientMethod="get_object",
+                    Params={"Bucket": self.bucket_name, "Key": filename},
+                    ExpiresIn=expires_in,
+                )
+                for filename in filenames
+            ]
+
+        urls: list[str] = []
+        for filename, download_filename in zip(filenames, download_filenames, strict=True):
+            params: dict = {"Bucket": self.bucket_name, "Key": filename}
+            if download_filename:
+                encoded = quote(download_filename)
+                params["ResponseContentDisposition"] = f"attachment; filename=\"{encoded}\"; filename*=UTF-8''{encoded}"
+            urls.append(
+                self.client.generate_presigned_url(
+                    ClientMethod="get_object",
+                    Params=params,
+                    ExpiresIn=expires_in,
+                )
             )
-            for filename in filenames
-        ]
+        return urls
 
     def get_upload_url(self, filename: str, expires_in: int = 3600) -> str:
         url: str = self.client.generate_presigned_url(

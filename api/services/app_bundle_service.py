@@ -145,8 +145,9 @@ class AppBundleService:
             archive = zs.zip(src="bundle_root", include_base=False)
             zs.upload(archive, upload_url)
 
-        download_url = asset_storage.get_download_url(export_key, expires_in)
-        return BundleExportResult(download_url=download_url, filename=f"{safe_name}.zip")
+        bundle_filename = f"{safe_name}.zip"
+        download_url = asset_storage.get_download_url(export_key, expires_in, download_filename=bundle_filename)
+        return BundleExportResult(download_url=download_url, filename=bundle_filename)
 
     # ========== Import ==========
 

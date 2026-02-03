@@ -366,7 +366,7 @@ class AppAssetService:
 
             asset_storage = AppAssetService.get_storage()
             key = AssetPaths.draft(app_model.tenant_id, app_model.id, node_id)
-            return asset_storage.get_download_url(key, expires_in)
+            return asset_storage.get_download_url(key, expires_in, download_filename=node.name)
 
     @staticmethod
     def get_source_zip_bytes(tenant_id: str, app_id: str, workflow_id: str) -> bytes | None:

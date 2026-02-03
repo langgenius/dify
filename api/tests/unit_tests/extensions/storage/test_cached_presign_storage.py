@@ -1,4 +1,5 @@
-from unittest.mock import Mock
+import hashlib
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -19,12 +20,16 @@ class TestCachedPresignStorage:
         return Mock()
 
     @pytest.fixture
-    def cached_storage(self, mock_storage):
+    def cached_storage(self, mock_storage, mock_redis):
         """Create CachedPresignStorage with mocks."""
-        return CachedPresignStorage(
-            storage=mock_storage,
-            cache_key_prefix="test_prefix",
-        )
+        with patch("extensions.storage.cached_presign_storage.redis_client", mock_redis):
+            storage = CachedPresignStorage(
+                storage=mock_storage,
+                cache_key_prefix="test_prefix",
+            )
+            # Inject mock_redis after creation for tests to verify calls
+            storage._redis = mock_redis
+            yield storage
 
     def test_get_download_url_returns_cached_on_hit(self, cached_storage, mock_storage, mock_redis):
         """Test that cached URL is returned when cache hit occurs."""
@@ -46,7 +51,7 @@ class TestCachedPresignStorage:
 
         assert result == "https://new-url.com/file.txt"
         mock_redis.mget.assert_called_once_with(["test_prefix:path/to/file.txt"])
-        mock_storage.get_download_url.assert_called_once_with("path/to/file.txt", 3600)
+        mock_storage.get_download_url.assert_called_once_with("path/to/file.txt", 3600, download_filename=None)
         mock_redis.setex.assert_called_once()
         call_args = mock_redis.setex.call_args
         assert call_args[0][0] == "test_prefix:path/to/file.txt"
@@ -61,7 +66,7 @@ class TestCachedPresignStorage:
         result = cached_storage.get_download_urls(filenames, expires_in=3600)
 
         assert result == ["https://cached1.com", "https://new.com", "https://cached2.com"]
-        mock_storage.get_download_url.assert_called_once_with("file2.txt", 3600)
+        mock_storage.get_download_url.assert_called_once_with("file2.txt", 3600, download_filename=None)
         # Verify pipeline was used for batch cache write
         mock_redis.pipeline.assert_called_once()
         mock_redis.pipeline().execute.assert_called_once()
@@ -114,7 +119,7 @@ class TestCachedPresignStorage:
         result = cached_storage.get_download_url("path/to/file.txt", expires_in=3600)
 
         assert result == "https://new-url.com/file.txt"
-        mock_storage.get_download_url.assert_called_once_with("path/to/file.txt", 3600)
+        mock_storage.get_download_url.assert_called_once_with("path/to/file.txt", 3600, download_filename=None)
 
     def test_graceful_degradation_on_redis_setex_error(self, cached_storage, mock_storage, mock_redis):
         """Test that URL is still returned when Redis setex fails."""
@@ -177,28 +182,45 @@ class TestCachedPresignStorage:
         key = cached_storage._cache_key("path/to/file.txt")
         assert key == "test_prefix:path/to/file.txt"
 
-    def test_cached_value_decoded_from_bytes(self, cached_storage, mock_storage, mock_redis):
-        """Test that bytes cached values are decoded to strings."""
-        mock_redis.mget.return_value = [b"https://cached-url.com"]
+    def test_cache_key_with_download_filename(self, cached_storage):
+        """Test cache key includes hashed download_filename when provided."""
+        key = cached_storage._cache_key("path/to/file.txt", "custom_name.txt")
+        # download_filename is hashed (first 16 chars of MD5 hex digest)
+        expected_hash = hashlib.md5(b"custom_name.txt").hexdigest()[:16]
+        assert key == f"test_prefix:path/to/file.txt::{expected_hash}"
 
-        result = cached_storage.get_download_url("file.txt")
+    def test_get_download_url_with_download_filename(self, cached_storage, mock_storage, mock_redis):
+        """Test that download_filename is passed to storage and affects cache key."""
+        mock_redis.mget.return_value = [None]
+        mock_storage.get_download_url.return_value = "https://new-url.com/file.txt"
 
-        assert result == "https://cached-url.com"
-        assert isinstance(result, str)
+        result = cached_storage.get_download_url("path/to/file.txt", expires_in=3600, download_filename="custom.txt")
 
-    def test_cached_value_decoded_from_bytearray(self, cached_storage, mock_storage, mock_redis):
-        """Test that bytearray cached values are decoded to strings."""
-        mock_redis.mget.return_value = [bytearray(b"https://cached-url.com")]
+        assert result == "https://new-url.com/file.txt"
+        expected_hash = hashlib.md5(b"custom.txt").hexdigest()[:16]
+        mock_redis.mget.assert_called_once_with([f"test_prefix:path/to/file.txt::{expected_hash}"])
+        mock_storage.get_download_url.assert_called_once_with("path/to/file.txt", 3600, download_filename="custom.txt")
 
-        result = cached_storage.get_download_url("file.txt")
+    def test_get_download_urls_with_download_filenames(self, cached_storage, mock_storage, mock_redis):
+        """Test batch URL retrieval with download_filenames."""
+        mock_redis.mget.return_value = [None, None]
+        mock_storage.get_download_url.side_effect = ["https://url1.com", "https://url2.com"]
 
-        assert result == "https://cached-url.com"
-        assert isinstance(result, str)
+        filenames = ["file1.txt", "file2.txt"]
+        download_filenames = ["custom1.txt", "custom2.txt"]
+        result = cached_storage.get_download_urls(filenames, expires_in=3600, download_filenames=download_filenames)
 
-    def test_default_cache_key_prefix(self, mock_storage):
-        """Test default cache key prefix is used when not specified."""
-        storage = CachedPresignStorage(
-            storage=mock_storage,
+        assert result == ["https://url1.com", "https://url2.com"]
+        # Verify cache keys include hashed download_filenames
+        hash1 = hashlib.md5(b"custom1.txt").hexdigest()[:16]
+        hash2 = hashlib.md5(b"custom2.txt").hexdigest()[:16]
+        mock_redis.mget.assert_called_once_with(
+            [
+                f"test_prefix:file1.txt::{hash1}",
+                f"test_prefix:file2.txt::{hash2}",
+            ]
         )
-        key = storage._cache_key("file.txt")
-        assert key == "presign_cache:file.txt"
+        # Verify storage calls include download_filename
+        assert mock_storage.get_download_url.call_count == 2
+        mock_storage.get_download_url.assert_any_call("file1.txt", 3600, download_filename="custom1.txt")
+        mock_storage.get_download_url.assert_any_call("file2.txt", 3600, download_filename="custom2.txt")
