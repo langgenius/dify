@@ -61,6 +61,12 @@ vi.mock('@/service/use-pipeline', () => ({
   }),
 }))
 
+// Mock download utility
+const mockDownloadBlob = vi.fn()
+vi.mock('@/utils/download', () => ({
+  downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
+}))
+
 // Mock workflow service
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
@@ -77,32 +83,8 @@ vi.mock('@/app/components/workflow/constants', () => ({
 // ============================================================================
 
 describe('useDSL', () => {
-  let mockLink: { href: string, download: string, click: ReturnType<typeof vi.fn> }
-  let originalCreateElement: typeof document.createElement
-  let mockCreateObjectURL: ReturnType<typeof vi.spyOn>
-  let mockRevokeObjectURL: ReturnType<typeof vi.spyOn>
-
   beforeEach(() => {
     vi.clearAllMocks()
-
-    // Create a proper mock link element
-    mockLink = {
-      href: '',
-      download: '',
-      click: vi.fn(),
-    }
-
-    // Save original and mock selectively - only intercept 'a' elements
-    originalCreateElement = document.createElement.bind(document)
-    document.createElement = vi.fn((tagName: string) => {
-      if (tagName === 'a') {
-        return mockLink as unknown as HTMLElement
-      }
-      return originalCreateElement(tagName)
-    }) as typeof document.createElement
-
-    mockCreateObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test-url')
-    mockRevokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
 
     // Default store state
     mockWorkflowStoreGetState.mockReturnValue({
@@ -118,9 +100,6 @@ describe('useDSL', () => {
   })
 
   afterEach(() => {
-    document.createElement = originalCreateElement
-    mockCreateObjectURL.mockRestore()
-    mockRevokeObjectURL.mockRestore()
     vi.clearAllMocks()
   })
 
@@ -187,9 +166,7 @@ describe('useDSL', () => {
         await result.current.handleExportDSL()
       })
 
-      expect(document.createElement).toHaveBeenCalledWith('a')
-      expect(mockCreateObjectURL).toHaveBeenCalled()
-      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:test-url')
+      expect(mockDownloadBlob).toHaveBeenCalled()
     })
 
     it('should use correct file extension for download', async () => {
@@ -199,17 +176,25 @@ describe('useDSL', () => {
         await result.current.handleExportDSL()
       })
 
-      expect(mockLink.download).toBe('Test Knowledge Base.pipeline')
+      expect(mockDownloadBlob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fileName: 'Test Knowledge Base.pipeline',
+        }),
+      )
     })
 
-    it('should trigger download click', async () => {
+    it('should pass blob data to downloadBlob', async () => {
       const { result } = renderHook(() => useDSL())
 
       await act(async () => {
         await result.current.handleExportDSL()
       })
 
-      expect(mockLink.click).toHaveBeenCalled()
+      expect(mockDownloadBlob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.any(Blob),
+        }),
+      )
     })
 
     it('should show error notification on export failure', async () => {
