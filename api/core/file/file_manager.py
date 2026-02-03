@@ -168,3 +168,18 @@ def _to_url(f: File, /):
         return sign_tool_file(tool_file_id=f.related_id, extension=f.extension)
     else:
         raise ValueError(f"Unsupported transfer method: {f.transfer_method}")
+
+
+class FileManager:
+    """
+    Adapter exposing file manager helpers behind FileManagerProtocol.
+
+    This is intentionally a thin wrapper over the existing module-level functions so callers can inject it
+    where a protocol-typed file manager is expected.
+    """
+
+    def download(self, f: File, /) -> bytes:
+        return download(f)
+
+
+file_manager = FileManager()

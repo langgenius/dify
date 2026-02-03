@@ -139,7 +139,7 @@ describe('CreateAppModal', () => {
 
       expect(screen.getByText('explore.appCustomize.title:{"name":"My App"}')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /common\.operation\.create/ })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /common\.operation\.cancel/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
     })
 
     it('should render edit-only fields when editing a chat app', () => {

@@ -94,7 +94,6 @@ describe('billing utils', () => {
       knowledge_pipeline: {
         publish_enabled: false,
       },
-      human_input_email_delivery_enabled: false,
       ...overrides,
     })
 

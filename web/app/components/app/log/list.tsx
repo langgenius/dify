@@ -68,7 +68,6 @@ type IDrawerContext = {
 }
 
 type StatusCount = {
-  paused: number
   success: number
   failed: number
   partial_success: number
@@ -94,15 +93,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   if (!statusCount)
     return null
 
-  if (statusCount.paused > 0) {
-    return (
-      <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
-        <Indicator color="yellow" />
-        <span className="text-util-colors-warning-warning-600">Pending</span>
-      </div>
-    )
-  }
-  else if (statusCount.partial_success + statusCount.failed === 0) {
+  if (statusCount.partial_success + statusCount.failed === 0) {
     return (
       <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
         <Indicator color="green" />
@@ -305,7 +296,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       if (abortControllerRef.current === controller)
         abortControllerRef.current = null
     }
-  }, [detail.id, hasMore, timezone, t, appDetail])
+  }, [detail.id, hasMore, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
 
   // Derive chatItemTree, threadChatItems, and oldestAnswerIdRef from allChatItems
   useEffect(() => {
@@ -420,7 +411,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       return false
     }
-  }, [allChatItems, appDetail?.id, notify, t])
+  }, [allChatItems, appDetail?.id, t])
 
   const fetchInitiated = useRef(false)
 
@@ -513,7 +504,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     finally {
       setIsLoading(false)
     }
-  }, [detail.id, hasMore, isLoading, timezone, t, appDetail])
+  }, [detail.id, hasMore, isLoading, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
 
   const handleScroll = useCallback(() => {
     const scrollableDiv = document.getElementById('scrollableDiv')

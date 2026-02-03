@@ -78,12 +78,21 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                 indexing_technique = node_data.indexing_technique or dataset.indexing_technique
                 summary_index_setting = node_data.summary_index_setting or dataset.summary_index_setting
 
+                # Try to get document language if document_id is available
+                doc_language = None
+                document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
+                if document_id:
+                    document = db.session.query(Document).filter_by(id=document_id.value).first()
+                    if document and document.doc_language:
+                        doc_language = document.doc_language
+
                 outputs = self._get_preview_output_with_summaries(
                     node_data.chunk_structure,
                     chunks,
                     dataset=dataset,
                     indexing_technique=indexing_technique,
                     summary_index_setting=summary_index_setting,
+                    doc_language=doc_language,
                 )
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -315,6 +324,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         dataset: Dataset,
         indexing_technique: str | None = None,
         summary_index_setting: dict | None = None,
+        doc_language: str | None = None,
     ) -> Mapping[str, Any]:
         """
         Generate preview output with summaries for chunks in preview mode.
@@ -326,6 +336,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             dataset: Dataset object (for tenant_id)
             indexing_technique: Indexing technique from node config or dataset
             summary_index_setting: Summary index setting from node config or dataset
+            doc_language: Optional document language to ensure summary is generated in the correct language
         """
         index_processor = IndexProcessorFactory(chunk_structure).init_index_processor()
         preview_output = index_processor.format_preview(chunks)
@@ -365,6 +376,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                                 tenant_id=dataset.tenant_id,
                                 text=preview_item["content"],
                                 summary_index_setting=summary_index_setting,
+                                document_language=doc_language,
                             )
                             if summary:
                                 preview_item["summary"] = summary
@@ -374,6 +386,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                             tenant_id=dataset.tenant_id,
                             text=preview_item["content"],
                             summary_index_setting=summary_index_setting,
+                            document_language=doc_language,
                         )
                         if summary:
                             preview_item["summary"] = summary

@@ -4,14 +4,12 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
-import { cn } from '@/utils/classnames'
 
 type PlaceholderProps = {
   disableVariableInsertion?: boolean
-  hideBadge?: boolean
 }
 
-const Placeholder = ({ disableVariableInsertion = false, hideBadge = false }: PlaceholderProps) => {
+const Placeholder = ({ disableVariableInsertion = false }: PlaceholderProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
 
@@ -25,10 +23,7 @@ const Placeholder = ({ disableVariableInsertion = false, hideBadge = false }: Pl
 
   return (
     <div
-      className={cn(
-        'pointer-events-auto flex h-full w-full cursor-text px-2',
-        !hideBadge ? 'items-center' : 'items-start py-1',
-      )}
+      className="pointer-events-auto flex h-full w-full cursor-text items-center px-2"
       onClick={(e) => {
         e.stopPropagation()
         handleInsert('')
@@ -52,13 +47,11 @@ const Placeholder = ({ disableVariableInsertion = false, hideBadge = false }: Pl
           </>
         )}
       </div>
-      {!hideBadge && (
-        <Badge
-          className="shrink-0"
-          text="String"
-          uppercase={false}
-        />
-      )}
+      <Badge
+        className="shrink-0"
+        text="String"
+        uppercase={false}
+      />
     </div>
   )
 }

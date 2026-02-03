@@ -33,7 +33,6 @@ export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
     || nodeType === BlockEnum.IfElse
     || nodeType === BlockEnum.VariableAggregator
     || nodeType === BlockEnum.Assigner
-    || nodeType === BlockEnum.HumanInput
     || nodeType === BlockEnum.DataSource
     || nodeType === BlockEnum.TriggerSchedule
     || nodeType === BlockEnum.TriggerWebhook
