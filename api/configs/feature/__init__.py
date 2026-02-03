@@ -1290,6 +1290,55 @@ class SwaggerUIConfig(BaseSettings):
         return deploy_env.upper() != "PRODUCTION"
 
 
+class YanfaAuthConfig(BaseSettings):
+    """
+    Configuration for Yanfa external authentication.
+    用于与Yanfa Java后端系统集成，支持使用Java JWT token直接访问Dify。
+    启用后会从Yanfa数据库读取用户信息，实现共用账号体系。
+    """
+
+    YANFA_AUTH_ENABLED: bool = Field(
+        description="Enable Yanfa external authentication (requires database config)",
+        default=False,
+    )
+
+    YANFA_JWT_SECRET: str = Field(
+        description="JWT secret key shared with Yanfa Java backend",
+        default="",
+    )
+
+    YANFA_DEFAULT_TENANT_ID: str | None = Field(
+        description="Default Dify workspace (tenant) ID for Yanfa users",
+        default=None,
+    )
+
+    # Yanfa数据库配置
+    YANFA_DB_HOST: str = Field(
+        description="Yanfa database host",
+        default="localhost",
+    )
+
+    YANFA_DB_PORT: int = Field(
+        description="Yanfa database port",
+        default=3306,
+    )
+
+    YANFA_DB_USERNAME: str = Field(
+        description="Yanfa database username",
+        default="root",
+    )
+
+    YANFA_DB_PASSWORD: str = Field(
+        description="Yanfa database password",
+        default="",
+    )
+
+    YANFA_DB_DATABASE: str = Field(
+        description="Yanfa database name",
+        default="yanfa",
+    )
+
+
 class TenantIsolatedTaskQueueConfig(BaseSettings):
     TENANT_ISOLATED_TASK_CONCURRENCY: int = Field(
         description="Number of tasks allowed to be delivered concurrently from isolated queue per tenant",
@@ -1332,6 +1381,7 @@ class FeatureConfig(
     LoginConfig,
     AccountConfig,
     SwaggerUIConfig,
+    YanfaAuthConfig,  # Yanfa external authentication
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,

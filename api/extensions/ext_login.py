@@ -11,6 +11,7 @@ from dify_app import DifyApp
 from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_access_token, extract_webapp_passport
+from libs.yanfa_auth import YanfaPassportService, authenticate_yanfa_token, YanfaAuthConfig
 from models import Account, Tenant, TenantAccountJoin
 from models.model import AppMCPServer, EndUser
 from services.account_service import AccountService
@@ -47,6 +48,18 @@ def load_user_from_request(request_from_flask_login):
                     if account:
                         account.current_tenant = tenant
                         return account
+
+    # Check for Yanfa external token authentication
+    if YanfaAuthConfig.is_enabled() and auth_token:
+        yanfa_passport = YanfaPassportService()
+        if yanfa_passport.is_yanfa_token(auth_token):
+            # Extract app_id from request if available (for EndUser creation)
+            app_id = request.headers.get("X-App-Id") or request.args.get("app_id")
+            return authenticate_yanfa_token(
+                token=auth_token,
+                blueprint=request.blueprint,
+                app_id=app_id
+            )
 
     if request.blueprint in {"console", "inner_api"}:
         if not auth_token:
