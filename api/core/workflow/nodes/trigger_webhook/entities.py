@@ -74,8 +74,6 @@ class WebhookData(BaseNodeData):
     Webhook Node Data.
     """
 
-    type: NodeType = NodeType.TRIGGER_WEBHOOK
-
     class SyncMode(StrEnum):
         SYNC = "async"  # only support
 
