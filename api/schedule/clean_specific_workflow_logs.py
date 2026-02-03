@@ -54,7 +54,7 @@ def clean_specific_workflow_logs():
     start_at = time.perf_counter()
 
     retention_days = dify_config.SPECIFIC_WORKFLOW_LOG_RETENTION_DAYS
-    cutoff_date = datetime.datetime.now() - datetime.timedelta(days=retention_days)
+    cutoff_date = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=retention_days)
     session_factory = sessionmaker(db.engine, expire_on_commit=False)
 
     try:
