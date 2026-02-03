@@ -1,8 +1,11 @@
 import type { Tag } from '@/app/components/plugins/hooks'
+import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { PluginCategoryEnum } from '../../types'
 import SearchBox from './index'
 import SearchBoxWrapper from './search-box-wrapper'
+import SearchDropdown from './search-dropdown'
 import MarketplaceTrigger from './trigger/marketplace'
 import ToolSelectorTrigger from './trigger/tool-selector'
 
@@ -13,32 +16,72 @@ import ToolSelectorTrigger from './trigger/tool-selector'
 // Mock i18n translation hook
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => {
+    t: (key: string, options?: { ns?: string, num?: number, author?: string }) => {
       // Build full key with namespace prefix if provided
       const fullKey = options?.ns ? `${options.ns}.${key}` : key
       const translations: Record<string, string> = {
         'pluginTags.allTags': 'All Tags',
         'pluginTags.searchTags': 'Search tags',
         'plugin.searchPlugins': 'Search plugins',
+        'plugin.install': `${options?.num || 0} installs`,
+        'plugin.marketplace.searchDropdown.plugins': 'Plugins',
+        'plugin.marketplace.searchDropdown.showAllResults': 'Show all search results',
+        'plugin.marketplace.searchDropdown.enter': 'Enter',
+        'plugin.marketplace.searchDropdown.byAuthor': `by ${options?.author || ''}`,
       }
       return translations[fullKey] || key
     },
   }),
 }))
 
+vi.mock('ahooks', () => ({
+  useDebounce: (value: string) => value,
+}))
+
+vi.mock('jotai', async () => {
+  const actual = await vi.importActual<typeof import('jotai')>('jotai')
+  return {
+    ...actual,
+    useSetAtom: () => vi.fn(),
+  }
+})
+
+vi.mock('@/hooks/use-i18n', () => ({
+  useRenderI18nObject: () => (value: Record<string, string> | string) => {
+    if (typeof value === 'string')
+      return value
+    return value.en_US || Object.values(value)[0] || ''
+  },
+}))
+
 // Mock marketplace state hooks
-const { mockSearchPluginText, mockHandleSearchPluginTextChange, mockFilterPluginTags, mockHandleFilterPluginTagsChange } = vi.hoisted(() => {
+const {
+  mockSearchPluginText,
+  mockHandleSearchPluginTextChange,
+  mockFilterPluginTags,
+  mockHandleFilterPluginTagsChange,
+  mockActivePluginType,
+  mockSortValue,
+} = vi.hoisted(() => {
   return {
     mockSearchPluginText: '',
     mockHandleSearchPluginTextChange: vi.fn(),
     mockFilterPluginTags: [] as string[],
     mockHandleFilterPluginTagsChange: vi.fn(),
+    mockActivePluginType: 'all',
+    mockSortValue: {
+      sortBy: 'install_count',
+      sortOrder: 'DESC',
+    },
   }
 })
 
 vi.mock('../atoms', () => ({
   useSearchPluginText: () => [mockSearchPluginText, mockHandleSearchPluginTextChange],
   useFilterPluginTags: () => [mockFilterPluginTags, mockHandleFilterPluginTagsChange],
+  useActivePluginType: () => [mockActivePluginType, vi.fn()],
+  useMarketplaceSortValue: () => mockSortValue,
+  searchModeAtom: {},
 }))
 
 // Mock useTags hook
@@ -60,7 +103,56 @@ vi.mock('@/app/components/plugins/hooks', () => ({
     tags: mockTags,
     tagsMap: mockTagsMap,
   }),
+  useCategories: () => ({
+    categoriesMap: {
+      'tool': { name: 'tool', label: 'Tool' },
+      'model': { name: 'model', label: 'Model' },
+      'datasource': { name: 'datasource', label: 'Data Source' },
+      'trigger': { name: 'trigger', label: 'Trigger' },
+      'agent-strategy': { name: 'agent-strategy', label: 'Agent Strategy' },
+      'extension': { name: 'extension', label: 'Extension' },
+      'bundle': { name: 'bundle', label: 'Bundle' },
+    },
+  }),
 }))
+
+let mockDropdownPlugins: Plugin[] = []
+vi.mock('../query', () => ({
+  useMarketplacePlugins: () => ({
+    data: { pages: [{ plugins: mockDropdownPlugins }] },
+    isLoading: false,
+  }),
+}))
+
+const createPlugin = (overrides: Partial<Plugin> = {}): Plugin => ({
+  type: 'plugin',
+  org: 'dropbox',
+  author: 'dropbox',
+  name: 'dropbox-search',
+  plugin_id: 'plugin-1',
+  version: '1.0.0',
+  latest_version: '1.0.0',
+  latest_package_identifier: 'pkg-1',
+  icon: 'https://example.com/icon.png',
+  verified: false,
+  label: { en_US: 'Dropbox search' },
+  brief: { en_US: 'Interact with Dropbox files.' },
+  description: { en_US: 'Interact with Dropbox files.' },
+  introduction: '',
+  repository: '',
+  category: PluginCategoryEnum.tool,
+  install_count: 206,
+  endpoint: {
+    settings: [],
+  },
+  tags: [],
+  badges: [],
+  verification: {
+    authorized_category: 'community',
+  },
+  from: 'marketplace',
+  ...overrides,
+})
 
 // Mock portal-to-follow-elem with shared open state
 let mockPortalOpenState = false
@@ -115,6 +207,7 @@ describe('SearchBox', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPortalOpenState = false
+    mockDropdownPlugins = []
   })
 
   // ================================
@@ -424,6 +517,64 @@ describe('SearchBox', () => {
       expect(onSearchChange).toHaveBeenCalledWith('   ')
     })
   })
+
+  // ================================
+  // Submission Tests
+  // ================================
+  describe('Submission', () => {
+    it('should call onSearchSubmit when pressing Enter', () => {
+      const onSearchSubmit = vi.fn()
+      render(<SearchBox {...defaultProps} onSearchSubmit={onSearchSubmit} />)
+
+      const input = screen.getByRole('textbox')
+      fireEvent.keyDown(input, { key: 'Enter' })
+
+      expect(onSearchSubmit).toHaveBeenCalledTimes(1)
+    })
+  })
+})
+
+// ================================
+// SearchDropdown Component Tests
+// ================================
+describe('SearchDropdown', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('Rendering', () => {
+    it('should render plugin items and metadata', () => {
+      render(
+        <SearchDropdown
+          query="dropbox"
+          plugins={[createPlugin()]}
+          onShowAll={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText('Plugins')).toBeInTheDocument()
+      expect(screen.getByText('Dropbox search')).toBeInTheDocument()
+      expect(screen.getByText('Tool')).toBeInTheDocument()
+      expect(screen.getByText('206 installs')).toBeInTheDocument()
+    })
+  })
+
+  describe('Interactions', () => {
+    it('should call onShowAll when clicking show all results', () => {
+      const onShowAll = vi.fn()
+      render(
+        <SearchDropdown
+          query="dropbox"
+          plugins={[createPlugin()]}
+          onShowAll={onShowAll}
+        />,
+      )
+
+      fireEvent.click(screen.getByText('Show all search results'))
+
+      expect(onShowAll).toHaveBeenCalledTimes(1)
+    })
+  })
 })
 
 // ================================
@@ -433,6 +584,7 @@ describe('SearchBoxWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPortalOpenState = false
+    mockDropdownPlugins = []
   })
 
   describe('Rendering', () => {
@@ -457,11 +609,21 @@ describe('SearchBoxWrapper', () => {
   })
 
   describe('Hook Integration', () => {
-    it('should call handleSearchPluginTextChange when search changes', () => {
+    it('should not commit search when input changes', () => {
       render(<SearchBoxWrapper />)
 
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: 'new search' } })
+
+      expect(mockHandleSearchPluginTextChange).not.toHaveBeenCalled()
+    })
+
+    it('should commit search when pressing Enter', () => {
+      render(<SearchBoxWrapper />)
+
+      const input = screen.getByRole('textbox')
+      fireEvent.change(input, { target: { value: 'new search' } })
+      fireEvent.keyDown(input, { key: 'Enter' })
 
       expect(mockHandleSearchPluginTextChange).toHaveBeenCalledWith('new search')
     })
