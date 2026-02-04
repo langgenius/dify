@@ -307,7 +307,8 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
         with session_factory.create_session() as session:
             draft_vars_before = session.query(WorkflowDraftVariable).filter_by(app_id=app_id).count()
             var_files_before = (
-                session.query(WorkflowDraftVariableFile).where(WorkflowDraftVariableFile.id.in_(variable_file_ids))
+                session.query(WorkflowDraftVariableFile)
+                .where(WorkflowDraftVariableFile.id.in_(variable_file_ids))
                 .count()
             )
             upload_files_before = session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).count()
@@ -324,7 +325,8 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
 
         with session_factory.create_session() as session:
             var_files_after = (
-                session.query(WorkflowDraftVariableFile).where(WorkflowDraftVariableFile.id.in_(variable_file_ids))
+                session.query(WorkflowDraftVariableFile)
+                .where(WorkflowDraftVariableFile.id.in_(variable_file_ids))
                 .count()
             )
             upload_files_after = session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).count()
@@ -353,7 +355,8 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
 
         with session_factory.create_session() as session:
             var_files_after = (
-                session.query(WorkflowDraftVariableFile).where(WorkflowDraftVariableFile.id.in_(variable_file_ids))
+                session.query(WorkflowDraftVariableFile)
+                .where(WorkflowDraftVariableFile.id.in_(variable_file_ids))
                 .count()
             )
             upload_files_after = session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).count()
@@ -655,7 +658,8 @@ class TestDeleteDraftVariablesSessionCommit:
         with session_factory.create_session() as session:
             draft_vars_before = session.query(WorkflowDraftVariable).filter_by(app_id=app_id).count()
             var_files_before = (
-                session.query(WorkflowDraftVariableFile).where(WorkflowDraftVariableFile.id.in_([vf.id for vf in data["variable_files"]]))
+                session.query(WorkflowDraftVariableFile)
+                .where(WorkflowDraftVariableFile.id.in_([vf.id for vf in data["variable_files"]]))
                 .count()
             )
             upload_files_before = session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).count()
@@ -671,7 +675,8 @@ class TestDeleteDraftVariablesSessionCommit:
         with session_factory.create_session() as session:
             draft_vars_after = session.query(WorkflowDraftVariable).filter_by(app_id=app_id).count()
             var_files_after = (
-                session.query(WorkflowDraftVariableFile).where(WorkflowDraftVariableFile.id.in_([vf.id for vf in data["variable_files"]]))
+                session.query(WorkflowDraftVariableFile)
+                .where(WorkflowDraftVariableFile.id.in_([vf.id for vf in data["variable_files"]]))
                 .count()
             )
             upload_files_after = session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).count()
