@@ -13,7 +13,6 @@ from extensions import ext_fastopenapi
 from extensions.ext_database import db
 from services.feature_service import FeatureModel, SystemFeatureModel
 
-
 # ------------------------------------------------------------------------------
 # Fixtures
 # ------------------------------------------------------------------------------
