@@ -1,6 +1,7 @@
 import type { ToolNodeType, ToolVarInputs } from './types'
 import type { InputVar } from '@/app/components/workflow/types'
 import { useBoolean } from 'ahooks'
+import { capitalize } from 'es-toolkit/string'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -32,7 +33,7 @@ const formatDisplayType = (output: Record<string, unknown>): string => {
   if (normalizedType === 'Unknown')
     return 'Unknown'
 
-  return normalizedType.slice(0, 1).toLocaleUpperCase() + normalizedType.slice(1)
+  return capitalize(normalizedType)
 }
 
 const useConfig = (id: string, payload: ToolNodeType) => {
