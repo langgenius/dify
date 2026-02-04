@@ -582,6 +582,9 @@ importers:
       vitest-canvas-mock:
         specifier: 1.1.3
         version: 1.1.3(vitest@4.0.17)
+      vitest-location-mock:
+        specifier: 1.0.4
+        version: 1.0.4
 
 packages:
 
@@ -1551,6 +1554,9 @@ packages:
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
     engines: {node: '>=12'}
+
+  '@jedmao/location@3.0.0':
+    resolution: {integrity: sha512-p7mzNlgJbCioUYLUEKds3cQG4CHONVFJNYqMe6ocEtENCL/jYmMo1Q3ApwsMmU+L0ZkaDJEyv4HokaByLoPwlQ==}
 
   '@joshwooding/vite-plugin-react-docgen-typescript@0.6.3':
     resolution: {integrity: sha512-9TGZuAX+liGkNKkwuo3FYJu7gHWT0vkBcf7GkOe7s7fmC19XwH/4u5u7sDIFrMooe558ORcmuBvBz7Ur5PlbHw==}
@@ -7230,6 +7236,10 @@ packages:
     peerDependencies:
       vitest: ^3.0.0 || ^4.0.0
 
+  vitest-location-mock@1.0.4:
+    resolution: {integrity: sha512-8iR9Fkpy+/MTaVOHzt1x9qMuetI1/nbEyG7VQqF5DdxStziRPX2Y1gaJD52z8QRiY4lfVbN0ajIF6BZ0zDttUA==}
+    engines: {node: '>=18.0.0'}
+
   vitest@4.0.17:
     resolution: {integrity: sha512-FQMeF0DJdWY0iOnbv466n/0BudNdKj1l5jYgl5JVTwjSsZSlqyXFt/9+1sEyhR6CLowbZpV7O1sCHrzBhucKKg==}
     engines: {node: ^20.0.0 || ^22.0.0 || >=24.0.0}
@@ -8541,6 +8551,8 @@ snapshots:
       strip-ansi-cjs: strip-ansi@6.0.1
       wrap-ansi: 8.1.0
       wrap-ansi-cjs: wrap-ansi@7.0.0
+
+  '@jedmao/location@3.0.0': {}
 
   '@joshwooding/vite-plugin-react-docgen-typescript@0.6.3(typescript@5.9.3)(vite@7.3.1(@types/node@18.15.0)(jiti@1.21.7)(sass@1.93.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
@@ -15227,6 +15239,10 @@ snapshots:
       cssfontparser: 1.2.1
       moo-color: 1.0.3
       vitest: 4.0.17(@types/node@18.15.0)(@vitest/browser-playwright@4.0.17)(jiti@1.21.7)(jsdom@27.3.0(canvas@3.2.1))(sass@1.93.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+
+  vitest-location-mock@1.0.4:
+    dependencies:
+      '@jedmao/location': 3.0.0
 
   vitest@4.0.17(@types/node@18.15.0)(@vitest/browser-playwright@4.0.17)(jiti@1.21.7)(jsdom@27.3.0(canvas@3.2.1))(sass@1.93.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
