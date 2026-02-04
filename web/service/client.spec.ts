@@ -60,7 +60,7 @@ describe('getBaseURL', () => {
     expect(url.protocol).toBe('localhost:')
     expect(warnSpy).toHaveBeenCalledTimes(1)
     expect(warnSpy).toHaveBeenCalledWith(
-      'Using http as protocol for API requests, please configure accordingly. Current protocol: localhost:',
+      'Unexpected protocol for API requests, expected http or https. Current protocol: localhost:. Please configure accordingly.',
     )
   })
 
