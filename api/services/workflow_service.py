@@ -675,7 +675,7 @@ class WorkflowService:
 
         else:
             variable_pool = VariablePool(
-                system_variables=SystemVariable.empty(),
+                system_variables=SystemVariable.default(),
                 user_inputs=user_inputs,
                 environment_variables=draft_workflow.environment_variables,
                 conversation_variables=[],
@@ -1063,7 +1063,7 @@ def _setup_variable_pool(
             system_variable.conversation_id = conversation_id
             system_variable.dialogue_count = 1
     else:
-        system_variable = SystemVariable.empty()
+        system_variable = SystemVariable.default()
 
     # init variable pool
     variable_pool = VariablePool(

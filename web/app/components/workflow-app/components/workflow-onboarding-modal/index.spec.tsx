@@ -551,8 +551,8 @@ describe('WorkflowOnboardingModal', () => {
 
       // Assert
       const escKey = screen.getByText('workflow.onboarding.escTip.key')
-      expect(escKey.closest('kbd')).toBeInTheDocument()
-      expect(escKey.closest('kbd')).toHaveClass('system-kbd')
+      // ShortcutsName renders a <div> with class system-kbd, not a <kbd> element
+      expect(escKey.closest('.system-kbd')).toBeInTheDocument()
     })
 
     it('should have descriptive text for ESC functionality', () => {

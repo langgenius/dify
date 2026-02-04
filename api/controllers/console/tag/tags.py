@@ -1,16 +1,26 @@
 from typing import Literal
 
 from flask import request
-from flask_restx import Resource, marshal_with
+from flask_restx import Namespace, Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
-from fields.tag_fields import dataset_tag_fields
 from libs.login import current_account_with_tenant, login_required
 from services.tag_service import TagService
+
+dataset_tag_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "type": fields.String,
+    "binding_count": fields.String,
+}
+
+
+def build_dataset_tag_fields(api_or_ns: Namespace):
+    return api_or_ns.model("DataSetTag", dataset_tag_fields)
 
 
 class TagBasePayload(BaseModel):
@@ -40,6 +50,7 @@ register_schema_models(
     TagBasePayload,
     TagBindingPayload,
     TagBindingRemovePayload,
+    TagListQueryParam,
 )
 
 
