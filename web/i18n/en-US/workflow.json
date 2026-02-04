@@ -223,6 +223,7 @@
   "common.publishUpdate": "Publish Update",
   "common.published": "Published",
   "common.publishedAt": "Published",
+  "common.publishing": "Publishing...",
   "common.redo": "Redo",
   "common.restart": "Restart",
   "common.restore": "Restore",

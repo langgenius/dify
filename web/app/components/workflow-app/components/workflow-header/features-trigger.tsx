@@ -136,7 +136,7 @@ const FeaturesTrigger = () => {
     }
   }, [appID, setAppDetail])
 
-  const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const { mutateAsync: publishWorkflow, isPending: isPublishing } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
   const needWarningNodes = useChecklist(nodes, edges)
 
@@ -229,6 +229,7 @@ const FeaturesTrigger = () => {
           hasTriggerNode,
           startNodeLimitExceeded,
           publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded,
+          publishLoading: isPublishing,
         }}
       />
     </>

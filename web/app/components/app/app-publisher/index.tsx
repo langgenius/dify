@@ -127,6 +127,7 @@ export type AppPublisherProps = {
   missingStartNode?: boolean
   hasTriggerNode?: boolean // Whether workflow currently contains any trigger nodes (used to hide missing-start CTA when triggers exist).
   startNodeLimitExceeded?: boolean
+  publishLoading?: boolean
 }
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
@@ -150,6 +151,7 @@ const AppPublisher = ({
   missingStartNode = false,
   hasTriggerNode = false,
   startNodeLimitExceeded = false,
+  publishLoading = false,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
 
@@ -295,7 +297,7 @@ const AppPublisher = ({
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
-    if (publishDisabled || published)
+    if (publishDisabled || published || publishLoading)
       return
     handlePublish()
   }, { exactMatch: true, useCapture: true })
@@ -349,7 +351,8 @@ const AppPublisher = ({
           <Button
             variant="primary"
             className="py-2 pl-3 pr-2"
-            disabled={disabled}
+            disabled={disabled || publishLoading}
+            loading={publishLoading}
           >
             {t('common.publish', { ns: 'workflow' })}
             <RiArrowDownSLine className="h-4 w-4 text-components-button-primary-text" />
@@ -403,17 +406,20 @@ const AppPublisher = ({
                         variant="primary"
                         className="mt-3 w-full"
                         onClick={() => handlePublish()}
-                        disabled={publishDisabled || published}
+                        disabled={publishDisabled || published || publishLoading}
+                        loading={publishLoading}
                       >
                         {
-                          published
-                            ? t('common.published', { ns: 'workflow' })
-                            : (
-                                <div className="flex gap-1">
-                                  <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
-                                  <ShortcutsName keys={PUBLISH_SHORTCUT} bgColor="white" />
-                                </div>
-                              )
+                          publishLoading
+                            ? t('common.publishing', { ns: 'workflow' })
+                            : published
+                              ? t('common.published', { ns: 'workflow' })
+                              : (
+                                  <div className="flex gap-1">
+                                    <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
+                                    <ShortcutsName keys={PUBLISH_SHORTCUT} bgColor="white" />
+                                  </div>
+                                )
                         }
                       </Button>
                       {showStartNodeLimitHint && (
