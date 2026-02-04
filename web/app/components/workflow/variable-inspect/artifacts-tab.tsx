@@ -17,6 +17,7 @@ import { useDownloadSandboxFile, useSandboxFileDownloadUrl, useSandboxFilesTree 
 import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import { useStore } from '../store'
+import { WorkflowRunningStatus } from '../types'
 import InspectLayout from './inspect-layout'
 import SplitPanel from './split-panel'
 
@@ -56,9 +57,14 @@ const formatFileSize = (bytes: number | null): string => {
 const ArtifactsTab = (headerProps: InspectHeaderProps) => {
   const { t } = useTranslation('workflow')
   const appId = useStore(s => s.appId)
+  const isWorkflowRunning = useStore(
+    s => s.workflowRunningData?.result?.status === WorkflowRunningStatus.Running,
+  )
+  const isResponding = useStore(s => s.isResponding)
 
   const { data: treeData, hasFiles, isLoading } = useSandboxFilesTree(appId, {
     enabled: !!appId,
+    refetchInterval: (isWorkflowRunning || isResponding) ? 5000 : false,
   })
   const { mutateAsync: fetchDownloadUrl, isPending: isDownloading } = useDownloadSandboxFile(appId)
   const [selectedFile, setSelectedFile] = useState<SandboxFileTreeNode | null>(null)
