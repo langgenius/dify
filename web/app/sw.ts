@@ -19,12 +19,25 @@ const basePath = scopePathname.replace(/\/serwist\/$/, '').replace(/\/$/, '')
 const offlineUrl = `${basePath}/_offline.html`
 
 const manifest = self.__SW_MANIFEST?.map((entry) => {
-  if (typeof entry === 'string')
-    return entry.replace(/^\/serwist\//, '/')
+  if (typeof entry === 'string') {
+    if (entry.startsWith('/serwist/'))
+      return entry.replace(/^\/serwist\//, '/')
+    if (!entry.startsWith('/'))
+      return `/${entry}`
+    return entry
+  }
+
+  const url = entry.url
+  let newUrl = url
+
+  if (url.startsWith('/serwist/'))
+    newUrl = url.replace(/^\/serwist\//, '/')
+  else if (!url.startsWith('/'))
+    newUrl = `/${url}`
 
   return {
     ...entry,
-    url: entry.url.replace(/^\/serwist\//, '/'),
+    url: newUrl,
   }
 })
 
