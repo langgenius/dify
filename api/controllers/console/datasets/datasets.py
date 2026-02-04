@@ -820,9 +820,10 @@ class DatasetApiDeleteApi(Resource):
 
         if key is None:
             console_ns.abort(404, message="API key not found")
-            return  # Type checker hint: abort() raises exception
 
         # Invalidate cache before deleting from database
+        # Type assertion: key is guaranteed to be non-None here because abort() raises
+        assert key is not None  # nosec - for type checker only
         ApiTokenCache.delete(key.token, key.type)
 
         db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()

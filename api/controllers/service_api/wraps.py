@@ -18,6 +18,7 @@ from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.api_token_cache import ApiTokenCache
+from libs.api_token_updater import update_token_last_used_at
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
@@ -328,27 +329,20 @@ def validate_and_get_api_token(scope: str | None = None):
     # Cache miss - query database
     logger.debug("Token cache miss, querying database for scope: %s", scope)
     current_time = naive_utc_now()
-    cutoff_time = current_time - timedelta(minutes=1)
 
     with Session(db.engine, expire_on_commit=False) as session:
-        update_stmt = (
-            update(ApiToken)
-            .where(
-                ApiToken.token == auth_token,
-                (ApiToken.last_used_at.is_(None) | (ApiToken.last_used_at < cutoff_time)),
-                ApiToken.type == scope,
-            )
-            .values(last_used_at=current_time)
-        )
+        # Use unified update method to avoid code duplication with Celery task
+        update_token_last_used_at(auth_token, scope, current_time, session=session)
+        
+        # Query the token
         stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
-        result = session.execute(update_stmt)
         api_token = session.scalar(stmt)
 
-        if hasattr(result, "rowcount") and result.rowcount > 0:
-            session.commit()
-
         if not api_token:
+            # Cache the null result to prevent cache penetration attacks
+            ApiTokenCache.set(auth_token, scope, None)
             raise Unauthorized("Access token is invalid")
+
         # Cache the valid token
         ApiTokenCache.set(auth_token, scope, api_token)
 
