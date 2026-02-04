@@ -168,6 +168,7 @@ describe('EditCustomCollectionModal', () => {
       const schemaInput = screen.getByPlaceholderText('tools.createTool.schemaPlaceHolder')
       fireEvent.change(schemaInput, { target: { value: '{}' } })
 
+      // Wait for parseParamsSchema to be called and state to be updated
       await waitFor(() => {
         expect(parseParamsSchemaMock).toHaveBeenCalledWith('{}')
       })
@@ -184,12 +185,12 @@ describe('EditCustomCollectionModal', () => {
           provider: 'provider',
           schema: '{}',
           schema_type: 'openapi',
-          credentials: {
-            auth_type: 'none',
-          },
           icon: {
             content: '🕵️',
             background: '#FEF7C3',
+          },
+          credentials: {
+            auth_type: 'none',
           },
           labels: [],
         }))

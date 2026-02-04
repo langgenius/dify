@@ -11,7 +11,12 @@ vi.mock('@/app/components/base/modal', () => ({
     onClose,
     children,
     closable,
-  }: any) {
+  }: {
+    isShow: boolean
+    onClose: () => void
+    children: React.ReactNode
+    closable?: boolean
+  }) {
     if (!isShow)
       return null
 
@@ -39,7 +44,10 @@ vi.mock('./start-node-selection-panel', () => ({
   default: function MockStartNodeSelectionPanel({
     onSelectUserInput,
     onSelectTrigger,
-  }: any) {
+  }: {
+    onSelectUserInput: () => void
+    onSelectTrigger: (type: BlockEnum, config?: Record<string, unknown>) => void
+  }) {
     return (
       <div data-testid="start-node-selection-panel">
         <button data-testid="select-user-input" onClick={onSelectUserInput}>
