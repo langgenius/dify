@@ -312,3 +312,18 @@ def _build_file_from_ref(
 
     logger.warning("File not found for file_ref: %s", file_ref)
     return None
+
+
+class FileManager:
+    """
+    Adapter exposing file manager helpers behind FileManagerProtocol.
+
+    This is intentionally a thin wrapper over the existing module-level functions so callers can inject it
+    where a protocol-typed file manager is expected.
+    """
+
+    def download(self, f: File, /) -> bytes:
+        return download(f)
+
+
+file_manager = FileManager()

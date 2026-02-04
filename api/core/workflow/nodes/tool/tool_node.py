@@ -513,25 +513,26 @@ class ToolNode(Node[ToolNodeData]):
         result: dict[str, Sequence[str]] = {}
         for parameter_name in typed_node_data.tool_parameters:
             input = typed_node_data.tool_parameters[parameter_name]
-            if input.type == "mixed":
-                assert isinstance(input.value, str)
-                selectors = VariableTemplateParser(input.value).extract_variable_selectors()
-                for selector in selectors:
-                    result[selector.variable] = selector.value_selector
-            elif input.type == "variable":
-                if isinstance(input.value, list):
-                    selector_key = ".".join(input.value)
-                    result[f"#{selector_key}#"] = input.value
-            elif input.type == "nested_node":
-                # Nested node type: extract variable selector from nested_node_config
-                # The full selector is extractor_node_id + output_selector
-                if input.nested_node_config is not None:
-                    config = input.nested_node_config
-                    full_selector = [config.extractor_node_id] + list(config.output_selector)
-                    selector_key = ".".join(full_selector)
-                    result[f"#{selector_key}#"] = full_selector
-            elif input.type == "constant":
-                pass
+            match input.type:
+                case "mixed":
+                    assert isinstance(input.value, str)
+                    selectors = VariableTemplateParser(input.value).extract_variable_selectors()
+                    for selector in selectors:
+                        result[selector.variable] = selector.value_selector
+                case "variable":
+                    if isinstance(input.value, list):
+                        selector_key = ".".join(input.value)
+                        result[f"#{selector_key}#"] = input.value
+                case "nested_node":
+                    # Nested node type: extract variable selector from nested_node_config
+                    # The full selector is extractor_node_id + output_selector
+                    if input.nested_node_config is not None:
+                        config = input.nested_node_config
+                        full_selector = [config.extractor_node_id] + list(config.output_selector)
+                        selector_key = ".".join(full_selector)
+                        result[f"#{selector_key}#"] = full_selector
+                case "constant":
+                    pass
 
         result = {node_id + "." + key: value for key, value in result.items()}
 

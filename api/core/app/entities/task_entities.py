@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities import AgentNodeStrategyInit
-from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -255,7 +255,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
 
         id: str
         workflow_id: str
-        status: str
+        status: WorkflowExecutionStatus
         outputs: Mapping[str, Any] | None = None
         error: str | None = None
         elapsed_time: float
@@ -345,7 +345,7 @@ class NodeFinishStreamResponse(StreamResponse):
         process_data_truncated: bool = False
         outputs: Mapping[str, Any] | None = None
         outputs_truncated: bool = True
-        status: str
+        status: WorkflowNodeExecutionStatus
         error: str | None = None
         elapsed_time: float
         execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
@@ -411,7 +411,7 @@ class NodeRetryStreamResponse(StreamResponse):
         process_data_truncated: bool = False
         outputs: Mapping[str, Any] | None = None
         outputs_truncated: bool = False
-        status: str
+        status: WorkflowNodeExecutionStatus
         error: str | None = None
         elapsed_time: float
         execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
@@ -798,7 +798,7 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
 
         id: str
         workflow_id: str
-        status: str
+        status: WorkflowExecutionStatus
         outputs: Mapping[str, Any] | None = None
         error: str | None = None
         elapsed_time: float
