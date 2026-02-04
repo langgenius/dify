@@ -186,7 +186,7 @@ class PGVector(BaseVector):
 
         with self._get_cursor() as cur:
             # Set hnsw.ef_search to improve recall when using filters with LIMIT
-            cur.execute(f"SET hnsw.ef_search = {self.hnsw_ef_search}")
+            cur.execute("SET LOCAL hnsw.ef_search = %s", (self.hnsw_ef_search,))
             cur.execute(
                 f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
                 f" {where_clause}"
