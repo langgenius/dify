@@ -32,16 +32,23 @@ function isURL(path: string) {
 }
 
 function getBaseURL(path: string) {
+  let url: URL
+
   if (isURL(path)) {
-    return new URL(path)
+    url = new URL(path)
   }
 
   if (!isClient) {
-    // TODO: adjust the default base URL for server side requests if needed
-    throw new Error('Base URL is required for server side requests')
+    console.warn('Using localhost as base URL in server environment, please configure accordingly.')
   }
 
-  return new URL(path, window.location.origin)
+  url = new URL(path, isClient ? window.location.origin : 'http://localhost')
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    console.warn(`Using http as protocol for API requests, please configure accordingly. Current protocol: ${url.protocol}`)
+  }
+
+  return url
 }
 
 const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
