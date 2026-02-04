@@ -145,8 +145,6 @@ class EnterpriseOtelTrace:
                 "dify.workspace.name": info.metadata.get("workspace_name"),
                 "gen_ai.user.id": info.metadata.get("user_id"),
                 "gen_ai.usage.total_tokens": info.total_tokens,
-                "gen_ai.usage.input_tokens": info.prompt_tokens,
-                "gen_ai.usage.output_tokens": info.completion_tokens,
                 "dify.workflow.version": info.workflow_run_version,
             }
         )
@@ -177,6 +175,10 @@ class EnterpriseOtelTrace:
             "app_id": info.metadata.get("app_id", ""),
         }
         self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, labels)
+        if info.prompt_tokens is not None and info.prompt_tokens > 0:
+            self._exporter.increment_counter(EnterpriseTelemetryCounter.INPUT_TOKENS, info.prompt_tokens, labels)
+        if info.completion_tokens is not None and info.completion_tokens > 0:
+            self._exporter.increment_counter(EnterpriseTelemetryCounter.OUTPUT_TOKENS, info.completion_tokens, labels)
         invoke_from = info.metadata.get("triggered_from", "")
         self._exporter.increment_counter(
             EnterpriseTelemetryCounter.REQUESTS,
@@ -265,8 +267,6 @@ class EnterpriseOtelTrace:
                 "dify.node.currency": info.currency,
                 "gen_ai.provider.name": info.model_provider,
                 "gen_ai.request.model": info.model_name,
-                "gen_ai.usage.input_tokens": info.prompt_tokens,
-                "gen_ai.usage.output_tokens": info.completion_tokens,
                 "gen_ai.tool.name": info.tool_name,
                 "dify.node.iteration_index": info.iteration_index,
                 "dify.node.loop_index": info.loop_index,
@@ -307,6 +307,14 @@ class EnterpriseOtelTrace:
         if info.total_tokens:
             token_labels = {**labels, "model_name": info.model_name or ""}
             self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, token_labels)
+            if info.prompt_tokens is not None and info.prompt_tokens > 0:
+                self._exporter.increment_counter(
+                    EnterpriseTelemetryCounter.INPUT_TOKENS, info.prompt_tokens, token_labels
+                )
+            if info.completion_tokens is not None and info.completion_tokens > 0:
+                self._exporter.increment_counter(
+                    EnterpriseTelemetryCounter.OUTPUT_TOKENS, info.completion_tokens, token_labels
+                )
         self._exporter.increment_counter(
             EnterpriseTelemetryCounter.REQUESTS, 1, {**labels, "type": request_type, "status": info.status}
         )

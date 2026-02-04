@@ -9,6 +9,8 @@ class EnterpriseTelemetrySpan(StrEnum):
 
 class EnterpriseTelemetryCounter(StrEnum):
     TOKENS = "tokens"
+    INPUT_TOKENS = "input_tokens"
+    OUTPUT_TOKENS = "output_tokens"
     REQUESTS = "requests"
     ERRORS = "errors"
     FEEDBACK = "feedback"

@@ -65,4 +65,12 @@ def process_trace_tasks(file_info):
         redis_client.incr(failed_key)
         logger.info("Processing trace tasks failed, app_id: %s", app_id)
     finally:
-        storage.delete(file_path)
+        try:
+            storage.delete(file_path)
+        except Exception as e:
+            logger.warning(
+                "Failed to delete trace file %s for app_id %s: %s",
+                file_path,
+                app_id,
+                e,
+            )
