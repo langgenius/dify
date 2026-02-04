@@ -239,7 +239,7 @@
 /web/app/components/base/ @iamjoel @zxhlyh
 
 # Frontend - Base Components Tests
-/web/app/components/base/**/__tests__/ @hyoban @CodingOnStar
+/web/app/components/base/**/*.spec.tsx @hyoban @CodingOnStar
 
 # Frontend - Utils and Hooks
 /web/utils/classnames.ts @iamjoel @zxhlyh
