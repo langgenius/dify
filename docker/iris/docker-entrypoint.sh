@@ -18,7 +18,7 @@ wait_for_iris() {
         sleep 2
         attempt=$((attempt + 1))
     done
-    echo "ERROR: IRIS failed to start within expected time."
+    echo "ERROR: IRIS failed to start within expected time." >&2
     return 1
 }
 
