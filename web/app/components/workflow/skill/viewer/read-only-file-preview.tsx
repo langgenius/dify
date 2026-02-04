@@ -41,11 +41,21 @@ const ReadOnlyFilePreview = ({
     () => ({ name: fileName, extension }),
     [fileName, extension],
   )
-  const { isMarkdown, isCodeOrText, isImage, isVideo, isSQLite } = useFileTypeInfo(fileNode)
-  const isTextFile = isMarkdown || isCodeOrText
+  const { isMarkdown, isCodeOrText, isImage, isVideo, isSQLite, isPreviewable } = useFileTypeInfo(fileNode)
+  const isTextFile = isPreviewable && (isMarkdown || isCodeOrText)
   const { data: textContent, isLoading: isTextLoading } = useFetchTextContent(
     isTextFile ? downloadUrl : undefined,
   )
+
+  if (!isPreviewable) {
+    return (
+      <UnsupportedFileDownload
+        name={fileName}
+        size={fileSize ?? undefined}
+        downloadUrl={downloadUrl}
+      />
+    )
+  }
 
   if (isTextFile && isTextLoading)
     return <Loading type="area" />

@@ -1,12 +1,12 @@
 import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 
-const MARKDOWN_EXTENSIONS = ['md', 'markdown', 'mdx']
-const CODE_EXTENSIONS = ['json', 'yaml', 'yml', 'toml', 'js', 'jsx', 'ts', 'tsx', 'py', 'schema']
-const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'psd', 'heic', 'heif', 'avif']
-const VIDEO_EXTENSIONS = ['mp4', 'mov', 'webm', 'mpeg', 'mpg', 'm4v', 'avi', 'mkv', 'flv', 'wmv', '3gp']
-const SQLITE_EXTENSIONS = ['db', 'sqlite', 'sqlite3']
+const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown', 'mdx'])
+const CODE_EXTENSIONS = new Set(['json', 'yaml', 'yml', 'toml', 'js', 'jsx', 'ts', 'tsx', 'py', 'schema'])
+const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'psd', 'heic', 'heif', 'avif'])
+const VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'webm', 'mpeg', 'mpg', 'm4v', 'avi', 'mkv', 'flv', 'wmv', '3gp'])
+const SQLITE_EXTENSIONS = new Set(['db', 'sqlite', 'sqlite3'])
 
-const BINARY_EXTENSIONS = [
+const BINARY_EXTENSIONS = new Set([
   'mp3',
   'wav',
   'ogg',
@@ -76,7 +76,7 @@ const BINARY_EXTENSIONS = [
   'ipa',
   'aab',
   'lock',
-]
+])
 
 export function getFileExtension(name?: string, extension?: string): string {
   if (extension)
@@ -105,8 +105,8 @@ const EXTENSION_TO_ICON_TYPE = new Map<string, FileAppearanceTypeEnum>(
     [PPT_EXTENSIONS, FileAppearanceTypeEnum.ppt],
     [CODE_EXTENSIONS, FileAppearanceTypeEnum.code],
     [SQLITE_EXTENSIONS, FileAppearanceTypeEnum.database],
-  ] as [string[], FileAppearanceTypeEnum][]).flatMap(
-    ([exts, type]) => exts.map(e => [e, type] as [string, FileAppearanceTypeEnum]),
+  ] as [Iterable<string>, FileAppearanceTypeEnum][]).flatMap(
+    ([exts, type]) => [...exts].map(e => [e, type] as [string, FileAppearanceTypeEnum]),
   ),
 )
 
@@ -116,11 +116,11 @@ export function getFileIconType(name: string, ext?: string | null): FileAppearan
 }
 
 export function isMarkdownFile(extension: string): boolean {
-  return MARKDOWN_EXTENSIONS.includes(extension)
+  return MARKDOWN_EXTENSIONS.has(extension)
 }
 
 export function isBinaryFile(extension: string): boolean {
-  return BINARY_EXTENSIONS.includes(extension)
+  return BINARY_EXTENSIONS.has(extension)
 }
 
 export function isTextLikeFile(extension: string): boolean {
@@ -128,15 +128,15 @@ export function isTextLikeFile(extension: string): boolean {
 }
 
 export function isImageFile(extension: string): boolean {
-  return IMAGE_EXTENSIONS.includes(extension)
+  return IMAGE_EXTENSIONS.has(extension)
 }
 
 export function isVideoFile(extension: string): boolean {
-  return VIDEO_EXTENSIONS.includes(extension)
+  return VIDEO_EXTENSIONS.has(extension)
 }
 
 export function isSQLiteFile(extension: string): boolean {
-  return SQLITE_EXTENSIONS.includes(extension)
+  return SQLITE_EXTENSIONS.has(extension)
 }
 
 export function getFileLanguage(name: string): string {

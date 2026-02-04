@@ -56,7 +56,7 @@ const FileContentPanel = () => {
 
   const currentFileNode = fileTabId ? nodeMap?.get(fileTabId) : undefined
 
-  const { isMarkdown, isCodeOrText, isImage, isVideo, isSQLite, isEditable } = useFileTypeInfo(currentFileNode)
+  const { isMarkdown, isCodeOrText, isImage, isVideo, isSQLite, isEditable, isPreviewable } = useFileTypeInfo(currentFileNode)
 
   const { fileContent, downloadUrlData, isLoading, error } = useSkillFileData(appId, fileTabId, isEditable)
 
@@ -210,7 +210,7 @@ const FileContentPanel = () => {
   const downloadUrl = downloadUrlData?.download_url || ''
   const fileName = currentFileNode?.name || ''
   const fileSize = currentFileNode?.size
-  const isUnsupportedFile = !isMarkdown && !isCodeOrText && !isImage && !isVideo && !isSQLite
+  const isUnsupportedFile = !isPreviewable
 
   return (
     <div className="h-full w-full overflow-auto bg-components-panel-bg">
