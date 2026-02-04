@@ -255,7 +255,7 @@ const ComponentPicker = ({
   }, [editor, getMatchFromSelection, agentBlock, handleClose])
 
   const isAgentTrigger = triggerString === '@' && agentBlock?.show
-  const showAssembleVariables = triggerString === '/'
+  const showAssembleVariables = triggerString === '/' && workflowVariableBlock?.showAssembleVariables && !!workflowVariableBlock?.onAssembleVariables
   const agentNodes: AgentNode[] = useMemo(() => agentBlock?.agentNodes || [], [agentBlock?.agentNodes])
   const handleOpen = useCallback(() => {
     if (isSupportSandbox && triggerString === '/')

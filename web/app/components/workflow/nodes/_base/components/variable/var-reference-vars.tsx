@@ -502,7 +502,7 @@ const VarReferenceVars: FC<Props> = ({
       }
 
       {
-        showAssembleVariables && (
+        showAssembleVariables && onAssembleVariables && (
           <div className="flex items-center border-t border-divider-subtle pt-1">
             <button
               type="button"
