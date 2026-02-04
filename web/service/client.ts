@@ -32,17 +32,11 @@ function isURL(path: string) {
 }
 
 export function getBaseURL(path: string) {
-  let url: URL
+  const url = new URL(path, isURL(path) ? undefined : isClient ? window.location.origin : 'http://localhost')
 
-  if (isURL(path)) {
-    url = new URL(path)
-  }
-
-  if (!isClient) {
+  if (!isClient && !isURL(path)) {
     console.warn('Using localhost as base URL in server environment, please configure accordingly.')
   }
-
-  url = new URL(path, isClient ? window.location.origin : 'http://localhost')
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     console.warn(`Unexpected protocol for API requests, expected http or https. Current protocol: ${url.protocol}. Please configure accordingly.`)
