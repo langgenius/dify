@@ -626,6 +626,9 @@ export const SkillRemoteCursors = ({ fileId, enabled }: SkillRemoteCursorsProps)
         const user = onlineUserMap[cursor.userId]
         const name = user?.username || cursor.userId.slice(-4)
         const color = getUserColor(cursor.userId)
+        const labelOffset = cursor.y < 20
+          ? Math.max(cursor.height + 4, 18)
+          : -20
 
         return (
           <div
@@ -644,8 +647,9 @@ export const SkillRemoteCursors = ({ fileId, enabled }: SkillRemoteCursorsProps)
               }}
             />
             <div
-              className="absolute -top-5 left-2 max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm"
+              className="absolute left-2 max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm"
               style={{
+                top: labelOffset,
                 backgroundColor: color,
               }}
             >

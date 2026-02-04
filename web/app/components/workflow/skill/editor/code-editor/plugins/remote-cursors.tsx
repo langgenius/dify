@@ -369,8 +369,11 @@ export const useSkillCodeCursors = ({ editor, fileId, enabled }: UseSkillCodeCur
               }}
             />
             <div
-              className="absolute -top-5 left-2 max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm"
+              className="absolute left-2 max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm"
               style={{
+                top: position.y < 20
+                  ? Math.max(position.height + 4, 18)
+                  : -20,
                 backgroundColor: position.color,
               }}
             >
