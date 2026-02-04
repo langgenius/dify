@@ -390,7 +390,12 @@ describe('UpdateDSLModal', () => {
       // Select a file and click import
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } })
+        // Wait for FileReader to process
+        await new Promise<void>(resolve => queueMicrotask(resolve))
+      })
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -398,7 +403,10 @@ describe('UpdateDSLModal', () => {
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
-      fireEvent.click(importButton)
+
+      await act(async () => {
+        fireEvent.click(importButton)
+      })
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
@@ -418,7 +426,12 @@ describe('UpdateDSLModal', () => {
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } })
+        // Wait for FileReader to process
+        await new Promise<void>(resolve => queueMicrotask(resolve))
+      })
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -426,7 +439,10 @@ describe('UpdateDSLModal', () => {
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
-      fireEvent.click(importButton)
+
+      await act(async () => {
+        fireEvent.click(importButton)
+      })
 
       await waitFor(() => {
         expect(mockOnCancel).toHaveBeenCalled()
