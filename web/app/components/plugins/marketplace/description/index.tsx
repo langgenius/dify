@@ -12,6 +12,7 @@ import PluginTypeSwitch from '../plugin-type-switch'
 type DescriptionProps = {
   className?: string
   scrollContainerId?: string
+  marketplaceNav?: React.ReactNode
 }
 
 // Constants for collapse animation
@@ -24,6 +25,7 @@ const COLLAPSED_PADDING_BOTTOM = 12 // pb-3
 export const Description = ({
   className,
   scrollContainerId = 'marketplace-container',
+  marketplaceNav,
 }: DescriptionProps) => {
   const { t } = useTranslation('plugin')
   const rafRef = useRef<number | null>(null)
@@ -98,8 +100,9 @@ export const Description = ({
     [smoothProgress, titleHeight],
     (values: number[]) => values[1] * (1 - values[0]),
   )
-  const tabsMarginTop = useTransform(smoothProgress, [0, 1], [48, 0])
-  const paddingTop = useTransform(smoothProgress, [0, 1], [EXPANDED_PADDING_TOP, COLLAPSED_PADDING_TOP])
+  const tabsMarginTop = useTransform(smoothProgress, [0, 1], [48, marketplaceNav ? 16 : 0])
+  const titleMarginTop = useTransform(smoothProgress, [0, 1], [marketplaceNav ? 80 : 0, 0])
+  const paddingTop = useTransform(smoothProgress, [0, 1], [marketplaceNav ? COLLAPSED_PADDING_TOP : EXPANDED_PADDING_TOP, COLLAPSED_PADDING_TOP])
   const paddingBottom = useTransform(smoothProgress, [0, 1], [EXPANDED_PADDING_BOTTOM, COLLAPSED_PADDING_BOTTOM])
 
   return (
@@ -132,6 +135,8 @@ export const Description = ({
         style={{ backgroundImage: `url(${marketplaceGradientNoise.src})` }}
       />
 
+      {marketplaceNav}
+
       {/* Content */}
       <div className="relative z-10">
         {/* Title and subtitle - fade out and scale down */}
@@ -144,6 +149,7 @@ export const Description = ({
             maxHeight: titleMaxHeight,
             overflow: 'hidden',
             willChange: 'opacity, transform',
+            marginTop: titleMarginTop,
           }}
         >
           <h1 className="title-4xl-semi-bold mb-2 shrink-0 text-text-primary-on-surface">
