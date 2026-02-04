@@ -379,6 +379,8 @@ export function useMixedVariableExtractor({
       nextData.structured_output_enabled = nestedNodeData.structured_output_enabled
     if (nestedNodeData.structured_output?.schema)
       nextData.structured_output = nestedNodeData.structured_output
+    if (typeof nestedNodeData.computer_use === 'boolean')
+      nextData.computer_use = nestedNodeData.computer_use
     if (nestedNodeData.context)
       nextData.context = nestedNodeData.context
     if (nestedNodeData.vision)

@@ -285,6 +285,7 @@ const MixedVariableTextInput = ({
         nodeType: BlockEnum.LLM,
         data: {
           structured_output_enabled: true,
+          computer_use: false,
           structured_output: {
             schema: {
               type: Type.object,
