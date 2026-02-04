@@ -400,7 +400,7 @@ class TestFastOpenAPIAuthenticationBehavior:
 
         This ensures backward compatibility with frontend expectations.
         """
-        mock_model = FeatureModel(can_replace_logo=True, billing=None)
+        mock_model = FeatureModel(can_replace_logo=True)
 
         with patch("controllers.console.feature.FeatureService.get_features", return_value=mock_model):
             ext_fastopenapi.init_app(app)
