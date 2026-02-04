@@ -7,6 +7,7 @@ import app
 from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy
 from tasks import process_tenant_plugin_autoupgrade_check_task as check_task
+from tasks.process_tenant_plugin_autoupgrade_check_task import fetch_global_plugin_manifest
 
 AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL = 15 * 60  # 15 minutes
 MAX_CONCURRENT_CHECK_TASKS = 20
@@ -39,6 +40,8 @@ def check_upgradable_plugin_task():
         total_strategies / MAX_CONCURRENT_CHECK_TASKS
     )  # make sure all strategies are checked in this interval
     batch_interval_time = (AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL / batch_chunk_count) if batch_chunk_count > 0 else 0
+
+    fetch_global_plugin_manifest()
 
     for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
         batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]

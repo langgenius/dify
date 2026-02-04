@@ -6,7 +6,7 @@ from yarl import URL
 
 from configs import dify_config
 from core.helper.download import download_with_size_limit
-from core.plugin.entities.marketplace import MarketplacePluginDeclaration
+from core.plugin.entities.marketplace import MarketplacePluginDeclaration, MarketplacePluginSnapshot
 
 marketplace_api_url = URL(str(dify_config.MARKETPLACE_API_URL))
 logger = logging.getLogger(__name__)
@@ -45,17 +45,17 @@ def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict]:
 
 def batch_fetch_plugin_manifests_ignore_deserialization_error(
     plugin_ids: list[str],
-) -> Sequence[MarketplacePluginDeclaration]:
+) -> Sequence[MarketplacePluginSnapshot]:
     if len(plugin_ids) == 0:
         return []
 
     url = str(marketplace_api_url / "api/v1/plugins/batch")
     response = httpx.post(url, json={"plugin_ids": plugin_ids}, headers={"X-Dify-Version": dify_config.project.version})
     response.raise_for_status()
-    result: list[MarketplacePluginDeclaration] = []
+    result: list[MarketplacePluginSnapshot] = []
     for plugin in response.json()["data"]["plugins"]:
         try:
-            result.append(MarketplacePluginDeclaration.model_validate(plugin))
+            result.append(MarketplacePluginSnapshot.model_validate(plugin))
         except Exception:
             logger.exception(
                 "Failed to deserialize marketplace plugin manifest for %s", plugin.get("plugin_id", "unknown")

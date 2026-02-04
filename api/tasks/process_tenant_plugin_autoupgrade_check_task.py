@@ -4,10 +4,13 @@ import operator
 import typing
 
 import click
+import httpx
 from celery import shared_task
 
+from configs import dify_config
 from core.helper import marketplace
-from core.helper.marketplace import MarketplacePluginDeclaration
+from core.helper.marketplace import marketplace_api_url
+from core.plugin.entities.marketplace import MarketplacePluginSnapshot
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_redis import redis_client
@@ -25,11 +28,11 @@ def _get_redis_cache_key(plugin_id: str) -> str:
     return f"{CACHE_REDIS_KEY_PREFIX}{plugin_id}"
 
 
-def _get_cached_manifest(plugin_id: str) -> typing.Union[MarketplacePluginDeclaration, None, bool]:
+def _get_cached_manifest(plugin_id: str) -> typing.Union[MarketplacePluginSnapshot, None, bool]:
     """
     Get cached plugin manifest from Redis.
     Returns:
-        - MarketplacePluginDeclaration: if found in cache
+        - MarketplacePluginSnapshot: if found in cache
         - None: if cached as not found (marketplace returned no result)
         - False: if not in cache at all
     """
@@ -43,13 +46,13 @@ def _get_cached_manifest(plugin_id: str) -> typing.Union[MarketplacePluginDeclar
         if cached_json is None:
             return None
 
-        return MarketplacePluginDeclaration.model_validate(cached_json)
+        return MarketplacePluginSnapshot.model_validate(cached_json)
     except Exception:
         logger.exception("Failed to get cached manifest for plugin %s", plugin_id)
         return False
 
 
-def _set_cached_manifest(plugin_id: str, manifest: typing.Union[MarketplacePluginDeclaration, None]) -> None:
+def _set_cached_manifest(plugin_id: str, manifest: typing.Union[MarketplacePluginSnapshot, None]) -> None:
     """
     Cache plugin manifest in Redis.
     Args:
@@ -72,9 +75,9 @@ def _set_cached_manifest(plugin_id: str, manifest: typing.Union[MarketplacePlugi
 
 def marketplace_batch_fetch_plugin_manifests(
     plugin_ids_plain_list: list[str],
-) -> list[MarketplacePluginDeclaration]:
+) -> list[MarketplacePluginSnapshot]:
     """Fetch plugin manifests with Redis caching support."""
-    cached_manifests: dict[str, typing.Union[MarketplacePluginDeclaration, None]] = {}
+    cached_manifests: dict[str, typing.Union[MarketplacePluginSnapshot, None]] = {}
     not_cached_plugin_ids: list[str] = []
 
     # Check Redis cache for each plugin
@@ -108,14 +111,26 @@ def marketplace_batch_fetch_plugin_manifests(
                 _set_cached_manifest(plugin_id, None)
 
     # Build result list from cached manifests
-    result: list[MarketplacePluginDeclaration] = []
+    result: list[MarketplacePluginSnapshot] = []
     for plugin_id in plugin_ids_plain_list:
-        cached_manifest: typing.Union[MarketplacePluginDeclaration, None] = cached_manifests.get(plugin_id)
+        cached_manifest: typing.Union[MarketplacePluginSnapshot, None] = cached_manifests.get(plugin_id)
         if cached_manifest is not None:
             result.append(cached_manifest)
 
     return result
 
+def fetch_global_plugin_manifest():
+    url = str(marketplace_api_url / "api/v1/dist/plugins/manifest.json")
+    response = httpx.get(url, headers={"X-Dify-Version": dify_config.project.version}, timeout=30)
+    response.raise_for_status()
+    raw_json = response.json()
+    plugin_snapshots = [MarketplacePluginSnapshot.model_validate(plugin) for plugin in raw_json["plugins"]]
+    for plugin_snapshot in plugin_snapshots:
+        redis_client.setex(
+            name=f"{CACHE_REDIS_KEY_PREFIX}{plugin_snapshot.plugin_id}",
+            time=CACHE_REDIS_TTL,
+            value=plugin_snapshot.model_dump_json(),
+        )
 
 @shared_task(queue="plugin")
 def process_tenant_plugin_autoupgrade_check_task(
