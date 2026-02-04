@@ -65,21 +65,28 @@ class RuleGenerateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        args = RuleGeneratePayload.model_validate(console_ns.payload)
-        _, current_tenant_id = current_account_with_tenant()
+         args = RuleGeneratePayload.model_validate(console_ns.payload)
+         account, current_tenant_id = current_account_with_tenant()
 
-        try:
-            rules = LLMGenerator.generate_rule_config(tenant_id=current_tenant_id, args=args)
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except InvokeError as e:
-            raise CompletionRequestError(e.description)
+         try:
+             rules = LLMGenerator.generate_rule_config(
+                 tenant_id=current_tenant_id,
+                 instruction=args.instruction,
+                 model_config=args.model_config_data,
+                 no_variable=args.no_variable,
+                 user_id=account.id,
+                 app_id=None,
+             )
+         except ProviderTokenNotInitError as ex:
+             raise ProviderNotInitializeError(ex.description)
+         except QuotaExceededError:
+             raise ProviderQuotaExceededError()
+         except ModelCurrentlyNotSupportError:
+             raise ProviderModelCurrentlyNotSupportError()
+         except InvokeError as e:
+             raise CompletionRequestError(e.description)
 
-        return rules
+         return rules
 
 
 @console_ns.route("/rule-code-generate")
@@ -95,12 +102,16 @@ class RuleCodeGenerateApi(Resource):
     @account_initialization_required
     def post(self):
         args = RuleCodeGeneratePayload.model_validate(console_ns.payload)
-        _, current_tenant_id = current_account_with_tenant()
+        account, current_tenant_id = current_account_with_tenant()
 
         try:
             code_result = LLMGenerator.generate_code(
                 tenant_id=current_tenant_id,
-                args=args,
+                instruction=args.instruction,
+                model_config=args.model_config_data,
+                code_language=args.code_language,
+                user_id=account.id,
+                app_id=None,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -127,12 +138,19 @@ class RuleStructuredOutputGenerateApi(Resource):
     @account_initialization_required
     def post(self):
         args = RuleStructuredOutputPayload.model_validate(console_ns.payload)
-        _, current_tenant_id = current_account_with_tenant()
+        account, current_tenant_id = current_account_with_tenant()
 
         try:
             structured_output = LLMGenerator.generate_structured_output(
                 tenant_id=current_tenant_id,
+<<<<<<< HEAD
                 args=args,
+=======
+                instruction=args.instruction,
+                model_config=args.model_config_data,
+                user_id=account.id,
+                app_id=None,
+>>>>>>> c56e5a5b71 (feat(telemetry): add prompt generation telemetry to Enterprise OTEL)
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -159,14 +177,13 @@ class InstructionGenerateApi(Resource):
     @account_initialization_required
     def post(self):
         args = InstructionGeneratePayload.model_validate(console_ns.payload)
-        _, current_tenant_id = current_account_with_tenant()
+        account, current_tenant_id = current_account_with_tenant()
         providers: list[type[CodeNodeProvider]] = [Python3CodeProvider, JavascriptCodeProvider]
         code_provider: type[CodeNodeProvider] | None = next(
             (p for p in providers if p.is_accept_language(args.language)), None
         )
         code_template = code_provider.get_default_code() if code_provider else ""
         try:
-            # Generate from nothing for a workflow node
             if (args.current in (code_template, "")) and args.node_id != "":
                 app = db.session.query(App).where(App.id == args.flow_id).first()
                 if not app:
@@ -183,33 +200,57 @@ class InstructionGenerateApi(Resource):
                     case "llm":
                         return LLMGenerator.generate_rule_config(
                             current_tenant_id,
+<<<<<<< HEAD
                             args=RuleGeneratePayload(
                                 instruction=args.instruction,
                                 model_config=args.model_config_data,
                                 no_variable=True,
                             ),
+=======
+                            instruction=args.instruction,
+                            model_config=args.model_config_data,
+                            no_variable=True,
+                            user_id=account.id,
+                            app_id=args.flow_id,
+>>>>>>> c56e5a5b71 (feat(telemetry): add prompt generation telemetry to Enterprise OTEL)
                         )
                     case "agent":
                         return LLMGenerator.generate_rule_config(
                             current_tenant_id,
+<<<<<<< HEAD
                             args=RuleGeneratePayload(
                                 instruction=args.instruction,
                                 model_config=args.model_config_data,
                                 no_variable=True,
                             ),
+=======
+                            instruction=args.instruction,
+                            model_config=args.model_config_data,
+                            no_variable=True,
+                            user_id=account.id,
+                            app_id=args.flow_id,
+>>>>>>> c56e5a5b71 (feat(telemetry): add prompt generation telemetry to Enterprise OTEL)
                         )
                     case "code":
                         return LLMGenerator.generate_code(
                             tenant_id=current_tenant_id,
+<<<<<<< HEAD
                             args=RuleCodeGeneratePayload(
                                 instruction=args.instruction,
                                 model_config=args.model_config_data,
                                 code_language=args.language,
                             ),
+=======
+                            instruction=args.instruction,
+                            model_config=args.model_config_data,
+                            code_language=args.language,
+                            user_id=account.id,
+                            app_id=args.flow_id,
+>>>>>>> c56e5a5b71 (feat(telemetry): add prompt generation telemetry to Enterprise OTEL)
                         )
                     case _:
                         return {"error": f"invalid node type: {node_type}"}
-            if args.node_id == "" and args.current != "":  # For legacy app without a workflow
+            if args.node_id == "" and args.current != "":
                 return LLMGenerator.instruction_modify_legacy(
                     tenant_id=current_tenant_id,
                     flow_id=args.flow_id,
@@ -217,8 +258,10 @@ class InstructionGenerateApi(Resource):
                     instruction=args.instruction,
                     model_config=args.model_config_data,
                     ideal_output=args.ideal_output,
+                    user_id=account.id,
+                    app_id=args.flow_id,
                 )
-            if args.node_id != "" and args.current != "":  # For workflow node
+            if args.node_id != "" and args.current != "":
                 return LLMGenerator.instruction_modify_workflow(
                     tenant_id=current_tenant_id,
                     flow_id=args.flow_id,
@@ -228,6 +271,8 @@ class InstructionGenerateApi(Resource):
                     model_config=args.model_config_data,
                     ideal_output=args.ideal_output,
                     workflow_service=WorkflowService(),
+                    user_id=account.id,
+                    app_id=args.flow_id,
                 )
             return {"error": "incompatible parameters"}, 400
         except ProviderTokenNotInitError as ex:

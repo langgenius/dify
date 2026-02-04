@@ -21,6 +21,7 @@ from core.ops.entities.trace_entity import (
     GenerateNameTraceInfo,
     MessageTraceInfo,
     ModerationTraceInfo,
+    PromptGenerationTraceInfo,
     SuggestedQuestionTraceInfo,
     ToolTraceInfo,
     WorkflowNodeTraceInfo,
@@ -70,6 +71,8 @@ class EnterpriseOtelTrace:
             self._dataset_retrieval_trace(trace_info)
         elif isinstance(trace_info, GenerateNameTraceInfo):
             self._generate_name_trace(trace_info)
+        elif isinstance(trace_info, PromptGenerationTraceInfo):
+            self._prompt_generation_trace(trace_info)
 
     def _common_attrs(self, trace_info: BaseTraceInfo) -> dict[str, Any]:
         return {
@@ -582,3 +585,74 @@ class EnterpriseOtelTrace:
 
         labels = {"tenant_id": info.tenant_id, "app_id": info.metadata.get("app_id", "")}
         self._exporter.increment_counter(EnterpriseTelemetryCounter.REQUESTS, 1, {**labels, "type": "generate_name"})
+
+    def _prompt_generation_trace(self, info: PromptGenerationTraceInfo) -> None:
+        attrs = {
+            "dify.trace_id": info.trace_id,
+            "dify.tenant_id": info.tenant_id,
+            "dify.user.id": info.user_id,
+            "dify.app.id": info.app_id or "",
+            "dify.app.name": info.metadata.get("app_name"),
+            "dify.workspace.name": info.metadata.get("workspace_name"),
+            "dify.operation.type": info.operation_type,
+            "gen_ai.provider.name": info.model_provider,
+            "gen_ai.request.model": info.model_name,
+            "gen_ai.usage.input_tokens": info.prompt_tokens,
+            "gen_ai.usage.output_tokens": info.completion_tokens,
+            "gen_ai.usage.total_tokens": info.total_tokens,
+            "dify.prompt_generation.latency": info.latency,
+            "dify.prompt_generation.error": info.error,
+        }
+
+        if info.total_price is not None:
+            attrs["dify.prompt_generation.total_price"] = info.total_price
+            attrs["dify.prompt_generation.currency"] = info.currency
+
+        if self._exporter.include_content:
+            attrs["dify.prompt_generation.instruction"] = info.instruction
+            attrs["dify.prompt_generation.output"] = self._maybe_json(info.outputs)
+        else:
+            ref = f"ref:trace_id={info.trace_id}"
+            attrs["dify.prompt_generation.instruction"] = ref
+            attrs["dify.prompt_generation.output"] = ref
+
+        emit_metric_only_event(
+            event_name="dify.prompt_generation.execution",
+            attributes=attrs,
+            tenant_id=info.tenant_id,
+            user_id=info.user_id,
+        )
+
+        labels: dict[str, Any] = {
+            "tenant_id": info.tenant_id,
+            "app_id": info.app_id or "",
+            "operation_type": info.operation_type,
+            "model_provider": info.model_provider,
+            "model_name": info.model_name,
+        }
+
+        self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, labels)
+        if info.prompt_tokens > 0:
+            self._exporter.increment_counter(EnterpriseTelemetryCounter.INPUT_TOKENS, info.prompt_tokens, labels)
+        if info.completion_tokens > 0:
+            self._exporter.increment_counter(EnterpriseTelemetryCounter.OUTPUT_TOKENS, info.completion_tokens, labels)
+
+        status = "failed" if info.error else "success"
+        self._exporter.increment_counter(
+            EnterpriseTelemetryCounter.REQUESTS,
+            1,
+            {**labels, "type": "prompt_generation", "status": status},
+        )
+
+        self._exporter.record_histogram(
+            EnterpriseTelemetryHistogram.PROMPT_GENERATION_DURATION,
+            info.latency,
+            labels,
+        )
+
+        if info.error:
+            self._exporter.increment_counter(
+                EnterpriseTelemetryCounter.ERRORS,
+                1,
+                {**labels, "type": "prompt_generation"},
+            )

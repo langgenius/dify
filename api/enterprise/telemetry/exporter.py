@@ -150,6 +150,9 @@ class EnterpriseExporter:
                 "dify.message.time_to_first_token", unit="s"
             ),
             EnterpriseTelemetryHistogram.TOOL_DURATION: meter.create_histogram("dify.tool.duration", unit="s"),
+            EnterpriseTelemetryHistogram.PROMPT_GENERATION_DURATION: meter.create_histogram(
+                "dify.prompt_generation.duration", unit="s"
+            ),
         }
 
     def export_span(

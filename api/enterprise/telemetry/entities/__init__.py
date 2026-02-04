@@ -23,6 +23,7 @@ class EnterpriseTelemetryHistogram(StrEnum):
     MESSAGE_DURATION = "message_duration"
     MESSAGE_TTFT = "message_ttft"
     TOOL_DURATION = "tool_duration"
+    PROMPT_GENERATION_DURATION = "prompt_generation_duration"
 
 
 __all__ = [

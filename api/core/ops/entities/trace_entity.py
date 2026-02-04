@@ -118,6 +118,33 @@ class GenerateNameTraceInfo(BaseTraceInfo):
     tenant_id: str
 
 
+class PromptGenerationTraceInfo(BaseTraceInfo):
+    """Trace information for prompt generation operations (rule-generate, code-generate, etc.)."""
+
+    tenant_id: str
+    user_id: str
+    app_id: str | None = None
+
+    operation_type: str
+    instruction: str
+
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+    model_provider: str
+    model_name: str
+
+    latency: float
+
+    total_price: float | None = None
+    currency: str | None = None
+
+    error: str | None = None
+
+    model_config = ConfigDict(protected_namespaces=())
+
+
 class WorkflowNodeTraceInfo(BaseTraceInfo):
     workflow_id: str
     workflow_run_id: str
@@ -178,6 +205,7 @@ trace_info_info_map = {
     "DatasetRetrievalTraceInfo": DatasetRetrievalTraceInfo,
     "ToolTraceInfo": ToolTraceInfo,
     "GenerateNameTraceInfo": GenerateNameTraceInfo,
+    "PromptGenerationTraceInfo": PromptGenerationTraceInfo,
     "WorkflowNodeTraceInfo": WorkflowNodeTraceInfo,
     "DraftNodeExecutionTrace": DraftNodeExecutionTrace,
 }
@@ -193,5 +221,6 @@ class TraceTaskName(StrEnum):
     DATASET_RETRIEVAL_TRACE = "dataset_retrieval"
     TOOL_TRACE = "tool"
     GENERATE_NAME_TRACE = "generate_conversation_name"
+    PROMPT_GENERATION_TRACE = "prompt_generation"
     DATASOURCE_TRACE = "datasource"
     NODE_EXECUTION_TRACE = "node_execution"

@@ -25,6 +25,7 @@ from core.ops.entities.trace_entity import (
     GenerateNameTraceInfo,
     MessageTraceInfo,
     ModerationTraceInfo,
+    PromptGenerationTraceInfo,
     SuggestedQuestionTraceInfo,
     TaskData,
     ToolTraceInfo,
@@ -592,6 +593,8 @@ class TraceTask:
         self.app_id = None
         self.trace_id = None
         self.kwargs = kwargs
+        if user_id is not None and "user_id" not in self.kwargs:
+            self.kwargs["user_id"] = user_id
         external_trace_id = kwargs.get("external_trace_id")
         if external_trace_id:
             self.trace_id = external_trace_id
@@ -621,6 +624,7 @@ class TraceTask:
             TraceTaskName.GENERATE_NAME_TRACE: lambda: self.generate_name_trace(
                 conversation_id=self.conversation_id, timer=self.timer, **self.kwargs
             ),
+            TraceTaskName.PROMPT_GENERATION_TRACE: lambda: self.prompt_generation_trace(**self.kwargs),
             TraceTaskName.NODE_EXECUTION_TRACE: lambda: self.node_execution_trace(**self.kwargs),
             TraceTaskName.DRAFT_NODE_EXECUTION_TRACE: lambda: self.draft_node_execution_trace(**self.kwargs),
         }
@@ -1063,6 +1067,71 @@ class TraceTask:
         )
 
         return generate_name_trace_info
+
+    def prompt_generation_trace(self, **kwargs) -> PromptGenerationTraceInfo | dict:
+        tenant_id = kwargs.get("tenant_id", "")
+        user_id = kwargs.get("user_id", "")
+        app_id = kwargs.get("app_id")
+        operation_type = kwargs.get("operation_type", "")
+        instruction = kwargs.get("instruction", "")
+        generated_output = kwargs.get("generated_output", "")
+
+        prompt_tokens = kwargs.get("prompt_tokens", 0)
+        completion_tokens = kwargs.get("completion_tokens", 0)
+        total_tokens = kwargs.get("total_tokens", 0)
+
+        model_provider = kwargs.get("model_provider", "")
+        model_name = kwargs.get("model_name", "")
+
+        latency = kwargs.get("latency", 0.0)
+
+        timer = kwargs.get("timer")
+        start_time = timer.get("start") if timer else None
+        end_time = timer.get("end") if timer else None
+
+        total_price = kwargs.get("total_price")
+        currency = kwargs.get("currency")
+
+        error = kwargs.get("error")
+
+        app_name = None
+        workspace_name = None
+        if app_id:
+            app_name, workspace_name = _lookup_app_and_workspace_names(app_id, tenant_id)
+
+        metadata = {
+            "tenant_id": tenant_id,
+            "user_id": user_id,
+            "app_id": app_id or "",
+            "app_name": app_name,
+            "workspace_name": workspace_name,
+            "operation_type": operation_type,
+            "model_provider": model_provider,
+            "model_name": model_name,
+        }
+
+        return PromptGenerationTraceInfo(
+            trace_id=self.trace_id,
+            inputs=instruction,
+            outputs=generated_output,
+            start_time=start_time,
+            end_time=end_time,
+            metadata=metadata,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            app_id=app_id,
+            operation_type=operation_type,
+            instruction=instruction,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            model_provider=model_provider,
+            model_name=model_name,
+            latency=latency,
+            total_price=total_price,
+            currency=currency,
+            error=error,
+        )
 
     def node_execution_trace(self, **kwargs) -> WorkflowNodeTraceInfo | dict:
         node_data: dict = kwargs.get("node_execution_data", {})
