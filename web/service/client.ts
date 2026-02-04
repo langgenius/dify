@@ -37,11 +37,9 @@ function getBaseURL(path: string) {
   }
 
   if (!isClient) {
-    // TODO: adjust the default base URL for server side requests if needed
-    throw new Error('Base URL is required for server side requests')
+    console.warn('Using localhost as base URL in server environment, please configure accordingly.')
   }
-
-  return new URL(path, window.location.origin)
+  return new URL(path, isClient ? window.location.origin : 'http://localhost')
 }
 
 const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
