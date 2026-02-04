@@ -145,6 +145,8 @@ class EnterpriseOtelTrace:
                 "dify.workspace.name": info.metadata.get("workspace_name"),
                 "gen_ai.user.id": info.metadata.get("user_id"),
                 "gen_ai.usage.total_tokens": info.total_tokens,
+                "gen_ai.usage.input_tokens": info.prompt_tokens,
+                "gen_ai.usage.output_tokens": info.completion_tokens,
                 "dify.workflow.version": info.workflow_run_version,
             }
         )

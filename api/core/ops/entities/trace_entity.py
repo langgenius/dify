@@ -48,6 +48,8 @@ class WorkflowTraceInfo(BaseTraceInfo):
     workflow_run_version: str
     error: str | None = None
     total_tokens: int
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
     file_list: list[str]
     query: str
     metadata: dict[str, Any]

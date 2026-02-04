@@ -439,6 +439,8 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             "created_at": domain_execution.created_at,
             "finished_at": domain_execution.finished_at,
             "total_tokens": meta.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS, 0),
+            "prompt_tokens": meta.get(WorkflowNodeExecutionMetadataKey.PROMPT_TOKENS),
+            "completion_tokens": meta.get(WorkflowNodeExecutionMetadataKey.COMPLETION_TOKENS),
             "total_price": meta.get(WorkflowNodeExecutionMetadataKey.TOTAL_PRICE, 0.0),
             "currency": meta.get(WorkflowNodeExecutionMetadataKey.CURRENCY),
             "tool_name": (meta.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO) or {}).get("tool_name")

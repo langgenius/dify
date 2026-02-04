@@ -446,6 +446,8 @@ class ToolNode(Node[ToolNodeData]):
         }
         if isinstance(usage.total_tokens, int) and usage.total_tokens > 0:
             metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = usage.total_tokens
+            metadata[WorkflowNodeExecutionMetadataKey.PROMPT_TOKENS] = usage.prompt_tokens
+            metadata[WorkflowNodeExecutionMetadataKey.COMPLETION_TOKENS] = usage.completion_tokens
             metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = usage.total_price
             metadata[WorkflowNodeExecutionMetadataKey.CURRENCY] = usage.currency
 

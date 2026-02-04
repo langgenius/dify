@@ -543,6 +543,35 @@ class TraceTask:
 
         return "anonymous"
 
+    @classmethod
+    def _calculate_workflow_token_split(cls, workflow_run_id: str, tenant_id: str) -> tuple[int, int]:
+        from core.workflow.enums import WorkflowNodeExecutionMetadataKey
+        from models.workflow import WorkflowNodeExecutionModel
+
+        with Session(db.engine) as session:
+            node_executions = session.scalars(
+                select(WorkflowNodeExecutionModel).where(
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+                )
+            ).all()
+
+            total_prompt = 0
+            total_completion = 0
+
+            for node_exec in node_executions:
+                metadata = node_exec.execution_metadata_dict
+
+                prompt = metadata.get(WorkflowNodeExecutionMetadataKey.PROMPT_TOKENS)
+                if prompt is not None:
+                    total_prompt += prompt
+
+                completion = metadata.get(WorkflowNodeExecutionMetadataKey.COMPLETION_TOKENS)
+                if completion is not None:
+                    total_completion += completion
+
+            return (total_prompt, total_completion)
+
     def __init__(
         self,
         trace_type: Any,
@@ -629,6 +658,10 @@ class TraceTask:
 
         total_tokens = workflow_run.total_tokens
 
+        prompt_tokens, completion_tokens = self._calculate_workflow_token_split(
+            workflow_run_id=workflow_run_id, tenant_id=tenant_id
+        )
+
         file_list = workflow_run_inputs.get("sys.file") or []
         query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
 
@@ -686,6 +719,8 @@ class TraceTask:
             workflow_run_version=workflow_run_version,
             error=error,
             total_tokens=total_tokens,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
             file_list=file_list,
             query=query,
             metadata=metadata,
