@@ -1297,20 +1297,27 @@ class TraceQueueManager:
     def send_to_celery(self, tasks: list[TraceTask]):
         with self.flask_app.app_context():
             for task in tasks:
-                if task.app_id is None:
-                    continue
+                storage_id = task.app_id
+                if storage_id is None:
+                    tenant_id = task.kwargs.get("tenant_id")
+                    if tenant_id:
+                        storage_id = f"tenant-{tenant_id}"
+                    else:
+                        logger.warning("Skipping trace without app_id or tenant_id, trace_type: %s", task.trace_type)
+                        continue
+
                 file_id = uuid4().hex
                 trace_info = task.execute()
 
                 task_data = TaskData(
-                    app_id=task.app_id,
+                    app_id=storage_id,
                     trace_info_type=type(trace_info).__name__,
                     trace_info=trace_info.model_dump() if trace_info else None,
                 )
-                file_path = f"{OPS_FILE_PATH}{task.app_id}/{file_id}.json"
+                file_path = f"{OPS_FILE_PATH}{storage_id}/{file_id}.json"
                 storage.save(file_path, task_data.model_dump_json().encode("utf-8"))
                 file_info = {
                     "file_id": file_id,
-                    "app_id": task.app_id,
+                    "app_id": storage_id,
                 }
                 process_trace_tasks.delay(file_info)  # type: ignore
