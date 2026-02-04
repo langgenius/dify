@@ -6,7 +6,6 @@ from services.feature_service import FeatureModel, FeatureService, SystemFeature
 
 from .wraps import account_initialization_required, cloud_utm_record, setup_required
 
-
 # NOTE: The original feature.py Swagger documentation incorrectly specified a wrapped format
 # {"features": ...}, but the actual implementation returned a flat FeatureModel.
 # The frontend has always used the flat format, so we maintain backward compatibility here.

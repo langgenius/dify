@@ -301,7 +301,7 @@ def test_system_features_unauthenticated(app, mock_feature_module_env):
 class TestFastOpenAPIAuthenticationBehavior:
     """
     Tests for FastOpenAPI-specific authentication behavior.
-    
+
     Unlike the tests above that mock authentication decorators,
     these tests verify the actual authentication flow works correctly
     for FastOpenAPI routes where request.blueprint is None.
@@ -314,55 +314,59 @@ class TestFastOpenAPIAuthenticationBehavior:
         simulating the production environment more closely.
         """
         from flask_login import LoginManager
-        
+
         app = Flask(__name__)
         app.config["TESTING"] = True
         app.config["SECRET_KEY"] = "test-secret"
         app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-        
+
         # Initialize database
         db.init_app(app)
-        
+
         # Initialize login manager with unauthorized handler that matches our fix
         login_manager = LoginManager()
         login_manager.init_app(app)
-        
+
         @login_manager.unauthorized_handler
         def test_unauthorized_handler():
             """Simulates our fixed unauthorized_handler behavior."""
             from flask import request
+
             # For FastOpenAPI routes, raise exception (serializable by orjson)
             if request.blueprint is None and request.path.startswith("/console/api/"):
                 raise Unauthorized("Unauthorized.")
             # For Blueprint routes, return Response (legacy behavior)
-            from flask import Response
             import json
+
+            from flask import Response
+
             return Response(
                 json.dumps({"code": "unauthorized", "message": "Unauthorized."}),
                 status=401,
                 content_type="application/json",
             )
-        
+
         return app
 
     def test_fastopenapi_route_has_no_blueprint(self, app_with_login_manager, fix_method_view_issue):
         """
         Verify that FastOpenAPI routes have request.blueprint == None.
-        
+
         This is the core assumption our authentication fix relies on.
         """
         captured_blueprint = {}
-        
+
         # Create a simple test route to capture request.blueprint
         @app_with_login_manager.route("/console/api/test-blueprint")
         def test_route():
             from flask import request
+
             captured_blueprint["value"] = request.blueprint
             return {"status": "ok"}
-        
+
         client = app_with_login_manager.test_client()
         response = client.get("/console/api/test-blueprint")
-        
+
         assert response.status_code == 200
         # FastOpenAPI routes registered directly on app have no blueprint
         assert captured_blueprint["value"] is None
@@ -370,18 +374,19 @@ class TestFastOpenAPIAuthenticationBehavior:
     def test_unauthorized_response_is_serializable_json(self, app_with_login_manager, fix_method_view_issue):
         """
         Verify that unauthorized response for FastOpenAPI routes is valid JSON.
-        
+
         When unauthorized_handler raises Unauthorized exception for FastOpenAPI routes,
         Flask/Werkzeug converts it to a proper HTTP 401 response that is serializable.
         """
+
         @app_with_login_manager.route("/console/api/protected")
         def protected_route():
             # Simulate login_required behavior when user is not authenticated
             raise Unauthorized("Unauthorized.")
-        
+
         client = app_with_login_manager.test_client()
         response = client.get("/console/api/protected")
-        
+
         assert response.status_code == 401
         # Response should be valid (either JSON or HTML error page, but not a serialization error)
         assert response.data is not None
@@ -392,22 +397,22 @@ class TestFastOpenAPIAuthenticationBehavior:
         """
         Explicitly verify that response format is flat FeatureModel,
         not wrapped in {"features": {...}}.
-        
+
         This ensures backward compatibility with frontend expectations.
         """
         mock_model = FeatureModel(can_replace_logo=True, billing=None)
-        
+
         with patch("controllers.console.feature.FeatureService.get_features", return_value=mock_model):
             ext_fastopenapi.init_app(app)
             client = app.test_client()
             response = client.get("/console/api/features")
-        
+
         assert response.status_code == 200
         json_data = response.get_json()
-        
+
         # Should NOT be wrapped format
         assert "features" not in json_data or not isinstance(json_data.get("features"), dict)
-        
+
         # Should be flat format - top level keys are FeatureModel fields
         assert "can_replace_logo" in json_data
 
@@ -421,7 +426,7 @@ class TestFastOpenAPIAuthenticationBehavior:
 class TestResponseFormatValidation:
     """
     Tests for response format validation.
-    
+
     Ensures FastOpenAPI produces correct Content-Type headers and JSON format
     that matches OpenAPI 3.0 specification requirements.
     """
@@ -429,16 +434,16 @@ class TestResponseFormatValidation:
     def test_response_content_type_is_json(self, app, mock_feature_module_env):
         """
         Verify response Content-Type is application/json.
-        
+
         FastOpenAPI uses orjson for serialization, must produce correct Content-Type.
         """
         mock_model = FeatureModel(can_replace_logo=True)
-        
+
         with patch("controllers.console.feature.FeatureService.get_features", return_value=mock_model):
             ext_fastopenapi.init_app(app)
             client = app.test_client()
             response = client.get("/console/api/features")
-        
+
         assert response.status_code == 200
         # Content-Type should be JSON
         assert "application/json" in response.content_type
@@ -448,34 +453,34 @@ class TestResponseFormatValidation:
         Verify /system-features response Content-Type is application/json.
         """
         mock_model = SystemFeatureModel(enable_marketplace=True)
-        
+
         with patch("controllers.console.feature.FeatureService.get_system_features", return_value=mock_model):
             ext_fastopenapi.init_app(app)
             client = app.test_client()
             response = client.get("/console/api/system-features")
-        
+
         assert response.status_code == 200
         assert "application/json" in response.content_type
 
     def test_feature_model_all_fields_serialized(self, app, mock_feature_module_env):
         """
         Verify all FeatureModel fields are serialized in response.
-        
+
         This ensures Pydantic model dump is complete for OpenAPI schema compliance.
         """
         mock_model = FeatureModel(
             can_replace_logo=True,
             model_load_balancing_enabled=True,
         )
-        
+
         with patch("controllers.console.feature.FeatureService.get_features", return_value=mock_model):
             ext_fastopenapi.init_app(app)
             client = app.test_client()
             response = client.get("/console/api/features")
-        
+
         assert response.status_code == 200
         json_data = response.get_json()
-        
+
         # Verify key fields are present
         assert "can_replace_logo" in json_data
         assert json_data["can_replace_logo"] is True
@@ -492,7 +497,7 @@ class TestResponseFormatValidation:
 class TestAuthenticationWithRealisticMocking:
     """
     Tests authentication behavior with more realistic mocking.
-    
+
     Unlike tests that completely bypass decorators, these tests mock
     at the user/account level to verify decorator behavior.
     """
@@ -501,26 +506,26 @@ class TestAuthenticationWithRealisticMocking:
     def app_with_real_decorators(self, monkeypatch):
         """
         Creates a Flask app where decorators execute but dependencies are mocked.
-        
+
         This provides a middle ground between:
         - Full integration tests (require database setup)
         - Tests that completely bypass decorators (don't test auth flow)
         """
         from flask import Flask
         from flask_login import LoginManager
-        
+
         app = Flask(__name__)
         app.config["TESTING"] = True
         app.config["SECRET_KEY"] = "test-secret"
         app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-        
+
         # Initialize database
         db.init_app(app)
-        
+
         # Initialize login manager
         login_manager = LoginManager()
         login_manager.init_app(app)
-        
+
         # Mock request loader to return None (unauthenticated)
         @login_manager.request_loader
         def mock_load_user(request):
@@ -533,62 +538,65 @@ class TestAuthenticationWithRealisticMocking:
                 mock_user.current_tenant_id = "test-tenant-id"
                 return mock_user
             return None
-        
+
         @login_manager.unauthorized_handler
         def handle_unauthorized():
             """Simulates production unauthorized_handler for FastOpenAPI routes."""
             from flask import request
+
             if request.blueprint is None and request.path.startswith("/console/api/"):
                 raise Unauthorized("Unauthorized.")
-            from flask import Response
             import json
+
+            from flask import Response
+
             return Response(
                 json.dumps({"code": "unauthorized", "message": "Unauthorized."}),
                 status=401,
                 content_type="application/json",
             )
-        
+
         return app
 
     def test_features_endpoint_requires_authentication_concept(self, app_with_real_decorators, fix_method_view_issue):
         """
         Conceptual test: verify that a protected route would return 401 without auth.
-        
+
         Note: This test creates a simple protected route to verify the auth flow,
         since the actual feature.py module loading is complex.
         """
         from flask_login import login_required as flask_login_required
-        
+
         @app_with_real_decorators.route("/console/api/test-protected")
         @flask_login_required
         def protected_test_route():
             return {"status": "authenticated"}
-        
+
         client = app_with_real_decorators.test_client()
-        
+
         # Without authentication - should return 401
         response = client.get("/console/api/test-protected")
         assert response.status_code == 401
-        
+
         # With valid test token - should return 200
         response_with_auth = client.get(
-            "/console/api/test-protected",
-            headers={"Authorization": "Bearer test-valid-token"}
+            "/console/api/test-protected", headers={"Authorization": "Bearer test-valid-token"}
         )
         assert response_with_auth.status_code == 200
 
     def test_system_features_no_auth_decorator_concept(self, app_with_real_decorators, fix_method_view_issue):
         """
         Conceptual test: verify that an unprotected route works without auth.
-        
+
         This mirrors /system-features behavior which has no @login_required.
         """
+
         @app_with_real_decorators.route("/console/api/test-public")
         def public_test_route():
             return {"status": "public"}
-        
+
         client = app_with_real_decorators.test_client()
-        
+
         # Without authentication - should still work
         response = client.get("/console/api/test-public")
         assert response.status_code == 200
@@ -604,7 +612,7 @@ class TestAuthenticationWithRealisticMocking:
 class TestOpenAPISchemaCompliance:
     """
     Tests for OpenAPI 3.0 schema compliance.
-    
+
     Verifies that FastOpenAPI generates correct schema for endpoints.
     """
 
@@ -613,10 +621,10 @@ class TestOpenAPISchemaCompliance:
         Verify that FastOpenAPI registers routes with correct paths.
         """
         ext_fastopenapi.init_app(app)
-        
+
         # Check that routes are registered
         rules = {rule.rule for rule in app.url_map.iter_rules()}
-        
+
         # Feature endpoints should be registered
         assert "/console/api/features" in rules
         assert "/console/api/system-features" in rules
@@ -626,15 +634,15 @@ class TestOpenAPISchemaCompliance:
         Verify that feature endpoints only accept GET method.
         """
         mock_model = FeatureModel(can_replace_logo=True)
-        
+
         with patch("controllers.console.feature.FeatureService.get_features", return_value=mock_model):
             ext_fastopenapi.init_app(app)
             client = app.test_client()
-            
+
             # GET should work
             response_get = client.get("/console/api/features")
             assert response_get.status_code == 200
-            
+
             # POST should return 405 Method Not Allowed
             response_post = client.post("/console/api/features")
             assert response_post.status_code == 405
@@ -642,23 +650,23 @@ class TestOpenAPISchemaCompliance:
     def test_system_features_handles_both_auth_states(self, app, mock_feature_module_env):
         """
         Verify /system-features correctly handles both authenticated and unauthenticated states.
-        
+
         This is a critical test for the is_authenticated try-catch logic.
         """
         feature_module = mock_feature_module_env
-        
+
         # Test 1: When user is authenticated
         with patch("controllers.console.feature.FeatureService.get_system_features") as mock_service:
             mock_model = SystemFeatureModel(enable_marketplace=True)
             mock_service.return_value = mock_model
-            
+
             # Reset mock to authenticated state
             type(feature_module.current_user).is_authenticated = PropertyMock(return_value=True)
-            
+
             ext_fastopenapi.init_app(app)
             client = app.test_client()
             response = client.get("/console/api/system-features")
-            
+
             assert response.status_code == 200
             # Service should be called with is_authenticated=True
             mock_service.assert_called_with(is_authenticated=True)

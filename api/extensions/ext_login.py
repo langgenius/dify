@@ -118,7 +118,7 @@ def on_user_logged_in(_sender, user):
 @login_manager.unauthorized_handler
 def unauthorized_handler():
     """Handle unauthorized requests.
-    
+
     For FastOpenAPI routes (no blueprint), we raise Unauthorized exception
     which will be caught and serialized properly by the framework.
     For traditional Blueprint-based routes, we return a Response object.
@@ -127,7 +127,7 @@ def unauthorized_handler():
     if request.blueprint is None and request.path.startswith("/console/api/"):
         # Raise exception - FastOpenAPI will handle serialization
         raise Unauthorized("Unauthorized.")
-    
+
     # Traditional Blueprint routes - return Response object
     return Response(
         json.dumps({"code": "unauthorized", "message": "Unauthorized."}),
