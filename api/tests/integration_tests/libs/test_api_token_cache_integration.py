@@ -206,8 +206,8 @@ class TestApiTokenCacheRedisIntegration:
 
     def test_concurrent_cache_access(self):
         """Test concurrent cache access doesn't cause issues."""
-        from unittest.mock import MagicMock
         import concurrent.futures
+        from unittest.mock import MagicMock
         
         mock_token = MagicMock()
         mock_token.id = "test-id"
@@ -389,7 +389,6 @@ class TestEndToEndCacheFlow:
         2. Second request (cache hit) -> return from cache
         3. Verify Redis state
         """
-        from unittest.mock import MagicMock
         
         test_token_value = "test-e2e-token"
         test_scope = "app"
@@ -441,8 +440,8 @@ class TestEndToEndCacheFlow:
 
     def test_high_concurrency_simulation(self):
         """Simulate high concurrency access to cache."""
-        from unittest.mock import MagicMock
         import concurrent.futures
+        from unittest.mock import MagicMock
         
         test_token_value = "test-concurrent-token"
         test_scope = "app"
@@ -478,7 +477,7 @@ class TestEndToEndCacheFlow:
             assert elapsed < 1.0, f"Too slow: {elapsed}s for 100 cache reads"
             
             print(f"\n✓ 100 concurrent cache reads in {elapsed:.3f}s")
-            print(f"✓ Average: {(elapsed/100)*1000:.2f}ms per read")
+            print(f"✓ Average: {(elapsed / 100) * 1000:.2f}ms per read")
 
         finally:
             # Cleanup
