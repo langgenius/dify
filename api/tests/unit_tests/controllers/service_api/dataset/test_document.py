@@ -350,3 +350,104 @@ class TestDocumentFileUpload:
         max_size_mb = 15
         max_size_bytes = max_size_mb * 1024 * 1024
         assert max_size_bytes == 15728640
+
+
+class TestDocumentDisplayStatusLogic:
+    """Test DocumentService display status logic."""
+
+    def test_normalize_display_status_aliases(self):
+        """Test status normalization with aliases."""
+        assert DocumentService.normalize_display_status("active") == "available"
+        assert DocumentService.normalize_display_status("enabled") == "available"
+
+    def test_normalize_display_status_valid(self):
+        """Test normalization of valid statuses."""
+        valid_statuses = ["queuing", "indexing", "paused", "error", "available", "disabled", "archived"]
+        for status in valid_statuses:
+            assert DocumentService.normalize_display_status(status) == status
+
+    def test_normalize_display_status_invalid(self):
+        """Test normalization of invalid status returns None."""
+        assert DocumentService.normalize_display_status("unknown_status") is None
+        assert DocumentService.normalize_display_status("") is None
+        assert DocumentService.normalize_display_status(None) is None
+
+    def test_build_display_status_filters(self):
+        """Test filter building returns tuple."""
+        filters = DocumentService.build_display_status_filters("available")
+        assert isinstance(filters, tuple)
+        assert len(filters) > 0
+
+
+class TestDocumentServiceBatchMethods:
+    """Test DocumentService batch operations."""
+
+    @patch("services.dataset_service.db.session.scalars")
+    def test_get_documents_by_ids(self, mock_scalars):
+        """Test batch retrieval of documents by IDs."""
+        dataset_id = str(uuid.uuid4())
+        doc_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
+
+        mock_result = Mock()
+        mock_result.all.return_value = [Mock(id=doc_ids[0]), Mock(id=doc_ids[1])]
+        mock_scalars.return_value = mock_result
+
+        documents = DocumentService.get_documents_by_ids(dataset_id, doc_ids)
+
+        assert len(documents) == 2
+        mock_scalars.assert_called_once()
+
+    def test_get_documents_by_ids_empty(self):
+        """Test batch retrieval with empty list returns empty."""
+        assert DocumentService.get_documents_by_ids("ds_id", []) == []
+
+
+class TestDocumentServiceFileOperations:
+    """Test DocumentService file related operations."""
+
+    @patch("services.dataset_service.file_helpers.get_signed_file_url")
+    @patch("services.dataset_service.DocumentService._get_upload_file_for_upload_file_document")
+    def test_get_document_download_url(self, mock_get_file, mock_signed_url):
+        """Test generation of download URL."""
+        mock_doc = Mock()
+        mock_file = Mock()
+        mock_file.id = "file_id"
+        mock_get_file.return_value = mock_file
+        mock_signed_url.return_value = "https://example.com/download"
+
+        url = DocumentService.get_document_download_url(mock_doc)
+
+        assert url == "https://example.com/download"
+        mock_signed_url.assert_called_with(upload_file_id="file_id", as_attachment=True)
+
+
+class TestDocumentServiceSaveValidation:
+    """Test validations during document saving."""
+
+    @patch("services.dataset_service.DatasetService.check_doc_form")
+    @patch("services.dataset_service.FeatureService.get_features")
+    @patch("services.dataset_service.current_user")
+    def test_save_document_validates_doc_form(self, mock_user, mock_features, mock_check_form):
+        """Test that doc_form is validated during save."""
+        mock_user.current_tenant_id = "tenant_id"
+        dataset = Mock()
+        config = Mock()
+        features = Mock()
+        features.billing.enabled = False
+        mock_features.return_value = features
+
+        class TestStopError(Exception):
+            pass
+
+        mock_check_form.side_effect = TestStopError()
+
+        # Skip actual logic by mocking dependent calls or raising error to stop early
+        with pytest.raises(TestStopError):
+            # We just want to check check_doc_form is called early
+            DocumentService.save_document_with_dataset_id(dataset, config, Mock())
+
+        # This will fail if we raise exception before check_doc_form,
+        # but check_doc_form is the first thing called.
+        # Ideally we'd mock everything to completion, but for unit validation:
+        # We can just verify check_doc_form was called if we mock it to not raise.
+        mock_check_form.assert_called_once()

@@ -264,3 +264,124 @@ class TestAppGenerateService:
             AppGenerateService.generate(
                 app_model=Mock(spec=App), user=Mock(spec=EndUser), args={}, invoke_from=Mock(), streaming=False
             )
+
+
+class TestCompletionControllerLogic:
+    """Test CompletionApi and ChatApi controller logic directly."""
+
+    @pytest.fixture
+    def app(self):
+        """Create Flask test application."""
+        from flask import Flask
+
+        flask_app = Flask(__name__)
+        flask_app.config["TESTING"] = True
+        return flask_app
+
+    @patch("controllers.service_api.app.completion.service_api_ns")
+    @patch("controllers.service_api.app.completion.AppGenerateService")
+    def test_completion_api_post_success(self, mock_generate_service, mock_service_api_ns, app):
+        """Test CompletionApi.post success path."""
+        from controllers.service_api.app.completion import CompletionApi
+
+        # Setup mocks
+        mock_app_model = Mock(spec=App)
+        mock_app_model.mode = AppMode.COMPLETION
+        mock_end_user = Mock(spec=EndUser)
+
+        payload_dict = {"inputs": {"text": "hello"}, "response_mode": "blocking"}
+        mock_service_api_ns.payload = payload_dict
+        mock_generate_service.generate.return_value = {"text": "response"}
+
+        with app.test_request_context():
+            # Helper for compact_generate_response logic check
+            with patch("controllers.service_api.app.completion.helper.compact_generate_response") as mock_compact:
+                mock_compact.return_value = {"text": "compacted"}
+
+                api = CompletionApi()
+                response = api.post.__wrapped__(api, mock_app_model, mock_end_user)
+
+                assert response == {"text": "compacted"}
+                mock_generate_service.generate.assert_called_once()
+
+    @patch("controllers.service_api.app.completion.service_api_ns")
+    def test_completion_api_post_wrong_app_mode(self, mock_service_api_ns, app):
+        """Test CompletionApi.post with wrong app mode."""
+        from controllers.service_api.app.completion import CompletionApi
+
+        mock_app_model = Mock(spec=App)
+        mock_app_model.mode = AppMode.CHAT  # Wrong mode
+        mock_end_user = Mock(spec=EndUser)
+
+        with app.test_request_context():
+            with pytest.raises(AppUnavailableError):
+                CompletionApi().post.__wrapped__(CompletionApi(), mock_app_model, mock_end_user)
+
+    @patch("controllers.service_api.app.completion.service_api_ns")
+    @patch("controllers.service_api.app.completion.AppGenerateService")
+    def test_chat_api_post_success(self, mock_generate_service, mock_service_api_ns, app):
+        """Test ChatApi.post success path."""
+        from controllers.service_api.app.completion import ChatApi
+
+        mock_app_model = Mock(spec=App)
+        mock_app_model.mode = AppMode.CHAT
+        mock_end_user = Mock(spec=EndUser)
+
+        payload_dict = {"inputs": {}, "query": "hello", "response_mode": "blocking"}
+        mock_service_api_ns.payload = payload_dict
+        mock_generate_service.generate.return_value = {"text": "response"}
+
+        with app.test_request_context():
+            with patch("controllers.service_api.app.completion.helper.compact_generate_response") as mock_compact:
+                mock_compact.return_value = {"text": "compacted"}
+
+                api = ChatApi()
+                response = api.post.__wrapped__(api, mock_app_model, mock_end_user)
+                assert response == {"text": "compacted"}
+
+    @patch("controllers.service_api.app.completion.service_api_ns")
+    def test_chat_api_post_wrong_app_mode(self, mock_service_api_ns, app):
+        """Test ChatApi.post with wrong app mode."""
+        from controllers.service_api.app.completion import ChatApi
+
+        mock_app_model = Mock(spec=App)
+        mock_app_model.mode = AppMode.COMPLETION  # Wrong mode
+        mock_end_user = Mock(spec=EndUser)
+
+        with app.test_request_context():
+            with pytest.raises(NotChatAppError):
+                ChatApi().post.__wrapped__(ChatApi(), mock_app_model, mock_end_user)
+
+    @patch("controllers.service_api.app.completion.AppTaskService")
+    def test_completion_stop_api_success(self, mock_task_service, app):
+        """Test CompletionStopApi.post success."""
+        from controllers.service_api.app.completion import CompletionStopApi
+
+        mock_app_model = Mock(spec=App)
+        mock_app_model.mode = AppMode.COMPLETION
+        mock_end_user = Mock(spec=EndUser)
+        mock_end_user.id = "user_id"
+
+        with app.test_request_context():
+            api = CompletionStopApi()
+            response = api.post.__wrapped__(api, mock_app_model, mock_end_user, "task_id")
+
+            assert response == ({"result": "success"}, 200)
+            mock_task_service.stop_task.assert_called_once()
+
+    @patch("controllers.service_api.app.completion.AppTaskService")
+    def test_chat_stop_api_success(self, mock_task_service, app):
+        """Test ChatStopApi.post success."""
+        from controllers.service_api.app.completion import ChatStopApi
+
+        mock_app_model = Mock(spec=App)
+        mock_app_model.mode = AppMode.CHAT
+        mock_end_user = Mock(spec=EndUser)
+        mock_end_user.id = "user_id"
+
+        with app.test_request_context():
+            api = ChatStopApi()
+            response = api.post.__wrapped__(api, mock_app_model, mock_end_user, "task_id")
+
+            assert response == ({"result": "success"}, 200)
+            mock_task_service.stop_task.assert_called_once()

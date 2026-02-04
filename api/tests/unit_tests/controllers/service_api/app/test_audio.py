@@ -199,6 +199,102 @@ class TestAudioServiceExceptions:
         assert api_error is not None
 
 
+class TestAudioControllerLogic:
+    """Test AudioApi and TextApi controller logic directly."""
+
+    @pytest.fixture
+    def app(self):
+        """Create Flask test application."""
+        flask_app = Flask(__name__)
+        flask_app.config["TESTING"] = True
+        return flask_app
+
+    @patch("controllers.service_api.app.audio.AudioService")
+    def test_audio_api_post_success(self, mock_audio_service, app):
+        """Test AudioApi.post success path."""
+        import io
+
+        from controllers.service_api.app.audio import AudioApi
+
+        # Setup mocks
+        mock_app_model = Mock()
+        mock_end_user = Mock()
+        mock_end_user.id = "user_id"
+
+        mock_audio_service.transcript_asr.return_value = {"text": "Transcribed text"}
+
+        # Use request context with file
+        data = {"file": (io.BytesIO(b"audio"), "test.wav")}
+        with app.test_request_context(method="POST", data=data, content_type="multipart/form-data"):
+            # Call the wrapped function to bypass auth decorator
+            api = AudioApi()
+            response = api.post.__wrapped__(api, mock_app_model, mock_end_user)
+
+            assert response == {"text": "Transcribed text"}
+            # Verify service called with correct file object (or at least checking it exists)
+            # Since Request creates a new FileStorage, we can't easily assert equality with original BytesIO
+            # But we can check arguments were passed
+            mock_audio_service.transcript_asr.assert_called_once()
+            args = mock_audio_service.transcript_asr.call_args[1]
+            assert args["app_model"] == mock_app_model
+            assert args["end_user"] == "user_id"
+            assert args["file"].filename == "test.wav"
+
+    @patch("controllers.service_api.app.audio.service_api_ns")
+    @patch("controllers.service_api.app.audio.AudioService")
+    def test_text_api_post_success(self, mock_audio_service, mock_service_api_ns, app):
+        """Test TextApi.post success path."""
+        from controllers.service_api.app.audio import TextApi
+
+        # Setup mocks
+        mock_app_model = Mock()
+        mock_end_user = Mock()
+        mock_end_user.external_user_id = "ext_user_id"
+
+        payload_dict = {"text": "Hello world", "voice": "alloy", "message_id": "msg_123", "streaming": False}
+        mock_service_api_ns.payload = payload_dict
+
+        mock_audio_service.transcript_tts.return_value = {"data": "audio_data"}
+
+        with app.test_request_context():
+            # Call the wrapped function
+            api = TextApi()
+            response = api.post.__wrapped__(api, mock_app_model, mock_end_user)
+
+            assert response == {"data": "audio_data"}
+            mock_audio_service.transcript_tts.assert_called_once()
+            call_args = mock_audio_service.transcript_tts.call_args[1]
+            assert call_args["text"] == "Hello world"
+            assert call_args["voice"] == "alloy"
+            assert call_args["end_user"] == "ext_user_id"
+            assert call_args["message_id"] == "msg_123"
+
+    @patch("controllers.service_api.app.audio.AudioService")
+    def test_audio_api_post_exceptions(self, mock_audio_service, app):
+        """Test AudioApi.post exception handling."""
+        import io
+
+        from controllers.service_api.app.audio import AudioApi
+
+        mock_app_model = Mock()
+        mock_end_user = Mock()
+
+        data = {"file": (io.BytesIO(b"audio"), "test.wav")}
+
+        with app.test_request_context(method="POST", data=data, content_type="multipart/form-data"):
+            # Test NoAudioUploadedServiceError
+            mock_audio_service.transcript_asr.side_effect = NoAudioUploadedServiceError()
+            with pytest.raises(NoAudioUploadedError):
+                AudioApi().post.__wrapped__(AudioApi(), mock_app_model, mock_end_user)
+
+            # Test generic Exception
+            mock_audio_service.transcript_asr.side_effect = Exception("General error")
+            from werkzeug.exceptions import InternalServerError
+
+            with pytest.raises(InternalServerError):
+                AudioApi().post.__wrapped__(AudioApi(), mock_app_model, mock_end_user)
+
+
 class TestAudioServiceTranscription:
     """Test AudioService transcription methods directly."""
 
