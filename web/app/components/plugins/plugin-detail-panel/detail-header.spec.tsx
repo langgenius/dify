@@ -6,7 +6,6 @@ import Toast from '@/app/components/base/toast'
 import { PluginSource } from '../types'
 import DetailHeader from './detail-header'
 
-// Use vi.hoisted for mock functions used in vi.mock factories
 const {
   mockSetShowUpdatePluginModal,
   mockRefreshModelProviders,

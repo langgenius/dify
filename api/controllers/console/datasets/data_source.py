@@ -1,6 +1,6 @@
 import json
 from collections.abc import Generator
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
@@ -157,9 +157,8 @@ class DataSourceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def patch(self, binding_id, action):
+    def patch(self, binding_id, action: Literal["enable", "disable"]):
         binding_id = str(binding_id)
-        action = str(action)
         with Session(db.engine) as session:
             data_source_binding = session.execute(
                 select(DataSourceOauthBinding).filter_by(id=binding_id)
@@ -167,23 +166,24 @@ class DataSourceApi(Resource):
         if data_source_binding is None:
             raise NotFound("Data source binding not found.")
         # enable binding
-        if action == "enable":
-            if data_source_binding.disabled:
-                data_source_binding.disabled = False
-                data_source_binding.updated_at = naive_utc_now()
-                db.session.add(data_source_binding)
-                db.session.commit()
-            else:
-                raise ValueError("Data source is not disabled.")
-        # disable binding
-        if action == "disable":
-            if not data_source_binding.disabled:
-                data_source_binding.disabled = True
-                data_source_binding.updated_at = naive_utc_now()
-                db.session.add(data_source_binding)
-                db.session.commit()
-            else:
-                raise ValueError("Data source is disabled.")
+        match action:
+            case "enable":
+                if data_source_binding.disabled:
+                    data_source_binding.disabled = False
+                    data_source_binding.updated_at = naive_utc_now()
+                    db.session.add(data_source_binding)
+                    db.session.commit()
+                else:
+                    raise ValueError("Data source is not disabled.")
+            # disable binding
+            case "disable":
+                if not data_source_binding.disabled:
+                    data_source_binding.disabled = True
+                    data_source_binding.updated_at = naive_utc_now()
+                    db.session.add(data_source_binding)
+                    db.session.commit()
+                else:
+                    raise ValueError("Data source is disabled.")
         return {"result": "success"}, 200
 
 

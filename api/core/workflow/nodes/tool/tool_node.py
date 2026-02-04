@@ -482,16 +482,17 @@ class ToolNode(Node[ToolNodeData]):
         result = {}
         for parameter_name in typed_node_data.tool_parameters:
             input = typed_node_data.tool_parameters[parameter_name]
-            if input.type == "mixed":
-                assert isinstance(input.value, str)
-                selectors = VariableTemplateParser(input.value).extract_variable_selectors()
-                for selector in selectors:
-                    result[selector.variable] = selector.value_selector
-            elif input.type == "variable":
-                selector_key = ".".join(input.value)
-                result[f"#{selector_key}#"] = input.value
-            elif input.type == "constant":
-                pass
+            match input.type:
+                case "mixed":
+                    assert isinstance(input.value, str)
+                    selectors = VariableTemplateParser(input.value).extract_variable_selectors()
+                    for selector in selectors:
+                        result[selector.variable] = selector.value_selector
+                case "variable":
+                    selector_key = ".".join(input.value)
+                    result[f"#{selector_key}#"] = input.value
+                case "constant":
+                    pass
 
         result = {node_id + "." + key: value for key, value in result.items()}
 
