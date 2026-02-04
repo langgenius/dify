@@ -8,7 +8,7 @@ export default mergeConfig(viteConfig, defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'json-summary'],
+      reporter: ['json', 'json-summary'],
     },
   },
 }))

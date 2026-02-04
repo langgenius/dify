@@ -2031,6 +2031,9 @@ describe('CommonCreateModal', () => {
         expect(mockCreateBuilder).toHaveBeenCalled()
       })
 
+      // Flush pending state updates from createBuilder promise resolution
+      await act(async () => {})
+
       const input = screen.getByTestId('form-field-webhook_url')
       fireEvent.change(input, { target: { value: 'test' } })
 

@@ -10,7 +10,7 @@ import services
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
 from controllers.common.schema import get_or_create_model
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
