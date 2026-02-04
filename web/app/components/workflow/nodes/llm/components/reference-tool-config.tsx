@@ -22,10 +22,8 @@ import { getIconFromMarketPlace } from '@/utils/get-icon'
 
 type ReferenceToolConfigProps = {
   readonly: boolean
-  isDisabledByStructuredOutput?: boolean
-  isComputerUseEnabled?: boolean
-  disabledByStructuredOutput?: boolean
-  computerUseEnabled?: boolean
+  isDisabledByStructuredOutput: boolean
+  isComputerUseEnabled: boolean
   nodeId: string
   toolSettings?: ToolSetting[]
   promptTemplateKey: string
@@ -40,15 +38,11 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
   readonly,
   isDisabledByStructuredOutput,
   isComputerUseEnabled,
-  disabledByStructuredOutput,
-  computerUseEnabled,
   nodeId,
   toolSettings,
   promptTemplateKey,
 }) => {
-  const resolvedIsComputerUseEnabled = isComputerUseEnabled ?? computerUseEnabled ?? false
-  const resolvedIsDisabledByStructuredOutput = isDisabledByStructuredOutput ?? disabledByStructuredOutput ?? false
-  const isReferenceToolsDisabled = readonly || !resolvedIsComputerUseEnabled || resolvedIsDisabledByStructuredOutput
+  const isReferenceToolsDisabled = readonly || !isComputerUseEnabled || isDisabledByStructuredOutput
   const { i18n, t } = useTranslation()
   const { handleNodeDataUpdate } = useNodeCurdKit<LLMNodeType>(nodeId)
   const { theme } = useTheme()

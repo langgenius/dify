@@ -13,8 +13,7 @@ const i18nPrefix = 'nodes.llm.computerUse'
 
 type Props = {
   readonly: boolean
-  isDisabledByStructuredOutput?: boolean
-  disabled?: boolean
+  isDisabledByStructuredOutput: boolean
   disabledTip?: string
   enabled: boolean
   onChange: (enabled: boolean) => void
@@ -26,7 +25,6 @@ type Props = {
 const ComputerUseConfig: FC<Props> = ({
   readonly,
   isDisabledByStructuredOutput,
-  disabled,
   disabledTip,
   enabled,
   onChange,
@@ -35,8 +33,7 @@ const ComputerUseConfig: FC<Props> = ({
   promptTemplateKey,
 }) => {
   const { t } = useTranslation()
-  const disabledByStructuredOutput = isDisabledByStructuredOutput ?? disabled ?? false
-  const isDisabled = readonly || disabledByStructuredOutput
+  const isDisabled = readonly || isDisabledByStructuredOutput
 
   return (
     <div>
@@ -76,7 +73,7 @@ const ComputerUseConfig: FC<Props> = ({
           </div>
           <ReferenceToolConfig
             readonly={readonly}
-            isDisabledByStructuredOutput={disabledByStructuredOutput}
+            isDisabledByStructuredOutput={isDisabledByStructuredOutput}
             isComputerUseEnabled={enabled}
             nodeId={nodeId}
             toolSettings={toolSettings}

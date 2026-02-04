@@ -2,6 +2,7 @@ import type { LLMNodeType } from './types'
 import type { ToolDependency } from './use-node-skills'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getToolTokenListRegexString, getToolTokenRegexString } from '@/app/components/workflow/skill/editor/skill-editor/plugins/tool-block/utils'
 
 type Params = {
   inputs: LLMNodeType
@@ -17,8 +18,31 @@ export const useStructuredOutputMutualExclusion = ({
   toolDependencies,
 }: Params) => {
   const { t } = useTranslation()
+  const toolTokenRegex = useMemo(() => new RegExp(getToolTokenRegexString()), [])
+  const toolTokenListRegex = useMemo(() => new RegExp(getToolTokenListRegexString()), [])
+  const hasToolTokensInText = useMemo(() => {
+    return (value?: string) => {
+      if (!value)
+        return false
+      return toolTokenRegex.test(value) || toolTokenListRegex.test(value)
+    }
+  }, [toolTokenListRegex, toolTokenRegex])
+  const hasToolTokensInPrompt = useMemo(() => {
+    const template = inputs.prompt_template
+    const check = hasToolTokensInText
+    if (Array.isArray(template)) {
+      return template.some((item) => {
+        if ('text' in item && check(item.text))
+          return true
+        if ('jinja2_text' in item && check(item.jinja2_text))
+          return true
+        return false
+      })
+    }
+    return check(template.text) || check(template.jinja2_text)
+  }, [hasToolTokensInText, inputs.prompt_template])
   const isStructuredOutputEnabled = !!inputs.structured_output_enabled
-  const hasToolDependencies = isSupportSandbox && toolDependencies.length > 0
+  const hasToolDependencies = isSupportSandbox && (toolDependencies.length > 0 || hasToolTokensInPrompt)
   const hasEnabledTools = (inputs.tools?.length ?? 0) > 0
   const hasToolConflict = !!inputs.computer_use || hasToolDependencies || hasEnabledTools
 
