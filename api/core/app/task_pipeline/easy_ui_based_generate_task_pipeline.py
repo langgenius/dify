@@ -548,7 +548,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                     remote_url = (
                         message_file.url
                         if message_file.transfer_method == FileTransferMethod.REMOTE_URL
-                        else None
+                        else ""
                     )
                     file_dict = {
                         "related_id": message_file.id,

@@ -171,7 +171,7 @@ class TestMessageEndStreamResponseFiles:
             assert file_dict["transfer_method"] == FileTransferMethod.LOCAL_FILE.value
             assert "https://example.com/signed-url" in file_dict["url"]
             assert file_dict["upload_file_id"] == mock_message_file_local.upload_file_id
-            assert file_dict["remote_url"] is None
+            assert file_dict["remote_url"] == ""
 
             # Verify database queries
             # Should be called twice: once for MessageFile, once for UploadFile
