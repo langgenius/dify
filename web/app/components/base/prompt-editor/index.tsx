@@ -26,6 +26,8 @@ import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import {
   $getRoot,
+  COMMAND_PRIORITY_LOW,
+  KEY_ENTER_COMMAND,
   TextNode,
 } from 'lexical'
 import * as React from 'react'
@@ -124,6 +126,30 @@ const ValueSyncPlugin: FC<{ value?: string }> = ({ value }) => {
   return null
 }
 
+const EnterCommandPlugin: FC<{ onEnter?: (event: KeyboardEvent) => void }> = ({ onEnter }) => {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(() => {
+    if (!onEnter)
+      return
+    return editor.registerCommand(
+      KEY_ENTER_COMMAND,
+      (event: KeyboardEvent) => {
+        if (!event || event.defaultPrevented)
+          return false
+        if (event.isComposing || event.shiftKey)
+          return false
+        event.preventDefault()
+        onEnter(event)
+        return true
+      },
+      COMMAND_PRIORITY_LOW,
+    )
+  }, [editor, onEnter])
+
+  return null
+}
+
 export type PromptEditorProps = {
   instanceId?: string
   compact?: boolean
@@ -152,6 +178,7 @@ export type PromptEditorProps = {
   isSupportFileVar?: boolean
   isSupportSandbox?: boolean
   disableToolBlocks?: boolean
+  onEnter?: (event: KeyboardEvent) => void
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -182,6 +209,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   isSupportFileVar,
   isSupportSandbox,
   disableToolBlocks,
+  onEnter,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -436,6 +464,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           }
           <ValueSyncPlugin value={value} />
           <OnChangePlugin onChange={handleEditorChange} />
+          <EnterCommandPlugin onEnter={onEnter} />
           <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
           <UpdateBlock instanceId={instanceId} />
           <HistoryPlugin />

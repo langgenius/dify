@@ -2,15 +2,18 @@ import type { ContextGenerateChatMessage } from '../hooks/use-context-generate'
 import type { VersionOption } from '../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import type { Model } from '@/types/app'
 import { RiArrowDownSLine, RiRefreshLine, RiSendPlaneLine, RiSparklingLine } from '@remixicon/react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
+import PromptEditor from '@/app/components/base/prompt-editor'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { renderI18nObject } from '@/i18n-config'
 import { cn } from '@/utils/classnames'
 import ChatView from './chat-view'
@@ -32,6 +35,8 @@ type LeftPanelProps = {
   currentVersionIndex: number
   onSelectVersion: (index: number) => void
   defaultAssistantMessage: string
+  availableVars: NodeOutPutVar[]
+  availableNodes: Node[]
 }
 
 const LeftPanel = ({
@@ -51,11 +56,38 @@ const LeftPanel = ({
   currentVersionIndex,
   onSelectVersion,
   defaultAssistantMessage,
+  availableVars,
+  availableNodes,
 }: LeftPanelProps) => {
   const { t, i18n } = useTranslation()
   const language = useMemo(() => (i18n.language || 'en-US').replace('-', '_'), [i18n.language])
   const shouldShowSuggestedSkeleton = isInitView && !hasFetchedSuggestions
   const suggestedSkeletonItems = useMemo(() => ([0, 1, 2]), [])
+
+  const workflowNodesMap = useMemo(() => {
+    return availableNodes.reduce<Record<string, Pick<Node['data'], 'title' | 'type' | 'height' | 'width' | 'position'>>>((acc, node) => {
+      acc[node.id] = {
+        title: node.data.title,
+        type: node.data.type,
+        height: node.data.height,
+        width: node.data.width,
+        position: node.data.position,
+      }
+      if (node.data.type === BlockEnum.Start) {
+        acc.sys = {
+          title: t('blocks.start', { ns: 'workflow' }),
+          type: BlockEnum.Start,
+        }
+      }
+      return acc
+    }, {})
+  }, [availableNodes, t])
+
+  const workflowVariableBlock = useMemo(() => ({
+    show: true,
+    variables: availableVars,
+    workflowNodesMap,
+  }), [availableVars, workflowNodesMap])
 
   const renderModelTrigger = useCallback((params: TriggerProps) => {
     const label = params.currentModel?.label
@@ -125,19 +157,16 @@ const LeftPanel = ({
               <div className="bg-gradient-to-b from-[rgba(255,255,255,0.01)] to-background-body px-2 pb-2 pt-3">
                 <div className="flex h-[120px] flex-col justify-between overflow-hidden rounded-xl border-[0.5px] border-components-input-border-active bg-components-panel-bg shadow-shadow-shadow-5 backdrop-blur-[5px]">
                   <div className="flex min-h-[64px] px-3 pb-1 pt-2.5">
-                    <textarea
-                      value={inputValue}
-                      onChange={e => onInputChange(e.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && !event.shiftKey) {
-                          event.preventDefault()
-                          onGenerate()
-                        }
-                      }}
+                    <PromptEditor
+                      wrapperClassName="w-full"
+                      className="text-sm leading-5 text-text-primary"
                       placeholder={t('nodes.tool.contextGenerate.initPlaceholder', { ns: 'workflow' })}
-                      className="w-full resize-none bg-transparent text-sm leading-5 text-text-primary placeholder:text-text-quaternary focus:outline-none"
-                      disabled={isGenerating}
-                      rows={2}
+                      placeholderClassName="text-text-quaternary"
+                      editable={!isGenerating}
+                      value={inputValue}
+                      workflowVariableBlock={workflowVariableBlock}
+                      onChange={onInputChange}
+                      onEnter={() => onGenerate()}
                     />
                   </div>
                   <div className="flex items-end gap-2 p-2">
@@ -208,6 +237,7 @@ const LeftPanel = ({
               onModelChange={onModelChange}
               onCompletionParamsChange={onCompletionParamsChange}
               renderModelTrigger={renderModelTrigger}
+              workflowVariableBlock={workflowVariableBlock}
             />
           )}
     </div>

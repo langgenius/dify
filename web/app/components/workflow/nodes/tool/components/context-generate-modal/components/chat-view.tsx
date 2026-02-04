@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { ContextGenerateChatMessage } from '../hooks/use-context-generate'
 import type { VersionOption } from '../types'
+import type { WorkflowVariableBlockType } from '@/app/components/base/prompt-editor/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import type { Model } from '@/types/app'
@@ -10,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { CodeAssistant } from '@/app/components/base/icons/src/vender/line/general'
+import PromptEditor from '@/app/components/base/prompt-editor'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { cn } from '@/utils/classnames'
 
@@ -27,6 +29,7 @@ type ChatViewProps = {
   onModelChange: (newValue: { modelId: string, provider: string, mode?: string, features?: string[] }) => void
   onCompletionParamsChange: (newParams: FormValue) => void
   renderModelTrigger: (params: TriggerProps) => ReactNode
+  workflowVariableBlock: WorkflowVariableBlockType
 }
 
 const ChatView = ({
@@ -43,6 +46,7 @@ const ChatView = ({
   onModelChange,
   onCompletionParamsChange,
   renderModelTrigger,
+  workflowVariableBlock,
 }: ChatViewProps) => {
   const { t } = useTranslation()
   const chatListRef = useRef<HTMLDivElement>(null)
@@ -130,19 +134,16 @@ const ChatView = ({
       <div className="bg-gradient-to-b from-[rgba(255,255,255,0.01)] to-background-body px-1 pb-1 pt-3">
         <div className="flex min-h-[112px] flex-col justify-between overflow-hidden rounded-xl border-[0.5px] border-components-input-border-active bg-components-panel-bg shadow-shadow-shadow-5 backdrop-blur-[5px]">
           <div className="flex min-h-[64px] px-3 pb-1 pt-2.5">
-            <textarea
-              value={inputValue}
-              onChange={e => onInputChange(e.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault()
-                  onGenerate()
-                }
-              }}
+            <PromptEditor
+              wrapperClassName="w-full"
+              className="text-sm leading-5 text-text-primary"
               placeholder={t('nodes.tool.contextGenerate.inputPlaceholder', { ns: 'workflow' }) as string}
-              className="w-full resize-none bg-transparent text-sm leading-5 text-text-primary placeholder:text-text-quaternary focus:outline-none"
-              disabled={isGenerating}
-              rows={2}
+              placeholderClassName="text-text-quaternary"
+              editable={!isGenerating}
+              value={inputValue}
+              workflowVariableBlock={workflowVariableBlock}
+              onChange={onInputChange}
+              onEnter={() => onGenerate()}
             />
           </div>
           <div className="flex items-end gap-2 p-2">

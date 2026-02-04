@@ -160,6 +160,8 @@ type UseContextGenerateResult = {
   versionOptions: VersionOption[]
   currentVersionLabel: string
   isInitView: boolean
+  availableVars: NodeOutPutVar[]
+  availableNodes: Node[]
 }
 
 const useContextGenerate = ({
@@ -539,6 +541,8 @@ const useContextGenerate = ({
     versionOptions,
     currentVersionLabel,
     isInitView,
+    availableVars: resolvedAvailableVars,
+    availableNodes: resolvedAvailableNodes,
   }
 }
 

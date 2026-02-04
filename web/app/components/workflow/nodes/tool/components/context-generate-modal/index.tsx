@@ -116,6 +116,8 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
     versionOptions,
     currentVersionLabel,
     isInitView,
+    availableVars: resolvedAvailableVars,
+    availableNodes: resolvedAvailableNodes,
   } = useContextGenerate({
     storageKey,
     toolNodeId,
@@ -241,6 +243,8 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
           currentVersionIndex={currentVersionIndex}
           onSelectVersion={setCurrentVersionIndex}
           defaultAssistantMessage={defaultAssistantMessage}
+          availableVars={resolvedAvailableVars}
+          availableNodes={resolvedAvailableNodes}
         />
         <RightPanel
           isInitView={isInitView}
