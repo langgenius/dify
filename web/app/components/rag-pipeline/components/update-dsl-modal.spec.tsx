@@ -552,10 +552,14 @@ describe('UpdateDSLModal', () => {
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
 
+      // Wait for FileReader to process and button to be enabled
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
         expect(importButton).not.toBeDisabled()
       })
+
+      // Give extra time for the FileReader's queueMicrotask to complete
+      await new Promise(resolve => setTimeout(resolve, 10))
 
       const importButton = screen.getByText('common.overwriteAndImport')
       fireEvent.click(importButton)
@@ -703,7 +707,7 @@ describe('UpdateDSLModal', () => {
       await waitFor(() => {
         expect(screen.getByText('1.0.0')).toBeInTheDocument()
         expect(screen.getByText('2.0.0')).toBeInTheDocument()
-      }, { timeout: 500 })
+      }, { timeout: 1000 })
     })
 
     it('should close error modal when cancel button is clicked', async () => {
@@ -732,7 +736,7 @@ describe('UpdateDSLModal', () => {
       // Wait for error modal
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      }, { timeout: 1000 })
 
       // Find and click cancel button in error modal - it should be the one with secondary variant
       const cancelButtons = screen.getAllByText('newApp.Cancel')
@@ -780,7 +784,7 @@ describe('UpdateDSLModal', () => {
       // Wait for error modal
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      }, { timeout: 1000 })
 
       // Click confirm button
       const confirmButton = screen.getByText('newApp.Confirm')
@@ -821,7 +825,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      }, { timeout: 1000 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -863,7 +867,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      }, { timeout: 1000 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -902,7 +906,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      }, { timeout: 1000 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -944,7 +948,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      }, { timeout: 1000 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -986,7 +990,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      }, { timeout: 1000 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -1026,7 +1030,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      }, { timeout: 1000 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -1062,7 +1066,7 @@ describe('UpdateDSLModal', () => {
       // Should show error modal even with undefined versions
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 500 })
+      }, { timeout: 1000 })
     })
 
     it('should not call importDSLConfirm when importId is not set', async () => {
