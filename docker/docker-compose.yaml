@@ -1348,13 +1348,14 @@ services:
       - "${IRIS_SUPER_SERVER_PORT:-1972}:1972"
       - "${IRIS_WEB_SERVER_PORT:-52773}:52773"
     volumes:
-      - ./volumes/iris:/opt/iris
+      - ./volumes/iris:/durable
       - ./iris/iris-init.script:/iris-init.script
       - ./iris/docker-entrypoint.sh:/custom-entrypoint.sh
     entrypoint: ["/custom-entrypoint.sh"]
     tty: true
     environment:
       TZ: ${IRIS_TIMEZONE:-UTC}
+      ISC_DATA_DIRECTORY: /durable/iris
 
   # Oracle vector database
   oracle:
