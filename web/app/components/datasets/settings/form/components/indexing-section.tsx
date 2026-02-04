@@ -8,6 +8,7 @@ import Divider from '@/app/components/base/divider'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { IS_CE_EDITION } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { ChunkingMode } from '@/models/datasets'
 import { IndexingType } from '../../../create/step-two'
@@ -62,6 +63,7 @@ const IndexingSection = ({
 
   const showSummaryIndexSetting = indexMethod === IndexingType.QUALIFIED
     && [ChunkingMode.text, ChunkingMode.parentChild].includes(currentDataset?.doc_form as ChunkingMode)
+    && IS_CE_EDITION
 
   return (
     <>
