@@ -210,6 +210,8 @@
   "showMyCreatedAppsOnly": "Created by me",
   "structOutput.LLMResponse": "LLM Response",
   "structOutput.configure": "Configure",
+  "structOutput.disabledByComputerUse": "Structured Output is disabled when Computer Use is enabled.",
+  "structOutput.disabledByTools": "Structured Output is disabled when tools are enabled.",
   "structOutput.modelNotSupported": "Model not supported",
   "structOutput.modelNotSupportedTip": "The current model does not support this feature and is automatically downgraded to prompt injection.",
   "structOutput.moreFillTip": "Showing max 10 levels of nesting",

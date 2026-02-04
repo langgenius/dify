@@ -85,6 +85,7 @@ type Props = {
   required?: boolean
   onBlur?: () => void
   onFocus?: () => void
+  disableToolBlocks?: boolean
 }
 
 const Editor: FC<Props> = ({
@@ -129,6 +130,7 @@ const Editor: FC<Props> = ({
   required,
   onBlur,
   onFocus,
+  disableToolBlocks,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -312,6 +314,7 @@ const Editor: FC<Props> = ({
                       editable={!readOnly}
                       isSupportFileVar={isSupportFileVar}
                       isSupportSandbox={isSupportSandbox}
+                      disableToolBlocks={disableToolBlocks}
                       toolMetadata={promptMetadata}
                       onToolMetadataChange={onPromptMetadataChange}
                     />

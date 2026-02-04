@@ -43,6 +43,7 @@ type Props = {
   modelConfig?: ModelConfig
   isSupportSandbox?: boolean
   onPromptEditorBlur?: () => void
+  disableToolBlocks?: boolean
 }
 
 const roleOptions = [
@@ -88,6 +89,7 @@ const ConfigPromptItem: FC<Props> = ({
   modelConfig,
   isSupportSandbox,
   onPromptEditorBlur,
+  disableToolBlocks,
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -158,6 +160,7 @@ const ConfigPromptItem: FC<Props> = ({
       handleAddVariable={handleAddVariable}
       isSupportFileVar
       isSupportSandbox={isSupportSandbox}
+      disableToolBlocks={disableToolBlocks}
       onBlur={onPromptEditorBlur}
     />
   )

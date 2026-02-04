@@ -151,6 +151,7 @@ export type PromptEditorProps = {
   agentBlock?: AgentBlockType
   isSupportFileVar?: boolean
   isSupportSandbox?: boolean
+  disableToolBlocks?: boolean
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -180,6 +181,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   agentBlock,
   isSupportFileVar,
   isSupportSandbox,
+  disableToolBlocks,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -239,36 +241,49 @@ const PromptEditor: FC<PromptEditorProps> = ({
     }
   }, [onToolMetadataChange, toolMetadata])
 
-  const sandboxPlaceHolder = React.useMemo(
-    () => {
-      return isSupportSandbox && (
-        <Trans
-          i18nKey="promptEditor.placeholderSandbox"
-          ns="common"
-          components={[
-            <span
-              key="slash"
-              className="system-kbd inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary"
-            />,
-            <span
-              key="insert"
-              className="border-b border-dotted border-current"
-            />,
-            <span
-              key="at"
-              className="system-kbd inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary"
-            />,
-            <span
-              key="tools"
-              className="border-b border-dotted border-current"
-            />,
-          ]}
-        />
-      )
-    },
-
-    [isSupportSandbox],
-  )
+  const sandboxPlaceHolder = React.useMemo(() => {
+    if (!isSupportSandbox)
+      return null
+    const i18nKey = disableToolBlocks
+      ? 'promptEditor.placeholderSandboxNoTools'
+      : 'promptEditor.placeholderSandbox'
+    const components = disableToolBlocks
+      ? [
+          <span
+            key="slash"
+            className="system-kbd inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary"
+          />,
+          <span
+            key="insert"
+            className="border-b border-dotted border-current"
+          />,
+        ]
+      : [
+          <span
+            key="slash"
+            className="system-kbd inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary"
+          />,
+          <span
+            key="insert"
+            className="border-b border-dotted border-current"
+          />,
+          <span
+            key="at"
+            className="system-kbd inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary"
+          />,
+          <span
+            key="tools"
+            className="border-b border-dotted border-current"
+          />,
+        ]
+    return (
+      <Trans
+        i18nKey={i18nKey}
+        ns="common"
+        components={components}
+      />
+    )
+  }, [disableToolBlocks, isSupportSandbox])
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
@@ -332,7 +347,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
               <ToolBlock />
               <ToolGroupBlockReplacementBlock />
               <ToolBlockReplacementBlock />
-              {editable && <ToolPickerBlock />}
+              {editable && !disableToolBlocks && <ToolPickerBlock />}
             </>
           )}
           <ComponentPickerBlock

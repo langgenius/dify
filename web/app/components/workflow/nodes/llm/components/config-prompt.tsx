@@ -66,6 +66,7 @@ type Props = {
   handleAddVariable: (payload: any) => void
   modelConfig: ModelConfig
   onPromptEditorBlur?: () => void
+  disableToolBlocks?: boolean
 }
 
 const ConfigPrompt: FC<Props> = ({
@@ -82,6 +83,7 @@ const ConfigPrompt: FC<Props> = ({
   handleAddVariable,
   modelConfig,
   onPromptEditorBlur,
+  disableToolBlocks,
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -361,6 +363,7 @@ const ConfigPrompt: FC<Props> = ({
                             modelConfig={modelConfig}
                             isSupportSandbox={isSupportSandbox}
                             onPromptEditorBlur={onPromptEditorBlur}
+                            disableToolBlocks={disableToolBlocks}
                           />
                         </div>
                       )
@@ -438,6 +441,7 @@ const ConfigPrompt: FC<Props> = ({
                 modelConfig={modelConfig}
                 isSupportSandbox={isSupportSandbox}
                 onBlur={onPromptEditorBlur}
+                disableToolBlocks={disableToolBlocks}
               />
             </div>
           )}

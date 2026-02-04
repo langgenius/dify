@@ -29,6 +29,8 @@ import Tools from './components/tools'
 import MaxIterations from './components/tools/max-iterations'
 import { useNodeTools } from './components/tools/use-node-tools'
 import useConfig from './use-config'
+import { useNodeSkills } from './use-node-skills'
+import { useStructuredOutputMutualExclusion } from './use-structured-output-mutual-exclusion'
 
 const i18nPrefix = 'nodes.llm'
 
@@ -90,6 +92,27 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   const handlePromptEditorBlur = useCallback(() => {
     scheduleSkillsRefresh(promptTemplateKey)
   }, [promptTemplateKey, scheduleSkillsRefresh])
+
+  const { toolDependencies } = useNodeSkills({
+    nodeId: id,
+    promptTemplateKey: skillsRefreshKey,
+    enabled: isSupportSandbox,
+  })
+
+  const {
+    isStructuredOutputBlocked,
+    isComputerUseBlocked,
+    isToolsBlocked,
+    disableToolBlocks,
+    structuredOutputDisabledTip,
+    computerUseDisabledTip,
+    toolsDisabledTip,
+  } = useStructuredOutputMutualExclusion({
+    inputs,
+    readOnly,
+    isSupportSandbox,
+    toolDependencies,
+  })
 
   const {
     handleMaxIterationsChange,
@@ -162,6 +185,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             handleAddVariable={handleAddVariable}
             modelConfig={model}
             onPromptEditorBlur={handlePromptEditorBlur}
+            disableToolBlocks={disableToolBlocks}
           />
         )}
 
@@ -248,6 +272,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           <>
             <ComputerUseConfig
               readonly={readOnly}
+              isDisabledByStructuredOutput={isComputerUseBlocked}
+              disabledTip={computerUseDisabledTip}
               enabled={!!inputs.computer_use}
               onChange={handleComputerUseChange}
               nodeId={id}
@@ -262,6 +288,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             tools={inputs.tools}
             maxIterations={inputs.max_iterations}
             hideMaxIterations
+            disabled={isToolsBlocked}
+            disabledTip={toolsDisabledTip}
           />
         )}
       </div>
@@ -364,13 +392,19 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 <RiQuestionLine className="size-3.5 text-text-quaternary" />
               </div>
             </Tooltip>
-            <Switch
-              className="ml-2"
-              defaultValue={!!inputs.structured_output_enabled}
-              onChange={handleStructureOutputEnableChange}
-              size="md"
-              disabled={readOnly}
-            />
+            <Tooltip
+              disabled={!structuredOutputDisabledTip}
+              popupContent={structuredOutputDisabledTip}
+            >
+              <div className="ml-2">
+                <Switch
+                  defaultValue={!!inputs.structured_output_enabled}
+                  onChange={handleStructureOutputEnableChange}
+                  size="md"
+                  disabled={isStructuredOutputBlocked}
+                />
+              </div>
+            </Tooltip>
           </div>
         )}
       >

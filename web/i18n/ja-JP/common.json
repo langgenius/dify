@@ -509,6 +509,8 @@
   "promptEditor.history.modal.title": "例",
   "promptEditor.history.modal.user": "こんにちは",
   "promptEditor.placeholder": "ここにプロンプトワードを入力してください。変数を挿入するには「{」を、プロンプトコンテンツブロックを挿入するには「/」を入力します。",
+  "promptEditor.placeholderSandbox": "ここに指示を書いて、<0>/</0> <1>挿入</1>、<2>@</2> <3>ツール</3>",
+  "promptEditor.placeholderSandboxNoTools": "ここに指示を書いて、<0>/</0> <1>挿入</1>",
   "promptEditor.query.item.desc": "ユーザークエリテンプレートを挿入",
   "promptEditor.query.item.title": "クエリ",
   "promptEditor.variable.item.desc": "変数＆外部ツールを挿入",

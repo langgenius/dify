@@ -13,6 +13,9 @@ const i18nPrefix = 'nodes.llm.computerUse'
 
 type Props = {
   readonly: boolean
+  isDisabledByStructuredOutput?: boolean
+  disabled?: boolean
+  disabledTip?: string
   enabled: boolean
   onChange: (enabled: boolean) => void
   nodeId: string
@@ -22,6 +25,9 @@ type Props = {
 
 const ComputerUseConfig: FC<Props> = ({
   readonly,
+  isDisabledByStructuredOutput,
+  disabled,
+  disabledTip,
   enabled,
   onChange,
   nodeId,
@@ -29,6 +35,8 @@ const ComputerUseConfig: FC<Props> = ({
   promptTemplateKey,
 }) => {
   const { t } = useTranslation()
+  const disabledByStructuredOutput = isDisabledByStructuredOutput ?? disabled ?? false
+  const isDisabled = readonly || disabledByStructuredOutput
 
   return (
     <div>
@@ -46,12 +54,17 @@ const ComputerUseConfig: FC<Props> = ({
         noXSpacing
         operations={(
           <div>
-            <Switch
-              size="md"
-              disabled={readonly}
-              defaultValue={enabled}
-              onChange={onChange}
-            />
+            <Tooltip
+              disabled={!disabledTip}
+              popupContent={disabledTip}
+            >
+              <Switch
+                size="md"
+                disabled={isDisabled}
+                defaultValue={enabled}
+                onChange={onChange}
+              />
+            </Tooltip>
           </div>
         )}
       >
@@ -63,7 +76,8 @@ const ComputerUseConfig: FC<Props> = ({
           </div>
           <ReferenceToolConfig
             readonly={readonly}
-            enabled={enabled}
+            isDisabledByStructuredOutput={disabledByStructuredOutput}
+            isComputerUseEnabled={enabled}
             nodeId={nodeId}
             toolSettings={toolSettings}
             promptTemplateKey={promptTemplateKey}

@@ -1,38 +1,34 @@
 'use client'
 import type { FC } from 'react'
 import type { LLMNodeType, ToolSetting } from '../types'
+import type { ToolDependency } from '@/app/components/workflow/nodes/llm/use-node-skills'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { Locale } from '@/i18n-config/language'
-import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Switch from '@/app/components/base/switch'
 import { useNodeCurdKit } from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useNodeSkills } from '@/app/components/workflow/nodes/llm/use-node-skills'
 import useTheme from '@/hooks/use-theme'
 import { getLanguage } from '@/i18n-config/language'
-import { consoleClient, consoleQuery } from '@/service/client'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
 
 type ReferenceToolConfigProps = {
   readonly: boolean
-  enabled: boolean
+  isDisabledByStructuredOutput?: boolean
+  isComputerUseEnabled?: boolean
+  disabledByStructuredOutput?: boolean
+  computerUseEnabled?: boolean
   nodeId: string
   toolSettings?: ToolSetting[]
   promptTemplateKey: string
-}
-
-type ToolDependency = {
-  type: string
-  provider: string
-  tool_name: string
 }
 
 type ToolProviderGroup = {
@@ -42,14 +38,18 @@ type ToolProviderGroup = {
 
 const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
   readonly,
-  enabled,
+  isDisabledByStructuredOutput,
+  isComputerUseEnabled,
+  disabledByStructuredOutput,
+  computerUseEnabled,
   nodeId,
   toolSettings,
   promptTemplateKey,
 }) => {
-  const isDisabled = readonly || !enabled
+  const resolvedIsComputerUseEnabled = isComputerUseEnabled ?? computerUseEnabled ?? false
+  const resolvedIsDisabledByStructuredOutput = isDisabledByStructuredOutput ?? disabledByStructuredOutput ?? false
+  const isReferenceToolsDisabled = readonly || !resolvedIsComputerUseEnabled || resolvedIsDisabledByStructuredOutput
   const { i18n, t } = useTranslation()
-  const appId = useAppStore(s => s.appDetail?.id)
   const { handleNodeDataUpdate } = useNodeCurdKit<LLMNodeType>(nodeId)
   const { theme } = useTheme()
   const { data: buildInTools } = useAllBuiltInTools()
@@ -58,33 +58,10 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
   const { data: mcpTools } = useAllMCPTools()
   const locale = useMemo(() => getLanguage(i18n.language as Locale), [i18n.language])
 
-  const queryKey = useMemo(() => {
-    return [
-      ...consoleQuery.workflowDraft.nodeSkills.queryKey({
-        input: {
-          params: {
-            appId: appId ?? '',
-            nodeId,
-          },
-        },
-      }),
-      promptTemplateKey,
-    ]
-  }, [appId, nodeId, promptTemplateKey])
-
-  const { data, isLoading } = useQuery({
-    queryKey,
-    queryFn: () => consoleClient.workflowDraft.nodeSkills({
-      params: {
-        appId: appId ?? '',
-        nodeId,
-      },
-    }),
-    enabled: !!appId && !!nodeId,
-    placeholderData: previous => previous,
+  const { toolDependencies, isLoading, isQueryEnabled, hasData } = useNodeSkills({
+    nodeId,
+    promptTemplateKey,
   })
-
-  const toolDependencies = useMemo<ToolDependency[]>(() => data?.tool_dependencies ?? [], [data?.tool_dependencies])
 
   const providers = useMemo<ToolProviderGroup[]>(() => {
     const map = new Map<string, ToolDependency[]>()
@@ -214,8 +191,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
     }))
   }, [])
 
-  const isQueryEnabled = !!appId && !!nodeId
-  const isInitialLoading = isQueryEnabled && isLoading && !data
+  const isInitialLoading = isQueryEnabled && isLoading && !hasData
   const showNoData = !isInitialLoading && providers.length === 0
 
   const renderProviderIcon = useCallback((providerId: string) => {
@@ -244,7 +220,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
   }, [iconErrorMap, providerIcons])
 
   return (
-    <div className={cn('flex flex-col gap-2', isDisabled && 'opacity-50')}>
+    <div className={cn('flex flex-col gap-2', isReferenceToolsDisabled && 'opacity-50')}>
       {isInitialLoading && [0, 1].map(index => (
         <div
           key={`loading-provider-${index}`}
@@ -296,7 +272,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
                     key={`${action.type}-${action.provider}-${action.tool_name}`}
                     className={cn(
                       'relative flex h-7 items-center justify-between rounded-md pl-9 pr-2',
-                      !isDisabled && 'hover:bg-state-base-hover',
+                      !isReferenceToolsDisabled && 'hover:bg-state-base-hover',
                     )}
                   >
                     <div className="absolute left-[15px] top-0 h-full w-[2px] bg-divider-subtle" />
@@ -307,7 +283,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
                     </div>
                     <Switch
                       size="md"
-                      disabled={isDisabled}
+                      disabled={isReferenceToolsDisabled}
                       defaultValue={resolveToolEnabled(action)}
                       onChange={value => handleToolEnabledChange(action, value)}
                     />

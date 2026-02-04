@@ -510,6 +510,7 @@
   "promptEditor.history.modal.user": "你好",
   "promptEditor.placeholder": "在這裡寫你的提示詞，輸入'{' 插入變數、輸入'/' 插入提示內容塊",
   "promptEditor.placeholderSandbox": "在這裡寫你的指令，<0>/</0> <1>插入</1>，<2>@</2> <3>工具</3>",
+  "promptEditor.placeholderSandboxNoTools": "在這裡寫你的指令，<0>/</0> <1>插入</1>",
   "promptEditor.query.item.desc": "插入使用者查詢模板",
   "promptEditor.query.item.title": "查詢內容",
   "promptEditor.skillMarkdown.placeholderPrefix": "輸入",
