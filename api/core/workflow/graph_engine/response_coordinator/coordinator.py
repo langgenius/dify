@@ -15,7 +15,6 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from core.workflow.enums import NodeExecutionType, NodeState
-from core.workflow.graph import Graph
 from core.workflow.graph_events import (
     ChunkType,
     NodeRunStreamChunkEvent,
