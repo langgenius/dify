@@ -53,7 +53,7 @@ def update_api_token_last_used_task(self, token: str, scope: str | None, update_
     except Exception:
         # Log the error with full context (logger.exception includes traceback automatically)
         logger.exception("Error in update_api_token_last_used_task (token: %s..., scope: %s)", token[:10], scope)
-        
+
         # Raise exception to let Celery handle retry and monitoring
         # This allows Flower and other monitoring tools to track failures
         raise
