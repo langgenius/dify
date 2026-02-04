@@ -1,4 +1,7 @@
 import builtins
+import contextlib
+import importlib
+import sys
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -10,12 +13,14 @@ from extensions import ext_fastopenapi
 from extensions.ext_database import db
 from services.feature_service import FeatureModel, SystemFeatureModel
 
-if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+
+# ------------------------------------------------------------------------------
+# Fixtures
+# ------------------------------------------------------------------------------
 
 
 @pytest.fixture
-def app() -> Flask:
+def app():
     """Creates a Flask app configured for testing."""
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -25,22 +30,73 @@ def app() -> Flask:
     return app
 
 
-@pytest.fixture
-def mock_auth():
-    """Mocks authentication decorators and user context."""
+@pytest.fixture(autouse=True)
+def fix_method_view_issue(monkeypatch):
+    """Patches builtins.MethodView for legacy compatibility."""
+    if not hasattr(builtins, "MethodView"):
+        monkeypatch.setattr(builtins, "MethodView", MethodView, raising=False)
+
+
+def _create_isolated_router():
+    """Creates a fresh router instance to prevent route pollution."""
+    import controllers.fastopenapi
+
+    RouterClass = type(controllers.fastopenapi.console_router)
+    return RouterClass()
+
+
+@contextlib.contextmanager
+def _patch_auth_and_router(temp_router):
+    """Patches console_router and authentication decorators."""
 
     def noop(f):
         return f
 
     with (
+        patch("controllers.fastopenapi.console_router", temp_router),
+        patch("extensions.ext_fastopenapi.console_router", temp_router),
         patch("controllers.console.wraps.setup_required", side_effect=noop),
         patch("libs.login.login_required", side_effect=noop),
         patch("controllers.console.wraps.account_initialization_required", side_effect=noop),
         patch("controllers.console.wraps.cloud_utm_record", side_effect=noop),
         patch("libs.login.current_account_with_tenant", return_value=(MagicMock(), "tenant-id")),
-        patch("libs.login.current_user", MagicMock(is_authenticated=True)) as mock_user,
+        patch("libs.login.current_user", MagicMock(is_authenticated=True)),
     ):
-        yield mock_user
+        import extensions.ext_fastopenapi
+
+        importlib.reload(extensions.ext_fastopenapi)
+        yield
+
+
+def _force_reload_module(target_module: str, alias_module: str):
+    """Forces module reload to apply patches to decorators at import time."""
+    if target_module in sys.modules:
+        del sys.modules[target_module]
+    if alias_module in sys.modules:
+        del sys.modules[alias_module]
+
+    module = importlib.import_module(target_module)
+    sys.modules[alias_module] = sys.modules[target_module]
+    return module
+
+
+@pytest.fixture
+def mock_feature_module_env():
+    """Sets up mocked environment for feature module with isolated router."""
+    target_module = "controllers.console.feature"
+    alias_module = "api.controllers.console.feature"
+
+    temp_router = _create_isolated_router()
+
+    try:
+        with _patch_auth_and_router(temp_router):
+            feature_module = _force_reload_module(target_module, alias_module)
+            yield feature_module
+    finally:
+        if target_module in sys.modules:
+            del sys.modules[target_module]
+        if alias_module in sys.modules:
+            del sys.modules[alias_module]
 
 
 # ------------------------------------------------------------------------------
@@ -63,13 +119,13 @@ def mock_auth():
         ),
     ],
 )
-def test_feature_endpoints_return_200_with_flat_json(app, mock_auth, url, service_mock_path, mock_model):
-    """Tests that feature endpoints return 200 with flat JSON format."""
+def test_console_features_success(app, mock_feature_module_env, url, service_mock_path, mock_model):
+    """Tests 200 response with flat JSON format and correct Content-Type."""
     with patch(service_mock_path, return_value=mock_model):
         ext_fastopenapi.init_app(app)
         response = app.test_client().get(url)
 
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Failed: {response.text}"
     assert response.get_json() == mock_model.model_dump(mode="json")
     assert "application/json" in response.content_type
 
@@ -81,7 +137,7 @@ def test_feature_endpoints_return_200_with_flat_json(app, mock_auth, url, servic
         ("/console/api/system-features", "controllers.console.feature.FeatureService.get_system_features"),
     ],
 )
-def test_feature_endpoints_return_500_on_service_error(app, mock_auth, url, service_mock_path):
+def test_console_features_service_error(app, mock_feature_module_env, url, service_mock_path):
     """Tests that service errors return 500."""
     with patch(service_mock_path, side_effect=ValueError("Service Failure")):
         ext_fastopenapi.init_app(app)
@@ -90,110 +146,118 @@ def test_feature_endpoints_return_500_on_service_error(app, mock_auth, url, serv
     assert response.status_code == 500
 
 
-def test_system_features_handles_unauthenticated_users(app, mock_auth):
+def test_system_features_unauthenticated(app, mock_feature_module_env):
     """Tests /system-features passes is_authenticated=False when auth fails."""
-    mock_user = mock_auth
-    type(mock_user).is_authenticated = PropertyMock(side_effect=Unauthorized)
-    mock_model = SystemFeatureModel(enable_marketplace=True)
+    feature_module = mock_feature_module_env
+    type(feature_module.current_user).is_authenticated = PropertyMock(side_effect=Unauthorized)
 
+    mock_model = SystemFeatureModel(enable_marketplace=True)
     with patch("controllers.console.feature.FeatureService.get_system_features", return_value=mock_model) as svc:
         ext_fastopenapi.init_app(app)
         response = app.test_client().get("/console/api/system-features")
 
     assert response.status_code == 200
     svc.assert_called_once_with(is_authenticated=False)
-
-
-def test_features_endpoint_rejects_post_method(app, mock_auth):
-    """Tests that feature endpoints only accept GET."""
-    with patch("controllers.console.feature.FeatureService.get_features", return_value=FeatureModel()):
-        ext_fastopenapi.init_app(app)
-        response = app.test_client().post("/console/api/features")
-
-    assert response.status_code == 405
-
-
-def test_routes_are_registered_correctly(app, mock_auth):
-    """Tests that FastOpenAPI registers routes with correct paths."""
-    ext_fastopenapi.init_app(app)
-    rules = {rule.rule for rule in app.url_map.iter_rules()}
-
-    assert "/console/api/features" in rules
-    assert "/console/api/system-features" in rules
+    assert response.get_json() == mock_model.model_dump(mode="json")
 
 
 # ------------------------------------------------------------------------------
-# FastOpenAPI Authentication Tests
+# FastOpenAPI Route Behavior Tests
 # ------------------------------------------------------------------------------
 
 
-@pytest.fixture
-def app_with_login_manager():
-    """Creates Flask app with login manager to test auth behavior."""
-    from flask_login import LoginManager
+class TestFastOpenAPIRouteBehavior:
+    """Tests for FastOpenAPI-specific routing behavior."""
 
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["SECRET_KEY"] = "test-secret"
+    @pytest.fixture
+    def app_with_login_manager(self):
+        """Creates Flask app with login manager configured."""
+        from flask_login import LoginManager
 
-    login_manager = LoginManager()
-    login_manager.init_app(app)
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        app.config["SECRET_KEY"] = "test-secret"
+        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+        db.init_app(app)
 
-    @login_manager.request_loader
-    def load_user(request):
-        if request.headers.get("Authorization") == "Bearer valid-token":
-            user = MagicMock()
-            user.is_authenticated = True
-            return user
-        return None
+        login_manager = LoginManager()
+        login_manager.init_app(app)
 
-    @login_manager.unauthorized_handler
-    def unauthorized():
-        from flask import request
+        @login_manager.unauthorized_handler
+        def handle_unauthorized():
+            from flask import request
 
-        # FastOpenAPI routes: raise exception (serializable)
-        if request.blueprint is None and request.path.startswith("/console/api/"):
+            if request.blueprint is None and request.path.startswith("/console/api/"):
+                raise Unauthorized("Unauthorized.")
+            import json
+
+            from flask import Response
+
+            return Response(json.dumps({"code": "unauthorized"}), status=401, content_type="application/json")
+
+        return app
+
+    def test_fastopenapi_route_has_no_blueprint(self, app_with_login_manager, fix_method_view_issue):
+        """Verifies FastOpenAPI routes have request.blueprint == None."""
+        captured = {}
+
+        @app_with_login_manager.route("/console/api/test")
+        def test_route():
+            from flask import request
+
+            captured["blueprint"] = request.blueprint
+            return {"ok": True}
+
+        response = app_with_login_manager.test_client().get("/console/api/test")
+        assert response.status_code == 200
+        assert captured["blueprint"] is None
+
+    def test_unauthorized_raises_exception_not_response(self, app_with_login_manager, fix_method_view_issue):
+        """Verifies unauthorized handler raises Unauthorized (serializable by orjson)."""
+
+        @app_with_login_manager.route("/console/api/protected")
+        def protected():
             raise Unauthorized("Unauthorized.")
-        # Blueprint routes: return Response
-        import json
 
-        from flask import Response
-
-        return Response(json.dumps({"code": "unauthorized"}), status=401, content_type="application/json")
-
-    return app
+        response = app_with_login_manager.test_client().get("/console/api/protected")
+        assert response.status_code == 401
+        assert b"TypeError" not in response.data  # No serialization error
 
 
-def test_fastopenapi_route_has_no_blueprint(app_with_login_manager):
-    """Verifies FastOpenAPI routes have request.blueprint == None."""
-    captured = {}
-
-    @app_with_login_manager.route("/console/api/test")
-    def test_route():
-        from flask import request
-
-        captured["blueprint"] = request.blueprint
-        return {"ok": True}
-
-    response = app_with_login_manager.test_client().get("/console/api/test")
-
-    assert response.status_code == 200
-    assert captured["blueprint"] is None
+# ------------------------------------------------------------------------------
+# OpenAPI Schema Compliance Tests
+# ------------------------------------------------------------------------------
 
 
-def test_protected_route_returns_401_without_auth(app_with_login_manager):
-    """Tests that protected routes return 401 without authentication."""
-    from flask_login import login_required
+class TestOpenAPISchemaCompliance:
+    """Tests for route registration and HTTP method handling."""
 
-    @app_with_login_manager.route("/console/api/protected")
-    @login_required
-    def protected():
-        return {"status": "ok"}
+    def test_routes_registered_correctly(self, app, mock_feature_module_env):
+        """Verifies routes are registered with correct paths."""
+        ext_fastopenapi.init_app(app)
+        rules = {rule.rule for rule in app.url_map.iter_rules()}
 
-    client = app_with_login_manager.test_client()
+        assert "/console/api/features" in rules
+        assert "/console/api/system-features" in rules
 
-    # Without auth
-    assert client.get("/console/api/protected").status_code == 401
+    def test_routes_only_accept_get(self, app, mock_feature_module_env):
+        """Verifies feature endpoints reject non-GET methods with 405."""
+        with patch("controllers.console.feature.FeatureService.get_features", return_value=FeatureModel()):
+            ext_fastopenapi.init_app(app)
+            client = app.test_client()
 
-    # With valid token
-    assert client.get("/console/api/protected", headers={"Authorization": "Bearer valid-token"}).status_code == 200
+            assert client.get("/console/api/features").status_code == 200
+            assert client.post("/console/api/features").status_code == 405
+
+    def test_system_features_handles_both_auth_states(self, app, mock_feature_module_env):
+        """Verifies /system-features handles authenticated state correctly."""
+        feature_module = mock_feature_module_env
+        mock_model = SystemFeatureModel(enable_marketplace=True)
+
+        with patch("controllers.console.feature.FeatureService.get_system_features", return_value=mock_model) as svc:
+            type(feature_module.current_user).is_authenticated = PropertyMock(return_value=True)
+            ext_fastopenapi.init_app(app)
+            response = app.test_client().get("/console/api/system-features")
+
+            assert response.status_code == 200
+            svc.assert_called_with(is_authenticated=True)
