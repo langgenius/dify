@@ -44,7 +44,7 @@ export type LLMNodeType = CommonNodeType & {
   max_iterations?: number
 }
 
-export const FILE_REF_FORMAT = 'dify-file-ref'
+export const FILE_REF_FORMAT = 'file-path'
 
 export enum Type {
   string = 'string',

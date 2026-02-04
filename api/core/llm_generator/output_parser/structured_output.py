@@ -8,7 +8,7 @@ import json_repair
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.output_parser.file_ref import convert_file_refs_in_output
+from core.llm_generator.output_parser.file_ref import detect_file_path_fields
 from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
 from core.model_manager import ModelInstance
 from core.model_runtime.callbacks.base_callback import Callback
@@ -55,12 +55,12 @@ def invoke_llm_with_structured_output(
     model_instance: ModelInstance,
     prompt_messages: Sequence[PromptMessage],
     json_schema: Mapping[str, Any],
-    model_parameters: Mapping | None = None,
+    model_parameters: Mapping[str, Any] | None = None,
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
     user: str | None = None,
     callbacks: list[Callback] | None = None,
-    tenant_id: str | None = None,
+    allow_file_path: bool = False,
 ) -> LLMResultWithStructuredOutput:
     """
     Invoke large language model with structured output.
@@ -78,14 +78,13 @@ def invoke_llm_with_structured_output(
     :param stop: stop words
     :param user: unique user id
     :param callbacks: callbacks
-    :param tenant_id: tenant ID for file reference conversion. When provided and
-                      json_schema contains file reference fields (format: "dify-file-ref"),
-                      file IDs in the output will be automatically converted to File objects.
-    :return: full response or stream response chunk generator result
+    :param allow_file_path: allow schema fields formatted as file-path
+    :return: response with structured output
     """
-    model_parameters_with_json_schema: dict[str, Any] = {
-        **(model_parameters or {}),
-    }
+    model_parameters_with_json_schema: dict[str, Any] = dict(model_parameters or {})
+
+    if detect_file_path_fields(json_schema) and not allow_file_path:
+        raise OutputParserError("Structured output file paths are only supported in sandbox mode.")
 
     # Determine structured output strategy
 
@@ -122,14 +121,6 @@ def invoke_llm_with_structured_output(
     # Fill missing fields with default values
     structured_output = fill_defaults_from_schema(structured_output, json_schema)
 
-    # Convert file references if tenant_id is provided
-    if tenant_id is not None:
-        structured_output = convert_file_refs_in_output(
-            output=structured_output,
-            json_schema=json_schema,
-            tenant_id=tenant_id,
-        )
-
     return LLMResultWithStructuredOutput(
         structured_output=structured_output,
         model=llm_result.model,
@@ -147,12 +138,11 @@ def invoke_llm_with_pydantic_model(
     model_instance: ModelInstance,
     prompt_messages: Sequence[PromptMessage],
     output_model: type[T],
-    model_parameters: Mapping | None = None,
+    model_parameters: Mapping[str, Any] | None = None,
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
     user: str | None = None,
     callbacks: list[Callback] | None = None,
-    tenant_id: str | None = None,
 ) -> T:
     """
     Invoke large language model with a Pydantic output model.
@@ -160,11 +150,8 @@ def invoke_llm_with_pydantic_model(
     This helper generates a JSON schema from the Pydantic model, invokes the
     structured-output LLM path, and validates the result.
 
-    The stream parameter controls the underlying LLM invocation mode:
-    - stream=True (default): Uses streaming LLM call, consumes the generator internally
-    - stream=False: Uses non-streaming LLM call
-
-    In both cases, the function returns the validated Pydantic model directly.
+    The helper performs a non-streaming invocation and returns the validated
+    Pydantic model directly.
     """
     json_schema = _schema_from_pydantic(output_model)
 
@@ -179,7 +166,6 @@ def invoke_llm_with_pydantic_model(
         stop=stop,
         user=user,
         callbacks=callbacks,
-        tenant_id=tenant_id,
     )
 
     structured_output = result.structured_output
@@ -187,6 +173,11 @@ def invoke_llm_with_pydantic_model(
         raise OutputParserError("Structured output is empty")
 
     return _validate_structured_output(output_model, structured_output)
+
+
+def parse_structured_output_text(*, result_text: str, json_schema: Mapping[str, Any]) -> dict[str, Any]:
+    structured_output = _parse_structured_output(result_text)
+    return fill_defaults_from_schema(structured_output, json_schema)
 
 
 def _schema_from_pydantic(output_model: type[BaseModel]) -> dict[str, Any]:
@@ -322,8 +313,8 @@ def fill_defaults_from_schema(
 def _handle_native_json_schema(
     provider: str,
     model_schema: AIModelEntity,
-    structured_output_schema: Mapping,
-    model_parameters: dict,
+    structured_output_schema: Mapping[str, Any],
+    model_parameters: dict[str, Any],
     rules: list[ParameterRule],
 ):
     """
@@ -347,7 +338,7 @@ def _handle_native_json_schema(
     return model_parameters
 
 
-def _set_response_format(model_parameters: dict, rules: list):
+def _set_response_format(model_parameters: dict[str, Any], rules: list[ParameterRule]):
     """
     Set the appropriate response format parameter based on model rules.
 
@@ -363,7 +354,7 @@ def _set_response_format(model_parameters: dict, rules: list):
 
 
 def _handle_prompt_based_schema(
-    prompt_messages: Sequence[PromptMessage], structured_output_schema: Mapping
+    prompt_messages: Sequence[PromptMessage], structured_output_schema: Mapping[str, Any]
 ) -> list[PromptMessage]:
     """
     Handle structured output for models without native JSON schema support.

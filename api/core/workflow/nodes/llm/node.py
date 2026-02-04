@@ -4,10 +4,13 @@ import base64
 import io
 import json
 import logging
+import mimetypes
+import os
 import re
 import time
 from collections.abc import Generator, Mapping, Sequence
 from functools import reduce
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from sqlalchemy import select
@@ -20,7 +23,15 @@ from core.app_assets.constants import AppAssetsAttrs
 from core.file import File, FileTransferMethod, FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+from core.llm_generator.output_parser.file_ref import (
+    adapt_schema_for_sandbox_file_paths,
+    convert_sandbox_file_paths_in_output,
+    detect_file_path_fields,
+)
+from core.llm_generator.output_parser.structured_output import (
+    invoke_llm_with_structured_output,
+    parse_structured_output_text,
+)
 from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities import (
@@ -54,7 +65,7 @@ from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptT
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.sandbox import Sandbox
-from core.sandbox.bash.session import SandboxBashSession
+from core.sandbox.bash.session import MAX_OUTPUT_FILE_SIZE, MAX_OUTPUT_FILES, SandboxBashSession
 from core.sandbox.entities.config import AppAssets
 from core.skill.constants import SkillAttrs
 from core.skill.entities.skill_bundle import SkillBundle
@@ -62,7 +73,8 @@ from core.skill.entities.skill_document import SkillDocument
 from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
 from core.skill.skill_compiler import SkillCompiler
 from core.tools.__base.tool import Tool
-from core.tools.signature import sign_upload_file
+from core.tools.signature import sign_tool_file, sign_upload_file
+from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
 from core.variables import (
     ArrayFileSegment,
@@ -296,6 +308,27 @@ class LLMNode(Node[LLMNodeData]):
             # Variables for outputs
             generation_data: LLMGenerationData | None = None
             structured_output: LLMStructuredOutput | None = None
+            structured_output_schema: Mapping[str, Any] | None
+            structured_output_file_paths: list[str] = []
+
+            if self.node_data.structured_output_enabled:
+                if not self.node_data.structured_output:
+                    raise LLMNodeError("structured_output_enabled is True but structured_output is not set")
+                raw_schema = LLMNode.fetch_structured_output_schema(structured_output=self.node_data.structured_output)
+                if self.node_data.computer_use:
+                    raise LLMNodeError("Structured output is not supported in computer use mode.")
+                else:
+                    if detect_file_path_fields(raw_schema):
+                        sandbox = self.graph_runtime_state.sandbox
+                        if not sandbox:
+                            raise LLMNodeError("Structured output file paths are only supported in sandbox mode.")
+                        structured_output_schema, structured_output_file_paths = adapt_schema_for_sandbox_file_paths(
+                            raw_schema
+                        )
+                    else:
+                        structured_output_schema = raw_schema
+            else:
+                structured_output_schema = None
 
             if self.node_data.computer_use:
                 sandbox = self.graph_runtime_state.sandbox
@@ -309,6 +342,8 @@ class LLMNode(Node[LLMNodeData]):
                     stop=stop,
                     variable_pool=variable_pool,
                     tool_dependencies=tool_dependencies,
+                    structured_output_schema=structured_output_schema,
+                    structured_output_file_paths=structured_output_file_paths,
                 )
             elif self.tool_call_enabled:
                 generator = self._invoke_llm_with_tools(
@@ -328,14 +363,13 @@ class LLMNode(Node[LLMNodeData]):
                     prompt_messages=prompt_messages,
                     stop=stop,
                     user_id=self.user_id,
-                    structured_output_enabled=self._node_data.structured_output_enabled,
-                    structured_output=self._node_data.structured_output,
+                    structured_output_schema=structured_output_schema,
+                    allow_file_path=bool(structured_output_file_paths),
                     file_saver=self._llm_file_saver,
                     file_outputs=self._file_outputs,
                     node_id=self._node_id,
                     node_type=self.node_type,
                     reasoning_format=self._node_data.reasoning_format,
-                    tenant_id=self.tenant_id,
                 )
 
             (
@@ -348,6 +382,33 @@ class LLMNode(Node[LLMNodeData]):
                 structured_output,
                 generation_data,
             ) = yield from self._stream_llm_events(generator, model_instance=model_instance)
+
+            if structured_output and structured_output_file_paths:
+                sandbox = self.graph_runtime_state.sandbox
+                if not sandbox:
+                    raise LLMNodeError("Structured output file paths are only supported in sandbox mode.")
+
+                structured_output_value = structured_output.structured_output
+                if structured_output_value is None:
+                    raise LLMNodeError("Structured output is empty")
+
+                resolved_count = 0
+
+                def resolve_file(path: str) -> File:
+                    nonlocal resolved_count
+                    if resolved_count >= MAX_OUTPUT_FILES:
+                        raise LLMNodeError("Structured output files exceed the sandbox output limit")
+                    resolved_count += 1
+                    return self._resolve_sandbox_file_path(sandbox=sandbox, path=path)
+
+                converted_output, structured_output_files = convert_sandbox_file_paths_in_output(
+                    output=structured_output_value,
+                    file_path_fields=structured_output_file_paths,
+                    file_resolver=resolve_file,
+                )
+                structured_output = LLMStructuredOutput(structured_output=converted_output)
+                if structured_output_files:
+                    self._file_outputs.extend(structured_output_files)
 
             # Extract variables from generation_data if available
             if generation_data:
@@ -493,14 +554,13 @@ class LLMNode(Node[LLMNodeData]):
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None = None,
         user_id: str,
-        structured_output_enabled: bool,
-        structured_output: Mapping[str, Any] | None = None,
+        structured_output_schema: Mapping[str, Any] | None,
+        allow_file_path: bool = False,
         file_saver: LLMFileSaver,
         file_outputs: list[File],
         node_id: str,
         node_type: NodeType,
         reasoning_format: Literal["separated", "tagged"] = "tagged",
-        tenant_id: str | None = None,
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         model_schema = model_instance.model_type_instance.get_model_schema(
             node_data_model.name, model_instance.credentials
@@ -508,10 +568,7 @@ class LLMNode(Node[LLMNodeData]):
         if not model_schema:
             raise ValueError(f"Model schema not found for {node_data_model.name}")
 
-        if structured_output_enabled:
-            output_schema = LLMNode.fetch_structured_output_schema(
-                structured_output=structured_output or {},
-            )
+        if structured_output_schema:
             request_start_time = time.perf_counter()
 
             invoke_result = invoke_llm_with_structured_output(
@@ -519,11 +576,11 @@ class LLMNode(Node[LLMNodeData]):
                 model_schema=model_schema,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
-                json_schema=output_schema,
+                json_schema=structured_output_schema,
                 model_parameters=node_data_model.completion_params,
                 stop=list(stop or []),
                 user=user_id,
-                tenant_id=tenant_id,
+                allow_file_path=allow_file_path,
             )
         else:
             request_start_time = time.perf_counter()
@@ -1651,6 +1708,93 @@ class LLMNode(Node[LLMNodeData]):
             )
         return saved_file
 
+    def _parse_structured_output_from_text(
+        self,
+        *,
+        result_text: str,
+        structured_output_schema: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Parse structured output from tool-run text using the provided schema."""
+        try:
+            return parse_structured_output_text(result_text=result_text, json_schema=structured_output_schema)
+        except OutputParserError as exc:
+            raise LLMNodeError(f"Failed to parse structured output: {exc}") from exc
+
+    @staticmethod
+    def _normalize_sandbox_file_path(path: str) -> str:
+        raw = path.strip()
+        if not raw:
+            raise LLMNodeError("Sandbox file path must not be empty")
+
+        sandbox_path = PurePosixPath(raw)
+        if any(part == ".." for part in sandbox_path.parts):
+            raise LLMNodeError("Sandbox file path must not contain '..'")
+
+        normalized = str(sandbox_path)
+        if normalized in {".", ""}:
+            raise LLMNodeError("Sandbox file path is invalid")
+
+        return normalized
+
+    def _resolve_sandbox_file_path(self, *, sandbox: Sandbox, path: str) -> File:
+        normalized_path = self._normalize_sandbox_file_path(path)
+        filename = os.path.basename(normalized_path)
+        if not filename:
+            raise LLMNodeError("Sandbox file path must point to a file")
+
+        try:
+            file_content = sandbox.vm.download_file(normalized_path)
+        except Exception as exc:
+            raise LLMNodeError(f"Sandbox file not found: {normalized_path}") from exc
+
+        file_binary = file_content.getvalue()
+        if len(file_binary) > MAX_OUTPUT_FILE_SIZE:
+            raise LLMNodeError(f"Sandbox file exceeds size limit: {normalized_path}")
+
+        mime_type, _ = mimetypes.guess_type(filename)
+        if not mime_type:
+            mime_type = "application/octet-stream"
+
+        tool_file_manager = ToolFileManager()
+        tool_file = tool_file_manager.create_file_by_raw(
+            user_id=self.user_id,
+            tenant_id=self.tenant_id,
+            conversation_id=None,
+            file_binary=file_binary,
+            mimetype=mime_type,
+            filename=filename,
+        )
+
+        extension = os.path.splitext(filename)[1] if "." in filename else ".bin"
+        url = sign_tool_file(tool_file.id, extension)
+        file_type = self._get_file_type_from_mime(mime_type)
+
+        return File(
+            id=tool_file.id,
+            tenant_id=self.tenant_id,
+            type=file_type,
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            filename=filename,
+            extension=extension,
+            mime_type=mime_type,
+            size=len(file_binary),
+            related_id=tool_file.id,
+            url=url,
+            storage_key=tool_file.file_key,
+        )
+
+    @staticmethod
+    def _get_file_type_from_mime(mime_type: str) -> FileType:
+        if mime_type.startswith("image/"):
+            return FileType.IMAGE
+        if mime_type.startswith("video/"):
+            return FileType.VIDEO
+        if mime_type.startswith("audio/"):
+            return FileType.AUDIO
+        if "text" in mime_type or "pdf" in mime_type:
+            return FileType.DOCUMENT
+        return FileType.CUSTOM
+
     @staticmethod
     def fetch_structured_output_schema(
         *,
@@ -1914,7 +2058,9 @@ class LLMNode(Node[LLMNodeData]):
         stop: Sequence[str] | None,
         variable_pool: VariablePool,
         tool_dependencies: ToolDependencies | None,
-    ) -> Generator[NodeEventBase, None, LLMGenerationData]:
+        structured_output_schema: Mapping[str, Any] | None,
+        structured_output_file_paths: Sequence[str] | None,
+    ) -> Generator[NodeEventBase | LLMStructuredOutput, None, LLMGenerationData]:
         result: LLMGenerationData | None = None
 
         # FIXME(Mairuis): Async processing for bash session.
@@ -1940,6 +2086,36 @@ class LLMNode(Node[LLMNodeData]):
             )
 
             result = yield from self._process_tool_outputs(outputs)
+
+            if result is not None and structured_output_schema:
+                structured_output = self._parse_structured_output_from_text(
+                    result_text=result.text,
+                    structured_output_schema=structured_output_schema,
+                )
+
+                file_paths = list(structured_output_file_paths or [])
+                if file_paths:
+                    resolved_count = 0
+
+                    def resolve_file(path: str) -> File:
+                        nonlocal resolved_count
+                        if resolved_count >= MAX_OUTPUT_FILES:
+                            raise LLMNodeError("Structured output files exceed the sandbox output limit")
+                        resolved_count += 1
+                        return self._resolve_sandbox_file_path(sandbox=sandbox, path=path)
+
+                    structured_output, structured_output_files = convert_sandbox_file_paths_in_output(
+                        output=structured_output,
+                        file_path_fields=file_paths,
+                        file_resolver=resolve_file,
+                    )
+                else:
+                    structured_output_files = []
+
+                if structured_output_files:
+                    result.files.extend(structured_output_files)
+
+                yield LLMStructuredOutput(structured_output=structured_output)
 
         if result is None:
             raise LLMNodeError("SandboxSession exited unexpectedly")

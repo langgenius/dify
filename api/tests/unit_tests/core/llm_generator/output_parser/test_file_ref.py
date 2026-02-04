@@ -1,269 +1,120 @@
 """
-Unit tests for file reference detection and conversion.
+Unit tests for sandbox file path detection and conversion.
 """
-
-import uuid
-from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core.file import File, FileTransferMethod, FileType
 from core.llm_generator.output_parser.file_ref import (
-    FILE_REF_FORMAT,
-    convert_file_refs_in_output,
-    detect_file_ref_fields,
-    is_file_ref_property,
+    FILE_PATH_DESCRIPTION_SUFFIX,
+    FILE_PATH_FORMAT,
+    adapt_schema_for_sandbox_file_paths,
+    convert_sandbox_file_paths_in_output,
+    detect_file_path_fields,
+    is_file_path_property,
 )
 from core.variables.segments import ArrayFileSegment, FileSegment
 
 
-class TestIsFileRefProperty:
-    """Tests for is_file_ref_property function."""
+def _build_file(file_id: str) -> File:
+    return File(
+        id=file_id,
+        tenant_id="tenant_123",
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        filename="test.png",
+        extension=".png",
+        mime_type="image/png",
+        size=128,
+        related_id=file_id,
+        storage_key="sandbox/path",
+    )
 
-    def test_valid_file_ref(self):
-        schema = {"type": "string", "format": FILE_REF_FORMAT}
-        assert is_file_ref_property(schema) is True
+
+class TestIsFilePathProperty:
+    def test_valid_file_path_format(self):
+        schema = {"type": "string", "format": FILE_PATH_FORMAT}
+        assert is_file_path_property(schema) is True
+
+    def test_accepts_snake_case_format(self):
+        schema = {"type": "string", "format": "file_path"}
+        assert is_file_path_property(schema) is True
 
     def test_invalid_type(self):
-        schema = {"type": "number", "format": FILE_REF_FORMAT}
-        assert is_file_ref_property(schema) is False
+        schema = {"type": "number", "format": FILE_PATH_FORMAT}
+        assert is_file_path_property(schema) is False
 
     def test_missing_format(self):
         schema = {"type": "string"}
-        assert is_file_ref_property(schema) is False
+        assert is_file_path_property(schema) is False
 
     def test_wrong_format(self):
         schema = {"type": "string", "format": "uuid"}
-        assert is_file_ref_property(schema) is False
+        assert is_file_path_property(schema) is False
 
 
-class TestDetectFileRefFields:
-    """Tests for detect_file_ref_fields function."""
-
-    def test_simple_file_ref(self):
+class TestDetectFilePathFields:
+    def test_detects_nested_file_paths(self):
         schema = {
             "type": "object",
             "properties": {
-                "image": {"type": "string", "format": FILE_REF_FORMAT},
+                "image": {"type": "string", "format": FILE_PATH_FORMAT},
+                "files": {"type": "array", "items": {"type": "string", "format": FILE_PATH_FORMAT}},
+                "meta": {"type": "object", "properties": {"doc": {"type": "string", "format": FILE_PATH_FORMAT}}},
             },
         }
-        paths = detect_file_ref_fields(schema)
-        assert paths == ["image"]
 
-    def test_multiple_file_refs(self):
-        schema = {
-            "type": "object",
-            "properties": {
-                "image": {"type": "string", "format": FILE_REF_FORMAT},
-                "document": {"type": "string", "format": FILE_REF_FORMAT},
-                "name": {"type": "string"},
-            },
-        }
-        paths = detect_file_ref_fields(schema)
-        assert set(paths) == {"image", "document"}
-
-    def test_array_of_file_refs(self):
-        schema = {
-            "type": "object",
-            "properties": {
-                "files": {
-                    "type": "array",
-                    "items": {"type": "string", "format": FILE_REF_FORMAT},
-                },
-            },
-        }
-        paths = detect_file_ref_fields(schema)
-        assert paths == ["files[*]"]
-
-    def test_nested_file_ref(self):
-        schema = {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "object",
-                    "properties": {
-                        "image": {"type": "string", "format": FILE_REF_FORMAT},
-                    },
-                },
-            },
-        }
-        paths = detect_file_ref_fields(schema)
-        assert paths == ["data.image"]
-
-    def test_no_file_refs(self):
-        schema = {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "count": {"type": "number"},
-            },
-        }
-        paths = detect_file_ref_fields(schema)
-        assert paths == []
+        assert set(detect_file_path_fields(schema)) == {"image", "files[*]", "meta.doc"}
 
     def test_empty_schema(self):
-        schema = {}
-        paths = detect_file_ref_fields(schema)
-        assert paths == []
+        assert detect_file_path_fields({}) == []
 
-    def test_mixed_schema(self):
+
+class TestAdaptSchemaForSandboxFilePaths:
+    def test_appends_description(self):
         schema = {
             "type": "object",
             "properties": {
-                "query": {"type": "string"},
-                "image": {"type": "string", "format": FILE_REF_FORMAT},
-                "documents": {
-                    "type": "array",
-                    "items": {"type": "string", "format": FILE_REF_FORMAT},
-                },
-            },
-        }
-        paths = detect_file_ref_fields(schema)
-        assert set(paths) == {"image", "documents[*]"}
-
-
-class TestConvertFileRefsInOutput:
-    """Tests for convert_file_refs_in_output function."""
-
-    @pytest.fixture
-    def mock_file(self):
-        """Create a mock File object with all required attributes."""
-        file = MagicMock(spec=File)
-        file.type = FileType.IMAGE
-        file.transfer_method = FileTransferMethod.TOOL_FILE
-        file.related_id = "test-related-id"
-        file.remote_url = None
-        file.tenant_id = "tenant_123"
-        file.id = None
-        file.filename = "test.png"
-        file.extension = ".png"
-        file.mime_type = "image/png"
-        file.size = 1024
-        file.dify_model_identity = "__dify__file__"
-        return file
-
-    @pytest.fixture
-    def mock_build_from_mapping(self, mock_file):
-        """Mock the build_from_mapping function."""
-        with patch("core.llm_generator.output_parser.file_ref.build_from_mapping") as mock:
-            mock.return_value = mock_file
-            yield mock
-
-    def test_convert_simple_file_ref(self, mock_build_from_mapping, mock_file):
-        file_id = str(uuid.uuid4())
-        output = {"image": file_id}
-        schema = {
-            "type": "object",
-            "properties": {
-                "image": {"type": "string", "format": FILE_REF_FORMAT},
+                "image": {"type": "string", "format": FILE_PATH_FORMAT, "description": "Pick a file"},
             },
         }
 
-        result = convert_file_refs_in_output(output, schema, "tenant_123")
+        adapted, fields = adapt_schema_for_sandbox_file_paths(schema)
 
-        # Result should be wrapped in FileSegment
-        assert isinstance(result["image"], FileSegment)
-        assert result["image"].value == mock_file
-        mock_build_from_mapping.assert_called_once_with(
-            mapping={"transfer_method": "tool_file", "tool_file_id": file_id},
-            tenant_id="tenant_123",
-        )
+        assert set(fields) == {"image"}
+        adapted_image = adapted["properties"]["image"]
+        assert adapted_image["type"] == "string"
+        assert adapted_image["format"] == FILE_PATH_FORMAT
+        assert FILE_PATH_DESCRIPTION_SUFFIX in adapted_image["description"]
 
-    def test_convert_array_of_file_refs(self, mock_build_from_mapping, mock_file):
-        file_id1 = str(uuid.uuid4())
-        file_id2 = str(uuid.uuid4())
-        output = {"files": [file_id1, file_id2]}
-        schema = {
-            "type": "object",
-            "properties": {
-                "files": {
-                    "type": "array",
-                    "items": {"type": "string", "format": FILE_REF_FORMAT},
-                },
-            },
+
+class TestConvertSandboxFilePaths:
+    def test_convert_sandbox_file_paths(self):
+        output = {
+            "image": "a.png",
+            "files": ["b.png", "c.png"],
+            "meta": {"doc": "d.pdf"},
+            "name": "demo",
         }
 
-        result = convert_file_refs_in_output(output, schema, "tenant_123")
+        def resolver(path: str) -> File:
+            return _build_file(path)
 
-        # Result should be wrapped in ArrayFileSegment
-        assert isinstance(result["files"], ArrayFileSegment)
-        assert list(result["files"].value) == [mock_file, mock_file]
-        assert mock_build_from_mapping.call_count == 2
+        converted, files = convert_sandbox_file_paths_in_output(output, ["image", "files[*]", "meta.doc"], resolver)
 
-    def test_no_conversion_without_file_refs(self):
-        output = {"name": "test", "count": 5}
-        schema = {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "count": {"type": "number"},
-            },
-        }
+        assert isinstance(converted["image"], FileSegment)
+        assert isinstance(converted["files"], ArrayFileSegment)
+        assert isinstance(converted["meta"]["doc"], FileSegment)
+        assert converted["name"] == "demo"
+        assert [file.id for file in files] == ["a.png", "b.png", "c.png", "d.pdf"]
 
-        result = convert_file_refs_in_output(output, schema, "tenant_123")
+    def test_invalid_path_value_raises(self):
+        with pytest.raises(ValueError):
+            convert_sandbox_file_paths_in_output({"image": 123}, ["image"], _build_file)
 
-        assert result == {"name": "test", "count": 5}
+    def test_no_file_paths_returns_output(self):
+        output = {"name": "demo"}
+        converted, files = convert_sandbox_file_paths_in_output(output, [], _build_file)
 
-    def test_invalid_uuid_returns_none(self):
-        output = {"image": "not-a-valid-uuid"}
-        schema = {
-            "type": "object",
-            "properties": {
-                "image": {"type": "string", "format": FILE_REF_FORMAT},
-            },
-        }
-
-        result = convert_file_refs_in_output(output, schema, "tenant_123")
-
-        assert result["image"] is None
-
-    def test_file_not_found_returns_none(self):
-        file_id = str(uuid.uuid4())
-        output = {"image": file_id}
-        schema = {
-            "type": "object",
-            "properties": {
-                "image": {"type": "string", "format": FILE_REF_FORMAT},
-            },
-        }
-
-        with patch("core.llm_generator.output_parser.file_ref.build_from_mapping") as mock:
-            mock.side_effect = ValueError("File not found")
-            result = convert_file_refs_in_output(output, schema, "tenant_123")
-
-        assert result["image"] is None
-
-    def test_preserves_non_file_fields(self, mock_build_from_mapping, mock_file):
-        file_id = str(uuid.uuid4())
-        output = {"query": "search term", "image": file_id, "count": 10}
-        schema = {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string"},
-                "image": {"type": "string", "format": FILE_REF_FORMAT},
-                "count": {"type": "number"},
-            },
-        }
-
-        result = convert_file_refs_in_output(output, schema, "tenant_123")
-
-        assert result["query"] == "search term"
-        assert isinstance(result["image"], FileSegment)
-        assert result["image"].value == mock_file
-        assert result["count"] == 10
-
-    def test_does_not_modify_original_output(self, mock_build_from_mapping, mock_file):
-        file_id = str(uuid.uuid4())
-        original = {"image": file_id}
-        output = dict(original)
-        schema = {
-            "type": "object",
-            "properties": {
-                "image": {"type": "string", "format": FILE_REF_FORMAT},
-            },
-        }
-
-        convert_file_refs_in_output(output, schema, "tenant_123")
-
-        # Original should still contain the string ID
-        assert original["image"] == file_id
+        assert converted == output
+        assert files == []
