@@ -31,7 +31,7 @@ function isURL(path: string) {
   }
 }
 
-function getBaseURL(path: string) {
+export function getBaseURL(path: string) {
   let url: URL
 
   if (isURL(path)) {
