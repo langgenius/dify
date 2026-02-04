@@ -9,7 +9,7 @@ wait_for_iris() {
     echo "Waiting for IRIS to be ready..."
     local max_attempts=30
     local attempt=1
-    while [ $attempt -le $max_attempts ]; do
+    while [ "$attempt" -le "$max_attempts" ]; do
         if iris qlist IRIS 2>/dev/null | grep -q "running"; then
             echo "IRIS is ready."
             return 0
