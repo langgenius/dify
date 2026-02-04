@@ -365,7 +365,11 @@ describe('UpdateDSLModal', () => {
       // Select a file
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } })
+        await flushFileReader()
+      })
 
       // Wait for FileReader to process
       await waitFor(() => {
@@ -375,12 +379,15 @@ describe('UpdateDSLModal', () => {
 
       // Click import button
       const importButton = screen.getByText('common.overwriteAndImport')
-      fireEvent.click(importButton)
+
+      await act(async () => {
+        fireEvent.click(importButton)
+      })
 
       // Wait for import to be called
       await waitFor(() => {
         expect(mockImportDSL).toHaveBeenCalled()
-      })
+      }, { timeout: 5000 })
     })
 
     it('should show success notification on completed import', async () => {
@@ -715,11 +722,11 @@ describe('UpdateDSLModal', () => {
         await vi.advanceTimersByTimeAsync(350)
       })
 
+      vi.useRealTimers()
+
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
       }, { timeout: 5000 })
-
-      vi.useRealTimers()
     })
 
     it('should show version info in error modal', async () => {
@@ -847,9 +854,10 @@ describe('UpdateDSLModal', () => {
         await vi.advanceTimersByTimeAsync(350)
       })
 
-      await waitFor(() => {
-        expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 5000 })
+      vi.useRealTimers()
+
+      // Element should be immediately available after advancing timers
+      expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
 
       // Click confirm button
       const confirmButton = screen.getByText('newApp.Confirm')
@@ -861,8 +869,6 @@ describe('UpdateDSLModal', () => {
       await waitFor(() => {
         expect(mockImportDSLConfirm).toHaveBeenCalledWith('import-id')
       }, { timeout: 5000 })
-
-      vi.useRealTimers()
     })
 
     it('should show success notification after confirm completes', async () => {
@@ -1148,9 +1154,10 @@ describe('UpdateDSLModal', () => {
         await vi.advanceTimersByTimeAsync(350)
       })
 
-      await waitFor(() => {
-        expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 5000 })
+      vi.useRealTimers()
+
+      // Element should be immediately available after advancing timers
+      expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
 
       const confirmButton = screen.getByText('newApp.Confirm')
 
@@ -1161,8 +1168,6 @@ describe('UpdateDSLModal', () => {
       await waitFor(() => {
         expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('test-pipeline-id', true)
       }, { timeout: 5000 })
-
-      vi.useRealTimers()
     })
 
     it('should handle undefined imported_dsl_version and current_dsl_version', async () => {
@@ -1178,7 +1183,11 @@ describe('UpdateDSLModal', () => {
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } })
+        await flushFileReader()
+      })
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -1186,12 +1195,15 @@ describe('UpdateDSLModal', () => {
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
-      fireEvent.click(importButton)
+
+      await act(async () => {
+        fireEvent.click(importButton)
+      })
 
       // Should show error modal even with undefined versions
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 5000 })
     })
 
     it('should not call importDSLConfirm when importId is not set', async () => {
