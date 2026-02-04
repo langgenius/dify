@@ -352,7 +352,7 @@ def _extract_text_from_doc(file_content: bytes, *, unstructured_api_config: Unst
     from unstructured.partition.api import partition_via_api
 
     if not unstructured_api_config.api_url:
-        raise TextExtractionError("UNSTRUCTURED_API_URL must be set")
+        raise TextExtractionError("Unstructured API URL is not configured for DOC file processing.")
 
     try:
         with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as temp_file:

@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, cast, final
+from typing import TYPE_CHECKING, Any, cast, final
 
 from typing_extensions import override
 
@@ -112,13 +112,17 @@ class DifyNodeFactory(NodeFactory):
         if not node_class:
             raise ValueError(f"No latest version class found for node type: {node_type}")
 
+        common_kwargs: dict[str, Any] = {
+            "id": node_id,
+            "config": node_config,
+            "graph_init_params": self.graph_init_params,
+            "graph_runtime_state": self.graph_runtime_state,
+        }
+
         # Create node instance
         if node_type == NodeType.CODE:
             return CodeNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
+                **common_kwargs,
                 code_executor=self._code_executor,
                 code_providers=self._code_providers,
                 code_limits=self._code_limits,
@@ -126,19 +130,13 @@ class DifyNodeFactory(NodeFactory):
 
         if node_type == NodeType.TEMPLATE_TRANSFORM:
             return TemplateTransformNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
+                **common_kwargs,
                 template_renderer=self._template_renderer,
             )
 
         if node_type == NodeType.HTTP_REQUEST:
             return HttpRequestNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
+                **common_kwargs,
                 http_client=self._http_request_http_client,
                 tool_file_manager_factory=self._http_request_tool_file_manager_factory,
                 file_manager=self._http_request_file_manager,
@@ -147,16 +145,8 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.DOCUMENT_EXTRACTOR:
             document_extractor_class = cast(type[DocumentExtractorNode], node_class)
             return document_extractor_class(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
+                **common_kwargs,
                 unstructured_api_config=self._document_extractor_unstructured_api_config,
             )
 
-        return node_class(
-            id=node_id,
-            config=node_config,
-            graph_init_params=self.graph_init_params,
-            graph_runtime_state=self.graph_runtime_state,
-        )
+        return node_class(**common_kwargs)
