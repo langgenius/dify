@@ -2,7 +2,6 @@
 Unit tests for API Token Cache module.
 """
 
-import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
