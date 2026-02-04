@@ -402,11 +402,11 @@ def _async_update_token_last_used_at(auth_token: str, scope: str | None):
     """
     try:
         from tasks.update_api_token_last_used_task import update_api_token_last_used_task
-        
+
         # Record the update time for concurrency control
         update_time = naive_utc_now()
         update_time_iso = update_time.isoformat()
-        
+
         # Fire and forget - don't wait for result
         update_api_token_last_used_task.delay(auth_token, scope, update_time_iso)
         logger.debug("Scheduled async update for last_used_at (scope: %s, update_time: %s)", scope, update_time_iso)

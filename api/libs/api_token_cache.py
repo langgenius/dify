@@ -83,7 +83,7 @@ class ApiTokenCache:
         if isinstance(api_token, CachedApiToken):
             # Pydantic model -> dict -> orjson
             return orjson.dumps(api_token.model_dump(mode="json"))
-        
+
         # Otherwise, convert from SQLAlchemy model
         data = {
             "id": str(api_token.id),
