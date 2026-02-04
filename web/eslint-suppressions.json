@@ -1702,11 +1702,6 @@
       "count": 4
     }
   },
-  "app/components/datasets/common/image-uploader/utils.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/datasets/common/retrieval-method-config/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -1717,19 +1712,9 @@
       "count": 1
     }
   },
-  "app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
   "app/components/datasets/create/file-preview/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/datasets/create/file-uploader/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "app/components/datasets/create/index.spec.tsx": {
@@ -2029,14 +2014,6 @@
     }
   },
   "app/components/datasets/metadata/metadata-dataset/create-metadata-modal.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/settings/form/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
