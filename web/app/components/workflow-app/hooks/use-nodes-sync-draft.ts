@@ -98,31 +98,46 @@ export const useNodesSyncDraft = () => {
   ) => {
     if (getNodesReadOnly())
       return
-    const postParams = getPostParams()
 
-    if (postParams) {
-      const {
-        setSyncWorkflowDraftHash,
-        setDraftUpdatedAt,
-      } = workflowStore.getState()
-      try {
-        const res = await syncWorkflowDraft(postParams)
-        setSyncWorkflowDraftHash(res.hash)
-        setDraftUpdatedAt(res.updated_at)
-        callback?.onSuccess?.()
+    // Get base params without hash
+    const baseParams = getPostParams()
+    if (!baseParams)
+      return
+
+    const {
+      setSyncWorkflowDraftHash,
+      setDraftUpdatedAt,
+    } = workflowStore.getState()
+
+    try {
+      // IMPORTANT: Get the LATEST hash right before sending the request
+      // This ensures that even if queued, each request uses the most recent hash
+      const latestHash = workflowStore.getState().syncWorkflowDraftHash
+
+      const postParams = {
+        ...baseParams,
+        params: {
+          ...baseParams.params,
+          hash: latestHash || null, // null for first-time, otherwise use latest hash
+        },
       }
-      catch (error: any) {
-        if (error && error.json && !error.bodyUsed) {
-          error.json().then((err: any) => {
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft()
-          })
-        }
-        callback?.onError?.()
+
+      const res = await syncWorkflowDraft(postParams)
+      setSyncWorkflowDraftHash(res.hash)
+      setDraftUpdatedAt(res.updated_at)
+      callback?.onSuccess?.()
+    }
+    catch (error: any) {
+      if (error && error.json && !error.bodyUsed) {
+        error.json().then((err: any) => {
+          if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+            handleRefreshWorkflowDraft()
+        })
       }
-      finally {
-        callback?.onSettled?.()
-      }
+      callback?.onError?.()
+    }
+    finally {
+      callback?.onSettled?.()
     }
   }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft])
 
