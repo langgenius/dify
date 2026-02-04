@@ -268,6 +268,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             usage = self._merge_usage(usage, metadata_usage)
         all_documents = []
         dataset_retrieval = DatasetRetrieval()
+        creator_user_role = self.user_from.to_creator_user_role()
         if str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE and query:
             # fetch model config
             if node_data.single_retrieval_config is None:
@@ -292,7 +293,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     tenant_id=self.tenant_id,
                     user_id=self.user_id,
                     app_id=self.app_id,
-                    user_from=self.user_from.value,
+                    creator_user_role=creator_user_role,
                     query=query,
                     model_config=model_config,
                     model_instance=model_instance,
@@ -335,7 +336,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 app_id=self.app_id,
                 tenant_id=self.tenant_id,
                 user_id=self.user_id,
-                user_from=self.user_from.value,
+                creator_user_role=creator_user_role,
                 available_datasets=available_datasets,
                 query=query,
                 top_k=node_data.multiple_retrieval_config.top_k,

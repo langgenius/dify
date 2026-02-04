@@ -12,6 +12,11 @@ class UserFrom(StrEnum):
     ACCOUNT = "account"
     END_USER = "end-user"
 
+    def to_creator_user_role(self) -> "CreatorUserRole":
+        if self == UserFrom.ACCOUNT:
+            return CreatorUserRole.ACCOUNT
+        return CreatorUserRole.END_USER
+
 
 class WorkflowRunTriggeredFrom(StrEnum):
     DEBUGGING = "debugging"
