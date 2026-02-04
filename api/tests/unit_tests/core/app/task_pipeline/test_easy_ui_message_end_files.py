@@ -115,6 +115,8 @@ class TestMessageEndStreamResponseFiles:
         """Test that files array is populated correctly for LOCAL_FILE transfer method."""
         # Arrange
         mock_message_file_local.message_id = mock_pipeline._message_id
+        # Ensure upload_file_id matches upload_file.id for the map lookup
+        mock_message_file_local.upload_file_id = mock_upload_file.id
 
         with patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db, \
              patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class, \
@@ -129,11 +131,26 @@ class TestMessageEndStreamResponseFiles:
             mock_session_class.return_value.__enter__.return_value = mock_session
             
             # Mock database queries
-            mock_scalars_result = Mock()
-            mock_scalars_result.all.return_value = [mock_message_file_local]
-            mock_session.scalars.return_value = mock_scalars_result
+            # First query: MessageFile
+            mock_message_files_result = Mock()
+            mock_message_files_result.all.return_value = [mock_message_file_local]
             
-            mock_session.scalar.return_value = mock_upload_file
+            # Second query: UploadFile (batch query to avoid N+1)
+            mock_upload_files_result = Mock()
+            mock_upload_files_result.all.return_value = [mock_upload_file]
+            
+            # Setup scalars to return different results for different queries
+            call_count = [0]  # Use list to allow modification in nested function
+            
+            def scalars_side_effect(query):
+                call_count[0] += 1
+                # First call is for MessageFile, second call is for UploadFile
+                if call_count[0] == 1:
+                    return mock_message_files_result
+                else:
+                    return mock_upload_files_result
+            
+            mock_session.scalars.side_effect = scalars_side_effect
             mock_get_url.return_value = "https://example.com/signed-url?signature=abc123"
 
             # Act
@@ -157,8 +174,8 @@ class TestMessageEndStreamResponseFiles:
             assert file_dict["remote_url"] is None
 
             # Verify database queries
-            mock_session.scalars.assert_called_once()
-            mock_session.scalar.assert_called_once()
+            # Should be called twice: once for MessageFile, once for UploadFile
+            assert mock_session.scalars.call_count == 2
             mock_get_url.assert_called_once_with(upload_file_id=str(mock_upload_file.id))
 
     def test_message_end_with_remote_url(self, mock_pipeline, mock_message_file_remote):
@@ -196,8 +213,8 @@ class TestMessageEndStreamResponseFiles:
             assert file_dict["remote_url"] == "https://example.com/image.jpg"
             assert file_dict["upload_file_id"] == mock_message_file_remote.id
 
-            # Verify no upload_file query for remote URLs
-            mock_session.scalar.assert_not_called()
+            # Verify no upload_file query for remote URLs (only MessageFile query)
+            assert mock_session.scalars.call_count == 1
 
     def test_message_end_with_tool_file_http(self, mock_pipeline, mock_message_file_tool):
         """Test that files array is populated correctly for TOOL_FILE with HTTP URL."""
@@ -292,11 +309,26 @@ class TestMessageEndStreamResponseFiles:
             mock_session_class.return_value.__enter__.return_value = mock_session
             
             # Mock database queries
-            mock_scalars_result = Mock()
-            mock_scalars_result.all.return_value = [mock_message_file_local, mock_message_file_remote]
-            mock_session.scalars.return_value = mock_scalars_result
+            # First query: MessageFile
+            mock_message_files_result = Mock()
+            mock_message_files_result.all.return_value = [mock_message_file_local, mock_message_file_remote]
             
-            mock_session.scalar.return_value = mock_upload_file
+            # Second query: UploadFile (batch query to avoid N+1)
+            mock_upload_files_result = Mock()
+            mock_upload_files_result.all.return_value = [mock_upload_file]
+            
+            # Setup scalars to return different results for different queries
+            call_count = [0]  # Use list to allow modification in nested function
+            
+            def scalars_side_effect(query):
+                call_count[0] += 1
+                # First call is for MessageFile, second call is for UploadFile
+                if call_count[0] == 1:
+                    return mock_message_files_result
+                else:
+                    return mock_upload_files_result
+            
+            mock_session.scalars.side_effect = scalars_side_effect
             mock_get_url.return_value = "https://example.com/signed-url?signature=abc123"
 
             # Act
@@ -329,12 +361,27 @@ class TestMessageEndStreamResponseFiles:
             mock_session = MagicMock(spec=Session)
             mock_session_class.return_value.__enter__.return_value = mock_session
             
-            # Mock database queries - UploadFile not found
-            mock_scalars_result = Mock()
-            mock_scalars_result.all.return_value = [mock_message_file_local]
-            mock_session.scalars.return_value = mock_scalars_result
+            # Mock database queries
+            # First query: MessageFile
+            mock_message_files_result = Mock()
+            mock_message_files_result.all.return_value = [mock_message_file_local]
             
-            mock_session.scalar.return_value = None  # UploadFile not found
+            # Second query: UploadFile (batch query) - returns empty list (not found)
+            mock_upload_files_result = Mock()
+            mock_upload_files_result.all.return_value = []
+            
+            # Setup scalars to return different results for different queries
+            call_count = [0]  # Use list to allow modification in nested function
+            
+            def scalars_side_effect(query):
+                call_count[0] += 1
+                # First call is for MessageFile, second call is for UploadFile
+                if call_count[0] == 1:
+                    return mock_message_files_result
+                else:
+                    return mock_upload_files_result
+            
+            mock_session.scalars.side_effect = scalars_side_effect
             mock_get_url.return_value = "https://example.com/fallback-url?signature=def456"
 
             # Act

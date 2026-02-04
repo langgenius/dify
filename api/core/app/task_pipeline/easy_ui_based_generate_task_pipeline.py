@@ -479,14 +479,25 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             ).all()
             
             if message_files:
+                # Fetch all required UploadFile objects in a single query to avoid N+1 problem
+                upload_file_ids = [
+                    mf.upload_file_id
+                    for mf in message_files
+                    if mf.transfer_method == FileTransferMethod.LOCAL_FILE and mf.upload_file_id
+                ]
+                upload_files_map = {}
+                if upload_file_ids:
+                    upload_files = session.scalars(
+                        select(UploadFile).where(UploadFile.id.in_(upload_file_ids))
+                    ).all()
+                    upload_files_map = {uf.id: uf for uf in upload_files}
+                
                 files_list = []
                 for message_file in message_files:
                     # Get upload file info if it's a local file
                     upload_file = None
                     if message_file.transfer_method == FileTransferMethod.LOCAL_FILE and message_file.upload_file_id:
-                        upload_file = session.scalar(
-                            select(UploadFile).where(UploadFile.id == message_file.upload_file_id)
-                        )
+                        upload_file = upload_files_map.get(message_file.upload_file_id)
                     
                     # Generate URL based on transfer method
                     url = None
@@ -518,24 +529,22 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                             # Extract tool file id and extension from URL
                             url_parts = message_file.url.split("/")
                             if url_parts:
-                                file_part = url_parts[-1]
+                                file_part = url_parts[-1].split("?")[0]  # Remove query params first
+                                # Use rsplit to correctly handle filenames with multiple dots
                                 if "." in file_part:
-                                    tool_file_id = file_part.split(".")[0]
-                                    extension = f".{file_part.split('.')[-1]}"
+                                    tool_file_id, ext = file_part.rsplit(".", 1)
+                                    extension = f".{ext}"
                                     if len(extension) > 10:
                                         extension = ".bin"
                                 else:
                                     tool_file_id = file_part
                                     extension = ".bin"
                                 url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
-                                filename = file_part.split("?")[0]  # Remove query params
+                                filename = file_part
                     
                     # Format file response according to FileResponse type
-                    transfer_method_value = (
-                        message_file.transfer_method.value
-                        if hasattr(message_file.transfer_method, 'value')
-                        else str(message_file.transfer_method)
-                    )
+                    # FileTransferMethod is a StrEnum, so it always has .value attribute
+                    transfer_method_value = message_file.transfer_method.value
                     remote_url = (
                         message_file.url
                         if message_file.transfer_method == FileTransferMethod.REMOTE_URL
