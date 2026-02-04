@@ -45,7 +45,7 @@ export function getBaseURL(path: string) {
   url = new URL(path, isClient ? window.location.origin : 'http://localhost')
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    console.warn(`Using http as protocol for API requests, please configure accordingly. Current protocol: ${url.protocol}`)
+    console.warn(`Unexpected protocol for API requests, expected http or https. Current protocol: ${url.protocol}. Please configure accordingly.`)
   }
 
   return url
