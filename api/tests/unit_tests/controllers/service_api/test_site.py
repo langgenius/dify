@@ -65,15 +65,26 @@ class TestAppSiteApi:
         site.updated_at = "2024-01-01T00:00:00"
         return site
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.app.site.db")
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_site_success(
-        self, mock_wraps_db, mock_validate_token, mock_current_app, mock_db, app, mock_app_model, mock_site
+        self,
+        mock_wraps_db,
+        mock_validate_token,
+        mock_current_app,
+        mock_db,
+        mock_user_logged_in,
+        app,
+        mock_app_model,
+        mock_site,
     ):
         """Test successful retrieval of site configuration."""
         # Arrange
+        mock_current_app.login_manager = Mock()
+
         # Mock authentication
         mock_api_token = Mock()
         mock_api_token.app_id = mock_app_model.id
@@ -108,15 +119,25 @@ class TestAppSiteApi:
         assert response["description"] == "Site description"
         mock_db.session.query.assert_called_once_with(Site)
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.app.site.db")
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_site_not_found(
-        self, mock_wraps_db, mock_validate_token, mock_current_app, mock_db, app, mock_app_model
+        self,
+        mock_wraps_db,
+        mock_validate_token,
+        mock_current_app,
+        mock_db,
+        mock_user_logged_in,
+        app,
+        mock_app_model,
     ):
         """Test that Forbidden is raised when site is not found."""
         # Arrange
+        mock_current_app.login_manager = Mock()
+
         # Mock authentication
         mock_api_token = Mock()
         mock_api_token.app_id = mock_app_model.id
@@ -145,15 +166,26 @@ class TestAppSiteApi:
             with pytest.raises(Forbidden):
                 api.get()
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.app.site.db")
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_site_tenant_archived(
-        self, mock_wraps_db, mock_validate_token, mock_current_app, mock_db, app, mock_app_model, mock_site
+        self,
+        mock_wraps_db,
+        mock_validate_token,
+        mock_current_app,
+        mock_db,
+        mock_user_logged_in,
+        app,
+        mock_app_model,
+        mock_site,
     ):
         """Test that Forbidden is raised when tenant is archived."""
         # Arrange
+        mock_current_app.login_manager = Mock()
+
         # Mock authentication
         mock_api_token = Mock()
         mock_api_token.app_id = mock_app_model.id
@@ -184,15 +216,18 @@ class TestAppSiteApi:
             with pytest.raises(Forbidden):
                 api.get()
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.app.site.db")
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_site_queries_by_app_id(
-        self, mock_wraps_db, mock_validate_token, mock_current_app, mock_db, app, mock_app_model
+        self, mock_wraps_db, mock_validate_token, mock_current_app, mock_db, mock_user_logged_in, app, mock_app_model
     ):
         """Test that site is queried using the app model's id."""
         # Arrange
+        mock_current_app.login_manager = Mock()
+
         # Mock authentication
         mock_api_token = Mock()
         mock_api_token.app_id = mock_app_model.id

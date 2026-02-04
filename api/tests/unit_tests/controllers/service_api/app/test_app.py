@@ -35,12 +35,17 @@ class TestAppParameterApi:
         app.enable_api = True
         return app
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
-    def test_get_parameters_for_chat_app(self, mock_db, mock_validate_token, mock_current_app, app, mock_app_model):
+    def test_get_parameters_for_chat_app(
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+    ):
         """Test retrieving parameters for a chat app."""
         # Arrange
+        mock_current_app.login_manager = Mock()
+
         mock_config = Mock()
         mock_config.id = str(uuid.uuid4())
         mock_config.to_dict.return_value = {
@@ -80,12 +85,17 @@ class TestAppParameterApi:
         assert "suggested_questions" in response
         assert "user_input_form" in response
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
-    def test_get_parameters_for_workflow_app(self, mock_db, mock_validate_token, mock_current_app, app, mock_app_model):
+    def test_get_parameters_for_workflow_app(
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+    ):
         """Test retrieving parameters for a workflow app."""
         # Arrange
+        mock_current_app.login_manager = Mock()
+
         mock_app_model.mode = AppMode.WORKFLOW
         mock_workflow = Mock()
         mock_workflow.features_dict = {"suggested_questions": []}
@@ -120,14 +130,17 @@ class TestAppParameterApi:
         assert "user_input_form" in response
         assert "opening_statement" in response
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_parameters_raises_error_when_chat_config_missing(
-        self, mock_db, mock_validate_token, mock_current_app, app, mock_app_model
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
     ):
         """Test that AppUnavailableError is raised when chat app has no config."""
         # Arrange
+        mock_current_app.login_manager = Mock()
+
         mock_app_model.app_model_config = None
         mock_app_model.workflow = None
 
@@ -155,14 +168,17 @@ class TestAppParameterApi:
             with pytest.raises(AppUnavailableError):
                 api.get()
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     def test_get_parameters_raises_error_when_workflow_missing(
-        self, mock_db, mock_validate_token, mock_current_app, app, mock_app_model
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
     ):
         """Test that AppUnavailableError is raised when workflow app has no workflow."""
         # Arrange
+        mock_current_app.login_manager = Mock()
+
         mock_app_model.mode = AppMode.WORKFLOW
         mock_app_model.workflow = None
         mock_app_model.app_model_config = None
@@ -211,13 +227,18 @@ class TestAppMetaApi:
         app.enable_api = True
         return app
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
     @patch("controllers.service_api.app.app.AppService")
-    def test_get_app_meta(self, mock_app_service, mock_db, mock_validate_token, mock_current_app, app, mock_app_model):
+    def test_get_app_meta(
+        self, mock_app_service, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+    ):
         """Test retrieving app metadata via AppService."""
         # Arrange
+        mock_current_app.login_manager = Mock()
+
         mock_service_instance = Mock()
         mock_service_instance.get_app_meta.return_value = {
             "tool_icons": {},
@@ -283,11 +304,16 @@ class TestAppInfoApi:
 
         return app
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
-    def test_get_app_info(self, mock_db, mock_validate_token, mock_current_app, app, mock_app_model):
+    def test_get_app_info(
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, mock_app_model
+    ):
         """Test retrieving basic app information."""
+        mock_current_app.login_manager = Mock()
+
         # Mock authentication
         mock_api_token = Mock()
         mock_api_token.app_id = mock_app_model.id
@@ -318,12 +344,17 @@ class TestAppInfoApi:
         assert response["mode"] == AppMode.CHAT
         assert response["author_name"] == "Test Author"
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
-    def test_get_app_info_with_multiple_tags(self, mock_db, mock_validate_token, mock_current_app, app):
+    def test_get_app_info_with_multiple_tags(
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app
+    ):
         """Test retrieving app info with multiple tags."""
         # Arrange
+        mock_current_app.login_manager = Mock()
+
         mock_app = Mock(spec=App)
         mock_app.id = str(uuid.uuid4())
         mock_app.tenant_id = str(uuid.uuid4())
@@ -366,12 +397,15 @@ class TestAppInfoApi:
         # Assert
         assert response["tags"] == ["tag-one", "tag-two", "tag-three"]
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
-    def test_get_app_info_with_no_tags(self, mock_db, mock_validate_token, mock_current_app, app):
+    def test_get_app_info_with_no_tags(self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app):
         """Test retrieving app info when app has no tags."""
         # Arrange
+        mock_current_app.login_manager = Mock()
+
         mock_app = Mock(spec=App)
         mock_app.id = str(uuid.uuid4())
         mock_app.tenant_id = str(uuid.uuid4())
@@ -413,12 +447,17 @@ class TestAppInfoApi:
         "app_mode",
         [AppMode.CHAT, AppMode.COMPLETION, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT],
     )
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
-    def test_get_app_info_returns_correct_mode(self, mock_db, mock_validate_token, mock_current_app, app, app_mode):
+    def test_get_app_info_returns_correct_mode(
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app, app_mode
+    ):
         """Test that all app modes are correctly returned."""
         # Arrange
+        mock_current_app.login_manager = Mock()
+
         mock_app = Mock(spec=App)
         mock_app.id = str(uuid.uuid4())
         mock_app.tenant_id = str(uuid.uuid4())

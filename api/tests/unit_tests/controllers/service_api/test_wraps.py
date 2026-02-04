@@ -119,12 +119,18 @@ class TestValidateAppToken:
         app.config["TESTING"] = True
         return app
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.db")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.current_app")
-    def test_valid_app_token_allows_access(self, mock_current_app, mock_validate_token, mock_db, app):
+    def test_valid_app_token_allows_access(
+        self, mock_current_app, mock_validate_token, mock_db, mock_user_logged_in, app
+    ):
         """Test that valid app token allows access to decorated view."""
         # Arrange
+        # Use standard Mock for login_manager to avoid AsyncMockMixin warnings
+        mock_current_app.login_manager = Mock()
+
         mock_api_token = Mock()
         mock_api_token.app_id = str(uuid.uuid4())
         mock_api_token.tenant_id = str(uuid.uuid4())
@@ -452,12 +458,16 @@ class TestValidateDatasetToken:
         app.config["TESTING"] = True
         return app
 
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.db")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.current_app")
-    def test_valid_dataset_token(self, mock_current_app, mock_validate_token, mock_db, app):
+    def test_valid_dataset_token(self, mock_current_app, mock_validate_token, mock_db, mock_user_logged_in, app):
         """Test that valid dataset token allows access."""
         # Arrange
+        # Use standard Mock for login_manager
+        mock_current_app.login_manager = Mock()
+
         tenant_id = str(uuid.uuid4())
         mock_api_token = Mock()
         mock_api_token.tenant_id = tenant_id
