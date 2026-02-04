@@ -107,7 +107,6 @@ export const useDetailHeaderState = (detail: PluginDetail): UseDetailHeaderState
     return false
   }, [autoUpgradeInfo, plugin_id, isFromMarketplace, enable_marketplace])
 
-  // Update target version when latest version changes
   const handleSetTargetVersion = useCallback((version: VersionTarget) => {
     setTargetVersion(version)
     if (version.isDowngrade !== undefined)

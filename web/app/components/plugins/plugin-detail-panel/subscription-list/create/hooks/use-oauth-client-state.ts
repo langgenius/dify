@@ -163,28 +163,21 @@ export const useOAuthClientState = ({
       enabled: isCustom,
     }
 
-    if (isCustom) {
-      // Short-circuit if no schema to validate
-      if (!oauthClientSchema?.length) {
-        return
-      }
-
+    // If there is no schema, enable custom OAuth without client_params.
+    if (oauthClientSchema?.length) {
       const clientFormValues = clientFormRef.current?.getFormValues({}) as {
         values: TriggerOAuthClientParams
         isCheckValidated: boolean
       } | undefined
-
       // Handle missing ref or form values
       if (!clientFormValues || !clientFormValues.isCheckValidated)
         return
-
       const clientParams = { ...clientFormValues.values }
       // Preserve hidden values if unchanged
       if (clientParams.client_id === oauthConfig?.params.client_id)
         clientParams.client_id = '[__HIDDEN__]'
       if (clientParams.client_secret === oauthConfig?.params.client_secret)
         clientParams.client_secret = '[__HIDDEN__]'
-
       params.client_params = clientParams
     }
 
