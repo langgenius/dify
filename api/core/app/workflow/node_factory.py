@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, final
+from typing import TYPE_CHECKING, Any, cast, final
 
 from typing_extensions import override
 
@@ -15,6 +15,7 @@ from core.workflow.graph.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.limits import CodeNodeLimits
+from core.workflow.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
 from core.workflow.nodes.http_request.node import HttpRequestNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol
@@ -50,6 +51,7 @@ class DifyNodeFactory(NodeFactory):
         http_request_http_client: HttpClientProtocol | None = None,
         http_request_tool_file_manager_factory: Callable[[], ToolFileManager] = ToolFileManager,
         http_request_file_manager: FileManagerProtocol | None = None,
+        document_extractor_unstructured_api_config: UnstructuredApiConfig | None = None,
     ) -> None:
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
@@ -71,6 +73,13 @@ class DifyNodeFactory(NodeFactory):
         self._http_request_http_client = http_request_http_client or ssrf_proxy
         self._http_request_tool_file_manager_factory = http_request_tool_file_manager_factory
         self._http_request_file_manager = http_request_file_manager or file_manager
+        self._document_extractor_unstructured_api_config = (
+            document_extractor_unstructured_api_config
+            or UnstructuredApiConfig(
+                api_url=dify_config.UNSTRUCTURED_API_URL,
+                api_key=dify_config.UNSTRUCTURED_API_KEY or "",
+            )
+        )
 
     @override
     def create_node(self, node_config: NodeConfigDict) -> Node:
@@ -103,13 +112,17 @@ class DifyNodeFactory(NodeFactory):
         if not node_class:
             raise ValueError(f"No latest version class found for node type: {node_type}")
 
+        common_kwargs: dict[str, Any] = {
+            "id": node_id,
+            "config": node_config,
+            "graph_init_params": self.graph_init_params,
+            "graph_runtime_state": self.graph_runtime_state,
+        }
+
         # Create node instance
         if node_type == NodeType.CODE:
             return CodeNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
+                **common_kwargs,
                 code_executor=self._code_executor,
                 code_providers=self._code_providers,
                 code_limits=self._code_limits,
@@ -117,27 +130,23 @@ class DifyNodeFactory(NodeFactory):
 
         if node_type == NodeType.TEMPLATE_TRANSFORM:
             return TemplateTransformNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
+                **common_kwargs,
                 template_renderer=self._template_renderer,
             )
 
         if node_type == NodeType.HTTP_REQUEST:
             return HttpRequestNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
+                **common_kwargs,
                 http_client=self._http_request_http_client,
                 tool_file_manager_factory=self._http_request_tool_file_manager_factory,
                 file_manager=self._http_request_file_manager,
             )
 
-        return node_class(
-            id=node_id,
-            config=node_config,
-            graph_init_params=self.graph_init_params,
-            graph_runtime_state=self.graph_runtime_state,
-        )
+        if node_type == NodeType.DOCUMENT_EXTRACTOR:
+            document_extractor_class = cast(type[DocumentExtractorNode], node_class)
+            return document_extractor_class(
+                **common_kwargs,
+                unstructured_api_config=self._document_extractor_unstructured_api_config,
+            )
+
+        return node_class(**common_kwargs)
