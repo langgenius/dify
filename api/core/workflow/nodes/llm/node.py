@@ -2282,11 +2282,12 @@ class LLMNode(Node[LLMNodeData]):
                 if tool_name in (OUTPUT_TEXT_TOOL, FINAL_OUTPUT_TOOL):
                     content = payload.tool_args["text"]
                 elif tool_name == FINAL_STRUCTURED_OUTPUT_TOOL:
-                    content = json.dumps(
+                    raw_content = json.dumps(
                         payload.tool_args["data"],
                         ensure_ascii=False,
                         indent=2
                     )
+                    content = f"```json\n{raw_content}\n```"
 
                 if content:
                     yield StreamChunkEvent(
@@ -2296,7 +2297,7 @@ class LLMNode(Node[LLMNodeData]):
                     )
                     yield StreamChunkEvent(
                         selector=[self._node_id, "generation", "content"],
-                        chunk=f"```json\n{content}\n```",
+                        chunk=content,
                         is_final=False,
                     )
 
