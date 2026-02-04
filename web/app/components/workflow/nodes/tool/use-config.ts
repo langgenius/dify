@@ -30,9 +30,6 @@ import { normalizeJsonSchemaType } from './output-schema-utils'
 
 const formatDisplayType = (output: Record<string, unknown>): string => {
   const normalizedType = normalizeJsonSchemaType(output) || 'Unknown'
-  if (normalizedType === 'Unknown')
-    return 'Unknown'
-
   return capitalize(normalizedType)
 }
 
