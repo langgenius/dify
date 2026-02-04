@@ -7,7 +7,6 @@ from typing import Union, cast
 from sqlalchemy import select
 
 from core.agent.entities import AgentEntity, AgentToolEntity, ExecutionContext
-from core.agent.output_tools import build_agent_output_tools
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -37,7 +36,6 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
-    ToolInvokeFrom,
     ToolParameter,
 )
 from core.tools.tool_manager import ToolManager
@@ -252,14 +250,6 @@ class BaseAgentRunner(AppRunner):
             prompt_messages_tools.append(prompt_tool)
             # save tool entity
             tool_instances[dataset_tool.entity.identity.name] = dataset_tool
-
-        output_tools = build_agent_output_tools(
-            tenant_id=self.tenant_id,
-            invoke_from=self.application_generate_entity.invoke_from,
-            tool_invoke_from=ToolInvokeFrom.AGENT,
-        )
-        for tool in output_tools:
-            tool_instances[tool.entity.identity.name] = tool
 
         return tool_instances, prompt_messages_tools
 

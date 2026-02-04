@@ -577,12 +577,12 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 prompt_messages=prompt_messages,
                 stop=stop,
                 user_id=self.user_id,
-                structured_output_schema=None,
+                structured_output_enabled=self.node_data.structured_output_enabled,
+                structured_output=None,
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,
                 node_id=self._node_id,
                 node_type=self.node_type,
-                tenant_id=self.tenant_id,
             )
 
             for event in generator:

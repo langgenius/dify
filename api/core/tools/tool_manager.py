@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import logging
 import mimetypes
@@ -33,8 +31,9 @@ from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 if TYPE_CHECKING:
-    from core.agent.entities import AgentToolEntity
     from core.workflow.nodes.tool.entities import ToolEntity
+
+from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
@@ -66,8 +65,6 @@ if TYPE_CHECKING:
     from core.workflow.nodes.tool.entities import ToolEntity
 
 logger = logging.getLogger(__name__)
-
-INTERNAL_BUILTIN_TOOL_PROVIDERS = {"agent_output"}
 
 
 class ApiProviderControllerItem(TypedDict):
@@ -364,7 +361,7 @@ class ToolManager:
         app_id: str,
         agent_tool: AgentToolEntity,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
-        variable_pool: Optional[VariablePool] = None,
+        variable_pool: Optional["VariablePool"] = None,
     ) -> Tool:
         """
         get the agent tool runtime
@@ -404,9 +401,9 @@ class ToolManager:
         tenant_id: str,
         app_id: str,
         node_id: str,
-        workflow_tool: ToolEntity,
+        workflow_tool: "ToolEntity",
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
-        variable_pool: Optional[VariablePool] = None,
+        variable_pool: Optional["VariablePool"] = None,
     ) -> Tool:
         """
         get the workflow tool runtime
@@ -595,10 +592,6 @@ class ToolManager:
         cls._builtin_providers_loaded = False
 
     @classmethod
-    def is_internal_builtin_provider(cls, provider_name: str) -> bool:
-        return provider_name in INTERNAL_BUILTIN_TOOL_PROVIDERS
-
-    @classmethod
     def get_tool_label(cls, tool_name: str) -> Union[I18nObject, None]:
         """
         get the tool label
@@ -635,9 +628,9 @@ class ToolManager:
             # MySQL: Use window function to achieve same result
             sql = """
                 SELECT id FROM (
-                    SELECT id, 
+                    SELECT id,
                            ROW_NUMBER() OVER (
-                               PARTITION BY tenant_id, provider 
+                               PARTITION BY tenant_id, provider
                                ORDER BY is_default DESC, created_at DESC
                            ) as rn
                     FROM tool_builtin_providers
@@ -674,8 +667,6 @@ class ToolManager:
 
                 # append builtin providers
                 for provider in builtin_providers:
-                    if cls.is_internal_builtin_provider(provider.entity.identity.name):
-                        continue
                     # handle include, exclude
                     if is_filtered(
                         include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
@@ -1019,7 +1010,7 @@ class ToolManager:
     def _convert_tool_parameters_type(
         cls,
         parameters: list[ToolParameter],
-        variable_pool: Optional[VariablePool],
+        variable_pool: Optional["VariablePool"],
         tool_configurations: dict[str, Any],
         typ: Literal["agent", "workflow", "tool"] = "workflow",
     ) -> dict[str, Any]:

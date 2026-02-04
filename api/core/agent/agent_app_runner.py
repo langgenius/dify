@@ -1,4 +1,3 @@
-import json
 import logging
 from collections.abc import Generator
 from copy import deepcopy
@@ -24,7 +23,7 @@ from core.model_runtime.entities import (
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import ToolInvokeFrom, ToolInvokeMeta
+from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
 from models.model import Message
 
@@ -103,13 +102,11 @@ class AgentAppRunner(BaseAgentRunner):
             agent_strategy=self.config.strategy,
             tool_invoke_hook=tool_invoke_hook,
             instruction=instruction,
-            tenant_id=self.tenant_id,
-            invoke_from=self.application_generate_entity.invoke_from,
-            tool_invoke_from=ToolInvokeFrom.WORKFLOW,
         )
 
         # Initialize state variables
         current_agent_thought_id = None
+        has_published_thought = False
         current_tool_name: str | None = None
         self._current_message_file_ids: list[str] = []
 
@@ -121,6 +118,7 @@ class AgentAppRunner(BaseAgentRunner):
             prompt_messages=prompt_messages,
             model_parameters=app_generate_entity.model_conf.parameters,
             stop=app_generate_entity.model_conf.stop,
+            stream=True,
         )
 
         # Consume generator and collect result
@@ -135,10 +133,17 @@ class AgentAppRunner(BaseAgentRunner):
                     break
 
                 if isinstance(output, LLMResultChunk):
-                    # No more expect streaming data
-                    continue
+                    # Handle LLM chunk
+                    if current_agent_thought_id and not has_published_thought:
+                        self.queue_manager.publish(
+                            QueueAgentThoughtEvent(agent_thought_id=current_agent_thought_id),
+                            PublishFrom.APPLICATION_MANAGER,
+                        )
+                        has_published_thought = True
 
-                else:
+                    yield output
+
+                elif isinstance(output, AgentLog):
                     # Handle Agent Log using log_type for type-safe dispatch
                     if output.status == AgentLog.LogStatus.START:
                         if output.log_type == AgentLog.LogType.ROUND:
@@ -151,6 +156,7 @@ class AgentAppRunner(BaseAgentRunner):
                                 tool_input="",
                                 messages_ids=message_file_ids,
                             )
+                            has_published_thought = False
 
                         elif output.log_type == AgentLog.LogType.TOOL_CALL:
                             if current_agent_thought_id is None:
@@ -258,30 +264,23 @@ class AgentAppRunner(BaseAgentRunner):
             raise
 
         # Process final result
-        if not isinstance(result, AgentResult):
-            raise ValueError("Agent did not return AgentResult")
-        output_payload = result.output
-        if isinstance(output_payload, dict):
-            final_answer = json.dumps(output_payload, ensure_ascii=False)
-        elif isinstance(output_payload, str):
-            final_answer = output_payload
-        else:
-            raise ValueError("Final output is not a string or structured data.")
-        usage = result.usage or LLMUsage.empty_usage()
+        if isinstance(result, AgentResult):
+            final_answer = result.text
+            usage = result.usage or LLMUsage.empty_usage()
 
-        # Publish end event
-        self.queue_manager.publish(
-            QueueMessageEndEvent(
-                llm_result=LLMResult(
-                    model=self.model_instance.model,
-                    prompt_messages=prompt_messages,
-                    message=AssistantPromptMessage(content=final_answer),
-                    usage=usage,
-                    system_fingerprint="",
-                )
-            ),
-            PublishFrom.APPLICATION_MANAGER,
-        )
+            # Publish end event
+            self.queue_manager.publish(
+                QueueMessageEndEvent(
+                    llm_result=LLMResult(
+                        model=self.model_instance.model,
+                        prompt_messages=prompt_messages,
+                        message=AssistantPromptMessage(content=final_answer),
+                        usage=usage,
+                        system_fingerprint="",
+                    )
+                ),
+                PublishFrom.APPLICATION_MANAGER,
+            )
 
     def _init_system_message(self, prompt_template: str, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """

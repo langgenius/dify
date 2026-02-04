@@ -1,3 +1,4 @@
+import json
 from collections.abc import Generator
 
 from core.agent.entities import AgentScratchpadUnit
@@ -63,7 +64,7 @@ def test_cot_output_parser():
                 output += result
             elif isinstance(result, AgentScratchpadUnit.Action):
                 if test_case["action"]:
-                    assert result.model_dump() == test_case["action"]
-                output += result.model_dump_json()
+                    assert result.to_dict() == test_case["action"]
+                output += json.dumps(result.to_dict())
         if test_case["output"]:
             assert output == test_case["output"]

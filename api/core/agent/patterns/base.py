@@ -10,7 +10,6 @@ from collections.abc import Callable, Generator
 from typing import TYPE_CHECKING, Any
 
 from core.agent.entities import AgentLog, AgentResult, ExecutionContext
-from core.agent.output_tools import ILLEGAL_OUTPUT_TOOL
 from core.file import File
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
@@ -57,7 +56,8 @@ class AgentPattern(ABC):
 
     @abstractmethod
     def run(
-        self, prompt_messages: list[PromptMessage], model_parameters: dict[str, Any], stop: list[str]
+        self, prompt_messages: list[PromptMessage], model_parameters: dict[str, Any], stop: list[str] = [],
+        stream: bool = True,
     ) -> Generator[LLMResultChunk | AgentLog, None, AgentResult]:
         """Execute the agent strategy."""
         pass
@@ -462,8 +462,6 @@ class AgentPattern(ABC):
         """Convert tools to prompt message format."""
         prompt_tools: list[PromptMessageTool] = []
         for tool in self.tools:
-            if tool.entity.identity.name == ILLEGAL_OUTPUT_TOOL:
-                continue
             prompt_tools.append(tool.to_prompt_message_tool())
         return prompt_tools
 

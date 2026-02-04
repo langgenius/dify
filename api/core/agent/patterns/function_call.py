@@ -1,15 +1,10 @@
 """Function Call strategy implementation."""
 
 import json
-import uuid
 from collections.abc import Generator
-from typing import Any, Literal, Protocol, Union, cast
+from typing import Any, Union
 
 from core.agent.entities import AgentLog, AgentResult
-from core.agent.output_tools import (
-    ILLEGAL_OUTPUT_TOOL,
-    TERMINAL_OUTPUT_MESSAGE,
-)
 from core.file import File
 from core.model_runtime.entities import (
     AssistantPromptMessage,
@@ -30,7 +25,8 @@ class FunctionCallStrategy(AgentPattern):
     """Function Call strategy using model's native tool calling capability."""
 
     def run(
-        self, prompt_messages: list[PromptMessage], model_parameters: dict[str, Any], stop: list[str]
+        self, prompt_messages: list[PromptMessage], model_parameters: dict[str, Any], stop: list[str] = [],
+        stream: bool = True,
     ) -> Generator[LLMResultChunk | AgentLog, None, AgentResult]:
         """Execute the function call agent strategy."""
         # Convert tools to prompt format
@@ -43,22 +39,8 @@ class FunctionCallStrategy(AgentPattern):
         total_usage: dict[str, LLMUsage | None] = {"usage": None}
         messages: list[PromptMessage] = list(prompt_messages)  # Create mutable copy
         final_text: str = ""
-        final_tool_args: dict[str, Any] = {"!!!": "!!!"}
         finish_reason: str | None = None
         output_files: list[File] = []  # Track files produced by tools
-
-        class _LLMInvoker(Protocol):
-            def invoke_llm(
-                self,
-                *,
-                prompt_messages: list[PromptMessage],
-                model_parameters: dict[str, Any],
-                tools: list[PromptMessageTool],
-                stop: list[str],
-                stream: Literal[False],
-                user: str | None,
-                callbacks: list[Any],
-            ) -> LLMResult: ...
 
         while function_call_state and iteration_step <= max_iterations:
             function_call_state = False
@@ -69,7 +51,8 @@ class FunctionCallStrategy(AgentPattern):
                 data={},
             )
             yield round_log
-
+            # On last iteration, remove tools to force final answer
+            current_tools: list[PromptMessageTool] = [] if iteration_step == max_iterations else prompt_tools
             model_log = self._create_log(
                 label=f"{self.model_instance.model} Thought",
                 log_type=AgentLog.LogType.THOUGHT,
@@ -86,63 +69,47 @@ class FunctionCallStrategy(AgentPattern):
             round_usage: dict[str, LLMUsage | None] = {"usage": None}
 
             # Invoke model
-            invoker = cast(_LLMInvoker, self.model_instance)
-            chunks = invoker.invoke_llm(
+            chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = self.model_instance.invoke_llm(
                 prompt_messages=messages,
                 model_parameters=model_parameters,
-                tools=prompt_tools,
+                tools=current_tools,
                 stop=stop,
-                stream=False,
+                stream=stream,
                 user=self.context.user_id,
                 callbacks=[],
             )
 
             # Process response
             tool_calls, response_content, chunk_finish_reason = yield from self._handle_chunks(
-                chunks, round_usage, model_log, emit_chunks=False
+                chunks, round_usage, model_log
             )
-
-            if response_content:
-                replaced_tool_call = (
-                    str(uuid.uuid4()),
-                    ILLEGAL_OUTPUT_TOOL,
-                    {
-                        "raw": response_content,
-                    },
-                )
-                tool_calls.append(replaced_tool_call)
-
-            messages.append(self._create_assistant_message("", tool_calls))
+            messages.append(self._create_assistant_message(response_content, tool_calls))
 
             # Accumulate to total usage
             round_usage_value = round_usage.get("usage")
             if round_usage_value:
                 self._accumulate_usage(total_usage, round_usage_value)
 
+            # Update final text if no tool calls (this is likely the final answer)
+            if not tool_calls:
+                final_text = response_content
+
             # Update finish reason
             if chunk_finish_reason:
                 finish_reason = chunk_finish_reason
 
-            assert len(tool_calls) > 0
-
             # Process tool calls
             tool_outputs: dict[str, str] = {}
-            function_call_state = True
-            # Execute tools
-            for tool_call_id, tool_name, tool_args in tool_calls:
-                tool_response, tool_files, _ = yield from self._handle_tool_call(
-                    tool_name, tool_args, tool_call_id, messages, round_log
-                )
-                tool_entity = self._find_tool_by_name(tool_name)
-                if not tool_entity:
-                    raise ValueError(f"Tool {tool_name} not found")
-                tool_outputs[tool_name] = tool_response
-                # Track files produced by tools
-                output_files.extend(tool_files)
-                if tool_response == TERMINAL_OUTPUT_MESSAGE:
-                    function_call_state = False
-                    final_tool_args = tool_entity.transform_tool_parameters_type(tool_args)
-
+            if tool_calls:
+                function_call_state = True
+                # Execute tools
+                for tool_call_id, tool_name, tool_args in tool_calls:
+                    tool_response, tool_files, _ = yield from self._handle_tool_call(
+                        tool_name, tool_args, tool_call_id, messages, round_log
+                    )
+                    tool_outputs[tool_name] = tool_response
+                    # Track files produced by tools
+                    output_files.extend(tool_files)
             yield self._finish_log(
                 round_log,
                 data={
@@ -161,19 +128,8 @@ class FunctionCallStrategy(AgentPattern):
         # Return final result
         from core.agent.entities import AgentResult
 
-        output_payload: str | dict
-        output_text = final_tool_args.get("text")
-        output_structured_payload = final_tool_args.get("data")
-
-        if isinstance(output_structured_payload, dict):
-            output_payload = output_structured_payload
-        elif isinstance(output_text, str):
-            output_payload = output_text
-        else:
-            raise ValueError(f"Final output ({final_tool_args}) is not a string or structured data.")
-
         return AgentResult(
-            output=output_payload,
+            text=final_text,
             files=output_files,
             usage=total_usage.get("usage") or LLMUsage.empty_usage(),
             finish_reason=finish_reason,
@@ -184,8 +140,6 @@ class FunctionCallStrategy(AgentPattern):
         chunks: Union[Generator[LLMResultChunk, None, None], LLMResult],
         llm_usage: dict[str, LLMUsage | None],
         start_log: AgentLog,
-        *,
-        emit_chunks: bool,
     ) -> Generator[
         LLMResultChunk | AgentLog,
         None,
@@ -217,8 +171,7 @@ class FunctionCallStrategy(AgentPattern):
                 if chunk.delta.finish_reason:
                     finish_reason = chunk.delta.finish_reason
 
-                if emit_chunks:
-                    yield chunk
+                yield chunk
         else:
             # Non-streaming response
             result: LLMResult = chunks
@@ -233,12 +186,11 @@ class FunctionCallStrategy(AgentPattern):
                 self._accumulate_usage(llm_usage, result.usage)
 
             # Convert to streaming format
-            if emit_chunks:
-                yield LLMResultChunk(
-                    model=result.model,
-                    prompt_messages=result.prompt_messages,
-                    delta=LLMResultChunkDelta(index=0, message=result.message, usage=result.usage),
-                )
+            yield LLMResultChunk(
+                model=result.model,
+                prompt_messages=result.prompt_messages,
+                delta=LLMResultChunkDelta(index=0, message=result.message, usage=result.usage),
+            )
         yield self._finish_log(
             start_log,
             data={
@@ -247,14 +199,6 @@ class FunctionCallStrategy(AgentPattern):
             usage=llm_usage.get("usage"),
         )
         return tool_calls, response_content, finish_reason
-
-    @staticmethod
-    def _format_output_text(value: Any) -> str:
-        if value is None:
-            return ""
-        if isinstance(value, str):
-            return value
-        return json.dumps(value, ensure_ascii=False)
 
     def _create_assistant_message(
         self, content: str, tool_calls: list[tuple[str, str, dict[str, Any]]] | None = None

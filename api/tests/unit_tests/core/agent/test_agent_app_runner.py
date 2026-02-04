@@ -329,15 +329,13 @@ class TestAgentLogProcessing:
         )
 
         result = AgentResult(
-            output="Final answer",
+            text="Final answer",
             files=[],
             usage=usage,
             finish_reason="stop",
         )
 
-        output_payload = result.output
-        assert isinstance(output_payload, str)
-        assert output_payload == "Final answer"
+        assert result.text == "Final answer"
         assert result.files == []
         assert result.usage == usage
         assert result.finish_reason == "stop"

@@ -1,7 +1,7 @@
 import json
 import re
 from collections.abc import Generator
-from typing import Any, Union, cast
+from typing import Union
 
 from core.agent.entities import AgentScratchpadUnit
 from core.model_runtime.entities.llm_entities import LLMResultChunk
@@ -10,52 +10,46 @@ from core.model_runtime.entities.llm_entities import LLMResultChunk
 class CotAgentOutputParser:
     @classmethod
     def handle_react_stream_output(
-        cls, llm_response: Generator[LLMResultChunk, None, None], usage_dict: dict[str, Any]
+        cls, llm_response: Generator[LLMResultChunk, None, None], usage_dict: dict
     ) -> Generator[Union[str, AgentScratchpadUnit.Action], None, None]:
-        def parse_action(action: Any) -> Union[str, AgentScratchpadUnit.Action]:
-            action_name: str | None = None
-            action_input: Any | None = None
-            parsed_action: Any = action
-            if isinstance(parsed_action, str):
+        def parse_action(action) -> Union[str, AgentScratchpadUnit.Action]:
+            action_name = None
+            action_input = None
+            if isinstance(action, str):
                 try:
-                    parsed_action = json.loads(parsed_action, strict=False)
+                    action = json.loads(action, strict=False)
                 except json.JSONDecodeError:
-                    return parsed_action or ""
+                    return action or ""
 
             # cohere always returns a list
-            if isinstance(parsed_action, list):
-                action_list: list[Any] = cast(list[Any], parsed_action)
-                if len(action_list) == 1:
-                    parsed_action = action_list[0]
+            if isinstance(action, list) and len(action) == 1:
+                action = action[0]
 
-            if isinstance(parsed_action, dict):
-                action_dict: dict[str, Any] = cast(dict[str, Any], parsed_action)
-                for key, value in action_dict.items():
-                    if "input" in key.lower():
-                        action_input = value
-                    elif isinstance(value, str):
-                        action_name = value
-            else:
-                return json.dumps(parsed_action)
+            for key, value in action.items():
+                if "input" in key.lower():
+                    action_input = value
+                else:
+                    action_name = value
 
             if action_name is not None and action_input is not None:
                 return AgentScratchpadUnit.Action(
                     action_name=action_name,
                     action_input=action_input,
                 )
-            return json.dumps(parsed_action)
+            else:
+                return json.dumps(action)
 
-        def extra_json_from_code_block(code_block: str) -> list[dict[str, Any] | list[Any]]:
+        def extra_json_from_code_block(code_block) -> list[Union[list, dict]]:
             blocks = re.findall(r"```[json]*\s*([\[{].*[]}])\s*```", code_block, re.DOTALL | re.IGNORECASE)
             if not blocks:
                 return []
             try:
-                json_blocks: list[dict[str, Any] | list[Any]] = []
+                json_blocks = []
                 for block in blocks:
                     json_text = re.sub(r"^[a-zA-Z]+\n", "", block.strip(), flags=re.MULTILINE)
                     json_blocks.append(json.loads(json_text, strict=False))
                 return json_blocks
-            except Exception:
+            except:
                 return []
 
         code_block_cache = ""

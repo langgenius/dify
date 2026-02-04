@@ -13,7 +13,7 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 class ConcreteAgentPattern(AgentPattern):
     """Concrete implementation of AgentPattern for testing."""
 
-    def run(self, prompt_messages, model_parameters, stop=[]):
+    def run(self, prompt_messages, model_parameters, stop=[], stream=True):
         """Minimal implementation for testing."""
         yield from []
 

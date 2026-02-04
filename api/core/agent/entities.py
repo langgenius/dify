@@ -1,11 +1,10 @@
 import uuid
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Any
+from typing import Any, Union
 
 from pydantic import BaseModel, Field
 
-from core.agent.output_tools import FINAL_OUTPUT_TOOL
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
 
 
@@ -42,9 +41,9 @@ class AgentScratchpadUnit(BaseModel):
         """
 
         action_name: str
-        action_input: dict[str, Any] | str
+        action_input: Union[dict, str]
 
-        def to_dict(self) -> dict[str, Any]:
+        def to_dict(self):
             """
             Convert to dictionary.
             """
@@ -63,9 +62,9 @@ class AgentScratchpadUnit(BaseModel):
         """
         Check if the scratchpad unit is final.
         """
-        if self.action is None:
-            return False
-        return self.action.action_name.lower() == FINAL_OUTPUT_TOOL
+        return self.action is None or (
+            "final" in self.action.action_name.lower() and "answer" in self.action.action_name.lower()
+        )
 
 
 class AgentEntity(BaseModel):
@@ -126,7 +125,7 @@ class ExecutionContext(BaseModel):
             "tenant_id": self.tenant_id,
         }
 
-    def with_updates(self, **kwargs: Any) -> "ExecutionContext":
+    def with_updates(self, **kwargs) -> "ExecutionContext":
         """Create a new context with updated fields."""
         data = self.to_dict()
         data.update(kwargs)
@@ -179,23 +178,12 @@ class AgentLog(BaseModel):
     metadata: Mapping[LogMetadata, Any] = Field(default={}, description="The metadata of the log")
 
 
-class AgentOutputKind(StrEnum):
-    """
-    Agent output kind.
-    """
-
-    OUTPUT_TEXT = "output_text"
-    FINAL_OUTPUT_ANSWER = "final_output_answer"
-    FINAL_STRUCTURED_OUTPUT = "final_structured_output"
-    ILLEGAL_OUTPUT = "illegal_output"
-
-
 class AgentResult(BaseModel):
     """
     Agent execution result.
     """
 
-    output: str | dict = Field(default="", description="The generated output")
+    text: str = Field(default="", description="The generated text")
     files: list[Any] = Field(default_factory=list, description="Files produced during execution")
     usage: Any | None = Field(default=None, description="LLM usage statistics")
     finish_reason: str | None = Field(default=None, description="Reason for completion")

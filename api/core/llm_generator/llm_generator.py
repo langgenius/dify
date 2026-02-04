@@ -477,6 +477,7 @@ class LLMGenerator:
                 prompt_messages=complete_messages,
                 output_model=CodeNodeStructuredOutput,
                 model_parameters=model_parameters,
+                tenant_id=tenant_id,
             )
 
             return {
@@ -557,14 +558,10 @@ class LLMGenerator:
 
         completion_params = model_config.get("completion_params", {}) if model_config else {}
         try:
-            response = invoke_llm_with_pydantic_model(
-                provider=model_instance.provider,
-                model_schema=model_schema,
-                model_instance=model_instance,
-                prompt_messages=prompt_messages,
-                output_model=SuggestedQuestionsOutput,
-                model_parameters=completion_params,
-            )
+            response = invoke_llm_with_pydantic_model(provider=model_instance.provider, model_schema=model_schema,
+                                                      model_instance=model_instance, prompt_messages=prompt_messages,
+                                                      output_model=SuggestedQuestionsOutput,
+                                                      model_parameters=completion_params, tenant_id=tenant_id)
 
             return {"questions": response.questions, "error": ""}
 

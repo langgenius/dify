@@ -57,7 +57,7 @@ class Tool(ABC):
             tool_parameters.update(self.runtime.runtime_parameters)
 
         # try parse tool parameters into the correct type
-        tool_parameters = self.transform_tool_parameters_type(tool_parameters)
+        tool_parameters = self._transform_tool_parameters_type(tool_parameters)
 
         result = self._invoke(
             user_id=user_id,
@@ -82,7 +82,7 @@ class Tool(ABC):
         else:
             return result
 
-    def transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
+    def _transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
         """
         Transform tool parameters type
         """

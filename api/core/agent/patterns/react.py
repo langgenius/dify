@@ -4,17 +4,10 @@ from __future__ import annotations
 
 import json
 from collections.abc import Generator
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Union
 
 from core.agent.entities import AgentLog, AgentResult, AgentScratchpadUnit, ExecutionContext
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
-from core.agent.output_tools import (
-    FINAL_OUTPUT_TOOL,
-    FINAL_STRUCTURED_OUTPUT_TOOL,
-    ILLEGAL_OUTPUT_TOOL,
-    OUTPUT_TEXT_TOOL,
-    OUTPUT_TOOL_NAME_SET,
-)
 from core.file import File
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
@@ -59,7 +52,8 @@ class ReActStrategy(AgentPattern):
         self.instruction = instruction
 
     def run(
-        self, prompt_messages: list[PromptMessage], model_parameters: dict[str, Any], stop: list[str]
+        self, prompt_messages: list[PromptMessage], model_parameters: dict[str, Any], stop: list[str] = [],
+        stream: bool = True,
     ) -> Generator[LLMResultChunk | AgentLog, None, AgentResult]:
         """Execute the ReAct agent strategy."""
         # Initialize tracking
@@ -71,19 +65,6 @@ class ReActStrategy(AgentPattern):
         output_files: list[File] = []  # Track files produced by tools
         final_text: str = ""
         finish_reason: str | None = None
-        tool_instance_names = {tool.entity.identity.name for tool in self.tools}
-        available_output_tool_names = {
-            tool_name
-            for tool_name in tool_instance_names
-            if tool_name in OUTPUT_TOOL_NAME_SET and tool_name != ILLEGAL_OUTPUT_TOOL
-        }
-        if FINAL_STRUCTURED_OUTPUT_TOOL in available_output_tool_names:
-            terminal_tool_name = FINAL_STRUCTURED_OUTPUT_TOOL
-        elif FINAL_OUTPUT_TOOL in available_output_tool_names:
-            terminal_tool_name = FINAL_OUTPUT_TOOL
-        else:
-            raise ValueError("No terminal output tool configured")
-        allow_illegal_output = ILLEGAL_OUTPUT_TOOL in tool_instance_names
 
         # Add "Observation" to stop sequences
         if "Observation" not in stop:
@@ -100,15 +81,10 @@ class ReActStrategy(AgentPattern):
             )
             yield round_log
 
-            # Build prompt with tool restrictions on last iteration
-            if iteration_step == max_iterations:
-                tools_for_prompt = [
-                    tool for tool in self.tools if tool.entity.identity.name in available_output_tool_names
-                ]
-            else:
-                tools_for_prompt = [tool for tool in self.tools if tool.entity.identity.name != ILLEGAL_OUTPUT_TOOL]
+            # Build prompt with/without tools based on iteration
+            include_tools = iteration_step < max_iterations
             current_messages = self._build_prompt_with_react_format(
-                prompt_messages, agent_scratchpad, tools_for_prompt, self.instruction
+                prompt_messages, agent_scratchpad, include_tools, self.instruction
             )
 
             model_log = self._create_log(
@@ -130,18 +106,18 @@ class ReActStrategy(AgentPattern):
             messages_to_use = current_messages
 
             # Invoke model
-            chunks = self.model_instance.invoke_llm(
+            chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = self.model_instance.invoke_llm(
                 prompt_messages=messages_to_use,
                 model_parameters=model_parameters,
                 stop=stop,
-                stream=False,
+                stream=stream,
                 user=self.context.user_id or "",
                 callbacks=[],
             )
 
             # Process response
             scratchpad, chunk_finish_reason = yield from self._handle_chunks(
-                chunks, round_usage, model_log, current_messages, emit_chunks=False
+                chunks, round_usage, model_log, current_messages
             )
             agent_scratchpad.append(scratchpad)
 
@@ -155,44 +131,28 @@ class ReActStrategy(AgentPattern):
                 finish_reason = chunk_finish_reason
 
             # Check if we have an action to execute
-            if scratchpad.action is None:
-                if not allow_illegal_output:
-                    raise ValueError("Model did not call any tools")
-                illegal_action = AgentScratchpadUnit.Action(
-                    action_name=ILLEGAL_OUTPUT_TOOL,
-                    action_input={"raw": scratchpad.thought or ""},
-                )
-                scratchpad.action = illegal_action
-                scratchpad.action_str = illegal_action.model_dump_json()
+            if scratchpad.action and scratchpad.action.action_name.lower() != "final answer":
                 react_state = True
-                observation, tool_files = yield from self._handle_tool_call(illegal_action, current_messages, round_log)
-                scratchpad.observation = observation
-                output_files.extend(tool_files)
-            else:
-                action_name = scratchpad.action.action_name
-                if action_name == OUTPUT_TEXT_TOOL and isinstance(scratchpad.action.action_input, dict):
-                    pass  # output_text_payload = scratchpad.action.action_input.get("text")
-                elif action_name == FINAL_STRUCTURED_OUTPUT_TOOL and isinstance(scratchpad.action.action_input, dict):
-                    data = scratchpad.action.action_input.get("data")
-                    if isinstance(data, dict):
-                        pass  # structured_output_payload = data
-                elif action_name == FINAL_OUTPUT_TOOL:
-                    if isinstance(scratchpad.action.action_input, dict):
-                        final_text = self._format_output_text(scratchpad.action.action_input.get("text"))
-                    else:
-                        final_text = self._format_output_text(scratchpad.action.action_input)
-
+                # Execute tool
                 observation, tool_files = yield from self._handle_tool_call(
                     scratchpad.action, current_messages, round_log
                 )
                 scratchpad.observation = observation
+                # Track files produced by tools
                 output_files.extend(tool_files)
 
-                if action_name == terminal_tool_name:
-                    pass  # terminal_output_seen = True
-                    react_state = False
-                else:
-                    react_state = True
+                # Add observation to scratchpad for display
+                yield self._create_text_chunk(f"\nObservation: {observation}\n", current_messages)
+            else:
+                # Extract final answer
+                if scratchpad.action and scratchpad.action.action_input:
+                    final_answer = scratchpad.action.action_input
+                    if isinstance(final_answer, dict):
+                        final_answer = json.dumps(final_answer, ensure_ascii=False)
+                    final_text = str(final_answer)
+                elif scratchpad.thought:
+                    # If no action but we have thought, use thought as final answer
+                    final_text = scratchpad.thought
 
             yield self._finish_log(
                 round_log,
@@ -208,22 +168,17 @@ class ReActStrategy(AgentPattern):
 
         # Return final result
 
-        output_payload: str | dict
-
-        # TODO
+        from core.agent.entities import AgentResult
 
         return AgentResult(
-            output=output_payload,
-            files=output_files,
-            usage=total_usage.get("usage"),
-            finish_reason=finish_reason,
+            text=final_text, files=output_files, usage=total_usage.get("usage"), finish_reason=finish_reason
         )
 
     def _build_prompt_with_react_format(
         self,
         original_messages: list[PromptMessage],
         agent_scratchpad: list[AgentScratchpadUnit],
-        tools: list[Tool] | None,
+        include_tools: bool = True,
         instruction: str = "",
     ) -> list[PromptMessage]:
         """Build prompt messages with ReAct format."""
@@ -240,13 +195,9 @@ class ReActStrategy(AgentPattern):
                 # Format tools
                 tools_str = ""
                 tool_names = []
-                if tools:
+                if include_tools and self.tools:
                     # Convert tools to prompt message tools format
-                    prompt_tools = [
-                        tool.to_prompt_message_tool()
-                        for tool in tools
-                        if tool.entity.identity.name != ILLEGAL_OUTPUT_TOOL
-                    ]
+                    prompt_tools = [tool.to_prompt_message_tool() for tool in self.tools]
                     tool_names = [tool.name for tool in prompt_tools]
 
                     # Format tools as JSON for comprehensive information
@@ -258,19 +209,12 @@ class ReActStrategy(AgentPattern):
                     tools_str = "No tools available"
                     tool_names_str = ""
 
-                final_tool_name = FINAL_OUTPUT_TOOL
-                if FINAL_STRUCTURED_OUTPUT_TOOL in tool_names:
-                    final_tool_name = FINAL_STRUCTURED_OUTPUT_TOOL
-                if final_tool_name not in tool_names:
-                    raise ValueError("No terminal output tool available for prompt")
-
                 # Replace placeholders in the existing system prompt
                 updated_content = msg.content
                 assert isinstance(updated_content, str)
                 updated_content = updated_content.replace("{{instruction}}", instruction)
                 updated_content = updated_content.replace("{{tools}}", tools_str)
                 updated_content = updated_content.replace("{{tool_names}}", tool_names_str)
-                updated_content = updated_content.replace("{{final_tool_name}}", final_tool_name)
 
                 # Create new SystemPromptMessage with updated content
                 messages[i] = SystemPromptMessage(content=updated_content)
@@ -302,12 +246,10 @@ class ReActStrategy(AgentPattern):
 
     def _handle_chunks(
         self,
-        chunks: LLMResult,
+        chunks: Union[Generator[LLMResultChunk, None, None], LLMResult],
         llm_usage: dict[str, Any],
         model_log: AgentLog,
         current_messages: list[PromptMessage],
-        *,
-        emit_chunks: bool,
     ) -> Generator[
         LLMResultChunk | AgentLog,
         None,
@@ -319,20 +261,25 @@ class ReActStrategy(AgentPattern):
         """
         usage_dict: dict[str, Any] = {}
 
-        def result_to_chunks() -> Generator[LLMResultChunk, None, None]:
-            yield LLMResultChunk(
-                model=chunks.model,
-                prompt_messages=chunks.prompt_messages,
-                delta=LLMResultChunkDelta(
-                    index=0,
-                    message=chunks.message,
-                    usage=chunks.usage,
-                    finish_reason=None,  # LLMResult doesn't have finish_reason, only streaming chunks do
-                ),
-                system_fingerprint=chunks.system_fingerprint or "",
-            )
+        # Convert non-streaming to streaming format if needed
+        if isinstance(chunks, LLMResult):
+            # Create a generator from the LLMResult
+            def result_to_chunks() -> Generator[LLMResultChunk, None, None]:
+                yield LLMResultChunk(
+                    model=chunks.model,
+                    prompt_messages=chunks.prompt_messages,
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=chunks.message,
+                        usage=chunks.usage,
+                        finish_reason=None,  # LLMResult doesn't have finish_reason, only streaming chunks do
+                    ),
+                    system_fingerprint=chunks.system_fingerprint or "",
+                )
 
-        streaming_chunks = result_to_chunks()
+            streaming_chunks = result_to_chunks()
+        else:
+            streaming_chunks = chunks
 
         react_chunks = CotAgentOutputParser.handle_react_stream_output(streaming_chunks, usage_dict)
 
@@ -356,18 +303,14 @@ class ReActStrategy(AgentPattern):
                 scratchpad.action_str = action_str
                 scratchpad.action = chunk
 
-                if emit_chunks:
-                    yield self._create_text_chunk(json.dumps(chunk.model_dump()), current_messages)
-            elif isinstance(chunk, str):
+                yield self._create_text_chunk(json.dumps(chunk.model_dump()), current_messages)
+            else:
                 # Text chunk
                 chunk_text = str(chunk)
                 scratchpad.agent_response = (scratchpad.agent_response or "") + chunk_text
                 scratchpad.thought = (scratchpad.thought or "") + chunk_text
 
-                if emit_chunks:
-                    yield self._create_text_chunk(chunk_text, current_messages)
-            else:
-                raise ValueError(f"Unexpected chunk type: {type(chunk)}")
+                yield self._create_text_chunk(chunk_text, current_messages)
 
         # Update usage
         if usage_dict.get("usage"):
@@ -390,14 +333,6 @@ class ReActStrategy(AgentPattern):
         )
 
         return scratchpad, finish_reason
-
-    @staticmethod
-    def _format_output_text(value: Any) -> str:
-        if value is None:
-            return ""
-        if isinstance(value, str):
-            return value
-        return json.dumps(value, ensure_ascii=False)
 
     def _handle_tool_call(
         self,

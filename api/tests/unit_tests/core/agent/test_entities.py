@@ -153,7 +153,7 @@ class TestAgentScratchpadUnit:
             action_input={"query": "test"},
         )
 
-        result = action.model_dump()
+        result = action.to_dict()
 
         assert result == {
             "action": "search",

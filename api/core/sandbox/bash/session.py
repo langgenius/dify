@@ -14,8 +14,7 @@ from core.skill.entities import ToolAccessPolicy
 from core.skill.entities.tool_dependencies import ToolDependencies
 from core.tools.signature import sign_tool_file
 from core.tools.tool_file_manager import ToolFileManager
-from core.virtual_environment.__base.exec import CommandExecutionError
-from core.virtual_environment.__base.helpers import execute, pipeline
+from core.virtual_environment.__base.helpers import pipeline
 
 from ..bash.dify_cli import DifyCliConfig
 from ..entities import DifyCli
@@ -120,6 +119,21 @@ class SandboxBashSession:
         return self._bash_tool
 
     def collect_output_files(self, output_dir: str = SANDBOX_OUTPUT_DIR) -> list[File]:
+        """
+        Collect files from sandbox output directory and save them as ToolFiles.
+
+        Scans the specified output directory in sandbox, downloads each file,
+        saves it as a ToolFile, and returns a list of File objects. The File
+        objects will have valid tool_file_id that can be referenced by subsequent
+        nodes via structured output.
+
+        Args:
+            output_dir: Directory path in sandbox to scan for output files.
+                       Defaults to "output" (relative to workspace).
+
+        Returns:
+            List of File objects representing the collected files.
+        """
         vm = self._sandbox.vm
         collected_files: list[File] = []
 
@@ -129,6 +143,8 @@ class SandboxBashSession:
             # Output directory may not exist if no files were generated
             logger.debug("Failed to list sandbox output files in %s: %s", output_dir, exc)
             return collected_files
+
+        tool_file_manager = ToolFileManager()
 
         for file_state in file_states:
             # Skip files that are too large
@@ -146,14 +162,47 @@ class SandboxBashSession:
                 file_content = vm.download_file(file_state.path)
                 file_binary = file_content.getvalue()
 
+                # Determine mime type from extension
                 filename = os.path.basename(file_state.path)
-                file_obj = self._create_tool_file(filename=filename, file_binary=file_binary)
+                mime_type, _ = mimetypes.guess_type(filename)
+                if not mime_type:
+                    mime_type = "application/octet-stream"
+
+                # Save as ToolFile
+                tool_file = tool_file_manager.create_file_by_raw(
+                    user_id=self._user_id,
+                    tenant_id=self._tenant_id,
+                    conversation_id=None,
+                    file_binary=file_binary,
+                    mimetype=mime_type,
+                    filename=filename,
+                )
+
+                # Determine file type from mime type
+                file_type = _get_file_type_from_mime(mime_type)
+                extension = os.path.splitext(filename)[1] if "." in filename else ".bin"
+                url = sign_tool_file(tool_file.id, extension)
+
+                # Create File object with tool_file_id as related_id
+                file_obj = File(
+                    id=tool_file.id,  # Use tool_file_id as the File id for easy reference
+                    tenant_id=self._tenant_id,
+                    type=file_type,
+                    transfer_method=FileTransferMethod.TOOL_FILE,
+                    filename=filename,
+                    extension=extension,
+                    mime_type=mime_type,
+                    size=len(file_binary),
+                    related_id=tool_file.id,
+                    url=url,
+                    storage_key=tool_file.file_key,
+                )
                 collected_files.append(file_obj)
 
                 logger.info(
                     "Collected sandbox output file: %s -> tool_file_id=%s",
                     file_state.path,
-                    file_obj.id,
+                    tool_file.id,
                 )
 
             except Exception as exc:
@@ -166,85 +215,6 @@ class SandboxBashSession:
             output_dir,
         )
         return collected_files
-
-    def download_file(self, path: str) -> File:
-        path_kind = self._detect_path_kind(path)
-        if path_kind == "dir":
-            raise ValueError("Directory outputs are not supported")
-        if path_kind != "file":
-            raise ValueError(f"Sandbox file not found: {path}")
-
-        file_content = self._sandbox.vm.download_file(path)
-        file_binary = file_content.getvalue()
-        if len(file_binary) > MAX_OUTPUT_FILE_SIZE:
-            raise ValueError(f"Sandbox file exceeds size limit: {path}")
-
-        filename = os.path.basename(path) or "file"
-        return self._create_tool_file(filename=filename, file_binary=file_binary)
-
-    def _detect_path_kind(self, path: str) -> str:
-        script = r"""
-import os
-import sys
-
-p = sys.argv[1]
-if os.path.isdir(p):
-    print("dir")
-    raise SystemExit(0)
-if os.path.isfile(p):
-    print("file")
-    raise SystemExit(0)
-print("none")
-raise SystemExit(2)
-"""
-        try:
-            result = execute(
-                self._sandbox.vm,
-                [
-                    "sh",
-                    "-c",
-                    'if command -v python3 >/dev/null 2>&1; then py=python3; else py=python; fi; "$py" -c "$0" "$@"',
-                    script,
-                    path,
-                ],
-                timeout=10,
-                error_message="Failed to inspect sandbox path",
-            )
-        except CommandExecutionError as exc:
-            raise ValueError(str(exc)) from exc
-        return result.stdout.decode("utf-8", errors="replace").strip()
-
-    def _create_tool_file(self, *, filename: str, file_binary: bytes) -> File:
-        mime_type, _ = mimetypes.guess_type(filename)
-        if not mime_type:
-            mime_type = "application/octet-stream"
-
-        tool_file = ToolFileManager().create_file_by_raw(
-            user_id=self._user_id,
-            tenant_id=self._tenant_id,
-            conversation_id=None,
-            file_binary=file_binary,
-            mimetype=mime_type,
-            filename=filename,
-        )
-
-        file_type = _get_file_type_from_mime(mime_type)
-        extension = os.path.splitext(filename)[1] if "." in filename else ".bin"
-        url = sign_tool_file(tool_file.id, extension)
-
-        return File(
-            id=tool_file.id,
-            tenant_id=self._tenant_id,
-            type=file_type,
-            transfer_method=FileTransferMethod.TOOL_FILE,
-            filename=filename,
-            extension=extension,
-            mime_type=mime_type,
-            size=len(file_binary),
-            related_id=tool_file.id,
-            url=url,
-            storage_key=tool_file.file_key,
-        )
 
 
 def _get_file_type_from_mime(mime_type: str) -> FileType:

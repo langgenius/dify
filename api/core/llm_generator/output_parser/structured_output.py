@@ -8,7 +8,7 @@ import json_repair
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.output_parser.file_ref import detect_file_path_fields
+from core.llm_generator.output_parser.file_ref import convert_file_refs_in_output
 from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
 from core.model_manager import ModelInstance
 from core.model_runtime.callbacks.base_callback import Callback
@@ -55,11 +55,12 @@ def invoke_llm_with_structured_output(
     model_instance: ModelInstance,
     prompt_messages: Sequence[PromptMessage],
     json_schema: Mapping[str, Any],
-    model_parameters: Mapping[str, Any] | None = None,
+    model_parameters: Mapping | None = None,
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
     user: str | None = None,
     callbacks: list[Callback] | None = None,
+    tenant_id: str | None = None,
 ) -> LLMResultWithStructuredOutput:
     """
     Invoke large language model with structured output.
@@ -77,12 +78,14 @@ def invoke_llm_with_structured_output(
     :param stop: stop words
     :param user: unique user id
     :param callbacks: callbacks
-    :return: response with structured output
+    :param tenant_id: tenant ID for file reference conversion. When provided and
+                      json_schema contains file reference fields (format: "dify-file-ref"),
+                      file IDs in the output will be automatically converted to File objects.
+    :return: full response or stream response chunk generator result
     """
-    model_parameters_with_json_schema: dict[str, Any] = dict(model_parameters or {})
-
-    if detect_file_path_fields(json_schema):
-        raise OutputParserError("Structured output file paths are only supported in sandbox mode.")
+    model_parameters_with_json_schema: dict[str, Any] = {
+        **(model_parameters or {}),
+    }
 
     # Determine structured output strategy
 
@@ -119,6 +122,14 @@ def invoke_llm_with_structured_output(
     # Fill missing fields with default values
     structured_output = fill_defaults_from_schema(structured_output, json_schema)
 
+    # Convert file references if tenant_id is provided
+    if tenant_id is not None:
+        structured_output = convert_file_refs_in_output(
+            output=structured_output,
+            json_schema=json_schema,
+            tenant_id=tenant_id,
+        )
+
     return LLMResultWithStructuredOutput(
         structured_output=structured_output,
         model=llm_result.model,
@@ -136,11 +147,12 @@ def invoke_llm_with_pydantic_model(
     model_instance: ModelInstance,
     prompt_messages: Sequence[PromptMessage],
     output_model: type[T],
-    model_parameters: Mapping[str, Any] | None = None,
+    model_parameters: Mapping | None = None,
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
     user: str | None = None,
     callbacks: list[Callback] | None = None,
+    tenant_id: str | None = None,
 ) -> T:
     """
     Invoke large language model with a Pydantic output model.
@@ -148,8 +160,11 @@ def invoke_llm_with_pydantic_model(
     This helper generates a JSON schema from the Pydantic model, invokes the
     structured-output LLM path, and validates the result.
 
-    The helper performs a non-streaming invocation and returns the validated
-    Pydantic model directly.
+    The stream parameter controls the underlying LLM invocation mode:
+    - stream=True (default): Uses streaming LLM call, consumes the generator internally
+    - stream=False: Uses non-streaming LLM call
+
+    In both cases, the function returns the validated Pydantic model directly.
     """
     json_schema = _schema_from_pydantic(output_model)
 
@@ -164,6 +179,7 @@ def invoke_llm_with_pydantic_model(
         stop=stop,
         user=user,
         callbacks=callbacks,
+        tenant_id=tenant_id,
     )
 
     structured_output = result.structured_output
@@ -220,27 +236,25 @@ def _extract_structured_output(llm_result: LLMResult) -> Mapping[str, Any]:
     return _parse_structured_output(content)
 
 
-def _parse_tool_call_arguments(arguments: str) -> dict[str, Any]:
+def _parse_tool_call_arguments(arguments: str) -> Mapping[str, Any]:
     """Parse JSON from tool call arguments."""
     if not arguments:
         raise OutputParserError("Tool call arguments is empty")
 
     try:
-        parsed_any = json.loads(arguments)
-        if not isinstance(parsed_any, dict):
+        parsed = json.loads(arguments)
+        if not isinstance(parsed, dict):
             raise OutputParserError(f"Tool call arguments is not a dict: {arguments}")
-        parsed = cast(dict[str, Any], parsed_any)
         return parsed
     except json.JSONDecodeError:
         # Try to repair malformed JSON
-        repaired_any = json_repair.loads(arguments)
-        if not isinstance(repaired_any, dict):
+        repaired = json_repair.loads(arguments)
+        if not isinstance(repaired, dict):
             raise OutputParserError(f"Failed to parse tool call arguments: {arguments}")
-        repaired: dict[str, Any] = repaired_any
         return repaired
 
 
-def get_default_value_for_type(type_name: str | list[str] | None) -> Any:
+def _get_default_value_for_type(type_name: str | list[str] | None) -> Any:
     """Get default empty value for a JSON schema type."""
     # Handle array of types (e.g., ["string", "null"])
     if isinstance(type_name, list):
@@ -297,7 +311,7 @@ def fill_defaults_from_schema(
                     # Create empty object and recursively fill its required fields
                     result[prop_name] = fill_defaults_from_schema({}, prop_schema)
                 else:
-                    result[prop_name] = get_default_value_for_type(prop_type)
+                    result[prop_name] = _get_default_value_for_type(prop_type)
         elif isinstance(result[prop_name], dict) and prop_type == "object" and "properties" in prop_schema:
             # Field exists and is an object, recursively fill nested required fields
             result[prop_name] = fill_defaults_from_schema(result[prop_name], prop_schema)
@@ -308,10 +322,10 @@ def fill_defaults_from_schema(
 def _handle_native_json_schema(
     provider: str,
     model_schema: AIModelEntity,
-    structured_output_schema: Mapping[str, Any],
-    model_parameters: dict[str, Any],
+    structured_output_schema: Mapping,
+    model_parameters: dict,
     rules: list[ParameterRule],
-) -> dict[str, Any]:
+):
     """
     Handle structured output for models with native JSON schema support.
 
@@ -333,7 +347,7 @@ def _handle_native_json_schema(
     return model_parameters
 
 
-def _set_response_format(model_parameters: dict[str, Any], rules: list[ParameterRule]) -> None:
+def _set_response_format(model_parameters: dict, rules: list):
     """
     Set the appropriate response format parameter based on model rules.
 
@@ -349,7 +363,7 @@ def _set_response_format(model_parameters: dict[str, Any], rules: list[Parameter
 
 
 def _handle_prompt_based_schema(
-    prompt_messages: Sequence[PromptMessage], structured_output_schema: Mapping[str, Any]
+    prompt_messages: Sequence[PromptMessage], structured_output_schema: Mapping
 ) -> list[PromptMessage]:
     """
     Handle structured output for models without native JSON schema support.
@@ -386,27 +400,28 @@ def _handle_prompt_based_schema(
     return updated_prompt
 
 
-def _parse_structured_output(result_text: str) -> dict[str, Any]:
+def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
+    structured_output: Mapping[str, Any] = {}
+    parsed: Mapping[str, Any] = {}
     try:
-        parsed = TypeAdapter(dict[str, Any]).validate_json(result_text)
-        return parsed
+        parsed = TypeAdapter(Mapping).validate_json(result_text)
+        if not isinstance(parsed, dict):
+            raise OutputParserError(f"Failed to parse structured output: {result_text}")
+        structured_output = parsed
     except ValidationError:
         # if the result_text is not a valid json, try to repair it
-        temp_parsed: Any = json_repair.loads(result_text)
-        if isinstance(temp_parsed, list):
-            temp_parsed_list = cast(list[Any], temp_parsed)
-            dict_items: list[dict[str, Any]] = []
-            for item in temp_parsed_list:
-                if isinstance(item, dict):
-                    dict_items.append(cast(dict[str, Any], item))
-            temp_parsed = dict_items[0] if dict_items else {}
+        temp_parsed = json_repair.loads(result_text)
         if not isinstance(temp_parsed, dict):
-            raise OutputParserError(f"Failed to parse structured output: {result_text}")
-        temp_parsed_dict = cast(dict[str, Any], temp_parsed)
-        return temp_parsed_dict
+            # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
+            if isinstance(temp_parsed, list):
+                temp_parsed = next((item for item in temp_parsed if isinstance(item, dict)), {})
+            else:
+                raise OutputParserError(f"Failed to parse structured output: {result_text}")
+        structured_output = cast(dict, temp_parsed)
+    return structured_output
 
 
-def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema: Mapping[str, Any]) -> dict[str, Any]:
+def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema: Mapping):
     """
     Prepare JSON schema based on model requirements.
 
@@ -418,49 +433,54 @@ def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema
     """
 
     # Deep copy to avoid modifying the original schema
-    processed_schema = deepcopy(schema)
-    processed_schema_dict = dict(processed_schema)
+    processed_schema = dict(deepcopy(schema))
 
     # Convert boolean types to string types (common requirement)
-    convert_boolean_to_string(processed_schema_dict)
+    convert_boolean_to_string(processed_schema)
 
     # Apply model-specific transformations
     if SpecialModelType.GEMINI in model_schema.model:
-        remove_additional_properties(processed_schema_dict)
-        return processed_schema_dict
-    if SpecialModelType.OLLAMA in provider:
-        return processed_schema_dict
+        remove_additional_properties(processed_schema)
+        return processed_schema
+    elif SpecialModelType.OLLAMA in provider:
+        return processed_schema
+    else:
+        # Default format with name field
+        return {"schema": processed_schema, "name": "llm_response"}
 
-    # Default format with name field
-    return {"schema": processed_schema_dict, "name": "llm_response"}
 
-
-def remove_additional_properties(schema: dict[str, Any]) -> None:
+def remove_additional_properties(schema: dict):
     """
     Remove additionalProperties fields from JSON schema.
     Used for models like Gemini that don't support this property.
 
     :param schema: JSON schema to modify in-place
     """
+    if not isinstance(schema, dict):
+        return
+
     # Remove additionalProperties at current level
     schema.pop("additionalProperties", None)
 
     # Process nested structures recursively
     for value in schema.values():
         if isinstance(value, dict):
-            remove_additional_properties(cast(dict[str, Any], value))
+            remove_additional_properties(value)
         elif isinstance(value, list):
-            for item in cast(list[Any], value):
+            for item in value:
                 if isinstance(item, dict):
-                    remove_additional_properties(cast(dict[str, Any], item))
+                    remove_additional_properties(item)
 
 
-def convert_boolean_to_string(schema: dict[str, Any]) -> None:
+def convert_boolean_to_string(schema: dict):
     """
     Convert boolean type specifications to string in JSON schema.
 
     :param schema: JSON schema to modify in-place
     """
+    if not isinstance(schema, dict):
+        return
+
     # Check for boolean type at current level
     if schema.get("type") == "boolean":
         schema["type"] = "string"
@@ -468,8 +488,8 @@ def convert_boolean_to_string(schema: dict[str, Any]) -> None:
     # Process nested dictionaries and lists recursively
     for value in schema.values():
         if isinstance(value, dict):
-            convert_boolean_to_string(cast(dict[str, Any], value))
+            convert_boolean_to_string(value)
         elif isinstance(value, list):
-            for item in cast(list[Any], value):
+            for item in value:
                 if isinstance(item, dict):
-                    convert_boolean_to_string(cast(dict[str, Any], item))
+                    convert_boolean_to_string(item)

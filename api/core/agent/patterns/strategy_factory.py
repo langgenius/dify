@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from core.agent.entities import AgentEntity, ExecutionContext
 from core.file.models import File
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelFeature
 
-from ...app.entities.app_invoke_entities import InvokeFrom
-from ...tools.entities.tool_entities import ToolInvokeFrom
-from ..output_tools import build_agent_output_tools
 from .base import AgentPattern, ToolInvokeHook
 from .function_call import FunctionCallStrategy
 from .react import ReActStrategy
@@ -29,10 +25,6 @@ class StrategyFactory:
 
     @staticmethod
     def create_strategy(
-        *,
-        tenant_id: str,
-        invoke_from: InvokeFrom,
-        tool_invoke_from: ToolInvokeFrom,
         model_features: list[ModelFeature],
         model_instance: ModelInstance,
         context: ExecutionContext,
@@ -43,16 +35,11 @@ class StrategyFactory:
         agent_strategy: AgentEntity.Strategy | None = None,
         tool_invoke_hook: ToolInvokeHook | None = None,
         instruction: str = "",
-        structured_output_schema: Mapping[str, Any] | None = None,
     ) -> AgentPattern:
         """
         Create an appropriate strategy based on model features.
 
         Args:
-            tenant_id:
-            invoke_from:
-            tool_invoke_from:
-            structured_output_schema:
             model_features: List of model features/capabilities
             model_instance: Model instance to use
             context: Execution context containing trace/audit information
@@ -67,14 +54,6 @@ class StrategyFactory:
         Returns:
             AgentStrategy instance
         """
-        output_tools = build_agent_output_tools(
-            tenant_id=tenant_id,
-            invoke_from=invoke_from,
-            tool_invoke_from=tool_invoke_from,
-            structured_output_schema=structured_output_schema,
-        )
-
-        tools.extend(output_tools)
 
         # If explicit strategy is provided and it's Function Calling, try to use it if supported
         if agent_strategy == AgentEntity.Strategy.FUNCTION_CALLING:
