@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def update_token_last_used_at(
-    token: str, scope: str | None, start_time: datetime, session: Session | None = None
+    token: str, scope: str | None, update_time: datetime, session: Session | None = None
 ) -> dict:
     """
     Unified method to update API token last_used_at timestamp.
@@ -31,7 +31,7 @@ def update_token_last_used_at(
     Args:
         token: The API token string
         scope: The token type/scope (e.g., 'app', 'dataset')
-        start_time: The request start time (for concurrency control)
+        update_time: The time to use for the update (for concurrency control)
         session: Optional existing session to use (if None, creates new one)
 
     Returns:
@@ -46,8 +46,8 @@ def update_token_last_used_at(
             .where(
                 ApiToken.token == token,
                 ApiToken.type == scope,
-                # Only update if last_used_at is older than start_time
-                (ApiToken.last_used_at.is_(None) | (ApiToken.last_used_at < start_time)),
+                # Only update if last_used_at is older than update_time
+                (ApiToken.last_used_at.is_(None) | (ApiToken.last_used_at < update_time)),
             )
             .values(last_used_at=current_time)
         )
@@ -60,7 +60,7 @@ def update_token_last_used_at(
             return {"status": "updated", "rowcount": rowcount}
         else:
             logger.debug("No update needed for token: %s... (already up-to-date)", token[:10])
-            return {"status": "no_update_needed", "reason": "last_used_at >= start_time"}
+            return {"status": "no_update_needed", "reason": "last_used_at >= update_time"}
 
     try:
         if session:
