@@ -1,6 +1,7 @@
 import type { App, AppCategory } from '@/models/explore'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useLocale } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
 import { fetchAppList, fetchBanners, fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
 import { AppSourceType, fetchAppMeta, fetchAppParams } from './share'
@@ -13,8 +14,9 @@ type ExploreAppListData = {
 }
 
 export const useExploreAppList = () => {
+  const locale = useLocale()
   return useQuery<ExploreAppListData>({
-    queryKey: [NAME_SPACE, 'appList'],
+    queryKey: [NAME_SPACE, 'appList', locale],
     queryFn: async () => {
       const { categories, recommended_apps } = await fetchAppList()
       return {
