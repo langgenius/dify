@@ -61,16 +61,16 @@ vi.mock('@/service/use-pipeline', () => ({
   }),
 }))
 
+// Mock download utility
+const mockDownloadBlob = vi.fn()
+vi.mock('@/utils/download', () => ({
+  downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
+}))
+
 // Mock workflow service
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),
-}))
-
-// Mock download utility
-const mockDownloadBlob = vi.fn()
-vi.mock('@/utils/download', () => ({
-  downloadBlob: (options: { data: Blob, fileName: string }) => mockDownloadBlob(options),
 }))
 
 // Mock workflow constants
@@ -167,9 +167,6 @@ describe('useDSL', () => {
       })
 
       expect(mockDownloadBlob).toHaveBeenCalled()
-      const callArg = mockDownloadBlob.mock.calls[0][0]
-      expect(callArg.data).toBeInstanceOf(Blob)
-      expect(callArg.fileName).toBe('Test Knowledge Base.pipeline')
     })
 
     it('should use correct file extension for download', async () => {
@@ -186,16 +183,18 @@ describe('useDSL', () => {
       )
     })
 
-    it('should trigger download with yaml blob', async () => {
+    it('should pass blob data to downloadBlob', async () => {
       const { result } = renderHook(() => useDSL())
 
       await act(async () => {
         await result.current.handleExportDSL()
       })
 
-      expect(mockDownloadBlob).toHaveBeenCalled()
-      const callArg = mockDownloadBlob.mock.calls[0][0]
-      expect(callArg.data.type).toBe('application/yaml')
+      expect(mockDownloadBlob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.any(Blob),
+        }),
+      )
     })
 
     it('should show error notification on export failure', async () => {

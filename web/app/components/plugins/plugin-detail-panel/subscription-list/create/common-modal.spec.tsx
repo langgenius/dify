@@ -1,5 +1,5 @@
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // Import after mocks
@@ -820,6 +820,9 @@ describe('CommonCreateModal', () => {
       await waitFor(() => {
         expect(mockCreateBuilder).toHaveBeenCalled()
       })
+
+      // Flush pending state updates from createBuilder promise resolution
+      await act(async () => {})
 
       const input = screen.getByTestId('form-field-webhook_url')
       fireEvent.change(input, { target: { value: 'https://example.com/webhook' } })
