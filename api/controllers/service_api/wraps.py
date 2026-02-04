@@ -325,27 +325,71 @@ def validate_and_get_api_token(scope: str | None = None):
         _async_update_token_last_used_at(auth_token, scope)
         return cached_token
 
-    # Cache miss - query database
-    logger.debug("Token cache miss, querying database for scope: %s", scope)
-    current_time = naive_utc_now()
+    # Cache miss - use Redis lock for single-flight mode
+    # This ensures only one request queries DB for the same token concurrently
+    logger.debug("Token cache miss, attempting to acquire query lock for scope: %s", scope)
+    
+    lock_key = f"api_token_query_lock:{scope}:{auth_token}"
+    lock = redis_client.lock(lock_key, timeout=10, blocking_timeout=5)
+    
+    try:
+        if lock.acquire(blocking=True):
+            try:
+                # Double-check cache after acquiring lock
+                # (another concurrent request might have already cached it)
+                cached_token = ApiTokenCache.get(auth_token, scope)
+                if cached_token is not None:
+                    logger.debug("Token cached by concurrent request, using cached version")
+                    return cached_token
+                
+                # Still not cached - query database
+                with Session(db.engine, expire_on_commit=False) as session:
+                    current_time = naive_utc_now()
+                    update_token_last_used_at(auth_token, scope, current_time, session=session)
+                    
+                    stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
+                    api_token = session.scalar(stmt)
 
-    with Session(db.engine, expire_on_commit=False) as session:
-        # Use unified update method to avoid code duplication with Celery task
-        update_token_last_used_at(auth_token, scope, current_time, session=session)
-        
-        # Query the token
-        stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
-        api_token = session.scalar(stmt)
+                    if not api_token:
+                        ApiTokenCache.set(auth_token, scope, None)
+                        raise Unauthorized("Access token is invalid")
 
-        if not api_token:
-            # Cache the null result to prevent cache penetration attacks
-            ApiTokenCache.set(auth_token, scope, None)
-            raise Unauthorized("Access token is invalid")
+                    ApiTokenCache.set(auth_token, scope, api_token)
+                    return api_token
+            finally:
+                lock.release()
+        else:
+            # Lock acquisition timeout - fallback to direct query
+            logger.warning("Lock timeout for token: %s, proceeding with direct query", auth_token[:10])
+            with Session(db.engine, expire_on_commit=False) as session:
+                current_time = naive_utc_now()
+                update_token_last_used_at(auth_token, scope, current_time, session=session)
+                
+                stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
+                api_token = session.scalar(stmt)
 
-        # Cache the valid token
-        ApiTokenCache.set(auth_token, scope, api_token)
+                if not api_token:
+                    ApiTokenCache.set(auth_token, scope, None)
+                    raise Unauthorized("Access token is invalid")
 
-    return api_token
+                ApiTokenCache.set(auth_token, scope, api_token)
+                return api_token
+    except Exception as e:
+        # Redis lock failure - fallback to direct query to ensure service availability
+        logger.warning("Redis lock failed for token query: %s, proceeding anyway", e)
+        with Session(db.engine, expire_on_commit=False) as session:
+            current_time = naive_utc_now()
+            update_token_last_used_at(auth_token, scope, current_time, session=session)
+            
+            stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
+            api_token = session.scalar(stmt)
+
+            if not api_token:
+                ApiTokenCache.set(auth_token, scope, None)
+                raise Unauthorized("Access token is invalid")
+
+            ApiTokenCache.set(auth_token, scope, api_token)
+            return api_token
 
 
 def _async_update_token_last_used_at(auth_token: str, scope: str | None):

@@ -167,43 +167,6 @@ class TestApiTokenCacheRedisIntegration:
         cache_keys = [m.decode('utf-8') if isinstance(m, bytes) else m for m in members]
         assert self.cache_key in cache_keys
 
-    def test_invalidate_by_tenant_via_index(self):
-        """Test tenant-wide cache invalidation using index (fast path)."""
-        from unittest.mock import MagicMock
-        
-        tenant_id = "test-tenant-id"
-        
-        # Create multiple tokens for the same tenant
-        for i in range(3):
-            token_value = f"test-token-{i}"
-            mock_token = MagicMock()
-            mock_token.id = f"test-id-{i}"
-            mock_token.app_id = "test-app"
-            mock_token.tenant_id = tenant_id
-            mock_token.type = "app"
-            mock_token.token = token_value
-            mock_token.last_used_at = None
-            mock_token.created_at = datetime.now()
-            
-            ApiTokenCache.set(token_value, "app", mock_token)
-
-        # Verify all cached
-        for i in range(3):
-            key = f"api_token:app:test-token-{i}"
-            assert redis_client.exists(key) == 1
-
-        # Invalidate by tenant
-        result = ApiTokenCache.invalidate_by_tenant(tenant_id)
-        assert result is True
-
-        # Verify all deleted
-        for i in range(3):
-            key = f"api_token:app:test-token-{i}"
-            assert redis_client.exists(key) == 0
-
-        # Verify index also deleted
-        assert redis_client.exists(f"tenant_tokens:{tenant_id}") == 0
-
     def test_concurrent_cache_access(self):
         """Test concurrent cache access doesn't cause issues."""
         import concurrent.futures
