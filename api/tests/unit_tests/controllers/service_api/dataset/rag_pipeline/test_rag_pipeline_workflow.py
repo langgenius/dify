@@ -14,25 +14,15 @@ Focus on:
 """
 
 import uuid
-from typing import Any
-from unittest.mock import Mock, patch
 
 import pytest
-from pydantic import BaseModel
 
 from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
 from controllers.service_api.dataset.error import PipelineRunError
+from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import DatasourceNodeRunPayload
 from core.app.entities.app_invoke_entities import InvokeFrom
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
-
-
-# Define model locally to avoid importing from buggy source file
-class DatasourceNodeRunPayload(BaseModel):
-    inputs: dict[str, Any]
-    datasource_type: str
-    credential_id: str | None = None
-    is_published: bool
 
 
 class TestDatasourceNodeRunPayload:

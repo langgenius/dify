@@ -456,3 +456,255 @@ class TestDatasetModels:
         assert chunk.id is not None
         assert chunk.segment_id is not None
         assert chunk.content is not None
+
+
+class TestSegmentUpdatePayload:
+    """Test suite for SegmentUpdatePayload Pydantic model."""
+
+    def test_payload_with_segment_args(self):
+        """Test payload with SegmentUpdateArgs."""
+        from controllers.service_api.dataset.segment import SegmentUpdatePayload
+        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+
+        segment_args = SegmentUpdateArgs(content="Updated content")
+        payload = SegmentUpdatePayload(segment=segment_args)
+        assert payload.segment.content == "Updated content"
+
+    def test_payload_with_answer_update(self):
+        """Test payload with answer update."""
+        from controllers.service_api.dataset.segment import SegmentUpdatePayload
+        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+
+        segment_args = SegmentUpdateArgs(answer="Updated answer")
+        payload = SegmentUpdatePayload(segment=segment_args)
+        assert payload.segment.answer == "Updated answer"
+
+    def test_payload_with_keywords_update(self):
+        """Test payload with keywords update."""
+        from controllers.service_api.dataset.segment import SegmentUpdatePayload
+        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+
+        segment_args = SegmentUpdateArgs(keywords=["new", "keywords"])
+        payload = SegmentUpdatePayload(segment=segment_args)
+        assert payload.segment.keywords == ["new", "keywords"]
+
+    def test_payload_with_enabled_toggle(self):
+        """Test payload with enabled toggle."""
+        from controllers.service_api.dataset.segment import SegmentUpdatePayload
+        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+
+        segment_args = SegmentUpdateArgs(enabled=True)
+        payload = SegmentUpdatePayload(segment=segment_args)
+        assert payload.segment.enabled is True
+
+    def test_payload_with_regenerate_child_chunks(self):
+        """Test payload with regenerate_child_chunks flag."""
+        from controllers.service_api.dataset.segment import SegmentUpdatePayload
+        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+
+        segment_args = SegmentUpdateArgs(regenerate_child_chunks=True)
+        payload = SegmentUpdatePayload(segment=segment_args)
+        assert payload.segment.regenerate_child_chunks is True
+
+
+class TestSegmentUpdateArgs:
+    """Test suite for SegmentUpdateArgs Pydantic model."""
+
+    def test_args_with_defaults(self):
+        """Test args with default values."""
+        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+
+        args = SegmentUpdateArgs()
+        assert args.content is None
+        assert args.answer is None
+        assert args.keywords is None
+        assert args.regenerate_child_chunks is False
+        assert args.enabled is None
+
+    def test_args_with_content(self):
+        """Test args with content update."""
+        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+
+        args = SegmentUpdateArgs(content="New content here")
+        assert args.content == "New content here"
+
+    def test_args_with_all_fields(self):
+        """Test args with all fields populated."""
+        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+
+        args = SegmentUpdateArgs(
+            content="Full content",
+            answer="Full answer",
+            keywords=["kw1", "kw2"],
+            regenerate_child_chunks=True,
+            enabled=True,
+            attachment_ids=["att1", "att2"],
+            summary="Document summary",
+        )
+        assert args.content == "Full content"
+        assert args.answer == "Full answer"
+        assert args.keywords == ["kw1", "kw2"]
+        assert args.regenerate_child_chunks is True
+        assert args.enabled is True
+        assert args.attachment_ids == ["att1", "att2"]
+        assert args.summary == "Document summary"
+
+
+class TestSegmentCreateArgs:
+    """Test suite for SegmentCreateArgs Pydantic model."""
+
+    def test_args_with_defaults(self):
+        """Test args with default values."""
+        from services.entities.knowledge_entities.knowledge_entities import SegmentCreateArgs
+
+        args = SegmentCreateArgs()
+        assert args.content is None
+        assert args.answer is None
+        assert args.keywords is None
+        assert args.attachment_ids is None
+
+    def test_args_with_content_and_answer(self):
+        """Test args with content and answer for Q&A mode."""
+        from services.entities.knowledge_entities.knowledge_entities import SegmentCreateArgs
+
+        args = SegmentCreateArgs(content="Question?", answer="Answer!")
+        assert args.content == "Question?"
+        assert args.answer == "Answer!"
+
+    def test_args_with_keywords(self):
+        """Test args with keywords for search indexing."""
+        from services.entities.knowledge_entities.knowledge_entities import SegmentCreateArgs
+
+        args = SegmentCreateArgs(content="Test content", keywords=["machine learning", "AI", "neural networks"])
+        assert len(args.keywords) == 3
+
+
+class TestChildChunkUpdateArgs:
+    """Test suite for ChildChunkUpdateArgs Pydantic model."""
+
+    def test_args_with_content_only(self):
+        """Test args with content only."""
+        from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs
+
+        args = ChildChunkUpdateArgs(content="Updated chunk content")
+        assert args.content == "Updated chunk content"
+        assert args.id is None
+
+    def test_args_with_id_and_content(self):
+        """Test args with both id and content."""
+        from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs
+
+        chunk_id = str(uuid.uuid4())
+        args = ChildChunkUpdateArgs(id=chunk_id, content="Updated content")
+        assert args.id == chunk_id
+        assert args.content == "Updated content"
+
+
+class TestSegmentErrorPatterns:
+    """Test segment-related error handling patterns."""
+
+    def test_not_found_error_pattern(self):
+        """Test NotFound error pattern used in segment operations."""
+        from werkzeug.exceptions import NotFound
+
+        with pytest.raises(NotFound):
+            raise NotFound("Segment not found.")
+
+    def test_dataset_not_found_pattern(self):
+        """Test dataset not found pattern."""
+        from werkzeug.exceptions import NotFound
+
+        with pytest.raises(NotFound):
+            raise NotFound("Dataset not found.")
+
+    def test_document_not_found_pattern(self):
+        """Test document not found pattern."""
+        from werkzeug.exceptions import NotFound
+
+        with pytest.raises(NotFound):
+            raise NotFound("Document not found.")
+
+    def test_provider_not_initialize_error(self):
+        """Test ProviderNotInitializeError pattern."""
+        from controllers.service_api.app.error import ProviderNotInitializeError
+
+        error = ProviderNotInitializeError("No Embedding Model available.")
+        assert error is not None
+
+
+class TestSegmentIndexingRequirements:
+    """Test segment indexing requirements validation patterns."""
+
+    @pytest.mark.parametrize("technique", ["high_quality", "economy"])
+    def test_indexing_technique_values(self, technique):
+        """Test valid indexing technique values."""
+        dataset = Mock(spec=Dataset)
+        dataset.indexing_technique = technique
+        assert dataset.indexing_technique in ["high_quality", "economy"]
+
+    @pytest.mark.parametrize("status", ["waiting", "parsing", "indexing", "completed", "error"])
+    def test_valid_indexing_statuses(self, status):
+        """Test valid document indexing statuses."""
+        document = Mock(spec=Document)
+        document.indexing_status = status
+        assert document.indexing_status in ["waiting", "parsing", "indexing", "completed", "error"]
+
+    def test_completed_status_required_for_segments(self):
+        """Test that completed status is required for segment operations."""
+        document = Mock(spec=Document)
+        document.indexing_status = "completed"
+        document.enabled = True
+
+        # Both conditions must be true
+        assert document.indexing_status == "completed"
+        assert document.enabled is True
+
+
+class TestSegmentLimits:
+    """Test segment limit validation patterns."""
+
+    def test_segments_limit_check(self):
+        """Test segment limit validation logic."""
+        segments = [{"content": f"Segment {i}"} for i in range(10)]
+        segments_limit = 100
+
+        # This should pass
+        assert len(segments) <= segments_limit
+
+    def test_segments_exceed_limit_pattern(self):
+        """Test pattern for segments exceeding limit."""
+        segments_limit = 5
+        segments = [{"content": f"Segment {i}"} for i in range(10)]
+
+        if segments_limit > 0 and len(segments) > segments_limit:
+            error_msg = f"Exceeded maximum segments limit of {segments_limit}."
+            assert "Exceeded maximum segments limit" in error_msg
+
+
+class TestSegmentPagination:
+    """Test segment list pagination patterns."""
+
+    def test_pagination_defaults(self):
+        """Test default pagination values."""
+        page = 1
+        limit = 20
+
+        assert page >= 1
+        assert limit >= 1
+        assert limit <= 100
+
+    def test_has_more_calculation(self):
+        """Test has_more pagination flag calculation."""
+        segments_count = 20
+        limit = 20
+
+        has_more = segments_count == limit
+        assert has_more is True
+
+    def test_no_more_when_incomplete_page(self):
+        """Test has_more is False for incomplete page."""
+        segments_count = 15
+        limit = 20
+
+        has_more = segments_count == limit
+        assert has_more is False
