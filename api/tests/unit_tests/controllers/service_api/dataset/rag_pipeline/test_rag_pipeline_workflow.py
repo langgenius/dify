@@ -144,7 +144,7 @@ class TestInvokeFrom:
 
     def test_published_pipeline_invoke_from(self):
         """Test PUBLISHED_PIPELINE InvokeFrom value exists."""
-        assert hasattr(InvokeFrom, "PUBLISHED_PIPELINE") or hasattr(InvokeFrom, "SERVICE_API")
+        assert hasattr(InvokeFrom, "PUBLISHED_PIPELINE")
 
     def test_debugger_invoke_from(self):
         """Test DEBUGGER InvokeFrom value exists."""

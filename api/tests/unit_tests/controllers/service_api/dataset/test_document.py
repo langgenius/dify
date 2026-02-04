@@ -119,6 +119,13 @@ class TestDocumentTextUpdate:
         payload = DocumentTextUpdate(text="New Content", name="Some Name")
         assert payload.text == "New Content"
 
+    def test_payload_text_without_name_raises(self):
+        """Test that payload with text but no name raises validation error."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            DocumentTextUpdate(text="New Content")
+
     def test_payload_with_both_fields(self):
         """Test payload with both name and text."""
         payload = DocumentTextUpdate(name="Updated Name", text="Updated Content")

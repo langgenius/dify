@@ -355,7 +355,7 @@ class TestConversationService:
         result = ConversationService.rename(
             app_model=Mock(spec=App),
             conversation_id="conv_123",
-            end_user=Mock(spec=EndUser),
+            user=Mock(spec=EndUser),
             name="New Name",
             auto_generate=False,
         )

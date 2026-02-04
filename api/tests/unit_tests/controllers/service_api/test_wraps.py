@@ -156,13 +156,11 @@ class TestValidateAppToken:
         mock_db.session.query.return_value.where.return_value.first.side_effect = [
             mock_app,
             mock_tenant,
+            mock_account,
         ]
 
         # Mock the tenant owner query
         setup_mock_tenant_account_query(mock_db, mock_tenant, mock_ta)
-
-        # Mock the account query
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_account
 
         @validate_app_token
         def protected_view(app_model):

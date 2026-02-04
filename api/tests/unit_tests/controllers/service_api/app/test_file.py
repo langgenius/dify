@@ -117,7 +117,7 @@ class TestFileService:
 
         # Verify error type exists
         with pytest.raises(services.errors.file.FileTooLargeError):
-            raise services.errors.file.FileTooLargeError("File exceeds 15MB limit")
+            mock_upload(Mock(), Mock(), "user_id")
 
     @patch.object(FileService, "upload_file")
     def test_upload_file_raises_unsupported_file_type_error(self, mock_upload):
@@ -128,7 +128,7 @@ class TestFileService:
 
         # Verify error type exists
         with pytest.raises(services.errors.file.UnsupportedFileTypeError):
-            raise services.errors.file.UnsupportedFileTypeError()
+            mock_upload(Mock(), Mock(), "user_id")
 
 
 class TestFileValidation:
@@ -229,7 +229,7 @@ class TestCommonFileTypes:
         supported_extensions = ["jpg", "jpeg", "png", "gif", "webp", "svg"]
         for ext in supported_extensions:
             assert len(ext) > 0
-            assert ext.isalnum() or ext == "jpeg"
+            assert ext.isalnum()
 
     def test_document_file_types_are_supported(self):
         """Test common document file extensions."""

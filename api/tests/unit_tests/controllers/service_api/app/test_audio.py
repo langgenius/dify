@@ -163,7 +163,7 @@ class TestAudioServiceExceptions:
         assert isinstance(service_error, ProviderTokenNotInitError)
 
         api_error = ProviderNotInitializeError("Provider not initialized")
-        assert "Provider not initialized" in str(api_error) or api_error is not None
+        assert "Provider not initialized" in str(api_error)
 
     def test_quota_exceeded_error_maps_correctly(self):
         """Test QuotaExceededError mapping to ProviderQuotaExceededError."""
@@ -188,7 +188,7 @@ class TestAudioServiceExceptions:
         assert isinstance(service_error, InvokeError)
 
         api_error = CompletionRequestError(description)
-        assert description in str(api_error) or api_error is not None
+        assert description in str(api_error)
 
     def test_app_model_config_broken_maps_to_app_unavailable(self):
         """Test AppModelConfigBrokenError mapping to AppUnavailableError."""

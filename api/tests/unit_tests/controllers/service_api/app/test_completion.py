@@ -210,7 +210,7 @@ class TestAppModeValidation:
 
     def test_all_app_modes_are_defined(self):
         """Test that all expected app modes are defined."""
-        expected_modes = ["COMPLETION", "CHAT", "AGENT_CHAT", "ADVANCED_CHAT", "WORKFLOW"]
+        expected_modes = ["COMPLETION", "CHAT", "AGENT_CHAT", "ADVANCED_CHAT", "WORKFLOW", "CHANNEL", "RAG_PIPELINE"]
         for mode_name in expected_modes:
             assert hasattr(AppMode, mode_name), f"AppMode.{mode_name} should exist"
 
