@@ -41,7 +41,9 @@ export function useSandboxFileDownloadUrl(
   path: string | undefined,
 ) {
   return useQuery({
-    queryKey: ['sandboxFileDownloadUrl', appId, path],
+    queryKey: consoleQuery.sandboxFile.downloadFile.queryKey({
+      input: { params: { appId: appId! }, body: { path: path! } },
+    }),
     queryFn: () => consoleClient.sandboxFile.downloadFile({
       params: { appId: appId! },
       body: { path: path! },
@@ -55,6 +57,9 @@ export function useInvalidateSandboxFiles() {
   return useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: consoleQuery.sandboxFile.listFiles.key(),
+    })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.sandboxFile.downloadFile.key(),
     })
   }, [queryClient])
 }
