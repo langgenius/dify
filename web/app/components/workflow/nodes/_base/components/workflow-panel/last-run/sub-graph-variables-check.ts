@@ -65,11 +65,11 @@ export const useSubGraphVariablesCheck = ({
       return { found: false, value: undefined }
 
     if (!restPath.length)
-      return { found: true, value: targetVar.value }
+      return { found: true, value: targetVar }
 
     return {
       found: true,
-      value: resolveNestedValue(targetVar.value, restPath),
+      value: resolveNestedValue(targetVar, restPath),
     }
   }, [currentNodeId, nodesWithInspectVars])
 
@@ -84,9 +84,12 @@ export const useSubGraphVariablesCheck = ({
       const { found, value } = getInspectVarValueBySelector(selector)
       const valueType = value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value
       const isSubgraphOutput = subGraphNodeIdSet.has(selector[0])
-      const isNull = !found
-        ? isSubgraphOutput
-        : valueType === 'null' || valueType === 'undefined'
+      const isValueMissing = valueType === 'null' || valueType === 'undefined'
+      let isNull = false
+      if (isSubgraphOutput)
+        isNull = !found
+      else if (found)
+        isNull = isValueMissing
       if (isNull)
         return selector
     }
