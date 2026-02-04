@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 import { getI18n } from 'react-i18next'
 import { setLocaleOnClient } from '@/i18n-config'
 import { accountCommand } from './account'
+import { bananaCommand } from './banana'
 import { executeCommand } from './command-bus'
 import { communityCommand } from './community'
 import { docsCommand } from './docs'
@@ -43,6 +44,7 @@ export const registerSlashCommands = (deps: Record<string, any>) => {
   slashCommandRegistry.register(communityCommand, {})
   slashCommandRegistry.register(accountCommand, {})
   slashCommandRegistry.register(zenCommand, {})
+  slashCommandRegistry.register(bananaCommand, {})
 }
 
 export const unregisterSlashCommands = () => {
@@ -54,6 +56,7 @@ export const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('community')
   slashCommandRegistry.unregister('account')
   slashCommandRegistry.unregister('zen')
+  slashCommandRegistry.unregister('banana')
 }
 
 export const SlashCommandProvider = () => {

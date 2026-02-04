@@ -116,6 +116,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
                         '/docs': 'gotoAnything.actions.docDesc',
                         '/community': 'gotoAnything.actions.communityDesc',
                         '/zen': 'gotoAnything.actions.zenDesc',
+                        '/banana': 'gotoAnything.actions.vibeDesc',
                       } as const
                       return t(slashKeyMap[item.key as keyof typeof slashKeyMap] || item.description, { ns: 'app' })
                     })()
