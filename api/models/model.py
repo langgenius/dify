@@ -28,6 +28,92 @@ from libs.uuid_utils import uuidv7
 from .account import Account, Tenant
 from .base import Base, TypeBase
 from .engine import db
+
+
+def re_sign_file_urls(content: str | None) -> str | None:
+    """
+    Refresh file URL signatures in text content.
+
+    This function is shared between Message and MessageAgentThought models
+    to ensure consistent file URL signature refreshing.
+
+    Args:
+        content: Text content that may contain file URLs
+
+    Returns:
+        Content with refreshed signatures
+    """
+    if not content:
+        return content
+
+    pattern = r"[\(\"](((http|https):\/\/.+)?\/files\/(tools\/)?[\w-]+.*?timestamp=.*&nonce=.*&sign=.*)[\)\"]"
+    matches = re.findall(pattern, content)
+
+    if not matches:
+        return content
+
+    urls = [match[0] for match in matches]
+
+    # remove duplicate urls
+    urls = list(set(urls))
+
+    if not urls:
+        return content
+
+    re_signed_content = content
+    for url in urls:
+        if "files/tools" in url:
+            # get tool file id
+            tool_file_id_pattern = r"\/files\/tools\/([\.\w-]+)?\?timestamp="
+            result = re.search(tool_file_id_pattern, url)
+            if not result:
+                continue
+
+            tool_file_id = result.group(1)
+
+            # get extension
+            if "." in tool_file_id:
+                split_result = tool_file_id.split(".")
+                extension = f".{split_result[-1]}"
+                if len(extension) > 10:
+                    extension = ".bin"
+                tool_file_id = split_result[0]
+            else:
+                extension = ".bin"
+
+            if not tool_file_id:
+                continue
+
+            sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
+        elif "file-preview" in url:
+            # get upload file id
+            upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview\?timestamp="
+            result = re.search(upload_file_id_pattern, url)
+            if not result:
+                continue
+
+            upload_file_id = result.group(1)
+            if not upload_file_id:
+                continue
+            sign_url = file_helpers.get_signed_file_url(upload_file_id)
+        elif "image-preview" in url:
+            # image-preview is deprecated, use file-preview instead
+            upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview\?timestamp="
+            result = re.search(upload_file_id_pattern, url)
+            if not result:
+                continue
+            upload_file_id = result.group(1)
+            if not upload_file_id:
+                continue
+            sign_url = file_helpers.get_signed_file_url(upload_file_id)
+        else:
+            continue
+        # if as_attachment is in the url, add it to the sign_url.
+        if "as_attachment" in url:
+            sign_url += "&as_attachment=true"
+        re_signed_content = re_signed_content.replace(url, sign_url)
+
+    return re_signed_content
 from .enums import CreatorUserRole
 from .provider_ids import GenericProviderID
 from .types import LongText, StringUUID
@@ -315,48 +401,40 @@ class App(Base):
         return None
 
 
-class AppModelConfig(TypeBase):
+class AppModelConfig(Base):
     __tablename__ = "app_model_configs"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_model_config_pkey"), sa.Index("app_app_id_idx", "app_id"))
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
-    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    provider: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
-    model_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
-    configs: Mapped[Any | None] = mapped_column(sa.JSON, nullable=True, default=None)
-    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    app_id = mapped_column(StringUUID, nullable=False)
+    provider = mapped_column(String(255), nullable=True)
+    model_id = mapped_column(String(255), nullable=True)
+    configs = mapped_column(sa.JSON, nullable=True)
+    created_by = mapped_column(StringUUID, nullable=True)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_by = mapped_column(StringUUID, nullable=True)
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
-    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime,
-        nullable=False,
-        server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
-        init=False,
-    )
-    opening_statement: Mapped[str | None] = mapped_column(LongText, default=None)
-    suggested_questions: Mapped[str | None] = mapped_column(LongText, default=None)
-    suggested_questions_after_answer: Mapped[str | None] = mapped_column(LongText, default=None)
-    speech_to_text: Mapped[str | None] = mapped_column(LongText, default=None)
-    text_to_speech: Mapped[str | None] = mapped_column(LongText, default=None)
-    more_like_this: Mapped[str | None] = mapped_column(LongText, default=None)
-    model: Mapped[str | None] = mapped_column(LongText, default=None)
-    user_input_form: Mapped[str | None] = mapped_column(LongText, default=None)
-    dataset_query_variable: Mapped[str | None] = mapped_column(String(255), default=None)
-    pre_prompt: Mapped[str | None] = mapped_column(LongText, default=None)
-    agent_mode: Mapped[str | None] = mapped_column(LongText, default=None)
-    sensitive_word_avoidance: Mapped[str | None] = mapped_column(LongText, default=None)
-    retriever_resource: Mapped[str | None] = mapped_column(LongText, default=None)
-    prompt_type: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'simple'"), default="simple"
-    )
-    chat_prompt_config: Mapped[str | None] = mapped_column(LongText, default=None)
-    completion_prompt_config: Mapped[str | None] = mapped_column(LongText, default=None)
-    dataset_configs: Mapped[str | None] = mapped_column(LongText, default=None)
-    external_data_tools: Mapped[str | None] = mapped_column(LongText, default=None)
-    file_upload: Mapped[str | None] = mapped_column(LongText, default=None)
+    opening_statement = mapped_column(LongText)
+    suggested_questions = mapped_column(LongText)
+    suggested_questions_after_answer = mapped_column(LongText)
+    speech_to_text = mapped_column(LongText)
+    text_to_speech = mapped_column(LongText)
+    more_like_this = mapped_column(LongText)
+    model = mapped_column(LongText)
+    user_input_form = mapped_column(LongText)
+    dataset_query_variable = mapped_column(String(255))
+    pre_prompt = mapped_column(LongText)
+    agent_mode = mapped_column(LongText)
+    sensitive_word_avoidance = mapped_column(LongText)
+    retriever_resource = mapped_column(LongText)
+    prompt_type = mapped_column(String(255), nullable=False, server_default=sa.text("'simple'"))
+    chat_prompt_config = mapped_column(LongText)
+    completion_prompt_config = mapped_column(LongText)
+    dataset_configs = mapped_column(LongText)
+    external_data_tools = mapped_column(LongText)
+    file_upload = mapped_column(LongText)
 
     @property
     def app(self) -> App | None:
@@ -611,70 +689,6 @@ class InstalledApp(TypeBase):
         return tenant
 
 
-class TrialApp(Base):
-    __tablename__ = "trial_apps"
-    __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="trial_app_pkey"),
-        sa.Index("trial_app_app_id_idx", "app_id"),
-        sa.Index("trial_app_tenant_id_idx", "tenant_id"),
-        sa.UniqueConstraint("app_id", name="unique_trail_app_id"),
-    )
-
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    app_id = mapped_column(StringUUID, nullable=False)
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    trial_limit = mapped_column(sa.Integer, nullable=False, default=3)
-
-    @property
-    def app(self) -> App | None:
-        app = db.session.query(App).where(App.id == self.app_id).first()
-        return app
-
-
-class AccountTrialAppRecord(Base):
-    __tablename__ = "account_trial_app_records"
-    __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="user_trial_app_pkey"),
-        sa.Index("account_trial_app_record_account_id_idx", "account_id"),
-        sa.Index("account_trial_app_record_app_id_idx", "app_id"),
-        sa.UniqueConstraint("account_id", "app_id", name="unique_account_trial_app_record"),
-    )
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    account_id = mapped_column(StringUUID, nullable=False)
-    app_id = mapped_column(StringUUID, nullable=False)
-    count = mapped_column(sa.Integer, nullable=False, default=0)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-
-    @property
-    def app(self) -> App | None:
-        app = db.session.query(App).where(App.id == self.app_id).first()
-        return app
-
-    @property
-    def user(self) -> Account | None:
-        user = db.session.query(Account).where(Account.id == self.account_id).first()
-        return user
-
-
-class ExporleBanner(TypeBase):
-    __tablename__ = "exporle_banners"
-    __table_args__ = (sa.PrimaryKeyConstraint("id", name="exporler_banner_pkey"),)
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
-    content: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
-    link: Mapped[str] = mapped_column(String(255), nullable=False)
-    sort: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    status: Mapped[str] = mapped_column(
-        sa.String(255), nullable=False, server_default=sa.text("'enabled'::character varying"), default="enabled"
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
-    )
-    language: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'en-US'::character varying"), default="en-US"
-    )
-
-
 class OAuthProviderApp(TypeBase):
     """
     Globally shared OAuth provider app information.
@@ -824,8 +838,8 @@ class Conversation(Base):
                 override_model_configs = json.loads(self.override_model_configs)
 
                 if "model" in override_model_configs:
-                    # where is app_id?
-                    app_model_config = AppModelConfig(app_id=self.app_id).from_model_config_dict(override_model_configs)
+                    app_model_config = AppModelConfig()
+                    app_model_config = app_model_config.from_model_config_dict(override_model_configs)
                     model_config = app_model_config.to_dict()
                 else:
                     model_config["configs"] = override_model_configs
@@ -1040,7 +1054,6 @@ class Message(Base):
         Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
         Index("message_created_at_idx", "created_at"),
         Index("message_app_mode_idx", "app_mode"),
-        Index("message_created_at_id_idx", "created_at", "id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
@@ -1138,77 +1151,7 @@ class Message(Base):
 
     @property
     def re_sign_file_url_answer(self) -> str:
-        if not self.answer:
-            return self.answer
-
-        pattern = r"\[!?.*?\]\((((http|https):\/\/.+)?\/files\/(tools\/)?[\w-]+.*?timestamp=.*&nonce=.*&sign=.*)\)"
-        matches = re.findall(pattern, self.answer)
-
-        if not matches:
-            return self.answer
-
-        urls = [match[0] for match in matches]
-
-        # remove duplicate urls
-        urls = list(set(urls))
-
-        if not urls:
-            return self.answer
-
-        re_sign_file_url_answer = self.answer
-        for url in urls:
-            if "files/tools" in url:
-                # get tool file id
-                tool_file_id_pattern = r"\/files\/tools\/([\.\w-]+)?\?timestamp="
-                result = re.search(tool_file_id_pattern, url)
-                if not result:
-                    continue
-
-                tool_file_id = result.group(1)
-
-                # get extension
-                if "." in tool_file_id:
-                    split_result = tool_file_id.split(".")
-                    extension = f".{split_result[-1]}"
-                    if len(extension) > 10:
-                        extension = ".bin"
-                    tool_file_id = split_result[0]
-                else:
-                    extension = ".bin"
-
-                if not tool_file_id:
-                    continue
-
-                sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
-            elif "file-preview" in url:
-                # get upload file id
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview\?timestamp="
-                result = re.search(upload_file_id_pattern, url)
-                if not result:
-                    continue
-
-                upload_file_id = result.group(1)
-                if not upload_file_id:
-                    continue
-                sign_url = file_helpers.get_signed_file_url(upload_file_id)
-            elif "image-preview" in url:
-                # image-preview is deprecated, use file-preview instead
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview\?timestamp="
-                result = re.search(upload_file_id_pattern, url)
-                if not result:
-                    continue
-                upload_file_id = result.group(1)
-                if not upload_file_id:
-                    continue
-                sign_url = file_helpers.get_signed_file_url(upload_file_id)
-            else:
-                continue
-            # if as_attachment is in the url, add it to the sign_url.
-            if "as_attachment" in url:
-                sign_url += "&as_attachment=true"
-            re_sign_file_url_answer = re_sign_file_url_answer.replace(url, sign_url)
-
-        return re_sign_file_url_answer
+        return re_sign_file_urls(self.answer)
 
     @property
     def user_feedback(self):
@@ -1495,7 +1438,7 @@ class MessageAnnotation(Base):
     app_id: Mapped[str] = mapped_column(StringUUID)
     conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
     message_id: Mapped[str | None] = mapped_column(StringUUID)
-    question: Mapped[str] = mapped_column(LongText, nullable=False)
+    question: Mapped[str | None] = mapped_column(LongText, nullable=True)
     content: Mapped[str] = mapped_column(LongText, nullable=False)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1520,7 +1463,7 @@ class MessageAnnotation(Base):
         return account
 
 
-class AppAnnotationHitHistory(TypeBase):
+class AppAnnotationHitHistory(Base):
     __tablename__ = "app_annotation_hit_histories"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="app_annotation_hit_histories_pkey"),
@@ -1530,19 +1473,17 @@ class AppAnnotationHitHistory(TypeBase):
         sa.Index("app_annotation_hit_histories_message_idx", "message_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
-    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    app_id = mapped_column(StringUUID, nullable=False)
     annotation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    source: Mapped[str] = mapped_column(LongText, nullable=False)
-    question: Mapped[str] = mapped_column(LongText, nullable=False)
-    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
-    )
-    score: Mapped[float] = mapped_column(Float, nullable=False, server_default=sa.text("0"))
-    message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    annotation_question: Mapped[str] = mapped_column(LongText, nullable=False)
-    annotation_content: Mapped[str] = mapped_column(LongText, nullable=False)
+    source = mapped_column(LongText, nullable=False)
+    question = mapped_column(LongText, nullable=False)
+    account_id = mapped_column(StringUUID, nullable=False)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    score = mapped_column(Float, nullable=False, server_default=sa.text("0"))
+    message_id = mapped_column(StringUUID, nullable=False)
+    annotation_question = mapped_column(LongText, nullable=False)
+    annotation_content = mapped_column(LongText, nullable=False)
 
     @property
     def account(self):
@@ -2039,6 +1980,21 @@ class MessageAgentThought(TypeBase):
             else:
                 return {}
 
+    @property
+    def re_sign_file_url_thought(self) -> str | None:
+        """Return thought with refreshed file URL signatures."""
+        return re_sign_file_urls(self.thought)
+
+    @property
+    def re_sign_file_url_tool_input(self) -> str | None:
+        """Return tool_input with refreshed file URL signatures."""
+        return re_sign_file_urls(self.tool_input)
+
+    @property
+    def re_sign_file_url_observation(self) -> str | None:
+        """Return observation with refreshed file URL signatures."""
+        return re_sign_file_urls(self.observation)
+
 
 class DatasetRetrieverResource(TypeBase):
     __tablename__ = "dataset_retriever_resources"
@@ -2158,7 +2114,7 @@ class TraceAppConfig(TypeBase):
         }
 
 
-class TenantCreditPool(TypeBase):
+class TenantCreditPool(Base):
     __tablename__ = "tenant_credit_pools"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tenant_credit_pool_pkey"),
@@ -2166,20 +2122,14 @@ class TenantCreditPool(TypeBase):
         sa.Index("tenant_credit_pool_pool_type_idx", "pool_type"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=text("uuid_generate_v4()"), init=False)
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    pool_type: Mapped[str] = mapped_column(String(40), nullable=False, default="trial", server_default="trial")
-    quota_limit: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
-    quota_used: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"), init=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime,
-        nullable=False,
-        server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
-        init=False,
+    id = mapped_column(StringUUID, primary_key=True, server_default=text("uuid_generate_v4()"))
+    tenant_id = mapped_column(StringUUID, nullable=False)
+    pool_type = mapped_column(String(40), nullable=False, default="trial", server_default="trial")
+    quota_limit = mapped_column(BigInteger, nullable=False, default=0)
+    quota_used = mapped_column(BigInteger, nullable=False, default=0)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
     @property
