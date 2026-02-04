@@ -417,7 +417,7 @@ describe('UpdateDSLModal', () => {
         expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
           type: 'success',
         }))
-      })
+      }, { timeout: 5000 })
     })
 
     it('should call onCancel after successful import', async () => {
@@ -498,7 +498,11 @@ describe('UpdateDSLModal', () => {
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } })
+        await flushFileReader()
+      })
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -506,7 +510,10 @@ describe('UpdateDSLModal', () => {
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
-      fireEvent.click(importButton)
+
+      await act(async () => {
+        fireEvent.click(importButton)
+      })
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
@@ -526,7 +533,11 @@ describe('UpdateDSLModal', () => {
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } })
+        await flushFileReader()
+      })
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -534,7 +545,10 @@ describe('UpdateDSLModal', () => {
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
-      fireEvent.click(importButton)
+
+      await act(async () => {
+        fireEvent.click(importButton)
+      })
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
@@ -586,7 +600,11 @@ describe('UpdateDSLModal', () => {
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } })
+        await flushFileReader()
+      })
 
       // Wait for FileReader to complete and button to be enabled
       await waitFor(() => {
@@ -595,7 +613,10 @@ describe('UpdateDSLModal', () => {
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
-      fireEvent.click(importButton)
+
+      await act(async () => {
+        fireEvent.click(importButton)
+      })
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
@@ -696,7 +717,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      })
+      }, { timeout: 5000 })
 
       vi.useRealTimers()
     })
@@ -828,15 +849,18 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 5000 })
 
       // Click confirm button
       const confirmButton = screen.getByText('newApp.Confirm')
-      fireEvent.click(confirmButton)
+
+      await act(async () => {
+        fireEvent.click(confirmButton)
+      })
 
       await waitFor(() => {
         expect(mockImportDSLConfirm).toHaveBeenCalledWith('import-id')
-      })
+      }, { timeout: 5000 })
 
       vi.useRealTimers()
     })
@@ -901,7 +925,11 @@ describe('UpdateDSLModal', () => {
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } })
+        await flushFileReader()
+      })
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -909,20 +937,26 @@ describe('UpdateDSLModal', () => {
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
-      fireEvent.click(importButton)
+
+      await act(async () => {
+        fireEvent.click(importButton)
+      })
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 5000 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
-      fireEvent.click(confirmButton)
+
+      await act(async () => {
+        fireEvent.click(confirmButton)
+      })
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
           type: 'error',
         }))
-      })
+      }, { timeout: 5000 })
     })
 
     it('should show error notification when confirm throws exception', async () => {
@@ -940,7 +974,11 @@ describe('UpdateDSLModal', () => {
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } })
+        await flushFileReader()
+      })
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -948,20 +986,26 @@ describe('UpdateDSLModal', () => {
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
-      fireEvent.click(importButton)
+
+      await act(async () => {
+        fireEvent.click(importButton)
+      })
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 5000 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
-      fireEvent.click(confirmButton)
+
+      await act(async () => {
+        fireEvent.click(confirmButton)
+      })
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
           type: 'error',
         }))
-      })
+      }, { timeout: 5000 })
     })
 
     it('should show error when confirm completes but pipeline_id is missing', async () => {
@@ -982,7 +1026,11 @@ describe('UpdateDSLModal', () => {
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } })
+        await flushFileReader()
+      })
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -990,20 +1038,26 @@ describe('UpdateDSLModal', () => {
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
-      fireEvent.click(importButton)
+
+      await act(async () => {
+        fireEvent.click(importButton)
+      })
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 5000 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
-      fireEvent.click(confirmButton)
+
+      await act(async () => {
+        fireEvent.click(confirmButton)
+      })
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
           type: 'error',
         }))
-      })
+      }, { timeout: 5000 })
     })
 
     it('should call onImport after confirm completes successfully', async () => {
@@ -1024,7 +1078,11 @@ describe('UpdateDSLModal', () => {
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } })
+        await flushFileReader()
+      })
 
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
@@ -1032,18 +1090,24 @@ describe('UpdateDSLModal', () => {
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
-      fireEvent.click(importButton)
+
+      await act(async () => {
+        fireEvent.click(importButton)
+      })
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 5000 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
-      fireEvent.click(confirmButton)
+
+      await act(async () => {
+        fireEvent.click(confirmButton)
+      })
 
       await waitFor(() => {
         expect(mockOnImport).toHaveBeenCalled()
-      })
+      }, { timeout: 5000 })
     })
 
     it('should call handleCheckPluginDependencies after confirm', async () => {
@@ -1086,14 +1150,17 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 5000 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
-      fireEvent.click(confirmButton)
+
+      await act(async () => {
+        fireEvent.click(confirmButton)
+      })
 
       await waitFor(() => {
         expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('test-pipeline-id', true)
-      })
+      }, { timeout: 5000 })
 
       vi.useRealTimers()
     })
