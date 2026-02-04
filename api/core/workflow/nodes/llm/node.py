@@ -2261,25 +2261,32 @@ class LLMNode(Node[LLMNodeData]):
             # Add tool call to pending list for model segment
             buffers.pending_tool_calls.append(ToolCall(id=tool_call_id, name=tool_name, arguments=tool_arguments))
 
-            yield ToolCallChunkEvent(
-                selector=[self._node_id, "generation", "tool_calls"],
-                chunk=tool_arguments,
-                tool_call=ToolCall(
-                    id=tool_call_id,
-                    name=tool_name,
-                    arguments=tool_arguments,
-                    icon=tool_icon,
-                    icon_dark=tool_icon_dark,
-                ),
-                is_final=False,
-            )
             output_tool_names = {OUTPUT_TEXT_TOOL, FINAL_OUTPUT_TOOL, FINAL_STRUCTURED_OUTPUT_TOOL}
+
+            if tool_name not in output_tool_names:
+                yield ToolCallChunkEvent(
+                    selector=[self._node_id, "generation", "tool_calls"],
+                    chunk=tool_arguments,
+                    tool_call=ToolCall(
+                        id=tool_call_id,
+                        name=tool_name,
+                        arguments=tool_arguments,
+                        icon=tool_icon,
+                        icon_dark=tool_icon_dark,
+                    ),
+                    is_final=False,
+                )
+
             if tool_name in output_tool_names:
                 content = ""
                 if tool_name in (OUTPUT_TEXT_TOOL, FINAL_OUTPUT_TOOL):
                     content = payload.tool_args["text"]
                 elif tool_name == FINAL_STRUCTURED_OUTPUT_TOOL:
-                    content = json.dumps(payload.tool_args["data"], ensure_ascii=False)
+                    content = json.dumps(
+                        payload.tool_args["data"],
+                        ensure_ascii=False,
+                        indent=2
+                    )
 
                 if content:
                     yield StreamChunkEvent(
@@ -2289,7 +2296,7 @@ class LLMNode(Node[LLMNodeData]):
                     )
                     yield StreamChunkEvent(
                         selector=[self._node_id, "generation", "content"],
-                        chunk=content,
+                        chunk=f"```json\n{content}\n```",
                         is_final=False,
                     )
 
