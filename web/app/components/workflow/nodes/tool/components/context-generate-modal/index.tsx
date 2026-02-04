@@ -179,7 +179,7 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
         outputs: nextOutputs,
         variables: nextVariables,
       },
-    })
+    }, { sync: true })
 
     if (closeOnApply)
       handleCloseModal()

@@ -14,6 +14,7 @@ from core.llm_generator.context_models import (
 )
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.output_models import (
+    CodeNodeOutputItem,
     CodeNodeStructuredOutput,
     InstructionModifyOutput,
     SuggestedQuestionsOutput,
@@ -479,8 +480,10 @@ class LLMGenerator:
                 model_parameters=model_parameters,
             )
 
+            response_payload = response.model_dump()
+            response_payload["outputs"] = cls._format_code_outputs(response.outputs)
             return {
-                **response.model_dump(),
+                **response_payload,
                 "code_language": language,
                 "error": "",
             }
@@ -502,6 +505,20 @@ class LLMGenerator:
             "message": "",
             "error": error,
         }
+
+    @classmethod
+    def _format_code_outputs(cls, outputs: Sequence[CodeNodeOutputItem]) -> dict[str, dict[str, str]]:
+        """Normalize code outputs to a stable mapping for frontend consumers.
+
+        The LLM structured output uses an array to satisfy strict-mode schemas, but the
+        frontend expects a name-to-type mapping for Code node outputs.
+        """
+        mapped: dict[str, dict[str, str]] = {}
+        for output_item in outputs:
+            if not output_item.name:
+                continue
+            mapped[output_item.name] = {"type": str(output_item.type)}
+        return mapped
 
     @classmethod
     def generate_suggested_questions(
@@ -557,10 +574,14 @@ class LLMGenerator:
 
         completion_params = model_config.get("completion_params", {}) if model_config else {}
         try:
-            response = invoke_llm_with_pydantic_model(provider=model_instance.provider, model_schema=model_schema,
-                                                      model_instance=model_instance, prompt_messages=prompt_messages,
-                                                      output_model=SuggestedQuestionsOutput,
-                                                      model_parameters=completion_params)
+            response = invoke_llm_with_pydantic_model(
+                provider=model_instance.provider,
+                model_schema=model_schema,
+                model_instance=model_instance,
+                prompt_messages=prompt_messages,
+                output_model=SuggestedQuestionsOutput,
+                model_parameters=completion_params,
+            )
 
             return {"questions": response.questions, "error": ""}
 

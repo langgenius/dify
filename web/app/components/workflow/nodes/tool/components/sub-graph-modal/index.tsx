@@ -48,6 +48,7 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
   const workflowNodes = useWorkflowStore(state => state.nodes)
   const workflowEdges = useReactFlowStore(state => state.edges)
   const setControlPromptEditorRerenderKey = useWorkflowStore(state => state.setControlPromptEditorRerenderKey)
+  const setWorkflowNodes = useWorkflowStore(state => state.setNodes)
   const { handleSyncWorkflowDraft, doSyncWorkflowDraft } = useNodesSyncDraft()
   const configsMap = useHooksStore(state => state.configsMap)
   const { getBeforeNodesInSameBranch } = useWorkflow()
@@ -134,8 +135,9 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
       }
     })
     setNodes(nextNodes)
-    handleSyncWorkflowDraft()
-  }, [handleSyncWorkflowDraft, paramKey, reactflowStore, toolNodeId])
+    setWorkflowNodes(nextNodes)
+    handleSyncWorkflowDraft(true)
+  }, [handleSyncWorkflowDraft, paramKey, reactflowStore, setWorkflowNodes, toolNodeId])
 
   useEffect(() => {
     if (!toolParam || (toolParam.type && toolParam.type !== VarKindType.nested_node))
@@ -179,7 +181,7 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
 
     const ensureAssembleOutputs = (payload: CodeNodeType) => {
       const outputs = payload.outputs || {}
-      if (outputs.result)
+      if (Object.keys(outputs).length > 0)
         return payload
       return {
         ...payload,
@@ -191,6 +193,20 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
           },
         },
       }
+    }
+
+    const resolveAssembleOutputSelector = (rawSelector: unknown, outputKeys: string[]) => {
+      if (outputKeys.length === 0)
+        return null
+      const normalizedSelector = Array.isArray(rawSelector)
+        ? (rawSelector[0] === extractorNodeId ? rawSelector.slice(1) : rawSelector)
+        : []
+      const currentKey = normalizedSelector[0]
+      const fallbackKey = outputKeys.includes('result') ? 'result' : outputKeys[0]
+      const nextKey = outputKeys.includes(currentKey) ? currentKey : fallbackKey
+      if (!nextKey || nextKey === currentKey)
+        return null
+      return [nextKey, ...normalizedSelector.slice(1)]
     }
 
     const userPromptText = isAgentVariant
@@ -223,6 +239,19 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
           return node
 
         const currentParam = toolData.tool_parameters[paramKey]
+        const baseNestedConfig = currentParam.nested_node_config ?? nestedNodeConfig
+        let nextNestedConfig = baseNestedConfig
+        if (!isAgentVariant) {
+          const outputKeys = Object.keys((extractorNodeData.data as CodeNodeType).outputs || {})
+          const nextSelector = resolveAssembleOutputSelector(baseNestedConfig?.output_selector, outputKeys)
+          if (nextSelector) {
+            nextNestedConfig = {
+              ...baseNestedConfig,
+              extractor_node_id: baseNestedConfig?.extractor_node_id || extractorNodeId,
+              output_selector: nextSelector,
+            }
+          }
+        }
         return {
           ...node,
           data: {
@@ -233,7 +262,7 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
                 ...currentParam,
                 type: VarKindType.nested_node,
                 value: nextValue,
-                nested_node_config: currentParam.nested_node_config ?? nestedNodeConfig,
+                nested_node_config: nextNestedConfig,
               },
             },
           },
@@ -242,8 +271,9 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
       return node
     })
     setNodes(nextNodes)
+    setWorkflowNodes(nextNodes)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [assemblePlaceholder, extractorNodeId, getUserPromptText, isAgentVariant, nestedNodeConfig, paramKey, reactflowStore, resolvedAgentNodeId, setControlPromptEditorRerenderKey, toolNodeId])
+  }, [assemblePlaceholder, extractorNodeId, getUserPromptText, isAgentVariant, nestedNodeConfig, paramKey, reactflowStore, resolvedAgentNodeId, setControlPromptEditorRerenderKey, setWorkflowNodes, toolNodeId])
 
   return (
     <Transition appear show={isOpen} as={Fragment}>

@@ -1,7 +1,7 @@
 import type { Var, Variable } from '../../types'
 import type { CodeNodeType, OutputVar } from './types'
 import { produce } from 'immer'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
@@ -56,9 +56,28 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     setInputs,
   })
 
-  const [outputKeyOrders, setOutputKeyOrders] = useState<string[]>(() => Object.keys(payload.outputs || {}))
+  const outputKeyOrdersRef = useRef<string[]>(Object.keys(payload.outputs || {}))
+  const outputKeyOrders = (() => {
+    const outputKeys = inputs.outputs ? Object.keys(inputs.outputs) : []
+    if (outputKeys.length === 0) {
+      if (outputKeyOrdersRef.current.length > 0)
+        outputKeyOrdersRef.current = []
+      return [] as string[]
+    }
+
+    const nextOutputKeyOrders = outputKeyOrdersRef.current.filter(key => outputKeys.includes(key))
+    outputKeys.forEach((key) => {
+      if (!nextOutputKeyOrders.includes(key))
+        nextOutputKeyOrders.push(key)
+    })
+    outputKeyOrdersRef.current = nextOutputKeyOrders
+    return nextOutputKeyOrders
+  })()
   const syncOutputKeyOrders = useCallback((outputs: OutputVar) => {
-    setOutputKeyOrders(Object.keys(outputs))
+    outputKeyOrdersRef.current = Object.keys(outputs)
+  }, [])
+  const handleOutputKeyOrdersChange = useCallback((newOutputKeyOrders: string[]) => {
+    outputKeyOrdersRef.current = newOutputKeyOrders
   }, [])
   useEffect(() => {
     const outputKeys = inputs.outputs ? Object.keys(inputs.outputs) : []
@@ -174,7 +193,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     inputs,
     setInputs,
     outputKeyOrders,
-    onOutputKeyOrdersChange: setOutputKeyOrders,
+    onOutputKeyOrdersChange: handleOutputKeyOrdersChange,
   })
 
   const filterVar = useCallback((varPayload: Var) => {
