@@ -137,6 +137,7 @@ vi.mock('@/app/components/workflow/constants', () => ({
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+  vi.useRealTimers()
 })
 
 describe('UpdateDSLModal', () => {
