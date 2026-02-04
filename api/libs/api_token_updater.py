@@ -19,29 +19,26 @@ logger = logging.getLogger(__name__)
 
 
 def update_token_last_used_at(
-    token: str,
-    scope: str | None,
-    start_time: datetime,
-    session: Session | None = None
+    token: str, scope: str | None, start_time: datetime, session: Session | None = None
 ) -> dict:
     """
     Unified method to update API token last_used_at timestamp.
-    
+
     This method is used by both:
     1. Direct database update (cache miss scenario)
     2. Async Celery task (cache hit scenario)
-    
+
     Args:
         token: The API token string
         scope: The token type/scope (e.g., 'app', 'dataset')
         start_time: The request start time (for concurrency control)
         session: Optional existing session to use (if None, creates new one)
-    
+
     Returns:
         Dict with status, rowcount, and other metadata
     """
     current_time = naive_utc_now()
-    
+
     def _do_update(s: Session) -> dict:
         """Execute the update within the session."""
         update_stmt = (
@@ -55,7 +52,7 @@ def update_token_last_used_at(
             .values(last_used_at=current_time)
         )
         result = s.execute(update_stmt)
-        
+
         rowcount = getattr(result, "rowcount", 0)
         if rowcount > 0:
             s.commit()
@@ -64,7 +61,7 @@ def update_token_last_used_at(
         else:
             logger.debug("No update needed for token: %s... (already up-to-date)", token[:10])
             return {"status": "no_update_needed", "reason": "last_used_at >= start_time"}
-    
+
     try:
         if session:
             # Use provided session (sync path)
@@ -73,7 +70,7 @@ def update_token_last_used_at(
             # Create new session (async path)
             with Session(db.engine, expire_on_commit=False) as new_session:
                 return _do_update(new_session)
-    
+
     except Exception as e:
         logger.warning("Failed to update last_used_at for token: %s", e)
         return {"status": "failed", "error": str(e)}

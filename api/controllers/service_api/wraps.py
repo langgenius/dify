@@ -332,7 +332,7 @@ def validate_and_get_api_token(scope: str | None = None):
     with Session(db.engine, expire_on_commit=False) as session:
         # Use unified update method to avoid code duplication with Celery task
         update_token_last_used_at(auth_token, scope, current_time, session=session)
-        
+
         # Query the token
         stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
         api_token = session.scalar(stmt)
