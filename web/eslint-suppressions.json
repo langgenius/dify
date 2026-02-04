@@ -2247,11 +2247,6 @@
       "count": 8
     }
   },
-  "app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel.tsx": {
-    "ts/no-explicit-any": {
-      "count": 8
-    }
-  },
   "app/components/plugins/plugin-detail-panel/datasource-action-list.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2303,11 +2298,6 @@
   "app/components/plugins/plugin-detail-panel/strategy-detail.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
