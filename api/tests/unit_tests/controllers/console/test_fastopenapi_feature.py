@@ -28,7 +28,8 @@ def app() -> Flask:
 @pytest.fixture
 def mock_auth():
     """Mocks authentication decorators and user context."""
-    noop = lambda f: f
+    def noop(f):
+        return f
     with (
         patch("controllers.console.wraps.setup_required", side_effect=noop),
         patch("libs.login.login_required", side_effect=noop),
