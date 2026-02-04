@@ -43,7 +43,7 @@ describe('getBaseURL', () => {
     const url = getBaseURL('/api')
 
     // Assert
-    expect(url.origin).toBe('http://localhost')
+    expect(url.href).toBe('http://localhost/api')
     expect(warnSpy).toHaveBeenCalledTimes(1)
     expect(warnSpy).toHaveBeenCalledWith('Using localhost as base URL in server environment, please configure accordingly.')
   })
@@ -58,6 +58,7 @@ describe('getBaseURL', () => {
 
     // Assert
     expect(url.protocol).toBe('localhost:')
+    expect(url.href).toBe('localhost:5001/console/api')
     expect(warnSpy).toHaveBeenCalledTimes(1)
     expect(warnSpy).toHaveBeenCalledWith(
       'Unexpected protocol for API requests, expected http or https. Current protocol: localhost:. Please configure accordingly.',
