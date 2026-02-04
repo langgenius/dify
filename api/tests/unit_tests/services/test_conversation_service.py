@@ -184,7 +184,6 @@ class ConversationServiceTestDataFactory:
         conversation.from_source = from_source
         conversation.from_end_user_id = kwargs.get("from_end_user_id")
         conversation.from_account_id = kwargs.get("from_account_id")
-        conversation.is_deleted = kwargs.get("is_deleted", False)
         conversation.name = kwargs.get("name", "Test Conversation")
         conversation.status = kwargs.get("status", "normal")
         conversation.created_at = kwargs.get("created_at", datetime.now(UTC))
