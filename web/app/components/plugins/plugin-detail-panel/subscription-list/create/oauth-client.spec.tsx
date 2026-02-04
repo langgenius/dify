@@ -3,23 +3,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
-
-// Import after mocks
 import { OAuthClientSettingsModal } from './oauth-client'
-
-// ============================================================================
-// Type Definitions
-// ============================================================================
 
 type PluginDetail = {
   plugin_id: string
   provider: string
   name: string
 }
-
-// ============================================================================
-// Mock Factory Functions
-// ============================================================================
 
 function createMockOAuthConfig(overrides: Partial<TriggerOAuthConfig> = {}): TriggerOAuthConfig {
   return {
@@ -64,18 +54,12 @@ function createMockSubscriptionBuilder(overrides: Partial<TriggerSubscriptionBui
   }
 }
 
-// ============================================================================
-// Mock Setup
-// ============================================================================
-
-// Mock plugin store
 const mockPluginDetail = createMockPluginDetail()
 const mockUsePluginStore = vi.fn(() => mockPluginDetail)
 vi.mock('../../store', () => ({
   usePluginStore: () => mockUsePluginStore(),
 }))
 
-// Mock service hooks
 const mockInitiateOAuth = vi.fn()
 const mockVerifyBuilder = vi.fn()
 const mockConfigureOAuth = vi.fn()
@@ -96,13 +80,11 @@ vi.mock('@/service/use-triggers', () => ({
   }),
 }))
 
-// Mock OAuth popup
 const mockOpenOAuthPopup = vi.fn()
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: (url: string, callback: (data: unknown) => void) => mockOpenOAuthPopup(url, callback),
 }))
 
-// Mock toast - needs mock due to DOM manipulation and async behavior
 const mockToastNotify = vi.fn()
 vi.mock('@/app/components/base/toast', () => ({
   default: {
@@ -110,7 +92,6 @@ vi.mock('@/app/components/base/toast', () => ({
   },
 }))
 
-// Mock clipboard API
 const mockClipboardWriteText = vi.fn()
 Object.assign(navigator, {
   clipboard: {
@@ -118,7 +99,6 @@ Object.assign(navigator, {
   },
 })
 
-// Mock Modal - needs mock due to Portal usage which doesn't work well in jsdom
 vi.mock('@/app/components/base/modal/modal', () => ({
   default: ({
     children,
@@ -161,7 +141,6 @@ vi.mock('@/app/components/base/modal/modal', () => ({
   ),
 }))
 
-// Mock BaseForm - needs mock to control form values in tests
 let mockFormValues: { values: Record<string, string>, isCheckValidated: boolean } = {
   values: { client_id: 'test-client-id', client_secret: 'test-client-secret' },
   isCheckValidated: true,
@@ -193,10 +172,6 @@ vi.mock('@/app/components/base/form/components/base', () => ({
   }),
 }))
 
-// ============================================================================
-// Test Suites
-// ============================================================================
-
 describe('OAuthClientSettingsModal', () => {
   const defaultProps = {
     oauthConfig: createMockOAuthConfig(),
@@ -208,7 +183,6 @@ describe('OAuthClientSettingsModal', () => {
     vi.clearAllMocks()
     mockUsePluginStore.mockReturnValue(mockPluginDetail)
     mockClipboardWriteText.mockResolvedValue(undefined)
-    // Reset form values to default
     setMockFormValues({
       values: { client_id: 'test-client-id', client_secret: 'test-client-secret' },
       isCheckValidated: true,
@@ -283,7 +257,6 @@ describe('OAuthClientSettingsModal', () => {
     it('should default to Default client type when system_configured is true', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      // Default card should have selected styling (border-[1.5px] indicates selected)
       const defaultCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.default').closest('div')
       expect(defaultCard).toHaveClass('border-[1.5px]')
     })
@@ -294,7 +267,6 @@ describe('OAuthClientSettingsModal', () => {
       const customCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')
       fireEvent.click(customCard!)
 
-      // Custom card should now have selected styling
       expect(customCard).toHaveClass('border-[1.5px]')
     })
 
@@ -307,7 +279,6 @@ describe('OAuthClientSettingsModal', () => {
       const defaultCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.default').closest('div')
       fireEvent.click(defaultCard!)
 
-      // Default card should have selected styling again
       expect(defaultCard).toHaveClass('border-[1.5px]')
     })
   })

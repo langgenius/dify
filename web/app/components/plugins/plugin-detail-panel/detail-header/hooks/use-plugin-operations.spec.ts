@@ -7,13 +7,11 @@ import Toast from '@/app/components/base/toast'
 import { PluginSource } from '../../../types'
 import { usePluginOperations } from './use-plugin-operations'
 
-// Type for version picker mock
 type VersionPickerMock = {
   setTargetVersion: (version: VersionTarget) => void
   setIsDowngrade: (downgrade: boolean) => void
 }
 
-// Mock functions hoisted for use in vi.mock factories
 const {
   mockSetShowUpdatePluginModal,
   mockRefreshModelProviders,
@@ -59,7 +57,6 @@ vi.mock('../../../install-plugin/hooks', () => ({
   }),
 }))
 
-// Helper to create plugin detail
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'test-id',
   created_at: '2024-01-01',
@@ -91,7 +88,6 @@ const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail
   ...overrides,
 })
 
-// Helper to create modal states mock
 const createModalStatesMock = (): ModalStates => ({
   isShowUpdateModal: false,
   showUpdateModal: vi.fn(),
@@ -107,7 +103,6 @@ const createModalStatesMock = (): ModalStates => ({
   hideDeleting: vi.fn(),
 })
 
-// Helper to create version picker mock
 const createVersionPickerMock = (): VersionPickerMock => ({
   setTargetVersion: vi.fn<(version: VersionTarget) => void>(),
   setIsDowngrade: vi.fn<(downgrade: boolean) => void>(),
@@ -127,7 +122,6 @@ describe('usePluginOperations', () => {
     vi.spyOn(amplitude, 'trackEvent').mockImplementation(() => {})
   })
 
-  // Tests for marketplace update flow
   describe('Marketplace Update Flow', () => {
     it('should show update modal for marketplace plugin', async () => {
       const detail = createPluginDetail({ source: PluginSource.marketplace })
@@ -189,7 +183,6 @@ describe('usePluginOperations', () => {
     })
   })
 
-  // Tests for GitHub update flow
   describe('GitHub Update Flow', () => {
     it('should fetch releases from GitHub', async () => {
       const detail = createPluginDetail({
@@ -339,7 +332,6 @@ describe('usePluginOperations', () => {
     })
   })
 
-  // Tests for delete flow
   describe('Delete Flow', () => {
     it('should call uninstallPlugin with correct id', async () => {
       const detail = createPluginDetail({ id: 'plugin-to-delete' })
@@ -519,7 +511,6 @@ describe('usePluginOperations', () => {
     })
   })
 
-  // Tests for optional onUpdate callback
   describe('Optional onUpdate Callback', () => {
     it('should not throw when onUpdate is not provided for marketplace update', () => {
       const detail = createPluginDetail()

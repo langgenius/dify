@@ -11,7 +11,6 @@ import { useFileUploadConfig } from '@/service/use-common'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum, Resolution } from '@/types/app'
 
-// Lookup table for basic app input type mapping
 const BASIC_INPUT_TYPE_MAP: Record<string, string> = {
   'paragraph': 'paragraph',
   'number': 'number',
@@ -22,10 +21,8 @@ const BASIC_INPUT_TYPE_MAP: Record<string, string> = {
   'json_object': 'json_object',
 }
 
-// Input types that require fileUploadConfig
 const FILE_INPUT_TYPES = new Set(['file-list', 'file'])
 
-// Workflow variable types that require fileUploadConfig
 const WORKFLOW_FILE_VAR_TYPES = new Set([InputVarType.multiFiles, InputVarType.singleFile])
 
 type InputSchemaItem = {
@@ -37,23 +34,14 @@ type InputSchemaItem = {
   [key: string]: unknown
 }
 
-/**
- * Check if app mode is basic (not advanced chat or workflow)
- */
 function isBasicAppMode(mode: string): boolean {
   return mode !== AppModeEnum.ADVANCED_CHAT && mode !== AppModeEnum.WORKFLOW
 }
 
-/**
- * Check if app mode supports image upload
- */
 function supportsImageUpload(mode: string): boolean {
   return mode === AppModeEnum.COMPLETION || mode === AppModeEnum.WORKFLOW
 }
 
-/**
- * Build file config from raw file upload data
- */
 function buildFileConfig(fileConfig: FileUpload | undefined) {
   return {
     image: {
@@ -73,14 +61,10 @@ function buildFileConfig(fileConfig: FileUpload | undefined) {
   }
 }
 
-/**
- * Map a basic app input item to schema format using lookup table
- */
 function mapBasicAppInputItem(
   item: Record<string, unknown>,
   fileUploadConfig?: FileUploadConfigResponse,
 ): InputSchemaItem | null {
-  // Find matching type using lookup table
   for (const [key, type] of Object.entries(BASIC_INPUT_TYPE_MAP)) {
     if (!item[key])
       continue
@@ -96,7 +80,6 @@ function mapBasicAppInputItem(
     }
   }
 
-  // Default to text-input if no specific type matched
   const textInput = item['text-input'] as Record<string, unknown> | undefined
   if (!textInput)
     return null
@@ -108,9 +91,6 @@ function mapBasicAppInputItem(
   }
 }
 
-/**
- * Map a workflow variable to schema format
- */
 function mapWorkflowVariable(
   variable: Record<string, unknown>,
   fileUploadConfig?: FileUploadConfigResponse,
@@ -125,9 +105,6 @@ function mapWorkflowVariable(
   }
 }
 
-/**
- * Create image upload schema item
- */
 function createImageUploadSchema(
   basicFileConfig: ReturnType<typeof buildFileConfig>,
   fileUploadConfig?: FileUploadConfigResponse,
@@ -142,9 +119,6 @@ function createImageUploadSchema(
   }
 }
 
-/**
- * Build form schema from basic app config
- */
 function buildBasicAppSchema(
   currentApp: App,
   fileUploadConfig?: FileUploadConfigResponse,
@@ -159,9 +133,6 @@ function buildBasicAppSchema(
     .filter((item): item is InputSchemaItem => item !== null)
 }
 
-/**
- * Build form schema from workflow start node
- */
 function buildWorkflowSchema(
   workflow: FetchWorkflowDraftResponse,
   fileUploadConfig?: FileUploadConfigResponse,
@@ -188,9 +159,6 @@ type UseAppInputsFormSchemaResult = {
   fileUploadConfig?: FileUploadConfigResponse
 }
 
-/**
- * Hook to fetch and compute app inputs form schema
- */
 export function useAppInputsFormSchema({
   appDetail,
 }: UseAppInputsFormSchemaParams): UseAppInputsFormSchemaResult {
@@ -208,7 +176,6 @@ export function useAppInputsFormSchema({
     if (!currentApp)
       return []
 
-    // For workflow apps, wait until workflow data is available
     if (!isBasicApp && !currentWorkflow)
       return []
 
@@ -218,7 +185,6 @@ export function useAppInputsFormSchema({
       ? buildBasicAppSchema(currentApp, fileUploadConfig)
       : buildWorkflowSchema(currentWorkflow!, fileUploadConfig)
 
-    // Add image upload schema if applicable
     if (!supportsImageUpload(currentApp.mode))
       return baseSchema
 

@@ -22,7 +22,6 @@ describe('PluginSourceBadge', () => {
     vi.clearAllMocks()
   })
 
-  // Tests for rendering different source types
   describe('Source Icon Rendering', () => {
     it('should render marketplace source badge', () => {
       render(<PluginSourceBadge source={PluginSource.marketplace} />)
@@ -57,7 +56,6 @@ describe('PluginSourceBadge', () => {
     })
   })
 
-  // Tests for separator rendering
   describe('Separator Rendering', () => {
     it('should render separator dot before marketplace badge', () => {
       const { container } = render(<PluginSourceBadge source={PluginSource.marketplace} />)
@@ -90,7 +88,6 @@ describe('PluginSourceBadge', () => {
     })
   })
 
-  // Tests for tooltip content
   describe('Tooltip Content', () => {
     it('should show marketplace tooltip', () => {
       render(<PluginSourceBadge source={PluginSource.marketplace} />)
@@ -129,7 +126,6 @@ describe('PluginSourceBadge', () => {
     })
   })
 
-  // Tests for icon element structure
   describe('Icon Element Structure', () => {
     it('should render icon inside tooltip for marketplace', () => {
       render(<PluginSourceBadge source={PluginSource.marketplace} />)
@@ -164,7 +160,6 @@ describe('PluginSourceBadge', () => {
     })
   })
 
-  // Tests for lookup table completeness
   describe('Lookup Table Coverage', () => {
     it('should handle all PluginSource enum values', () => {
       const allSources = Object.values(PluginSource)
@@ -177,7 +172,6 @@ describe('PluginSourceBadge', () => {
     })
   })
 
-  // Tests for null config (invalid source)
   describe('Invalid Source Handling', () => {
     it('should return null for unknown source type', () => {
       // Use type assertion to test invalid source value

@@ -10,14 +10,9 @@ import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import LogViewer from '../../log-viewer'
 import { ApiKeyStep } from '../hooks/use-common-modal-state'
 
-// Schema item type for form schemas from plugin declarations
 export type SchemaItem = Partial<FormSchema> & Record<string, unknown> & {
   name: string
 }
-
-// ============================================================================
-// Status Step Component
-// ============================================================================
 
 type StatusStepProps = {
   isActive: boolean
@@ -38,10 +33,6 @@ export const StatusStep = ({ isActive, text }: StatusStepProps) => {
   )
 }
 
-// ============================================================================
-// Multi Steps Component
-// ============================================================================
-
 type MultiStepsProps = {
   currentStep: ApiKeyStep
 }
@@ -56,10 +47,6 @@ export const MultiSteps = ({ currentStep }: MultiStepsProps) => {
     </div>
   )
 }
-
-// ============================================================================
-// Verify Step Content
-// ============================================================================
 
 type VerifyStepContentProps = {
   apiKeyCredentialsSchema: SchemaItem[]
@@ -88,10 +75,6 @@ export const VerifyStepContent = ({
     </div>
   )
 }
-
-// ============================================================================
-// Subscription Form Schema
-// ============================================================================
 
 type SubscriptionFormProps = {
   subscriptionFormRef: React.RefObject<FormRefObject | null>
@@ -135,10 +118,6 @@ export const SubscriptionForm = ({
   )
 }
 
-// ============================================================================
-// Form Type Normalizer
-// ============================================================================
-
 const normalizeFormType = (type: FormTypeEnum | string): FormTypeEnum => {
   if (Object.values(FormTypeEnum).includes(type as FormTypeEnum))
     return type as FormTypeEnum
@@ -155,10 +134,6 @@ const normalizeFormType = (type: FormTypeEnum | string): FormTypeEnum => {
 
   return TYPE_MAP[type] || FormTypeEnum.textInput
 }
-
-// ============================================================================
-// Auto Parameters Form
-// ============================================================================
 
 type AutoParametersFormProps = {
   schemas: SchemaItem[]
@@ -208,10 +183,6 @@ export const AutoParametersForm = ({
     />
   )
 }
-
-// ============================================================================
-// Manual Properties Section
-// ============================================================================
 
 type ManualPropertiesSectionProps = {
   schemas: SchemaItem[]
@@ -270,10 +241,6 @@ export const ManualPropertiesSection = ({
     </>
   )
 }
-
-// ============================================================================
-// Configuration Step Content
-// ============================================================================
 
 type ConfigurationStepContentProps = {
   createType: SupportedCreationMethods

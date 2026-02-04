@@ -10,10 +10,6 @@ import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-m
 import { useGetLanguage } from '@/context/i18n'
 import { PluginSource } from '../../../types'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 const i18nPrefix = 'action'
 
 type HeaderModalsProps = {
@@ -25,10 +21,6 @@ type HeaderModalsProps = {
   onUpdatedFromMarketplace: () => void
   onDelete: () => void
 }
-
-// ============================================================================
-// Component
-// ============================================================================
 
 const HeaderModals: FC<HeaderModalsProps> = ({
   detail,

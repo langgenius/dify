@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginSource } from '../../../types'
 import { useDetailHeaderState } from './use-detail-header-state'
 
-// Mock dependencies
 let mockEnableMarketplace = true
 vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_marketplace: boolean } }) => unknown) =>
@@ -33,7 +32,6 @@ vi.mock('../../../reference-setting-modal/auto-update-setting/types', () => ({
   },
 }))
 
-// Helper to create plugin detail
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'test-id',
   created_at: '2024-01-01',
@@ -72,7 +70,6 @@ describe('useDetailHeaderState', () => {
     mockEnableMarketplace = true
   })
 
-  // Tests for source type detection
   describe('Source Type Detection', () => {
     it('should detect marketplace source', () => {
       const detail = createPluginDetail({ source: PluginSource.marketplace })
@@ -102,7 +99,6 @@ describe('useDetailHeaderState', () => {
     })
   })
 
-  // Tests for version state
   describe('Version State', () => {
     it('should detect new version available for marketplace plugin', () => {
       const detail = createPluginDetail({
@@ -150,7 +146,6 @@ describe('useDetailHeaderState', () => {
     })
   })
 
-  // Tests for version picker state
   describe('Version Picker State', () => {
     it('should initialize version picker as hidden', () => {
       const detail = createPluginDetail()
@@ -205,7 +200,6 @@ describe('useDetailHeaderState', () => {
     })
   })
 
-  // Tests for modal states
   describe('Modal States', () => {
     it('should initialize all modals as hidden', () => {
       const detail = createPluginDetail()
@@ -278,7 +272,6 @@ describe('useDetailHeaderState', () => {
     })
   })
 
-  // Tests for auto upgrade feature
   describe('Auto Upgrade Detection', () => {
     it('should disable auto upgrade when marketplace is disabled', () => {
       mockEnableMarketplace = false

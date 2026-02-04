@@ -8,10 +8,6 @@ import useReferenceSetting from '../../../plugin-page/use-reference-setting'
 import { AUTO_UPDATE_MODE } from '../../../reference-setting-modal/auto-update-setting/types'
 import { PluginSource } from '../../../types'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export type VersionTarget = {
   version: string | undefined
   unique_identifier: string | undefined
@@ -51,10 +47,6 @@ export type UseDetailHeaderStateReturn = {
   isFromMarketplace: boolean
 }
 
-// ============================================================================
-// Hook Implementation
-// ============================================================================
-
 export const useDetailHeaderState = (detail: PluginDetail): UseDetailHeaderStateReturn => {
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const { referenceSetting } = useReferenceSetting()
@@ -69,8 +61,6 @@ export const useDetailHeaderState = (detail: PluginDetail): UseDetailHeaderState
 
   const isFromGitHub = source === PluginSource.github
   const isFromMarketplace = source === PluginSource.marketplace
-
-  // Version picker state
   const [isShow, setIsShow] = useState(false)
   const [targetVersion, setTargetVersion] = useState<VersionTarget>({
     version: latest_version,
@@ -78,13 +68,11 @@ export const useDetailHeaderState = (detail: PluginDetail): UseDetailHeaderState
   })
   const [isDowngrade, setIsDowngrade] = useState(false)
 
-  // Modal states
   const [isShowUpdateModal, { setTrue: showUpdateModal, setFalse: hideUpdateModal }] = useBoolean(false)
   const [isShowPluginInfo, { setTrue: showPluginInfo, setFalse: hidePluginInfo }] = useBoolean(false)
   const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] = useBoolean(false)
   const [deleting, { setTrue: showDeleting, setFalse: hideDeleting }] = useBoolean(false)
 
-  // Computed values
   const hasNewVersion = useMemo(() => {
     if (isFromMarketplace)
       return !!latest_version && latest_version !== version

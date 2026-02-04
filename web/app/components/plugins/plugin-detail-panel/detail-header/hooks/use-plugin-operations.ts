@@ -12,10 +12,6 @@ import { useInvalidateAllToolProviders } from '@/service/use-tools'
 import { useGitHubReleases } from '../../../install-plugin/hooks'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 type UsePluginOperationsParams = {
   detail: PluginDetail
   modalStates: ModalStates
@@ -32,10 +28,6 @@ type UsePluginOperationsReturn = {
   handleUpdatedFromMarketplace: () => void
   handleDelete: () => Promise<void>
 }
-
-// ============================================================================
-// Hook Implementation
-// ============================================================================
 
 export const usePluginOperations = ({
   detail,

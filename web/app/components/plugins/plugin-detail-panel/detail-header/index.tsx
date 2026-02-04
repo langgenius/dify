@@ -34,20 +34,12 @@ import { PluginCategoryEnum, PluginSource } from '../../types'
 import { HeaderModals, PluginSourceBadge } from './components'
 import { useDetailHeaderState, usePluginOperations } from './hooks'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 type Props = {
   detail: PluginDetail
   isReadmeView?: boolean
   onHide?: () => void
   onUpdate?: (isDelete?: boolean) => void
 }
-
-// ============================================================================
-// Helper functions
-// ============================================================================
 
 const getIconSrc = (icon: string | undefined, iconDark: string | undefined, theme: string, tenantId: string): string => {
   const iconFileName = theme === 'dark' && iconDark ? iconDark : icon
@@ -77,10 +69,6 @@ const getDetailUrl = (
   return ''
 }
 
-// ============================================================================
-// Component
-// ============================================================================
-
 const DetailHeader = ({
   detail,
   isReadmeView = false,
@@ -94,7 +82,6 @@ const DetailHeader = ({
   const currentLocale = useLocale()
   const { referenceSetting } = useReferenceSetting()
 
-  // Extract detail properties
   const {
     source,
     tenant_id,
@@ -110,7 +97,6 @@ const DetailHeader = ({
 
   const { author, category, name, label, description, icon, icon_dark, verified, tool } = detail.declaration || detail
 
-  // State and operations hooks
   const {
     modalStates,
     versionPicker,
@@ -132,7 +118,6 @@ const DetailHeader = ({
     onUpdate,
   })
 
-  // Tool provider data
   const isTool = category === PluginCategoryEnum.tool
   const providerBriefInfo = tool?.identity
   const providerKey = `${plugin_id}/${providerBriefInfo?.name}`
@@ -141,12 +126,10 @@ const DetailHeader = ({
     return collectionList.find(collection => collection.name === providerKey)
   }, [collectionList, providerKey])
 
-  // Computed values
   const iconSrc = getIconSrc(icon, icon_dark, theme, tenant_id)
   const detailUrl = getDetailUrl(source, meta, author, name, currentLocale, theme)
   const { auto_upgrade: autoUpgradeInfo } = referenceSetting || {}
 
-  // Event handlers
   const handleVersionSelect = (state: { version: string, unique_identifier: string, isDowngrade?: boolean }) => {
     versionPicker.setTargetVersion(state)
     handleUpdate(state.isDowngrade)

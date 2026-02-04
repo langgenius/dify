@@ -65,7 +65,6 @@ vi.mock('@/app/components/plugins/update-plugin/from-market-place', () => ({
   ),
 }))
 
-// Helper to create plugin detail
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'test-id',
   created_at: '2024-01-01',
@@ -97,7 +96,6 @@ const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail
   ...overrides,
 })
 
-// Helper to create modal states mock
 const createModalStatesMock = (overrides: Partial<ModalStates> = {}): ModalStates => ({
   isShowUpdateModal: false,
   showUpdateModal: vi.fn<() => void>(),
@@ -114,7 +112,6 @@ const createModalStatesMock = (overrides: Partial<ModalStates> = {}): ModalState
   ...overrides,
 })
 
-// Helper to create target version
 const createTargetVersion = (overrides: Partial<VersionTarget> = {}): VersionTarget => ({
   version: '2.0.0',
   unique_identifier: 'new-uid',
@@ -131,7 +128,6 @@ describe('HeaderModals', () => {
     mockOnDelete = vi.fn<() => void>()
   })
 
-  // Tests for Plugin Info Modal
   describe('Plugin Info Modal', () => {
     it('should not render plugin info modal when isShowPluginInfo is false', () => {
       const modalStates = createModalStatesMock({ isShowPluginInfo: false })
@@ -225,7 +221,6 @@ describe('HeaderModals', () => {
     })
   })
 
-  // Tests for Delete Confirm Modal
   describe('Delete Confirm Modal', () => {
     it('should not render delete confirm when isShowDeleteConfirm is false', () => {
       const modalStates = createModalStatesMock({ isShowDeleteConfirm: false })
@@ -334,7 +329,6 @@ describe('HeaderModals', () => {
     })
   })
 
-  // Tests for Update Modal
   describe('Update Modal', () => {
     it('should not render update modal when isShowUpdateModal is false', () => {
       const modalStates = createModalStatesMock({ isShowUpdateModal: false })
@@ -477,7 +471,6 @@ describe('HeaderModals', () => {
     })
   })
 
-  // Tests for multiple modals
   describe('Multiple Modals', () => {
     it('should render multiple modals when multiple are open', () => {
       const modalStates = createModalStatesMock({
@@ -503,7 +496,6 @@ describe('HeaderModals', () => {
     })
   })
 
-  // Tests for edge cases
   describe('Edge Cases', () => {
     it('should handle undefined target version values', () => {
       const modalStates = createModalStatesMock({ isShowUpdateModal: true })

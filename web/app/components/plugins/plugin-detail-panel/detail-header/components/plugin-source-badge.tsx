@@ -11,10 +11,6 @@ import { BoxSparkleFill } from '@/app/components/base/icons/src/vender/plugin'
 import Tooltip from '@/app/components/base/tooltip'
 import { PluginSource } from '../../../types'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 type SourceConfig = {
   icon: ReactNode
   tipKey: string
@@ -23,10 +19,6 @@ type SourceConfig = {
 type PluginSourceBadgeProps = {
   source: PluginSource
 }
-
-// ============================================================================
-// Constants - Lookup table for source icons
-// ============================================================================
 
 const SOURCE_CONFIG_MAP: Record<PluginSource, SourceConfig | null> = {
   [PluginSource.marketplace]: {
@@ -46,10 +38,6 @@ const SOURCE_CONFIG_MAP: Record<PluginSource, SourceConfig | null> = {
     tipKey: 'detailPanel.categoryTip.debugging',
   },
 }
-
-// ============================================================================
-// Component
-// ============================================================================
 
 const PluginSourceBadge: FC<PluginSourceBadgeProps> = ({ source }) => {
   const { t } = useTranslation()
