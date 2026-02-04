@@ -29,6 +29,9 @@ def update_api_token_last_used_task(self, token: str, scope: str | None, update_
     
     Returns:
         Dict with status and metadata
+    
+    Raises:
+        Exception: Re-raises exceptions to allow Celery retry mechanism and monitoring
     """
     try:
         # Parse update_time from ISO format
@@ -39,9 +42,19 @@ def update_api_token_last_used_task(self, token: str, scope: str | None, update_
         
         if result["status"] == "updated":
             logger.info("Updated last_used_at for token (async): %s... (scope: %s)", token[:10], scope)
+        elif result["status"] == "failed":
+            # If update failed, log and raise for retry
+            error_msg = result.get("error", "Unknown error")
+            logger.error("Failed to update last_used_at for token (async): %s", error_msg)
+            raise Exception(f"Token update failed: {error_msg}")
         
         return result
     
-    except Exception as e:
-        logger.warning("Failed to update last_used_at for token (async): %s", e)
-        return {"status": "failed", "error": str(e)}
+    except Exception as exc:
+        # Log the error with full context (logger.exception includes traceback)
+        logger.exception("Error in update_api_token_last_used_task (token: %s..., scope: %s)", 
+                         token[:10], scope)
+        
+        # Raise exception to let Celery handle retry and monitoring
+        # This allows Flower and other monitoring tools to track failures
+        raise

@@ -100,7 +100,7 @@ class TestApiTokenCacheRedisIntegration:
         assert 595 <= ttl <= 600  # Should be around 600 seconds (10 minutes)
 
     def test_cache_null_value_for_invalid_token(self):
-        """Test caching null value for invalid tokens (防穿透)."""
+        """Test caching null value for invalid tokens """
         # Cache null value
         result = ApiTokenCache.set(self.test_token, self.test_scope, None)
         assert result is True
