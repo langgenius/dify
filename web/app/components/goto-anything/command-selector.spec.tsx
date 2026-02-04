@@ -247,4 +247,91 @@ describe('CommandSelector', () => {
       expect(mockOnCommandSelect).toHaveBeenCalledWith('/zen')
     })
   })
+
+  it('should show all slash commands when no filter provided', () => {
+    renderCommandSelector({ searchFilter: '', originalQuery: '/' })
+
+    // Should show the zen command from mock
+    expect(screen.getByText('/zen')).toBeInTheDocument()
+  })
+
+  it('should exclude slash scope when in @ mode', () => {
+    const scopesWithSlash: ScopeDescriptor[] = [
+      ...mockScopes,
+      {
+        id: 'slash',
+        shortcut: '/',
+        title: 'Slash',
+        description: '',
+        search: vi.fn(),
+      },
+    ]
+
+    renderCommandSelector({ scopes: scopesWithSlash, searchFilter: '', originalQuery: '@' })
+
+    // Should show @ commands but not /
+    expect(screen.getByText('@app')).toBeInTheDocument()
+    expect(screen.queryByText('/')).not.toBeInTheDocument()
+  })
+
+  it('should show all scopes when no filter in @ mode', () => {
+    renderCommandSelector({ searchFilter: '', originalQuery: '@' })
+
+    expect(screen.getByText('@app')).toBeInTheDocument()
+    expect(screen.getByText('@plugin')).toBeInTheDocument()
+  })
+
+  it('should set default command value when items exist but value does not', () => {
+    renderCommandSelector({
+      searchFilter: '',
+      originalQuery: '@',
+      commandValue: 'non-existent',
+      onCommandValueChange: mockOnCommandValueChange,
+    })
+
+    expect(mockOnCommandValueChange).toHaveBeenCalledWith('@app')
+  })
+
+  it('should NOT set command value when value already exists in items', () => {
+    renderCommandSelector({
+      searchFilter: '',
+      originalQuery: '@',
+      commandValue: '@app',
+      onCommandValueChange: mockOnCommandValueChange,
+    })
+
+    expect(mockOnCommandValueChange).not.toHaveBeenCalled()
+  })
+
+  it('should show no matching commands message when filter has no results', () => {
+    renderCommandSelector({ searchFilter: 'nonexistent', originalQuery: '@nonexistent' })
+
+    expect(screen.getByText('app.gotoAnything.noMatchingCommands')).toBeInTheDocument()
+    expect(screen.getByText('app.gotoAnything.tryDifferentSearch')).toBeInTheDocument()
+  })
+
+  it('should show no matching commands for slash mode with no results', () => {
+    renderCommandSelector({ searchFilter: 'nonexistentcommand', originalQuery: '/nonexistentcommand' })
+
+    expect(screen.getByText('app.gotoAnything.noMatchingCommands')).toBeInTheDocument()
+  })
+
+  it('should render description for @ commands', () => {
+    renderCommandSelector({ searchFilter: '', originalQuery: '@' })
+
+    expect(screen.getByText('app.gotoAnything.actions.searchApplicationsDesc')).toBeInTheDocument()
+    expect(screen.getByText('app.gotoAnything.actions.searchPluginsDesc')).toBeInTheDocument()
+  })
+
+  it('should render group header for @ mode', () => {
+    renderCommandSelector({ searchFilter: '', originalQuery: '@' })
+
+    expect(screen.getByText('app.gotoAnything.selectSearchType')).toBeInTheDocument()
+  })
+
+  it('should render group header for slash mode', () => {
+    renderCommandSelector({ searchFilter: '', originalQuery: '/' })
+
+    expect(screen.getByText('app.gotoAnything.groups.commands')).toBeInTheDocument()
+  })
 })

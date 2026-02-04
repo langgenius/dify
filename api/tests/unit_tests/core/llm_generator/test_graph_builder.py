@@ -164,18 +164,9 @@ class TestQuestionClassifierWorkflow:
         assert len(classifier_edges) == 3
 
         # Each should use class id as sourceHandle
-        assert any(
-            e.get("sourceHandle") == "tech" and e["target"] == "tech_handler"
-            for e in classifier_edges
-        )
-        assert any(
-            e.get("sourceHandle") == "sales" and e["target"] == "sales_handler"
-            for e in classifier_edges
-        )
-        assert any(
-            e.get("sourceHandle") == "other" and e["target"] == "other_handler"
-            for e in classifier_edges
-        )
+        assert any(e.get("sourceHandle") == "tech" and e["target"] == "tech_handler" for e in classifier_edges)
+        assert any(e.get("sourceHandle") == "sales" and e["target"] == "sales_handler" for e in classifier_edges)
+        assert any(e.get("sourceHandle") == "other" and e["target"] == "other_handler" for e in classifier_edges)
 
     def test_question_classifier_missing_target(self):
         """Classes without target connect to end."""
@@ -197,10 +188,7 @@ class TestQuestionClassifierWorkflow:
 
         # Missing target should connect to end
         classifier_edges = [e for e in result_edges if e["source"] == "classifier"]
-        assert any(
-            e.get("sourceHandle") == "unknown" and e["target"] == "end"
-            for e in classifier_edges
-        )
+        assert any(e.get("sourceHandle") == "unknown" and e["target"] == "end" for e in classifier_edges)
 
 
 class TestVariableDependencyInference:
@@ -220,9 +208,7 @@ class TestVariableDependencyInference:
         result_nodes, result_edges = GraphBuilder.build_graph(nodes)
 
         # Should automatically infer process depends on fetch
-        assert any(
-            e["source"] == "fetch" and e["target"] == "process" for e in result_edges
-        )
+        assert any(e["source"] == "fetch" and e["target"] == "process" for e in result_edges)
 
     def test_system_variable_not_inferred(self):
         """System variables (sys, start) not inferred as dependencies."""
@@ -278,9 +264,7 @@ class TestErrorRecovery:
         result_nodes, result_edges = GraphBuilder.build_graph(nodes)
 
         # Process should connect from start (since invalid dep was removed)
-        assert any(
-            e["source"] == "start" and e["target"] == "process" for e in result_edges
-        )
+        assert any(e["source"] == "start" and e["target"] == "process" for e in result_edges)
 
     def test_depends_on_as_string(self):
         """depends_on as string is converted to list."""
@@ -291,9 +275,7 @@ class TestErrorRecovery:
         result_nodes, result_edges = GraphBuilder.build_graph(nodes)
 
         # Should work correctly
-        assert any(
-            e["source"] == "fetch" and e["target"] == "process" for e in result_edges
-        )
+        assert any(e["source"] == "fetch" and e["target"] == "process" for e in result_edges)
 
 
 class TestContainerNodes:

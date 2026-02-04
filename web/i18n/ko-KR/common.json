@@ -351,7 +351,7 @@
   "modelProvider.card.quota": "할당량",
   "modelProvider.card.quotaExhausted": "할당량이 다 사용되었습니다",
   "modelProvider.card.removeKey": "API 키 제거",
-  "modelProvider.card.tip": "메시지 크레딧은 OpenAI의 모델을 지원합니다. 유료 할당량에 우선순위가 부여됩니다. 무료 할당량은 유료 할당량이 소진된 후 사용됩니다.",
+  "modelProvider.card.tip": "메시지 크레딧은 {{modelNames}}의 모델을 지원합니다. 유료 할당량에 우선순위가 부여됩니다. 무료 할당량은 유료 할당량이 소진된 후 사용됩니다.",
   "modelProvider.card.tokens": "토큰",
   "modelProvider.collapse": "축소",
   "modelProvider.config": "설정",

@@ -47,13 +47,9 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --directory api --dev lint-imports
 
-      - name: Run Basedpyright Checks
+      - name: Run Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: dev/basedpyright-check
-
-      - name: Run Mypy Type Checks
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+        run: make type-check
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
