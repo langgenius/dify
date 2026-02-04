@@ -720,13 +720,14 @@ describe('UpdateDSLModal', () => {
         await Promise.resolve()
         // Advance past the 300ms setTimeout in the component
         await vi.advanceTimersByTimeAsync(350)
+        // Flush any pending state updates
+        await Promise.resolve()
       })
 
       vi.useRealTimers()
 
-      await waitFor(() => {
-        expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 5000 })
+      // Element should be immediately available after advancing timers and flushing
+      expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
     })
 
     it('should show version info in error modal', async () => {
@@ -852,11 +853,13 @@ describe('UpdateDSLModal', () => {
         await Promise.resolve()
         // Advance past the 300ms setTimeout in the component
         await vi.advanceTimersByTimeAsync(350)
+        // Flush any pending state updates
+        await Promise.resolve()
       })
 
       vi.useRealTimers()
 
-      // Element should be immediately available after advancing timers
+      // Element should be immediately available after advancing timers and flushing
       expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
 
       // Click confirm button
@@ -1152,11 +1155,13 @@ describe('UpdateDSLModal', () => {
         await Promise.resolve()
         // Advance past the 300ms setTimeout in the component
         await vi.advanceTimersByTimeAsync(350)
+        // Flush any pending state updates
+        await Promise.resolve()
       })
 
       vi.useRealTimers()
 
-      // Element should be immediately available after advancing timers
+      // Element should be immediately available after advancing timers and flushing
       expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
 
       const confirmButton = screen.getByText('newApp.Confirm')
