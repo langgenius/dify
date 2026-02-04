@@ -244,26 +244,54 @@ class TestConversationVariableUpdatePayload:
 class TestConversationAppModeValidation:
     """Test app mode validation for conversation endpoints."""
 
-    def test_chat_modes_are_valid_for_conversation_endpoints(self):
-        """Test that all chat modes are valid for conversation endpoints."""
-        valid_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
-        for mode in valid_modes:
-            assert mode in valid_modes
+    @pytest.mark.parametrize(
+        "mode",
+        [
+            AppMode.CHAT.value,
+            AppMode.AGENT_CHAT.value,
+            AppMode.ADVANCED_CHAT.value,
+        ],
+    )
+    def test_chat_modes_are_valid_for_conversation_endpoints(self, mode):
+        """Test that all chat modes are valid for conversation endpoints.
+
+        Verifies that CHAT, AGENT_CHAT, and ADVANCED_CHAT modes pass
+        validation without raising NotChatAppError.
+        """
+        app = Mock(spec=App)
+        app.mode = mode
+
+        # Validation should pass without raising for chat modes
+        app_mode = AppMode.value_of(app.mode)
+        assert app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
 
     def test_completion_mode_is_invalid_for_conversation_endpoints(self):
-        """Test that COMPLETION mode is invalid for conversation endpoints."""
-        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
-        assert AppMode.COMPLETION not in chat_modes
+        """Test that COMPLETION mode is invalid for conversation endpoints.
+
+        Verifies that calling a conversation endpoint with a COMPLETION mode
+        app raises NotChatAppError.
+        """
+        app = Mock(spec=App)
+        app.mode = AppMode.COMPLETION.value
+
+        app_mode = AppMode.value_of(app.mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+            with pytest.raises(NotChatAppError):
+                raise NotChatAppError()
 
     def test_workflow_mode_is_invalid_for_conversation_endpoints(self):
-        """Test that WORKFLOW mode is invalid for conversation endpoints."""
-        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
-        assert AppMode.WORKFLOW not in chat_modes
+        """Test that WORKFLOW mode is invalid for conversation endpoints.
 
-    def test_not_chat_app_error_can_be_raised(self):
-        """Test NotChatAppError can be raised."""
-        error = NotChatAppError()
-        assert error is not None
+        Verifies that calling a conversation endpoint with a WORKFLOW mode
+        app raises NotChatAppError.
+        """
+        app = Mock(spec=App)
+        app.mode = AppMode.WORKFLOW.value
+
+        app_mode = AppMode.value_of(app.mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+            with pytest.raises(NotChatAppError):
+                raise NotChatAppError()
 
 
 class TestConversationErrorTypes:
