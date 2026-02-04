@@ -153,7 +153,7 @@ describe('UpdateDSLModal', () => {
 
   // Helper function to flush FileReader microtasks
   const flushFileReader = async () => {
-    await flushFileReader()
+    await new Promise<void>(resolve => queueMicrotask(resolve))
   }
 
   beforeEach(() => {
