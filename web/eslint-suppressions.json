@@ -2150,16 +2150,6 @@
       "count": 1
     }
   },
-  "app/components/goto-anything/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
-  "app/components/goto-anything/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/data-source-page-new/card.tsx": {
     "ts/no-explicit-any": {
       "count": 2

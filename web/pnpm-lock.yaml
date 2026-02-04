@@ -233,9 +233,6 @@ importers:
       lexical:
         specifier: 0.38.2
         version: 0.38.2
-      line-clamp:
-        specifier: 1.0.0
-        version: 1.0.0
       mermaid:
         specifier: 11.11.0
         version: 11.11.0
@@ -5402,9 +5399,6 @@ packages:
   lilconfig@3.1.3:
     resolution: {integrity: sha512-/vlFKAoH5Cgt3Ie+JLhRbwOsCQePABiU3tJ1egGvyQ+33R/vcwM2Zl2QR/LzjsBeItPt3oSVXapn+m4nQDvpzw==}
     engines: {node: '>=14'}
-
-  line-clamp@1.0.0:
-    resolution: {integrity: sha512-dCDlvMj572RIRBQ3x9aIX0DTdt2St1bMdpi64jVTAi5vqBck7wf+J97//+J7+pS80rFJaYa8HiyXCTp0flpnBA==}
 
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
@@ -12912,8 +12906,6 @@ snapshots:
       isomorphic.js: 0.2.5
 
   lilconfig@3.1.3: {}
-
-  line-clamp@1.0.0: {}
 
   lines-and-columns@1.2.4: {}
 
