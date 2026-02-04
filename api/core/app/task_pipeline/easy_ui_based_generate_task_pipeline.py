@@ -463,14 +463,12 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         """
         self._task_state.metadata.usage = self._task_state.llm_result.usage
         metadata_dict = self._task_state.metadata.model_dump()
-        
+
         # Fetch files associated with this message
         files = None
         with Session(db.engine, expire_on_commit=False) as session:
-            message_files = session.scalars(
-                select(MessageFile).where(MessageFile.message_id == self._message_id)
-            ).all()
-            
+            message_files = session.scalars(select(MessageFile).where(MessageFile.message_id == self._message_id)).all()
+
             if message_files:
                 # Fetch all required UploadFile objects in a single query to avoid N+1 problem
                 upload_file_ids = [
@@ -480,25 +478,23 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 ]
                 upload_files_map = {}
                 if upload_file_ids:
-                    upload_files = session.scalars(
-                        select(UploadFile).where(UploadFile.id.in_(upload_file_ids))
-                    ).all()
+                    upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
                     upload_files_map = {uf.id: uf for uf in upload_files}
-                
+
                 files_list = []
                 for message_file in message_files:
                     # Get upload file info if it's a local file
                     upload_file = None
                     if message_file.transfer_method == FileTransferMethod.LOCAL_FILE and message_file.upload_file_id:
                         upload_file = upload_files_map.get(message_file.upload_file_id)
-                    
+
                     # Generate URL based on transfer method
                     url = None
                     filename = "file"
                     mime_type = "application/octet-stream"
                     size = 0
                     extension = ""
-                    
+
                     if message_file.transfer_method == FileTransferMethod.REMOTE_URL:
                         url = message_file.url
                         if message_file.url:
@@ -534,14 +530,12 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                                     extension = ".bin"
                                 url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
                                 filename = file_part
-                    
+
                     # Format file response according to FileResponse type
                     # FileTransferMethod is a StrEnum, so it always has .value attribute
                     transfer_method_value = message_file.transfer_method.value
                     remote_url = (
-                        message_file.url
-                        if message_file.transfer_method == FileTransferMethod.REMOTE_URL
-                        else ""
+                        message_file.url if message_file.transfer_method == FileTransferMethod.REMOTE_URL else ""
                     )
                     file_dict = {
                         "related_id": message_file.id,
@@ -556,9 +550,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                         "remote_url": remote_url,
                     }
                     files_list.append(file_dict)
-                
+
                 files = files_list or None
-        
+
         return MessageEndStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=self._message_id,

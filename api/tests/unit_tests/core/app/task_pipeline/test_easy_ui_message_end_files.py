@@ -92,12 +92,13 @@ class TestMessageEndStreamResponseFiles:
     def test_message_end_with_no_files(self, mock_pipeline):
         """Test that files array is None when no MessageFile records exist."""
         # Arrange
-        with patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db, \
-             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class:
-            
+        with (
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+        ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
-            
+
             mock_session = MagicMock(spec=Session)
             mock_session_class.return_value.__enter__.return_value = mock_session
             mock_session.scalars.return_value.all.return_value = []
@@ -116,30 +117,31 @@ class TestMessageEndStreamResponseFiles:
         # Arrange
         mock_message_file_local.message_id = mock_pipeline._message_id
 
-        with patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db, \
-             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class, \
-             patch(
-                 "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.file_helpers.get_signed_file_url"
-             ) as mock_get_url:
-            
+        with (
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+            patch(
+                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.file_helpers.get_signed_file_url"
+            ) as mock_get_url,
+        ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
-            
+
             mock_session = MagicMock(spec=Session)
             mock_session_class.return_value.__enter__.return_value = mock_session
-            
+
             # Mock database queries
             # First query: MessageFile
             mock_message_files_result = Mock()
             mock_message_files_result.all.return_value = [mock_message_file_local]
-            
+
             # Second query: UploadFile (batch query to avoid N+1)
             mock_upload_files_result = Mock()
             mock_upload_files_result.all.return_value = [mock_upload_file]
-            
+
             # Setup scalars to return different results for different queries
             call_count = [0]  # Use list to allow modification in nested function
-            
+
             def scalars_side_effect(query):
                 call_count[0] += 1
                 # First call is for MessageFile, second call is for UploadFile
@@ -147,7 +149,7 @@ class TestMessageEndStreamResponseFiles:
                     return mock_message_files_result
                 else:
                     return mock_upload_files_result
-            
+
             mock_session.scalars.side_effect = scalars_side_effect
             mock_get_url.return_value = "https://example.com/signed-url?signature=abc123"
 
@@ -158,7 +160,7 @@ class TestMessageEndStreamResponseFiles:
             assert isinstance(result, MessageEndStreamResponse)
             assert result.files is not None
             assert len(result.files) == 1
-            
+
             file_dict = result.files[0]
             assert file_dict["related_id"] == mock_message_file_local.id
             assert file_dict["filename"] == "test_image.png"
@@ -181,14 +183,15 @@ class TestMessageEndStreamResponseFiles:
         # Arrange
         mock_message_file_remote.message_id = mock_pipeline._message_id
 
-        with patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db, \
-             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class:
-            
+        with (
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+        ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
             mock_session = MagicMock(spec=Session)
             mock_session_class.return_value.__enter__.return_value = mock_session
-            
+
             # Mock database queries
             mock_scalars_result = Mock()
             mock_scalars_result.all.return_value = [mock_message_file_remote]
@@ -201,7 +204,7 @@ class TestMessageEndStreamResponseFiles:
             assert isinstance(result, MessageEndStreamResponse)
             assert result.files is not None
             assert len(result.files) == 1
-            
+
             file_dict = result.files[0]
             assert file_dict["related_id"] == mock_message_file_remote.id
             assert file_dict["filename"] == "image.jpg"
@@ -220,14 +223,15 @@ class TestMessageEndStreamResponseFiles:
         mock_message_file_tool.message_id = mock_pipeline._message_id
         mock_message_file_tool.url = "https://example.com/tool_file.png"
 
-        with patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db, \
-             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class:
-            
+        with (
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+        ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
             mock_session = MagicMock(spec=Session)
             mock_session_class.return_value.__enter__.return_value = mock_session
-            
+
             # Mock database queries
             mock_scalars_result = Mock()
             mock_scalars_result.all.return_value = [mock_message_file_tool]
@@ -240,7 +244,7 @@ class TestMessageEndStreamResponseFiles:
             assert isinstance(result, MessageEndStreamResponse)
             assert result.files is not None
             assert len(result.files) == 1
-            
+
             file_dict = result.files[0]
             assert file_dict["url"] == "https://example.com/tool_file.png"
             assert file_dict["filename"] == "tool_file.png"
@@ -252,21 +256,22 @@ class TestMessageEndStreamResponseFiles:
         mock_message_file_tool.message_id = mock_pipeline._message_id
         mock_message_file_tool.url = "tool_file_123.png"
 
-        with patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db, \
-             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class, \
-             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sign_tool_file") as mock_sign_tool:
-            
+        with (
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sign_tool_file") as mock_sign_tool,
+        ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
-            
+
             mock_session = MagicMock(spec=Session)
             mock_session_class.return_value.__enter__.return_value = mock_session
-            
+
             # Mock database queries
             mock_scalars_result = Mock()
             mock_scalars_result.all.return_value = [mock_message_file_tool]
             mock_session.scalars.return_value = mock_scalars_result
-            
+
             mock_sign_tool.return_value = "https://example.com/signed-tool-file.png?signature=xyz"
 
             # Act
@@ -276,7 +281,7 @@ class TestMessageEndStreamResponseFiles:
             assert isinstance(result, MessageEndStreamResponse)
             assert result.files is not None
             assert len(result.files) == 1
-            
+
             file_dict = result.files[0]
             assert "https://example.com/signed-tool-file.png" in file_dict["url"]
             assert file_dict["filename"] == "tool_file_123.png"
@@ -294,30 +299,31 @@ class TestMessageEndStreamResponseFiles:
         mock_message_file_local.message_id = mock_pipeline._message_id
         mock_message_file_remote.message_id = mock_pipeline._message_id
 
-        with patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db, \
-             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class, \
-             patch(
-                 "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.file_helpers.get_signed_file_url"
-             ) as mock_get_url:
-            
+        with (
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+            patch(
+                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.file_helpers.get_signed_file_url"
+            ) as mock_get_url,
+        ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
-            
+
             mock_session = MagicMock(spec=Session)
             mock_session_class.return_value.__enter__.return_value = mock_session
-            
+
             # Mock database queries
             # First query: MessageFile
             mock_message_files_result = Mock()
             mock_message_files_result.all.return_value = [mock_message_file_local, mock_message_file_remote]
-            
+
             # Second query: UploadFile (batch query to avoid N+1)
             mock_upload_files_result = Mock()
             mock_upload_files_result.all.return_value = [mock_upload_file]
-            
+
             # Setup scalars to return different results for different queries
             call_count = [0]  # Use list to allow modification in nested function
-            
+
             def scalars_side_effect(query):
                 call_count[0] += 1
                 # First call is for MessageFile, second call is for UploadFile
@@ -325,7 +331,7 @@ class TestMessageEndStreamResponseFiles:
                     return mock_message_files_result
                 else:
                     return mock_upload_files_result
-            
+
             mock_session.scalars.side_effect = scalars_side_effect
             mock_get_url.return_value = "https://example.com/signed-url?signature=abc123"
 
@@ -336,7 +342,7 @@ class TestMessageEndStreamResponseFiles:
             assert isinstance(result, MessageEndStreamResponse)
             assert result.files is not None
             assert len(result.files) == 2
-            
+
             # Verify both files are present
             file_ids = [f["related_id"] for f in result.files]
             assert mock_message_file_local.id in file_ids
@@ -347,30 +353,31 @@ class TestMessageEndStreamResponseFiles:
         # Arrange
         mock_message_file_local.message_id = mock_pipeline._message_id
 
-        with patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db, \
-             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class, \
-             patch(
-                 "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.file_helpers.get_signed_file_url"
-             ) as mock_get_url:
-            
+        with (
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+            patch(
+                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.file_helpers.get_signed_file_url"
+            ) as mock_get_url,
+        ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
-            
+
             mock_session = MagicMock(spec=Session)
             mock_session_class.return_value.__enter__.return_value = mock_session
-            
+
             # Mock database queries
             # First query: MessageFile
             mock_message_files_result = Mock()
             mock_message_files_result.all.return_value = [mock_message_file_local]
-            
+
             # Second query: UploadFile (batch query) - returns empty list (not found)
             mock_upload_files_result = Mock()
             mock_upload_files_result.all.return_value = []  # UploadFile not found
-            
+
             # Setup scalars to return different results for different queries
             call_count = [0]  # Use list to allow modification in nested function
-            
+
             def scalars_side_effect(query):
                 call_count[0] += 1
                 # First call is for MessageFile, second call is for UploadFile
@@ -378,7 +385,7 @@ class TestMessageEndStreamResponseFiles:
                     return mock_message_files_result
                 else:
                     return mock_upload_files_result
-            
+
             mock_session.scalars.side_effect = scalars_side_effect
             mock_get_url.return_value = "https://example.com/fallback-url?signature=def456"
 
@@ -389,7 +396,7 @@ class TestMessageEndStreamResponseFiles:
             assert isinstance(result, MessageEndStreamResponse)
             assert result.files is not None
             assert len(result.files) == 1
-            
+
             file_dict = result.files[0]
             assert "https://example.com/fallback-url" in file_dict["url"]
             # Verify fallback URL was generated using upload_file_id from message_file
