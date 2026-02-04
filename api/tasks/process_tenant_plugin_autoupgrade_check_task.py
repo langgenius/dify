@@ -119,6 +119,7 @@ def marketplace_batch_fetch_plugin_manifests(
 
     return result
 
+
 def fetch_global_plugin_manifest():
     url = str(marketplace_api_url / "api/v1/dist/plugins/manifest.json")
     response = httpx.get(url, headers={"X-Dify-Version": dify_config.project.version}, timeout=30)
@@ -131,6 +132,7 @@ def fetch_global_plugin_manifest():
             time=CACHE_REDIS_TTL,
             value=plugin_snapshot.model_dump_json(),
         )
+
 
 @shared_task(queue="plugin")
 def process_tenant_plugin_autoupgrade_check_task(
