@@ -477,7 +477,6 @@ class LLMGenerator:
                 prompt_messages=complete_messages,
                 output_model=CodeNodeStructuredOutput,
                 model_parameters=model_parameters,
-                tenant_id=tenant_id,
             )
 
             return {
@@ -561,7 +560,7 @@ class LLMGenerator:
             response = invoke_llm_with_pydantic_model(provider=model_instance.provider, model_schema=model_schema,
                                                       model_instance=model_instance, prompt_messages=prompt_messages,
                                                       output_model=SuggestedQuestionsOutput,
-                                                      model_parameters=completion_params, tenant_id=tenant_id)
+                                                      model_parameters=completion_params)
 
             return {"questions": response.questions, "error": ""}
 
@@ -817,7 +816,7 @@ Generate {language} code to extract/transform available variables for the target
             provider=model_config.provider,
             model=model_config.name,
         )
-        model_name = model_config.get("name", "")
+        model_name = model_config.name
         model_schema = model_instance.model_type_instance.get_model_schema(model_name, model_instance.credentials)
         if not model_schema:
             return {"error": f"Model schema not found for {model_name}"}
