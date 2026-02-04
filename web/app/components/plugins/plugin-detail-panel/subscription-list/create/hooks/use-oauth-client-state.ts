@@ -163,8 +163,7 @@ export const useOAuthClientState = ({
       enabled: isCustom,
     }
 
-    // If there is no schema, enable custom OAuth without client_params.
-    if (oauthClientSchema?.length) {
+    if (isCustom && oauthClientSchema?.length) {
       const clientFormValues = clientFormRef.current?.getFormValues({}) as {
         values: TriggerOAuthClientParams
         isCheckValidated: boolean

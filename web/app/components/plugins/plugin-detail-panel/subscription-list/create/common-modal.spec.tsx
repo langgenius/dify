@@ -1244,12 +1244,21 @@ describe('CommonCreateModal', () => {
 
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} />)
 
+      // Wait for createBuilder to complete and state to update
       await waitFor(() => {
         expect(mockCreateBuilder).toHaveBeenCalled()
       })
 
+      // Allow React to process the state update from createBuilder
+      await act(async () => {})
+
       const input = screen.getByTestId('form-field-webhook_url')
       fireEvent.change(input, { target: { value: 'https://example.com/webhook' } })
+
+      // Wait for updateBuilder to be called, then check the toast
+      await waitFor(() => {
+        expect(mockUpdateBuilder).toHaveBeenCalled()
+      })
 
       await waitFor(() => {
         expect(mockToastNotify).toHaveBeenCalledWith({
