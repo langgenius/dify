@@ -2,7 +2,9 @@ import json
 
 import httpx
 import yaml
-from flask_restx import Resource, reqparse
+from flask import request
+from flask_restx import Resource
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -16,6 +18,11 @@ from models.workflow import Workflow
 from services.app_dsl_service import AppDslService
 
 
+class DSLPredictRequest(BaseModel):
+    app_id: str
+    current_node_id: str
+
+
 @console_ns.route("/workspaces/current/dsl/predict")
 class DSLPredictApi(Resource):
     @setup_required
@@ -26,15 +33,10 @@ class DSLPredictApi(Resource):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("app_id", type=str, required=True, location="json")
-            .add_argument("current_node_id", type=str, required=True, location="json")
-        )
-        args = parser.parse_args()
+        args = DSLPredictRequest.model_validate(request.get_json())
 
-        app_id: str = args["app_id"]
-        current_node_id: str = args["current_node_id"]
+        app_id: str = args.app_id
+        current_node_id: str = args.current_node_id
 
         with Session(db.engine) as session:
             app = session.query(App).filter_by(id=app_id).first()
