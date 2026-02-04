@@ -530,11 +530,6 @@
       "count": 1
     }
   },
-  "app/components/app/create-app-modal/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
-    }
-  },
   "app/components/app/create-app-modal/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -1801,14 +1796,8 @@
     }
   },
   "app/components/datasets/documents/components/list.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
     "react-refresh/only-export-components": {
       "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/index.spec.tsx": {
