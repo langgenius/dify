@@ -43,7 +43,7 @@ class TestApiTokenCache:
     def test_serialize_token(self):
         """Test token serialization."""
         import orjson
-        
+
         serialized = ApiTokenCache._serialize_token(self.mock_token)
         data = orjson.loads(serialized)  # orjson to parse bytes
 
@@ -58,7 +58,7 @@ class TestApiTokenCache:
     def test_serialize_token_with_nulls(self):
         """Test token serialization with None values."""
         import orjson
-        
+
         mock_token = MagicMock()
         mock_token.id = "test-id"
         mock_token.app_id = None
@@ -78,7 +78,7 @@ class TestApiTokenCache:
     def test_deserialize_token(self):
         """Test token deserialization."""
         import orjson
-        
+
         cached_data = orjson.dumps(
             {
                 "id": "test-id",
@@ -116,7 +116,7 @@ class TestApiTokenCache:
     def test_get_cache_hit(self, mock_redis):
         """Test cache hit scenario."""
         import orjson
-        
+
         cached_data = orjson.dumps(
             {
                 "id": "test-id",
