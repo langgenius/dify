@@ -46,7 +46,7 @@
     "uglify-embed": "node ./bin/uglify-embed",
     "i18n:check": "tsx ./scripts/check-i18n.js",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --reporter=dot --silent=passed-only",
     "test:watch": "vitest --watch",
     "analyze-component": "node ./scripts/analyze-component.js",
     "refactor-component": "node ./scripts/refactor-component.js",
