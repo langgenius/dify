@@ -13,19 +13,6 @@ simple_account_fields = {
     "email": fields.String,
 }
 
-account_with_role_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "email": fields.String,
-    "avatar": fields.String,
-    "avatar_url": fields.String,
-    "last_login_at": fields.Integer,
-    "last_active_at": fields.Integer,
-    "created_at": fields.Integer,
-    "role": fields.String,
-    "status": fields.String,
-}
-
 
 def _to_timestamp(value: datetime | int | None) -> int | None:
     if isinstance(value, datetime):

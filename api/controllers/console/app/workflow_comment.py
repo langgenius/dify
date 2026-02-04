@@ -1,12 +1,12 @@
 import logging
 
-from flask_restx import Resource, fields, marshal_with
-from pydantic import BaseModel, Field
+from flask_restx import Resource, marshal_with
+from pydantic import BaseModel, Field, TypeAdapter
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
-from fields.member_fields import account_with_role_fields
+from fields.member_fields import AccountWithRole
 from fields.workflow_comment_fields import (
     workflow_comment_basic_fields,
     workflow_comment_create_fields,
@@ -49,12 +49,19 @@ class WorkflowCommentReplyUpdatePayload(BaseModel):
     mentioned_user_ids: list[str] = Field(default_factory=list, description="Mentioned user IDs")
 
 
+class WorkflowCommentMentionUsersResponse(BaseModel):
+    users: list[AccountWithRole] = Field(description="Mentionable users")
+
+
 for model in (
     WorkflowCommentCreatePayload,
     WorkflowCommentUpdatePayload,
     WorkflowCommentReplyCreatePayload,
     WorkflowCommentReplyUpdatePayload,
 ):
+    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+for model in (AccountWithRole, WorkflowCommentMentionUsersResponse):
     console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
 workflow_comment_basic_model = console_ns.model("WorkflowCommentBasic", workflow_comment_basic_fields)
@@ -68,10 +75,7 @@ workflow_comment_reply_create_model = console_ns.model(
 workflow_comment_reply_update_model = console_ns.model(
     "WorkflowCommentReplyUpdate", workflow_comment_reply_update_fields
 )
-workflow_comment_mention_users_model = console_ns.model(
-    "WorkflowCommentMentionUsers",
-    {"users": fields.List(fields.Nested(account_with_role_fields))},
-)
+workflow_comment_mention_users_model = console_ns.models[WorkflowCommentMentionUsersResponse.__name__]
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/comments")
@@ -310,8 +314,9 @@ class WorkflowCommentMentionUsersApi(Resource):
     @setup_required
     @account_initialization_required
     @get_app_model()
-    @marshal_with(workflow_comment_mention_users_model)
     def get(self, app_model: App):
         """Get all users in current tenant for mentions."""
         members = TenantService.get_tenant_members(current_user.current_tenant)
-        return {"users": members}
+        member_models = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
+        response = WorkflowCommentMentionUsersResponse(users=member_models)
+        return response.model_dump(mode="json"), 200
