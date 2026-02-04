@@ -22,7 +22,7 @@ class CachedApiToken(BaseModel):
 
     This is NOT a SQLAlchemy model instance, but a plain Pydantic model
     that mimics the ApiToken model interface for read-only access.
-    
+
     Using Pydantic provides:
     - Automatic type validation
     - Better IDE support
@@ -82,7 +82,7 @@ class ApiTokenCache:
         # If it's already a Pydantic model, use model_dump_json
         if isinstance(api_token, CachedApiToken):
             return api_token.model_dump_json()
-        
+
         # Otherwise, convert from SQLAlchemy model
         data = {
             "id": str(api_token.id),

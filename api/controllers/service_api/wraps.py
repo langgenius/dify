@@ -328,10 +328,10 @@ def validate_and_get_api_token(scope: str | None = None):
     # Cache miss - use Redis lock for single-flight mode
     # This ensures only one request queries DB for the same token concurrently
     logger.debug("Token cache miss, attempting to acquire query lock for scope: %s", scope)
-    
+
     lock_key = f"api_token_query_lock:{scope}:{auth_token}"
     lock = redis_client.lock(lock_key, timeout=10, blocking_timeout=5)
-    
+
     try:
         if lock.acquire(blocking=True):
             try:
@@ -341,12 +341,12 @@ def validate_and_get_api_token(scope: str | None = None):
                 if cached_token is not None:
                     logger.debug("Token cached by concurrent request, using cached version")
                     return cached_token
-                
+
                 # Still not cached - query database
                 with Session(db.engine, expire_on_commit=False) as session:
                     current_time = naive_utc_now()
                     update_token_last_used_at(auth_token, scope, current_time, session=session)
-                    
+
                     stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
                     api_token = session.scalar(stmt)
 
@@ -364,7 +364,7 @@ def validate_and_get_api_token(scope: str | None = None):
             with Session(db.engine, expire_on_commit=False) as session:
                 current_time = naive_utc_now()
                 update_token_last_used_at(auth_token, scope, current_time, session=session)
-                
+
                 stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
                 api_token = session.scalar(stmt)
 
@@ -380,7 +380,7 @@ def validate_and_get_api_token(scope: str | None = None):
         with Session(db.engine, expire_on_commit=False) as session:
             current_time = naive_utc_now()
             update_token_last_used_at(auth_token, scope, current_time, session=session)
-            
+
             stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
             api_token = session.scalar(stmt)
 
