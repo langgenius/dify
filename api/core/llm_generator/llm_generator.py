@@ -666,12 +666,12 @@ Generate {language} code to extract/transform available variables for the target
 {code_context_section}## Requirements
 - Use only the listed value_selector paths.
 - Do not invent variables or fields that are not listed.
-- Write a main function that returns type: {param_type}.
+- Write a main function that returns a dict, which has only one key: "{parameter_info.name}", and the value is the extracted variable of type "{param_type}".
 - Respect target constraints (options/min/max/default/multiple) if provided.
 - If existing code is provided, adapt it instead of rewriting from scratch.
 - Return only JSON that matches the provided schema.
 - If user is not talking about the code node, provide blank code/outputs/variables for user, say to user in `message`.
-"""
+"""  # noqa: E501
 
     @staticmethod
     def instruction_modify_legacy(
