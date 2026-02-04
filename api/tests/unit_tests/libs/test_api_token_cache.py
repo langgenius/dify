@@ -175,10 +175,12 @@ class TestApiTokenCache:
     def test_delete_without_scope(self, mock_redis):
         """Test deleting token cache without scope (delete all)."""
         # Mock scan_iter to return an iterator of keys
-        mock_redis.scan_iter.return_value = iter([
-            b"api_token:app:test-token",
-            b"api_token:dataset:test-token",
-        ])
+        mock_redis.scan_iter.return_value = iter(
+            [
+                b"api_token:app:test-token",
+                b"api_token:dataset:test-token",
+            ]
+        )
 
         result = ApiTokenCache.delete("test-token", None)
 
@@ -187,7 +189,7 @@ class TestApiTokenCache:
         mock_redis.scan_iter.assert_called_once()
         call_args = mock_redis.scan_iter.call_args
         assert call_args[1]["match"] == f"{CACHE_KEY_PREFIX}:*:test-token"
-        
+
         # Verify delete was called with all matched keys
         mock_redis.delete.assert_called_once_with(
             b"api_token:app:test-token",
