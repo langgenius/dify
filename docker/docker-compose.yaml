@@ -1348,7 +1348,7 @@ services:
       - "${IRIS_SUPER_SERVER_PORT:-1972}:1972"
       - "${IRIS_WEB_SERVER_PORT:-52773}:52773"
     volumes:
-      - ./volumes/iris/data:/usr/irissys/mgr/user
+      - ./volumes/iris:/opt/iris
       - ./iris/iris-init.script:/iris-init.script
       - ./iris/docker-entrypoint.sh:/custom-entrypoint.sh
     entrypoint: ["/custom-entrypoint.sh"]
