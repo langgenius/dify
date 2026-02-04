@@ -724,10 +724,10 @@ describe('UpdateDSLModal', () => {
         await Promise.resolve()
       })
 
+      // Element should be visible immediately after advancing timers
+      expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+      
       vi.useRealTimers()
-
-      // Wait for element to appear after advancing timers and flushing
-      await screen.findByText('newApp.appCreateDSLErrorTitle')
     })
 
     it('should show version info in error modal', async () => {
@@ -857,10 +857,10 @@ describe('UpdateDSLModal', () => {
         await Promise.resolve()
       })
 
+      // Element should be visible immediately after advancing timers
+      expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+      
       vi.useRealTimers()
-
-      // Wait for element to appear after advancing timers and flushing
-      await screen.findByText('newApp.appCreateDSLErrorTitle')
 
       // Click confirm button
       const confirmButton = screen.getByText('newApp.Confirm')
@@ -1159,10 +1159,10 @@ describe('UpdateDSLModal', () => {
         await Promise.resolve()
       })
 
+      // Element should be visible immediately after advancing timers
+      expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+      
       vi.useRealTimers()
-
-      // Wait for element to appear after advancing timers and flushing
-      await screen.findByText('newApp.appCreateDSLErrorTitle')
 
       const confirmButton = screen.getByText('newApp.Confirm')
 
