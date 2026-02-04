@@ -28,8 +28,10 @@ def app() -> Flask:
 @pytest.fixture
 def mock_auth():
     """Mocks authentication decorators and user context."""
+
     def noop(f):
         return f
+
     with (
         patch("controllers.console.wraps.setup_required", side_effect=noop),
         patch("libs.login.login_required", side_effect=noop),
@@ -148,12 +150,15 @@ def app_with_login_manager():
     @login_manager.unauthorized_handler
     def unauthorized():
         from flask import request
+
         # FastOpenAPI routes: raise exception (serializable)
         if request.blueprint is None and request.path.startswith("/console/api/"):
             raise Unauthorized("Unauthorized.")
         # Blueprint routes: return Response
-        from flask import Response
         import json
+
+        from flask import Response
+
         return Response(json.dumps({"code": "unauthorized"}), status=401, content_type="application/json")
 
     return app
@@ -166,6 +171,7 @@ def test_fastopenapi_route_has_no_blueprint(app_with_login_manager):
     @app_with_login_manager.route("/console/api/test")
     def test_route():
         from flask import request
+
         captured["blueprint"] = request.blueprint
         return {"ok": True}
 
