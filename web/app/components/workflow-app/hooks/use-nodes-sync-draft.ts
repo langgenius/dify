@@ -128,40 +128,52 @@ export const useNodesSyncDraft = () => {
 
     // If not leader, request the leader to sync
     if (isCollaborationEnabled && !currentIsLeader) {
-      if (isCollaborationEnabled)
-        collaborationManager.emitSyncRequest()
+      collaborationManager.emitSyncRequest()
       callback?.onSettled?.()
       return
     }
-    const postParams = getPostParams()
 
-    if (postParams) {
-      const {
-        setSyncWorkflowDraftHash,
-        setDraftUpdatedAt,
-      } = workflowStore.getState()
+    const baseParams = getPostParams()
+    if (!baseParams)
+      return
 
-      try {
-        const res = await syncWorkflowDraft({
-          ...postParams,
-          canNotSaveEmpty: true,
+    const {
+      setSyncWorkflowDraftHash,
+      setDraftUpdatedAt,
+    } = workflowStore.getState()
+
+    try {
+      // IMPORTANT: Get the LATEST hash right before sending the request
+      // This ensures that even if queued, each request uses the most recent hash
+      const latestHash = workflowStore.getState().syncWorkflowDraftHash
+
+      const postParams = {
+        ...baseParams,
+        params: {
+          ...baseParams.params,
+          hash: latestHash || null, // null for first-time, otherwise use latest hash
+        },
+      }
+
+      const res = await syncWorkflowDraft({
+        ...postParams,
+        canNotSaveEmpty: true,
+      })
+      setSyncWorkflowDraftHash(res.hash)
+      setDraftUpdatedAt(res.updated_at)
+      callback?.onSuccess?.()
+    }
+    catch (error: any) {
+      if (error && error.json && !error.bodyUsed) {
+        error.json().then((err: any) => {
+          if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+            handleRefreshWorkflowDraft()
         })
-        setSyncWorkflowDraftHash(res.hash)
-        setDraftUpdatedAt(res.updated_at)
-        callback?.onSuccess?.()
       }
-      catch (error: any) {
-        if (error && error.json && !error.bodyUsed) {
-          error.json().then((err: any) => {
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft()
-          })
-        }
-        callback?.onError?.()
-      }
-      finally {
-        callback?.onSettled?.()
-      }
+      callback?.onError?.()
+    }
+    finally {
+      callback?.onSettled?.()
     }
   }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft, isCollaborationEnabled])
 
