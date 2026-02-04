@@ -134,22 +134,6 @@ vi.mock('@/app/components/workflow/constants', () => ({
   WORKFLOW_DATA_UPDATE: 'WORKFLOW_DATA_UPDATE',
 }))
 
-// Mock FileReader
-class MockFileReader {
-  result: string | null = null
-  onload: ((e: { target: { result: string | null } }) => void) | null = null
-
-  readAsText(_file: File) {
-    // Simulate async file reading using queueMicrotask for more reliable async behavior
-    queueMicrotask(() => {
-      this.result = 'test file content'
-      if (this.onload) {
-        this.onload({ target: { result: this.result } })
-      }
-    })
-  }
-}
-
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
@@ -159,7 +143,6 @@ describe('UpdateDSLModal', () => {
   const mockOnCancel = vi.fn()
   const mockOnBackup = vi.fn()
   const mockOnImport = vi.fn()
-  let originalFileReader: typeof FileReader
 
   const defaultProps = {
     onCancel: mockOnCancel,
@@ -175,14 +158,6 @@ describe('UpdateDSLModal', () => {
       pipeline_id: 'test-pipeline-id',
     })
     mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
-
-    // Mock FileReader
-    originalFileReader = globalThis.FileReader
-    globalThis.FileReader = MockFileReader as unknown as typeof FileReader
-  })
-
-  afterEach(() => {
-    globalThis.FileReader = originalFileReader
   })
 
   describe('rendering', () => {
@@ -558,9 +533,6 @@ describe('UpdateDSLModal', () => {
         expect(importButton).not.toBeDisabled()
       })
 
-      // Give extra time for the FileReader's queueMicrotask to complete
-      await new Promise(resolve => setTimeout(resolve, 10))
-
       const importButton = screen.getByText('common.overwriteAndImport')
       fireEvent.click(importButton)
 
@@ -580,14 +552,11 @@ describe('UpdateDSLModal', () => {
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
 
-      // Wait for FileReader to complete (setTimeout 0) and button to be enabled
+      // Wait for FileReader to complete and button to be enabled
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
         expect(importButton).not.toBeDisabled()
       })
-
-      // Give extra time for the FileReader's setTimeout to complete
-      await new Promise(resolve => setTimeout(resolve, 10))
 
       const importButton = screen.getByText('common.overwriteAndImport')
       fireEvent.click(importButton)
