@@ -70,6 +70,10 @@ vi.mock('./context', () => ({
   GotoAnythingProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
+vi.mock('@/app/components/workflow/utils', () => ({
+  getKeyboardKeyNameBySystem: (key: string) => key,
+}))
+
 const createActionItem = (key: ActionItem['key'], shortcut: string): ActionItem => ({
   key,
   shortcut,

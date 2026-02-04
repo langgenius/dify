@@ -7,47 +7,72 @@ import RagPipelinePanel from './index'
 // Mock External Dependencies
 // ============================================================================
 
-// Type definitions for dynamic module
-type DynamicModule = {
-  default?: React.ComponentType<Record<string, unknown>>
-}
+// Mock reactflow to avoid zustand provider error
+vi.mock('reactflow', () => ({
+  useNodes: () => [],
+  useStoreApi: () => ({
+    getState: () => ({
+      getNodes: () => [],
+    }),
+  }),
+  useReactFlow: () => ({
+    getNodes: () => [],
+  }),
+  useStore: (selector: (state: Record<string, unknown>) => unknown) => {
+    const state = {
+      getNodes: () => [],
+    }
+    return selector(state)
+  },
+}))
 
-type PromiseOrModule = Promise<DynamicModule> | DynamicModule
+// Use vi.hoisted to create variables that can be used in vi.mock
+const { dynamicMocks, mockInputFieldEditorProps } = vi.hoisted(() => {
+  let counter = 0
+  const mockInputFieldEditorProps = vi.fn()
 
-// Mock next/dynamic to return synchronous components immediately
+  const createMockComponent = () => {
+    const index = counter++
+    // Order matches the imports in index.tsx:
+    // 0: Record
+    // 1: TestRunPanel
+    // 2: InputFieldPanel
+    // 3: InputFieldEditorPanel
+    // 4: PreviewPanel
+    // 5: GlobalVariablePanel
+    switch (index) {
+      case 0:
+        return () => <div data-testid="record-panel">Record Panel</div>
+      case 1:
+        return () => <div data-testid="test-run-panel">Test Run Panel</div>
+      case 2:
+        return () => <div data-testid="input-field-panel">Input Field Panel</div>
+      case 3:
+        return (props: Record<string, unknown>) => {
+          mockInputFieldEditorProps(props)
+          return <div data-testid="input-field-editor-panel">Input Field Editor Panel</div>
+        }
+      case 4:
+        return () => <div data-testid="preview-panel">Preview Panel</div>
+      case 5:
+        return () => <div data-testid="global-variable-panel">Global Variable Panel</div>
+      default:
+        return () => (
+          <div data-testid="dynamic-fallback">
+            Dynamic Component
+            {index}
+          </div>
+        )
+    }
+  }
+
+  return { dynamicMocks: { createMockComponent }, mockInputFieldEditorProps }
+})
+
+// Mock next/dynamic
 vi.mock('next/dynamic', () => ({
-  default: (loader: () => PromiseOrModule, _options?: Record<string, unknown>) => {
-    let Component: React.ComponentType<Record<string, unknown>> | null = null
-
-    // Try to resolve the loader synchronously for mocked modules
-    try {
-      const result = loader() as PromiseOrModule
-      if (result && typeof (result as Promise<DynamicModule>).then === 'function') {
-        // For async modules, we need to handle them specially
-        // This will work with vi.mock since mocks resolve synchronously
-        (result as Promise<DynamicModule>).then((mod: DynamicModule) => {
-          Component = (mod.default || mod) as React.ComponentType<Record<string, unknown>>
-        })
-      }
-      else if (result) {
-        Component = ((result as DynamicModule).default || result) as React.ComponentType<Record<string, unknown>>
-      }
-    }
-    catch {
-      // If the module can't be resolved, Component stays null
-    }
-
-    // Return a simple wrapper that renders the component or null
-    const DynamicComponent = React.forwardRef((props: Record<string, unknown>, ref: React.Ref<unknown>) => {
-      // For mocked modules, Component should already be set
-      if (Component)
-        return <Component {...props} ref={ref} />
-
-      return null
-    })
-
-    DynamicComponent.displayName = 'DynamicComponent'
-    return DynamicComponent
+  default: (_loader: () => Promise<{ default: React.ComponentType }>, _options?: Record<string, unknown>) => {
+    return dynamicMocks.createMockComponent()
   },
 }))
 
@@ -68,6 +93,28 @@ type MockStoreState = {
   showInputFieldPreviewPanel: boolean
   inputFieldEditPanelProps: Record<string, unknown> | null
   pipelineId: string
+  nodePanelWidth: number
+  workflowCanvasWidth: number
+  otherPanelWidth: number
+  setShowInputFieldPanel?: (show: boolean) => void
+  setShowInputFieldPreviewPanel?: (show: boolean) => void
+  setInputFieldEditPanelProps?: (props: Record<string, unknown> | null) => void
+}
+
+const mockWorkflowStoreState: MockStoreState = {
+  historyWorkflowData: null,
+  showDebugAndPreviewPanel: false,
+  showGlobalVariablePanel: false,
+  showInputFieldPanel: false,
+  showInputFieldPreviewPanel: false,
+  inputFieldEditPanelProps: null,
+  pipelineId: 'test-pipeline-123',
+  nodePanelWidth: 400,
+  workflowCanvasWidth: 1200,
+  otherPanelWidth: 0,
+  setShowInputFieldPanel: vi.fn(),
+  setShowInputFieldPreviewPanel: vi.fn(),
+  setInputFieldEditPanelProps: vi.fn(),
 }
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -80,9 +127,15 @@ vi.mock('@/app/components/workflow/store', () => ({
       showInputFieldPreviewPanel: mockShowInputFieldPreviewPanel,
       inputFieldEditPanelProps: mockInputFieldEditPanelProps,
       pipelineId: mockPipelineId,
+      nodePanelWidth: 400,
+      workflowCanvasWidth: 1200,
+      otherPanelWidth: 0,
     }
     return selector(state)
   },
+  useWorkflowStore: () => ({
+    getState: () => mockWorkflowStoreState,
+  }),
 }))
 
 // Mock Panel component to capture props and render children
@@ -97,40 +150,6 @@ vi.mock('@/app/components/workflow/panel', () => ({
       </div>
     )
   },
-}))
-
-// Mock Record component
-vi.mock('@/app/components/workflow/panel/record', () => ({
-  default: () => <div data-testid="record-panel">Record Panel</div>,
-}))
-
-// Mock TestRunPanel component
-vi.mock('@/app/components/rag-pipeline/components/panel/test-run', () => ({
-  default: () => <div data-testid="test-run-panel">Test Run Panel</div>,
-}))
-
-// Mock InputFieldPanel component
-vi.mock('./input-field', () => ({
-  default: () => <div data-testid="input-field-panel">Input Field Panel</div>,
-}))
-
-// Mock InputFieldEditorPanel component
-const mockInputFieldEditorProps = vi.fn()
-vi.mock('./input-field/editor', () => ({
-  default: (props: Record<string, unknown>) => {
-    mockInputFieldEditorProps(props)
-    return <div data-testid="input-field-editor-panel">Input Field Editor Panel</div>
-  },
-}))
-
-// Mock PreviewPanel component
-vi.mock('./input-field/preview', () => ({
-  default: () => <div data-testid="preview-panel">Preview Panel</div>,
-}))
-
-// Mock GlobalVariablePanel component
-vi.mock('@/app/components/workflow/panel/global-variable-panel', () => ({
-  default: () => <div data-testid="global-variable-panel">Global Variable Panel</div>,
 }))
 
 // ============================================================================

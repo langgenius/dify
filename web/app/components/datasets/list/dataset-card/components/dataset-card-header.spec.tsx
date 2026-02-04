@@ -6,6 +6,13 @@ import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datase
 import { RETRIEVE_METHOD } from '@/types/app'
 import DatasetCardHeader from './dataset-card-header'
 
+// Mock AppIcon component to avoid emoji-mart initialization issues
+vi.mock('@/app/components/base/app-icon', () => ({
+  default: ({ icon, className }: { icon?: string, className?: string }) => (
+    <div data-testid="app-icon" className={className}>{icon}</div>
+  ),
+}))
+
 // Mock useFormatTimeFromNow hook
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
