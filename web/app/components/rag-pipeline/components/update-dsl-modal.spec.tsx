@@ -151,6 +151,11 @@ describe('UpdateDSLModal', () => {
     onImport: mockOnImport,
   }
 
+  // Helper function to flush FileReader microtasks
+  const flushFileReader = async () => {
+    await flushFileReader()
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockImportDSL.mockResolvedValue({
@@ -394,7 +399,7 @@ describe('UpdateDSLModal', () => {
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [file] } })
         // Wait for FileReader to process
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await flushFileReader()
       })
 
       await waitFor(() => {
@@ -430,7 +435,7 @@ describe('UpdateDSLModal', () => {
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [file] } })
         // Wait for FileReader to process
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await flushFileReader()
       })
 
       await waitFor(() => {
@@ -463,7 +468,7 @@ describe('UpdateDSLModal', () => {
 
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [file] } })
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await flushFileReader()
       })
 
       await waitFor(() => {
@@ -552,7 +557,7 @@ describe('UpdateDSLModal', () => {
 
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [file] } })
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await flushFileReader()
       })
 
       // Wait for FileReader to process and button to be enabled
@@ -619,7 +624,7 @@ describe('UpdateDSLModal', () => {
 
       // Flush the FileReader microtask to ensure fileContent is set
       await act(async () => {
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await flushFileReader()
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
@@ -675,7 +680,7 @@ describe('UpdateDSLModal', () => {
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [file] } })
         // Flush microtasks scheduled by the FileReader mock (which uses queueMicrotask)
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await flushFileReader()
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
@@ -712,7 +717,7 @@ describe('UpdateDSLModal', () => {
 
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [file] } })
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await flushFileReader()
       })
 
       await waitFor(() => {
@@ -749,7 +754,7 @@ describe('UpdateDSLModal', () => {
 
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [file] } })
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await flushFileReader()
       })
 
       await waitFor(() => {
@@ -807,7 +812,7 @@ describe('UpdateDSLModal', () => {
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [file] } })
         // Flush microtasks scheduled by the FileReader mock (which uses queueMicrotask)
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await flushFileReader()
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
@@ -1065,7 +1070,7 @@ describe('UpdateDSLModal', () => {
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [file] } })
         // Flush microtasks scheduled by the FileReader mock (which uses queueMicrotask)
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+        await flushFileReader()
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
