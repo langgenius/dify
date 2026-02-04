@@ -7,6 +7,9 @@ from typing import Union, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+# Maximum length for tool file extension before defaulting to .bin
+MAX_TOOL_FILE_EXTENSION_LENGTH = 10
+
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
@@ -524,7 +527,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                                 if "." in file_part:
                                     tool_file_id, ext = file_part.rsplit(".", 1)
                                     extension = f".{ext}"
-                                    if len(extension) > 10:
+                                    if len(extension) > MAX_TOOL_FILE_EXTENSION_LENGTH:
                                         extension = ".bin"
                                 else:
                                     tool_file_id = file_part
