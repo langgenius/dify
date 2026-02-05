@@ -1,10 +1,10 @@
 // @ts-check
 import antfu from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
+import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
-import tailwind from 'eslint-plugin-tailwindcss'
-import difyI18n from './eslint-rules/index.js'
+import dify from './eslint-rules/index.js'
 
 export default antfu(
   {
@@ -23,7 +23,7 @@ export default antfu(
       },
     },
     nextjs: true,
-    ignores: ['public', 'types/doc-paths.ts'],
+    ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
@@ -66,82 +66,37 @@ export default antfu(
       sonarjs: sonar,
     },
   },
-  tailwind.configs['flat/recommended'],
   {
-    settings: {
-      tailwindcss: {
-        // These are the default values but feel free to customize
-        callees: ['classnames', 'clsx', 'ctl', 'cn', 'classNames'],
-        config: 'tailwind.config.js', // returned from `loadConfig()` utility if not provided
-        cssFiles: [
-          '**/*.css',
-          '!**/node_modules',
-          '!**/.*',
-          '!**/dist',
-          '!**/build',
-          '!**/.storybook',
-          '!**/.next',
-          '!**/.public',
-        ],
-        cssFilesRefreshRate: 5_000,
-        removeDuplicates: true,
-        skipClassAttribute: false,
-        whitelist: [],
-        tags: [], // can be set to e.g. ['tw'] for use in tw`bg-blue`
-        classRegex: '^class(Name)?$', // can be modified to support custom attributes. E.g. "^tw$" for `twin.macro`
-      },
+    files: ['**/*.{ts,tsx}'],
+    plugins: {
+      tailwindcss,
     },
     rules: {
-      // due to 1k lines of tailwind config, these rule have performance issue
-      'tailwindcss/no-contradicting-classname': 'off',
-      'tailwindcss/enforces-shorthand': 'off',
-      'tailwindcss/no-custom-classname': 'off',
-      'tailwindcss/no-unnecessary-arbitrary-value': 'off',
-
-      'tailwindcss/no-arbitrary-value': 'off',
-      'tailwindcss/classnames-order': 'warn',
-      'tailwindcss/enforces-negative-arbitrary-values': 'warn',
-      'tailwindcss/migration-from-tailwind-2': 'warn',
+      'tailwindcss/enforce-consistent-class-order': 'error',
+      'tailwindcss/no-duplicate-classes': 'error',
+      'tailwindcss/no-unnecessary-whitespace': 'error',
+      'tailwindcss/no-unknown-classes': 'warn',
     },
   },
-  // dify i18n namespace migration
-  // {
-  //   files: ['**/*.ts', '**/*.tsx'],
-  //   ignores: ['eslint-rules/**', 'i18n/**', 'i18n-config/**'],
-  //   plugins: {
-  //     'dify-i18n': difyI18n,
-  //   },
-  //   rules: {
-  //     // 'dify-i18n/no-as-any-in-t': ['error', { mode: 'all' }],
-  //     'dify-i18n/no-as-any-in-t': 'error',
-  //     // 'dify-i18n/no-legacy-namespace-prefix': 'error',
-  //     // 'dify-i18n/require-ns-option': 'error',
-  //   },
-  // },
-  // i18n JSON validation rules
+  {
+    plugins: { dify },
+  },
   {
     files: ['i18n/**/*.json'],
-    plugins: {
-      'dify-i18n': difyI18n,
-    },
     rules: {
       'sonarjs/max-lines': 'off',
       'max-lines': 'off',
       'jsonc/sort-keys': 'error',
 
-      'dify-i18n/valid-i18n-keys': 'error',
-      'dify-i18n/no-extra-keys': 'error',
-      'dify-i18n/consistent-placeholders': 'error',
+      'dify/valid-i18n-keys': 'error',
+      'dify/no-extra-keys': 'error',
+      'dify/consistent-placeholders': 'error',
     },
   },
-  // package.json version prefix validation
   {
     files: ['**/package.json'],
-    plugins: {
-      'dify-i18n': difyI18n,
-    },
     rules: {
-      'dify-i18n/no-version-prefix': 'error',
+      'dify/no-version-prefix': 'error',
     },
   },
 )

@@ -360,11 +360,11 @@ describe('ComponentName', () => {
 let mockPortalOpenState = false
 
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, ...props }: any) => {
+  PortalToFollowElem: ({ children, open, ...props }) => {
     mockPortalOpenState = open || false // Update shared state
     return <div data-open={open}>{children}</div>
   },
-  PortalToFollowElemContent: ({ children }: any) => {
+  PortalToFollowElemContent: ({ children }) => {
     // ✅ Matches actual: returns null when open is false
     if (!mockPortalOpenState)
       return null
