@@ -5,9 +5,9 @@ import { getI18n } from 'react-i18next'
 import { isInWorkflowPage, VIBE_COMMAND_EVENT } from '@/app/components/workflow/constants'
 import { registerCommands, unregisterCommands } from './command-bus'
 
-type BananaDeps = Record<string, never>
+type VibeDeps = Record<string, never>
 
-const BANANA_PROMPT_EXAMPLE = 'Summarize a document, classify sentiment, then notify Slack'
+const VIBE_PROMPT_EXAMPLE = 'Summarize a document, classify sentiment, then notify Slack'
 
 const dispatchVibeCommand = (input?: string) => {
   if (typeof document === 'undefined')
@@ -16,8 +16,8 @@ const dispatchVibeCommand = (input?: string) => {
   document.dispatchEvent(new CustomEvent(VIBE_COMMAND_EVENT, { detail: { dsl: input } }))
 }
 
-export const bananaCommand: SlashCommandHandler<BananaDeps> = {
-  name: 'banana',
+export const vibeCommand: SlashCommandHandler<VibeDeps> = {
+  name: 'vibe',
   description: getI18n().t('gotoAnything.actions.vibeDesc', { ns: 'app' }),
   mode: 'submenu',
   isAvailable: () => isInWorkflowPage(),
@@ -27,11 +27,11 @@ export const bananaCommand: SlashCommandHandler<BananaDeps> = {
     const hasInput = !!trimmed
 
     return [{
-      id: 'banana-vibe',
-      title: getI18n().t('gotoAnything.actions.vibeTitle', { ns: 'app', lng: locale }) || 'Banana',
+      id: 'vibe',
+      title: getI18n().t('gotoAnything.actions.vibeTitle', { ns: 'app', lng: locale }) || 'Vibe',
       description: hasInput
         ? getI18n().t('gotoAnything.actions.vibeDesc', { ns: 'app', lng: locale })
-        : getI18n().t('gotoAnything.actions.vibeHint', { ns: 'app', lng: locale, prompt: BANANA_PROMPT_EXAMPLE }),
+        : getI18n().t('gotoAnything.actions.vibeHint', { ns: 'app', lng: locale, prompt: VIBE_PROMPT_EXAMPLE }),
       type: 'command' as const,
       icon: (
         <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
@@ -45,7 +45,7 @@ export const bananaCommand: SlashCommandHandler<BananaDeps> = {
     }]
   },
 
-  register(_deps: BananaDeps) {
+  register(_deps: VibeDeps) {
     registerCommands({
       'workflow.vibe': async (args) => {
         dispatchVibeCommand(args?.dsl)
