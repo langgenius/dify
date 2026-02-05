@@ -1,5 +1,5 @@
 'use client'
-import { RiBookOpenLine, RiGithubLine, RiLayoutGridLine, RiPuzzle2Line } from '@remixicon/react'
+import { RiAddLine, RiBookOpenLine, RiGithubLine, RiLayoutGridLine, RiPuzzle2Line } from '@remixicon/react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
@@ -53,7 +53,8 @@ export const SubmitRequestDropdown = () => {
             open && 'bg-state-base-hover text-text-secondary',
           )}
         >
-          <span className="system-sm-medium">
+          <RiAddLine className="h-4 w-4 shrink-0 lg:hidden" />
+          <span className="system-sm-medium hidden lg:inline">
             {t('requestSubmitPlugin', { ns: 'plugin' })}
           </span>
         </Button>
@@ -98,7 +99,7 @@ export const CreationTypeTabs = ({ creationType: creationTypeProp }: CreationTyp
         )}
       >
         <RiPuzzle2Line className="h-4 w-4 shrink-0" />
-        <span className="system-sm-medium">
+        <span className="system-sm-medium hidden md:inline">
           {t('plugins', { ns: 'plugin' })}
         </span>
       </Link>
@@ -111,10 +112,10 @@ export const CreationTypeTabs = ({ creationType: creationTypeProp }: CreationTyp
         )}
       >
         <RiLayoutGridLine className="h-4 w-4 shrink-0" />
-        <span className="system-sm-medium">
+        <span className="system-sm-medium hidden md:inline">
           {t('templates', { ns: 'plugin' })}
         </span>
-        <Badge className="ml-1 h-4 rounded-[4px] border-none bg-saas-dify-blue-accessible px-1 text-[10px] font-bold leading-[14px] text-text-primary-on-surface">
+        <Badge className="ml-1 hidden h-4 rounded-[4px] border-none bg-saas-dify-blue-accessible px-1 text-[10px] font-bold leading-[14px] text-text-primary-on-surface md:inline-flex">
           NEW
         </Badge>
       </Link>

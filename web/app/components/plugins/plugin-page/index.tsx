@@ -147,7 +147,7 @@ const PluginPage = ({
               onChange={setActiveTab}
               options={options}
             />
-            {!isPluginsTab && <SearchBoxWrapper wrapperClassName="w-[360px] mx-0" inputClassName="p-0" />}
+            {!isPluginsTab && <SearchBoxWrapper />}
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {isExploringMarketplace && <SubmitRequestDropdown />}
