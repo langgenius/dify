@@ -31,6 +31,11 @@ const SQLiteFilePreview = dynamic(
   { ssr: false, loading: () => <Loading type="area" /> },
 )
 
+const PdfFilePreview = dynamic(
+  () => import('./viewer/pdf-file-preview'),
+  { ssr: false, loading: () => <Loading type="area" /> },
+)
+
 if (typeof window !== 'undefined')
   loader.config({ paths: { vs: `${window.location.origin}${basePath}/vs` } })
 
@@ -56,7 +61,7 @@ const FileContentPanel = () => {
 
   const currentFileNode = fileTabId ? nodeMap?.get(fileTabId) : undefined
 
-  const { isMarkdown, isCodeOrText, isImage, isVideo, isSQLite, isEditable, isPreviewable } = useFileTypeInfo(currentFileNode)
+  const { isMarkdown, isCodeOrText, isImage, isVideo, isPdf, isSQLite, isEditable, isPreviewable } = useFileTypeInfo(currentFileNode)
 
   const { fileContent, downloadUrlData, isLoading, error } = useSkillFileData(appId, fileTabId, isEditable)
 
@@ -251,6 +256,13 @@ const FileContentPanel = () => {
         ? (
             <SQLiteFilePreview
               key={fileTabId}
+              downloadUrl={downloadUrl}
+            />
+          )
+        : null}
+      {isPdf
+        ? (
+            <PdfFilePreview
               downloadUrl={downloadUrl}
             />
           )
