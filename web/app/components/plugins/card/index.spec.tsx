@@ -11,7 +11,7 @@ import DownloadCount from './base/download-count'
 import OrgInfo from './base/org-info'
 import Placeholder, { LoadingPlaceholder } from './base/placeholder'
 import Title from './base/title'
-import CardMoreInfo from './card-more-info'
+import CardTags from './card-tags'
 // ================================
 // Import Components Under Test
 // ================================
@@ -642,9 +642,9 @@ describe('Card', () => {
 })
 
 // ================================
-// CardMoreInfo Component Tests
+// CardTags Component Tests
 // ================================
-describe('CardMoreInfo', () => {
+describe('CardTags', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -654,66 +654,24 @@ describe('CardMoreInfo', () => {
   // ================================
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(<CardMoreInfo downloadCount={100} tags={['tag1']} />)
+      render(<CardTags tags={['tag1']} />)
 
       expect(document.body).toBeInTheDocument()
     })
 
-    it('should render download count when provided', () => {
-      render(<CardMoreInfo downloadCount={1000} tags={[]} />)
+    it('should render tags in uppercase', () => {
+      render(<CardTags tags={['search', 'image']} />)
 
-      expect(screen.getByText('1,000')).toBeInTheDocument()
+      expect(screen.getByText('SEARCH')).toBeInTheDocument()
+      expect(screen.getByText('IMAGE')).toBeInTheDocument()
     })
 
-    it('should render tags when provided', () => {
-      render(<CardMoreInfo tags={['search', 'image']} />)
+    it('should render at most two tags', () => {
+      render(<CardTags tags={['one', 'two', 'three']} />)
 
-      expect(screen.getByText('search')).toBeInTheDocument()
-      expect(screen.getByText('image')).toBeInTheDocument()
-    })
-
-    it('should render both download count and tags with separator', () => {
-      render(<CardMoreInfo downloadCount={500} tags={['tag1']} />)
-
-      expect(screen.getByText('500')).toBeInTheDocument()
-      expect(screen.getByText('·')).toBeInTheDocument()
-      expect(screen.getByText('tag1')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Props Testing
-  // ================================
-  describe('Props', () => {
-    it('should not render download count when undefined', () => {
-      render(<CardMoreInfo tags={['tag1']} />)
-
-      expect(screen.queryByTestId('ri-install-line')).not.toBeInTheDocument()
-    })
-
-    it('should not render separator when download count is undefined', () => {
-      render(<CardMoreInfo tags={['tag1']} />)
-
-      expect(screen.queryByText('·')).not.toBeInTheDocument()
-    })
-
-    it('should not render separator when tags are empty', () => {
-      render(<CardMoreInfo downloadCount={100} tags={[]} />)
-
-      expect(screen.queryByText('·')).not.toBeInTheDocument()
-    })
-
-    it('should render hash symbol before each tag', () => {
-      render(<CardMoreInfo tags={['search']} />)
-
-      expect(screen.getByText('#')).toBeInTheDocument()
-    })
-
-    it('should set title attribute with hash prefix for tags', () => {
-      render(<CardMoreInfo tags={['search']} />)
-
-      const tagElement = screen.getByTitle('# search')
-      expect(tagElement).toBeInTheDocument()
+      expect(screen.getByText('ONE')).toBeInTheDocument()
+      expect(screen.getByText('TWO')).toBeInTheDocument()
+      expect(screen.queryByText('THREE')).not.toBeInTheDocument()
     })
   })
 
@@ -722,54 +680,8 @@ describe('CardMoreInfo', () => {
   // ================================
   describe('Memoization', () => {
     it('should be memoized with React.memo', () => {
-      expect(CardMoreInfo).toBeDefined()
-      expect(typeof CardMoreInfo).toBe('object')
-    })
-  })
-
-  // ================================
-  // Edge Cases Tests
-  // ================================
-  describe('Edge Cases', () => {
-    it('should handle zero download count', () => {
-      render(<CardMoreInfo downloadCount={0} tags={[]} />)
-
-      // 0 should still render since downloadCount is defined
-      expect(screen.getByText('0')).toBeInTheDocument()
-    })
-
-    it('should handle empty tags array', () => {
-      render(<CardMoreInfo downloadCount={100} tags={[]} />)
-
-      expect(screen.queryByText('#')).not.toBeInTheDocument()
-    })
-
-    it('should handle large download count', () => {
-      render(<CardMoreInfo downloadCount={1234567890} tags={[]} />)
-
-      expect(screen.getByText('1,234,567,890')).toBeInTheDocument()
-    })
-
-    it('should handle many tags', () => {
-      const tags = Array.from({ length: 10 }, (_, i) => `tag${i}`)
-      render(<CardMoreInfo downloadCount={100} tags={tags} />)
-
-      expect(screen.getByText('tag0')).toBeInTheDocument()
-      expect(screen.getByText('tag9')).toBeInTheDocument()
-    })
-
-    it('should handle tags with special characters', () => {
-      render(<CardMoreInfo tags={['tag-with-dash', 'tag_with_underscore']} />)
-
-      expect(screen.getByText('tag-with-dash')).toBeInTheDocument()
-      expect(screen.getByText('tag_with_underscore')).toBeInTheDocument()
-    })
-
-    it('should truncate long tag names', () => {
-      const longTag = 'a'.repeat(200)
-      const { container } = render(<CardMoreInfo tags={[longTag]} />)
-
-      expect(container.querySelector('.truncate')).toBeInTheDocument()
+      expect(CardTags).toBeDefined()
+      expect(typeof CardTags).toBe('object')
     })
   })
 })
@@ -1688,7 +1600,7 @@ describe('Icon', () => {
         render(
           <Card
             payload={plugin}
-            footer={<CardMoreInfo downloadCount={5000} tags={['search', 'api']} />}
+            footer={<CardTags tags={['search', 'api']} />}
           />,
         )
 
@@ -1700,9 +1612,8 @@ describe('Icon', () => {
         expect(screen.getByText('Tool')).toBeInTheDocument()
         expect(screen.getByTestId('partner-badge')).toBeInTheDocument()
         expect(screen.getByTestId('verified-badge')).toBeInTheDocument()
-        expect(screen.getByText('5,000')).toBeInTheDocument()
-        expect(screen.getByText('search')).toBeInTheDocument()
-        expect(screen.getByText('api')).toBeInTheDocument()
+        expect(screen.getByText('SEARCH')).toBeInTheDocument()
+        expect(screen.getByText('API')).toBeInTheDocument()
       })
 
       it('should render loading state correctly', () => {
@@ -1728,12 +1639,12 @@ describe('Icon', () => {
           <Card
             payload={plugin}
             installed={true}
-            footer={<CardMoreInfo downloadCount={100} tags={['tag1']} />}
+            footer={<CardTags tags={['tag1']} />}
           />,
         )
 
         expect(screen.getByTestId('ri-check-line')).toBeInTheDocument()
-        expect(screen.getByText('100')).toBeInTheDocument()
+        expect(screen.getByText('TAG1')).toBeInTheDocument()
       })
     })
 
@@ -1817,9 +1728,9 @@ describe('Icon', () => {
     })
 
     it('should have title attribute on tags', () => {
-      render(<CardMoreInfo downloadCount={100} tags={['search']} />)
+      render(<CardTags tags={['search']} />)
 
-      expect(screen.getByTitle('# search')).toBeInTheDocument()
+      expect(screen.getByTitle('search')).toBeInTheDocument()
     })
 
     it('should have semantic structure', () => {
@@ -1864,11 +1775,11 @@ describe('Icon', () => {
       expect(endTime - startTime).toBeLessThan(1000)
     })
 
-    it('should handle CardMoreInfo with many tags', () => {
+    it('should handle CardTags with many tags', () => {
       const tags = Array.from({ length: 20 }, (_, i) => `tag-${i}`)
 
       const startTime = performance.now()
-      render(<CardMoreInfo downloadCount={1000} tags={tags} />)
+      render(<CardTags tags={tags} />)
       const endTime = performance.now()
 
       expect(endTime - startTime).toBeLessThan(100)

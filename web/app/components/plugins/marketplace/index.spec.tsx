@@ -322,11 +322,10 @@ vi.mock('@/app/components/plugins/card', () => ({
   ),
 }))
 
-// Mock CardMoreInfo component
-vi.mock('@/app/components/plugins/card/card-more-info', () => ({
-  default: ({ downloadCount, tags }: { downloadCount: number, tags: string[] }) => (
-    <div data-testid="card-more-info">
-      <span data-testid="download-count">{downloadCount}</span>
+// Mock CardTags component
+vi.mock('@/app/components/plugins/card/card-tags', () => ({
+  default: ({ tags }: { tags: string[] }) => (
+    <div data-testid="card-tags">
       <span data-testid="tags">{tags.join(',')}</span>
     </div>
   ),
