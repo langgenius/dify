@@ -7,4 +7,5 @@ export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
   nextConfig: {
     basePath,
   },
+  useNativeEsbuild: true,
 })
