@@ -1,6 +1,6 @@
 import type { LLMGenerationItem } from '@/types/workflow'
 import {
-  RiArrowDownSLine,
+  RiArrowRightSLine,
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -111,7 +111,12 @@ const ToolCallItemComponent = ({
             </div>
           )
         }
-        <RiArrowDownSLine className="h-4 w-4 shrink-0" />
+        <RiArrowRightSLine
+          className={cn(
+            'h-4 w-4 shrink-0 text-text-quaternary transition-transform duration-200',
+            expand && 'rotate-90',
+          )}
+        />
       </div>
       {
         expand && (
