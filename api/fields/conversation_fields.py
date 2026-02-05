@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
 from core.file import File
 
@@ -130,6 +130,36 @@ class AgentThought(ResponseModel):
     created_at: int | None = None
     observation: str | None = None
     files: list[str]
+
+    @field_serializer('thought', mode='wrap')
+    @classmethod
+    def _serialize_thought(cls, value: str | None, handler) -> str | None:
+        """Re-sign file URLs in thought during serialization."""
+        result = handler(value)
+        if result:
+            from models.model import re_sign_file_urls
+            return re_sign_file_urls(result)
+        return result
+
+    @field_serializer('tool_input', mode='wrap')
+    @classmethod
+    def _serialize_tool_input(cls, value: str | None, handler) -> str | None:
+        """Re-sign file URLs in tool_input during serialization."""
+        result = handler(value)
+        if result:
+            from models.model import re_sign_file_urls
+            return re_sign_file_urls(result)
+        return result
+
+    @field_serializer('observation', mode='wrap')
+    @classmethod
+    def _serialize_observation(cls, value: str | None, handler) -> str | None:
+        """Re-sign file URLs in observation during serialization."""
+        result = handler(value)
+        if result:
+            from models.model import re_sign_file_urls
+            return re_sign_file_urls(result)
+        return result
 
     @field_validator("created_at", mode="before")
     @classmethod
