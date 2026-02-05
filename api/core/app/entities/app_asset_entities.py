@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from collections import defaultdict
 from collections.abc import Generator
 from enum import StrEnum
@@ -59,12 +60,12 @@ class BatchUploadNode(BaseModel):
 
     def to_app_asset_nodes(self, parent_id: str | None = None) -> list[AppAssetNode]:
         """
-        Generate IDs and convert to AppAssetNode list.
-        Mutates self to set id field.
+        Generate IDs when missing and convert to AppAssetNode list.
+        Mutates self to set id field when it is not set.
         """
         from uuid import uuid4
 
-        self.id = str(uuid4())
+        self.id = self.id or str(uuid4())
         nodes: list[AppAssetNode] = []
 
         if self.node_type == AssetNodeType.FOLDER:
@@ -113,6 +114,37 @@ class AppAssetFileTree(BaseModel):
     """
 
     nodes: list[AppAssetNode] = Field(default_factory=list, description="Flat list of all nodes in the tree")
+
+    def ensure_unique_name(
+        self,
+        parent_id: str | None,
+        name: str,
+        *,
+        is_file: bool,
+        extra_taken: set[str] | None = None,
+    ) -> str:
+        """
+        Return a sibling-unique name by appending numeric suffixes when needed.
+
+        The suffix format is " <n>" (e.g. "report 1", "report 2"). For files,
+        the suffix is inserted before the extension.
+        """
+        taken = extra_taken or set()
+        if not self.has_child_named(parent_id, name) and name not in taken:
+            return name
+        suffix_index = 1
+        while True:
+            candidate = self._apply_name_suffix(name, suffix_index, is_file=is_file)
+            if not self.has_child_named(parent_id, candidate) and candidate not in taken:
+                return candidate
+            suffix_index += 1
+
+    @staticmethod
+    def _apply_name_suffix(name: str, suffix_index: int, *, is_file: bool) -> str:
+        if not is_file:
+            return f"{name} {suffix_index}"
+        stem, extension = os.path.splitext(name)
+        return f"{stem} {suffix_index}{extension}"
 
     def get(self, node_id: str) -> AppAssetNode | None:
         return next((n for n in self.nodes if n.id == node_id), None)

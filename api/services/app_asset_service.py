@@ -187,7 +187,12 @@ class AppAssetService:
                 assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
                 tree = assets.asset_tree
 
-                node = AppAssetNode.create_folder(str(uuid4()), name, parent_id)
+                unique_name = tree.ensure_unique_name(
+                    parent_id,
+                    name,
+                    is_file=False,
+                )
+                node = AppAssetNode.create_folder(str(uuid4()), unique_name, parent_id)
 
                 try:
                     tree.add(node)
@@ -408,6 +413,9 @@ class AppAssetService:
         The file metadata is saved immediately. If the user doesn't upload,
         the download will fail when the file is accessed.
 
+        If a sibling with the same name exists, a numeric suffix is appended
+        to make the name unique (e.g. "report 1.txt").
+
         Returns:
             tuple of (node, upload_url)
         """
@@ -416,8 +424,13 @@ class AppAssetService:
                 assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
                 tree = assets.asset_tree
 
+                unique_name = tree.ensure_unique_name(
+                    parent_id,
+                    name,
+                    is_file=True,
+                )
                 node_id = str(uuid4())
-                node = AppAssetNode.create_file(node_id, name, parent_id, size)
+                node = AppAssetNode.create_file(node_id, unique_name, parent_id, size)
 
                 try:
                     tree.add(node)
@@ -452,14 +465,40 @@ class AppAssetService:
         if not input_children:
             return []
 
-        new_nodes: list[AppAssetNode] = []
-        for child in input_children:
-            new_nodes.extend(child.to_app_asset_nodes(None))
-
         with AppAssetService._lock(app_model.id):
             with Session(db.engine, expire_on_commit=False) as session:
                 assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
                 tree = assets.asset_tree
+
+                def assign_ids_and_unique_names(
+                    nodes: list[BatchUploadNode],
+                    parent_id: str | None,
+                    taken_by_parent: dict[str | None, set[str]],
+                ) -> None:
+                    for node in nodes:
+                        if node.id is None:
+                            node.id = str(uuid4())
+                        if parent_id not in taken_by_parent:
+                            taken_by_parent[parent_id] = {
+                                child.name for child in tree.get_children(parent_id)
+                            }
+                        taken = taken_by_parent[parent_id]
+                        unique_name = tree.ensure_unique_name(
+                            parent_id,
+                            node.name,
+                            is_file=node.node_type == AssetNodeType.FILE,
+                            extra_taken=taken,
+                        )
+                        node.name = unique_name
+                        taken.add(unique_name)
+                        if node.node_type == AssetNodeType.FOLDER:
+                            assign_ids_and_unique_names(node.children, node.id, taken_by_parent)
+
+                assign_ids_and_unique_names(input_children, None, {})
+
+                new_nodes: list[AppAssetNode] = []
+                for child in input_children:
+                    new_nodes.extend(child.to_app_asset_nodes(None))
 
                 try:
                     for node in new_nodes:
