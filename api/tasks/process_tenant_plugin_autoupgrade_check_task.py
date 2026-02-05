@@ -62,7 +62,8 @@ def marketplace_batch_fetch_plugin_manifests(
     # Check Redis cache for each plugin
     for plugin_id in plugin_ids_plain_list:
         cached_result = _get_cached_manifest(plugin_id)
-        if cached_result is False or cached_result is None:
+        if not isinstance(cached_result, MarketplacePluginSnapshot):
+            # cached_result is False (not in cache) or None (cached as not found)
             logger.warning("plugin %s not found in cache, skipping", plugin_id)
             continue
 
