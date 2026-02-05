@@ -10,6 +10,8 @@ from core.sandbox.inspector.base import SandboxFileSource
 from core.sandbox.inspector.script_utils import (
     build_detect_kind_command,
     build_list_command,
+    build_upload_command,
+    guess_content_type,
     parse_kind_output,
     parse_list_output,
 )
@@ -129,8 +131,9 @@ class SandboxFileArchiveSource(SandboxFileSource):
             sandbox_storage = SandboxFileService.get_storage()
             is_file = kind == "file"
             filename = (os.path.basename(path) or "file") if is_file else f"{export_name}.tar.gz"
-            export_key = SandboxFilePaths.export(self._tenant_id, self._app_id, self._sandbox_id, export_id, filename)
+            export_key = SandboxFilePaths.export(self._tenant_id, self._app_id, self._sandbox_id, export_id)
             upload_url = sandbox_storage.get_upload_url(export_key, self._EXPORT_EXPIRES_IN_SECONDS)
+            content_type = guess_content_type(filename)
 
             # Build pipeline: for directories, tar first then upload; for files, upload directly
             archive_temp = f"/tmp/{export_id}.tar.gz"
@@ -146,7 +149,7 @@ class SandboxFileArchiveSource(SandboxFileSource):
                         on=not is_file,
                     )
                     .add(
-                        ["curl", "-sf", "-X", "PUT", "-T", src_path, upload_url],
+                        build_upload_command(src_path, upload_url, content_type=content_type),
                         error_message="Failed to upload file",
                     )
                     .add(["rm", "-f", archive_temp], on=not is_file)

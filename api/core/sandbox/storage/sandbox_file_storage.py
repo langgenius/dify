@@ -11,9 +11,9 @@ class SandboxFilePaths:
     """Facade for generating sandbox file storage keys."""
 
     @staticmethod
-    def export(tenant_id: str, app_id: str, sandbox_id: str, export_id: str, filename: str) -> str:
+    def export(tenant_id: str, app_id: str, sandbox_id: str, export_id: str) -> str:
         """sandbox_files/{tenant}/{app}/{sandbox}/{export_id}/{filename}"""
-        return f"sandbox_files/{tenant_id}/{app_id}/{sandbox_id}/{export_id}/{filename}"
+        return f"sandbox_files/{tenant_id}/{app_id}/{sandbox_id}/{export_id}"
 
     @staticmethod
     def archive(tenant_id: str, app_id: str, sandbox_id: str) -> str:

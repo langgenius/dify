@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 from typing import TypedDict, cast
 
 _PYTHON_EXEC_CMD = 'if command -v python3 >/dev/null 2>&1; then py=python3; else py=python; fi; "$py" -c "$0" "$@"'
@@ -96,3 +97,22 @@ def parse_kind_output(stdout: bytes, *, not_found_message: str) -> str:
     if kind not in ("dir", "file"):
         raise ValueError(not_found_message)
     return kind
+
+
+def guess_content_type(filename: str) -> str | None:
+    content_type, _ = mimetypes.guess_type(filename, strict=False)
+    if content_type is None:
+        return None
+    if content_type.startswith("text/"):
+        return f"{content_type}; charset=utf-8"
+    if content_type == "application/json":
+        return "application/json; charset=utf-8"
+    return content_type
+
+
+def build_upload_command(src_path: str, upload_url: str, *, content_type: str | None) -> list[str]:
+    command = ["curl", "-s", "-f", "-X", "PUT", "-T", src_path]
+    if content_type:
+        command.extend(["-H", f"Content-Type: {content_type}"])
+    command.append(upload_url)
+    return command

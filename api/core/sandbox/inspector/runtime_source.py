@@ -9,6 +9,8 @@ from core.sandbox.inspector.base import SandboxFileSource
 from core.sandbox.inspector.script_utils import (
     build_detect_kind_command,
     build_list_command,
+    build_upload_command,
+    guess_content_type,
     parse_kind_output,
     parse_list_output,
 )
@@ -88,11 +90,11 @@ class SandboxFileRuntimeSource(SandboxFileSource):
             self._app_id,
             self._sandbox_id,
             export_id,
-            filename,
         )
 
         sandbox_storage = SandboxFileService.get_storage()
         upload_url = sandbox_storage.get_upload_url(export_key, self._EXPORT_EXPIRES_IN_SECONDS)
+        content_type = guess_content_type(filename)
 
         if kind == "dir":
             archive_path = f"/tmp/{export_id}.tar.gz"
@@ -104,7 +106,7 @@ class SandboxFileRuntimeSource(SandboxFileSource):
                         error_message="Failed to archive directory in sandbox",
                     )
                     .add(
-                        ["curl", "-s", "-f", "-X", "PUT", "-T", archive_path, upload_url],
+                        build_upload_command(archive_path, upload_url, content_type=content_type),
                         error_message="Failed to upload directory archive from sandbox",
                     )
                     .execute(timeout=self._UPLOAD_TIMEOUT_SECONDS, raise_on_error=True)
@@ -124,7 +126,7 @@ class SandboxFileRuntimeSource(SandboxFileSource):
                 (
                     pipeline(self._runtime)
                     .add(
-                        ["curl", "-s", "-f", "-X", "PUT", "-T", path, upload_url],
+                        build_upload_command(path, upload_url, content_type=content_type),
                         error_message="Failed to upload file from sandbox",
                     )
                     .execute(timeout=self._UPLOAD_TIMEOUT_SECONDS, raise_on_error=True)
