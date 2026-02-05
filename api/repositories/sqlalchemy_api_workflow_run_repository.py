@@ -1166,6 +1166,51 @@ GROUP BY
         return cast(list[AverageInteractionStats], response_data)
 
 
+    def count_expired_runs_by_workflow_ids(
+        self,
+        workflow_ids: Sequence[str],
+        before_date: datetime,
+    ) -> int:
+        """
+        Count expired workflow runs for specific workflow IDs.
+        """
+        if not workflow_ids:
+            return 0
+
+        with self._session_maker() as session:
+            count = session.scalar(
+                select(func.count(WorkflowRun.id)).where(
+                    WorkflowRun.workflow_id.in_(workflow_ids),
+                    WorkflowRun.created_at < before_date,
+                )
+            )
+            return count or 0
+
+    def get_expired_run_ids_by_workflow_ids(
+        self,
+        workflow_ids: Sequence[str],
+        before_date: datetime,
+        batch_size: int = 1000,
+    ) -> Sequence[str]:
+        """
+        Get a batch of expired workflow run IDs for specific workflow IDs.
+        """
+        if not workflow_ids:
+            return []
+
+        with self._session_maker() as session:
+            stmt = (
+                select(WorkflowRun.id)
+                .where(
+                    WorkflowRun.workflow_id.in_(workflow_ids),
+                    WorkflowRun.created_at < before_date,
+                )
+                .order_by(WorkflowRun.created_at, WorkflowRun.id)
+                .limit(batch_size)
+            )
+            return list(session.scalars(stmt).all())
+
+
 class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
     """
     Private implementation of WorkflowPauseEntity for SQLAlchemy repository.

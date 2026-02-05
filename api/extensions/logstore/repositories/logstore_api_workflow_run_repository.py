@@ -817,3 +817,28 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         except Exception:
             logger.exception("Failed to get average app interaction statistics")
             raise
+
+    def count_expired_runs_by_workflow_ids(
+        self,
+        workflow_ids: Sequence[str],
+        before_date: datetime,
+    ) -> int:
+        """
+        Count expired workflow runs for specific workflow IDs.
+
+        Not supported in LogStore - cleanup operations should use SQLAlchemy repository.
+        """
+        raise NotImplementedError("Cleanup operations are not supported in LogStore repository")
+
+    def get_expired_run_ids_by_workflow_ids(
+        self,
+        workflow_ids: Sequence[str],
+        before_date: datetime,
+        batch_size: int = 1000,
+    ) -> Sequence[str]:
+        """
+        Get a batch of expired workflow run IDs for specific workflow IDs.
+
+        Not supported in LogStore - cleanup operations should use SQLAlchemy repository.
+        """
+        raise NotImplementedError("Cleanup operations are not supported in LogStore repository")

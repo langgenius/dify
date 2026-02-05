@@ -4,7 +4,6 @@ import time
 from collections.abc import Sequence
 
 import click
-from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 import app
@@ -21,6 +20,7 @@ from models.model import (
     MessageFile,
 )
 from models.workflow import ConversationVariable, WorkflowAppLog, WorkflowNodeExecutionModel, WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ def _get_specific_workflow_ids() -> list[str]:
     return [wid.strip() for wid in workflow_ids_str.split(",") if wid.strip()]
 
 
-@app.celery.task(queue="dataset")
+@app.celery.task(queue="retention")
 def clean_specific_workflow_logs():
     """Clean expired workflow run logs for specific workflows with retry mechanism and complete message cascade."""
 
@@ -56,48 +56,46 @@ def clean_specific_workflow_logs():
     retention_days = dify_config.SPECIFIC_WORKFLOW_LOG_RETENTION_DAYS
     cutoff_date = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=retention_days)
     session_factory = sessionmaker(db.engine, expire_on_commit=False)
+    workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
 
     try:
-        with session_factory.begin() as session:
-            total_workflow_runs = (
-                session.query(WorkflowRun)
-                .where(WorkflowRun.workflow_id.in_(workflow_ids), WorkflowRun.created_at < cutoff_date)
-                .count()
-            )
-            if total_workflow_runs == 0:
-                logger.info("No expired workflow run logs found for specified workflows")
-                return
-            logger.info("Found %s expired workflow run logs to clean for specified workflows", total_workflow_runs)
+        total_workflow_runs = workflow_run_repo.count_expired_runs_by_workflow_ids(
+            workflow_ids=workflow_ids,
+            before_date=cutoff_date,
+        )
+        if total_workflow_runs == 0:
+            logger.info("No expired workflow run logs found for specified workflows")
+            return
+        logger.info("Found %s expired workflow run logs to clean for specified workflows", total_workflow_runs)
 
         total_deleted = 0
         failed_batches = 0
         while True:
+            workflow_run_ids = workflow_run_repo.get_expired_run_ids_by_workflow_ids(
+                workflow_ids=workflow_ids,
+                before_date=cutoff_date,
+                batch_size=BATCH_SIZE,
+            )
+
+            if not workflow_run_ids:
+                break
+
             with session_factory.begin() as session:
-                workflow_run_ids = session.scalars(
-                    select(WorkflowRun.id)
-                    .where(WorkflowRun.workflow_id.in_(workflow_ids), WorkflowRun.created_at < cutoff_date)
-                    .order_by(WorkflowRun.created_at, WorkflowRun.id)
-                    .limit(BATCH_SIZE)
-                ).all()
-
-                if not workflow_run_ids:
-                    break
-
                 success = _delete_batch(session, workflow_run_ids, failed_batches)
 
-                if success:
-                    total_deleted += len(workflow_run_ids)
-                    failed_batches = 0
+            if success:
+                total_deleted += len(workflow_run_ids)
+                failed_batches = 0
+            else:
+                failed_batches += 1
+                if failed_batches >= MAX_RETRIES:
+                    logger.error("Failed to delete batch after %s retries, aborting cleanup for today", MAX_RETRIES)
+                    break
                 else:
-                    failed_batches += 1
-                    if failed_batches >= MAX_RETRIES:
-                        logger.error("Failed to delete batch after %s retries, aborting cleanup for today", MAX_RETRIES)
-                        break
-                    else:
-                        retry_delay_minutes = failed_batches * 5
-                        logger.warning("Batch deletion failed, retrying in %s minutes...", retry_delay_minutes)
-                        time.sleep(retry_delay_minutes * 60)
-                        continue
+                    retry_delay_minutes = failed_batches * 5
+                    logger.warning("Batch deletion failed, retrying in %s minutes...", retry_delay_minutes)
+                    time.sleep(retry_delay_minutes * 60)
+                    continue
 
         logger.info("Cleanup completed: %s expired workflow run logs deleted for specified workflows", total_deleted)
 
