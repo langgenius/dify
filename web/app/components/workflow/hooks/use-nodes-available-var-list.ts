@@ -31,6 +31,13 @@ const mergeAvailableNodes = (baseNodes: Node[], extraNodes: Node[]) => {
   return Array.from(merged.values())
 }
 
+const resolveAvailabilityNodeId = (node: Node, nodes: Node[]) => {
+  const parentNodeId = (node.data as { parent_node_id?: string })?.parent_node_id
+  if (parentNodeId && nodes.some(n => n.id === parentNodeId))
+    return parentNodeId
+  return node.id
+}
+
 const getNodeInfo = (nodeId: string, nodes: Node[]) => {
   const allNodes = nodes
   const node = allNodes.find(n => n.id === nodeId)
@@ -66,7 +73,8 @@ const useNodesAvailableVarList = (nodes: Node[], {
 
   nodes.forEach((node) => {
     const nodeId = node.id
-    const baseAvailableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
+    const availabilityNodeId = resolveAvailabilityNodeId(node, nodes)
+    const baseAvailableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(availabilityNodeId) : getBeforeNodesInSameBranchIncludeParent(availabilityNodeId))
     const availableNodes = mergeAvailableNodes(baseAvailableNodes, parentAvailableNodes)
     if (node.data.type === BlockEnum.Loop)
       availableNodes.push(node)
@@ -112,7 +120,8 @@ export const useGetNodesAvailableVarList = () => {
 
     nodes.forEach((node) => {
       const nodeId = node.id
-      const baseAvailableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
+      const availabilityNodeId = resolveAvailabilityNodeId(node, nodes)
+      const baseAvailableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(availabilityNodeId) : getBeforeNodesInSameBranchIncludeParent(availabilityNodeId))
       const availableNodes = mergeAvailableNodes(baseAvailableNodes, parentAvailableNodes)
       if (node.data.type === BlockEnum.Loop)
         availableNodes.push(node)
