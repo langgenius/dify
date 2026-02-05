@@ -250,64 +250,97 @@ class LLMGenerator:
             model=model_config.get("name", ""),
         )
 
-        try:
+        llm_result = None
+        with measure_time() as timer:
             try:
-                # the first step to generate the task prompt
-                prompt_content: LLMResult = model_instance.invoke_llm(
-                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
+                try:
+                    # the first step to generate the task prompt
+                    prompt_content: LLMResult = model_instance.invoke_llm(
+                        prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
+                    )
+                    llm_result = prompt_content
+                except InvokeError as e:
+                    error = str(e)
+                    error_step = "generate prefix prompt"
+                    rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
+
+                    if user_id:
+                        cls._emit_prompt_generation_trace(
+                            tenant_id=tenant_id,
+                            user_id=user_id,
+                            app_id=app_id,
+                            operation_type="rule_generate",
+                            instruction=instruction,
+                            generated_output="",
+                            llm_result=llm_result,
+                            timer=timer,
+                            error=error,
+                        )
+
+                    return rule_config
+
+                rule_config["prompt"] = cast(str, prompt_content.message.content)
+
+                if not isinstance(prompt_content.message.content, str):
+                    raise NotImplementedError("prompt content is not a string")
+                parameter_generate_prompt = parameter_template.format(
+                    inputs={
+                        "INPUT_TEXT": prompt_content.message.content,
+                    },
+                    remove_template_variables=False,
                 )
-            except InvokeError as e:
-                error = str(e)
-                error_step = "generate prefix prompt"
-                rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
+                parameter_messages = [UserPromptMessage(content=parameter_generate_prompt)]
 
-                return rule_config
-
-            rule_config["prompt"] = cast(str, prompt_content.message.content)
-
-            if not isinstance(prompt_content.message.content, str):
-                raise NotImplementedError("prompt content is not a string")
-            parameter_generate_prompt = parameter_template.format(
-                inputs={
-                    "INPUT_TEXT": prompt_content.message.content,
-                },
-                remove_template_variables=False,
-            )
-            parameter_messages = [UserPromptMessage(content=parameter_generate_prompt)]
-
-            # the second step to generate the task_parameter and task_statement
-            statement_generate_prompt = statement_template.format(
-                inputs={
-                    "TASK_DESCRIPTION": instruction,
-                    "INPUT_TEXT": prompt_content.message.content,
-                },
-                remove_template_variables=False,
-            )
-            statement_messages = [UserPromptMessage(content=statement_generate_prompt)]
-
-            try:
-                parameter_content: LLMResult = model_instance.invoke_llm(
-                    prompt_messages=list(parameter_messages), model_parameters=model_parameters, stream=False
+                # the second step to generate the task_parameter and task_statement
+                statement_generate_prompt = statement_template.format(
+                    inputs={
+                        "TASK_DESCRIPTION": instruction,
+                        "INPUT_TEXT": prompt_content.message.content,
+                    },
+                    remove_template_variables=False,
                 )
-                rule_config["variables"] = re.findall(r'"\s*([^"]+)\s*"', cast(str, parameter_content.message.content))
-            except InvokeError as e:
-                error = str(e)
-                error_step = "generate variables"
+                statement_messages = [UserPromptMessage(content=statement_generate_prompt)]
 
-            try:
-                statement_content: LLMResult = model_instance.invoke_llm(
-                    prompt_messages=list(statement_messages), model_parameters=model_parameters, stream=False
-                )
-                rule_config["opening_statement"] = cast(str, statement_content.message.content)
-            except InvokeError as e:
-                error = str(e)
-                error_step = "generate conversation opener"
+                try:
+                    parameter_content: LLMResult = model_instance.invoke_llm(
+                        prompt_messages=list(parameter_messages), model_parameters=model_parameters, stream=False
+                    )
+                    rule_config["variables"] = re.findall(
+                        r'"\s*([^"]+)\s*"', cast(str, parameter_content.message.content)
+                    )
+                except InvokeError as e:
+                    error = str(e)
+                    error_step = "generate variables"
 
-        except Exception as e:
-            logger.exception("Failed to generate rule config, model: %s", model_config.get("name"))
-            rule_config["error"] = str(e)
+                try:
+                    statement_content: LLMResult = model_instance.invoke_llm(
+                        prompt_messages=list(statement_messages), model_parameters=model_parameters, stream=False
+                    )
+                    rule_config["opening_statement"] = cast(str, statement_content.message.content)
+                except InvokeError as e:
+                    error = str(e)
+                    error_step = "generate conversation opener"
+
+            except Exception as e:
+                logger.exception("Failed to generate rule config, model: %s", model_config.get("name"))
+                rule_config["error"] = str(e)
+                error = str(e)
 
         rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
+
+        if user_id:
+            generated_output = rule_config.get("prompt", "")
+            cls._emit_prompt_generation_trace(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                app_id=app_id,
+                operation_type="rule_generate",
+                instruction=instruction,
+                generated_output=str(generated_output) if generated_output else "",
+                llm_result=llm_result,
+                timer=timer,
+                error=error or None,
+            )
 
         return rule_config
 
