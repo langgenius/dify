@@ -123,7 +123,7 @@ export function isBinaryFile(extension: string): boolean {
 }
 
 export function isTextLikeFile(extension: string): boolean {
-  return !isBinaryFile(extension) && !isImageFile(extension) && !isVideoFile(extension)
+  return !isBinaryFile(extension) && !isImageFile(extension) && !isVideoFile(extension) && !isPdfFile(extension)
 }
 
 export function isImageFile(extension: string): boolean {
