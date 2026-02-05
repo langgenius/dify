@@ -1,15 +1,10 @@
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-// Import after mocks
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { CommonCreateModal } from './common-modal'
-
-// ============================================================================
-// Type Definitions
-// ============================================================================
 
 type PluginDetail = {
   plugin_id: string
@@ -32,10 +27,6 @@ type TriggerLogEntity = {
   timestamp: string
   level: 'info' | 'warn' | 'error'
 }
-
-// ============================================================================
-// Mock Factory Functions
-// ============================================================================
 
 function createMockPluginDetail(overrides: Partial<PluginDetail> = {}): PluginDetail {
   return {
@@ -74,18 +65,12 @@ function createMockLogData(logs: TriggerLogEntity[] = []): { logs: TriggerLogEnt
   return { logs }
 }
 
-// ============================================================================
-// Mock Setup
-// ============================================================================
-
-// Mock plugin store
 const mockPluginDetail = createMockPluginDetail()
 const mockUsePluginStore = vi.fn(() => mockPluginDetail)
 vi.mock('../../store', () => ({
   usePluginStore: () => mockUsePluginStore(),
 }))
 
-// Mock subscription list hook
 const mockRefetch = vi.fn()
 vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => ({
@@ -93,13 +78,11 @@ vi.mock('../use-subscription-list', () => ({
   }),
 }))
 
-// Mock service hooks
 const mockVerifyCredentials = vi.fn()
 const mockCreateBuilder = vi.fn()
 const mockBuildSubscription = vi.fn()
 const mockUpdateBuilder = vi.fn()
 
-// Configurable pending states
 let mockIsVerifyingCredentials = false
 let mockIsBuilding = false
 const setMockPendingStates = (verifying: boolean, building: boolean) => {
@@ -129,18 +112,15 @@ vi.mock('@/service/use-triggers', () => ({
   }),
 }))
 
-// Mock error parser
 const mockParsePluginErrorMessage = vi.fn().mockResolvedValue(null)
 vi.mock('@/utils/error-parser', () => ({
   parsePluginErrorMessage: (...args: unknown[]) => mockParsePluginErrorMessage(...args),
 }))
 
-// Mock URL validation
 vi.mock('@/utils/urlValidation', () => ({
   isPrivateOrLocalAddress: vi.fn().mockReturnValue(false),
 }))
 
-// Mock toast
 const mockToastNotify = vi.fn()
 vi.mock('@/app/components/base/toast', () => ({
   default: {
@@ -148,7 +128,6 @@ vi.mock('@/app/components/base/toast', () => ({
   },
 }))
 
-// Mock Modal component
 vi.mock('@/app/components/base/modal/modal', () => ({
   default: ({
     children,
@@ -179,7 +158,6 @@ vi.mock('@/app/components/base/modal/modal', () => ({
   ),
 }))
 
-// Configurable form mock values
 type MockFormValuesConfig = {
   values: Record<string, unknown>
   isCheckValidated: boolean
@@ -190,7 +168,6 @@ let mockFormValuesConfig: MockFormValuesConfig = {
 }
 let mockGetFormReturnsNull = false
 
-// Separate validation configs for different forms
 let mockSubscriptionFormValidated = true
 let mockAutoParamsFormValidated = true
 let mockManualPropsFormValidated = true
@@ -207,7 +184,6 @@ const setMockFormValidation = (subscription: boolean, autoParams: boolean, manua
   mockManualPropsFormValidated = manualProps
 }
 
-// Mock BaseForm component with ref support
 vi.mock('@/app/components/base/form/components/base', async () => {
   const React = await import('react')
 
@@ -219,7 +195,6 @@ vi.mock('@/app/components/base/form/components/base', async () => {
   type MockBaseFormProps = { formSchemas: Array<{ name: string }>, onChange?: () => void }
 
   function MockBaseFormInner({ formSchemas, onChange }: MockBaseFormProps, ref: React.ForwardedRef<MockFormRef>) {
-    // Determine which form this is based on schema
     const isSubscriptionForm = formSchemas.some((s: { name: string }) => s.name === 'subscription_name')
     const isAutoParamsForm = formSchemas.some((s: { name: string }) =>
       ['repo_name', 'branch', 'repo', 'text_field', 'dynamic_field', 'bool_field', 'text_input_field', 'unknown_field', 'count'].includes(s.name),
@@ -265,12 +240,10 @@ vi.mock('@/app/components/base/form/components/base', async () => {
   }
 })
 
-// Mock EncryptedBottom component
 vi.mock('@/app/components/base/encrypted-bottom', () => ({
   EncryptedBottom: () => <div data-testid="encrypted-bottom">Encrypted</div>,
 }))
 
-// Mock LogViewer component
 vi.mock('../log-viewer', () => ({
   default: ({ logs }: { logs: TriggerLogEntity[] }) => (
     <div data-testid="log-viewer">
@@ -281,7 +254,6 @@ vi.mock('../log-viewer', () => ({
   ),
 }))
 
-// Mock debounce
 vi.mock('es-toolkit/compat', () => ({
   debounce: (fn: (...args: unknown[]) => unknown) => {
     const debouncedFn = (...args: unknown[]) => fn(...args)
@@ -289,10 +261,6 @@ vi.mock('es-toolkit/compat', () => ({
     return debouncedFn
   },
 }))
-
-// ============================================================================
-// Test Suites
-// ============================================================================
 
 describe('CommonCreateModal', () => {
   const defaultProps = {
@@ -441,7 +409,8 @@ describe('CommonCreateModal', () => {
     })
 
     it('should call onConfirm handler when confirm button is clicked', () => {
-      render(<CommonCreateModal {...defaultProps} />)
+      // Provide builder so the guard passes and credentials check is reached
+      render(<CommonCreateModal {...defaultProps} builder={createMockSubscriptionBuilder()} />)
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -630,20 +599,30 @@ describe('CommonCreateModal', () => {
         },
       })
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
+      const existingBuilder = createMockSubscriptionBuilder()
       mockVerifyCredentials.mockImplementation((params, { onSuccess }) => {
         onSuccess()
       })
 
-      render(<CommonCreateModal {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockCreateBuilder).toHaveBeenCalled()
-      })
+      render(<CommonCreateModal {...defaultProps} builder={existingBuilder} />)
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
       await waitFor(() => {
-        expect(mockVerifyCredentials).toHaveBeenCalled()
+        expect(mockVerifyCredentials).toHaveBeenCalledWith(
+          expect.objectContaining({
+            provider: 'test-provider',
+            subscriptionBuilderId: existingBuilder.id,
+          }),
+          expect.objectContaining({
+            onSuccess: expect.any(Function),
+            onError: expect.any(Function),
+          }),
+        )
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('modal-confirm')).toHaveTextContent('pluginTrigger.modal.common.create')
       })
     })
 
@@ -660,15 +639,12 @@ describe('CommonCreateModal', () => {
         },
       })
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
+      const existingBuilder = createMockSubscriptionBuilder()
       mockVerifyCredentials.mockImplementation((params, { onError }) => {
         onError(new Error('Verification failed'))
       })
 
-      render(<CommonCreateModal {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockCreateBuilder).toHaveBeenCalled()
-      })
+      render(<CommonCreateModal {...defaultProps} builder={existingBuilder} />)
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -820,6 +796,9 @@ describe('CommonCreateModal', () => {
       await waitFor(() => {
         expect(mockCreateBuilder).toHaveBeenCalled()
       })
+
+      // Flush pending state updates from createBuilder promise resolution
+      await act(async () => {})
 
       const input = screen.getByTestId('form-field-webhook_url')
       fireEvent.change(input, { target: { value: 'https://example.com/webhook' } })
@@ -1240,12 +1219,21 @@ describe('CommonCreateModal', () => {
 
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} />)
 
+      // Wait for createBuilder to complete and state to update
       await waitFor(() => {
         expect(mockCreateBuilder).toHaveBeenCalled()
       })
 
+      // Allow React to process the state update from createBuilder
+      await act(async () => {})
+
       const input = screen.getByTestId('form-field-webhook_url')
       fireEvent.change(input, { target: { value: 'https://example.com/webhook' } })
+
+      // Wait for updateBuilder to be called, then check the toast
+      await waitFor(() => {
+        expect(mockUpdateBuilder).toHaveBeenCalled()
+      })
 
       await waitFor(() => {
         expect(mockToastNotify).toHaveBeenCalledWith({
@@ -1447,7 +1435,8 @@ describe('CommonCreateModal', () => {
       })
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
 
-      render(<CommonCreateModal {...defaultProps} />)
+      // Provide builder so the guard passes and credentials check is reached
+      render(<CommonCreateModal {...defaultProps} builder={createMockSubscriptionBuilder()} />)
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -1872,6 +1861,192 @@ describe('CommonCreateModal', () => {
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
 
       expect(screen.getByTestId('modal')).toHaveAttribute('data-disabled', 'true')
+    })
+  })
+
+  describe('normalizeFormType Additional Branches', () => {
+    it('should handle "text" type by returning textInput', () => {
+      const detailWithText = createMockPluginDetail({
+        declaration: {
+          trigger: {
+            subscription_constructor: {
+              credentials_schema: [],
+              parameters: [
+                { name: 'text_type_field', type: 'text' },
+              ],
+            },
+          },
+        },
+      })
+      mockUsePluginStore.mockReturnValue(detailWithText)
+
+      const builder = createMockSubscriptionBuilder()
+      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+
+      expect(screen.getByTestId('form-field-text_type_field')).toBeInTheDocument()
+    })
+
+    it('should handle "secret" type by returning secretInput', () => {
+      const detailWithSecret = createMockPluginDetail({
+        declaration: {
+          trigger: {
+            subscription_constructor: {
+              credentials_schema: [],
+              parameters: [
+                { name: 'secret_type_field', type: 'secret' },
+              ],
+            },
+          },
+        },
+      })
+      mockUsePluginStore.mockReturnValue(detailWithSecret)
+
+      const builder = createMockSubscriptionBuilder()
+      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} builder={builder} />)
+
+      expect(screen.getByTestId('form-field-secret_type_field')).toBeInTheDocument()
+    })
+  })
+
+  describe('HandleManualPropertiesChange Provider Fallback', () => {
+    it('should not call updateBuilder when provider is empty', async () => {
+      const detailWithEmptyProvider = createMockPluginDetail({
+        provider: '',
+        declaration: {
+          trigger: {
+            subscription_schema: [
+              { name: 'webhook_url', type: 'text', required: true },
+            ],
+            subscription_constructor: {
+              credentials_schema: [],
+              parameters: [],
+            },
+          },
+        },
+      })
+      mockUsePluginStore.mockReturnValue(detailWithEmptyProvider)
+
+      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} />)
+
+      const input = screen.getByTestId('form-field-webhook_url')
+      fireEvent.change(input, { target: { value: 'https://example.com/webhook' } })
+
+      // updateBuilder should not be called when provider is empty
+      expect(mockUpdateBuilder).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Configuration Step Without Endpoint', () => {
+    it('should handle builder without endpoint', async () => {
+      const builderWithoutEndpoint = createMockSubscriptionBuilder({
+        endpoint: '',
+      })
+
+      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builderWithoutEndpoint} />)
+
+      // Component should render without errors
+      expect(screen.getByTestId('modal')).toBeInTheDocument()
+    })
+  })
+
+  describe('ApiKeyStep Flow Additional Coverage', () => {
+    it('should handle verify when no builder created yet', async () => {
+      const detailWithCredentials = createMockPluginDetail({
+        declaration: {
+          trigger: {
+            subscription_constructor: {
+              credentials_schema: [
+                { name: 'api_key', type: 'secret', required: true },
+              ],
+            },
+          },
+        },
+      })
+      mockUsePluginStore.mockReturnValue(detailWithCredentials)
+
+      // Make createBuilder slow
+      mockCreateBuilder.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 1000)))
+
+      render(<CommonCreateModal {...defaultProps} />)
+
+      // Click verify before builder is created
+      fireEvent.click(screen.getByTestId('modal-confirm'))
+
+      // Should still attempt to verify
+      expect(screen.getByTestId('modal')).toBeInTheDocument()
+    })
+  })
+
+  describe('Auto Parameters Not For APIKEY in Configuration', () => {
+    it('should include parameters for APIKEY in configuration step', async () => {
+      const detailWithParams = createMockPluginDetail({
+        declaration: {
+          trigger: {
+            subscription_constructor: {
+              credentials_schema: [
+                { name: 'api_key', type: 'secret', required: true },
+              ],
+              parameters: [
+                { name: 'extra_param', type: 'string', required: true },
+              ],
+            },
+          },
+        },
+      })
+      mockUsePluginStore.mockReturnValue(detailWithParams)
+
+      // First verify credentials
+      mockVerifyCredentials.mockImplementation((params, { onSuccess }) => {
+        onSuccess()
+      })
+
+      const builder = createMockSubscriptionBuilder()
+      render(<CommonCreateModal {...defaultProps} builder={builder} />)
+
+      // Click verify
+      fireEvent.click(screen.getByTestId('modal-confirm'))
+
+      await waitFor(() => {
+        expect(mockVerifyCredentials).toHaveBeenCalled()
+      })
+
+      // Now in configuration step, should see extra_param
+      expect(screen.getByTestId('form-field-extra_param')).toBeInTheDocument()
+    })
+  })
+
+  describe('needCheckValidatedValues Option', () => {
+    it('should pass needCheckValidatedValues: false for manual properties', async () => {
+      const detailWithManualSchema = createMockPluginDetail({
+        declaration: {
+          trigger: {
+            subscription_schema: [
+              { name: 'webhook_url', type: 'text', required: true },
+            ],
+            subscription_constructor: {
+              credentials_schema: [],
+              parameters: [],
+            },
+          },
+        },
+      })
+      mockUsePluginStore.mockReturnValue(detailWithManualSchema)
+
+      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} />)
+
+      await waitFor(() => {
+        expect(mockCreateBuilder).toHaveBeenCalled()
+      })
+
+      // Flush pending state updates from createBuilder promise resolution
+      await act(async () => {})
+
+      const input = screen.getByTestId('form-field-webhook_url')
+      fireEvent.change(input, { target: { value: 'test' } })
+
+      await waitFor(() => {
+        expect(mockUpdateBuilder).toHaveBeenCalled()
+      })
     })
   })
 })

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import supported_language
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -37,7 +38,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_database import db
-from fields.member_fields import account_fields
+from fields.member_fields import Account as AccountResponse
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, TimestampField, extract_remote_ip, timezone
 from libs.login import current_account_with_tenant, login_required
@@ -170,6 +171,25 @@ reg(ChangeEmailSendPayload)
 reg(ChangeEmailValidityPayload)
 reg(ChangeEmailResetPayload)
 reg(CheckEmailUniquePayload)
+register_schema_models(console_ns, AccountResponse)
+
+
+def _serialize_account(account) -> dict:
+    return AccountResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
+
+
+integrate_fields = {
+    "provider": fields.String,
+    "created_at": TimestampField,
+    "is_bound": fields.Boolean,
+    "link": fields.String,
+}
+
+integrate_model = console_ns.model("AccountIntegrate", integrate_fields)
+integrate_list_model = console_ns.model(
+    "AccountIntegrateList",
+    {"data": fields.List(fields.Nested(integrate_model))},
+)
 
 
 @console_ns.route("/account/init")
@@ -223,11 +243,11 @@ class AccountProfileApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     @enterprise_license_required
     def get(self):
         current_user, _ = current_account_with_tenant()
-        return current_user
+        return _serialize_account(current_user)
 
 
 @console_ns.route("/account/name")
@@ -236,14 +256,14 @@ class AccountNameApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = AccountNamePayload.model_validate(payload)
         updated_account = AccountService.update_account(current_user, name=args.name)
 
-        return updated_account
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/avatar")
@@ -252,7 +272,7 @@ class AccountAvatarApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
@@ -260,7 +280,7 @@ class AccountAvatarApi(Resource):
 
         updated_account = AccountService.update_account(current_user, avatar=args.avatar)
 
-        return updated_account
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/interface-language")
@@ -269,7 +289,7 @@ class AccountInterfaceLanguageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
@@ -277,7 +297,7 @@ class AccountInterfaceLanguageApi(Resource):
 
         updated_account = AccountService.update_account(current_user, interface_language=args.interface_language)
 
-        return updated_account
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/interface-theme")
@@ -286,7 +306,7 @@ class AccountInterfaceThemeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
@@ -294,7 +314,7 @@ class AccountInterfaceThemeApi(Resource):
 
         updated_account = AccountService.update_account(current_user, interface_theme=args.interface_theme)
 
-        return updated_account
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/timezone")
@@ -303,7 +323,7 @@ class AccountTimezoneApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
@@ -311,7 +331,7 @@ class AccountTimezoneApi(Resource):
 
         updated_account = AccountService.update_account(current_user, timezone=args.timezone)
 
-        return updated_account
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/password")
@@ -320,7 +340,7 @@ class AccountPasswordApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
@@ -331,26 +351,15 @@ class AccountPasswordApi(Resource):
         except ServiceCurrentPasswordIncorrectError:
             raise CurrentPasswordIncorrectError()
 
-        return {"result": "success"}
+        return _serialize_account(current_user)
 
 
 @console_ns.route("/account/integrates")
 class AccountIntegrateApi(Resource):
-    integrate_fields = {
-        "provider": fields.String,
-        "created_at": TimestampField,
-        "is_bound": fields.Boolean,
-        "link": fields.String,
-    }
-
-    integrate_list_fields = {
-        "data": fields.List(fields.Nested(integrate_fields)),
-    }
-
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(integrate_list_fields)
+    @marshal_with(integrate_list_model)
     def get(self):
         account, _ = current_account_with_tenant()
 
@@ -618,7 +627,7 @@ class ChangeEmailResetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
+    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     def post(self):
         payload = console_ns.payload or {}
         args = ChangeEmailResetPayload.model_validate(payload)
@@ -647,7 +656,7 @@ class ChangeEmailResetApi(Resource):
             email=normalized_new_email,
         )
 
-        return updated_account
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/change-email/check-email-unique")

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { ToastProvider } from '@/app/components/base/toast'
 import {
+  AppSourceType,
   fetchChatList,
   fetchConversations,
   generationConversationName,
@@ -49,20 +50,24 @@ vi.mock('../utils', async () => {
   }
 })
 
-vi.mock('@/service/share', () => ({
-  fetchChatList: vi.fn(),
-  fetchConversations: vi.fn(),
-  generationConversationName: vi.fn(),
-  fetchAppInfo: vi.fn(),
-  fetchAppMeta: vi.fn(),
-  fetchAppParams: vi.fn(),
-  getAppAccessModeByAppCode: vi.fn(),
-  delConversation: vi.fn(),
-  pinConversation: vi.fn(),
-  renameConversation: vi.fn(),
-  unpinConversation: vi.fn(),
-  updateFeedback: vi.fn(),
-}))
+vi.mock('@/service/share', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/share')>()
+  return {
+    ...actual,
+    fetchChatList: vi.fn(),
+    fetchConversations: vi.fn(),
+    generationConversationName: vi.fn(),
+    fetchAppInfo: vi.fn(),
+    fetchAppMeta: vi.fn(),
+    fetchAppParams: vi.fn(),
+    getAppAccessModeByAppCode: vi.fn(),
+    delConversation: vi.fn(),
+    pinConversation: vi.fn(),
+    renameConversation: vi.fn(),
+    unpinConversation: vi.fn(),
+    updateFeedback: vi.fn(),
+  }
+})
 
 const mockFetchConversations = vi.mocked(fetchConversations)
 const mockFetchChatList = vi.mocked(fetchChatList)
@@ -162,13 +167,13 @@ describe('useChatWithHistory', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockFetchConversations).toHaveBeenCalledWith(false, 'app-1', undefined, true, 100)
+        expect(mockFetchConversations).toHaveBeenCalledWith(AppSourceType.webApp, 'app-1', undefined, true, 100)
       })
       await waitFor(() => {
-        expect(mockFetchConversations).toHaveBeenCalledWith(false, 'app-1', undefined, false, 100)
+        expect(mockFetchConversations).toHaveBeenCalledWith(AppSourceType.webApp, 'app-1', undefined, false, 100)
       })
       await waitFor(() => {
-        expect(mockFetchChatList).toHaveBeenCalledWith('conversation-1', false, 'app-1')
+        expect(mockFetchChatList).toHaveBeenCalledWith('conversation-1', AppSourceType.webApp, 'app-1')
       })
       await waitFor(() => {
         expect(result.current.pinnedConversationList).toEqual(pinnedData.data)
@@ -204,7 +209,7 @@ describe('useChatWithHistory', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockGenerationConversationName).toHaveBeenCalledWith(false, 'app-1', 'conversation-new')
+        expect(mockGenerationConversationName).toHaveBeenCalledWith(AppSourceType.webApp, 'app-1', 'conversation-new')
       })
       await waitFor(() => {
         expect(result.current.conversationList[0]).toEqual(generatedConversation)

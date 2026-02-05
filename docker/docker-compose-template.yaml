@@ -21,7 +21,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.11.4
+    image: langgenius/dify-api:1.12.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -63,7 +63,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.11.4
+    image: langgenius/dify-api:1.12.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -102,7 +102,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.11.4
+    image: langgenius/dify-api:1.12.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -132,7 +132,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.11.4
+    image: langgenius/dify-web:1.12.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -270,7 +270,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.5.2-local
+    image: langgenius/dify-plugin-daemon:0.5.3-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -662,13 +662,14 @@ services:
       - "${IRIS_SUPER_SERVER_PORT:-1972}:1972"
       - "${IRIS_WEB_SERVER_PORT:-52773}:52773"
     volumes:
-      - ./volumes/iris:/opt/iris
+      - ./volumes/iris:/durable
       - ./iris/iris-init.script:/iris-init.script
       - ./iris/docker-entrypoint.sh:/custom-entrypoint.sh
     entrypoint: ["/custom-entrypoint.sh"]
     tty: true
     environment:
       TZ: ${IRIS_TIMEZONE:-UTC}
+      ISC_DATA_DIRECTORY: /durable/iris
 
   # Oracle vector database
   oracle:
