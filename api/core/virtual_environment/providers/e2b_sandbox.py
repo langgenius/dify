@@ -216,8 +216,8 @@ class E2BEnvironment(VirtualEnvironment):
         """
         remote_path = self._workspace_path(path)
         sandbox = self.metadata.store[self.StoreKey.SANDBOX]
-        content = sandbox.files.read(remote_path)
-        return BytesIO(content.encode())
+        content = sandbox.files.read(remote_path, format="bytes")
+        return BytesIO(bytes(content))
 
     def list_files(self, directory_path: str, limit: int) -> Sequence[FileState]:
         """
