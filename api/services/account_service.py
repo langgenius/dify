@@ -327,6 +327,17 @@ class AccountService:
     @staticmethod
     def delete_account(account: Account):
         """Delete account. This method only adds a task to the queue for deletion."""
+        # Queue account deletion sync tasks for all workspaces BEFORE account deletion (enterprise only)
+        from services.enterprise.account_deletion_sync import sync_account_deletion
+
+        sync_success = sync_account_deletion(account_id=account.id, source="account_deleted")
+        if not sync_success:
+            logger.warning(
+                "Enterprise account deletion sync failed for account %s; proceeding with local deletion.",
+                account.id,
+            )
+
+        # Now proceed with async account deletion
         delete_account_task.delay(account.id)
 
     @staticmethod
@@ -1229,6 +1240,19 @@ class TenantService:
 
         if dify_config.BILLING_ENABLED:
             BillingService.clean_billing_info_cache(tenant.id)
+
+        # Queue account deletion sync task for enterprise backend to reassign resources (enterprise only)
+        from services.enterprise.account_deletion_sync import sync_workspace_member_removal
+
+        sync_success = sync_workspace_member_removal(
+            workspace_id=tenant.id, member_id=account.id, source="workspace_member_removed"
+        )
+        if not sync_success:
+            logger.warning(
+                "Enterprise workspace member removal sync failed: workspace_id=%s, member_id=%s",
+                tenant.id,
+                account.id,
+            )
 
     @staticmethod
     def update_member_role(tenant: Tenant, member: Account, new_role: str, operator: Account):
