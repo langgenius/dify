@@ -213,10 +213,6 @@ const AppPublisher = ({
 
       const appId = appDetail?.id
       const socket = appId ? webSocketClient.getSocket(appId) : null
-      console.warn('[app-publisher] publish success', {
-        appId,
-        hasSocket: Boolean(socket),
-      })
       if (appId)
         invalidateAppWorkflow(appId)
       else

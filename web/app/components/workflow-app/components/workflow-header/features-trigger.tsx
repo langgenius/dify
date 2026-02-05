@@ -158,20 +158,10 @@ const FeaturesTrigger = () => {
 
     // Then perform the detailed validation
     if (await handleCheckBeforePublish()) {
-      console.warn('[workflow-header] publish start', {
-        appId: appID,
-        title: publishParams?.title ?? '',
-      })
       const res = await publishWorkflow({
         url: `/apps/${appID}/workflows/publish`,
         title: publishParams?.title || '',
         releaseNotes: publishParams?.releaseNotes || '',
-      })
-
-      console.warn('[workflow-header] publish response', {
-        appId: appID,
-        hasResponse: Boolean(res),
-        createdAt: res?.created_at,
       })
       if (res) {
         notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
