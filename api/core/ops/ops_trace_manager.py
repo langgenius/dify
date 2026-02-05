@@ -608,7 +608,7 @@ class TraceTask:
             TraceTaskName.WORKFLOW_TRACE: lambda: self.workflow_trace(
                 workflow_run_id=self.workflow_run_id, conversation_id=self.conversation_id, user_id=self.user_id
             ),
-            TraceTaskName.MESSAGE_TRACE: lambda: self.message_trace(message_id=self.message_id),
+            TraceTaskName.MESSAGE_TRACE: lambda: self.message_trace(message_id=self.message_id, **self.kwargs),
             TraceTaskName.MODERATION_TRACE: lambda: self.moderation_trace(
                 message_id=self.message_id, timer=self.timer, **self.kwargs
             ),
@@ -736,7 +736,7 @@ class TraceTask:
         )
         return workflow_trace_info
 
-    def message_trace(self, message_id: str | None):
+    def message_trace(self, message_id: str | None, **kwargs):
         if not message_id:
             return {}
         message_data = get_message_data(message_id)
@@ -784,6 +784,8 @@ class TraceTask:
             "app_name": app_name,
             "workspace_name": workspace_name,
         }
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
 
         message_tokens = message_data.message_tokens
 
@@ -825,6 +827,8 @@ class TraceTask:
             "preset_response": moderation_result.preset_response,
             "query": moderation_result.query,
         }
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
 
         # get workflow_app_log_id
         workflow_app_log_id = None
@@ -866,6 +870,8 @@ class TraceTask:
             "workflow_run_id": message_data.workflow_run_id,
             "from_source": message_data.from_source,
         }
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
 
         # get workflow_app_log_id
         workflow_app_log_id = None
@@ -952,6 +958,8 @@ class TraceTask:
             "workspace_name": workspace_name,
             "embedding_models": embedding_models,
         }
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
 
         dataset_retrieval_trace_info = DatasetRetrievalTraceInfo(
             trace_id=self.trace_id,
@@ -1000,6 +1008,10 @@ class TraceTask:
             "error": error,
             "tool_parameters": tool_parameters,
         }
+        if message_data.workflow_run_id:
+            metadata["workflow_run_id"] = message_data.workflow_run_id
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
 
         file_url = ""
         message_file_data = db.session.query(MessageFile).filter_by(message_id=message_id).first()
@@ -1054,6 +1066,8 @@ class TraceTask:
             "conversation_id": conversation_id,
             "tenant_id": tenant_id,
         }
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
 
         generate_name_trace_info = GenerateNameTraceInfo(
             trace_id=self.trace_id,
@@ -1109,6 +1123,8 @@ class TraceTask:
             "model_provider": model_provider,
             "model_name": model_name,
         }
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
 
         return PromptGenerationTraceInfo(
             trace_id=self.trace_id,

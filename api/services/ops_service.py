@@ -1,9 +1,12 @@
+import logging
 from typing import Any
 
 from core.ops.entities.config_entity import BaseTracingConfig
 from core.ops.ops_trace_manager import OpsTraceManager, provider_config_map
 from extensions.ext_database import db
 from models.model import App, TraceAppConfig
+
+logger = logging.getLogger(__name__)
 
 
 class OpsService:
@@ -135,12 +138,13 @@ class OpsService:
         return trace_config_data.to_dict()
 
     @classmethod
-    def create_tracing_app_config(cls, app_id: str, tracing_provider: str, tracing_config: dict):
+    def create_tracing_app_config(cls, app_id: str, tracing_provider: str, tracing_config: dict, account_id: str):
         """
         Create tracing app config
         :param app_id: app id
         :param tracing_provider: tracing provider
         :param tracing_config: tracing config
+        :param account_id: account id of the user creating the config
         :return:
         """
         try:
@@ -207,15 +211,19 @@ class OpsService:
         db.session.add(trace_config_data)
         db.session.commit()
 
+        # Log the creation with modifier information
+        logger.info("Trace config created: app_id=%s, provider=%s, created_by=%s", app_id, tracing_provider, account_id)
+
         return {"result": "success"}
 
     @classmethod
-    def update_tracing_app_config(cls, app_id: str, tracing_provider: str, tracing_config: dict):
+    def update_tracing_app_config(cls, app_id: str, tracing_provider: str, tracing_config: dict, account_id: str):
         """
         Update tracing app config
         :param app_id: app id
         :param tracing_provider: tracing provider
         :param tracing_config: tracing config
+        :param account_id: account id of the user updating the config
         :return:
         """
         try:
@@ -251,14 +259,18 @@ class OpsService:
         current_trace_config.tracing_config = tracing_config
         db.session.commit()
 
+        # Log the update with modifier information
+        logger.info("Trace config updated: app_id=%s, provider=%s, updated_by=%s", app_id, tracing_provider, account_id)
+
         return current_trace_config.to_dict()
 
     @classmethod
-    def delete_tracing_app_config(cls, app_id: str, tracing_provider: str):
+    def delete_tracing_app_config(cls, app_id: str, tracing_provider: str, account_id: str):
         """
         Delete tracing app config
         :param app_id: app id
         :param tracing_provider: tracing provider
+        :param account_id: account id of the user deleting the config
         :return:
         """
         trace_config = (
@@ -269,6 +281,9 @@ class OpsService:
 
         if not trace_config:
             return None
+
+        # Log the deletion with modifier information
+        logger.info("Trace config deleted: app_id=%s, provider=%s, deleted_by=%s", app_id, tracing_provider, account_id)
 
         db.session.delete(trace_config)
         db.session.commit()

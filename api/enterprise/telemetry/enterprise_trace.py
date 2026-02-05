@@ -357,6 +357,8 @@ class EnterpriseOtelTrace:
                 "dify.workflow.run_id": info.metadata.get("workflow_run_id"),
             }
         )
+        if info.metadata.get("node_execution_id"):
+            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
 
         if self._exporter.include_content:
             attrs["dify.message.inputs"] = self._maybe_json(info.inputs)
@@ -370,6 +372,7 @@ class EnterpriseOtelTrace:
             event_name="dify.message.run",
             attributes=attrs,
             trace_id_source=info.metadata.get("workflow_run_id") or str(info.message_id) if info.message_id else None,
+            span_id_source=info.metadata.get("node_execution_id"),
             tenant_id=info.metadata.get("tenant_id"),
             user_id=info.metadata.get("user_id"),
         )
@@ -407,8 +410,11 @@ class EnterpriseOtelTrace:
                 "gen_ai.tool.name": info.tool_name,
                 "dify.tool.time_cost": info.time_cost,
                 "dify.tool.error": info.error,
+                "dify.workflow.run_id": info.metadata.get("workflow_run_id"),
             }
         )
+        if info.metadata.get("node_execution_id"):
+            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
 
         if self._exporter.include_content:
             attrs["dify.tool.inputs"] = self._maybe_json(info.tool_inputs)
@@ -425,6 +431,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name="dify.tool.execution",
             attributes=attrs,
+            span_id_source=info.metadata.get("node_execution_id"),
             tenant_id=info.metadata.get("tenant_id"),
             user_id=info.metadata.get("user_id"),
         )
@@ -447,8 +454,11 @@ class EnterpriseOtelTrace:
                 "dify.moderation.flagged": info.flagged,
                 "dify.moderation.action": info.action,
                 "dify.moderation.preset_response": info.preset_response,
+                "dify.workflow.run_id": info.metadata.get("workflow_run_id"),
             }
         )
+        if info.metadata.get("node_execution_id"):
+            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
 
         if self._exporter.include_content:
             attrs["dify.moderation.query"] = info.query
@@ -458,6 +468,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name="dify.moderation.check",
             attributes=attrs,
+            span_id_source=info.metadata.get("node_execution_id"),
             tenant_id=info.metadata.get("tenant_id"),
             user_id=info.metadata.get("user_id"),
         )
@@ -475,8 +486,11 @@ class EnterpriseOtelTrace:
                 "gen_ai.provider.name": info.model_provider,
                 "gen_ai.request.model": info.model_id,
                 "dify.suggested_question.count": len(info.suggested_question),
+                "dify.workflow.run_id": info.metadata.get("workflow_run_id"),
             }
         )
+        if info.metadata.get("node_execution_id"):
+            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
 
         if self._exporter.include_content:
             attrs["dify.suggested_question.questions"] = self._maybe_json(info.suggested_question)
@@ -486,6 +500,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name="dify.suggested_question.generation",
             attributes=attrs,
+            span_id_source=info.metadata.get("node_execution_id"),
             tenant_id=info.metadata.get("tenant_id"),
             user_id=info.metadata.get("user_id"),
         )
@@ -498,6 +513,9 @@ class EnterpriseOtelTrace:
     def _dataset_retrieval_trace(self, info: DatasetRetrievalTraceInfo) -> None:
         attrs = self._common_attrs(info)
         attrs["dify.dataset.error"] = info.error
+        attrs["dify.workflow.run_id"] = info.metadata.get("workflow_run_id")
+        if info.metadata.get("node_execution_id"):
+            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
 
         docs = info.documents or []
         dataset_ids: list[str] = []
@@ -550,6 +568,9 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name="dify.dataset.retrieval",
             attributes=attrs,
+            trace_id_source=info.metadata.get("workflow_run_id") or str(info.message_id) if info.message_id else None,
+            span_id_source=info.metadata.get("node_execution_id")
+            or (str(info.message_id) if info.message_id else None),
             tenant_id=info.metadata.get("tenant_id"),
             user_id=info.metadata.get("user_id"),
         )
@@ -567,6 +588,8 @@ class EnterpriseOtelTrace:
     def _generate_name_trace(self, info: GenerateNameTraceInfo) -> None:
         attrs = self._common_attrs(info)
         attrs["dify.conversation.id"] = info.conversation_id
+        if info.metadata.get("node_execution_id"):
+            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
 
         if self._exporter.include_content:
             attrs["dify.generate_name.inputs"] = self._maybe_json(info.inputs)
@@ -579,6 +602,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name="dify.generate_name.execution",
             attributes=attrs,
+            span_id_source=info.metadata.get("node_execution_id"),
             tenant_id=info.tenant_id,
             user_id=info.metadata.get("user_id"),
         )
@@ -603,6 +627,8 @@ class EnterpriseOtelTrace:
             "dify.prompt_generation.latency": info.latency,
             "dify.prompt_generation.error": info.error,
         }
+        if info.metadata.get("node_execution_id"):
+            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
 
         if info.total_price is not None:
             attrs["dify.prompt_generation.total_price"] = info.total_price
@@ -619,6 +645,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name="dify.prompt_generation.execution",
             attributes=attrs,
+            span_id_source=info.metadata.get("node_execution_id"),
             tenant_id=info.tenant_id,
             user_id=info.user_id,
         )
