@@ -1426,12 +1426,30 @@ export const useNodesInteractions = () => {
       const outgoingEdges = connectedEdges.filter(
         edge => edge.source === currentNodeId,
       )
-      const firstOutgoingEdge
-        = outgoingEdges.find(edge => edge.sourceHandle === 'source')
-        || outgoingEdges[0]
+      const normalizedSourceHandle = sourceHandle || 'source'
+      const outgoingHandles = new Set(
+        outgoingEdges.map(edge => edge.sourceHandle || 'source'),
+      )
+      const branchSourceHandle = currentNode.data._targetBranches?.[0]?.id
+      let outgoingHandleToPreserve = normalizedSourceHandle
+      if (!outgoingHandles.has(outgoingHandleToPreserve)) {
+        if (branchSourceHandle && outgoingHandles.has(branchSourceHandle))
+          outgoingHandleToPreserve = branchSourceHandle
+        else if (outgoingHandles.has('source'))
+          outgoingHandleToPreserve = 'source'
+        else
+          outgoingHandleToPreserve = outgoingEdges[0]?.sourceHandle || 'source'
+      }
+      const outgoingEdgesToPreserve = outgoingEdges.filter(
+        edge => (edge.sourceHandle || 'source') === outgoingHandleToPreserve,
+      )
+      const outgoingEdgeIds = new Set(
+        outgoingEdgesToPreserve.map(edge => edge.id),
+      )
+      const newNodeSourceHandle = newCurrentNode.data._targetBranches?.[0]?.id || 'source'
       const reconnectedEdges = connectedEdges.reduce<Edge[]>(
         (acc, edge) => {
-          if (firstOutgoingEdge && edge.id === firstOutgoingEdge.id) {
+          if (outgoingEdgeIds.has(edge.id)) {
             const originalTargetNode = nodes.find(
               node => node.id === edge.target,
             )
@@ -1439,7 +1457,8 @@ export const useNodesInteractions = () => {
               = originalTargetNode && originalTargetNode.id !== currentNodeId
                 ? originalTargetNode
                 : newCurrentNode
-            if (!targetNodeForEdge) return acc
+            if (!targetNodeForEdge)
+              return acc
 
             const targetHandle = edge.targetHandle || 'target'
             const targetParentNode
@@ -1449,16 +1468,16 @@ export const useNodesInteractions = () => {
                   || null
             const isInIteration
               = !!targetParentNode
-              && targetParentNode.data.type === BlockEnum.Iteration
+                && targetParentNode.data.type === BlockEnum.Iteration
             const isInLoop
               = !!targetParentNode
-              && targetParentNode.data.type === BlockEnum.Loop
+                && targetParentNode.data.type === BlockEnum.Loop
 
             acc.push({
               ...edge,
-              id: `${newCurrentNode.id}-source-${targetNodeForEdge.id}-${targetHandle}`,
+              id: `${newCurrentNode.id}-${newNodeSourceHandle}-${targetNodeForEdge.id}-${targetHandle}`,
               source: newCurrentNode.id,
-              sourceHandle: 'source',
+              sourceHandle: newNodeSourceHandle,
               target: targetNodeForEdge.id,
               targetHandle,
               type: CUSTOM_EDGE,
@@ -1484,10 +1503,12 @@ export const useNodesInteractions = () => {
 
           if (
             edge.target === currentNodeId
-            && (!firstOutgoingEdge || edge.id !== firstOutgoingEdge.id)
+            && edge.source !== currentNodeId
+            && !outgoingEdgeIds.has(edge.id)
           ) {
             const sourceNode = nodes.find(node => node.id === edge.source)
-            if (!sourceNode) return acc
+            if (!sourceNode)
+              return acc
 
             const targetHandle = edge.targetHandle || 'target'
             const sourceHandle = edge.sourceHandle || 'source'
