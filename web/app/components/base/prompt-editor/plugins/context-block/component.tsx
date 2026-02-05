@@ -44,7 +44,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
     <div
       className={`
       group inline-flex h-6 items-center rounded-[5px] border border-transparent bg-[#F4F3FF] pl-1 pr-0.5 text-[#6938EF] hover:bg-[#EBE9FE]
-      ${open ? 'bg-[#EBE9FE]' : ''}
+      ${open ? 'bg-[#EBE9FE]' : 'bg-[#F4F3FF]'}
       ${isSelected && '!border-[#9B8AFB]'}
     `}
       ref={ref}
