@@ -93,6 +93,7 @@ const CardWrapperComponent = ({
       <Card
         key={plugin.name}
         payload={plugin}
+        disableOrgLink
         footer={(
           <CardMoreInfo
             tags={tagLabels}

@@ -8,6 +8,7 @@ import { useCallback, useMemo } from 'react'
 import useTheme from '@/hooks/use-theme'
 import { getLanguage } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
+import { formatUsedCount } from '@/utils/template'
 import { getMarketplaceUrl } from '@/utils/var'
 
 type TemplateCardProps = {
@@ -80,16 +81,7 @@ const TemplateCardComponent = ({
   const visibleTags = tags?.slice(0, MAX_VISIBLE_TAGS) || []
   const remainingTagsCount = tags ? Math.max(0, tags.length - MAX_VISIBLE_TAGS) : 0
 
-  // Format used count (e.g., 134000 -> "134k")
-  const formatUsedCount = (count?: number) => {
-    if (!count)
-      return null
-    if (count >= 1000)
-      return `${Math.floor(count / 1000)}k`
-    return String(count)
-  }
-
-  const formattedUsedCount = formatUsedCount(used_count)
+  const formattedUsedCount = formatUsedCount(used_count, { precision: 0, rounding: 'floor' })
 
   return (
     <div

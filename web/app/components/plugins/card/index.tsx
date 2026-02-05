@@ -32,6 +32,7 @@ export type Props = {
   isLoading?: boolean
   loadingFileName?: string
   limitedInstall?: boolean
+  disableOrgLink?: boolean
 }
 
 const Card = ({
@@ -46,6 +47,7 @@ const Card = ({
   isLoading = false,
   loadingFileName,
   limitedInstall = false,
+  disableOrgLink = false,
 }: Props) => {
   const locale = useGetLanguage()
   const { t } = useTranslation()
@@ -87,6 +89,7 @@ const Card = ({
               className="mt-0.5"
               orgName={org}
               downloadCount={install_count}
+              linkToOrg={!disableOrgLink}
             />
           </div>
         </div>
