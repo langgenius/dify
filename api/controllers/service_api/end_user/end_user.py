@@ -39,4 +39,3 @@ class EndUserApi(Resource):
             raise EndUserNotFoundError()
 
         return EndUserDetail.model_validate(end_user).model_dump(mode="json")
-
