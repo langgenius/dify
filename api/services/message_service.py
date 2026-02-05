@@ -8,7 +8,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.ops.utils import measure_time
-from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
+from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade, TraceTaskName
 from events.feedback_event import feedback_was_created
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -299,7 +299,7 @@ class MessageService:
         # get tracing instance
         TelemetryFacade.emit(
             TelemetryEvent(
-                name="suggested_question",
+                name=TraceTaskName.SUGGESTED_QUESTION_TRACE,
                 context=TelemetryContext(tenant_id=app_model.tenant_id, app_id=app_model.id),
                 payload={
                     "message_id": message_id,

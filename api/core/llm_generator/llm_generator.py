@@ -27,7 +27,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
+from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade, TraceTaskName
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -95,7 +95,7 @@ class LLMGenerator:
         # get tracing instance
         TelemetryFacade.emit(
             TelemetryEvent(
-                name="generate_name",
+                name=TraceTaskName.GENERATE_NAME_TRACE,
                 context=TelemetryContext(tenant_id=tenant_id, app_id=app_id),
                 payload={
                     "conversation_id": conversation_id,
@@ -788,11 +788,9 @@ class LLMGenerator:
             total_price = None
             currency = None
 
-        from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
-
         TelemetryFacade.emit(
             TelemetryEvent(
-                name="prompt_generation",
+                name=TraceTaskName.PROMPT_GENERATION_TRACE,
                 context=TelemetryContext(tenant_id=tenant_id, user_id=user_id, app_id=app_id),
                 payload={
                     "tenant_id": tenant_id,

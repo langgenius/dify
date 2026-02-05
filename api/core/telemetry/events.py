@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from core.ops.entities.trace_entity import TraceTaskName
 
 
 @dataclass(frozen=True)
@@ -13,6 +16,6 @@ class TelemetryContext:
 
 @dataclass(frozen=True)
 class TelemetryEvent:
-    name: str
+    name: TraceTaskName
     context: TelemetryContext
     payload: dict[str, Any]

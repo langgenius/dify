@@ -55,7 +55,7 @@ from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
-from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
+from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade, TraceTaskName
 from core.tools.signature import sign_upload_file
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
@@ -731,7 +731,7 @@ class DatasetRetrieval:
             app_config = self.application_generate_entity.app_config if self.application_generate_entity else None
             TelemetryFacade.emit(
                 TelemetryEvent(
-                    name="dataset_retrieval",
+                    name=TraceTaskName.DATASET_RETRIEVAL_TRACE,
                     context=TelemetryContext(
                         tenant_id=app_config.tenant_id if app_config else None,
                         app_id=app_config.app_id if app_config else None,

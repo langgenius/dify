@@ -7,7 +7,7 @@ from core.moderation.base import ModerationAction, ModerationError
 from core.moderation.factory import ModerationFactory
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.ops.utils import measure_time
-from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
+from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade, TraceTaskName
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class InputModeration:
         if trace_manager:
             TelemetryFacade.emit(
                 TelemetryEvent(
-                    name="moderation",
+                    name=TraceTaskName.MODERATION_TRACE,
                     context=TelemetryContext(tenant_id=tenant_id, app_id=app_id),
                     payload={
                         "message_id": message_id,

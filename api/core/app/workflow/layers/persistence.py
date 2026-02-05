@@ -395,11 +395,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             external_trace_id = self._application_generate_entity.extras.get("external_trace_id")
             parent_trace_context = self._application_generate_entity.extras.get("parent_trace_context")
 
-        from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
+        from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade, TraceTaskName
 
         TelemetryFacade.emit(
             TelemetryEvent(
-                name="workflow",
+                name=TraceTaskName.WORKFLOW_TRACE,
                 context=TelemetryContext(
                     tenant_id=self._application_generate_entity.app_config.tenant_id,
                     user_id=self._trace_manager.user_id,
@@ -499,11 +499,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         if parent_trace_context:
             node_data["parent_trace_context"] = parent_trace_context
 
-        from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
+        from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade, TraceTaskName
 
         TelemetryFacade.emit(
             TelemetryEvent(
-                name="node_execution",
+                name=TraceTaskName.NODE_EXECUTION_TRACE,
                 context=TelemetryContext(
                     tenant_id=node_data.get("tenant_id"),
                     user_id=node_data.get("user_id"),

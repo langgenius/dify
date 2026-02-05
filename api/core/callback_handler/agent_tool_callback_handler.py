@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from configs import dify_config
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
+from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade, TraceTaskName
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
 _TEXT_COLOR_MAPPING = {
@@ -36,13 +36,15 @@ class DifyAgentCallbackHandler(BaseModel):
 
     color: str | None = ""
     current_loop: int = 1
+    tenant_id: str | None = None
 
-    def __init__(self, color: str | None = None):
+    def __init__(self, color: str | None = None, tenant_id: str | None = None):
         super().__init__()
         """Initialize callback handler."""
         # use a specific color is not specified
         self.color = color or "green"
         self.current_loop = 1
+        self.tenant_id = tenant_id
 
     def on_tool_start(
         self,
@@ -73,8 +75,12 @@ class DifyAgentCallbackHandler(BaseModel):
         if trace_manager:
             TelemetryFacade.emit(
                 TelemetryEvent(
-                    name="tool",
-                    context=TelemetryContext(app_id=trace_manager.app_id, user_id=trace_manager.user_id),
+                    name=TraceTaskName.TOOL_TRACE,
+                    context=TelemetryContext(
+                        tenant_id=self.tenant_id,
+                        app_id=trace_manager.app_id,
+                        user_id=trace_manager.user_id,
+                    ),
                     payload={
                         "message_id": message_id,
                         "tool_name": tool_name,

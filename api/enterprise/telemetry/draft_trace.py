@@ -3,9 +3,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
+from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade, TraceTaskName
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey
-from enterprise.telemetry.exporter import is_enterprise_telemetry_enabled
 from models.workflow import WorkflowNodeExecutionModel
 
 
@@ -16,9 +15,6 @@ def enqueue_draft_node_execution_trace(
     workflow_execution_id: str | None,
     user_id: str,
 ) -> None:
-    if not is_enterprise_telemetry_enabled():
-        return
-
     node_data = _build_node_execution_data(
         execution=execution,
         outputs=outputs,
@@ -26,7 +22,7 @@ def enqueue_draft_node_execution_trace(
     )
     TelemetryFacade.emit(
         TelemetryEvent(
-            name="draft_node_execution",
+            name=TraceTaskName.DRAFT_NODE_EXECUTION_TRACE,
             context=TelemetryContext(
                 tenant_id=execution.tenant_id,
                 user_id=user_id,
