@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import os
 from typing import TYPE_CHECKING
@@ -8,9 +7,15 @@ from uuid import uuid4
 
 from core.sandbox.entities.files import SandboxFileDownloadTicket, SandboxFileNode
 from core.sandbox.inspector.base import SandboxFileSource
+from core.sandbox.inspector.script_utils import (
+    build_detect_kind_command,
+    build_list_command,
+    parse_kind_output,
+    parse_list_output,
+)
 from core.sandbox.storage import SandboxFilePaths
-from core.virtual_environment.__base.exec import CommandExecutionError, PipelineExecutionError
-from core.virtual_environment.__base.helpers import execute, pipeline
+from core.virtual_environment.__base.exec import PipelineExecutionError
+from core.virtual_environment.__base.helpers import pipeline
 from extensions.ext_storage import storage
 
 if TYPE_CHECKING:
@@ -20,53 +25,6 @@ logger = logging.getLogger(__name__)
 
 
 class SandboxFileArchiveSource(SandboxFileSource):
-    _PYTHON_EXEC_CMD = 'if command -v python3 >/dev/null 2>&1; then py=python3; else py=python; fi; "$py" -c "$0" "$@"'
-    _LIST_SCRIPT = r"""
-import json
-import os
-import sys
-
-path = sys.argv[1]
-recursive = sys.argv[2] == "1"
-
-def norm(rel: str) -> str:
-    rel = rel.replace("\\", "/")
-    rel = rel.lstrip("./")
-    return rel or "."
-
-def stat_entry(full_path: str, rel_path: str) -> dict:
-    st = os.stat(full_path)
-    is_dir = os.path.isdir(full_path)
-    return {
-        "path": norm(rel_path),
-        "is_dir": is_dir,
-        "size": None if is_dir else int(st.st_size),
-        "mtime": int(st.st_mtime),
-    }
-
-entries = []
-if recursive:
-    for root, dirs, files in os.walk(path):
-        for d in dirs:
-            fp = os.path.join(root, d)
-            rp = os.path.relpath(fp, ".")
-            entries.append(stat_entry(fp, rp))
-        for f in files:
-            fp = os.path.join(root, f)
-            rp = os.path.relpath(fp, ".")
-            entries.append(stat_entry(fp, rp))
-else:
-    if os.path.isfile(path):
-        rel_path = os.path.relpath(path, ".")
-        entries.append(stat_entry(path, rel_path))
-    else:
-        for item in os.scandir(path):
-            rel_path = os.path.relpath(item.path, ".")
-            entries.append(stat_entry(item.path, rel_path))
-
-print(json.dumps(entries))
-"""
-
     def _get_archive_download_url(self) -> str:
         """Get a pre-signed download URL for the sandbox archive."""
         from extensions.storage.file_presign_storage import FilePresignStorage
@@ -97,26 +55,19 @@ print(json.dumps(entries))
 
             # List files using Python script in sandbox
             try:
-                result = execute(
-                    zs.vm,
-                    [
-                        "sh",
-                        "-c",
-                        self._PYTHON_EXEC_CMD,
-                        self._LIST_SCRIPT,
-                        f"workspace/{path}" if path not in (".", "") else "workspace",
-                        "1" if recursive else "0",
-                    ],
-                    timeout=self._LIST_TIMEOUT_SECONDS,
-                    error_message="Failed to list sandbox files",
+                list_path = f"workspace/{path}" if path not in (".", "") else "workspace"
+                results = (
+                    pipeline(zs.vm)
+                    .add(
+                        build_list_command(list_path, recursive),
+                        error_message="Failed to list sandbox files",
+                    )
+                    .execute(timeout=self._LIST_TIMEOUT_SECONDS, raise_on_error=True)
                 )
-            except CommandExecutionError as exc:
+            except PipelineExecutionError as exc:
                 raise RuntimeError(str(exc)) from exc
 
-        try:
-            raw = json.loads(result.stdout.decode("utf-8"))
-        except Exception as exc:
-            raise RuntimeError("Malformed sandbox file list output") from exc
+        raw = parse_list_output(results[0].stdout)
 
         entries: list[SandboxFileNode] = []
         for item in raw:
@@ -165,13 +116,7 @@ print(json.dumps(entries))
                 results = (
                     pipeline(zs.vm)
                     .add(
-                        [
-                            "sh",
-                            "-c",
-                            'if [ -d "$1" ]; then echo dir; elif [ -f "$1" ]; then echo file; else exit 2; fi',
-                            "sh",
-                            target_path,
-                        ],
+                        build_detect_kind_command(target_path),
                         error_message="Failed to check path in sandbox",
                     )
                     .execute(timeout=self._LIST_TIMEOUT_SECONDS, raise_on_error=True)
@@ -179,9 +124,7 @@ print(json.dumps(entries))
             except PipelineExecutionError as exc:
                 raise ValueError(str(exc)) from exc
 
-            kind = results[0].stdout.decode("utf-8", errors="replace").strip()
-            if kind not in ("dir", "file"):
-                raise ValueError("File not found in sandbox archive")
+            kind = parse_kind_output(results[0].stdout, not_found_message="File not found in sandbox archive")
 
             sandbox_storage = SandboxFileService.get_storage()
             is_file = kind == "file"
