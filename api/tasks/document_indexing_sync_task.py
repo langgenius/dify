@@ -85,7 +85,6 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
             if last_edited_time != page_edited_time:
                 document.indexing_status = "parsing"
                 document.processing_started_at = naive_utc_now()
-                session.commit()
 
                 # delete all document segment and index
                 try:
@@ -106,6 +105,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                     segment_ids = [segment.id for segment in segments]
                     segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
                     session.execute(segment_delete_stmt)
+                    session.commit()
 
                     end_at = time.perf_counter()
                     logger.info(

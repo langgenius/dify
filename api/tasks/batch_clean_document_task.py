@@ -42,6 +42,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                 DatasetMetadataBinding.dataset_id == dataset_id,
                 DatasetMetadataBinding.document_id.in_(document_ids),
             ).delete(synchronize_session=False)
+            session.commit()
 
             segments = session.scalars(
                 select(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))
@@ -54,8 +55,11 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                     dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
                 )
 
+                segment_ids = [segment.id for segment in segments]
+                total_image_upload_file_ids = []
                 for segment in segments:
                     image_upload_file_ids = get_image_upload_file_ids(segment.content)
+                    total_image_upload_file_ids.extend(image_upload_file_ids)
                     image_files = session.query(UploadFile).where(UploadFile.id.in_(image_upload_file_ids)).all()
                     for image_file in image_files:
                         try:
@@ -67,9 +71,16 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                                               image_upload_file_is: %s",
                                 image_file.id,
                             )
-                    stmt = delete(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))
+
+                for i in range(0, len(total_image_upload_file_ids), 1000):
+                    stmt = delete(UploadFile).where(UploadFile.id.in_(total_image_upload_file_ids[i:i + 1000]))
                     session.execute(stmt)
-                    session.delete(segment)
+                session.commit()
+
+                for i in range(0, len(segment_ids), 1000):
+                    segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids[i:i + 1000]))
+                    session.execute(segment_delete_stmt)
+                session.commit()
             if file_ids:
                 files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
                 for file in files:
@@ -79,8 +90,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                         logger.exception("Delete file failed when document deleted, file_id: %s", file.id)
                 stmt = delete(UploadFile).where(UploadFile.id.in_(file_ids))
                 session.execute(stmt)
-
-            session.commit()
+                session.commit()
 
             end_at = time.perf_counter()
             logger.info(
