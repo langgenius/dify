@@ -228,6 +228,8 @@
   "pluginInfoModal.release": "Release",
   "pluginInfoModal.repository": "Repository",
   "pluginInfoModal.title": "Plugin info",
+  "plugins": "Plugins",
+  "templates": "Templates",
   "privilege.admins": "Admins",
   "privilege.everyone": "Everyone",
   "privilege.noone": "No one",

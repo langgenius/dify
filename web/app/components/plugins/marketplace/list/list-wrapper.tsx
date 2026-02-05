@@ -11,6 +11,7 @@ import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 import SortDropdown from '../sort-dropdown'
 import { useMarketplaceData } from '../state'
 import List from './index'
+import TemplateList from './template-list'
 
 type ListWrapperProps = {
   showInstallButton?: boolean
@@ -31,15 +32,49 @@ const ListWrapper = ({
   const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
   const [searchScope, setSearchScope] = useState<SearchScope>('all')
 
+  const marketplaceData = useMarketplaceData()
+  const {
+    creationType,
+    isLoading,
+  } = marketplaceData
+
+  // Templates view
+  if (creationType === 'templates') {
+    const { templateCollections, templateCollectionTemplatesMap } = marketplaceData
+    return (
+      <div
+        style={{ scrollbarGutter: 'stable' }}
+        className="relative flex grow flex-col bg-background-default-subtle px-12 py-2"
+      >
+        {
+          isLoading && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              <Loading />
+            </div>
+          )
+        }
+        {
+          !isLoading && (
+            <TemplateList
+              templateCollections={templateCollections || []}
+              templateCollectionTemplatesMap={templateCollectionTemplatesMap || {}}
+            />
+          )
+        }
+      </div>
+    )
+  }
+
+  // Plugins view (default)
   const {
     plugins,
     pluginsTotal,
     marketplaceCollections,
     marketplaceCollectionPluginsMap,
-    isLoading,
     isFetchingNextPage,
     page,
-  } = useMarketplaceData()
+  } = marketplaceData
+
   const pluginsCount = pluginsTotal || 0
   const searchScopeOptions: Array<{ value: SearchScope, text: string, count: number }> = searchScopeOptionKeys.map(option => ({
     value: option.value,
