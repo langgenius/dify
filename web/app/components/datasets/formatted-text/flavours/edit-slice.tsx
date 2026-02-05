@@ -3,8 +3,6 @@ import type { FC, ReactNode } from 'react'
 import type { SliceProps } from './type'
 import { autoUpdate, flip, FloatingFocusManager, offset, shift, useDismiss, useFloating, useHover, useInteractions, useRole } from '@floating-ui/react'
 import { RiDeleteBinLine } from '@remixicon/react'
-// @ts-expect-error no types available
-import lineClamp from 'line-clamp'
 import { useState } from 'react'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { cn } from '@/utils/classnames'
@@ -58,12 +56,8 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
     <>
       <SliceContainer
         {...rest}
-        className={cn('mr-0 block', className)}
-        ref={(ref) => {
-          refs.setReference(ref)
-          if (ref)
-            lineClamp(ref, 4)
-        }}
+        className={cn('mr-0 line-clamp-4 block', className)}
+        ref={refs.setReference}
         {...getReferenceProps()}
       >
         <SliceLabel

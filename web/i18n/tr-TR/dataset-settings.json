@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Alma Ayarları",
   "form.save": "Kaydet",
   "form.searchModel": "Model Ara",
+  "form.summaryAutoGen": "Özet Otomatik Oluşturma",
+  "form.summaryAutoGenEnableTip": "Etkinleştirildiğinde, yeni eklenen belgeler için özetler otomatik olarak oluşturulacaktır. Mevcut belgeler hala manuel olarak özetlenebilir.",
+  "form.summaryAutoGenTip": "Yeni eklenen belgeler için özetler otomatik olarak oluşturulur. Mevcut belgeler hala manuel olarak özetlenebilir.",
+  "form.summaryInstructions": "Talimatlar",
+  "form.summaryInstructionsPlaceholder": "Otomatik oluşturulan özetler için kuralları veya stili açıklayın…",
+  "form.summaryModel": "Özet Modeli",
   "form.upgradeHighQualityTip": "Yüksek Kalite moduna yükselttikten sonra Ekonomik moda geri dönülemez",
   "title": "Bilgi ayarları"
 }

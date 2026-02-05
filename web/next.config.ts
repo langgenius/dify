@@ -29,7 +29,7 @@ const remoteImageURLs = ([hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_W
 
 const nextConfig: NextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
-  serverExternalPackages: ['esbuild-wasm'],
+  serverExternalPackages: ['esbuild'],
   transpilePackages: ['echarts', 'zrender'],
   turbopack: {
     rules: codeInspectorPlugin({
@@ -66,6 +66,9 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   compiler: {
     removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
+  },
+  experimental: {
+    turbopackFileSystemCacheForDev: false,
   },
 }
 

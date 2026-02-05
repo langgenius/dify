@@ -7,6 +7,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { BlockEnum } from '@/app/components/workflow/types'
 import StartNodeSelectionPanel from './start-node-selection-panel'
 
@@ -60,8 +61,6 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
             </h3>
             <div className="body-xs-regular leading-4 text-text-tertiary">
               {t('onboarding.description', { ns: 'workflow' })}
-              {' '}
-              {t('onboarding.aboutStartNode', { ns: 'workflow' })}
             </div>
           </div>
 
@@ -77,9 +76,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
       {isShow && (
         <div className="body-xs-regular pointer-events-none fixed left-1/2 top-1/2 z-[70] flex -translate-x-1/2 translate-y-[165px] items-center gap-1 text-text-quaternary">
           <span>{t('onboarding.escTip.press', { ns: 'workflow' })}</span>
-          <kbd className="system-kbd inline-flex h-4 min-w-4 items-center justify-center rounded bg-components-kbd-bg-gray px-1 text-text-tertiary">
-            {t('onboarding.escTip.key', { ns: 'workflow' })}
-          </kbd>
+          <ShortcutsName keys={[t('onboarding.escTip.key', { ns: 'workflow' })]} textColor="secondary" />
           <span>{t('onboarding.escTip.toDismiss', { ns: 'workflow' })}</span>
         </div>
       )}
