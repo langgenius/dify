@@ -43,27 +43,6 @@ def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict]:
     return data.get("data", {}).get("plugins", [])
 
 
-def batch_fetch_plugin_manifests_ignore_deserialization_error(
-    plugin_ids: list[str],
-) -> Sequence[MarketplacePluginSnapshot]:
-    if len(plugin_ids) == 0:
-        return []
-
-    url = str(marketplace_api_url / "api/v1/plugins/batch")
-    response = httpx.post(url, json={"plugin_ids": plugin_ids}, headers={"X-Dify-Version": dify_config.project.version})
-    response.raise_for_status()
-    result: list[MarketplacePluginSnapshot] = []
-    for plugin in response.json()["data"]["plugins"]:
-        try:
-            result.append(MarketplacePluginSnapshot.model_validate(plugin))
-        except Exception:
-            logger.exception(
-                "Failed to deserialize marketplace plugin manifest for %s", plugin.get("plugin_id", "unknown")
-            )
-
-    return result
-
-
 def record_install_plugin_event(plugin_unique_identifier: str):
     url = str(marketplace_api_url / "api/v1/stats/plugins/install_count")
     response = httpx.post(url, json={"unique_identifier": plugin_unique_identifier})
