@@ -8,8 +8,7 @@ import httpx
 from celery import shared_task
 
 from configs import dify_config
-from core.helper import marketplace
-from core.helper.marketplace import marketplace_api_url
+from core.helper.marketplace import marketplace_api_url, record_install_plugin_event
 from core.plugin.entities.marketplace import MarketplacePluginSnapshot
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
@@ -52,86 +51,84 @@ def _get_cached_manifest(plugin_id: str) -> typing.Union[MarketplacePluginSnapsh
         return False
 
 
-def _set_cached_manifest(plugin_id: str, manifest: typing.Union[MarketplacePluginSnapshot, None]) -> None:
-    """
-    Cache plugin manifest in Redis.
-    Args:
-        plugin_id: The plugin ID
-        manifest: The manifest to cache, or None if not found in marketplace
-    """
-    try:
-        key = _get_redis_cache_key(plugin_id)
-        if manifest is None:
-            # Cache the fact that this plugin was not found
-            redis_client.setex(key, CACHE_REDIS_TTL, json.dumps(None))
-        else:
-            # Cache the manifest data
-            redis_client.setex(key, CACHE_REDIS_TTL, manifest.model_dump_json())
-    except Exception:
-        # If Redis fails, continue without caching
-        # traceback.print_exc()
-        logger.exception("Failed to set cached manifest for plugin %s", plugin_id)
-
-
 def marketplace_batch_fetch_plugin_manifests(
     plugin_ids_plain_list: list[str],
 ) -> list[MarketplacePluginSnapshot]:
-    """Fetch plugin manifests with Redis caching support."""
-    cached_manifests: dict[str, typing.Union[MarketplacePluginSnapshot, None]] = {}
-    not_cached_plugin_ids: list[str] = []
+    """
+    Fetch plugin manifests from Redis cache only.
+    This function assumes fetch_global_plugin_manifest() has been called
+    to pre-populate the cache with all marketplace plugins.
+    """
+    result: list[MarketplacePluginSnapshot] = []
 
     # Check Redis cache for each plugin
     for plugin_id in plugin_ids_plain_list:
         cached_result = _get_cached_manifest(plugin_id)
         if cached_result is False:
-            # Not in cache, need to fetch
-            not_cached_plugin_ids.append(plugin_id)
+            # Not in cache - this means the plugin is not in marketplace or cache expired
+            logger.warning("Plugin %s not found in cache, skipping", plugin_id)
+            continue
+        elif cached_result is None:
+            # Cached as None - plugin was not found in marketplace
+            logger.debug("Plugin %s was cached as not found in marketplace", plugin_id)
+            continue
         else:
-            # Either found manifest or cached as None (not found in marketplace)
-            # At this point, cached_result is either MarketplacePluginDeclaration or None
-            if isinstance(cached_result, bool):
-                # This should never happen due to the if condition above, but for type safety
-                continue
-            cached_manifests[plugin_id] = cached_result
-
-    # Fetch uncached plugins from marketplace
-    if not_cached_plugin_ids:
-        manifests = marketplace.batch_fetch_plugin_manifests_ignore_deserialization_error(not_cached_plugin_ids)
-
-        # Cache the fetched manifests
-        for manifest in manifests:
-            cached_manifests[manifest.plugin_id] = manifest
-            _set_cached_manifest(manifest.plugin_id, manifest)
-
-        # Cache plugins that were not found in marketplace
-        fetched_plugin_ids = {manifest.plugin_id for manifest in manifests}
-        for plugin_id in not_cached_plugin_ids:
-            if plugin_id not in fetched_plugin_ids:
-                cached_manifests[plugin_id] = None
-                _set_cached_manifest(plugin_id, None)
-
-    # Build result list from cached manifests
-    result: list[MarketplacePluginSnapshot] = []
-    for plugin_id in plugin_ids_plain_list:
-        cached_manifest: typing.Union[MarketplacePluginSnapshot, None] = cached_manifests.get(plugin_id)
-        if cached_manifest is not None:
-            result.append(cached_manifest)
+            # Found valid manifest in cache
+            result.append(cached_result)
 
     return result
 
 
-def fetch_global_plugin_manifest():
-    url = str(marketplace_api_url / "api/v1/dist/plugins/manifest.json")
-    response = httpx.get(url, headers={"X-Dify-Version": dify_config.project.version}, timeout=30)
-    response.raise_for_status()
-    raw_json = response.json()
-    plugin_snapshots = [MarketplacePluginSnapshot.model_validate(plugin) for plugin in raw_json["plugins"]]
-    for plugin_snapshot in plugin_snapshots:
-        redis_client.setex(
-            name=f"{CACHE_REDIS_KEY_PREFIX}{plugin_snapshot.plugin_id}",
-            time=CACHE_REDIS_TTL,
-            value=plugin_snapshot.model_dump_json(),
+def fetch_global_plugin_manifest() -> None:
+    """
+    Fetch all plugin manifests from marketplace and cache them in Redis.
+    This should be called once per check cycle to populate the instance-level cache.
+    """
+    try:
+        url = str(marketplace_api_url / "api/v1/dist/plugins/manifest.json")
+        logger.info("Fetching global plugin manifest from %s", url)
+
+        response = httpx.get(url, headers={"X-Dify-Version": dify_config.project.version}, timeout=30)
+        response.raise_for_status()
+
+        raw_json = response.json()
+        plugins_data = raw_json.get("plugins", [])
+        metadata = raw_json.get("metadata", {})
+
+        logger.info(
+            "Fetched %d plugins from marketplace (snapshot updated at: %s)",
+            len(plugins_data),
+            metadata.get("snapshot_updated_at", "unknown"),
         )
+
+        # Parse and cache all plugin snapshots
+        cached_count = 0
+        failed_count = 0
+
+        for plugin_data in plugins_data:
+            try:
+                plugin_snapshot = MarketplacePluginSnapshot.model_validate(plugin_data)
+                redis_client.setex(
+                    name=f"{CACHE_REDIS_KEY_PREFIX}{plugin_snapshot.plugin_id}",
+                    time=CACHE_REDIS_TTL,
+                    value=plugin_snapshot.model_dump_json(),
+                )
+                cached_count += 1
+            except Exception:
+                failed_count += 1
+                logger.exception(
+                    "Failed to parse or cache plugin: %s",
+                    f"{plugin_data.get('org', '?')}/{plugin_data.get('name', '?')}",
+                )
+
+        logger.info("Successfully cached %d plugins, %d failed", cached_count, failed_count)
+
+    except httpx.HTTPError:
+        logger.exception("HTTP error while fetching global plugin manifest")
+        raise
+    except Exception:
+        logger.exception("Unexpected error while fetching global plugin manifest")
+        raise
 
 
 @shared_task(queue="plugin")
@@ -228,7 +225,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                         # execute upgrade
                         new_unique_identifier = manifest.latest_package_identifier
 
-                        marketplace.record_install_plugin_event(new_unique_identifier)
+                        record_install_plugin_event(new_unique_identifier)
                         click.echo(
                             click.style(
                                 f"Upgrade plugin: {original_unique_identifier} -> {new_unique_identifier}",

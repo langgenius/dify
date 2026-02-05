@@ -41,7 +41,14 @@ def check_upgradable_plugin_task():
     )  # make sure all strategies are checked in this interval
     batch_interval_time = (AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL / batch_chunk_count) if batch_chunk_count > 0 else 0
 
-    fetch_global_plugin_manifest()
+    # Fetch and cache all plugin manifests before processing tenants
+    # This reduces load on marketplace from 300k requests to 1 request per check cycle
+    try:
+        fetch_global_plugin_manifest()
+    except Exception as e:
+        click.echo(click.style(f"Failed to fetch global plugin manifest: {e}", fg="red"))
+        click.echo(click.style("Skipping plugin upgrade check for this cycle", fg="yellow"))
+        return
 
     for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
         batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]

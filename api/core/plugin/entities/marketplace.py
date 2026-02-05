@@ -60,4 +60,4 @@ class MarketplacePluginSnapshot(BaseModel):
     @computed_field
     @property
     def plugin_id(self) -> str:
-        return self.latest_package_identifier.split(":")[0]
+        return f"{self.org}/{self.name}"
