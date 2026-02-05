@@ -72,7 +72,7 @@ def marketplace_batch_fetch_plugin_manifests(
             # Cached as None - plugin was not found in marketplace
             logger.debug("Plugin %s was cached as not found in marketplace", plugin_id)
             continue
-        else:
+        elif isinstance(cached_result, MarketplacePluginSnapshot):
             # Found valid manifest in cache
             result.append(cached_result)
 
