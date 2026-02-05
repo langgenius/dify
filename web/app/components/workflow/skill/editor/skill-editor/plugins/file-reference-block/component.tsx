@@ -5,7 +5,8 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { RiFolderLine } from '@remixicon/react'
 import { $getNodeByKey } from 'lexical'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import {
   PortalToFollowElem,
@@ -17,6 +18,8 @@ import { useSkillAssetNodeMap } from '@/app/components/workflow/skill/hooks/use-
 import { getFileIconType } from '@/app/components/workflow/skill/utils/file-utils'
 import { cn } from '@/utils/classnames'
 import { FilePickerPanel } from '../file-picker-panel'
+import FilePreviewPanel from './file-preview-panel'
+import { useFilePreviewContext } from './preview-context'
 
 type FileReferenceBlockProps = {
   nodeKey: string
@@ -28,6 +31,10 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
   const [ref, isSelected] = useSelectOrDelete(nodeKey)
   const { data: nodeMap } = useSkillAssetNodeMap()
   const [open, setOpen] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewStyle, setPreviewStyle] = useState<React.CSSProperties | null>(null)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { enabled: isPreviewEnabled } = useFilePreviewContext()
 
   const currentNode = useMemo(() => nodeMap?.get(resourceId), [nodeMap, resourceId])
   const isFolder = currentNode?.node_type === 'folder'
@@ -46,7 +53,69 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
     setOpen(false)
   }, [editor, nodeKey])
 
-  return (
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }, [])
+
+  const handlePreviewEnter = useCallback(() => {
+    clearCloseTimer()
+    setPreviewOpen(true)
+  }, [clearCloseTimer])
+
+  const handlePreviewLeave = useCallback(() => {
+    clearCloseTimer()
+    closeTimerRef.current = setTimeout(() => {
+      setPreviewOpen(false)
+    }, 120)
+  }, [clearCloseTimer])
+
+  useEffect(() => {
+    return () => {
+      clearCloseTimer()
+    }
+  }, [clearCloseTimer])
+
+  const updatePreviewPosition = useCallback(() => {
+    const anchor = ref.current?.closest('[data-workflow-node-panel="true"]') as HTMLElement | null
+      || ref.current?.closest('[data-prompt-editor-panel="true"]') as HTMLElement | null
+      || ref.current?.closest('[data-skill-editor-root="true"]') as HTMLElement | null
+    if (!anchor)
+      return
+    const rect = anchor.getBoundingClientRect()
+    const width = 400
+    const gap = 4
+    const left = Math.max(8, rect.left - gap - width)
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+    setPreviewStyle(_prev => ({
+      position: 'fixed',
+      top: rect.top,
+      left,
+      height: rect.height,
+    }))
+  }, [ref])
+
+  useEffect(() => {
+    if (!previewOpen || !isPreviewEnabled)
+      return
+    updatePreviewPosition()
+    const handleUpdate = () => updatePreviewPosition()
+    window.addEventListener('scroll', handleUpdate, true)
+    window.addEventListener('resize', handleUpdate)
+    const anchor = ref.current?.closest('[data-skill-editor-root="true"]') as HTMLElement | null
+    const resizeObserver = anchor ? new ResizeObserver(handleUpdate) : null
+    if (anchor && resizeObserver)
+      resizeObserver.observe(anchor)
+    return () => {
+      window.removeEventListener('scroll', handleUpdate, true)
+      window.removeEventListener('resize', handleUpdate)
+      resizeObserver?.disconnect()
+    }
+  }, [isPreviewEnabled, previewOpen, ref, updatePreviewPosition])
+
+  const fileBlock = (
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
@@ -85,6 +154,36 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
         />
       </PortalToFollowElemContent>
     </PortalToFollowElem>
+  )
+
+  if (!isPreviewEnabled)
+    return fileBlock
+
+  return (
+    <>
+      <span
+        className="inline-flex"
+        onMouseEnter={handlePreviewEnter}
+        onMouseLeave={handlePreviewLeave}
+      >
+        {fileBlock}
+      </span>
+      {previewOpen && previewStyle && typeof document !== 'undefined' && createPortal(
+        <div
+          className="z-[1001]"
+          style={previewStyle}
+          onMouseEnter={handlePreviewEnter}
+          onMouseLeave={handlePreviewLeave}
+        >
+          <FilePreviewPanel
+            resourceId={resourceId}
+            currentNode={currentNode}
+            onClose={() => setPreviewOpen(false)}
+          />
+        </div>,
+        document.body,
+      )}
+    </>
   )
 }
 

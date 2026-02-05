@@ -168,7 +168,16 @@ const Editor: FC<Props> = ({
 
   return (
     <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
-      <div ref={ref} className={cn(isFocus ? (gradientBorder && 'bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2') : 'bg-transparent hover:bg-divider-regular', isExpand && 'h-full', '!rounded-[9px] p-0.5 transition-colors', containerClassName)}>
+      <div
+        ref={ref}
+        data-prompt-editor-panel="true"
+        className={cn(
+          isFocus ? (gradientBorder && 'bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2') : 'bg-transparent hover:bg-divider-regular',
+          isExpand && 'h-full',
+          '!rounded-[9px] p-0.5 transition-colors',
+          containerClassName,
+        )}
+      >
         <div className={cn(isFocus ? 'bg-background-default' : 'bg-components-input-bg-normal', isExpand && 'flex h-full flex-col', 'rounded-lg', containerClassName)}>
           <div className={cn('flex items-center justify-between pl-3 pr-2 pt-1', headerClassName)}>
             <div className="flex gap-2">

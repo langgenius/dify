@@ -22,6 +22,7 @@ import { cn } from '@/utils/classnames'
 import styles from './line-numbers.module.css'
 import FilePickerBlock from './plugins/file-picker-block'
 import { FileReferenceNode } from './plugins/file-reference-block/node'
+import { FilePreviewContextProvider } from './plugins/file-reference-block/preview-context'
 import FileReferenceReplacementBlock from './plugins/file-reference-block/replacement-block'
 import { LocalCursorPlugin, SkillRemoteCursors } from './plugins/remote-cursors'
 import {
@@ -97,50 +98,52 @@ const SkillEditor = ({
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
-      <div
-        className={cn('relative', showLineNumbers && styles.lineNumbersScope, wrapperClassName)}
-        data-skill-editor-root="true"
-      >
-        <RichTextPlugin
-          contentEditable={(
-            <ContentEditable
-              className={cn(
-                'text-text-secondary outline-none',
-                compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
-                showLineNumbers && styles.lineNumbers,
-                className,
-              )}
-              style={style || {}}
-            />
-          )}
-          placeholder={(
-            <Placeholder
-              value={placeholder}
-              className={cn(
-                'truncate',
-                showLineNumbers && styles.lineNumbersPlaceholder,
-                placeholderClassName,
-              )}
-              compact={compact}
-            />
-          )}
-          ErrorBoundary={LexicalErrorBoundary}
-        />
-        <>
-          <ToolBlock />
-          <ToolGroupBlockReplacementBlock />
-          <ToolBlockReplacementBlock />
-          <FileReferenceReplacementBlock />
-          {editable && <FilePickerBlock />}
-          {editable && <ToolPickerBlock scope={toolPickerScope} />}
-        </>
-        <OnChangePlugin onChange={handleEditorChange} />
-        <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
-        <UpdateBlock instanceId={instanceId} />
-        <LocalCursorPlugin fileId={instanceId} enabled={collaborationEnabled} />
-        <SkillRemoteCursors fileId={instanceId} enabled={collaborationEnabled} />
-        <HistoryPlugin />
-      </div>
+      <FilePreviewContextProvider value={{ enabled: false }}>
+        <div
+          className={cn('relative', showLineNumbers && styles.lineNumbersScope, wrapperClassName)}
+          data-skill-editor-root="true"
+        >
+          <RichTextPlugin
+            contentEditable={(
+              <ContentEditable
+                className={cn(
+                  'text-text-secondary outline-none',
+                  compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
+                  showLineNumbers && styles.lineNumbers,
+                  className,
+                )}
+                style={style || {}}
+              />
+            )}
+            placeholder={(
+              <Placeholder
+                value={placeholder}
+                className={cn(
+                  'truncate',
+                  showLineNumbers && styles.lineNumbersPlaceholder,
+                  placeholderClassName,
+                )}
+                compact={compact}
+              />
+            )}
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+          <>
+            <ToolBlock />
+            <ToolGroupBlockReplacementBlock />
+            <ToolBlockReplacementBlock />
+            <FileReferenceReplacementBlock />
+            {editable && <FilePickerBlock />}
+            {editable && <ToolPickerBlock scope={toolPickerScope} />}
+          </>
+          <OnChangePlugin onChange={handleEditorChange} />
+          <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
+          <UpdateBlock instanceId={instanceId} />
+          <LocalCursorPlugin fileId={instanceId} enabled={collaborationEnabled} />
+          <SkillRemoteCursors fileId={instanceId} enabled={collaborationEnabled} />
+          <HistoryPlugin />
+        </div>
+      </FilePreviewContextProvider>
     </LexicalComposer>
   )
 }

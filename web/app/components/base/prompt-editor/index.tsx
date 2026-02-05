@@ -34,6 +34,7 @@ import * as React from 'react'
 import { useEffect } from 'react'
 import { Trans } from 'react-i18next'
 import { FileReferenceNode } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/node'
+import { FilePreviewContextProvider } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/preview-context'
 import FileReferenceReplacementBlock from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/replacement-block'
 import {
   ToolBlock,
@@ -316,47 +317,33 @@ const PromptEditor: FC<PromptEditorProps> = ({
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
       <ToolBlockContextProvider value={toolBlockContextValue}>
-        <div
-          className={cn('relative', wrapperClassName)}
-          data-skill-editor-root={isSupportSandbox ? 'true' : undefined}
-        >
-          <RichTextPlugin
-            contentEditable={(
-              <ContentEditable
-                className={cn(
-                  'text-text-secondary outline-none',
-                  compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
-                  className,
-                )}
-                style={style || {}}
-              />
-            )}
-            placeholder={(
-              <Placeholder
-                value={placeholder || sandboxPlaceHolder}
-                className={cn('truncate', placeholderClassName)}
-                compact={compact}
-              />
-            )}
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-          <ComponentPickerBlock
-            triggerString="/"
-            contextBlock={contextBlock}
-            historyBlock={historyBlock}
-            queryBlock={queryBlock}
-            variableBlock={variableBlock}
-            externalToolBlock={externalToolBlock}
-            workflowVariableBlock={workflowVariableBlock}
-            currentBlock={currentBlock}
-            errorMessageBlock={errorMessageBlock}
-            lastRunBlock={lastRunBlock}
-            isSupportFileVar={isSupportFileVar}
-            isSupportSandbox={isSupportSandbox}
-          />
-          {!isSupportSandbox && (!agentBlock || agentBlock.show) && (
+        <FilePreviewContextProvider value={{ enabled: Boolean(isSupportSandbox) }}>
+          <div
+            className={cn('relative', wrapperClassName)}
+            data-skill-editor-root={isSupportSandbox ? 'true' : undefined}
+          >
+            <RichTextPlugin
+              contentEditable={(
+                <ContentEditable
+                  className={cn(
+                    'text-text-secondary outline-none',
+                    compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
+                    className,
+                  )}
+                  style={style || {}}
+                />
+              )}
+              placeholder={(
+                <Placeholder
+                  value={placeholder || sandboxPlaceHolder}
+                  className={cn('truncate', placeholderClassName)}
+                  compact={compact}
+                />
+              )}
+              ErrorBoundary={LexicalErrorBoundary}
+            />
             <ComponentPickerBlock
-              triggerString="@"
+              triggerString="/"
               contextBlock={contextBlock}
               historyBlock={historyBlock}
               queryBlock={queryBlock}
@@ -366,110 +353,126 @@ const PromptEditor: FC<PromptEditorProps> = ({
               currentBlock={currentBlock}
               errorMessageBlock={errorMessageBlock}
               lastRunBlock={lastRunBlock}
-              agentBlock={agentBlock}
               isSupportFileVar={isSupportFileVar}
+              isSupportSandbox={isSupportSandbox}
             />
-          )}
-          {isSupportSandbox && (
-            <>
-              <ToolBlock />
-              <ToolGroupBlockReplacementBlock />
-              <ToolBlockReplacementBlock />
-              {editable && !disableToolBlocks && <ToolPickerBlock />}
-            </>
-          )}
-          <ComponentPickerBlock
-            triggerString="{"
-            contextBlock={contextBlock}
-            historyBlock={historyBlock}
-            queryBlock={queryBlock}
-            variableBlock={variableBlock}
-            externalToolBlock={externalToolBlock}
-            workflowVariableBlock={workflowVariableBlock}
-            currentBlock={currentBlock}
-            errorMessageBlock={errorMessageBlock}
-            lastRunBlock={lastRunBlock}
-            isSupportFileVar={isSupportFileVar}
-            isSupportSandbox={isSupportSandbox}
-          />
-          {
-            contextBlock?.show && (
+            {!isSupportSandbox && (!agentBlock || agentBlock.show) && (
+              <ComponentPickerBlock
+                triggerString="@"
+                contextBlock={contextBlock}
+                historyBlock={historyBlock}
+                queryBlock={queryBlock}
+                variableBlock={variableBlock}
+                externalToolBlock={externalToolBlock}
+                workflowVariableBlock={workflowVariableBlock}
+                currentBlock={currentBlock}
+                errorMessageBlock={errorMessageBlock}
+                lastRunBlock={lastRunBlock}
+                agentBlock={agentBlock}
+                isSupportFileVar={isSupportFileVar}
+              />
+            )}
+            {isSupportSandbox && (
               <>
-                <ContextBlock {...contextBlock} />
-                <ContextBlockReplacementBlock {...contextBlock} />
+                <ToolBlock />
+                <ToolGroupBlockReplacementBlock />
+                <ToolBlockReplacementBlock />
+                {editable && !disableToolBlocks && <ToolPickerBlock />}
               </>
-            )
-          }
-          {
-            queryBlock?.show && (
-              <>
-                <QueryBlock {...queryBlock} />
-                <QueryBlockReplacementBlock />
-              </>
-            )
-          }
-          {
-            historyBlock?.show && (
-              <>
-                <HistoryBlock {...historyBlock} />
-                <HistoryBlockReplacementBlock {...historyBlock} />
-              </>
-            )
-          }
-          {
-            (variableBlock?.show || externalToolBlock?.show) && (
-              <>
-                <VariableBlock />
+            )}
+            <ComponentPickerBlock
+              triggerString="{"
+              contextBlock={contextBlock}
+              historyBlock={historyBlock}
+              queryBlock={queryBlock}
+              variableBlock={variableBlock}
+              externalToolBlock={externalToolBlock}
+              workflowVariableBlock={workflowVariableBlock}
+              currentBlock={currentBlock}
+              errorMessageBlock={errorMessageBlock}
+              lastRunBlock={lastRunBlock}
+              isSupportFileVar={isSupportFileVar}
+              isSupportSandbox={isSupportSandbox}
+            />
+            {
+              contextBlock?.show && (
+                <>
+                  <ContextBlock {...contextBlock} />
+                  <ContextBlockReplacementBlock {...contextBlock} />
+                </>
+              )
+            }
+            {
+              queryBlock?.show && (
+                <>
+                  <QueryBlock {...queryBlock} />
+                  <QueryBlockReplacementBlock />
+                </>
+              )
+            }
+            {
+              historyBlock?.show && (
+                <>
+                  <HistoryBlock {...historyBlock} />
+                  <HistoryBlockReplacementBlock {...historyBlock} />
+                </>
+              )
+            }
+            {
+              (variableBlock?.show || externalToolBlock?.show) && (
+                <>
+                  <VariableBlock />
+                  <VariableValueBlock />
+                </>
+              )
+            }
+            {
+              workflowVariableBlock?.show && (
+                <>
+                  <WorkflowVariableBlock {...workflowVariableBlock} />
+                  <WorkflowVariableBlockReplacementBlock {...workflowVariableBlock} />
+                </>
+              )
+            }
+            {isSupportSandbox && <FileReferenceReplacementBlock />}
+            {
+              currentBlock?.show && (
+                <>
+                  <CurrentBlock {...currentBlock} />
+                  <CurrentBlockReplacementBlock {...currentBlock} />
+                </>
+              )
+            }
+            {
+              errorMessageBlock?.show && (
+                <>
+                  <ErrorMessageBlock {...errorMessageBlock} />
+                  <ErrorMessageBlockReplacementBlock {...errorMessageBlock} />
+                </>
+              )
+            }
+            {
+              lastRunBlock?.show && (
+                <>
+                  <LastRunBlock {...lastRunBlock} />
+                  <LastRunReplacementBlock {...lastRunBlock} />
+                </>
+              )
+            }
+            {
+              isSupportFileVar && (
                 <VariableValueBlock />
-              </>
-            )
-          }
-          {
-            workflowVariableBlock?.show && (
-              <>
-                <WorkflowVariableBlock {...workflowVariableBlock} />
-                <WorkflowVariableBlockReplacementBlock {...workflowVariableBlock} />
-              </>
-            )
-          }
-          {isSupportSandbox && <FileReferenceReplacementBlock />}
-          {
-            currentBlock?.show && (
-              <>
-                <CurrentBlock {...currentBlock} />
-                <CurrentBlockReplacementBlock {...currentBlock} />
-              </>
-            )
-          }
-          {
-            errorMessageBlock?.show && (
-              <>
-                <ErrorMessageBlock {...errorMessageBlock} />
-                <ErrorMessageBlockReplacementBlock {...errorMessageBlock} />
-              </>
-            )
-          }
-          {
-            lastRunBlock?.show && (
-              <>
-                <LastRunBlock {...lastRunBlock} />
-                <LastRunReplacementBlock {...lastRunBlock} />
-              </>
-            )
-          }
-          {
-            isSupportFileVar && (
-              <VariableValueBlock />
-            )
-          }
-          <ValueSyncPlugin value={value} />
-          <OnChangePlugin onChange={handleEditorChange} />
-          <EnterCommandPlugin onEnter={onEnter} />
-          <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
-          <UpdateBlock instanceId={instanceId} />
-          <HistoryPlugin />
-          {/* <TreeView /> */}
-        </div>
+              )
+            }
+            <ValueSyncPlugin value={value} />
+            <OnChangePlugin onChange={handleEditorChange} />
+            <EnterCommandPlugin onEnter={onEnter} />
+            <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
+            <UpdateBlock instanceId={instanceId} />
+            <HistoryPlugin />
+            {/* <TreeView /> */}
+          </div>
+        </FilePreviewContextProvider>
       </ToolBlockContextProvider>
     </LexicalComposer>
   )
