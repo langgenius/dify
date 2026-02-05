@@ -55,12 +55,14 @@ export function useSandboxFileDownloadUrl(
 export function useInvalidateSandboxFiles() {
   const queryClient = useQueryClient()
   return useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.sandboxFile.listFiles.key(),
-    })
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.sandboxFile.downloadFile.key(),
-    })
+    return Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.sandboxFile.listFiles.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.sandboxFile.downloadFile.key(),
+      }),
+    ])
   }, [queryClient])
 }
 

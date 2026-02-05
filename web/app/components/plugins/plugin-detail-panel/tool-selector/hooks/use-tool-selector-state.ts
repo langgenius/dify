@@ -193,14 +193,16 @@ export const useToolSelectorState = ({
   }, [value, onSelect])
 
   const handleInstall = useCallback(async () => {
+    const invalidateBuiltinPromise = invalidateAllBuiltinTools()
+    const invalidateInstalledPromise = invalidateInstalledPluginList()
     try {
-      await invalidateAllBuiltinTools()
+      await invalidateBuiltinPromise
     }
     catch (error) {
       console.error('Failed to invalidate built-in tools cache', error)
     }
     try {
-      await invalidateInstalledPluginList()
+      await invalidateInstalledPromise
     }
     catch (error) {
       console.error('Failed to invalidate installed plugin list cache', error)

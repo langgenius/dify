@@ -35,7 +35,7 @@ export const useCreateMetaData = (datasetId: string) => {
 export const useInvalidAllDocumentMetaData = (datasetId: string) => {
   const queryClient = useQueryClient()
   return () => {
-    queryClient.invalidateQueries({
+    return queryClient.invalidateQueries({
       queryKey: [NAME_SPACE, 'document', datasetId],
       exact: false, // invalidate all document metadata: [NAME_SPACE, 'document', datasetId, documentId]
     })
@@ -48,12 +48,14 @@ const useInvalidAllMetaData = (datasetId: string) => {
   const invalidateAllDocumentMetaData = useInvalidAllDocumentMetaData(datasetId)
 
   return async () => {
-    // meta data in dataset
-    await invalidDatasetMetaData()
-    // meta data in document list
-    invalidDocumentList()
-    // meta data in single document
-    await invalidateAllDocumentMetaData() // meta data in document
+    await Promise.all([
+      // meta data in dataset
+      invalidDatasetMetaData(),
+      // meta data in document list
+      invalidDocumentList(),
+      // meta data in single document
+      invalidateAllDocumentMetaData(),
+    ])
   }
 }
 
@@ -113,24 +115,27 @@ export const useBatchUpdateDocMetadata = () => {
           operation_data: payload.metadata_list,
         },
       })
-      // meta data in dataset
-      await queryClient.invalidateQueries({
+      const invalidateDataset = queryClient.invalidateQueries({
         queryKey: [NAME_SPACE, 'dataset', payload.dataset_id],
       })
-      // meta data in document list
-      await queryClient.invalidateQueries({
+      const invalidateDocumentList = queryClient.invalidateQueries({
         queryKey: [NAME_SPACE, 'document', payload.dataset_id],
       })
-      await queryClient.invalidateQueries({
+      const invalidateDocumentTable = queryClient.invalidateQueries({
         queryKey: [...useDocumentListKey, payload.dataset_id],
       })
-
-      // meta data in single document
-      await Promise.all(documentIds.map(documentId => queryClient.invalidateQueries(
+      const invalidateDocuments = Promise.all(documentIds.map(documentId => queryClient.invalidateQueries(
         {
           queryKey: [NAME_SPACE, 'document', payload.dataset_id, documentId],
         },
       )))
+
+      await Promise.all([
+        invalidateDataset,
+        invalidateDocumentList,
+        invalidateDocumentTable,
+        invalidateDocuments,
+      ])
     },
   })
 }
@@ -140,7 +145,7 @@ export const useUpdateBuiltInStatus = (datasetId: string) => {
   return useMutation({
     mutationFn: async (enabled: boolean) => {
       await post(`/datasets/${datasetId}/metadata/built-in/${enabled ? 'enable' : 'disable'}`)
-      invalidDatasetMetaData()
+      void invalidDatasetMetaData()
     },
   })
 }

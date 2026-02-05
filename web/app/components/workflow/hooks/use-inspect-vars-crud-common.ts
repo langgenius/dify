@@ -221,9 +221,11 @@ export const useInspectVarsCrudCommon = ({
   const deleteAllInspectorVars = useCallback(async () => {
     const { deleteAllInspectVars } = workflowStore.getState()
     await doDeleteAllInspectorVars()
-    await invalidateConversationVarValues()
-    await invalidateSysVarValues()
-    invalidateSandboxFiles()
+    await Promise.all([
+      invalidateConversationVarValues(),
+      invalidateSysVarValues(),
+      invalidateSandboxFiles(),
+    ])
     deleteAllInspectVars()
     handleEdgeCancelRunningStatus()
   }, [doDeleteAllInspectorVars, invalidateConversationVarValues, invalidateSysVarValues, invalidateSandboxFiles, workflowStore, handleEdgeCancelRunningStatus])

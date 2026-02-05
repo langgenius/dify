@@ -26,7 +26,7 @@ export const useEndpointList = (pluginID: string) => {
 export const useInvalidateEndpointList = () => {
   const queryClient = useQueryClient()
   return (pluginID: string) => {
-    queryClient.invalidateQueries(
+    return queryClient.invalidateQueries(
       {
         queryKey: [NAME_SPACE, 'list', pluginID],
       },
