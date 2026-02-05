@@ -93,19 +93,20 @@ def _create_node_execution_from_domain(
     """
     Create a WorkflowNodeExecutionModel database model from a WorkflowNodeExecution domain entity.
     """
-    node_execution = WorkflowNodeExecutionModel()
-    node_execution.id = execution.id
-    node_execution.tenant_id = tenant_id
-    node_execution.app_id = app_id
-    node_execution.workflow_id = execution.workflow_id
-    node_execution.triggered_from = triggered_from.value
-    node_execution.workflow_run_id = execution.workflow_execution_id
-    node_execution.index = execution.index
-    node_execution.predecessor_node_id = execution.predecessor_node_id
-    node_execution.node_id = execution.node_id
-    node_execution.node_type = execution.node_type.value
-    node_execution.title = execution.title
-    node_execution.node_execution_id = execution.node_execution_id
+    node_execution = WorkflowNodeExecutionModel(
+        id=execution.id,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        workflow_id=execution.workflow_id,
+        triggered_from=triggered_from.value,
+        workflow_run_id=execution.workflow_execution_id,
+        index=execution.index,
+        predecessor_node_id=execution.predecessor_node_id,
+        node_id=execution.node_id,
+        node_type=execution.node_type.value,
+        title=execution.title,
+        node_execution_id=execution.node_execution_id,
+    )
 
     # Serialize complex data as JSON
     json_converter = WorkflowRuntimeTypeConverter()
