@@ -2,8 +2,6 @@
 
 import {
   RiAddLine,
-  RiFileAddLine,
-  RiFolderAddLine,
   RiFolderUploadLine,
   RiUploadLine,
 } from '@remixicon/react'
@@ -12,6 +10,7 @@ import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import { FileAdd, FolderAdd } from '@/app/components/base/icons/src/vender/line/files'
 import { UploadCloud02 } from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
@@ -104,13 +103,13 @@ const SidebarSearchAdd = () => {
             />
 
             <MenuItem
-              icon={RiFileAddLine}
+              icon={FileAdd}
               label={t('skillSidebar.menu.newFile')}
               onClick={handleNewFile}
               disabled={isLoading}
             />
             <MenuItem
-              icon={RiFolderAddLine}
+              icon={FolderAdd}
               label={t('skillSidebar.menu.newFolder')}
               onClick={handleNewFolder}
               disabled={isLoading}

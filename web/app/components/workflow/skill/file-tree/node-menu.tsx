@@ -7,8 +7,6 @@ import {
   RiClipboardLine,
   RiDeleteBinLine,
   RiEdit2Line,
-  RiFileAddLine,
-  RiFolderAddLine,
   RiFolderUploadLine,
   RiScissorsLine,
   RiUploadLine,
@@ -18,6 +16,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
+import { FileAdd, FolderAdd } from '@/app/components/base/icons/src/vender/line/files'
 import { UploadCloud02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Download02 } from '@/app/components/base/icons/src/vender/solid/general'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
@@ -126,13 +125,13 @@ const NodeMenu = ({
           />
 
           <MenuItem
-            icon={RiFileAddLine}
+            icon={FileAdd}
             label={t('skillSidebar.menu.newFile')}
             onClick={handleNewFile}
             disabled={isLoading}
           />
           <MenuItem
-            icon={RiFolderAddLine}
+            icon={FolderAdd}
             label={t('skillSidebar.menu.newFolder')}
             onClick={handleNewFolder}
             disabled={isLoading}
