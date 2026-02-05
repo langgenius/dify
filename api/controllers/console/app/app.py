@@ -499,6 +499,7 @@ class AppListApi(Resource):
                     select(Workflow).where(
                         Workflow.version == Workflow.VERSION_DRAFT,
                         Workflow.app_id.in_(workflow_capable_app_ids),
+                        Workflow.tenant_id == current_tenant_id,
                     )
                 )
                 .scalars()
