@@ -35,6 +35,7 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
   const [previewStyle, setPreviewStyle] = useState<React.CSSProperties | null>(null)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { enabled: isPreviewEnabled } = useFilePreviewContext()
+  const isInteractive = editor.isEditable()
 
   const currentNode = useMemo(() => nodeMap?.get(resourceId), [nodeMap, resourceId])
   const isFolder = currentNode?.node_type === 'folder'
@@ -125,11 +126,16 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
       <PortalToFollowElemTrigger asChild ref={ref}>
         <span
           className={cn(
-            'inline-flex min-w-[18px] cursor-pointer select-none items-center gap-[2px] overflow-hidden rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover py-[1px] pl-[1px] pr-[4px] shadow-xs',
+            'inline-flex min-w-[18px] select-none items-center gap-[2px] overflow-hidden rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover py-[1px] pl-[1px] pr-[4px] shadow-xs',
+            isInteractive ? 'cursor-pointer' : 'cursor-default',
             isSelected && 'border-text-accent',
           )}
           title={title}
-          onMouseDown={() => setOpen(prev => !prev)}
+          onMouseDown={() => {
+            if (!isInteractive)
+              return
+            setOpen(prev => !prev)
+          }}
         >
           <span className="flex items-center justify-center p-px">
             {isFolder

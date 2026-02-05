@@ -2,6 +2,7 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { RiAlertFill } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -115,6 +116,7 @@ const ToolBlockComponent = ({
   icon,
   iconDark,
 }: ToolBlockComponentProps) => {
+  const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_TOOL_BLOCK_COMMAND)
   const language = useGetLanguage()
   const { t } = useTranslation()
@@ -184,6 +186,8 @@ const ToolBlockComponent = ({
     const metadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
     return metadata?.tools?.[configId]
   }, [activeTabId, configId, fileMetadata, isUsingExternalMetadata, toolBlockContext?.metadata])
+
+  const isInteractive = editor.isEditable()
 
   const defaultToolValue = useMemo(() => {
     if (!currentProvider || !currentTool)
@@ -515,13 +519,16 @@ const ToolBlockComponent = ({
       <span
         ref={ref}
         className={cn(
-          'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border py-px pl-px pr-[3px] shadow-xs',
+          'inline-flex items-center gap-[2px] rounded-[5px] border py-px pl-px pr-[3px] shadow-xs',
+          isInteractive ? 'cursor-pointer' : 'cursor-default',
           needAuthorization ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
           isSelected && 'border-text-accent',
         )}
         title={`${provider}.${tool}`}
         data-tool-config-id={configId}
         onMouseDown={() => {
+          if (!isInteractive)
+            return
           if (!currentProvider || !currentTool)
             return
           if (configuredToolValue)
