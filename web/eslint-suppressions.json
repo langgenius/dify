@@ -1149,14 +1149,6 @@
       "count": 1
     }
   },
-  "app/components/base/effect/index.stories.tsx": {
-    "tailwindcss/classnames-order": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/base/emoji-picker/Inner.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -5263,14 +5255,6 @@
   "types/workflow.ts": {
     "ts/no-explicit-any": {
       "count": 15
-    }
-  },
-  "utils/classnames.spec.ts": {
-    "tailwindcss/classnames-order": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
     }
   },
   "utils/clipboard.ts": {
