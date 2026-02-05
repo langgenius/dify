@@ -13,7 +13,7 @@ export enum NodeStatusEnum {
 }
 
 const nodeStatusVariants = cva(
-  'flex items-center gap-1 rounded-md px-2 py-1 system-xs-medium',
+  'system-xs-medium flex items-center gap-1 rounded-md px-2 py-1',
   {
     variants: {
       status: {
