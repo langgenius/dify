@@ -73,11 +73,11 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
             node = self._client.get_node_from_key(self._topic)
             return self._pubsub.get_sharded_message(
                 ignore_subscribe_messages=False,
-                timeout=0.1,
+                timeout=1,
                 target_node=node,
             )
         else:
-            return self._pubsub.get_sharded_message(ignore_subscribe_messages=False, timeout=0.1)  # type: ignore[attr-defined]
+            return self._pubsub.get_sharded_message(ignore_subscribe_messages=False, timeout=1)  # type: ignore[attr-defined]
 
     def _get_message_type(self) -> str:
         return "smessage"
