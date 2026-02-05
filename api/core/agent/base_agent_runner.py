@@ -480,9 +480,13 @@ class BaseAgentRunner(AppRunner):
                                     ),
                                 )
                             )
+
+                            tool_response_content = tool_responses.get(tool, agent_thought.observation)
+                            if not tool_response_content:
+                                tool_response_content = "No results returned from the tool."
                             tool_call_response.append(
                                 ToolPromptMessage(
-                                    content=tool_responses.get(tool, agent_thought.observation),
+                                    content=str(tool_response_content),
                                     name=tool,
                                     tool_call_id=tool_call_id,
                                 )
