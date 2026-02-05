@@ -22,7 +22,7 @@ class TelemetryFacade:
     def emit(event: TelemetryEvent, trace_manager: TraceQueueManager | None = None) -> None:
         from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 
-        if event.name not in _ENTERPRISE_ONLY_TRACES:
+        if event.name in _ENTERPRISE_ONLY_TRACES and not is_enterprise_telemetry_enabled():
             return
 
         trace_queue_manager = trace_manager or TraceQueueManager(
