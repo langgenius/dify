@@ -1,7 +1,7 @@
 {
   "name": "dify-web",
   "type": "module",
-  "version": "1.12.0",
+  "version": "1.12.1",
   "private": true,
   "packageManager": "pnpm@10.27.0+sha512.72d699da16b1179c14ba9e64dc71c9a40988cbdc65c264cb0e489db7de917f20dcf4d64d8723625f2969ba52d4b7e2a1170682d9ac2a5dcaeaab732b7e16f04a",
   "imports": {
@@ -46,7 +46,7 @@
     "uglify-embed": "node ./bin/uglify-embed",
     "i18n:check": "tsx ./scripts/check-i18n.js",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --reporter=dot --silent=passed-only",
     "test:watch": "vitest --watch",
     "analyze-component": "node ./scripts/analyze-component.js",
     "refactor-component": "node ./scripts/refactor-component.js",
@@ -233,7 +233,8 @@
     "uglify-js": "3.19.3",
     "vite": "7.3.1",
     "vite-tsconfig-paths": "6.0.4",
-    "vitest": "4.0.17"
+    "vitest": "4.0.17",
+    "vitest-canvas-mock": "1.1.3"
   },
   "pnpm": {
     "overrides": {
