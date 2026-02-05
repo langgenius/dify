@@ -15,7 +15,7 @@ class SavedMessageService:
     ) -> InfiniteScrollPagination:
         if not user:
             raise ValueError("User is required")
-        with session_factory.create_session() as session, session.begin():
+        with session_factory.create_session() as session:
             saved_messages = (
                 session.query(SavedMessage)
                 .where(
