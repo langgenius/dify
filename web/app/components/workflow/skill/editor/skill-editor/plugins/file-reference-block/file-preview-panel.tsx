@@ -2,12 +2,11 @@ import type { FileAppearanceType } from '@/app/components/base/file-uploader/typ
 import type { AppAssetTreeView } from '@/types/app-asset'
 import { RiCloseLine, RiExternalLinkLine, RiFolderLine } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useContext, useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import Loading from '@/app/components/base/loading'
-import { WorkflowContext } from '@/app/components/workflow/context'
 import SkillEditor from '@/app/components/workflow/skill/editor/skill-editor'
 import { useFileTypeInfo } from '@/app/components/workflow/skill/hooks/use-file-type-info'
 import { getFileIconType } from '@/app/components/workflow/skill/utils/file-utils'
@@ -24,7 +23,6 @@ type FilePreviewPanelProps = {
 
 const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }: FilePreviewPanelProps) => {
   const { t } = useTranslation(['workflow', 'common'])
-  const workflowStore = useContext(WorkflowContext)
   const appId = useAppStore(s => s.appDetail?.id || '')
 
   const isFolder = currentNode?.node_type === 'folder'
@@ -58,13 +56,16 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
     ? getFileIconType(currentNode.name, currentNode.extension)
     : null
 
-  const canOpenInEditor = Boolean(resourceId && !isFolder && workflowStore)
+  const canOpenInEditor = Boolean(resourceId && !isFolder && typeof window !== 'undefined')
 
   const handleOpenInEditor = useCallback(() => {
-    if (!canOpenInEditor || !workflowStore)
+    if (!canOpenInEditor)
       return
-    workflowStore.getState().openTab(resourceId)
-  }, [canOpenInEditor, workflowStore, resourceId])
+    const nextUrl = new URL(window.location.href)
+    nextUrl.searchParams.set('view', 'skill')
+    nextUrl.searchParams.set('fileId', resourceId)
+    window.open(nextUrl.toString(), '_blank', 'noopener,noreferrer')
+  }, [canOpenInEditor, resourceId])
 
   return (
     <div

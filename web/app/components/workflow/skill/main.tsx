@@ -1,8 +1,9 @@
 'use client'
 
+import { useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import ArtifactContentPanel from './artifact-content-panel'
 import { isArtifactTab } from './constants'
 import ContentArea from './content-area'
@@ -32,6 +33,17 @@ const ContentRouter = () => {
 const SkillMain = () => {
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
+  const searchParams = useSearchParams()
+  const storeApi = useWorkflowStore()
+  const openedFileRef = React.useRef<string | null>(null)
+
+  React.useEffect(() => {
+    const fileId = searchParams.get('fileId')
+    if (!fileId || openedFileRef.current === fileId)
+      return
+    openedFileRef.current = fileId
+    storeApi.getState().openTab(fileId, { pinned: true })
+  }, [searchParams, storeApi])
 
   return (
     <div className="h-full bg-workflow-canvas-workflow-top-bar-1 pl-3 pt-[52px]">
