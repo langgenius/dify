@@ -1471,7 +1471,7 @@ class LLMNode(Node[LLMNodeData]):
                 if isinstance(item, PromptMessageContext):
                     if len(item.value_selector) >= 2:
                         prompt_context_selectors.append(item.value_selector)
-                elif isinstance(item, LLMNodeChatModelMessage) and item.edition_type == "jinja2":
+                elif isinstance(item, LLMNodeChatModelMessage):
                     variable_template_parser = VariableTemplateParser(template=item.text)
                     variable_selectors.extend(variable_template_parser.extract_variable_selectors())
         elif isinstance(prompt_template, LLMNodeCompletionModelPromptTemplate):
