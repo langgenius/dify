@@ -58,6 +58,5 @@ class MarketplacePluginSnapshot(BaseModel):
     latest_package_url: str
 
     @computed_field
-    @property
     def plugin_id(self) -> str:
         return f"{self.org}/{self.name}"
