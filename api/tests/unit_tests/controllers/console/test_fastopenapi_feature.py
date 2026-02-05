@@ -47,9 +47,7 @@ def test_console_system_features_fastopenapi_handles_unauthorized(app: Flask):
 
     with (
         patch("controllers.console.feature.current_user", mock_user),
-        patch(
-            "controllers.console.feature.FeatureService.get_system_features", return_value=mock_features
-        ) as mock_svc,
+        patch("controllers.console.feature.FeatureService.get_system_features", return_value=mock_features) as mock_svc,
     ):
         client = app.test_client()
         response = client.get("/console/api/system-features")
