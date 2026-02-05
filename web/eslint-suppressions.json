@@ -81,6 +81,11 @@
       "count": 1
     }
   },
+  "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/time-range-picker/range-selector.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/svg-attribute-error-reproduction.spec.tsx": {
     "no-console": {
       "count": 19
@@ -120,6 +125,9 @@
     }
   },
   "app/account/(commonLayout)/account-page/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -259,6 +267,9 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -273,6 +284,11 @@
       "count": 2
     }
   },
+  "app/components/app/configuration/config-prompt/confirm-add-var/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/app/configuration/config-prompt/conversation-history/edit-modal.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -280,6 +296,11 @@
   },
   "app/components/app/configuration/config-prompt/index.spec.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config-prompt/message-type-selector.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -293,13 +314,43 @@
       "count": 6
     }
   },
+  "app/components/app/configuration/config-var/config-select/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config-var/input-type-icon.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config-var/select-type-item/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/app/configuration/config-var/select-var-type.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
+  "app/components/app/configuration/config-var/var-item.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/app/configuration/config-vision/index.spec.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config-vision/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    }
+  },
+  "app/components/app/configuration/config-vision/param-config-content.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -322,6 +373,9 @@
     }
   },
   "app/components/app/configuration/config/agent/agent-tools/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 9
     }
@@ -335,11 +389,22 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 4
     }
   },
+  "app/components/app/configuration/config/agent/prompt-editor.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/app/configuration/config/assistant-type-picker/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 3
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -349,6 +414,11 @@
       "count": 4
     },
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config/automatic/idea-output.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -367,9 +437,17 @@
       "count": 1
     }
   },
+  "app/components/app/configuration/config/automatic/version-selector.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/app/configuration/config/code-generator/get-code-generator-res.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -390,9 +468,24 @@
       "count": 6
     }
   },
+  "app/components/app/configuration/ctrl-btn-group/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/app/configuration/dataset-config/card-item/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "app/components/app/configuration/dataset-config/context-var/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/dataset-config/context-var/var-picker.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 4
     }
   },
   "app/components/app/configuration/dataset-config/index.spec.tsx": {
@@ -417,6 +510,9 @@
   },
   "app/components/app/configuration/dataset-config/select-dataset/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 2
     }
   },
@@ -496,6 +592,9 @@
     "style/multiline-ternary": {
       "count": 2
     },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 24
     }
@@ -511,12 +610,25 @@
     }
   },
   "app/components/app/configuration/tools/external-data-tool-modal.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
+  "app/components/app/configuration/tools/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/app/create-app-dialog/app-card/index.spec.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/app/create-app-dialog/app-card/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -528,11 +640,6 @@
   "app/components/app/create-app-dialog/app-list/sidebar.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
-    }
-  },
-  "app/components/app/create-app-modal/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
     }
   },
   "app/components/app/create-app-modal/index.tsx": {
@@ -548,6 +655,11 @@
       "count": 2
     },
     "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "app/components/app/create-from-dsl-modal/uploader.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -582,9 +694,17 @@
       "count": 1
     }
   },
+  "app/components/app/overview/apikey-info-panel/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 3
+    }
+  },
   "app/components/app/overview/app-card.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -597,6 +717,9 @@
   },
   "app/components/app/overview/embedded/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -630,8 +753,16 @@
     }
   },
   "app/components/app/text-generate/item/result-tab.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/app/text-generate/saved-items/no-data/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/app/workflow-log/filter.tsx": {
@@ -723,6 +854,11 @@
       "count": 2
     }
   },
+  "app/components/base/alert.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/base/amplitude/AmplitudeProvider.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
@@ -736,6 +872,11 @@
   "app/components/base/app-icon-picker/ImageInput.tsx": {
     "react/no-create-ref": {
       "count": 1
+    }
+  },
+  "app/components/base/app-icon/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 15
     }
   },
   "app/components/base/audio-btn/audio.ts": {
@@ -756,6 +897,11 @@
       "count": 2
     },
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/auto-height-textarea/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -780,6 +926,12 @@
       "count": 1
     },
     "react/no-nested-component-definitions": {
+      "count": 1
+    },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -821,6 +973,11 @@
   "app/components/base/chat/chat-with-history/header/index.tsx": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/base/chat/chat-with-history/header/operation.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/base/chat/chat-with-history/hooks.tsx": {
@@ -984,6 +1141,14 @@
       "count": 1
     }
   },
+  "app/components/base/divider/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 2
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/base/emoji-picker/Inner.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -1020,6 +1185,14 @@
   "app/components/base/features/new-feature-panel/conversation-opener/modal.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/base/features/new-feature-panel/dialog-wrapper.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/base/features/new-feature-panel/feature-card.tsx": {
@@ -1052,6 +1225,11 @@
       "count": 1
     }
   },
+  "app/components/base/file-thumb/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
   "app/components/base/file-uploader/dynamic-pdf-preview.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -1059,6 +1237,14 @@
   },
   "app/components/base/file-uploader/file-list-in-log.tsx": {
     "react/no-missing-key": {
+      "count": 1
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/base/file-uploader/file-uploader-in-chat-input/file-image-item.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -1227,6 +1413,14 @@
   "app/components/base/input/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
+    },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 2
+    }
+  },
+  "app/components/base/linked-apps-panel/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/base/logo/dify-logo.tsx": {
@@ -1333,6 +1527,9 @@
     "regexp/no-super-linear-backtracking": {
       "count": 3
     },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -1386,6 +1583,9 @@
   },
   "app/components/base/node-status/index.tsx": {
     "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -1445,9 +1645,42 @@
       "count": 1
     }
   },
+  "app/components/base/prompt-editor/plugins/component-picker-block/prompt-option.tsx": {
+    "tailwindcss/no-duplicate-classes": {
+      "count": 2
+    }
+  },
   "app/components/base/prompt-editor/plugins/context-block/component.tsx": {
+    "tailwindcss/no-duplicate-classes": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "app/components/base/prompt-editor/plugins/context-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/current-block/component.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/current-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/error-message-block/component.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/error-message-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
     }
   },
   "app/components/base/prompt-editor/plugins/history-block/component.tsx": {
@@ -1455,14 +1688,44 @@
       "count": 1
     }
   },
+  "app/components/base/prompt-editor/plugins/history-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/last-run-block/component.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/last-run-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
   "app/components/base/prompt-editor/plugins/on-blur-or-focus-block.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
+  "app/components/base/prompt-editor/plugins/query-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
   "app/components/base/prompt-editor/plugins/update-block.tsx": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/variable-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/workflow-variable-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 4
     }
   },
   "app/components/base/prompt-editor/plugins/workflow-variable-block/node.tsx": {
@@ -1532,11 +1795,21 @@
       "count": 1
     }
   },
+  "app/components/base/select/locale.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/base/slider/index.stories.tsx": {
     "no-console": {
       "count": 2
     },
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/slider/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -1561,6 +1834,14 @@
   "app/components/base/switch/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/base/tab-slider-plain/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
     }
   },
   "app/components/base/tab-slider/index.tsx": {
@@ -1573,6 +1854,11 @@
       "count": 2
     },
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/tag-management/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -1592,6 +1878,9 @@
   "app/components/base/textarea/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
+    },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 3
     }
   },
   "app/components/base/toast/index.tsx": {
@@ -1610,6 +1899,11 @@
     },
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "app/components/base/voice-input/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
     }
   },
   "app/components/base/voice-input/utils.ts": {
@@ -1662,6 +1956,11 @@
       "count": 1
     }
   },
+  "app/components/billing/pricing/plans/self-hosted-plan-item/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/billing/upgrade-btn/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 9
@@ -1678,6 +1977,9 @@
     }
   },
   "app/components/custom/custom-web-app-brand/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -1707,11 +2009,6 @@
       "count": 4
     }
   },
-  "app/components/datasets/common/image-uploader/utils.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/datasets/common/retrieval-method-config/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -1722,19 +2019,14 @@
       "count": 1
     }
   },
-  "app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/index.tsx": {
-    "react-refresh/only-export-components": {
+  "app/components/datasets/create-from-pipeline/header.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
   "app/components/datasets/create/file-preview/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/datasets/create/file-uploader/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "app/components/datasets/create/index.spec.tsx": {
@@ -1744,6 +2036,11 @@
   },
   "app/components/datasets/create/notion-page-preview/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/create/step-one/upgrade-card.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -1779,6 +2076,9 @@
     }
   },
   "app/components/datasets/create/website/firecrawl/options.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1795,6 +2095,9 @@
     }
   },
   "app/components/datasets/create/website/jina-reader/options.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1811,19 +2114,16 @@
     }
   },
   "app/components/datasets/create/website/watercrawl/options.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/datasets/documents/components/list.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
     "react-refresh/only-export-components": {
       "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/index.spec.tsx": {
@@ -1916,6 +2216,16 @@
       "count": 2
     }
   },
+  "app/components/datasets/documents/create-from-pipeline/left-header.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/preview/web-preview.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/datasets/documents/create-from-pipeline/process-documents/form.tsx": {
     "ts/no-explicit-any": {
       "count": 3
@@ -1924,6 +2234,11 @@
   "app/components/datasets/documents/create-from-pipeline/process-documents/index.tsx": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/datasets/documents/detail/batch-modal/csv-uploader.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/datasets/documents/detail/batch-modal/index.tsx": {
@@ -1974,6 +2289,11 @@
       "count": 6
     }
   },
+  "app/components/datasets/documents/detail/settings/pipeline-settings/left-header.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/datasets/documents/detail/settings/pipeline-settings/process-documents/index.tsx": {
     "ts/no-explicit-any": {
       "count": 3
@@ -2009,6 +2329,16 @@
       "count": 1
     }
   },
+  "app/components/datasets/hit-testing/components/child-chunks-item.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/hit-testing/components/records.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 3
+    }
+  },
   "app/components/datasets/hit-testing/components/score.tsx": {
     "unicorn/prefer-number-properties": {
       "count": 1
@@ -2019,9 +2349,19 @@
       "count": 1
     }
   },
+  "app/components/datasets/metadata/edit-metadata-batch/edit-row.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/datasets/metadata/edit-metadata-batch/input-combined.tsx": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/datasets/metadata/edit-metadata-batch/input-has-set-multiple-value.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/datasets/metadata/hooks/use-edit-dataset-metadata.ts": {
@@ -2044,12 +2384,19 @@
       "count": 1
     }
   },
-  "app/components/datasets/settings/form/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
+  "app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
+    }
+  },
+  "app/components/datasets/metadata/metadata-dataset/select-metadata.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    }
+  },
+  "app/components/datasets/metadata/metadata-document/info-group.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
     }
   },
   "app/components/datasets/settings/permission-selector/index.tsx": {
@@ -2086,6 +2433,11 @@
       "count": 1
     }
   },
+  "app/components/explore/category.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/explore/create-app-modal/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2107,6 +2459,16 @@
   "app/components/explore/sidebar/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "app/components/explore/try-app/app/text-generation.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/explore/try-app/preview/basic-app-preview.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
     }
   },
   "app/components/explore/try-app/tab.tsx": {
@@ -2148,6 +2510,11 @@
     },
     "react-refresh/only-export-components": {
       "count": 1
+    }
+  },
+  "app/components/header/account-dropdown/workplace-selector/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
     }
   },
   "app/components/header/account-setting/data-source-page-new/card.tsx": {
@@ -2264,6 +2631,9 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/model-modal/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -2278,8 +2648,18 @@
       "count": 1
     }
   },
+  "app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
   "app/components/header/account-setting/model-provider-page/model-parameter-modal/status-indicators.tsx": {
     "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 2
     }
   },
@@ -2329,6 +2709,26 @@
       "count": 1
     }
   },
+  "app/components/header/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/header/nav/nav-selector/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/base/key-value-item.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/card/base/corner-mark.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/plugins/install-plugin/hooks.ts": {
     "ts/no-explicit-any": {
       "count": 4
@@ -2373,6 +2773,16 @@
     },
     "unused-imports/no-unused-vars": {
       "count": 2
+    }
+  },
+  "app/components/plugins/marketplace/list/card-wrapper.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/marketplace/list/list-with-collection.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/plugins/marketplace/sort-dropdown/index.spec.tsx": {
@@ -2445,11 +2855,6 @@
       "count": 8
     }
   },
-  "app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel.tsx": {
-    "ts/no-explicit-any": {
-      "count": 8
-    }
-  },
   "app/components/plugins/plugin-detail-panel/datasource-action-list.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2503,16 +2908,13 @@
       "count": 2
     }
   },
-  "app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    },
+  "app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
-    "ts/no-explicit-any": {
+  "app/components/plugins/plugin-detail-panel/subscription-list/index.tsx": {
+    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -2582,6 +2984,11 @@
   "app/components/plugins/reference-setting-modal/auto-update-setting/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 7
+    }
+  },
+  "app/components/plugins/reference-setting-modal/auto-update-setting/tool-item.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/plugins/reference-setting-modal/index.spec.tsx": {
@@ -2662,6 +3069,11 @@
   "app/components/rag-pipeline/components/panel/test-run/result/result-preview/utils.ts": {
     "ts/no-explicit-any": {
       "count": 4
+    }
+  },
+  "app/components/rag-pipeline/components/publish-as-knowledge-pipeline-modal.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/rag-pipeline/components/rag-pipeline-children.tsx": {
@@ -2747,6 +3159,11 @@
       "count": 1
     }
   },
+  "app/components/share/text-generation/result/header.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 3
+    }
+  },
   "app/components/share/text-generation/result/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
@@ -2779,6 +3196,9 @@
     }
   },
   "app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2787,12 +3207,28 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/tools/edit-custom-collection-modal/test-api.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/tools/labels/filter.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/tools/labels/selector.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -2817,6 +3253,9 @@
     }
   },
   "app/components/tools/mcp/provider-card.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -2832,6 +3271,9 @@
     }
   },
   "app/components/tools/setting/build-in/config-credentials.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -2839,6 +3281,16 @@
   "app/components/tools/types.ts": {
     "ts/no-explicit-any": {
       "count": 4
+    }
+  },
+  "app/components/tools/workflow-tool/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/tools/workflow-tool/method-selector.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/workflow-app/components/workflow-children.tsx": {
@@ -2850,11 +3302,6 @@
     }
   },
   "app/components/workflow-app/components/workflow-main.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/workflow-app/components/workflow-onboarding-modal/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -2914,14 +3361,12 @@
       "count": 1
     }
   },
-  "app/components/workflow/block-selector/constants.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
   "app/components/workflow/block-selector/featured-tools.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
+    },
+    "tailwindcss/no-duplicate-classes": {
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -2930,6 +3375,9 @@
   "app/components/workflow/block-selector/featured-triggers.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
+    },
+    "tailwindcss/no-duplicate-classes": {
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -2947,6 +3395,11 @@
   },
   "app/components/workflow/block-selector/market-place-plugin/action.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/block-selector/market-place-plugin/item.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -2986,6 +3439,9 @@
   "app/components/workflow/block-selector/view-type-select.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/workflow/candidate-node-main.tsx": {
@@ -3000,6 +3456,11 @@
   },
   "app/components/workflow/datasets-detail-store/provider.tsx": {
     "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/header/header-in-restoring.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -3137,6 +3598,11 @@
       "count": 8
     }
   },
+  "app/components/workflow/nodes/_base/components/before-run-form/panel-wrap.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -3174,6 +3640,9 @@
     }
   },
   "app/components/workflow/nodes/_base/components/input-support-select-var.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3211,9 +3680,15 @@
   "app/components/workflow/nodes/_base/components/node-handle.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/components/prompt/editor.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -3224,6 +3699,9 @@
     }
   },
   "app/components/workflow/nodes/_base/components/selector.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -3243,17 +3721,33 @@
       "count": 32
     }
   },
+  "app/components/workflow/nodes/_base/components/variable/var-full-path-panel.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "app/components/workflow/nodes/_base/components/variable/var-reference-vars.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 3
     }
   },
   "app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 6
@@ -3307,6 +3801,9 @@
     }
   },
   "app/components/workflow/nodes/_base/node.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3465,6 +3962,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/nodes/http/components/api-input.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/http/components/key-value/key-value-edit/index.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -3480,6 +3982,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/nodes/http/panel.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    }
+  },
   "app/components/workflow/nodes/http/use-config.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -3493,9 +4000,24 @@
       "count": 5
     }
   },
+  "app/components/workflow/nodes/if-else/components/condition-files-list-value.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/if-else/components/condition-list/condition-input.tsx": {
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "app/components/workflow/nodes/if-else/components/condition-number-input.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/if-else/components/condition-wrap.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
     }
   },
   "app/components/workflow/nodes/if-else/default.ts": {
@@ -3515,6 +4037,11 @@
   },
   "app/components/workflow/nodes/iteration/node.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/iteration/panel.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -3543,9 +4070,19 @@
       "count": 3
     }
   },
+  "app/components/workflow/nodes/knowledge-retrieval/components/dataset-item.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-item.tsx": {
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "app/components/workflow/nodes/knowledge-retrieval/components/retrieval-config.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
     }
   },
   "app/components/workflow/nodes/knowledge-retrieval/default.ts": {
@@ -3573,12 +4110,20 @@
       "count": 5
     }
   },
+  "app/components/workflow/nodes/list-operator/components/extract-input.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/list-operator/components/filter-condition.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/workflow/nodes/list-operator/components/sub-variable-picker.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3661,8 +4206,23 @@
       "count": 10
     }
   },
+  "app/components/workflow/nodes/loop/components/condition-files-list-value.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/loop/components/condition-list/condition-input.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/loop/components/condition-number-input.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/loop/components/condition-wrap.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -3747,6 +4307,11 @@
       "count": 8
     }
   },
+  "app/components/workflow/nodes/start/node.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/start/panel.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -3782,6 +4347,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/nodes/tool/components/copy-id.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/tool/components/input-var-list.tsx": {
     "ts/no-explicit-any": {
       "count": 7
@@ -3810,6 +4380,11 @@
   "app/components/workflow/nodes/tool/default.ts": {
     "ts/no-explicit-any": {
       "count": 7
+    }
+  },
+  "app/components/workflow/nodes/tool/node.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/workflow/nodes/tool/output-schema-utils.ts": {
@@ -3901,6 +4476,9 @@
     }
   },
   "app/components/workflow/nodes/variable-assigner/components/var-group-item.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3964,6 +4542,9 @@
     "react-refresh/only-export-components": {
       "count": 1
     },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 5
     },
@@ -4017,9 +4598,39 @@
       "count": 4
     }
   },
+  "app/components/workflow/panel/version-history-panel/context-menu/menu-item.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/panel/version-history-panel/delete-confirm-modal.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/panel/version-history-panel/filter/index.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/workflow/panel/version-history-panel/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/workflow/panel/version-history-panel/loading/item.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/panel/version-history-panel/restore-confirm-modal.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/panel/version-history-panel/version-history-item.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/workflow/panel/workflow-preview.tsx": {
@@ -4053,6 +4664,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/run/loop-result-panel.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
   "app/components/workflow/run/node.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -4069,6 +4685,9 @@
     }
   },
   "app/components/workflow/run/result-text.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -4245,7 +4864,12 @@
   },
   "app/components/workflow/workflow-history-store.tsx": {
     "react-refresh/only-export-components": {
-      "count": 2
+      "count": 3
+    }
+  },
+  "app/components/workflow/workflow-preview/components/nodes/base.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/components/workflow/workflow-preview/components/nodes/constants.ts": {
@@ -4256,6 +4880,11 @@
   "app/education-apply/hooks.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 5
+    }
+  },
+  "app/education-apply/role-selector.tsx": {
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
     }
   },
   "app/education-apply/search-input.tsx": {
@@ -4281,6 +4910,11 @@
   "app/install/installForm.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 7
+    }
+  },
+  "app/install/installForm.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
     }
   },
   "app/reset-password/layout.tsx": {
