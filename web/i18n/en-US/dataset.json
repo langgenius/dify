@@ -173,6 +173,7 @@
   "serviceApi.disabled": "Disabled",
   "serviceApi.enabled": "Enabled",
   "serviceApi.title": "Service API",
+  "singleDatasetRerankDisabled": "Reranking settings (Rerank Model and Weighted Score) are only applied when multiple knowledge bases are selected. With a single knowledge base, only Top-K and Score Threshold are used.",
   "unavailable": "Unavailable",
   "updated": "Updated",
   "weightedScore.customized": "Customized",
