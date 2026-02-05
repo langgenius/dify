@@ -158,7 +158,7 @@ class AppAnnotationService:
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
             )
         annotations = db.paginate(select=stmt, page=page, per_page=limit, max_per_page=100, error_out=False)
-        return annotations.items, annotations.total
+        return annotations.items, annotations.total or 0
 
     @classmethod
     def export_annotation_list_by_app_id(cls, app_id: str):
@@ -524,7 +524,7 @@ class AppAnnotationService:
         annotation_hit_histories = db.paginate(
             select=stmt, page=page, per_page=limit, max_per_page=100, error_out=False
         )
-        return annotation_hit_histories.items, annotation_hit_histories.total
+        return annotation_hit_histories.items, annotation_hit_histories.total or 0
 
     @classmethod
     def get_annotation_by_id(cls, annotation_id: str) -> MessageAnnotation | None:
