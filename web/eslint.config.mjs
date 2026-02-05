@@ -1,9 +1,9 @@
 // @ts-check
 import antfu from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
+import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
-import tailwind from 'eslint-plugin-tailwindcss'
 import dify from './eslint-rules/index.js'
 
 export default antfu(
@@ -23,7 +23,7 @@ export default antfu(
       },
     },
     nextjs: true,
-    ignores: ['public', 'types/doc-paths.ts'],
+    ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
@@ -66,42 +66,16 @@ export default antfu(
       sonarjs: sonar,
     },
   },
-  tailwind.configs['flat/recommended'],
   {
-    settings: {
-      tailwindcss: {
-        // These are the default values but feel free to customize
-        callees: ['classnames', 'clsx', 'ctl', 'cn', 'classNames'],
-        config: 'tailwind.config.js', // returned from `loadConfig()` utility if not provided
-        cssFiles: [
-          '**/*.css',
-          '!**/node_modules',
-          '!**/.*',
-          '!**/dist',
-          '!**/build',
-          '!**/.storybook',
-          '!**/.next',
-          '!**/.public',
-        ],
-        cssFilesRefreshRate: 5_000,
-        removeDuplicates: true,
-        skipClassAttribute: false,
-        whitelist: [],
-        tags: [], // can be set to e.g. ['tw'] for use in tw`bg-blue`
-        classRegex: '^class(Name)?$', // can be modified to support custom attributes. E.g. "^tw$" for `twin.macro`
-      },
+    files: ['**/*.{ts,tsx}'],
+    plugins: {
+      tailwindcss,
     },
     rules: {
-      // due to 1k lines of tailwind config, these rule have performance issue
-      'tailwindcss/no-contradicting-classname': 'off',
-      'tailwindcss/enforces-shorthand': 'off',
-      'tailwindcss/no-custom-classname': 'off',
-      'tailwindcss/no-unnecessary-arbitrary-value': 'off',
-
-      'tailwindcss/no-arbitrary-value': 'off',
-      'tailwindcss/classnames-order': 'warn',
-      'tailwindcss/enforces-negative-arbitrary-values': 'warn',
-      'tailwindcss/migration-from-tailwind-2': 'warn',
+      'tailwindcss/enforce-consistent-class-order': 'error',
+      'tailwindcss/no-duplicate-classes': 'error',
+      'tailwindcss/no-unnecessary-whitespace': 'error',
+      'tailwindcss/no-unknown-classes': 'warn',
     },
   },
   {
