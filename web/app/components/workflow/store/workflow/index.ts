@@ -11,6 +11,7 @@ import type { LayoutSliceShape } from './layout-slice'
 import type { NodeSliceShape } from './node-slice'
 import type { PanelSliceShape } from './panel-slice'
 import type { ToolSliceShape } from './tool-slice'
+import type { VibeWorkflowSliceShape } from './vibe-workflow-slice'
 import type { VersionSliceShape } from './version-slice'
 import type { WorkflowDraftSliceShape } from './workflow-draft-slice'
 import type { WorkflowSliceShape } from './workflow-slice'
@@ -33,6 +34,7 @@ import { createNodeSlice } from './node-slice'
 
 import { createPanelSlice } from './panel-slice'
 import { createToolSlice } from './tool-slice'
+import { createVibeWorkflowSlice } from './vibe-workflow-slice'
 import { createVersionSlice } from './version-slice'
 import { createWorkflowDraftSlice } from './workflow-draft-slice'
 import { createWorkflowSlice } from './workflow-slice'
@@ -55,6 +57,7 @@ export type Shape
     & WorkflowSliceShape
     & InspectVarsSliceShape
     & LayoutSliceShape
+    & VibeWorkflowSliceShape
     & SliceFromInjection
 
 export type InjectWorkflowStoreSliceFn = StateCreator<SliceFromInjection>
@@ -80,6 +83,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
     ...createWorkflowSlice(...args),
     ...createInspectVarsSlice(...args),
     ...createLayoutSlice(...args),
+    ...createVibeWorkflowSlice(...args),
     ...(injectWorkflowStoreSliceFn?.(...args) || {} as SliceFromInjection),
   }))
 }

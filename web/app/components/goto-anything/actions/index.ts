@@ -160,7 +160,7 @@
  * - `@knowledge` / `@kb` - Search knowledge bases
  * - `@plugin` - Search plugins
  * - `@node` - Search workflow nodes (workflow pages only)
- * - `/` - Execute slash commands (theme, language, etc.)
+ * - `/` - Execute slash commands (theme, language, banana, etc.)
  */
 
 import type { ActionItem, SearchResult } from './types'
