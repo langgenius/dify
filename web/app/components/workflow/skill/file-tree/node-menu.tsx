@@ -13,16 +13,22 @@ import {
   RiScissorsLine,
   RiUploadLine,
 } from '@remixicon/react'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
+import { UploadCloud02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Download02 } from '@/app/components/base/icons/src/vender/solid/general'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { NODE_MENU_TYPE } from '../constants'
 import { useFileOperations } from '../hooks/use-file-operations'
 import MenuItem from './menu-item'
+
+const ImportSkillModal = dynamic(() => import('../start-tab/import-skill-modal'), {
+  ssr: false,
+})
 
 export const MENU_CONTAINER_STYLES = [
   'min-w-[180px] rounded-xl border-[0.5px] border-components-panel-border',
@@ -55,6 +61,7 @@ const NodeMenu = ({
   const hasClipboard = useStore(s => s.hasClipboard())
   const isRoot = type === NODE_MENU_TYPE.ROOT
   const isFolder = type === NODE_MENU_TYPE.FOLDER || isRoot
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
   const {
     fileInputRef,
@@ -134,7 +141,7 @@ const NodeMenu = ({
           <div className="my-1 h-px bg-divider-subtle" />
 
           <MenuItem
-            icon={RiUploadLine}
+            icon={UploadCloud02}
             label={t('skillSidebar.menu.uploadFile')}
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
@@ -145,6 +152,19 @@ const NodeMenu = ({
             onClick={() => folderInputRef.current?.click()}
             disabled={isLoading}
           />
+
+          {isRoot && (
+            <>
+              <div className="my-1 h-px bg-divider-subtle" />
+              <MenuItem
+                icon={RiUploadLine}
+                label={t('skillSidebar.menu.importSkills')}
+                onClick={() => setIsImportModalOpen(true)}
+                disabled={isLoading}
+                tooltip={t('skill.startTab.importSkillDesc')}
+              />
+            </>
+          )}
 
           {(showRenameDelete || hasClipboard) && <div className="my-1 h-px bg-divider-subtle" />}
         </>
@@ -211,6 +231,10 @@ const NodeMenu = ({
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
         isLoading={isDeleting}
+      />
+      <ImportSkillModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
       />
     </div>
   )

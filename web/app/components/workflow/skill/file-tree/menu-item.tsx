@@ -1,8 +1,10 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
+import { RiQuestionLine } from '@remixicon/react'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
+import Tooltip from '@/app/components/base/tooltip'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { cn } from '@/utils/classnames'
 
@@ -55,9 +57,10 @@ export type MenuItemProps = {
   kbd?: readonly string[]
   onClick: React.MouseEventHandler<HTMLButtonElement>
   disabled?: boolean
+  tooltip?: string
 } & VariantProps<typeof menuItemVariants>
 
-const MenuItem = ({ icon: Icon, label, kbd, onClick, disabled, variant }: MenuItemProps) => {
+const MenuItem = ({ icon: Icon, label, kbd, onClick, disabled, variant, tooltip }: MenuItemProps) => {
   const handleClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
     onClick(event)
@@ -73,6 +76,20 @@ const MenuItem = ({ icon: Icon, label, kbd, onClick, disabled, variant }: MenuIt
       <Icon className={cn(iconVariants({ variant }))} aria-hidden="true" />
       <span className={cn(labelVariants({ variant }), 'flex-1 text-left')}>{label}</span>
       {kbd && kbd.length > 0 && <ShortcutsName keys={kbd} textColor="secondary" />}
+      {tooltip && (
+        <Tooltip
+          popupContent={tooltip}
+          position="right"
+        >
+          <button
+            type="button"
+            className="flex shrink-0 items-center justify-center"
+            onClick={e => e.stopPropagation()}
+          >
+            <RiQuestionLine className="size-4 text-text-quaternary hover:text-text-tertiary" />
+          </button>
+        </Tooltip>
+      )}
     </button>
   )
 }

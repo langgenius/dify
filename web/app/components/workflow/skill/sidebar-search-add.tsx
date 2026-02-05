@@ -7,10 +7,12 @@ import {
   RiFolderUploadLine,
   RiUploadLine,
 } from '@remixicon/react'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import { UploadCloud02 } from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -18,42 +20,22 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import SearchInput from '@/app/components/base/search-input'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { cn } from '@/utils/classnames'
 import { ROOT_ID } from './constants'
+import MenuItem from './file-tree/menu-item'
 import { useFileOperations } from './hooks/use-file-operations'
 import { useSkillAssetTreeData } from './hooks/use-skill-asset-tree'
 import { getTargetFolderIdFromSelection } from './utils/tree-utils'
 
-type MenuItemProps = {
-  icon: React.ElementType
-  label: string
-  onClick: () => void
-  disabled?: boolean
-}
-
-const MenuItem = ({ icon: Icon, label, onClick, disabled }: MenuItemProps) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    className={cn(
-      'flex w-full items-center gap-2 rounded-lg px-3 py-2',
-      'hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
-    )}
-  >
-    <Icon className="size-4 text-text-tertiary" aria-hidden="true" />
-    <span className="system-sm-regular text-text-secondary">
-      {label}
-    </span>
-  </button>
-)
+const ImportSkillModal = dynamic(() => import('./start-tab/import-skill-modal'), {
+  ssr: false,
+})
 
 const SidebarSearchAdd = () => {
   const { t } = useTranslation('workflow')
   const searchValue = useStore(s => s.fileTreeSearchTerm)
   const storeApi = useWorkflowStore()
   const [showMenu, setShowMenu] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
   const { data: treeData } = useSkillAssetTreeData()
   const selectedTreeNodeId = useStore(s => s.selectedTreeNodeId)
@@ -137,7 +119,7 @@ const SidebarSearchAdd = () => {
             <div className="my-1 h-px bg-divider-subtle" />
 
             <MenuItem
-              icon={RiUploadLine}
+              icon={UploadCloud02}
               label={t('skillSidebar.menu.uploadFile')}
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
@@ -148,9 +130,23 @@ const SidebarSearchAdd = () => {
               onClick={() => folderInputRef.current?.click()}
               disabled={isLoading}
             />
+
+            <div className="my-1 h-px bg-divider-subtle" />
+
+            <MenuItem
+              icon={RiUploadLine}
+              label={t('skillSidebar.menu.importSkills')}
+              onClick={() => setIsImportModalOpen(true)}
+              disabled={isLoading}
+              tooltip={t('skill.startTab.importSkillDesc')}
+            />
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
+      <ImportSkillModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+      />
     </div>
   )
 }
