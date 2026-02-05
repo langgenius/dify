@@ -1102,6 +1102,7 @@
   "skill.startTab.useThisSkill": "使用此 Skill",
   "skillEditor.authorizationBadge": "Auth",
   "skillEditor.authorizationRequired": "使用前需要授权。",
+  "skillEditor.openInSkillEditor": "在技能编辑器中打开",
   "skillEditor.previewUnavailable": "无法预览",
   "skillEditor.referenceFiles": "引用文件",
   "skillEditor.unsupportedPreview": "该文件类型不支持预览",

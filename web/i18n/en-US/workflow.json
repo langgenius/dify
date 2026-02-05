@@ -1110,6 +1110,7 @@
   "skill.startTab.useThisSkill": "Use this Skill",
   "skillEditor.authorizationBadge": "Auth",
   "skillEditor.authorizationRequired": "Authorization required before use.",
+  "skillEditor.openInSkillEditor": "Open in Skill Editor",
   "skillEditor.previewUnavailable": "Preview unavailable",
   "skillEditor.referenceFiles": "Reference files",
   "skillEditor.unsupportedPreview": "This file type is not supported for preview",
