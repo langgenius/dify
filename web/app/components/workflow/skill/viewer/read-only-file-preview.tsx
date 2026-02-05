@@ -24,6 +24,11 @@ const SQLiteFilePreview = dynamic(
   { ssr: false, loading: () => <Loading type="area" /> },
 )
 
+const PdfFilePreview = dynamic(
+  () => import('./pdf-file-preview'),
+  { ssr: false, loading: () => <Loading type="area" /> },
+)
+
 type ReadOnlyFilePreviewProps = {
   downloadUrl: string
   fileName: string
@@ -41,7 +46,7 @@ const ReadOnlyFilePreview = ({
     () => ({ name: fileName, extension }),
     [fileName, extension],
   )
-  const { isMarkdown, isCodeOrText, isImage, isVideo, isSQLite, isPreviewable } = useFileTypeInfo(fileNode)
+  const { isMarkdown, isCodeOrText, isImage, isVideo, isPdf, isSQLite, isPreviewable } = useFileTypeInfo(fileNode)
   const isTextFile = isPreviewable && (isMarkdown || isCodeOrText)
   const { data: textContent, isLoading: isTextLoading } = useFetchTextContent(
     isTextFile ? downloadUrl : undefined,
@@ -77,6 +82,9 @@ const ReadOnlyFilePreview = ({
 
   if (isSQLite)
     return <SQLiteFilePreview downloadUrl={downloadUrl} />
+
+  if (isPdf)
+    return <PdfFilePreview downloadUrl={downloadUrl} />
 
   return (
     <UnsupportedFileDownload

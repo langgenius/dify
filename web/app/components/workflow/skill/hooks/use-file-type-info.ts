@@ -3,6 +3,7 @@ import {
   getFileExtension,
   isImageFile,
   isMarkdownFile,
+  isPdfFile,
   isSQLiteFile,
   isTextLikeFile,
   isVideoFile,
@@ -13,6 +14,7 @@ export type FileTypeInfo = {
   isCodeOrText: boolean
   isImage: boolean
   isVideo: boolean
+  isPdf: boolean
   isSQLite: boolean
   isEditable: boolean
   isMediaFile: boolean
@@ -27,6 +29,7 @@ export function useFileTypeInfo(fileNode: { name: string, extension?: string | n
         isCodeOrText: false,
         isImage: false,
         isVideo: false,
+        isPdf: false,
         isSQLite: false,
         isEditable: false,
         isMediaFile: false,
@@ -38,6 +41,7 @@ export function useFileTypeInfo(fileNode: { name: string, extension?: string | n
     const markdown = isMarkdownFile(ext)
     const image = isImageFile(ext)
     const video = isVideoFile(ext)
+    const pdf = isPdfFile(ext)
     const sqlite = isSQLiteFile(ext)
     const editable = isTextLikeFile(ext)
     const codeOrText = editable && !markdown
@@ -47,10 +51,11 @@ export function useFileTypeInfo(fileNode: { name: string, extension?: string | n
       isCodeOrText: codeOrText,
       isImage: image,
       isVideo: video,
+      isPdf: pdf,
       isSQLite: sqlite,
       isEditable: editable,
       isMediaFile: image || video,
-      isPreviewable: editable || image || video || sqlite,
+      isPreviewable: editable || image || video || pdf || sqlite,
     }
   }, [fileNode?.name, fileNode?.extension])
 }

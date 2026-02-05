@@ -5,6 +5,7 @@ const CODE_EXTENSIONS = new Set(['json', 'yaml', 'yml', 'toml', 'js', 'jsx', 'ts
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'psd', 'heic', 'heif', 'avif'])
 const VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'webm', 'mpeg', 'mpg', 'm4v', 'avi', 'mkv', 'flv', 'wmv', '3gp'])
 const SQLITE_EXTENSIONS = new Set(['db', 'sqlite', 'sqlite3'])
+const PDF_EXTENSIONS_SET = new Set(['pdf'])
 
 const BINARY_EXTENSIONS = new Set([
   'mp3',
@@ -46,7 +47,6 @@ const BINARY_EXTENSIONS = new Set([
   'msi',
   'deb',
   'rpm',
-  'pdf',
   'doc',
   'docx',
   'xls',
@@ -87,7 +87,6 @@ export function getFileExtension(name?: string, extension?: string): string {
 }
 
 const AUDIO_EXTENSIONS = ['mp3', 'm4a', 'wav', 'amr', 'mpga', 'ogg', 'flac', 'aac', 'wma', 'aiff', 'opus']
-const PDF_EXTENSIONS = ['pdf']
 const EXCEL_EXTENSIONS = ['xlsx', 'xls', 'csv']
 const WORD_EXTENSIONS = ['doc', 'docx']
 const PPT_EXTENSIONS = ['ppt', 'pptx']
@@ -98,7 +97,7 @@ const EXTENSION_TO_ICON_TYPE = new Map<string, FileAppearanceTypeEnum>(
     [IMAGE_EXTENSIONS, FileAppearanceTypeEnum.image],
     [VIDEO_EXTENSIONS, FileAppearanceTypeEnum.video],
     [AUDIO_EXTENSIONS, FileAppearanceTypeEnum.audio],
-    [PDF_EXTENSIONS, FileAppearanceTypeEnum.pdf],
+    [PDF_EXTENSIONS_SET, FileAppearanceTypeEnum.pdf],
     [MARKDOWN_EXTENSIONS, FileAppearanceTypeEnum.markdown],
     [EXCEL_EXTENSIONS, FileAppearanceTypeEnum.excel],
     [WORD_EXTENSIONS, FileAppearanceTypeEnum.word],
@@ -137,6 +136,10 @@ export function isVideoFile(extension: string): boolean {
 
 export function isSQLiteFile(extension: string): boolean {
   return SQLITE_EXTENSIONS.has(extension)
+}
+
+export function isPdfFile(extension: string): boolean {
+  return PDF_EXTENSIONS_SET.has(extension)
 }
 
 export function getFileLanguage(name: string): string {
