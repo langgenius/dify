@@ -78,10 +78,14 @@ export const SubmitRequestDropdown = () => {
   )
 }
 
-export const CreationTypeTabs = () => {
+type CreationTypeTabsProps = {
+  creationType?: string
+}
+
+export const CreationTypeTabs = ({ creationType: creationTypeProp }: CreationTypeTabsProps = {}) => {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
-  const creationType = searchParams.get('creationType') || 'plugins'
+  const creationType = creationTypeProp || searchParams.get('creationType') || 'plugins'
 
   return (
     <div className="flex items-center gap-1">

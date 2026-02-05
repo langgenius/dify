@@ -3,6 +3,7 @@
 import { useMarketplaceSearchMode } from './atoms'
 import { Description } from './description'
 import SearchResultsHeader from './search-results-header'
+import { useMarketplaceData } from './state'
 
 type MarketplaceHeaderProps = {
   descriptionClassName?: string
@@ -10,7 +11,11 @@ type MarketplaceHeaderProps = {
 }
 
 const MarketplaceHeader = ({ descriptionClassName, marketplaceNav }: MarketplaceHeaderProps) => {
-  const isSearchMode = useMarketplaceSearchMode()
+  const { creationType, isSearchMode: templatesSearchMode } = useMarketplaceData()
+  const pluginsSearchMode = useMarketplaceSearchMode()
+
+  // Use templates search mode when viewing templates, otherwise use plugins search mode
+  const isSearchMode = creationType === 'templates' ? templatesSearchMode : pluginsSearchMode
 
   if (isSearchMode)
     return <SearchResultsHeader />

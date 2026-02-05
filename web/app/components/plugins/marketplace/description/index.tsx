@@ -8,6 +8,7 @@ import marketPlaceBg from '@/public/marketplace/hero-bg.jpg'
 import marketplaceGradientNoise from '@/public/marketplace/hero-gradient-noise.svg'
 import { cn } from '@/utils/classnames'
 import PluginTypeSwitch from '../plugin-type-switch'
+import { useMarketplaceData } from '../state'
 
 type DescriptionProps = {
   className?: string
@@ -28,6 +29,10 @@ export const Description = ({
   marketplaceNav,
 }: DescriptionProps) => {
   const { t } = useTranslation('plugin')
+  const { creationType } = useMarketplaceData()
+  const isTemplatesView = creationType === 'templates'
+  const heroTitleKey = isTemplatesView ? 'marketplace.templatesHeroTitle' : 'marketplace.pluginsHeroTitle'
+  const heroSubtitleKey = isTemplatesView ? 'marketplace.templatesHeroSubtitle' : 'marketplace.pluginsHeroSubtitle'
   const rafRef = useRef<number | null>(null)
   const lastProgressRef = useRef(0)
   const titleRef = useRef<HTMLDivElement | null>(null)
@@ -67,7 +72,9 @@ export const Description = ({
       // Use requestAnimationFrame for smooth updates
       rafRef.current = requestAnimationFrame(() => {
         const scrollTop = Math.round(container.scrollTop)
-        const rawProgress = Math.min(Math.max(scrollTop / MAX_SCROLL, 0), 1)
+        const heightDelta = container.scrollHeight - container.clientHeight
+        const effectiveMaxScroll = Math.max(1, Math.min(MAX_SCROLL, heightDelta))
+        const rawProgress = Math.min(Math.max(scrollTop / effectiveMaxScroll, 0), 1)
         const snappedProgress = rawProgress >= 0.95
           ? 1
           : rawProgress <= 0.05
@@ -153,10 +160,10 @@ export const Description = ({
           }}
         >
           <h1 className="title-4xl-semi-bold mb-2 shrink-0 text-text-primary-on-surface">
-            {t('marketplace.heroTitle')}
+            {t(heroTitleKey)}
           </h1>
           <h2 className="body-md-regular shrink-0 text-text-secondary-on-surface">
-            {t('marketplace.heroSubtitle')}
+            {t(heroSubtitleKey)}
           </h2>
         </motion.div>
 

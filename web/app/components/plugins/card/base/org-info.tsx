@@ -8,6 +8,7 @@ type Props = {
   packageName?: string
   packageNameClassName?: string
   downloadCount?: number
+  linkToOrg?: boolean
 }
 
 const OrgInfo = ({
@@ -16,6 +17,7 @@ const OrgInfo = ({
   packageName,
   packageNameClassName,
   downloadCount,
+  linkToOrg = true,
 }: Props) => {
   // New format: "by {orgName} · {downloadCount} installs" (for marketplace cards)
   if (downloadCount !== undefined) {
@@ -24,15 +26,23 @@ const OrgInfo = ({
         {orgName && (
           <span className="shrink-0">
             <span className="mr-1 text-text-tertiary">by</span>
-            <Link
-              href={`/creators/${orgName}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-text-secondary hover:underline"
-              onClick={e => e.stopPropagation()}
-            >
-              {orgName}
-            </Link>
+            {linkToOrg
+              ? (
+                  <Link
+                    href={`/creators/${orgName}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-text-secondary hover:underline"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {orgName}
+                  </Link>
+                )
+              : (
+                  <span className="text-text-tertiary">
+                    {orgName}
+                  </span>
+                )}
           </span>
         )}
         <span className="shrink-0">·</span>
