@@ -217,6 +217,7 @@ class LLMGenerator:
                     instruction=instruction,
                     generated_output=generated_output,
                     llm_result=llm_result,
+                    model_config=model_config,
                     timer=timer,
                     error=error or None,
                 )
@@ -273,6 +274,7 @@ class LLMGenerator:
                             instruction=instruction,
                             generated_output="",
                             llm_result=llm_result,
+                            model_config=model_config,
                             timer=timer,
                             error=error,
                         )
@@ -338,6 +340,7 @@ class LLMGenerator:
                 instruction=instruction,
                 generated_output=str(generated_output) if generated_output else "",
                 llm_result=llm_result,
+                model_config=model_config,
                 timer=timer,
                 error=error or None,
             )
@@ -408,6 +411,7 @@ class LLMGenerator:
                 instruction=instruction,
                 generated_output=result.get("code", ""),
                 llm_result=llm_result,
+                model_config=model_config,
                 timer=timer,
                 error=error,
             )
@@ -502,6 +506,7 @@ class LLMGenerator:
                 instruction=instruction,
                 generated_output=result.get("output", ""),
                 llm_result=llm_result,
+                model_config=model_config,
                 timer=timer,
                 error=error,
             )
@@ -733,6 +738,7 @@ class LLMGenerator:
                 instruction=instruction,
                 generated_output=generated_output,
                 llm_result=llm_result,
+                model_config=model_config,
                 timer=timer,
                 error=error,
             )
@@ -749,7 +755,8 @@ class LLMGenerator:
         instruction: str,
         generated_output: str,
         llm_result: LLMResult | None,
-        timer,
+        model_config: dict | None = None,
+        timer=None,
         error: str | None = None,
     ):
         if llm_result:
@@ -757,7 +764,11 @@ class LLMGenerator:
             completion_tokens = llm_result.usage.completion_tokens
             total_tokens = llm_result.usage.total_tokens
             model_name = llm_result.model
-            model_provider = model_name.split("/")[0] if "/" in model_name else ""
+            # Extract provider from model_config if available, otherwise fall back to parsing model name
+            if model_config and model_config.get("provider"):
+                model_provider = model_config.get("provider", "")
+            else:
+                model_provider = model_name.split("/")[0] if "/" in model_name else ""
             latency = llm_result.usage.latency
             total_price = float(llm_result.usage.total_price) if llm_result.usage.total_price else None
             currency = llm_result.usage.currency
@@ -765,8 +776,8 @@ class LLMGenerator:
             prompt_tokens = 0
             completion_tokens = 0
             total_tokens = 0
-            model_provider = ""
-            model_name = ""
+            model_provider = model_config.get("provider", "") if model_config else ""
+            model_name = model_config.get("name", "") if model_config else ""
             latency = 0.0
             if timer:
                 start_time = timer.get("start")
