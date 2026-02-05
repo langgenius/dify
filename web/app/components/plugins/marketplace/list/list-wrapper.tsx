@@ -12,6 +12,7 @@ import SortDropdown from '../sort-dropdown'
 import { useMarketplaceData } from '../state'
 import List from './index'
 import TemplateList from './template-list'
+import TemplateSearchList from './template-search-list'
 
 type ListWrapperProps = {
   showInstallButton?: boolean
@@ -40,7 +41,12 @@ const ListWrapper = ({
 
   // Templates view
   if (creationType === 'templates') {
-    const { templateCollections, templateCollectionTemplatesMap } = marketplaceData
+    const {
+      templateCollections,
+      templateCollectionTemplatesMap,
+      templates,
+      isSearchMode: isTemplateSearchMode,
+    } = marketplaceData
     return (
       <div
         style={{ scrollbarGutter: 'stable' }}
@@ -55,10 +61,16 @@ const ListWrapper = ({
         }
         {
           !isLoading && (
-            <TemplateList
-              templateCollections={templateCollections || []}
-              templateCollectionTemplatesMap={templateCollectionTemplatesMap || {}}
-            />
+            isTemplateSearchMode
+              ? (
+                  <TemplateSearchList templates={templates || []} />
+                )
+              : (
+                  <TemplateList
+                    templateCollections={templateCollections || []}
+                    templateCollectionTemplatesMap={templateCollectionTemplatesMap || {}}
+                  />
+                )
           )
         }
       </div>

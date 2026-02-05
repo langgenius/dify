@@ -6,7 +6,7 @@ import { useActivePluginType, useFilterPluginTags, useMarketplaceSearchMode, use
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
 import { useMarketplaceContainerScroll } from './hooks'
 import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins, useMarketplaceTemplateCollectionsAndTemplates, useMarketplaceTemplates } from './query'
-import { getCollectionsParams, getMarketplaceListFilterType } from './utils'
+import { getCollectionsParams, getMarketplaceListFilterType, mapTemplateDetailToTemplate } from './utils'
 
 /**
  * Hook for plugins marketplace data
@@ -122,13 +122,18 @@ export function useTemplatesMarketplaceData() {
     }
   }, [templateCollectionsQuery.data?.templateCollectionTemplatesMap])
 
+  const searchTemplates = useMemo(() => {
+    const rawTemplates = templatesQuery.data?.pages.flatMap(page => page.templates) || []
+    return rawTemplates.map(mapTemplateDetailToTemplate)
+  }, [templatesQuery.data])
+
   // Return search results when in search mode, otherwise return collection data
   if (isSearchMode) {
     return {
       isSearchMode,
       templateCollections: undefined,
       templateCollectionTemplatesMap: undefined,
-      templates: templatesQuery.data?.pages.flatMap(page => page.templates),
+      templates: searchTemplates,
       templatesTotal: templatesQuery.data?.pages[0]?.total,
       page: templatesQuery.data?.pages.length || 1,
       isLoading: templatesQuery.isLoading,

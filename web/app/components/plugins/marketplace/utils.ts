@@ -116,6 +116,23 @@ export const getMarketplaceCollectionsAndPlugins = async (
   }
 }
 
+export function mapTemplateDetailToTemplate(template: TemplateDetail): Template {
+  const descriptionText = template.overview || template.readme || ''
+  return {
+    template_id: template.id,
+    name: template.template_name,
+    description: {
+      en_US: descriptionText,
+      zh_Hans: descriptionText,
+    },
+    icon: template.icon || '',
+    tags: template.categories || [],
+    author: template.publisher_unique_handle || template.creator_email || '',
+    created_at: template.created_at,
+    updated_at: template.updated_at,
+  }
+}
+
 export const getMarketplaceTemplateCollectionsAndTemplates = async (
   query?: { page?: number, page_size?: number, condition?: string },
   options?: MarketplaceFetchOptions,
@@ -133,7 +150,7 @@ export const getMarketplaceTemplateCollectionsAndTemplates = async (
     }, {
       signal: options?.signal,
     })
-    templateCollections = res.data || []
+    templateCollections = res.data?.collections || []
 
     await Promise.all(templateCollections.map(async (collection) => {
       try {
@@ -141,7 +158,8 @@ export const getMarketplaceTemplateCollectionsAndTemplates = async (
           params: { collectionName: collection.name },
           body: { limit: 20 },
         }, { signal: options?.signal })
-        templateCollectionTemplatesMap[collection.name] = (templatesRes.data || []) as Template[]
+        const templatesData = templatesRes.data?.templates || []
+        templateCollectionTemplatesMap[collection.name] = templatesData.map(mapTemplateDetailToTemplate)
       }
       catch {
         templateCollectionTemplatesMap[collection.name] = []

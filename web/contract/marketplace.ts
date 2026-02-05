@@ -10,7 +10,6 @@ import type {
   MarketplaceCollection,
   PluginsSearchParams,
   SyncCreatorProfileRequest,
-  Template,
   TemplateCollection,
   TemplateDetail,
   TemplateSearchParams,
@@ -88,11 +87,13 @@ export const templateCollectionsContract = base
   )
   .output(
     type<{
-      data?: TemplateCollection[]
-      has_more?: boolean
-      limit?: number
-      page?: number
-      total?: number
+      data?: {
+        collections?: TemplateCollection[]
+        has_more?: boolean
+        limit?: number
+        page?: number
+        total?: number
+      }
     }>(),
   )
 
@@ -151,7 +152,7 @@ export const getCollectionTemplatesContract = base
   )
   .output(
     type<{
-      data?: Template[]
+      data?: TemplatesListResponse
     }>(),
   )
 
