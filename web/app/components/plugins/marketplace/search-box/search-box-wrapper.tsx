@@ -5,6 +5,7 @@ import { useTranslation } from '#i18n'
 import { useDebounce } from 'ahooks'
 import { useSetAtom } from 'jotai'
 import { useMemo, useState } from 'react'
+import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -21,7 +22,6 @@ import {
 import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 import { useMarketplacePlugins } from '../query'
 import { getMarketplaceListFilterType } from '../utils'
-import SearchBox from './index'
 import SearchDropdown from './search-dropdown'
 
 type SearchBoxWrapperProps = {
@@ -34,7 +34,7 @@ const SearchBoxWrapper = ({
 }: SearchBoxWrapperProps) => {
   const { t } = useTranslation()
   const [searchPluginText, handleSearchPluginTextChange] = useSearchPluginText()
-  const [filterPluginTags, handleFilterPluginTagsChange] = useFilterPluginTags()
+  const [filterPluginTags] = useFilterPluginTags()
   const [activePluginType] = useActivePluginType()
   const sort = useMarketplaceSortValue()
   const setSearchMode = useSetAtom(searchModeAtom)
@@ -84,24 +84,27 @@ const SearchBoxWrapper = ({
     >
       <PortalToFollowElemTrigger asChild>
         <div>
-          <SearchBox
-            wrapperClassName={cn('z-[11] mx-auto w-[640px] shrink-0', wrapperClassName)}
-            inputClassName={cn('w-full', inputClassName)}
-            search={inputValue}
-            onSearchChange={setDraftSearch}
-            onSearchSubmit={handleSubmit}
-            onSearchFocus={() => {
+          <Input
+            wrapperClassName={cn('w-[200px] rounded-lg lg:w-[300px]', wrapperClassName)}
+            className={cn('h-9 bg-components-input-bg-normal', inputClassName)}
+            showLeftIcon
+            value={inputValue}
+            placeholder={t('searchPlugins', { ns: 'plugin' })}
+            onChange={(e) => {
+              setDraftSearch(e.target.value)
+            }}
+            onFocus={() => {
               setDraftSearch(committedSearch)
               setIsFocused(true)
             }}
-            onSearchBlur={() => {
+            onBlur={() => {
               if (!isHoveringDropdown)
                 setIsFocused(false)
             }}
-            tags={filterPluginTags}
-            onTagsChange={handleFilterPluginTagsChange}
-            placeholder={t('searchPlugins', { ns: 'plugin' })}
-            usedInMarketplace
+            onKeyDown={(e) => {
+              if (e.key === 'Enter')
+                handleSubmit()
+            }}
           />
         </div>
       </PortalToFollowElemTrigger>
