@@ -5,6 +5,7 @@
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist'
 import { defaultCache } from '@serwist/turbopack/worker'
 import { Serwist } from 'serwist'
+import { withLeadingSlash } from 'ufo'
 
 declare global {
   // eslint-disable-next-line ts/consistent-type-definitions
@@ -19,26 +20,20 @@ const scopePathname = new URL(self.registration.scope).pathname
 const basePath = scopePathname.replace(/\/serwist\/$/, '').replace(/\/$/, '')
 const offlineUrl = `${basePath}/_offline.html`
 
-const manifest = self.__SW_MANIFEST?.map((entry) => {
-  if (typeof entry === 'string') {
-    if (entry.startsWith('/serwist/'))
-      return entry.replace(/^\/serwist\//, '/')
-    if (!entry.startsWith('/'))
-      return `/${entry}`
-    return entry
-  }
-
-  const url = entry.url
-  let newUrl = url
-
+const normalizeManifestUrl = (url: string): string => {
   if (url.startsWith('/serwist/'))
-    newUrl = url.replace(/^\/serwist\//, '/')
-  else if (!url.startsWith('/'))
-    newUrl = `/${url}`
+    return url.replace(/^\/serwist\//, '/')
+
+  return withLeadingSlash(url)
+}
+
+const manifest = self.__SW_MANIFEST?.map((entry) => {
+  if (typeof entry === 'string')
+    return normalizeManifestUrl(entry)
 
   return {
     ...entry,
-    url: newUrl,
+    url: normalizeManifestUrl(entry.url),
   }
 })
 

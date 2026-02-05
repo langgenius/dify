@@ -347,6 +347,9 @@ importers:
       tldts:
         specifier: 7.0.17
         version: 7.0.17
+      ufo:
+        specifier: 1.6.3
+        version: 1.6.3
       use-context-selector:
         specifier: 2.0.0
         version: 2.0.0(react@19.2.4)(scheduler@0.27.0)
