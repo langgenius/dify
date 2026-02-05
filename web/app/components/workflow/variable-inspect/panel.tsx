@@ -37,7 +37,7 @@ const VariablesPanel: FC<{ onClose: () => void }> = ({ onClose }) => {
     setCurrentFocusNodeId('')
   }, [deleteAllInspectorVars, setCurrentFocusNodeId])
 
-  const hasData = !isVariablesEmpty || hasArtifacts
+  const hasData = resolvedTab === InspectTab.Variables ? !isVariablesEmpty : hasArtifacts
   const headerActions = hasData
     ? (
         <Button variant="ghost" size="small" onClick={handleClear}>
