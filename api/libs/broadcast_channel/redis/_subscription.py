@@ -7,8 +7,8 @@ from typing import Self
 
 from libs.broadcast_channel.channel import Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
-from redis.client import PubSub
 from redis import Redis, RedisCluster
+from redis.client import PubSub
 
 _logger = logging.getLogger(__name__)
 
