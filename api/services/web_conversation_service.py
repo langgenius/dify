@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.model import App, EndUser
@@ -63,51 +63,51 @@ class WebConversationService:
     def pin(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
         if not user:
             return
-        pinned_conversation = (
-            db.session.query(PinnedConversation)
-            .where(
-                PinnedConversation.app_id == app_model.id,
-                PinnedConversation.conversation_id == conversation_id,
-                PinnedConversation.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
-                PinnedConversation.created_by == user.id,
+        with session_factory.create_session() as session, session.begin():
+            pinned_conversation = (
+                session.query(PinnedConversation)
+                .where(
+                    PinnedConversation.app_id == app_model.id,
+                    PinnedConversation.conversation_id == conversation_id,
+                    PinnedConversation.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
+                    PinnedConversation.created_by == user.id,
+                )
+                .first()
             )
-            .first()
-        )
 
-        if pinned_conversation:
-            return
+            if pinned_conversation:
+                return
 
-        conversation = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=conversation_id, user=user
-        )
+            conversation = ConversationService.get_conversation(
+                app_model=app_model, conversation_id=conversation_id, user=user
+            )
 
-        pinned_conversation = PinnedConversation(
-            app_id=app_model.id,
-            conversation_id=conversation.id,
-            created_by_role="account" if isinstance(user, Account) else "end_user",
-            created_by=user.id,
-        )
+            pinned_conversation = PinnedConversation(
+                app_id=app_model.id,
+                conversation_id=conversation.id,
+                created_by_role="account" if isinstance(user, Account) else "end_user",
+                created_by=user.id,
+            )
 
-        db.session.add(pinned_conversation)
-        db.session.commit()
+            session.add(pinned_conversation)
 
     @classmethod
     def unpin(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
         if not user:
             return
-        pinned_conversation = (
-            db.session.query(PinnedConversation)
-            .where(
-                PinnedConversation.app_id == app_model.id,
-                PinnedConversation.conversation_id == conversation_id,
-                PinnedConversation.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
-                PinnedConversation.created_by == user.id,
+        with session_factory.create_session() as session, session.begin():
+            pinned_conversation = (
+                session.query(PinnedConversation)
+                .where(
+                    PinnedConversation.app_id == app_model.id,
+                    PinnedConversation.conversation_id == conversation_id,
+                    PinnedConversation.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
+                    PinnedConversation.created_by == user.id,
+                )
+                .first()
             )
-            .first()
-        )
 
-        if not pinned_conversation:
-            return
+            if not pinned_conversation:
+                return
 
-        db.session.delete(pinned_conversation)
-        db.session.commit()
+            session.delete(pinned_conversation)

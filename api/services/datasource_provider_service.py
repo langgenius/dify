@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
+from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.helper.name_generator import generate_incremental_name
 from core.helper.provider_cache import NoOpProviderCredentialCache
@@ -986,11 +987,11 @@ class DatasourceProviderService:
         :param plugin_id: plugin id
         :return:
         """
-        datasource_provider = (
-            db.session.query(DatasourceProvider)
-            .filter_by(tenant_id=tenant_id, id=auth_id, provider=provider, plugin_id=plugin_id)
-            .first()
-        )
-        if datasource_provider:
-            db.session.delete(datasource_provider)
-            db.session.commit()
+        with session_factory.create_session() as session, session.begin():
+            datasource_provider = (
+                session.query(DatasourceProvider)
+                .filter_by(tenant_id=tenant_id, id=auth_id, provider=provider, plugin_id=plugin_id)
+                .first()
+            )
+            if datasource_provider:
+                session.delete(datasource_provider)
