@@ -470,31 +470,30 @@ class AppAssetService:
                 assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
                 tree = assets.asset_tree
 
-                def assign_ids_and_unique_names(
-                    nodes: list[BatchUploadNode],
-                    parent_id: str | None,
-                    taken_by_parent: dict[str | None, set[str]],
-                ) -> None:
-                    for node in nodes:
-                        if node.id is None:
-                            node.id = str(uuid4())
-                        if parent_id not in taken_by_parent:
-                            taken_by_parent[parent_id] = {
-                                child.name for child in tree.get_children(parent_id)
-                            }
-                        taken = taken_by_parent[parent_id]
-                        unique_name = tree.ensure_unique_name(
-                            parent_id,
-                            node.name,
-                            is_file=node.node_type == AssetNodeType.FILE,
-                            extra_taken=taken,
-                        )
-                        node.name = unique_name
-                        taken.add(unique_name)
-                        if node.node_type == AssetNodeType.FOLDER:
-                            assign_ids_and_unique_names(node.children, node.id, taken_by_parent)
-
-                assign_ids_and_unique_names(input_children, None, {})
+                taken_by_parent: dict[str | None, set[str]] = {}
+                stack: list[tuple[BatchUploadNode, str | None]] = [
+                    (child, None) for child in reversed(input_children)
+                ]
+                while stack:
+                    node, parent_id = stack.pop()
+                    if node.id is None:
+                        node.id = str(uuid4())
+                    if parent_id not in taken_by_parent:
+                        taken_by_parent[parent_id] = {
+                            child.name for child in tree.get_children(parent_id)
+                        }
+                    taken = taken_by_parent[parent_id]
+                    unique_name = tree.ensure_unique_name(
+                        parent_id,
+                        node.name,
+                        is_file=node.node_type == AssetNodeType.FILE,
+                        extra_taken=taken,
+                    )
+                    node.name = unique_name
+                    taken.add(unique_name)
+                    if node.node_type == AssetNodeType.FOLDER and node.children:
+                        for child in reversed(node.children):
+                            stack.append((child, node.id))
 
                 new_nodes: list[AppAssetNode] = []
                 for child in input_children:
