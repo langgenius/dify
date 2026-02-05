@@ -162,10 +162,14 @@ const config = {
         ...importSvgCollections({
           source: path.resolve(_dirname, 'app/components/base/icons/assets/public'),
           prefix: 'custom-public',
+          ignoreImportErrors: true,
+          runSVGO: false,
         }),
         ...importSvgCollections({
           source: path.resolve(_dirname, 'app/components/base/icons/assets/vender'),
           prefix: 'custom-vender',
+          ignoreImportErrors: true,
+          runSVGO: false,
         }),
       },
       extraProperties: {

@@ -544,8 +544,8 @@ importers:
         specifier: 9.1.7
         version: 9.1.7
       iconify-import-svg:
-        specifier: 0.0.4
-        version: 0.0.4
+        specifier: 0.1.1
+        version: 0.1.1
       jsdom:
         specifier: 27.3.0
         version: 27.3.0(canvas@3.2.1)
@@ -5197,8 +5197,8 @@ packages:
       typescript:
         optional: true
 
-  iconify-import-svg@0.0.4:
-    resolution: {integrity: sha512-m19qhBInZOkyILGqrU1jGGaHV+jcg+I5D0u3uC6z0Tm7SrgnfrN5cDE2wxZrEqPseh1CMgLuQN/Ttjb7qqxlvg==}
+  iconify-import-svg@0.1.1:
+    resolution: {integrity: sha512-8HwZIe3ZqCfZ68NZUCnHN264fwHWhE+O5hWDfBtOEY7u1V97yOogHaoXGRLOx17M0c8+z65xYqJXA16ieCYIwA==}
 
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
@@ -13019,7 +13019,7 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
-  iconify-import-svg@0.0.4:
+  iconify-import-svg@0.1.1:
     dependencies:
       '@iconify/tools': 4.2.0
       '@iconify/types': 2.0.0

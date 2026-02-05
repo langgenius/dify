@@ -223,7 +223,7 @@
     "eslint-plugin-sonarjs": "3.0.6",
     "eslint-plugin-storybook": "10.2.6",
     "husky": "9.1.7",
-    "iconify-import-svg": "0.0.4",
+    "iconify-import-svg": "0.1.1",
     "jsdom": "27.3.0",
     "jsdom-testing-mocks": "1.16.0",
     "knip": "5.78.0",
