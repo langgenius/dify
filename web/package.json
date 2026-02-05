@@ -46,7 +46,8 @@
     "uglify-embed": "node ./bin/uglify-embed",
     "i18n:check": "tsx ./scripts/check-i18n.js",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage --reporter=dot --silent=passed-only",
+    "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run --coverage --reporter vitest-tiny-reporter --silent=passed-only",
     "test:watch": "vitest --watch",
     "analyze-component": "node ./scripts/analyze-component.js",
     "refactor-component": "node ./scripts/refactor-component.js",
@@ -234,7 +235,8 @@
     "vite": "7.3.1",
     "vite-tsconfig-paths": "6.0.4",
     "vitest": "4.0.17",
-    "vitest-canvas-mock": "1.1.3"
+    "vitest-canvas-mock": "1.1.3",
+    "vitest-tiny-reporter": "1.3.1"
   },
   "pnpm": {
     "overrides": {
