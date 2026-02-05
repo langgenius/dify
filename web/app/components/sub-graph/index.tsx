@@ -27,7 +27,7 @@ const SUB_GRAPH_EXTRACTOR_POSITION = {
 const defaultViewport: Viewport = {
   x: SUB_GRAPH_EDGE_GAP,
   y: 50,
-  zoom: 1.3,
+  zoom: 1,
 }
 
 const SubGraphContent: FC<SubGraphProps> = (props) => {

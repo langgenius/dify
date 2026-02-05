@@ -38,7 +38,14 @@ const SubGraphStartNode = ({ id, data }: NodeProps<SubGraphStartNodeData>) => {
       )}
     >
       <Tooltip popupContent={tooltip} asChild={false}>
-        <div className="flex h-6 w-6 items-center justify-center rounded-full border-[0.5px] border-components-panel-border-subtle bg-util-colors-blue-brand-blue-brand-500">
+        <div
+          className={cn(
+            'flex h-6 w-6 items-center justify-center border-[0.5px] border-components-panel-border-subtle',
+            iconType === 'agent'
+              ? 'rounded-[8px] bg-util-colors-indigo-indigo-500'
+              : 'rounded-full bg-util-colors-blue-brand-blue-brand-500',
+          )}
+        >
           <Icon className="h-3 w-3 text-text-primary-on-surface" />
         </div>
       </Tooltip>

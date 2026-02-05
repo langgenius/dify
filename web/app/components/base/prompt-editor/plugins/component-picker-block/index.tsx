@@ -381,20 +381,25 @@ const ComponentPicker = ({
               >
                 {isAgentTrigger
                   ? (
-                      <AgentNodeList
-                        nodes={agentNodes.map(node => ({
-                          ...node,
-                          type: BlockEnum.Agent || BlockEnum.LLM,
-                        }))}
-                        onSelect={handleSelectAgent}
-                        onClose={handleClose}
-                        onBlur={handleClose}
-                        maxHeightClass="max-h-[34vh]"
-                        autoFocus={false}
-                        hideSearch={useExternalSearch}
-                        externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
-                        enableKeyboardNavigation={useExternalSearch}
-                      />
+                      <div>
+                        <div className="system-xs-medium-uppercase mx-auto flex w-fit items-center py-1 text-text-tertiary">
+                          {t('nodes.tool.agentPopupHeader', { ns: 'workflow' })}
+                        </div>
+                        <AgentNodeList
+                          nodes={agentNodes.map(node => ({
+                            ...node,
+                            type: BlockEnum.Agent || BlockEnum.LLM,
+                          }))}
+                          onSelect={handleSelectAgent}
+                          onClose={handleClose}
+                          onBlur={handleClose}
+                          maxHeightClass="max-h-[34vh]"
+                          autoFocus={false}
+                          hideSearch={useExternalSearch}
+                          externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
+                          enableKeyboardNavigation={useExternalSearch}
+                        />
+                      </div>
                     )
                   : (
                       <>
