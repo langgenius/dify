@@ -89,29 +89,33 @@ export default antfu(
     },
     rules: {
       'hyoban/prefer-tailwind-icons': ['warn', {
+        prefix: 'i-',
+        propMappings: {
+          size: 'size',
+          width: 'w',
+          height: 'h',
+        },
         libraries: [
           {
-            pattern: '@/app/components/base/icons/src/public',
-            prefix: 'i-custom-public-',
-            extractSubPath: true,
+            prefix: 'i-custom-',
+            source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
+            name: '^(?<name>.*)$',
           },
           {
-            pattern: '@/app/components/base/icons/src/vender',
-            prefix: 'i-custom-vender-',
-            extractSubPath: true,
+            source: '^@remixicon/react$',
+            name: '^(?<set>Ri)(?<name>.+)$',
           },
           {
-            pattern: '@remixicon/react',
-            importNamePattern: '/^Ri(.+)$/',
-            importNameReplace: '$1',
-            prefix: 'i-ri-',
+            source: '^@(?<set>heroicons)/react/24/outline$',
+            name: '^(?<name>.*)Icon$',
           },
           {
-            pattern: '/^@heroicons\\/react\\/(\\d+)\\/(solid|outline)$/',
-            importNamePattern: '/^(.*)Icon$/',
-            importNameReplace: '$1',
-            sourceReplace: '$1-$2',
-            classNameTemplate: 'i-heroicons-{nameKebab}-{source}',
+            source: '^@(?<set>heroicons)/react/24/(?<variant>solid)$',
+            name: '^(?<name>.*)Icon$',
+          },
+          {
+            source: '^@(?<set>heroicons)/react/(?<variant>\\d+/(?:solid|outline))$',
+            name: '^(?<name>.*)Icon$',
           },
         ],
       }],
