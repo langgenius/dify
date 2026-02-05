@@ -1272,9 +1272,9 @@ class TraceQueueManager:
         self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
         self.flask_app = current_app._get_current_object()  # type: ignore
 
-        from enterprise.telemetry.exporter import is_enterprise_telemetry_enabled
+        from core.telemetry import is_telemetry_enabled
 
-        self._enterprise_telemetry_enabled = is_enterprise_telemetry_enabled()
+        self._enterprise_telemetry_enabled = is_telemetry_enabled()
         if trace_manager_timer is None:
             self.start_timer()
 

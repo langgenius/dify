@@ -3,8 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey
 from enterprise.telemetry.exporter import is_enterprise_telemetry_enabled
 from models.workflow import WorkflowNodeExecutionModel
@@ -20,16 +19,20 @@ def enqueue_draft_node_execution_trace(
     if not is_enterprise_telemetry_enabled():
         return
 
-    trace_manager = TraceQueueManager(app_id=execution.app_id, user_id=user_id)
     node_data = _build_node_execution_data(
         execution=execution,
         outputs=outputs,
         workflow_execution_id=workflow_execution_id,
     )
-    trace_manager.add_trace_task(
-        TraceTask(
-            TraceTaskName.DRAFT_NODE_EXECUTION_TRACE,
-            node_execution_data=node_data,
+    TelemetryFacade.emit(
+        TelemetryEvent(
+            name="draft_node_execution",
+            context=TelemetryContext(
+                tenant_id=execution.tenant_id,
+                user_id=user_id,
+                app_id=execution.app_id,
+            ),
+            payload={"node_execution_data": node_data},
         )
     )
 

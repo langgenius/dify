@@ -7,9 +7,8 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
+from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
 from events.feedback_event import feedback_was_created
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -298,10 +297,15 @@ class MessageService:
             questions: list[str] = list(questions_sequence)
 
         # get tracing instance
-        trace_manager = TraceQueueManager(app_id=app_model.id)
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.SUGGESTED_QUESTION_TRACE, message_id=message_id, suggested_question=questions, timer=timer
+        TelemetryFacade.emit(
+            TelemetryEvent(
+                name="suggested_question",
+                context=TelemetryContext(tenant_id=app_model.tenant_id, app_id=app_model.id),
+                payload={
+                    "message_id": message_id,
+                    "suggested_question": questions,
+                    "timer": timer,
+                },
             )
         )
 

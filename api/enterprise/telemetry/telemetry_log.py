@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import logging
 import uuid
+from functools import lru_cache
 from typing import Any
 
 logger = logging.getLogger("dify.telemetry")
 
 
+@lru_cache(maxsize=4096)
 def compute_trace_id_hex(uuid_str: str | None) -> str:
     """Convert a business UUID string to a 32-hex OTEL-compatible trace_id.
 
@@ -20,19 +22,26 @@ def compute_trace_id_hex(uuid_str: str | None) -> str:
     """
     if not uuid_str:
         return ""
+    normalized = uuid_str.strip().lower()
+    if len(normalized) == 32 and all(ch in "0123456789abcdef" for ch in normalized):
+        return normalized
     try:
-        return f"{uuid.UUID(uuid_str).int:032x}"
+        return f"{uuid.UUID(normalized).int:032x}"
     except (ValueError, AttributeError):
         return ""
 
 
+@lru_cache(maxsize=4096)
 def compute_span_id_hex(uuid_str: str | None) -> str:
     if not uuid_str:
         return ""
+    normalized = uuid_str.strip().lower()
+    if len(normalized) == 16 and all(ch in "0123456789abcdef" for ch in normalized):
+        return normalized
     try:
         from enterprise.telemetry.id_generator import compute_deterministic_span_id
 
-        return f"{compute_deterministic_span_id(uuid_str):016x}"
+        return f"{compute_deterministic_span_id(normalized):016x}"
     except (ValueError, AttributeError):
         return ""
 
@@ -66,6 +75,8 @@ def emit_telemetry_log(
     user_id:
         User identifier (for the ``IdentityContextFilter``).
     """
+    if not logger.isEnabledFor(logging.INFO):
+        return
     attrs = {
         "dify.event.name": event_name,
         "dify.event.signal": signal,

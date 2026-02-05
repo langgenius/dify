@@ -15,8 +15,7 @@ from datetime import datetime
 from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities import WorkflowExecution, WorkflowNodeExecution
 from core.workflow.enums import (
@@ -396,23 +395,29 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             external_trace_id = self._application_generate_entity.extras.get("external_trace_id")
             parent_trace_context = self._application_generate_entity.extras.get("parent_trace_context")
 
-        trace_task = TraceTask(
-            TraceTaskName.WORKFLOW_TRACE,
-            workflow_execution=execution,
-            conversation_id=conversation_id,
-            user_id=self._trace_manager.user_id,
-            external_trace_id=external_trace_id,
-            parent_trace_context=parent_trace_context,
+        from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
+
+        TelemetryFacade.emit(
+            TelemetryEvent(
+                name="workflow",
+                context=TelemetryContext(
+                    tenant_id=self._application_generate_entity.app_config.tenant_id,
+                    user_id=self._trace_manager.user_id,
+                    app_id=self._application_generate_entity.app_config.app_id,
+                ),
+                payload={
+                    "workflow_execution": execution,
+                    "conversation_id": conversation_id,
+                    "user_id": self._trace_manager.user_id,
+                    "external_trace_id": external_trace_id,
+                    "parent_trace_context": parent_trace_context,
+                },
+            ),
+            trace_manager=self._trace_manager,
         )
-        self._trace_manager.add_trace_task(trace_task)
 
     def _enqueue_node_trace_task(self, domain_execution: WorkflowNodeExecution) -> None:
         if not self._trace_manager:
-            return
-
-        from enterprise.telemetry.exporter import is_enterprise_telemetry_enabled
-
-        if not is_enterprise_telemetry_enabled():
             return
 
         execution = self._get_workflow_execution()
@@ -494,11 +499,20 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         if parent_trace_context:
             node_data["parent_trace_context"] = parent_trace_context
 
-        trace_task = TraceTask(
-            TraceTaskName.NODE_EXECUTION_TRACE,
-            node_execution_data=node_data,
+        from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
+
+        TelemetryFacade.emit(
+            TelemetryEvent(
+                name="node_execution",
+                context=TelemetryContext(
+                    tenant_id=node_data.get("tenant_id"),
+                    user_id=node_data.get("user_id"),
+                    app_id=node_data.get("app_id"),
+                ),
+                payload={"node_execution_data": node_data},
+            ),
+            trace_manager=self._trace_manager,
         )
-        self._trace_manager.add_trace_task(trace_task)
 
     def _system_variables(self) -> Mapping[str, Any]:
         runtime_state = self.graph_runtime_state

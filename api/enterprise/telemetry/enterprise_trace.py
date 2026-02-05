@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from typing import Any, cast
+
+from opentelemetry.util.types import AttributeValue
 
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
@@ -75,15 +77,50 @@ class EnterpriseOtelTrace:
             self._prompt_generation_trace(trace_info)
 
     def _common_attrs(self, trace_info: BaseTraceInfo) -> dict[str, Any]:
+        metadata = self._metadata(trace_info)
+        tenant_id, app_id, user_id = self._context_ids(trace_info, metadata)
         return {
             "dify.trace_id": trace_info.trace_id,
-            "dify.tenant_id": trace_info.metadata.get("tenant_id"),
-            "dify.app_id": trace_info.metadata.get("app_id"),
-            "dify.app.name": trace_info.metadata.get("app_name"),
-            "dify.workspace.name": trace_info.metadata.get("workspace_name"),
-            "gen_ai.user.id": trace_info.metadata.get("user_id"),
+            "dify.tenant_id": tenant_id,
+            "dify.app_id": app_id,
+            "dify.app.name": metadata.get("app_name"),
+            "dify.workspace.name": metadata.get("workspace_name"),
+            "gen_ai.user.id": user_id,
             "dify.message.id": trace_info.message_id,
         }
+
+    def _metadata(self, trace_info: BaseTraceInfo) -> dict[str, Any]:
+        return trace_info.metadata
+
+    def _context_ids(
+        self,
+        trace_info: BaseTraceInfo,
+        metadata: dict[str, Any],
+    ) -> tuple[str | None, str | None, str | None]:
+        tenant_id = getattr(trace_info, "tenant_id", None) or metadata.get("tenant_id")
+        app_id = getattr(trace_info, "app_id", None) or metadata.get("app_id")
+        user_id = getattr(trace_info, "user_id", None) or metadata.get("user_id")
+        return tenant_id, app_id, user_id
+
+    def _labels(self, **values: AttributeValue) -> dict[str, AttributeValue]:
+        return dict(values)
+
+    def _safe_payload_value(self, value: Any) -> str | dict[str, Any] | list[object] | None:
+        if isinstance(value, str):
+            return value
+        if isinstance(value, dict):
+            return cast(dict[str, Any], value)
+        if isinstance(value, list):
+            items: list[object] = []
+            for item in cast(list[object], value):
+                items.append(item)
+            return items
+        return None
+
+    def _content_or_ref(self, value: Any, ref: str) -> Any:
+        if self._exporter.include_content:
+            return self._maybe_json(value)
+        return ref
 
     def _maybe_json(self, value: Any) -> str | None:
         if value is None:
@@ -100,17 +137,19 @@ class EnterpriseOtelTrace:
     # ------------------------------------------------------------------
 
     def _workflow_trace(self, info: WorkflowTraceInfo) -> None:
+        metadata = self._metadata(info)
+        tenant_id, app_id, user_id = self._context_ids(info, metadata)
         # -- Slim span attrs: identity + structure + status + timing only --
         span_attrs: dict[str, Any] = {
             "dify.trace_id": info.trace_id,
-            "dify.tenant_id": info.metadata.get("tenant_id"),
-            "dify.app_id": info.metadata.get("app_id"),
+            "dify.tenant_id": tenant_id,
+            "dify.app_id": app_id,
             "dify.workflow.id": info.workflow_id,
             "dify.workflow.run_id": info.workflow_run_id,
             "dify.workflow.status": info.workflow_run_status,
             "dify.workflow.error": info.error,
             "dify.workflow.elapsed_time": info.workflow_run_elapsed_time,
-            "dify.invoke_from": info.metadata.get("triggered_from"),
+            "dify.invoke_from": metadata.get("triggered_from"),
             "dify.conversation.id": info.conversation_id,
             "dify.message.id": info.message_id,
             "dify.invoked_by": info.invoked_by,
@@ -119,15 +158,20 @@ class EnterpriseOtelTrace:
         trace_correlation_override: str | None = None
         parent_span_id_source: str | None = None
 
-        parent_ctx = info.metadata.get("parent_trace_context")
-        if parent_ctx and isinstance(parent_ctx, dict):
-            span_attrs["dify.parent.trace_id"] = parent_ctx.get("trace_id")
-            span_attrs["dify.parent.node.execution_id"] = parent_ctx.get("parent_node_execution_id")
-            span_attrs["dify.parent.workflow.run_id"] = parent_ctx.get("parent_workflow_run_id")
-            span_attrs["dify.parent.app.id"] = parent_ctx.get("parent_app_id")
+        parent_ctx = metadata.get("parent_trace_context")
+        if isinstance(parent_ctx, dict):
+            parent_ctx_dict = cast(dict[str, Any], parent_ctx)
+            span_attrs["dify.parent.trace_id"] = parent_ctx_dict.get("trace_id")
+            span_attrs["dify.parent.node.execution_id"] = parent_ctx_dict.get("parent_node_execution_id")
+            span_attrs["dify.parent.workflow.run_id"] = parent_ctx_dict.get("parent_workflow_run_id")
+            span_attrs["dify.parent.app.id"] = parent_ctx_dict.get("parent_app_id")
 
-            trace_correlation_override = parent_ctx.get("parent_workflow_run_id")
-            parent_span_id_source = parent_ctx.get("parent_node_execution_id")
+            trace_override_value = parent_ctx_dict.get("parent_workflow_run_id")
+            if isinstance(trace_override_value, str):
+                trace_correlation_override = trace_override_value
+            parent_span_value = parent_ctx_dict.get("parent_node_execution_id")
+            if isinstance(parent_span_value, str):
+                parent_span_id_source = parent_span_value
 
         self._exporter.export_span(
             EnterpriseTelemetrySpan.WORKFLOW_RUN,
@@ -144,23 +188,18 @@ class EnterpriseOtelTrace:
         log_attrs: dict[str, Any] = {**span_attrs}
         log_attrs.update(
             {
-                "dify.app.name": info.metadata.get("app_name"),
-                "dify.workspace.name": info.metadata.get("workspace_name"),
-                "gen_ai.user.id": info.metadata.get("user_id"),
+                "dify.app.name": metadata.get("app_name"),
+                "dify.workspace.name": metadata.get("workspace_name"),
+                "gen_ai.user.id": user_id,
                 "gen_ai.usage.total_tokens": info.total_tokens,
                 "dify.workflow.version": info.workflow_run_version,
             }
         )
 
-        if self._exporter.include_content:
-            log_attrs["dify.workflow.inputs"] = self._maybe_json(info.workflow_run_inputs)
-            log_attrs["dify.workflow.outputs"] = self._maybe_json(info.workflow_run_outputs)
-            log_attrs["dify.workflow.query"] = info.query
-        else:
-            ref = f"ref:workflow_run_id={info.workflow_run_id}"
-            log_attrs["dify.workflow.inputs"] = ref
-            log_attrs["dify.workflow.outputs"] = ref
-            log_attrs["dify.workflow.query"] = ref
+        ref = f"ref:workflow_run_id={info.workflow_run_id}"
+        log_attrs["dify.workflow.inputs"] = self._content_or_ref(info.workflow_run_inputs, ref)
+        log_attrs["dify.workflow.outputs"] = self._content_or_ref(info.workflow_run_outputs, ref)
+        log_attrs["dify.workflow.query"] = self._content_or_ref(info.query, ref)
 
         emit_telemetry_log(
             event_name="dify.workflow.run",
@@ -168,34 +207,49 @@ class EnterpriseOtelTrace:
             signal="span_detail",
             trace_id_source=info.workflow_run_id,
             span_id_source=info.workflow_run_id,
-            tenant_id=info.metadata.get("tenant_id"),
-            user_id=info.metadata.get("user_id"),
+            tenant_id=tenant_id,
+            user_id=user_id,
         )
 
         # -- Metrics --
-        labels = {
-            "tenant_id": info.tenant_id,
-            "app_id": info.metadata.get("app_id", ""),
-        }
+        labels = self._labels(
+            tenant_id=tenant_id or "",
+            app_id=app_id or "",
+        )
         self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, labels)
         if info.prompt_tokens is not None and info.prompt_tokens > 0:
             self._exporter.increment_counter(EnterpriseTelemetryCounter.INPUT_TOKENS, info.prompt_tokens, labels)
         if info.completion_tokens is not None and info.completion_tokens > 0:
             self._exporter.increment_counter(EnterpriseTelemetryCounter.OUTPUT_TOKENS, info.completion_tokens, labels)
-        invoke_from = info.metadata.get("triggered_from", "")
+        invoke_from = metadata.get("triggered_from", "")
         self._exporter.increment_counter(
             EnterpriseTelemetryCounter.REQUESTS,
             1,
-            {**labels, "type": "workflow", "status": info.workflow_run_status, "invoke_from": invoke_from},
+            self._labels(
+                **labels,
+                type="workflow",
+                status=info.workflow_run_status,
+                invoke_from=invoke_from,
+            ),
         )
         self._exporter.record_histogram(
             EnterpriseTelemetryHistogram.WORKFLOW_DURATION,
             float(info.workflow_run_elapsed_time),
-            {**labels, "status": info.workflow_run_status},
+            self._labels(
+                **labels,
+                status=info.workflow_run_status,
+            ),
         )
 
         if info.error:
-            self._exporter.increment_counter(EnterpriseTelemetryCounter.ERRORS, 1, {**labels, "type": "workflow"})
+            self._exporter.increment_counter(
+                EnterpriseTelemetryCounter.ERRORS,
+                1,
+                self._labels(
+                    **labels,
+                    type="workflow",
+                ),
+            )
 
     def _node_execution_trace(self, info: WorkflowNodeTraceInfo) -> None:
         self._emit_node_execution_trace(info, EnterpriseTelemetrySpan.NODE_EXECUTION, "node")
@@ -217,15 +271,17 @@ class EnterpriseOtelTrace:
         correlation_id_override: str | None = None,
         trace_correlation_override_param: str | None = None,
     ) -> None:
+        metadata = self._metadata(info)
+        tenant_id, app_id, user_id = self._context_ids(info, metadata)
         # -- Slim span attrs: identity + structure + status + timing --
         span_attrs: dict[str, Any] = {
             "dify.trace_id": info.trace_id,
-            "dify.tenant_id": info.tenant_id,
-            "dify.app_id": info.metadata.get("app_id"),
+            "dify.tenant_id": tenant_id,
+            "dify.app_id": app_id,
             "dify.workflow.id": info.workflow_id,
             "dify.workflow.run_id": info.workflow_run_id,
             "dify.message.id": info.message_id,
-            "dify.conversation.id": info.metadata.get("conversation_id"),
+            "dify.conversation.id": metadata.get("conversation_id"),
             "dify.node.execution_id": info.node_execution_id,
             "dify.node.id": info.node_id,
             "dify.node.type": info.node_type,
@@ -242,9 +298,12 @@ class EnterpriseOtelTrace:
         }
 
         trace_correlation_override = trace_correlation_override_param
-        parent_ctx = info.metadata.get("parent_trace_context")
-        if parent_ctx and isinstance(parent_ctx, dict):
-            trace_correlation_override = parent_ctx.get("parent_workflow_run_id") or trace_correlation_override
+        parent_ctx = metadata.get("parent_trace_context")
+        if isinstance(parent_ctx, dict):
+            parent_ctx_dict = cast(dict[str, Any], parent_ctx)
+            override_value = parent_ctx_dict.get("parent_workflow_run_id")
+            if isinstance(override_value, str):
+                trace_correlation_override = override_value
 
         effective_correlation_id = correlation_id_override or info.workflow_run_id
         self._exporter.export_span(
@@ -261,10 +320,10 @@ class EnterpriseOtelTrace:
         log_attrs: dict[str, Any] = {**span_attrs}
         log_attrs.update(
             {
-                "dify.app.name": info.metadata.get("app_name"),
-                "dify.workspace.name": info.metadata.get("workspace_name"),
-                "dify.invoke_from": info.metadata.get("invoke_from"),
-                "gen_ai.user.id": info.metadata.get("user_id"),
+                "dify.app.name": metadata.get("app_name"),
+                "dify.workspace.name": metadata.get("workspace_name"),
+                "dify.invoke_from": metadata.get("invoke_from"),
+                "gen_ai.user.id": user_id,
                 "gen_ai.usage.total_tokens": info.total_tokens,
                 "dify.node.total_price": info.total_price,
                 "dify.node.currency": info.currency,
@@ -273,22 +332,17 @@ class EnterpriseOtelTrace:
                 "gen_ai.tool.name": info.tool_name,
                 "dify.node.iteration_index": info.iteration_index,
                 "dify.node.loop_index": info.loop_index,
-                "dify.plugin.name": info.metadata.get("plugin_name"),
-                "dify.credential.name": info.metadata.get("credential_name"),
-                "dify.dataset.ids": self._maybe_json(info.metadata.get("dataset_ids")),
-                "dify.dataset.names": self._maybe_json(info.metadata.get("dataset_names")),
+                "dify.plugin.name": metadata.get("plugin_name"),
+                "dify.credential.name": metadata.get("credential_name"),
+                "dify.dataset.ids": self._maybe_json(metadata.get("dataset_ids")),
+                "dify.dataset.names": self._maybe_json(metadata.get("dataset_names")),
             }
         )
 
-        if self._exporter.include_content:
-            log_attrs["dify.node.inputs"] = self._maybe_json(info.node_inputs)
-            log_attrs["dify.node.outputs"] = self._maybe_json(info.node_outputs)
-            log_attrs["dify.node.process_data"] = self._maybe_json(info.process_data)
-        else:
-            ref = f"ref:node_execution_id={info.node_execution_id}"
-            log_attrs["dify.node.inputs"] = ref
-            log_attrs["dify.node.outputs"] = ref
-            log_attrs["dify.node.process_data"] = ref
+        ref = f"ref:node_execution_id={info.node_execution_id}"
+        log_attrs["dify.node.inputs"] = self._content_or_ref(info.node_inputs, ref)
+        log_attrs["dify.node.outputs"] = self._content_or_ref(info.node_outputs, ref)
+        log_attrs["dify.node.process_data"] = self._content_or_ref(info.process_data, ref)
 
         emit_telemetry_log(
             event_name=span_name.value,
@@ -296,19 +350,22 @@ class EnterpriseOtelTrace:
             signal="span_detail",
             trace_id_source=info.workflow_run_id,
             span_id_source=info.node_execution_id,
-            tenant_id=info.tenant_id,
-            user_id=info.metadata.get("user_id"),
+            tenant_id=tenant_id,
+            user_id=user_id,
         )
 
         # -- Metrics --
-        labels = {
-            "tenant_id": info.tenant_id,
-            "app_id": info.metadata.get("app_id", ""),
-            "node_type": info.node_type,
-            "model_provider": info.model_provider or "",
-        }
+        labels = self._labels(
+            tenant_id=tenant_id or "",
+            app_id=app_id or "",
+            node_type=info.node_type,
+            model_provider=info.model_provider or "",
+        )
         if info.total_tokens:
-            token_labels = {**labels, "model_name": info.model_name or ""}
+            token_labels = self._labels(
+                **labels,
+                model_name=info.model_name or "",
+            )
             self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, token_labels)
             if info.prompt_tokens is not None and info.prompt_tokens > 0:
                 self._exporter.increment_counter(
@@ -319,76 +376,95 @@ class EnterpriseOtelTrace:
                     EnterpriseTelemetryCounter.OUTPUT_TOKENS, info.completion_tokens, token_labels
                 )
         self._exporter.increment_counter(
-            EnterpriseTelemetryCounter.REQUESTS, 1, {**labels, "type": request_type, "status": info.status}
+            EnterpriseTelemetryCounter.REQUESTS,
+            1,
+            self._labels(
+                **labels,
+                type=request_type,
+                status=info.status,
+            ),
         )
         duration_labels = dict(labels)
-        plugin_name = info.metadata.get("plugin_name")
+        plugin_name = metadata.get("plugin_name")
         if plugin_name and info.node_type in {"tool", "knowledge-retrieval"}:
             duration_labels["plugin_name"] = plugin_name
         self._exporter.record_histogram(EnterpriseTelemetryHistogram.NODE_DURATION, info.elapsed_time, duration_labels)
 
         if info.error:
-            self._exporter.increment_counter(EnterpriseTelemetryCounter.ERRORS, 1, {**labels, "type": request_type})
+            self._exporter.increment_counter(
+                EnterpriseTelemetryCounter.ERRORS,
+                1,
+                self._labels(
+                    **labels,
+                    type=request_type,
+                ),
+            )
 
     # ------------------------------------------------------------------
     # METRIC-ONLY handlers (structured log + counters/histograms)
     # ------------------------------------------------------------------
 
     def _message_trace(self, info: MessageTraceInfo) -> None:
+        metadata = self._metadata(info)
+        tenant_id, app_id, user_id = self._context_ids(info, metadata)
         attrs = self._common_attrs(info)
         attrs.update(
             {
-                "dify.invoke_from": info.metadata.get("from_source"),
-                "dify.conversation.id": info.metadata.get("conversation_id"),
+                "dify.invoke_from": metadata.get("from_source"),
+                "dify.conversation.id": metadata.get("conversation_id"),
                 "dify.conversation.mode": info.conversation_mode,
-                "gen_ai.provider.name": info.metadata.get("ls_provider"),
-                "gen_ai.request.model": info.metadata.get("ls_model_name"),
+                "gen_ai.provider.name": metadata.get("ls_provider"),
+                "gen_ai.request.model": metadata.get("ls_model_name"),
                 "gen_ai.usage.input_tokens": info.message_tokens,
                 "gen_ai.usage.output_tokens": info.answer_tokens,
                 "gen_ai.usage.total_tokens": info.total_tokens,
-                "dify.message.status": info.metadata.get("status"),
+                "dify.message.status": metadata.get("status"),
                 "dify.message.error": info.error,
-                "dify.message.from_source": info.metadata.get("from_source"),
-                "dify.message.from_end_user_id": info.metadata.get("from_end_user_id"),
-                "dify.message.from_account_id": info.metadata.get("from_account_id"),
+                "dify.message.from_source": metadata.get("from_source"),
+                "dify.message.from_end_user_id": metadata.get("from_end_user_id"),
+                "dify.message.from_account_id": metadata.get("from_account_id"),
                 "dify.streaming": info.is_streaming_request,
                 "dify.message.time_to_first_token": info.gen_ai_server_time_to_first_token,
                 "dify.message.streaming_duration": info.llm_streaming_time_to_generate,
-                "dify.workflow.run_id": info.metadata.get("workflow_run_id"),
+                "dify.workflow.run_id": metadata.get("workflow_run_id"),
             }
         )
-        if info.metadata.get("node_execution_id"):
-            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
+        node_execution_id = metadata.get("node_execution_id")
+        if node_execution_id:
+            attrs["dify.node.execution_id"] = node_execution_id
 
-        if self._exporter.include_content:
-            attrs["dify.message.inputs"] = self._maybe_json(info.inputs)
-            attrs["dify.message.outputs"] = self._maybe_json(info.outputs)
-        else:
-            ref = f"ref:message_id={info.message_id}"
-            attrs["dify.message.inputs"] = ref
-            attrs["dify.message.outputs"] = ref
+        ref = f"ref:message_id={info.message_id}"
+        inputs = self._safe_payload_value(info.inputs)
+        outputs = self._safe_payload_value(info.outputs)
+        attrs["dify.message.inputs"] = self._content_or_ref(inputs, ref)
+        attrs["dify.message.outputs"] = self._content_or_ref(outputs, ref)
 
         emit_metric_only_event(
             event_name="dify.message.run",
             attributes=attrs,
-            trace_id_source=info.metadata.get("workflow_run_id") or str(info.message_id) if info.message_id else None,
-            span_id_source=info.metadata.get("node_execution_id"),
-            tenant_id=info.metadata.get("tenant_id"),
-            user_id=info.metadata.get("user_id"),
+            trace_id_source=metadata.get("workflow_run_id") or str(info.message_id) if info.message_id else None,
+            span_id_source=node_execution_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
         )
 
-        labels = {
-            "tenant_id": info.metadata.get("tenant_id", ""),
-            "app_id": info.metadata.get("app_id", ""),
-            "model_provider": info.metadata.get("ls_provider", ""),
-            "model_name": info.metadata.get("ls_model_name", ""),
-        }
+        labels = self._labels(
+            tenant_id=tenant_id or "",
+            app_id=app_id or "",
+            model_provider=metadata.get("ls_provider", ""),
+            model_name=metadata.get("ls_model_name", ""),
+        )
         self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, labels)
-        invoke_from = info.metadata.get("from_source", "")
+        invoke_from = metadata.get("from_source", "")
         self._exporter.increment_counter(
             EnterpriseTelemetryCounter.REQUESTS,
             1,
-            {**labels, "type": "message", "status": info.metadata.get("status", ""), "invoke_from": invoke_from},
+            self._labels(
+                **labels,
+                type="message",
+                status=metadata.get("status", ""),
+                invoke_from=invoke_from,
+            ),
         )
 
         if info.start_time and info.end_time:
@@ -401,82 +477,115 @@ class EnterpriseOtelTrace:
             )
 
         if info.error:
-            self._exporter.increment_counter(EnterpriseTelemetryCounter.ERRORS, 1, {**labels, "type": "message"})
+            self._exporter.increment_counter(
+                EnterpriseTelemetryCounter.ERRORS,
+                1,
+                self._labels(
+                    **labels,
+                    type="message",
+                ),
+            )
 
     def _tool_trace(self, info: ToolTraceInfo) -> None:
+        metadata = self._metadata(info)
+        tenant_id, app_id, user_id = self._context_ids(info, metadata)
         attrs = self._common_attrs(info)
         attrs.update(
             {
                 "gen_ai.tool.name": info.tool_name,
                 "dify.tool.time_cost": info.time_cost,
                 "dify.tool.error": info.error,
-                "dify.workflow.run_id": info.metadata.get("workflow_run_id"),
+                "dify.workflow.run_id": metadata.get("workflow_run_id"),
             }
         )
-        if info.metadata.get("node_execution_id"):
-            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
+        node_execution_id = metadata.get("node_execution_id")
+        if node_execution_id:
+            attrs["dify.node.execution_id"] = node_execution_id
 
-        if self._exporter.include_content:
-            attrs["dify.tool.inputs"] = self._maybe_json(info.tool_inputs)
-            attrs["dify.tool.outputs"] = info.tool_outputs
-            attrs["dify.tool.parameters"] = self._maybe_json(info.tool_parameters)
-            attrs["dify.tool.config"] = self._maybe_json(info.tool_config)
-        else:
-            ref = f"ref:message_id={info.message_id}"
-            attrs["dify.tool.inputs"] = ref
-            attrs["dify.tool.outputs"] = ref
-            attrs["dify.tool.parameters"] = ref
-            attrs["dify.tool.config"] = ref
+        ref = f"ref:message_id={info.message_id}"
+        attrs["dify.tool.inputs"] = self._content_or_ref(info.tool_inputs, ref)
+        attrs["dify.tool.outputs"] = self._content_or_ref(info.tool_outputs, ref)
+        attrs["dify.tool.parameters"] = self._content_or_ref(info.tool_parameters, ref)
+        attrs["dify.tool.config"] = self._content_or_ref(info.tool_config, ref)
 
         emit_metric_only_event(
             event_name="dify.tool.execution",
             attributes=attrs,
-            span_id_source=info.metadata.get("node_execution_id"),
-            tenant_id=info.metadata.get("tenant_id"),
-            user_id=info.metadata.get("user_id"),
+            span_id_source=node_execution_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
         )
 
-        labels = {
-            "tenant_id": info.metadata.get("tenant_id", ""),
-            "app_id": info.metadata.get("app_id", ""),
-            "tool_name": info.tool_name,
-        }
-        self._exporter.increment_counter(EnterpriseTelemetryCounter.REQUESTS, 1, {**labels, "type": "tool"})
+        labels = self._labels(
+            tenant_id=tenant_id or "",
+            app_id=app_id or "",
+            tool_name=info.tool_name,
+        )
+        self._exporter.increment_counter(
+            EnterpriseTelemetryCounter.REQUESTS,
+            1,
+            self._labels(
+                **labels,
+                type="tool",
+            ),
+        )
         self._exporter.record_histogram(EnterpriseTelemetryHistogram.TOOL_DURATION, float(info.time_cost), labels)
 
         if info.error:
-            self._exporter.increment_counter(EnterpriseTelemetryCounter.ERRORS, 1, {**labels, "type": "tool"})
+            self._exporter.increment_counter(
+                EnterpriseTelemetryCounter.ERRORS,
+                1,
+                self._labels(
+                    **labels,
+                    type="tool",
+                ),
+            )
 
     def _moderation_trace(self, info: ModerationTraceInfo) -> None:
+        metadata = self._metadata(info)
+        tenant_id, app_id, user_id = self._context_ids(info, metadata)
         attrs = self._common_attrs(info)
         attrs.update(
             {
                 "dify.moderation.flagged": info.flagged,
                 "dify.moderation.action": info.action,
                 "dify.moderation.preset_response": info.preset_response,
-                "dify.workflow.run_id": info.metadata.get("workflow_run_id"),
+                "dify.workflow.run_id": metadata.get("workflow_run_id"),
             }
         )
-        if info.metadata.get("node_execution_id"):
-            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
+        node_execution_id = metadata.get("node_execution_id")
+        if node_execution_id:
+            attrs["dify.node.execution_id"] = node_execution_id
 
-        if self._exporter.include_content:
-            attrs["dify.moderation.query"] = info.query
-        else:
-            attrs["dify.moderation.query"] = f"ref:message_id={info.message_id}"
+        attrs["dify.moderation.query"] = self._content_or_ref(
+            info.query,
+            f"ref:message_id={info.message_id}",
+        )
 
         emit_metric_only_event(
             event_name="dify.moderation.check",
             attributes=attrs,
-            span_id_source=info.metadata.get("node_execution_id"),
-            tenant_id=info.metadata.get("tenant_id"),
-            user_id=info.metadata.get("user_id"),
+            span_id_source=node_execution_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
         )
 
-        labels = {"tenant_id": info.metadata.get("tenant_id", ""), "app_id": info.metadata.get("app_id", "")}
-        self._exporter.increment_counter(EnterpriseTelemetryCounter.REQUESTS, 1, {**labels, "type": "moderation"})
+        labels = self._labels(
+            tenant_id=tenant_id or "",
+            app_id=app_id or "",
+        )
+        self._exporter.increment_counter(
+            EnterpriseTelemetryCounter.REQUESTS,
+            1,
+            self._labels(
+                **labels,
+                type="moderation",
+            ),
+        )
 
     def _suggested_question_trace(self, info: SuggestedQuestionTraceInfo) -> None:
+        metadata = self._metadata(info)
+        tenant_id, app_id, user_id = self._context_ids(info, metadata)
         attrs = self._common_attrs(info)
         attrs.update(
             {
@@ -486,43 +595,62 @@ class EnterpriseOtelTrace:
                 "gen_ai.provider.name": info.model_provider,
                 "gen_ai.request.model": info.model_id,
                 "dify.suggested_question.count": len(info.suggested_question),
-                "dify.workflow.run_id": info.metadata.get("workflow_run_id"),
+                "dify.workflow.run_id": metadata.get("workflow_run_id"),
             }
         )
-        if info.metadata.get("node_execution_id"):
-            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
+        node_execution_id = metadata.get("node_execution_id")
+        if node_execution_id:
+            attrs["dify.node.execution_id"] = node_execution_id
 
-        if self._exporter.include_content:
-            attrs["dify.suggested_question.questions"] = self._maybe_json(info.suggested_question)
-        else:
-            attrs["dify.suggested_question.questions"] = f"ref:message_id={info.message_id}"
+        attrs["dify.suggested_question.questions"] = self._content_or_ref(
+            info.suggested_question,
+            f"ref:message_id={info.message_id}",
+        )
 
         emit_metric_only_event(
             event_name="dify.suggested_question.generation",
             attributes=attrs,
-            span_id_source=info.metadata.get("node_execution_id"),
-            tenant_id=info.metadata.get("tenant_id"),
-            user_id=info.metadata.get("user_id"),
+            span_id_source=node_execution_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
         )
 
-        labels = {"tenant_id": info.metadata.get("tenant_id", ""), "app_id": info.metadata.get("app_id", "")}
+        labels = self._labels(
+            tenant_id=tenant_id or "",
+            app_id=app_id or "",
+        )
         self._exporter.increment_counter(
-            EnterpriseTelemetryCounter.REQUESTS, 1, {**labels, "type": "suggested_question"}
+            EnterpriseTelemetryCounter.REQUESTS,
+            1,
+            self._labels(
+                **labels,
+                type="suggested_question",
+            ),
         )
 
     def _dataset_retrieval_trace(self, info: DatasetRetrievalTraceInfo) -> None:
+        metadata = self._metadata(info)
+        tenant_id, app_id, user_id = self._context_ids(info, metadata)
         attrs = self._common_attrs(info)
         attrs["dify.dataset.error"] = info.error
-        attrs["dify.workflow.run_id"] = info.metadata.get("workflow_run_id")
-        if info.metadata.get("node_execution_id"):
-            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
+        attrs["dify.workflow.run_id"] = metadata.get("workflow_run_id")
+        node_execution_id = metadata.get("node_execution_id")
+        if node_execution_id:
+            attrs["dify.node.execution_id"] = node_execution_id
 
-        docs = info.documents or []
+        docs: list[dict[str, Any]] = []
+        documents_any: Any = info.documents
+        documents_list: list[Any] = cast(list[Any], documents_any) if isinstance(documents_any, list) else []
+        for entry in documents_list:
+            if isinstance(entry, dict):
+                entry_dict: dict[str, Any] = cast(dict[str, Any], entry)
+                docs.append(entry_dict)
         dataset_ids: list[str] = []
         dataset_names: list[str] = []
-        structured_docs: list[dict] = []
+        structured_docs: list[dict[str, Any]] = []
         for doc in docs:
-            meta = doc.get("metadata", {}) if isinstance(doc, dict) else {}
+            meta_raw = doc.get("metadata")
+            meta: dict[str, Any] = cast(dict[str, Any], meta_raw) if isinstance(meta_raw, dict) else {}
             did = meta.get("dataset_id")
             dname = meta.get("dataset_name")
             if did and did not in dataset_ids:
@@ -542,14 +670,18 @@ class EnterpriseOtelTrace:
         attrs["dify.dataset.names"] = self._maybe_json(dataset_names)
         attrs["dify.retrieval.document_count"] = len(docs)
 
-        embedding_models = info.metadata.get("embedding_models") or {}
-        if isinstance(embedding_models, dict):
+        embedding_models_raw: Any = metadata.get("embedding_models")
+        embedding_models: dict[str, Any] = (
+            cast(dict[str, Any], embedding_models_raw) if isinstance(embedding_models_raw, dict) else {}
+        )
+        if embedding_models:
             providers: list[str] = []
             models: list[str] = []
             for ds_info in embedding_models.values():
                 if isinstance(ds_info, dict):
-                    p = ds_info.get("embedding_model_provider", "")
-                    m = ds_info.get("embedding_model", "")
+                    ds_info_dict: dict[str, Any] = cast(dict[str, Any], ds_info)
+                    p = ds_info_dict.get("embedding_model_provider", "")
+                    m = ds_info_dict.get("embedding_model", "")
                     if p and p not in providers:
                         providers.append(p)
                     if m and m not in models:
@@ -557,67 +689,89 @@ class EnterpriseOtelTrace:
             attrs["dify.dataset.embedding_providers"] = self._maybe_json(providers)
             attrs["dify.dataset.embedding_models"] = self._maybe_json(models)
 
-        if self._exporter.include_content:
-            attrs["dify.retrieval.query"] = self._maybe_json(info.inputs)
-            attrs["dify.dataset.documents"] = self._maybe_json(structured_docs)
-        else:
-            ref = f"ref:message_id={info.message_id}"
-            attrs["dify.retrieval.query"] = ref
-            attrs["dify.dataset.documents"] = ref
+        ref = f"ref:message_id={info.message_id}"
+        retrieval_inputs = self._safe_payload_value(info.inputs)
+        attrs["dify.retrieval.query"] = self._content_or_ref(retrieval_inputs, ref)
+        attrs["dify.dataset.documents"] = self._content_or_ref(structured_docs, ref)
 
         emit_metric_only_event(
             event_name="dify.dataset.retrieval",
             attributes=attrs,
-            trace_id_source=info.metadata.get("workflow_run_id") or str(info.message_id) if info.message_id else None,
-            span_id_source=info.metadata.get("node_execution_id")
-            or (str(info.message_id) if info.message_id else None),
-            tenant_id=info.metadata.get("tenant_id"),
-            user_id=info.metadata.get("user_id"),
+            trace_id_source=metadata.get("workflow_run_id") or str(info.message_id) if info.message_id else None,
+            span_id_source=node_execution_id or (str(info.message_id) if info.message_id else None),
+            tenant_id=tenant_id,
+            user_id=user_id,
         )
 
-        labels = {"tenant_id": info.metadata.get("tenant_id", ""), "app_id": info.metadata.get("app_id", "")}
+        labels = self._labels(
+            tenant_id=tenant_id or "",
+            app_id=app_id or "",
+        )
         self._exporter.increment_counter(
-            EnterpriseTelemetryCounter.REQUESTS, 1, {**labels, "type": "dataset_retrieval"}
+            EnterpriseTelemetryCounter.REQUESTS,
+            1,
+            self._labels(
+                **labels,
+                type="dataset_retrieval",
+            ),
         )
 
         for did in dataset_ids:
             self._exporter.increment_counter(
-                EnterpriseTelemetryCounter.DATASET_RETRIEVALS, 1, {**labels, "dataset_id": did}
+                EnterpriseTelemetryCounter.DATASET_RETRIEVALS,
+                1,
+                self._labels(
+                    **labels,
+                    dataset_id=did,
+                ),
             )
 
     def _generate_name_trace(self, info: GenerateNameTraceInfo) -> None:
+        metadata = self._metadata(info)
+        tenant_id, app_id, user_id = self._context_ids(info, metadata)
         attrs = self._common_attrs(info)
         attrs["dify.conversation.id"] = info.conversation_id
-        if info.metadata.get("node_execution_id"):
-            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
+        node_execution_id = metadata.get("node_execution_id")
+        if node_execution_id:
+            attrs["dify.node.execution_id"] = node_execution_id
 
-        if self._exporter.include_content:
-            attrs["dify.generate_name.inputs"] = self._maybe_json(info.inputs)
-            attrs["dify.generate_name.outputs"] = self._maybe_json(info.outputs)
-        else:
-            ref = f"ref:conversation_id={info.conversation_id}"
-            attrs["dify.generate_name.inputs"] = ref
-            attrs["dify.generate_name.outputs"] = ref
+        ref = f"ref:conversation_id={info.conversation_id}"
+        inputs = self._safe_payload_value(info.inputs)
+        outputs = self._safe_payload_value(info.outputs)
+        attrs["dify.generate_name.inputs"] = self._content_or_ref(inputs, ref)
+        attrs["dify.generate_name.outputs"] = self._content_or_ref(outputs, ref)
 
         emit_metric_only_event(
             event_name="dify.generate_name.execution",
             attributes=attrs,
-            span_id_source=info.metadata.get("node_execution_id"),
-            tenant_id=info.tenant_id,
-            user_id=info.metadata.get("user_id"),
+            span_id_source=node_execution_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
         )
 
-        labels = {"tenant_id": info.tenant_id, "app_id": info.metadata.get("app_id", "")}
-        self._exporter.increment_counter(EnterpriseTelemetryCounter.REQUESTS, 1, {**labels, "type": "generate_name"})
+        labels = self._labels(
+            tenant_id=tenant_id or "",
+            app_id=app_id or "",
+        )
+        self._exporter.increment_counter(
+            EnterpriseTelemetryCounter.REQUESTS,
+            1,
+            self._labels(
+                **labels,
+                type="generate_name",
+            ),
+        )
 
     def _prompt_generation_trace(self, info: PromptGenerationTraceInfo) -> None:
+        metadata = self._metadata(info)
+        tenant_id, app_id, user_id = self._context_ids(info, metadata)
         attrs = {
             "dify.trace_id": info.trace_id,
-            "dify.tenant_id": info.tenant_id,
-            "dify.user.id": info.user_id,
-            "dify.app.id": info.app_id or "",
-            "dify.app.name": info.metadata.get("app_name"),
-            "dify.workspace.name": info.metadata.get("workspace_name"),
+            "dify.tenant_id": tenant_id,
+            "dify.user.id": user_id,
+            "dify.app.id": app_id or "",
+            "dify.app.name": metadata.get("app_name"),
+            "dify.workspace.name": metadata.get("workspace_name"),
             "dify.operation.type": info.operation_type,
             "gen_ai.provider.name": info.model_provider,
             "gen_ai.request.model": info.model_name,
@@ -627,36 +781,34 @@ class EnterpriseOtelTrace:
             "dify.prompt_generation.latency": info.latency,
             "dify.prompt_generation.error": info.error,
         }
-        if info.metadata.get("node_execution_id"):
-            attrs["dify.node.execution_id"] = info.metadata.get("node_execution_id")
+        node_execution_id = metadata.get("node_execution_id")
+        if node_execution_id:
+            attrs["dify.node.execution_id"] = node_execution_id
 
         if info.total_price is not None:
             attrs["dify.prompt_generation.total_price"] = info.total_price
             attrs["dify.prompt_generation.currency"] = info.currency
 
-        if self._exporter.include_content:
-            attrs["dify.prompt_generation.instruction"] = info.instruction
-            attrs["dify.prompt_generation.output"] = self._maybe_json(info.outputs)
-        else:
-            ref = f"ref:trace_id={info.trace_id}"
-            attrs["dify.prompt_generation.instruction"] = ref
-            attrs["dify.prompt_generation.output"] = ref
+        ref = f"ref:trace_id={info.trace_id}"
+        outputs = self._safe_payload_value(info.outputs)
+        attrs["dify.prompt_generation.instruction"] = self._content_or_ref(info.instruction, ref)
+        attrs["dify.prompt_generation.output"] = self._content_or_ref(outputs, ref)
 
         emit_metric_only_event(
             event_name="dify.prompt_generation.execution",
             attributes=attrs,
-            span_id_source=info.metadata.get("node_execution_id"),
-            tenant_id=info.tenant_id,
-            user_id=info.user_id,
+            span_id_source=node_execution_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
         )
 
-        labels: dict[str, Any] = {
-            "tenant_id": info.tenant_id,
-            "app_id": info.app_id or "",
-            "operation_type": info.operation_type,
-            "model_provider": info.model_provider,
-            "model_name": info.model_name,
-        }
+        labels = self._labels(
+            tenant_id=tenant_id or "",
+            app_id=app_id or "",
+            operation_type=info.operation_type,
+            model_provider=info.model_provider,
+            model_name=info.model_name,
+        )
 
         self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, labels)
         if info.prompt_tokens > 0:
@@ -668,7 +820,11 @@ class EnterpriseOtelTrace:
         self._exporter.increment_counter(
             EnterpriseTelemetryCounter.REQUESTS,
             1,
-            {**labels, "type": "prompt_generation", "status": status},
+            self._labels(
+                **labels,
+                type="prompt_generation",
+                status=status,
+            ),
         )
 
         self._exporter.record_histogram(
@@ -681,5 +837,8 @@ class EnterpriseOtelTrace:
             self._exporter.increment_counter(
                 EnterpriseTelemetryCounter.ERRORS,
                 1,
-                {**labels, "type": "prompt_generation"},
+                self._labels(
+                    **labels,
+                    type="prompt_generation",
+                ),
             )

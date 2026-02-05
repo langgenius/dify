@@ -5,9 +5,9 @@ from typing import Any
 from core.app.app_config.entities import AppConfig
 from core.moderation.base import ModerationAction, ModerationError
 from core.moderation.factory import ModerationFactory
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.ops.ops_trace_manager import TraceQueueManager
 from core.ops.utils import measure_time
+from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
 
 logger = logging.getLogger(__name__)
 
@@ -49,14 +49,18 @@ class InputModeration:
             moderation_result = moderation_factory.moderation_for_inputs(inputs, query)
 
         if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.MODERATION_TRACE,
-                    message_id=message_id,
-                    moderation_result=moderation_result,
-                    inputs=inputs,
-                    timer=timer,
-                )
+            TelemetryFacade.emit(
+                TelemetryEvent(
+                    name="moderation",
+                    context=TelemetryContext(tenant_id=tenant_id, app_id=app_id),
+                    payload={
+                        "message_id": message_id,
+                        "moderation_result": moderation_result,
+                        "inputs": inputs,
+                        "timer": timer,
+                    },
+                ),
+                trace_manager=trace_manager,
             )
 
         if not moderation_result.flagged:

@@ -25,10 +25,9 @@ from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -94,15 +93,17 @@ class LLMGenerator:
             name = name[:75] + "..."
 
         # get tracing instance
-        trace_manager = TraceQueueManager(app_id=app_id)
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.GENERATE_NAME_TRACE,
-                conversation_id=conversation_id,
-                generate_conversation_name=name,
-                inputs=prompt,
-                timer=timer,
-                tenant_id=tenant_id,
+        TelemetryFacade.emit(
+            TelemetryEvent(
+                name="generate_name",
+                context=TelemetryContext(tenant_id=tenant_id, app_id=app_id),
+                payload={
+                    "conversation_id": conversation_id,
+                    "generate_conversation_name": name,
+                    "inputs": prompt,
+                    "timer": timer,
+                    "tenant_id": tenant_id,
+                },
             )
         )
 
@@ -787,25 +788,29 @@ class LLMGenerator:
             total_price = None
             currency = None
 
-        trace_manager = TraceQueueManager(app_id=app_id)
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.PROMPT_GENERATION_TRACE,
-                tenant_id=tenant_id,
-                user_id=user_id,
-                app_id=app_id,
-                operation_type=operation_type,
-                instruction=instruction,
-                generated_output=generated_output,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                total_tokens=total_tokens,
-                model_provider=model_provider,
-                model_name=model_name,
-                latency=latency,
-                total_price=total_price,
-                currency=currency,
-                timer=timer,
-                error=error,
+        from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
+
+        TelemetryFacade.emit(
+            TelemetryEvent(
+                name="prompt_generation",
+                context=TelemetryContext(tenant_id=tenant_id, user_id=user_id, app_id=app_id),
+                payload={
+                    "tenant_id": tenant_id,
+                    "user_id": user_id,
+                    "app_id": app_id,
+                    "operation_type": operation_type,
+                    "instruction": instruction,
+                    "generated_output": generated_output,
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": total_tokens,
+                    "model_provider": model_provider,
+                    "model_name": model_name,
+                    "latency": latency,
+                    "total_price": total_price,
+                    "currency": currency,
+                    "timer": timer,
+                    "error": error,
+                },
             )
         )

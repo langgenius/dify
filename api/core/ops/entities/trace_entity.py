@@ -9,8 +9,8 @@ from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 class BaseTraceInfo(BaseModel):
     message_id: str | None = None
     message_data: Any | None = None
-    inputs: Union[str, dict[str, Any], list] | None = None
-    outputs: Union[str, dict[str, Any], list] | None = None
+    inputs: Union[str, dict[str, Any], list[Any]] | None = None
+    outputs: Union[str, dict[str, Any], list[Any]] | None = None
     start_time: datetime | None = None
     end_time: datetime | None = None
     metadata: dict[str, Any]
@@ -18,7 +18,7 @@ class BaseTraceInfo(BaseModel):
 
     @field_validator("inputs", "outputs")
     @classmethod
-    def ensure_type(cls, v):
+    def ensure_type(cls, v: str | dict[str, Any] | list[Any] | None) -> str | dict[str, Any] | list[Any] | None:
         if v is None:
             return None
         if isinstance(v, str | dict | list):
@@ -63,7 +63,7 @@ class MessageTraceInfo(BaseTraceInfo):
     answer_tokens: int
     total_tokens: int
     error: str | None = None
-    file_list: Union[str, dict[str, Any], list] | None = None
+    file_list: Union[str, dict[str, Any], list[Any]] | None = None
     message_file_data: Any | None = None
     conversation_mode: str
     gen_ai_server_time_to_first_token: float | None = None
@@ -110,7 +110,7 @@ class ToolTraceInfo(BaseTraceInfo):
     tool_config: dict[str, Any]
     time_cost: Union[int, float]
     tool_parameters: dict[str, Any]
-    file_url: Union[str, None, list] = None
+    file_url: Union[str, None, list[str]] = None
 
 
 class GenerateNameTraceInfo(BaseTraceInfo):

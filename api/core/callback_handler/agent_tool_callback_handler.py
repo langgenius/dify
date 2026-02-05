@@ -4,8 +4,8 @@ from typing import Any, TextIO, Union
 from pydantic import BaseModel
 
 from configs import dify_config
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.ops.ops_trace_manager import TraceQueueManager
+from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
 _TEXT_COLOR_MAPPING = {
@@ -71,15 +71,19 @@ class DifyAgentCallbackHandler(BaseModel):
             print_text("\n")
 
         if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.TOOL_TRACE,
-                    message_id=message_id,
-                    tool_name=tool_name,
-                    tool_inputs=tool_inputs,
-                    tool_outputs=tool_outputs,
-                    timer=timer,
-                )
+            TelemetryFacade.emit(
+                TelemetryEvent(
+                    name="tool",
+                    context=TelemetryContext(app_id=trace_manager.app_id, user_id=trace_manager.user_id),
+                    payload={
+                        "message_id": message_id,
+                        "tool_name": tool_name,
+                        "tool_inputs": tool_inputs,
+                        "tool_outputs": tool_outputs,
+                        "timer": timer,
+                    },
+                ),
+                trace_manager=trace_manager,
             )
 
     def on_tool_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any):

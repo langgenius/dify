@@ -27,8 +27,7 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.ops.ops_trace_manager import TraceQueueManager
 from core.ops.utils import measure_time
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
@@ -56,6 +55,7 @@ from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
+from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
 from core.tools.signature import sign_upload_file
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
@@ -728,10 +728,21 @@ class DatasetRetrieval:
             self.application_generate_entity.trace_manager if self.application_generate_entity else None
         )
         if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.DATASET_RETRIEVAL_TRACE, message_id=message_id, documents=documents, timer=timer
-                )
+            app_config = self.application_generate_entity.app_config if self.application_generate_entity else None
+            TelemetryFacade.emit(
+                TelemetryEvent(
+                    name="dataset_retrieval",
+                    context=TelemetryContext(
+                        tenant_id=app_config.tenant_id if app_config else None,
+                        app_id=app_config.app_id if app_config else None,
+                    ),
+                    payload={
+                        "message_id": message_id,
+                        "documents": documents,
+                        "timer": timer,
+                    },
+                ),
+                trace_manager=trace_manager,
             )
 
     def _on_query(

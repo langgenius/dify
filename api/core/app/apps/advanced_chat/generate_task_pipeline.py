@@ -62,7 +62,8 @@ from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager
+from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.nodes import NodeType
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
@@ -831,12 +832,19 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         session.add_all(message_files)
 
         if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.MESSAGE_TRACE,
-                    conversation_id=str(message.conversation_id),
-                    message_id=str(message.id),
-                )
+            TelemetryFacade.emit(
+                TelemetryEvent(
+                    name="message",
+                    context=TelemetryContext(
+                        tenant_id=self._application_generate_entity.app_config.tenant_id,
+                        app_id=self._application_generate_entity.app_config.app_id,
+                    ),
+                    payload={
+                        "conversation_id": str(message.conversation_id),
+                        "message_id": str(message.id),
+                    },
+                ),
+                trace_manager=trace_manager,
             )
 
     def _seed_graph_runtime_state_from_queue_manager(self) -> None:
