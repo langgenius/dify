@@ -2248,7 +2248,7 @@ class LLMNode(Node[LLMNodeData]):
                 / "console"
                 / "api"
                 / "workspaces"
-                / "current"
+                / self.tenant_id
                 / "model-providers"
                 / provider
                 / icon_type
