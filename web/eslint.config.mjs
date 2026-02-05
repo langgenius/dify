@@ -2,6 +2,7 @@
 import antfu from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
+import hyoban from 'eslint-plugin-hyoban'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import dify from './eslint-rules/index.js'
@@ -83,8 +84,37 @@ export default antfu(
   },
   {
     files: ['**/*.tsx'],
+    plugins: {
+      hyoban,
+    },
     rules: {
-      'dify/prefer-tailwind-icon': 'warn',
+      'hyoban/prefer-tailwind-icons': ['warn', {
+        libraries: [
+          {
+            pattern: '@/app/components/base/icons/src/public',
+            prefix: 'i-custom-public-',
+            extractSubPath: true,
+          },
+          {
+            pattern: '@/app/components/base/icons/src/vender',
+            prefix: 'i-custom-vender-',
+            extractSubPath: true,
+          },
+          {
+            pattern: '@remixicon/react',
+            importNamePattern: '/^Ri(.+)$/',
+            importNameReplace: '$1',
+            prefix: 'i-ri-',
+          },
+          {
+            pattern: '/^@heroicons\\/react\\/(\\d+)\\/(solid|outline)$/',
+            importNamePattern: '/^(.*)Icon$/',
+            importNameReplace: '$1',
+            sourceReplace: '$1-$2',
+            classNameTemplate: 'i-heroicons-{nameKebab}-{source}',
+          },
+        ],
+      }],
     },
   },
   {
