@@ -82,6 +82,12 @@ export default antfu(
     plugins: { dify },
   },
   {
+    files: ['**/*.tsx'],
+    rules: {
+      'dify/prefer-tailwind-icon': 'warn',
+    },
+  },
+  {
     files: ['i18n/**/*.json'],
     rules: {
       'sonarjs/max-lines': 'off',

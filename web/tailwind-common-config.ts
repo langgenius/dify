@@ -1,7 +1,15 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
 import tailwindTypography from '@tailwindcss/typography'
+import { importSvgCollections } from 'iconify-import-svg'
 // @ts-expect-error workaround for turbopack issue
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define.ts'
 import typography from './typography.js'
+
+const _dirname = typeof __dirname !== 'undefined'
+  ? __dirname
+  : path.dirname(fileURLToPath(import.meta.url))
 
 const config = {
   theme: {
@@ -146,7 +154,27 @@ const config = {
       },
     },
   },
-  plugins: [tailwindTypography],
+  plugins: [
+    tailwindTypography,
+    iconsPlugin({
+      collections: {
+        ...getIconCollections(['heroicons', 'ri']),
+        ...importSvgCollections({
+          source: path.resolve(_dirname, 'app/components/base/icons/assets/public'),
+          prefix: 'custom-public',
+        }),
+        ...importSvgCollections({
+          source: path.resolve(_dirname, 'app/components/base/icons/assets/vender'),
+          prefix: 'custom-vender',
+        }),
+      },
+      extraProperties: {
+        width: '1rem',
+        height: '1rem',
+        display: 'block',
+      },
+    }),
+  ],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
   corePlugins: {
     preflight: false,
