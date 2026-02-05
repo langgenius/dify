@@ -41,6 +41,9 @@ def check_upgradable_plugin_task():
     )  # make sure all strategies are checked in this interval
     batch_interval_time = (AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL / batch_chunk_count) if batch_chunk_count > 0 else 0
 
+    if total_strategies == 0:
+        click.echo(click.style("No strategies to process, skipping plugin manifest fetch.", fg="green"))
+        return
     # Fetch and cache all plugin manifests before processing tenants
     # This reduces load on marketplace from 300k requests to 1 request per check cycle
     try:
