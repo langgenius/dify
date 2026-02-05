@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from typing import Any
+from typing import Any, cast
 
 from core.app.app_config.entities import ModelConfig
 from core.model_runtime.entities import LLMMode
@@ -32,7 +32,7 @@ class HitTestingService:
         dataset: Dataset,
         query: str,
         account: Account,
-        retrieval_model: Any,  # FIXME drop this any
+        retrieval_model: dict[str, Any] | None,  # Can be None if no retrieval model is provided
         external_retrieval_model: dict,
         attachment_ids: list | None = None,
         limit: int = 10,
@@ -42,6 +42,10 @@ class HitTestingService:
         # get retrieval model , if the model is not setting , using default
         if not retrieval_model:
             retrieval_model = dataset.retrieval_model or default_retrieval_model
+        # After the check above, retrieval_model is guaranteed to be a dict
+        # (either from dataset.retrieval_model or default_retrieval_model)
+        # Type narrowing: cast to dict since default_retrieval_model ensures non-None
+        retrieval_model = cast(dict[str, Any], retrieval_model or default_retrieval_model)
         document_ids_filter = None
         metadata_filtering_conditions = retrieval_model.get("metadata_filtering_conditions", {})
         if metadata_filtering_conditions and query:
