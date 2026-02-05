@@ -29,10 +29,11 @@ def init_app(app: DifyApp) -> None:
     # Ensure route decorators are evaluated.
     import controllers.console.init_validate as init_validate_module
     import controllers.console.ping as ping_module
-    from controllers.console import remote_files, setup
+    from controllers.console import feature, remote_files, setup
 
     _ = init_validate_module
     _ = ping_module
+    _ = feature
     _ = remote_files
     _ = setup
 
