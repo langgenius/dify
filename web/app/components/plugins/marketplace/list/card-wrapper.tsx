@@ -8,7 +8,7 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import Button from '@/app/components/base/button'
 import Card from '@/app/components/plugins/card'
-import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
+import CardTags from '@/app/components/plugins/card/card-tags'
 import { useTags } from '@/app/components/plugins/hooks'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '../utils'
@@ -49,7 +49,7 @@ const CardWrapperComponent = ({
           key={plugin.name}
           payload={plugin}
           footer={(
-            <CardMoreInfo
+            <CardTags
               tags={tagLabels}
             />
           )}
@@ -95,7 +95,7 @@ const CardWrapperComponent = ({
         payload={plugin}
         disableOrgLink
         footer={(
-          <CardMoreInfo
+          <CardTags
             tags={tagLabels}
           />
         )}

@@ -5,7 +5,7 @@ type Props = {
   tags: string[]
 }
 
-const CardMoreInfoComponent = ({
+const CardTagsComponent = ({
   tags,
 }: Props) => {
   return (
@@ -29,6 +29,6 @@ const CardMoreInfoComponent = ({
 }
 
 // Memoize to prevent unnecessary re-renders when tags array hasn't changed
-const CardMoreInfo = React.memo(CardMoreInfoComponent)
+const CardTags = React.memo(CardTagsComponent)
 
-export default CardMoreInfo
+export default CardTags

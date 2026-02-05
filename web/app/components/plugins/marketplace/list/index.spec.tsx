@@ -131,11 +131,10 @@ vi.mock('@/app/components/plugins/card', () => ({
   ),
 }))
 
-// Mock CardMoreInfo component
-vi.mock('@/app/components/plugins/card/card-more-info', () => ({
-  default: ({ downloadCount, tags }: { downloadCount: number, tags: string[] }) => (
-    <div data-testid="card-more-info">
-      <span data-testid="download-count">{downloadCount}</span>
+// Mock CardTags component
+vi.mock('@/app/components/plugins/card/card-tags', () => ({
+  default: ({ tags }: { tags: string[] }) => (
+    <div data-testid="card-tags">
       <span data-testid="tags">{tags.join(',')}</span>
     </div>
   ),
@@ -983,7 +982,7 @@ describe('CardWrapper (via List integration)', () => {
       expect(screen.getByTestId('card-test-plugin')).toBeInTheDocument()
     })
 
-    it('should render CardMoreInfo with download count and tags', () => {
+    it('should render CardTags with tags', () => {
       const plugin = createMockPlugin({
         name: 'test-plugin',
         install_count: 5000,
@@ -998,8 +997,7 @@ describe('CardWrapper (via List integration)', () => {
         />,
       )
 
-      expect(screen.getByTestId('card-more-info')).toBeInTheDocument()
-      expect(screen.getByTestId('download-count')).toHaveTextContent('5000')
+      expect(screen.getByTestId('card-tags')).toBeInTheDocument()
     })
   })
 
