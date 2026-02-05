@@ -18,9 +18,9 @@ import {
   Group,
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { IS_CE_EDITION } from '@/config'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
-import { IS_CE_EDITION } from '@/config'
 import Split from '../_base/components/split'
 import ChunkStructure from './components/chunk-structure'
 import EmbeddingModel from './components/embedding-model'
