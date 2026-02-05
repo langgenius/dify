@@ -161,9 +161,21 @@ print(json.dumps(entries))
                     logger.debug("Failed to cleanup temp archive %s: %s", archive_path, exc)
         else:
             try:
+                content_type = self._guess_image_content_type(path)
+                command = [
+                    "curl",
+                    "-s",
+                    "-f",
+                    "-X",
+                    "PUT",
+                ]
+                if content_type:
+                    # to support image preview in artifacts panel, we need add content-type when upload to S3
+                    command.extend(["-H", f"Content-Type: {content_type}"])
+                command.extend(["-T", path, upload_url])
                 execute(
                     self._runtime,
-                    ["curl", "-s", "-f", "-X", "PUT", "-T", path, upload_url],
+                    command,
                     timeout=self._UPLOAD_TIMEOUT_SECONDS,
                     error_message="Failed to upload file from sandbox",
                 )

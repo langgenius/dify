@@ -15,6 +15,26 @@ class SandboxFileSource(abc.ABC):
         self._app_id = app_id
         self._sandbox_id = sandbox_id
 
+    @staticmethod
+    def _guess_image_content_type(path: str) -> str | None:
+        image_mime_types = {
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+            "png": "image/png",
+            "gif": "image/gif",
+            "bmp": "image/bmp",
+            "tiff": "image/tiff",
+            "tif": "image/tiff",
+            "webp": "image/webp",
+            "svg": "image/svg+xml",
+            "ico": "image/vnd.microsoft.icon",
+            "heif": "image/heif",
+            "heic": "image/heic",
+        }
+
+        extension = path.split(".")[-1]
+        return image_mime_types.get(extension)
+
     @abc.abstractmethod
     def exists(self) -> bool:
         """Check if the sandbox source exists and is available.
