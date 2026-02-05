@@ -361,6 +361,10 @@ class OpsTraceManager:
         if app_id is None:
             return None
 
+        # Handle storage_id format (tenant-{uuid}) - not a real app_id
+        if isinstance(app_id, str) and app_id.startswith("tenant-"):
+            return None
+
         app: App | None = db.session.query(App).where(App.id == app_id).first()
 
         if app is None:
