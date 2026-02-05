@@ -56,3 +56,26 @@ class NodeRunRetryEvent(NodeRunStartedEvent):
 
 class NodeRunPauseRequestedEvent(GraphNodeEventBase):
     reason: PauseReason = Field(..., description="pause reason")
+
+
+def is_node_result_event(event: GraphNodeEventBase) -> bool:
+    """
+    Check if an event is a final result event from node execution.
+
+    A result event indicates the completion of a node execution and contains
+    runtime information such as inputs, outputs, or error details.
+
+    Args:
+        event: The event to check
+
+    Returns:
+        True if the event is a node result event (succeeded/failed/paused), False otherwise
+    """
+    return isinstance(
+        event,
+        (
+            NodeRunSucceededEvent,
+            NodeRunFailedEvent,
+            NodeRunPauseRequestedEvent,
+        ),
+    )
