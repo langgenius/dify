@@ -4,11 +4,9 @@ import operator
 import typing
 
 import click
-import httpx
 from celery import shared_task
 
-from configs import dify_config
-from core.helper.marketplace import marketplace_api_url, record_install_plugin_event
+from core.helper.marketplace import record_install_plugin_event
 from core.plugin.entities.marketplace import MarketplacePluginSnapshot
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
@@ -18,7 +16,7 @@ from models.account import TenantPluginAutoUpgradeStrategy
 logger = logging.getLogger(__name__)
 
 RETRY_TIMES_OF_ONE_PLUGIN_IN_ONE_TENANT = 3
-CACHE_REDIS_KEY_PREFIX = "plugin_autoupgrade_check_task:cached_plugin_manifests:"
+CACHE_REDIS_KEY_PREFIX = "plugin_autoupgrade_check_task:cached_plugin_snapshot:"
 CACHE_REDIS_TTL = 60 * 60  # 1 hour
 
 
@@ -64,71 +62,13 @@ def marketplace_batch_fetch_plugin_manifests(
     # Check Redis cache for each plugin
     for plugin_id in plugin_ids_plain_list:
         cached_result = _get_cached_manifest(plugin_id)
-        if cached_result is False:
-            # Not in cache - this means the plugin is not in marketplace or cache expired
-            logger.warning("Plugin %s not found in cache, skipping", plugin_id)
+        if cached_result is False or cached_result is None:
+            logger.warning("plugin %s not found in cache, skipping", plugin_id)
             continue
-        elif cached_result is None:
-            # Cached as None - plugin was not found in marketplace
-            logger.debug("Plugin %s was cached as not found in marketplace", plugin_id)
-            continue
-        elif isinstance(cached_result, MarketplacePluginSnapshot):
-            # Found valid manifest in cache
-            result.append(cached_result)
+
+        result.append(cached_result)
 
     return result
-
-
-def fetch_global_plugin_manifest() -> None:
-    """
-    Fetch all plugin manifests from marketplace and cache them in Redis.
-    This should be called once per check cycle to populate the instance-level cache.
-    """
-    try:
-        url = str(marketplace_api_url / "api/v1/dist/plugins/manifest.json")
-        logger.info("Fetching global plugin manifest from %s", url)
-
-        response = httpx.get(url, headers={"X-Dify-Version": dify_config.project.version}, timeout=30)
-        response.raise_for_status()
-
-        raw_json = response.json()
-        plugins_data = raw_json.get("plugins", [])
-        metadata = raw_json.get("metadata", {})
-
-        logger.info(
-            "Fetched %d plugins from marketplace (snapshot updated at: %s)",
-            len(plugins_data),
-            metadata.get("snapshot_updated_at", "unknown"),
-        )
-
-        # Parse and cache all plugin snapshots
-        cached_count = 0
-        failed_count = 0
-
-        for plugin_data in plugins_data:
-            try:
-                plugin_snapshot = MarketplacePluginSnapshot.model_validate(plugin_data)
-                redis_client.setex(
-                    name=f"{CACHE_REDIS_KEY_PREFIX}{plugin_snapshot.plugin_id}",
-                    time=CACHE_REDIS_TTL,
-                    value=plugin_snapshot.model_dump_json(),
-                )
-                cached_count += 1
-            except Exception:
-                failed_count += 1
-                logger.exception(
-                    "Failed to parse or cache plugin: %s",
-                    f"{plugin_data.get('org', '?')}/{plugin_data.get('name', '?')}",
-                )
-
-        logger.info("Successfully cached %d plugins, %d failed", cached_count, failed_count)
-
-    except httpx.HTTPError:
-        logger.exception("HTTP error while fetching global plugin manifest")
-        raise
-    except Exception:
-        logger.exception("Unexpected error while fetching global plugin manifest")
-        raise
 
 
 @shared_task(queue="plugin")
