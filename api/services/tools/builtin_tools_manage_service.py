@@ -424,7 +424,11 @@ class BuiltinToolManageService:
                 # Enterprise: verify admin permission for tenant-wide operation
                 from models.account import TenantAccountRole
 
-                if account and not TenantAccountRole.is_privileged_role(account.current_role):
+                if account is None:
+                    # In enterprise mode, an account context is required to perform permission checks
+                    raise ValueError("Account is required to set default credentials in enterprise mode")
+
+                if not TenantAccountRole.is_privileged_role(account.current_role):
                     raise ValueError("Only workspace admins/owners can set default credentials in enterprise mode")
                 # Enterprise: clear ALL defaults for this provider in the tenant
                 # (regardless of user_id, since enterprise credentials may have different user_id)
