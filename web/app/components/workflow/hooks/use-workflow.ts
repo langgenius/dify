@@ -479,21 +479,11 @@ export const useNodesReadOnly = () => {
       isRestoring,
     } = workflowStore.getState()
 
-    return !!(
-      workflowRunningData?.result.status === WorkflowRunningStatus.Running
-      || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
-      || historyWorkflowData
-      || isRestoring
-    )
+    return !!(workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring)
   }, [workflowStore])
 
   return {
-    nodesReadOnly: !!(
-      workflowRunningData?.result.status === WorkflowRunningStatus.Running
-      || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
-      || historyWorkflowData
-      || isRestoring
-    ),
+    nodesReadOnly: !!(workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring),
     getNodesReadOnly,
   }
 }

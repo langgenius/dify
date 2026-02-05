@@ -14,7 +14,6 @@ from collections.abc import Generator
 from typing import TYPE_CHECKING, cast, final
 
 from core.workflow.context import capture_current_context
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
@@ -47,7 +46,6 @@ from .graph_traversal import EdgeProcessor, SkipPropagator
 from .layers.base import GraphEngineLayer
 from .orchestration import Dispatcher, ExecutionCoordinator
 from .protocols.command_channel import CommandChannel
-from .ready_queue import ReadyQueue
 from .worker_management import WorkerPool
 
 if TYPE_CHECKING:
@@ -55,9 +53,6 @@ if TYPE_CHECKING:
     from core.workflow.graph_engine.response_coordinator import ResponseStreamCoordinator
 
 logger = logging.getLogger(__name__)
-
-
-_DEFAULT_CONFIG = GraphEngineConfig()
 
 
 @final
@@ -75,7 +70,7 @@ class GraphEngine:
         graph: Graph,
         graph_runtime_state: GraphRuntimeState,
         command_channel: CommandChannel,
-        config: GraphEngineConfig = _DEFAULT_CONFIG,
+        config: GraphEngineConfig,
     ) -> None:
         """Initialize the graph engine with all subsystems and dependencies."""
         # stop event
@@ -94,7 +89,7 @@ class GraphEngine:
         self._graph_execution.workflow_id = workflow_id
 
         # === Execution Queues ===
-        self._ready_queue = cast(ReadyQueue, self._graph_runtime_state.ready_queue)
+        self._ready_queue = self._graph_runtime_state.ready_queue
 
         # Queue for events generated during execution
         self._event_queue: queue.Queue[GraphNodeEventBase] = queue.Queue()
@@ -239,9 +234,7 @@ class GraphEngine:
                 self._graph_execution.paused = False
                 self._graph_execution.pause_reasons = []
 
-            start_event = GraphRunStartedEvent(
-                reason=WorkflowStartReason.RESUMPTION if is_resume else WorkflowStartReason.INITIAL,
-            )
+            start_event = GraphRunStartedEvent()
             self._event_manager.notify_layers(start_event)
             yield start_event
 
@@ -310,17 +303,15 @@ class GraphEngine:
         for layer in self._layers:
             try:
                 layer.on_graph_start()
-            except Exception:
-                logger.exception("Layer %s failed on_graph_start", layer.__class__.__name__)
+            except Exception as e:
+                logger.warning("Layer %s failed on_graph_start: %s", layer.__class__.__name__, e)
 
     def _start_execution(self, *, resume: bool = False) -> None:
         """Start execution subsystems."""
         self._stop_event.clear()
         paused_nodes: list[str] = []
-        deferred_nodes: list[str] = []
         if resume:
             paused_nodes = self._graph_runtime_state.consume_paused_nodes()
-            deferred_nodes = self._graph_runtime_state.consume_deferred_nodes()
 
         # Start worker pool (it calculates initial workers internally)
         self._worker_pool.start()
@@ -336,11 +327,7 @@ class GraphEngine:
             self._state_manager.enqueue_node(root_node.id)
             self._state_manager.start_execution(root_node.id)
         else:
-            seen_nodes: set[str] = set()
-            for node_id in paused_nodes + deferred_nodes:
-                if node_id in seen_nodes:
-                    continue
-                seen_nodes.add(node_id)
+            for node_id in paused_nodes:
                 self._state_manager.enqueue_node(node_id)
                 self._state_manager.start_execution(node_id)
 
@@ -358,8 +345,8 @@ class GraphEngine:
         for layer in self._layers:
             try:
                 layer.on_graph_end(self._graph_execution.error)
-            except Exception:
-                logger.exception("Layer %s failed on_graph_end", layer.__class__.__name__)
+            except Exception as e:
+                logger.warning("Layer %s failed on_graph_end: %s", layer.__class__.__name__, e)
 
     # Public property accessors for attributes that need external access
     @property

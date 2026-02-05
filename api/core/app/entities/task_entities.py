@@ -7,9 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities import AgentNodeStrategyInit
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.nodes.human_input.entities import FormInput, UserAction
+from core.workflow.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -71,7 +69,6 @@ class StreamEvent(StrEnum):
     AGENT_THOUGHT = "agent_thought"
     AGENT_MESSAGE = "agent_message"
     WORKFLOW_STARTED = "workflow_started"
-    WORKFLOW_PAUSED = "workflow_paused"
     WORKFLOW_FINISHED = "workflow_finished"
     NODE_STARTED = "node_started"
     NODE_FINISHED = "node_finished"
@@ -85,9 +82,6 @@ class StreamEvent(StrEnum):
     TEXT_CHUNK = "text_chunk"
     TEXT_REPLACE = "text_replace"
     AGENT_LOG = "agent_log"
-    HUMAN_INPUT_REQUIRED = "human_input_required"
-    HUMAN_INPUT_FORM_FILLED = "human_input_form_filled"
-    HUMAN_INPUT_FORM_TIMEOUT = "human_input_form_timeout"
 
 
 class StreamResponse(BaseModel):
@@ -211,8 +205,6 @@ class WorkflowStartStreamResponse(StreamResponse):
         workflow_id: str
         inputs: Mapping[str, Any]
         created_at: int
-        # Always present; mirrors QueueWorkflowStartedEvent.reason for SSE clients.
-        reason: WorkflowStartReason = WorkflowStartReason.INITIAL
 
     event: StreamEvent = StreamEvent.WORKFLOW_STARTED
     workflow_run_id: str
@@ -231,7 +223,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
 
         id: str
         workflow_id: str
-        status: str
+        status: WorkflowExecutionStatus
         outputs: Mapping[str, Any] | None = None
         error: str | None = None
         elapsed_time: float
@@ -239,90 +231,11 @@ class WorkflowFinishStreamResponse(StreamResponse):
         total_steps: int
         created_by: Mapping[str, object] = Field(default_factory=dict)
         created_at: int
-        finished_at: int | None
+        finished_at: int
         exceptions_count: int | None = 0
         files: Sequence[Mapping[str, Any]] | None = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
-    workflow_run_id: str
-    data: Data
-
-
-class WorkflowPauseStreamResponse(StreamResponse):
-    """
-    WorkflowPauseStreamResponse entity
-    """
-
-    class Data(BaseModel):
-        """
-        Data entity
-        """
-
-        workflow_run_id: str
-        paused_nodes: Sequence[str] = Field(default_factory=list)
-        outputs: Mapping[str, Any] = Field(default_factory=dict)
-        reasons: Sequence[Mapping[str, Any]] = Field(default_factory=list)
-        status: str
-        created_at: int
-        elapsed_time: float
-        total_tokens: int
-        total_steps: int
-
-    event: StreamEvent = StreamEvent.WORKFLOW_PAUSED
-    workflow_run_id: str
-    data: Data
-
-
-class HumanInputRequiredResponse(StreamResponse):
-    class Data(BaseModel):
-        """
-        Data entity
-        """
-
-        form_id: str
-        node_id: str
-        node_title: str
-        form_content: str
-        inputs: Sequence[FormInput] = Field(default_factory=list)
-        actions: Sequence[UserAction] = Field(default_factory=list)
-        display_in_ui: bool = False
-        form_token: str | None = None
-        resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
-        expiration_time: int = Field(..., description="Unix timestamp in seconds")
-
-    event: StreamEvent = StreamEvent.HUMAN_INPUT_REQUIRED
-    workflow_run_id: str
-    data: Data
-
-
-class HumanInputFormFilledResponse(StreamResponse):
-    class Data(BaseModel):
-        """
-        Data entity
-        """
-
-        node_id: str
-        node_title: str
-        rendered_content: str
-        action_id: str
-        action_text: str
-
-    event: StreamEvent = StreamEvent.HUMAN_INPUT_FORM_FILLED
-    workflow_run_id: str
-    data: Data
-
-
-class HumanInputFormTimeoutResponse(StreamResponse):
-    class Data(BaseModel):
-        """
-        Data entity
-        """
-
-        node_id: str
-        node_title: str
-        expiration_time: int
-
-    event: StreamEvent = StreamEvent.HUMAN_INPUT_FORM_TIMEOUT
     workflow_run_id: str
     data: Data
 
@@ -398,7 +311,7 @@ class NodeFinishStreamResponse(StreamResponse):
         process_data_truncated: bool = False
         outputs: Mapping[str, Any] | None = None
         outputs_truncated: bool = True
-        status: str
+        status: WorkflowNodeExecutionStatus
         error: str | None = None
         elapsed_time: float
         execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
@@ -462,7 +375,7 @@ class NodeRetryStreamResponse(StreamResponse):
         process_data_truncated: bool = False
         outputs: Mapping[str, Any] | None = None
         outputs_truncated: bool = False
-        status: str
+        status: WorkflowNodeExecutionStatus
         error: str | None = None
         elapsed_time: float
         execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
@@ -806,14 +719,14 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
 
         id: str
         workflow_id: str
-        status: str
+        status: WorkflowExecutionStatus
         outputs: Mapping[str, Any] | None = None
         error: str | None = None
         elapsed_time: float
         total_tokens: int
         total_steps: int
         created_at: int
-        finished_at: int | None
+        finished_at: int
 
     workflow_run_id: str
     data: Data
