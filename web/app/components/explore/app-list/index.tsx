@@ -204,7 +204,7 @@ const Apps = ({
         </div>
 
         <div className={cn(
-          'relative mt-4 flex flex-1 shrink-0 grow flex-col pb-6',
+          'relative flex flex-1 shrink-0 grow flex-col pb-6',
         )}
         >
           <nav

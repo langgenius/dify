@@ -71,7 +71,7 @@ const Explore: FC<IExploreProps> = ({
         }
       >
         <Sidebar controlUpdateInstalledApps={controlUpdateInstalledApps} />
-        <div className="w-0 grow h-full min-h-0 overflow-y-auto">
+        <div className="h-full min-h-0 w-0 grow">
           {children}
         </div>
       </ExploreContext.Provider>
