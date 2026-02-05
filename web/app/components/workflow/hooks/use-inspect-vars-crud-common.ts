@@ -16,6 +16,7 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import useFLow from '@/service/use-flow'
+import { useInvalidateSandboxFiles } from '@/service/use-sandbox-file'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -52,6 +53,7 @@ export const useInspectVarsCrudCommon = ({
   const { mutateAsync: doResetConversationVar } = useResetConversationVar(flowId)
   const { mutateAsync: doResetToLastRunValue } = useResetToLastRunValue(flowId)
   const invalidateSysVarValues = useInvalidateSysVarValues(flowId)
+  const invalidateSandboxFiles = useInvalidateSandboxFiles()
 
   const { mutateAsync: doDeleteAllInspectorVars } = useDeleteAllInspectorVars(flowId)
   const { mutate: doDeleteNodeInspectorVars } = useDeleteNodeInspectorVars(flowId)
@@ -221,9 +223,10 @@ export const useInspectVarsCrudCommon = ({
     await doDeleteAllInspectorVars()
     await invalidateConversationVarValues()
     await invalidateSysVarValues()
+    invalidateSandboxFiles()
     deleteAllInspectVars()
     handleEdgeCancelRunningStatus()
-  }, [doDeleteAllInspectorVars, invalidateConversationVarValues, invalidateSysVarValues, workflowStore, handleEdgeCancelRunningStatus])
+  }, [doDeleteAllInspectorVars, invalidateConversationVarValues, invalidateSysVarValues, invalidateSandboxFiles, workflowStore, handleEdgeCancelRunningStatus])
 
   const editInspectVarValue = useCallback(async (nodeId: string, varId: string, value: any) => {
     const { setInspectVarValue } = workflowStore.getState()

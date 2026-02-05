@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import { useSandboxFilesTree } from '@/service/use-sandbox-file'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { useStore } from '../store'
 import ArtifactsTab from './artifacts-tab'
@@ -12,6 +13,7 @@ import VariablesTab from './variables-tab'
 const VariablesPanel: FC<{ onClose: () => void }> = ({ onClose }) => {
   const { t } = useTranslation('workflow')
   const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
+  const appId = useStore(s => s.appId)
   const sandboxEnabled = useFeatures(s => s.features.sandbox?.enabled) ?? false
   const [activeTab, setActiveTab] = useState<InspectTab>(InspectTab.Variables)
 
@@ -26,12 +28,17 @@ const VariablesPanel: FC<{ onClose: () => void }> = ({ onClose }) => {
     return [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars].length === 0
   }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
+  const { hasFiles: hasArtifacts } = useSandboxFilesTree(appId, {
+    enabled: !!appId && sandboxEnabled,
+  })
+
   const handleClear = useCallback(() => {
     deleteAllInspectorVars()
     setCurrentFocusNodeId('')
   }, [deleteAllInspectorVars, setCurrentFocusNodeId])
 
-  const headerActions = resolvedTab === InspectTab.Variables && !isVariablesEmpty
+  const hasData = !isVariablesEmpty || hasArtifacts
+  const headerActions = hasData
     ? (
         <Button variant="ghost" size="small" onClick={handleClear}>
           {t('debug.variableInspect.clearAll')}
