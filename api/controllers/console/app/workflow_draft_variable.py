@@ -592,6 +592,7 @@ class EnvironmentVariableCollectionApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def post(self, app_model: App):
         payload = EnvironmentVariableUpdatePayload.model_validate(console_ns.payload or {})
+        current_user, _ = current_account_with_tenant()
 
         workflow_service = WorkflowService()
 
