@@ -532,11 +532,6 @@
       "count": 1
     }
   },
-  "app/components/app/create-app-modal/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
-    }
-  },
   "app/components/app/create-app-modal/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -1732,11 +1727,6 @@
       "count": 4
     }
   },
-  "app/components/datasets/common/image-uploader/utils.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/datasets/common/retrieval-method-config/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -1747,19 +1737,9 @@
       "count": 1
     }
   },
-  "app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
   "app/components/datasets/create/file-preview/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/datasets/create/file-uploader/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "app/components/datasets/create/index.spec.tsx": {
@@ -1841,14 +1821,8 @@
     }
   },
   "app/components/datasets/documents/components/list.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
     "react-refresh/only-export-components": {
       "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/index.spec.tsx": {
@@ -2069,14 +2043,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/settings/form/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/datasets/settings/permission-selector/index.tsx": {
     "react/no-missing-key": {
       "count": 1
@@ -2172,16 +2138,6 @@
       "count": 4
     },
     "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
-  "app/components/goto-anything/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
-  "app/components/goto-anything/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
@@ -2480,11 +2436,6 @@
       "count": 8
     }
   },
-  "app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel.tsx": {
-    "ts/no-explicit-any": {
-      "count": 8
-    }
-  },
   "app/components/plugins/plugin-detail-panel/datasource-action-list.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2536,14 +2487,6 @@
   "app/components/plugins/plugin-detail-panel/strategy-detail.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
@@ -2885,11 +2828,6 @@
     }
   },
   "app/components/workflow-app/components/workflow-main.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/workflow-app/components/workflow-onboarding-modal/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 2
     }
