@@ -22,7 +22,7 @@ from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowN
 logger = logging.getLogger(__name__)
 
 
-def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNodeExecutionModel:
+def dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNodeExecutionModel:
     """
     Convert LogStore result dictionary to WorkflowNodeExecutionModel instance.
 
@@ -36,7 +36,7 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
         The returned model is not attached to any SQLAlchemy session.
         Relationship fields (like offload_data) are not loaded from LogStore.
     """
-    logger.debug("_dict_to_workflow_node_execution_model: data keys=%s", list(data.keys())[:5])
+    logger.debug("dict_to_workflow_node_execution_model: data keys=%s", list(data.keys())[:5])
     # Create model instance without session
     model = WorkflowNodeExecutionModel()
 
@@ -208,7 +208,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             )
 
             if deduplicated_results:
-                return _dict_to_workflow_node_execution_model(deduplicated_results[0])
+                return dict_to_workflow_node_execution_model(deduplicated_results[0])
 
             return None
 
@@ -299,13 +299,13 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                     else:
                         max_row = rows[0]
 
-                    model = _dict_to_workflow_node_execution_model(max_row)
+                    model = dict_to_workflow_node_execution_model(max_row)
                     if model and model.id:  # Ensure model is valid
                         models.append(model)
             else:
                 # For PG mode, results are already deduplicated by the SQL query
                 for row in results:
-                    model = _dict_to_workflow_node_execution_model(row)
+                    model = dict_to_workflow_node_execution_model(row)
                     if model and model.id:  # Ensure model is valid
                         models.append(model)
 
@@ -425,10 +425,10 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             # For PG mode, result is already the latest version
             # For SDK mode, if multiple results, select the one with max log_version
             if self.logstore_client.supports_pg_protocol or len(results) == 1:
-                return _dict_to_workflow_node_execution_model(results[0])
+                return dict_to_workflow_node_execution_model(results[0])
             else:
                 max_result = max(results, key=lambda x: int(x.get("log_version", 0)))
-                return _dict_to_workflow_node_execution_model(max_result)
+                return dict_to_workflow_node_execution_model(max_result)
 
         except Exception:
             logger.exception("Failed to get execution by ID from LogStore: execution_id=%s", execution_id)

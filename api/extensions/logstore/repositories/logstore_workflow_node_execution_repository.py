@@ -302,13 +302,13 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         try:
             from extensions.logstore.debug_execution_cache import DebugExecutionCache
             from extensions.logstore.repositories.logstore_api_workflow_node_execution_repository import (
-                _dict_to_workflow_node_execution_model,
+                dict_to_workflow_node_execution_model,
             )
 
             # Convert domain model to database model for caching
             # We serialize to LogStore format first, then convert to DB model
             logstore_data = dict(self._to_logstore_model(execution))
-            db_model = _dict_to_workflow_node_execution_model(logstore_data)
+            db_model = dict_to_workflow_node_execution_model(logstore_data)
 
             # Put into the debug cache
             # Caller ensures this is only called for SINGLE_STEP executions
