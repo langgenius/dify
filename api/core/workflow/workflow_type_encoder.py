@@ -15,14 +15,12 @@ class WorkflowRuntimeTypeConverter:
     def to_json_encodable(self, value: None) -> None: ...
 
     def to_json_encodable(self, value: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
-        """Convert runtime values to JSON-serializable structures."""
-
-        result = self.value_to_json_encodable_recursive(value)
+        result = self._to_json_encodable_recursive(value)
         if isinstance(result, Mapping) or result is None:
             return result
         return {}
 
-    def value_to_json_encodable_recursive(self, value: Any):
+    def _to_json_encodable_recursive(self, value: Any):
         if value is None:
             return value
         if isinstance(value, (bool, int, str, float)):
@@ -31,7 +29,7 @@ class WorkflowRuntimeTypeConverter:
             # Convert Decimal to float for JSON serialization
             return float(value)
         if isinstance(value, Segment):
-            return self.value_to_json_encodable_recursive(value.value)
+            return self._to_json_encodable_recursive(value.value)
         if isinstance(value, File):
             return value.to_dict()
         if isinstance(value, BaseModel):
@@ -39,11 +37,11 @@ class WorkflowRuntimeTypeConverter:
         if isinstance(value, dict):
             res = {}
             for k, v in value.items():
-                res[k] = self.value_to_json_encodable_recursive(v)
+                res[k] = self._to_json_encodable_recursive(v)
             return res
         if isinstance(value, list):
             res_list = []
             for item in value:
-                res_list.append(self.value_to_json_encodable_recursive(item))
+                res_list.append(self._to_json_encodable_recursive(item))
             return res_list
         return value

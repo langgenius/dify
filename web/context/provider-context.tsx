@@ -64,7 +64,6 @@ export type ProviderContextState = {
   refreshLicenseLimit: () => void
   isAllowTransferWorkspace: boolean
   isAllowPublishAsCustomKnowledgePipelineTemplate: boolean
-  humanInputEmailDeliveryEnabled: boolean
 }
 
 export const baseProviderContextValue: ProviderContextState = {
@@ -97,7 +96,6 @@ export const baseProviderContextValue: ProviderContextState = {
   refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
-  humanInputEmailDeliveryEnabled: false,
 }
 
 const ProviderContext = createContext<ProviderContextState>(baseProviderContextValue)
@@ -139,7 +137,6 @@ export const ProviderContextProvider = ({
   const { data: educationAccountInfo, isLoading: isLoadingEducationAccountInfo, isFetching: isFetchingEducationAccountInfo, isFetchedAfterMount: isEducationDataFetchedAfterMount } = useEducationStatus(!enableEducationPlan)
   const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
   const [isAllowPublishAsCustomKnowledgePipelineTemplate, setIsAllowPublishAsCustomKnowledgePipelineTemplate] = useState(false)
-  const [humanInputEmailDeliveryEnabled, setHumanInputEmailDeliveryEnabled] = useState(false)
 
   const refreshModelProviders = () => {
     queryClient.invalidateQueries({ queryKey: ['common', 'model-providers'] })
@@ -176,8 +173,6 @@ export const ProviderContextProvider = ({
         setIsAllowTransferWorkspace(data.is_allow_transfer_workspace)
       if (data.knowledge_pipeline?.publish_enabled)
         setIsAllowPublishAsCustomKnowledgePipelineTemplate(data.knowledge_pipeline?.publish_enabled)
-      if (data.human_input_email_delivery_enabled)
-        setHumanInputEmailDeliveryEnabled(data.human_input_email_delivery_enabled)
     }
     catch (error) {
       console.error('Failed to fetch plan info:', error)
@@ -255,7 +250,6 @@ export const ProviderContextProvider = ({
       refreshLicenseLimit: fetchPlan,
       isAllowTransferWorkspace,
       isAllowPublishAsCustomKnowledgePipelineTemplate,
-      humanInputEmailDeliveryEnabled,
     }}
     >
       {children}
