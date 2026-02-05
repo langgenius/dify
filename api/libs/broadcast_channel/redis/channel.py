@@ -42,6 +42,7 @@ class Topic:
 
     def subscribe(self) -> Subscription:
         return _RedisSubscription(
+            client=self._client,
             pubsub=self._client.pubsub(),
             topic=self._topic,
         )
