@@ -19,12 +19,60 @@ import {
   triggerSubscriptionVerifyContract,
 } from './console/trigger'
 import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
-import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
+import {
+  addTemplateToCollectionContract,
+  batchAddTemplatesToCollectionContract,
+  clearCollectionTemplatesContract,
+  collectionPluginsContract,
+  collectionsContract,
+  createTemplateCollectionContract,
+  deleteTemplateCollectionContract,
+  getCollectionTemplatesContract,
+  getCreatorAvatarContract,
+  getCreatorByHandleContract,
+  getPublisherTemplatesContract,
+  getTemplateByIdContract,
+  getTemplateCollectionContract,
+  getTemplateDslFileContract,
+  getTemplatesListContract,
+  searchAdvancedContract,
+  searchCreatorsAdvancedContract,
+  searchTemplatesAdvancedContract,
+  searchTemplatesBasicContract,
+  syncCreatorAvatarContract,
+  syncCreatorProfileContract,
+  templateCollectionsContract,
+} from './marketplace'
 
 export const marketplaceRouterContract = {
   collections: collectionsContract,
   collectionPlugins: collectionPluginsContract,
   searchAdvanced: searchAdvancedContract,
+  templateCollections: {
+    list: templateCollectionsContract,
+    create: createTemplateCollectionContract,
+    get: getTemplateCollectionContract,
+    delete: deleteTemplateCollectionContract,
+    getTemplates: getCollectionTemplatesContract,
+    addTemplate: addTemplateToCollectionContract,
+    batchAddTemplates: batchAddTemplatesToCollectionContract,
+    clearTemplates: clearCollectionTemplatesContract,
+  },
+  creators: {
+    getByHandle: getCreatorByHandleContract,
+    getAvatar: getCreatorAvatarContract,
+    syncProfile: syncCreatorProfileContract,
+    syncAvatar: syncCreatorAvatarContract,
+    searchAdvanced: searchCreatorsAdvancedContract,
+  },
+  templates: {
+    list: getTemplatesListContract,
+    getById: getTemplateByIdContract,
+    getDslFile: getTemplateDslFileContract,
+    searchBasic: searchTemplatesBasicContract,
+    searchAdvanced: searchTemplatesAdvancedContract,
+    getPublisherTemplates: getPublisherTemplatesContract,
+  },
 }
 
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>

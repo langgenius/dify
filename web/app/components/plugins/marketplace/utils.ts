@@ -3,6 +3,10 @@ import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
   PluginsSearchParams,
+  Template,
+  TemplateCollection,
+  TemplateDetail,
+  TemplateSearchParams,
 } from '@/app/components/plugins/marketplace/types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -112,6 +116,49 @@ export const getMarketplaceCollectionsAndPlugins = async (
   }
 }
 
+export const getMarketplaceTemplateCollectionsAndTemplates = async (
+  query?: { page?: number, page_size?: number, condition?: string },
+  options?: MarketplaceFetchOptions,
+) => {
+  let templateCollections: TemplateCollection[] = []
+  let templateCollectionTemplatesMap: Record<string, Template[]> = {}
+
+  try {
+    const res = await marketplaceClient.templateCollections.list({
+      query: {
+        ...query,
+        page: 1,
+        page_size: 100,
+      },
+    }, {
+      signal: options?.signal,
+    })
+    templateCollections = res.data || []
+
+    await Promise.all(templateCollections.map(async (collection) => {
+      try {
+        const templatesRes = await marketplaceClient.templateCollections.getTemplates({
+          params: { collectionName: collection.name },
+          body: { limit: 20 },
+        }, { signal: options?.signal })
+        templateCollectionTemplatesMap[collection.name] = (templatesRes.data || []) as Template[]
+      }
+      catch {
+        templateCollectionTemplatesMap[collection.name] = []
+      }
+    }))
+  }
+  catch {
+    templateCollections = []
+    templateCollectionTemplatesMap = {}
+  }
+
+  return {
+    templateCollections,
+    templateCollectionTemplatesMap,
+  }
+}
+
 export const getMarketplacePlugins = async (
   queryParams: PluginsSearchParams | undefined,
   pageParam: number,
@@ -201,5 +248,63 @@ export function getCollectionsParams(category: ActivePluginType): CollectionsAnd
     category,
     condition: getMarketplaceListCondition(category),
     type: getMarketplaceListFilterType(category),
+  }
+}
+
+export const getMarketplaceTemplates = async (
+  queryParams: TemplateSearchParams | undefined,
+  pageParam: number,
+  signal?: AbortSignal,
+): Promise<{
+  templates: TemplateDetail[]
+  total: number
+  page: number
+  page_size: number
+}> => {
+  if (!queryParams) {
+    return {
+      templates: [] as TemplateDetail[],
+      total: 0,
+      page: 1,
+      page_size: 40,
+    }
+  }
+
+  const {
+    query,
+    sort_by,
+    sort_order,
+    categories,
+    languages,
+    page_size = 40,
+  } = queryParams
+
+  try {
+    const res = await marketplaceClient.templates.searchAdvanced({
+      body: {
+        page: pageParam,
+        page_size,
+        query,
+        sort_by,
+        sort_order,
+        categories,
+        languages,
+      },
+    }, { signal })
+
+    return {
+      templates: res.data?.templates || [],
+      total: res.data?.total || 0,
+      page: pageParam,
+      page_size,
+    }
+  }
+  catch {
+    return {
+      templates: [],
+      total: 0,
+      page: pageParam,
+      page_size,
+    }
   }
 }

@@ -30,8 +30,8 @@ import {
 } from './context'
 import DebugInfo from './debug-info'
 import InstallPluginDropdown from './install-plugin-dropdown'
+import { SubmitRequestDropdown } from './nav-operations'
 import PluginTasks from './plugin-tasks'
-import SubmitRequestDropdown from './submit-request-dropdown'
 import useReferenceSetting from './use-reference-setting'
 import { useUploader } from './use-uploader'
 

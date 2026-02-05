@@ -228,6 +228,8 @@
   "pluginInfoModal.release": "发布版本",
   "pluginInfoModal.repository": "仓库",
   "pluginInfoModal.title": "插件信息",
+  "plugins": "插件",
+  "templates": "模板",
   "privilege.admins": "管理员",
   "privilege.everyone": "所有人",
   "privilege.noone": "无人",

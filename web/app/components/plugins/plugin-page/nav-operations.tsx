@@ -1,9 +1,11 @@
 'use client'
-import { RiBookOpenLine, RiGithubLine } from '@remixicon/react'
+import { RiBookOpenLine, RiGithubLine, RiLayoutGridLine, RiPuzzle2Line } from '@remixicon/react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import Badge from '@/app/components/base/badge'
+import Button, { buttonVariants } from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -31,7 +33,7 @@ const DropdownItem = ({ href, icon, text, onClick }: DropdownItemProps) => (
   </Link>
 )
 
-const SubmitRequestDropdown = () => {
+export const SubmitRequestDropdown = () => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const docLink = useDocLink()
@@ -54,7 +56,6 @@ const SubmitRequestDropdown = () => {
           <span className="system-sm-medium">
             {t('requestSubmitPlugin', { ns: 'plugin' })}
           </span>
-          {/* <RiArrowDownSLine className={cn("h-4 w-4 transition-transform", open && "rotate-180")} /> */}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[1000]">
@@ -77,4 +78,42 @@ const SubmitRequestDropdown = () => {
   )
 }
 
-export default SubmitRequestDropdown
+export const CreationTypeTabs = () => {
+  const { t } = useTranslation()
+  const searchParams = useSearchParams()
+  const creationType = searchParams.get('creationType') || 'plugins'
+
+  return (
+    <div className="flex items-center gap-1">
+      <Link
+        href="/?creationType=plugins"
+        className={cn(
+          buttonVariants({ variant: 'ghost' }),
+          'flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+          creationType === 'plugins' && 'bg-state-base-hover text-text-secondary',
+        )}
+      >
+        <RiPuzzle2Line className="h-4 w-4 shrink-0" />
+        <span className="system-sm-medium">
+          {t('plugins', { ns: 'plugin' })}
+        </span>
+      </Link>
+      <Link
+        href="/?creationType=templates"
+        className={cn(
+          buttonVariants({ variant: 'ghost' }),
+          'flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+          creationType === 'templates' && 'bg-state-base-hover text-text-secondary',
+        )}
+      >
+        <RiLayoutGridLine className="h-4 w-4 shrink-0" />
+        <span className="system-sm-medium">
+          {t('templates', { ns: 'plugin' })}
+        </span>
+        <Badge className="ml-1 h-4 rounded-[4px] border-none bg-saas-dify-blue-accessible px-1 text-[10px] font-bold leading-[14px] text-text-primary-on-surface">
+          NEW
+        </Badge>
+      </Link>
+    </div>
+  )
+}
