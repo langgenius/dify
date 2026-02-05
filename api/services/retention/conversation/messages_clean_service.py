@@ -1,5 +1,6 @@
 import datetime
 import logging
+import os
 import random
 import time
 from collections.abc import Sequence
@@ -194,6 +195,8 @@ class MessagesCleanService:
             self._end_before,
         )
 
+        max_batch_interval_ms = int(os.environ.get("SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL", 200))
+
         while True:
             stats["batches"] += 1
             batch_start = time.monotonic()
@@ -319,6 +322,11 @@ class MessagesCleanService:
                         commit_ms,
                         int((time.monotonic() - batch_start) * 1000),
                     )
+
+                # Random sleep between batches to avoid overwhelming the database
+                sleep_ms = random.uniform(0, max_batch_interval_ms)  # noqa: S311
+                logger.info("clean_messages (batch %s): sleeping for %.2fms", stats["batches"], sleep_ms)
+                time.sleep(sleep_ms / 1000)
             else:
                 # Log random sample of message IDs that would be deleted (up to 10)
                 sample_size = min(10, len(message_ids_to_delete))
