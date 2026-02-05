@@ -63,7 +63,6 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-
   output: 'standalone',
   compiler: {
     removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
