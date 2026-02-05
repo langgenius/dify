@@ -11,7 +11,12 @@ vi.mock('@/app/components/base/modal', () => ({
     onClose,
     children,
     closable,
-  }: any) {
+  }: {
+    isShow: boolean
+    onClose?: () => void
+    children?: React.ReactNode
+    closable?: boolean
+  }) {
     if (!isShow)
       return null
 
@@ -39,7 +44,10 @@ vi.mock('./start-node-selection-panel', () => ({
   default: function MockStartNodeSelectionPanel({
     onSelectUserInput,
     onSelectTrigger,
-  }: any) {
+  }: {
+    onSelectUserInput?: () => void
+    onSelectTrigger?: (type: BlockEnum, config?: Record<string, unknown>) => void
+  }) {
     return (
       <div data-testid="start-node-selection-panel">
         <button data-testid="select-user-input" onClick={onSelectUserInput}>
@@ -47,13 +55,13 @@ vi.mock('./start-node-selection-panel', () => ({
         </button>
         <button
           data-testid="select-trigger-schedule"
-          onClick={() => onSelectTrigger(BlockEnum.TriggerSchedule)}
+          onClick={() => onSelectTrigger?.(BlockEnum.TriggerSchedule)}
         >
           Select Trigger Schedule
         </button>
         <button
           data-testid="select-trigger-webhook"
-          onClick={() => onSelectTrigger(BlockEnum.TriggerWebhook, { config: 'test' })}
+          onClick={() => onSelectTrigger?.(BlockEnum.TriggerWebhook, { config: 'test' })}
         >
           Select Trigger Webhook
         </button>
@@ -549,7 +557,7 @@ describe('WorkflowOnboardingModal', () => {
       // Arrange & Act
       renderComponent({ isShow: true })
 
-      // Assert
+      // Assert - ShortcutsName component renders keys in div elements with system-kbd class
       const escKey = screen.getByText('workflow.onboarding.escTip.key')
       // ShortcutsName renders a <div> with class system-kbd, not a <kbd> element
       expect(escKey.closest('.system-kbd')).toBeInTheDocument()
