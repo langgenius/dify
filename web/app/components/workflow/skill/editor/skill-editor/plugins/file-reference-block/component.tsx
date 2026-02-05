@@ -39,6 +39,7 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
 
   const currentNode = useMemo(() => nodeMap?.get(resourceId), [nodeMap, resourceId])
   const isFolder = currentNode?.node_type === 'folder'
+  const shouldPreview = isPreviewEnabled && !isFolder
   const displayName = currentNode?.name ?? resourceId
   const iconType = !isFolder && currentNode ? getFileIconType(currentNode.name, currentNode.extension) : null
   const title = currentNode?.path ?? displayName
@@ -99,7 +100,7 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
   }, [ref])
 
   useEffect(() => {
-    if (!previewOpen || !isPreviewEnabled)
+    if (!previewOpen || !shouldPreview)
       return
     updatePreviewPosition()
     const handleUpdate = () => updatePreviewPosition()
@@ -114,7 +115,7 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
       window.removeEventListener('resize', handleUpdate)
       resizeObserver?.disconnect()
     }
-  }, [isPreviewEnabled, previewOpen, ref, updatePreviewPosition])
+  }, [previewOpen, ref, shouldPreview, updatePreviewPosition])
 
   const fileBlock = (
     <PortalToFollowElem
@@ -162,7 +163,7 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
     </PortalToFollowElem>
   )
 
-  if (!isPreviewEnabled)
+  if (!shouldPreview)
     return fileBlock
 
   return (
