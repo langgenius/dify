@@ -72,7 +72,7 @@ def delete_segment_from_index_task(
 
                     for i in range(0, len(segment_attachment_bind_ids), 1000):
                         segment_attachment_bind_delete_stmt = delete(SegmentAttachmentBinding).where(
-                            SegmentAttachmentBinding.id.in_(segment_attachment_bind_ids[i:i + 1000])
+                            SegmentAttachmentBinding.id.in_(segment_attachment_bind_ids[i : i + 1000])
                         )
                         session.execute(segment_attachment_bind_delete_stmt)
 

@@ -72,11 +72,13 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                             )
 
                 for i in range(0, len(total_image_upload_file_ids), 1000):
-                    stmt = delete(UploadFile).where(UploadFile.id.in_(total_image_upload_file_ids[i:i + 1000]))
+                    stmt = delete(UploadFile).where(UploadFile.id.in_(total_image_upload_file_ids[i : i + 1000]))
                     session.execute(stmt)
 
                 for i in range(0, len(segment_ids), 1000):
-                    segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids[i:i + 1000]))
+                    segment_delete_stmt = delete(DocumentSegment).where(
+                        DocumentSegment.id.in_(segment_ids[i : i + 1000])
+                    )
                     session.execute(segment_delete_stmt)
             if file_ids:
                 files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
