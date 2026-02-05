@@ -23,7 +23,7 @@ export default antfu(
       },
     },
     nextjs: true,
-    ignores: ['public', 'types/doc-paths.ts'],
+    ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
