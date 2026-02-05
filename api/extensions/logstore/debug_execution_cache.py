@@ -25,6 +25,32 @@ from models.workflow import WorkflowNodeExecutionModel
 logger = logging.getLogger(__name__)
 
 
+def _parse_int_env(env_name: str, default: int) -> int:
+    """
+    Safely parse an integer from environment variable.
+
+    Args:
+        env_name: Environment variable name
+        default: Default value if parsing fails
+
+    Returns:
+        Parsed integer value or default
+    """
+    value = os.environ.get(env_name)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        logger.warning(
+            "Invalid integer value for %s: '%s', using default: %d",
+            env_name,
+            value,
+            default,
+        )
+        return default
+
+
 class DebugExecutionCache:
     """
     Thread-safe in-memory cache for workflow node executions.
@@ -43,9 +69,9 @@ class DebugExecutionCache:
     _cache: ClassVar[OrderedDict] = OrderedDict()
     _cache_lock: ClassVar[Lock] = Lock()
 
-    # Configuration from environment variables
-    _cache_ttl: ClassVar[int] = int(os.environ.get("LOGSTORE_DEBUG_CACHE_TTL_SECONDS", "10"))
-    _cache_max_size: ClassVar[int] = int(os.environ.get("LOGSTORE_DEBUG_CACHE_MAX_SIZE", "100"))
+    # Configuration from environment variables with safe parsing
+    _cache_ttl: ClassVar[int] = _parse_int_env("LOGSTORE_DEBUG_CACHE_TTL_SECONDS", 10)
+    _cache_max_size: ClassVar[int] = _parse_int_env("LOGSTORE_DEBUG_CACHE_MAX_SIZE", 100)
     _cache_enabled: ClassVar[bool] = os.environ.get("LOGSTORE_DEBUG_CACHE_ENABLED", "true").lower() == "true"
 
     # Statistics
@@ -76,10 +102,11 @@ class DebugExecutionCache:
                 evicted_key, _ = cls._cache.popitem(last=False)
                 logger.debug("Evicted oldest cache entry: %s", evicted_key)
 
-            # Add new entry with timestamp
+            # Add new entry with monotonic timestamp for duration measurement
+            # Using time.monotonic() to avoid issues with system time changes (e.g., NTP updates)
             cls._cache[execution_id] = {
                 "model": model,
-                "timestamp": time.time(),
+                "timestamp": time.monotonic(),
             }
 
             cls._stats_put_count += 1
@@ -115,8 +142,8 @@ class DebugExecutionCache:
                 cls._stats_miss_count += 1
                 return None
 
-            # Check if entry has expired
-            age = time.time() - entry["timestamp"]
+            # Check if entry has expired using monotonic time
+            age = time.monotonic() - entry["timestamp"]
             if age > cls._cache_ttl:
                 # Remove expired entry
                 del cls._cache[execution_id]
@@ -144,7 +171,7 @@ class DebugExecutionCache:
             return 0
 
         with cls._cache_lock:
-            current_time = time.time()
+            current_time = time.monotonic()
             expired_keys = [
                 key for key, entry in cls._cache.items() if current_time - entry["timestamp"] > cls._cache_ttl
             ]

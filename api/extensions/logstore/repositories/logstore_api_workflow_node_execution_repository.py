@@ -8,88 +8,17 @@ WorkflowNodeExecutionModel operations using Aliyun SLS LogStore.
 import logging
 import time
 from collections.abc import Sequence
-from datetime import datetime
 from typing import Any
 
 from sqlalchemy.orm import sessionmaker
 
 from extensions.logstore.aliyun_logstore import AliyunLogStore
-from extensions.logstore.repositories import safe_float, safe_int
+from extensions.logstore.repositories import dict_to_workflow_node_execution_model
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 
 logger = logging.getLogger(__name__)
-
-
-def dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNodeExecutionModel:
-    """
-    Convert LogStore result dictionary to WorkflowNodeExecutionModel instance.
-
-    Args:
-        data: Dictionary from LogStore query result
-
-    Returns:
-        WorkflowNodeExecutionModel instance (detached from session)
-
-    Note:
-        The returned model is not attached to any SQLAlchemy session.
-        Relationship fields (like offload_data) are not loaded from LogStore.
-    """
-    logger.debug("dict_to_workflow_node_execution_model: data keys=%s", list(data.keys())[:5])
-    # Create model instance without session
-    model = WorkflowNodeExecutionModel()
-
-    # Map all required fields with validation
-    # Critical fields - must not be None
-    model.id = data.get("id") or ""
-    model.tenant_id = data.get("tenant_id") or ""
-    model.app_id = data.get("app_id") or ""
-    model.workflow_id = data.get("workflow_id") or ""
-    model.triggered_from = data.get("triggered_from") or ""
-    model.node_id = data.get("node_id") or ""
-    model.node_type = data.get("node_type") or ""
-    model.status = data.get("status") or "running"  # Default status if missing
-    model.title = data.get("title") or ""
-    model.created_by_role = data.get("created_by_role") or ""
-    model.created_by = data.get("created_by") or ""
-
-    model.index = safe_int(data.get("index", 0))
-    model.elapsed_time = safe_float(data.get("elapsed_time", 0))
-
-    # Optional fields
-    model.workflow_run_id = data.get("workflow_run_id")
-    model.predecessor_node_id = data.get("predecessor_node_id")
-    model.node_execution_id = data.get("node_execution_id")
-    model.inputs = data.get("inputs")
-    model.process_data = data.get("process_data")
-    model.outputs = data.get("outputs")
-    model.error = data.get("error")
-    model.execution_metadata = data.get("execution_metadata")
-
-    # Handle datetime fields
-    created_at = data.get("created_at")
-    if created_at and created_at not in {"null", ""}:
-        if isinstance(created_at, str):
-            model.created_at = datetime.fromisoformat(created_at)
-        elif isinstance(created_at, (int, float)):
-            model.created_at = datetime.fromtimestamp(created_at)
-        else:
-            model.created_at = created_at
-    else:
-        # Provide default created_at if missing
-        model.created_at = datetime.now()
-
-    finished_at = data.get("finished_at")
-    if finished_at and finished_at not in {"null", ""}:
-        if isinstance(finished_at, str):
-            model.finished_at = datetime.fromisoformat(finished_at)
-        elif isinstance(finished_at, (int, float)):
-            model.finished_at = datetime.fromtimestamp(finished_at)
-        else:
-            model.finished_at = finished_at
-
-    return model
 
 
 class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRepository):

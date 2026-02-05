@@ -301,9 +301,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         """
         try:
             from extensions.logstore.debug_execution_cache import DebugExecutionCache
-            from extensions.logstore.repositories.logstore_api_workflow_node_execution_repository import (
-                dict_to_workflow_node_execution_model,
-            )
+            from extensions.logstore.repositories import dict_to_workflow_node_execution_model
 
             # Convert domain model to database model for caching
             # We serialize to LogStore format first, then convert to DB model
