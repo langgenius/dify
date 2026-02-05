@@ -6,7 +6,7 @@ from yarl import URL
 
 from configs import dify_config
 from core.helper.download import download_with_size_limit
-from core.plugin.entities.marketplace import MarketplacePluginDeclaration, MarketplacePluginSnapshot
+from core.plugin.entities.marketplace import MarketplacePluginDeclaration
 
 marketplace_api_url = URL(str(dify_config.MARKETPLACE_API_URL))
 logger = logging.getLogger(__name__)
