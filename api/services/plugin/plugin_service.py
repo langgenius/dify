@@ -338,7 +338,7 @@ class PluginService:
         )
 
     @staticmethod
-    def batch_upgrade_plugins_from_marketplace(tenant_id: str) -> dict[str, dict]:
+    def batch_upgrade_plugins_from_marketplace(tenant_id: str) -> "dict[str, list[dict]]":
         """
         Batch upgrade all marketplace plugins that have updates available
 
