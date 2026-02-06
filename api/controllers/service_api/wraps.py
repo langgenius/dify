@@ -15,11 +15,11 @@ from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.api_token_cache import ApiTokenCache, record_token_usage
-from services.api_token_service import fetch_token_with_single_flight
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App
+from services.api_token_service import fetch_token_with_single_flight
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
