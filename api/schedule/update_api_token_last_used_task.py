@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 ACTIVE_TOKEN_KEY_PREFIX = "api_token_active:"
 
 
-@app.celery.task(queue="dataset")
+@app.celery.task(queue="api_token_update")
 def batch_update_api_token_last_used():
     """
     Batch update last_used_at for all recently active API tokens.
