@@ -2,6 +2,7 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { AppAssetTreeView } from '@/types/app-asset'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { RiAlertFill } from '@remixicon/react'
 import * as React from 'react'
@@ -73,6 +74,7 @@ type ToolConfigMetadata = {
 
 type SkillFileMetadata = {
   tools?: Record<string, ToolConfigMetadata>
+  files?: Record<string, AppAssetTreeView>
 }
 
 const getVarKindType = (type: FormTypeEnum | string) => {

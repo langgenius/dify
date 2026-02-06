@@ -1,7 +1,9 @@
 'use client'
 
 import type { OnMount } from '@monaco-editor/react'
+import type { AppAssetTreeView } from '@/types/app-asset'
 import { loader } from '@monaco-editor/react'
+import isDeepEqual from 'fast-deep-equal'
 import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -25,6 +27,23 @@ import StartTabContent from './start-tab'
 import { getFileLanguage } from './utils/file-utils'
 import MediaFilePreview from './viewer/media-file-preview'
 import UnsupportedFileDownload from './viewer/unsupported-file-download'
+
+type SkillFileMetadata = {
+  files?: Record<string, AppAssetTreeView>
+}
+
+const extractFileReferenceIds = (content: string) => {
+  const ids = new Set<string>()
+  const regex = /§\[file\]\.\[app\]\.\[([a-fA-F0-9-]{36})\]§/g
+  let match: RegExpExecArray | null
+  match = regex.exec(content)
+  while (match !== null) {
+    if (match[1])
+      ids.add(match[1])
+    match = regex.exec(content)
+  }
+  return ids
+}
 
 const SQLiteFilePreview = dynamic(
   () => import('./viewer/sqlite-file-preview'),
@@ -101,6 +120,34 @@ const FileContentPanel = () => {
     clearDraftMetadata(fileTabId)
   }, [fileTabId, isMetadataDirty, fileContent, storeApi])
 
+  const updateFileReferenceMetadata = useCallback((content: string) => {
+    if (!fileTabId)
+      return
+
+    const referenceIds = extractFileReferenceIds(content)
+    const metadata = (currentMetadata || {}) as SkillFileMetadata
+    const existingFiles = metadata.files || {}
+    const nextFiles: Record<string, AppAssetTreeView> = {}
+
+    referenceIds.forEach((id) => {
+      const node = nodeMap?.get(id)
+      if (node)
+        nextFiles[id] = node
+      else if (existingFiles[id])
+        nextFiles[id] = existingFiles[id]
+    })
+
+    const nextMetadata: SkillFileMetadata = { ...metadata }
+    if (Object.keys(nextFiles).length > 0)
+      nextMetadata.files = nextFiles
+    else if ('files' in nextMetadata)
+      delete nextMetadata.files
+
+    if (isDeepEqual(metadata, nextMetadata))
+      return
+    storeApi.getState().setDraftMetadata(fileTabId, nextMetadata)
+  }, [currentMetadata, fileTabId, nodeMap, storeApi])
+
   const handleEditorChange = useCallback((value: string | undefined) => {
     if (!fileTabId || !isEditable)
       return
@@ -110,9 +157,9 @@ const FileContentPanel = () => {
       storeApi.getState().clearDraftContent(fileTabId)
     else
       storeApi.getState().setDraftContent(fileTabId, newValue)
-
+    updateFileReferenceMetadata(newValue)
     storeApi.getState().pinTab(fileTabId)
-  }, [fileTabId, isEditable, originalContent, storeApi])
+  }, [fileTabId, isEditable, originalContent, storeApi, updateFileReferenceMetadata])
 
   const { saveFile, registerFallback, unregisterFallback } = useSkillSaveManager()
   const handleLeaderSync = useCallback(() => {

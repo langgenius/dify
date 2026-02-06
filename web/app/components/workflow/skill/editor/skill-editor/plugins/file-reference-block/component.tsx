@@ -1,6 +1,7 @@
 import type { LexicalNode } from 'lexical'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import type { TreeNodeData } from '@/app/components/workflow/skill/type'
+import type { AppAssetTreeView } from '@/types/app-asset'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { RiAlertFill, RiFolderLine } from '@remixicon/react'
 import { $getNodeByKey } from 'lexical'
@@ -16,8 +17,10 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
 import Tooltip from '@/app/components/base/tooltip'
+import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
 import { useSkillAssetNodeMap } from '@/app/components/workflow/skill/hooks/use-skill-asset-tree'
 import { getFileIconType } from '@/app/components/workflow/skill/utils/file-utils'
+import { useStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { FilePickerPanel } from '../file-picker-panel'
 import FilePreviewPanel from './file-preview-panel'
@@ -28,10 +31,16 @@ type FileReferenceBlockProps = {
   resourceId: string
 }
 
+type SkillFileMetadata = {
+  files?: Record<string, AppAssetTreeView>
+}
+
 const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) => {
   const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey)
   const { data: nodeMap, isLoading: isNodeMapLoading } = useSkillAssetNodeMap()
+  const activeTabId = useStore(s => s.activeTabId)
+  const fileMetadata = useStore(s => s.fileMetadata)
   const [open, setOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewStyle, setPreviewStyle] = useState<React.CSSProperties | null>(null)
@@ -40,7 +49,16 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
   const { t } = useTranslation()
   const isInteractive = editor.isEditable()
 
-  const currentNode = useMemo(() => nodeMap?.get(resourceId), [nodeMap, resourceId])
+  const metadataFiles = useMemo(() => {
+    if (!activeTabId || activeTabId === START_TAB_ID)
+      return undefined
+    const metadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
+    return metadata?.files
+  }, [activeTabId, fileMetadata])
+
+  const treeNode = useMemo(() => nodeMap?.get(resourceId), [nodeMap, resourceId])
+  const metadataNode = useMemo(() => metadataFiles?.[resourceId], [metadataFiles, resourceId])
+  const currentNode = useMemo(() => treeNode ?? metadataNode, [metadataNode, treeNode])
 
   const fallbackName = useMemo(() => {
     if (resourceId.includes('/')) {
@@ -50,7 +68,7 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
     return resourceId.slice(0, 8)
   }, [resourceId])
   const isFolder = currentNode?.node_type === 'folder'
-  const isMissing = !isNodeMapLoading && !currentNode
+  const isMissing = !isNodeMapLoading && !treeNode
   const shouldPreview = isPreviewEnabled && !isFolder && !isMissing
   const displayName = currentNode?.name ?? fallbackName
   const iconType = !isFolder && currentNode
