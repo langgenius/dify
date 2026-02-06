@@ -159,74 +159,69 @@ const Apps = ({
 
   return (
     <div className={cn(
-      'flex h-full min-h-0 flex-col overflow-hidden border-l-[0.5px] border-divider-regular',
+      'flex h-full flex-col border-l-[0.5px] border-divider-regular',
     )}
     >
-      <div className="flex flex-1 flex-col overflow-y-auto">
-        {systemFeatures.enable_explore_banner && (
-          <div className="mt-4 px-12">
-            <Banner />
-          </div>
-        )}
-
-        <div className="sticky top-0 z-10 bg-background-body">
-          <div className={cn(
-            'flex items-center justify-between px-12 pt-6',
+      {systemFeatures.enable_explore_banner && (
+        <div className="mt-4 px-12">
+          <Banner />
+        </div>
+      )}
+      <div className={cn(
+        'mt-6 flex items-center justify-between px-12',
+      )}
+      >
+        <div className="flex items-center">
+          <div className="system-xl-semibold grow truncate text-text-primary">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
+          {hasFilterCondition && (
+            <>
+              <div className="mx-3 h-4 w-px bg-divider-regular"></div>
+              <Button size="medium" onClick={handleResetFilter}>{t('apps.resetFilter', { ns: 'explore' })}</Button>
+            </>
           )}
-          >
-            <div className="flex items-center">
-              <div className="system-xl-semibold grow truncate text-text-primary">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
-              {hasFilterCondition && (
-                <>
-                  <div className="mx-3 h-4 w-px bg-divider-regular"></div>
-                  <Button size="medium" onClick={handleResetFilter}>{t('apps.resetFilter', { ns: 'explore' })}</Button>
-                </>
-              )}
-            </div>
-            <Input
-              showLeftIcon
-              showClearIcon
-              wrapperClassName="w-[200px] self-start"
-              value={keywords}
-              onChange={e => handleKeywordsChange(e.target.value)}
-              onClear={() => handleKeywordsChange('')}
-            />
-          </div>
-
-          <div className="px-12 pb-4 pt-2">
-            <Category
-              list={categories}
-              value={currCategory}
-              onChange={setCurrCategory}
-              allCategoriesEn={allCategoriesEn}
-            />
-          </div>
         </div>
+        <Input
+          showLeftIcon
+          showClearIcon
+          wrapperClassName="w-[200px] self-start"
+          value={keywords}
+          onChange={e => handleKeywordsChange(e.target.value)}
+          onClear={() => handleKeywordsChange('')}
+        />
+      </div>
 
-        <div className={cn(
-          'relative flex flex-1 shrink-0 grow flex-col pb-6',
-        )}
+      <div className="mt-2 px-12">
+        <Category
+          list={categories}
+          value={currCategory}
+          onChange={setCurrCategory}
+          allCategoriesEn={allCategoriesEn}
+        />
+      </div>
+
+      <div className={cn(
+        'relative mt-4 flex flex-1 shrink-0 grow flex-col overflow-auto pb-6',
+      )}
+      >
+        <nav
+          className={cn(
+            s.appList,
+            'grid shrink-0 content-start gap-4 px-6 sm:px-12',
+          )}
         >
-          <nav
-            className={cn(
-              s.appList,
-              'grid shrink-0 content-start gap-4 px-6 sm:px-12',
-            )}
-          >
-            {searchFilteredList.map(app => (
-              <AppCard
-                key={app.app_id}
-                isExplore
-                app={app}
-                canCreate={hasEditPermission}
-                onCreate={() => {
-                  setCurrApp(app)
-                  setIsShowCreateModal(true)
-                }}
-              />
-            ))}
-          </nav>
-        </div>
+          {searchFilteredList.map(app => (
+            <AppCard
+              key={app.app_id}
+              isExplore
+              app={app}
+              canCreate={hasEditPermission}
+              onCreate={() => {
+                setCurrApp(app)
+                setIsShowCreateModal(true)
+              }}
+            />
+          ))}
+        </nav>
       </div>
       {isShowCreateModal && (
         <CreateAppModal

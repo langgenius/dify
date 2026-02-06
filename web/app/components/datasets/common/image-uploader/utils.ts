@@ -18,17 +18,17 @@ type FileWithPath = {
   relativePath?: string
 } & File
 
-export const traverseFileEntry = (entry: FileSystemEntry, prefix = ''): Promise<FileWithPath[]> => {
+export const traverseFileEntry = (entry: any, prefix = ''): Promise<FileWithPath[]> => {
   return new Promise((resolve) => {
     if (entry.isFile) {
-      (entry as FileSystemFileEntry).file((file: FileWithPath) => {
+      entry.file((file: FileWithPath) => {
         file.relativePath = `${prefix}${file.name}`
         resolve([file])
       })
     }
     else if (entry.isDirectory) {
-      const reader = (entry as FileSystemDirectoryEntry).createReader()
-      const entries: FileSystemEntry[] = []
+      const reader = entry.createReader()
+      const entries: any[] = []
       const read = () => {
         reader.readEntries(async (results: FileSystemEntry[]) => {
           if (!results.length) {

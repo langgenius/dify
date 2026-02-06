@@ -6,6 +6,7 @@ from typing import cast
 
 from langsmith import Client
 from langsmith.schemas import RunBase
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -30,7 +31,7 @@ from core.ops.utils import filter_none_values, generate_dotted_order
 from core.repositories import DifyCoreRepositoryFactory
 from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
-from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
+from models import EndUser, Message, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,35 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        trace_id = trace_info.trace_id or trace_info.message_id or trace_info.workflow_run_id
+        # Check for parent_trace_context for cross-workflow linking
+        parent_trace_context = trace_info.metadata.get("parent_trace_context")
+
+        if parent_trace_context:
+            # Inner workflow: resolve outer trace_id and link to parent node
+            outer_trace_id = parent_trace_context.get("parent_workflow_run_id")
+
+            # Try to resolve message_id from conversation_id if available
+            if parent_trace_context.get("parent_conversation_id"):
+                try:
+                    session_factory = sessionmaker(bind=db.engine)
+                    with session_factory() as session:
+                        message_data_stmt = select(Message.id).where(
+                            Message.conversation_id == parent_trace_context["parent_conversation_id"],
+                            Message.workflow_run_id == parent_trace_context["parent_workflow_run_id"],
+                        )
+                        resolved_message_id = session.scalar(message_data_stmt)
+                        if resolved_message_id:
+                            outer_trace_id = resolved_message_id
+                except Exception as e:
+                    logger.debug("Failed to resolve message_id from conversation_id: %s", str(e))
+
+            trace_id = outer_trace_id
+            parent_run_id = parent_trace_context.get("parent_node_execution_id")
+        else:
+            # Outer workflow: existing behavior
+            trace_id = trace_info.trace_id or trace_info.message_id or trace_info.workflow_run_id
+            parent_run_id = trace_info.message_id or None
+
         if trace_info.start_time is None:
             trace_info.start_time = datetime.now()
         message_dotted_order = (
@@ -78,7 +107,8 @@ class LangSmithDataTrace(BaseTraceInstance):
         metadata = trace_info.metadata
         metadata["workflow_app_log_id"] = trace_info.workflow_app_log_id
 
-        if trace_info.message_id:
+        # Only create message_run for outer workflows (no parent_trace_context)
+        if trace_info.message_id and not parent_trace_context:
             message_run = LangSmithRunModel(
                 id=trace_info.message_id,
                 name=TraceTaskName.MESSAGE_TRACE,
@@ -121,9 +151,9 @@ class LangSmithDataTrace(BaseTraceInstance):
             },
             error=trace_info.error,
             tags=["workflow"],
-            parent_run_id=trace_info.message_id or None,
+            parent_run_id=parent_run_id,
             trace_id=trace_id,
-            dotted_order=workflow_dotted_order,
+            dotted_order=None if parent_trace_context else workflow_dotted_order,
             serialized=None,
             events=[],
             session_id=None,

@@ -232,6 +232,8 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     """
 
     TOTAL_TOKENS = "total_tokens"
+    PROMPT_TOKENS = "prompt_tokens"
+    COMPLETION_TOKENS = "completion_tokens"
     TOTAL_PRICE = "total_price"
     CURRENCY = "currency"
     TOOL_INFO = "tool_info"

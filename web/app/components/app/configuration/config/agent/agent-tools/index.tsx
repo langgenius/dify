@@ -109,7 +109,6 @@ const AgentTools: FC = () => {
       tool_parameters: paramsWithDefaultValue,
       notAuthor: !tool.is_team_authorization,
       enabled: true,
-      type: tool.provider_type as CollectionType,
     }
   }
   const handleSelectTool = (tool: ToolDefaultValue) => {

@@ -12,7 +12,6 @@ import Divider from '@/app/components/base/divider'
 import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import RadioCard from '@/app/components/base/radio-card'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
-import { IS_CE_EDITION } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
 import FileList from '../../assets/file-list-3-fill.svg'
 import Note from '../../assets/note-mod.svg'
@@ -192,7 +191,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
               </div>
             ))}
             {
-              showSummaryIndexSetting && IS_CE_EDITION && (
+              showSummaryIndexSetting && (
                 <div className="mt-3">
                   <SummaryIndexSetting
                     entry="create-document"

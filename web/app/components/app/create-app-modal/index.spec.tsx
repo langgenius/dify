@@ -1,4 +1,3 @@
-import type { App } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useRouter } from 'next/navigation'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -14,8 +13,8 @@ import { getRedirection } from '@/utils/app-redirection'
 import CreateAppModal from './index'
 
 vi.mock('ahooks', () => ({
-  useDebounceFn: <T extends (...args: unknown[]) => unknown>(fn: T) => {
-    const run = (...args: Parameters<T>) => fn(...args)
+  useDebounceFn: (fn: (...args: any[]) => any) => {
+    const run = (...args: any[]) => fn(...args)
     const cancel = vi.fn()
     const flush = vi.fn()
     return { run, cancel, flush }
@@ -84,7 +83,7 @@ describe('CreateAppModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
+    mockUseRouter.mockReturnValue({ push: mockPush } as any)
     mockUseProviderContext.mockReturnValue({
       plan: {
         type: AppModeEnum.ADVANCED_CHAT,
@@ -93,10 +92,10 @@ describe('CreateAppModal', () => {
         reset: {},
       },
       enableBilling: true,
-    } as unknown as ReturnType<typeof useProviderContext>)
+    } as any)
     mockUseAppContext.mockReturnValue({
       isCurrentWorkspaceEditor: true,
-    } as unknown as ReturnType<typeof useAppContext>)
+    } as any)
     mockSetItem.mockClear()
     Object.defineProperty(window, 'localStorage', {
       value: {
@@ -119,8 +118,8 @@ describe('CreateAppModal', () => {
   })
 
   it('creates an app, notifies success, and fires callbacks', async () => {
-    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT }
-    mockCreateApp.mockResolvedValue(mockApp as App)
+    const mockApp = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT }
+    mockCreateApp.mockResolvedValue(mockApp as any)
     const { onClose, onSuccess } = renderModal()
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')

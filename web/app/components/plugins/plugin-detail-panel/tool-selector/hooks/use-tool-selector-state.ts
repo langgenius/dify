@@ -129,7 +129,6 @@ export const useToolSelectorState = ({
       extra: {
         description: tool.tool_description,
       },
-      type: tool.provider_type,
     }
   }, [])
 

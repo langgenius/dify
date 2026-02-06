@@ -216,22 +216,13 @@ describe('image-uploader utils', () => {
     type FileCallback = (file: MockFile) => void
     type EntriesCallback = (entries: FileSystemEntry[]) => void
 
-    // Helper to create mock FileSystemEntry with required properties
-    const createMockEntry = (props: {
-      isFile: boolean
-      isDirectory: boolean
-      name?: string
-      file?: (callback: FileCallback) => void
-      createReader?: () => { readEntries: (callback: EntriesCallback) => void }
-    }): FileSystemEntry => props as unknown as FileSystemEntry
-
     it('should resolve with file array for file entry', async () => {
       const mockFile: MockFile = { name: 'test.png' }
-      const mockEntry = createMockEntry({
+      const mockEntry = {
         isFile: true,
         isDirectory: false,
         file: (callback: FileCallback) => callback(mockFile),
-      })
+      }
 
       const result = await traverseFileEntry(mockEntry)
       expect(result).toHaveLength(1)
@@ -241,11 +232,11 @@ describe('image-uploader utils', () => {
 
     it('should resolve with file array with prefix for nested file', async () => {
       const mockFile: MockFile = { name: 'test.png' }
-      const mockEntry = createMockEntry({
+      const mockEntry = {
         isFile: true,
         isDirectory: false,
         file: (callback: FileCallback) => callback(mockFile),
-      })
+      }
 
       const result = await traverseFileEntry(mockEntry, 'folder/')
       expect(result).toHaveLength(1)
@@ -253,24 +244,24 @@ describe('image-uploader utils', () => {
     })
 
     it('should resolve empty array for unknown entry type', async () => {
-      const mockEntry = createMockEntry({
+      const mockEntry = {
         isFile: false,
         isDirectory: false,
-      })
+      }
 
       const result = await traverseFileEntry(mockEntry)
       expect(result).toEqual([])
     })
 
     it('should handle directory with no files', async () => {
-      const mockEntry = createMockEntry({
+      const mockEntry = {
         isFile: false,
         isDirectory: true,
         name: 'empty-folder',
         createReader: () => ({
           readEntries: (callback: EntriesCallback) => callback([]),
         }),
-      })
+      }
 
       const result = await traverseFileEntry(mockEntry)
       expect(result).toEqual([])
@@ -280,20 +271,20 @@ describe('image-uploader utils', () => {
       const mockFile1: MockFile = { name: 'file1.png' }
       const mockFile2: MockFile = { name: 'file2.png' }
 
-      const mockFileEntry1 = createMockEntry({
+      const mockFileEntry1 = {
         isFile: true,
         isDirectory: false,
         file: (callback: FileCallback) => callback(mockFile1),
-      })
+      }
 
-      const mockFileEntry2 = createMockEntry({
+      const mockFileEntry2 = {
         isFile: true,
         isDirectory: false,
         file: (callback: FileCallback) => callback(mockFile2),
-      })
+      }
 
       let readCount = 0
-      const mockEntry = createMockEntry({
+      const mockEntry = {
         isFile: false,
         isDirectory: true,
         name: 'folder',
@@ -301,14 +292,14 @@ describe('image-uploader utils', () => {
           readEntries: (callback: EntriesCallback) => {
             if (readCount === 0) {
               readCount++
-              callback([mockFileEntry1, mockFileEntry2])
+              callback([mockFileEntry1, mockFileEntry2] as unknown as FileSystemEntry[])
             }
             else {
               callback([])
             }
           },
         }),
-      })
+      }
 
       const result = await traverseFileEntry(mockEntry)
       expect(result).toHaveLength(2)

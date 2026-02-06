@@ -27,3 +27,5 @@ export type I18nKeysWithPrefix<
 > = Prefix extends ''
   ? keyof Resources[NS]
   : Extract<keyof Resources[NS], `${Prefix}${string}`>
+
+type A = I18nKeysWithPrefix<'billing'>

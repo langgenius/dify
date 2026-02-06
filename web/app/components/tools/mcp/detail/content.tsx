@@ -103,22 +103,15 @@ const MCPDetailContent: FC<Props> = ({
       return
     if (!detail)
       return
-    try {
-      const res = await authorizeMcp({
-        provider_id: detail.id,
-      })
-      if (res.result === 'success')
-        handleUpdateTools()
+    const res = await authorizeMcp({
+      provider_id: detail.id,
+    })
+    if (res.result === 'success')
+      handleUpdateTools()
 
-      else if (res.authorization_url)
-        openOAuthPopup(res.authorization_url, handleOAuthCallback)
-    }
-    catch {
-      // On authorization error, refresh the parent component state
-      // to update the connection status indicator
-      onUpdate()
-    }
-  }, [onFirstCreate, isCurrentWorkspaceManager, detail, authorizeMcp, handleUpdateTools, handleOAuthCallback, onUpdate])
+    else if (res.authorization_url)
+      openOAuthPopup(res.authorization_url, handleOAuthCallback)
+  }, [onFirstCreate, isCurrentWorkspaceManager, detail, authorizeMcp, handleUpdateTools, handleOAuthCallback])
 
   const handleUpdate = useCallback(async (data: any) => {
     if (!detail)

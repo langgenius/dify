@@ -2,7 +2,7 @@ import type { Option } from '@/app/components/base/select/custom'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { RiAddLine, RiEqualizer2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionButton, ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
@@ -18,7 +18,11 @@ import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
 import { CommonCreateModal } from './common-modal'
 import { OAuthClientSettingsModal } from './oauth-client'
-import { CreateButtonType, DEFAULT_METHOD } from './types'
+
+export enum CreateButtonType {
+  FULL_BUTTON = 'full-button',
+  ICON_BUTTON = 'icon-button',
+}
 
 type Props = {
   className?: string
@@ -27,6 +31,8 @@ type Props = {
 }
 
 const MAX_COUNT = 10
+
+export const DEFAULT_METHOD = 'default'
 
 export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BUTTON, shape = 'square' }: Props) => {
   const { t } = useTranslation()
@@ -37,7 +43,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
   const detail = usePluginStore(state => state.detail)
 
   const { data: providerInfo } = useTriggerProviderInfo(detail?.provider || '')
-  const supportedMethods = useMemo(() => providerInfo?.supported_creation_methods || [], [providerInfo?.supported_creation_methods])
+  const supportedMethods = providerInfo?.supported_creation_methods || []
   const { data: oauthConfig, refetch: refetchOAuthConfig } = useTriggerOAuthConfig(detail?.provider || '', supportedMethods.includes(SupportedCreationMethods.OAUTH))
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
 
@@ -57,11 +63,11 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     }
   }, [t])
 
-  const onClickClientSettings = useCallback((e: React.MouseEvent<HTMLDivElement | HTMLButtonElement>) => {
+  const onClickClientSettings = (e: React.MouseEvent<HTMLDivElement | HTMLButtonElement>) => {
     e.stopPropagation()
     e.preventDefault()
     showClientSettingsModal()
-  }, [showClientSettingsModal])
+  }
 
   const allOptions = useMemo(() => {
     const showCustomBadge = oauthConfig?.custom_enabled && oauthConfig?.custom_configured
@@ -98,7 +104,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
         show: supportedMethods.includes(SupportedCreationMethods.MANUAL),
       },
     ]
-  }, [t, oauthConfig, supportedMethods, methodType, onClickClientSettings])
+  }, [t, oauthConfig, supportedMethods, methodType])
 
   const onChooseCreateType = async (type: SupportedCreationMethods) => {
     if (type === SupportedCreationMethods.OAUTH) {
@@ -154,7 +160,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
       <CustomSelect<Option & { show: boolean, extra?: React.ReactNode, tag?: React.ReactNode }>
         options={allOptions.filter(option => option.show)}
         value={methodType}
-        onChange={value => onChooseCreateType(value as SupportedCreationMethods)}
+        onChange={value => onChooseCreateType(value as any)}
         containerProps={{
           open: (methodType === DEFAULT_METHOD || (methodType === SupportedCreationMethods.OAUTH && supportedMethods.length === 1)) ? undefined : false,
           placement: 'bottom-start',
@@ -248,5 +254,3 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     </>
   )
 }
-
-export { CreateButtonType, DEFAULT_METHOD } from './types'

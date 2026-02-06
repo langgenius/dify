@@ -217,6 +217,7 @@ class TestTemplateTransformNode:
     @patch(
         "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
     )
+    @patch("core.workflow.nodes.template_transform.template_transform_node.MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH", 10)
     def test_run_output_length_exceeds_limit(
         self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params
     ):
@@ -230,7 +231,6 @@ class TestTemplateTransformNode:
             graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
-            max_output_length=10,
         )
 
         result = node._run()

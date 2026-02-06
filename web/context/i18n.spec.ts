@@ -196,19 +196,19 @@ describe('useDocLink', () => {
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/api-reference/annotations/create-annotation')
-      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/annotations/create-annotation`)
+      expect(url).toBe(`${defaultDocBaseUrl}/en/api-reference/annotations/create-annotation`)
     })
 
     it('should keep original path when no translation exists for non-English locale', () => {
       vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
+        i18n: { language: 'ja-JP' },
       } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('zh')
+      vi.mocked(getDocLanguage).mockReturnValue('ja')
 
       const { result } = renderHook(() => useDocLink())
       // This path has no Japanese translation
       const url = result.current('/api-reference/annotations/create-annotation')
-      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/标注管理/创建标注`)
+      expect(url).toBe(`${defaultDocBaseUrl}/ja/api-reference/annotations/create-annotation`)
     })
 
     it('should remove language prefix when translation is applied', () => {
