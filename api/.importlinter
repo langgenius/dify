@@ -102,8 +102,6 @@ forbidden_modules =
     core.trigger
     core.variables
 ignore_imports =
-    core.workflow.nodes.agent.agent_node -> core.db.session_factory
-    core.workflow.nodes.agent.agent_node -> models.tools
     core.workflow.nodes.loop.loop_node -> core.app.workflow.node_factory
     core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
     core.workflow.workflow_entry -> core.app.workflow.layers.observability
