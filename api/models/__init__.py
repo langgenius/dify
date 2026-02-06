@@ -34,6 +34,7 @@ from .enums import (
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
+from .github_connection import GitHubConnection
 from .model import (
     AccountTrialAppRecord,
     ApiRequest,
@@ -158,6 +159,7 @@ __all__ = [
     "ExporleBanner",
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
+    "GitHubConnection",
     "IconType",
     "InstalledApp",
     "InvitationCode",
