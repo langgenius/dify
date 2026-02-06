@@ -401,6 +401,7 @@ const FileTree = ({ className }: FileTreeProps) => {
             overscanCount={5}
             openByDefault={false}
             initialOpenState={initialOpensObject}
+            rowClassName="outline-none"
             onToggle={handleToggle}
             onSelect={handleSelect}
             onActivate={handleActivate}

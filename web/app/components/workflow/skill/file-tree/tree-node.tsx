@@ -28,7 +28,6 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
   const { t } = useTranslation('workflow')
   const isFolder = node.data.node_type === 'folder'
   const isSelected = node.isSelected
-  const isFocused = node.isFocused
   const isDirty = useStore(s => s.dirtyContents.has(node.data.id))
   const isCut = useStore(s => s.isCutNode(node.data.id))
   const contextMenuNodeId = useStore(s => s.contextMenu?.nodeId)
@@ -101,7 +100,6 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
         'hover:bg-state-base-hover',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
         isSelected && 'bg-state-base-active',
-        isFocused && 'ring-2 ring-inset ring-components-input-border-active',
         hasContextMenu && !isSelected && 'bg-state-base-hover',
         isDragOver && 'bg-state-accent-hover ring-1 ring-inset ring-state-accent-solid',
         isBlinking && 'animate-drag-blink',
