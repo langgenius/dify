@@ -54,7 +54,7 @@ def clean_specific_workflow_logs():
     start_at = time.perf_counter()
 
     retention_days = dify_config.SPECIFIC_WORKFLOW_LOG_RETENTION_DAYS
-    cutoff_date = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=retention_days)
+    cutoff_date = datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(days=retention_days)
     session_factory = sessionmaker(db.engine, expire_on_commit=False)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
 
@@ -133,8 +133,11 @@ def _delete_batch(session: Session, workflow_run_ids: Sequence[str], attempt_cou
                     MessageFeedback,
                 ]
                 for model in message_related_models:
-                    session.query(model).where(model.message_id.in_(message_id_list)).delete(synchronize_session=False)  # type: ignore
-                    # error: "DeclarativeAttributeIntercept" has no attribute "message_id". But this type is only in lib and these 6 types all have the message_id field.
+                    session.query(model).where(model.message_id.in_(message_id_list)).delete(  # type: ignore
+                        synchronize_session=False
+                    )
+                    # error: "DeclarativeAttributeIntercept" has no attribute "message_id".
+                    # This type is only in lib and these models all have the message_id field.
 
                 session.query(Message).where(Message.workflow_run_id.in_(workflow_run_ids)).delete(
                     synchronize_session=False
