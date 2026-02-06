@@ -181,6 +181,7 @@ const Item: FC<ItemProps> = ({
   }, [isHovering])
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
+    e.nativeEvent.stopImmediatePropagation()
     if (!isSupportFileVar && isFile)
       return
 
@@ -219,7 +220,11 @@ const Item: FC<ItemProps> = ({
           )}
           onClick={handleChosen}
           onMouseEnter={onSetHighlight}
-          onMouseDown={e => e.preventDefault()}
+          onMouseDown={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            e.nativeEvent.stopImmediatePropagation()
+          }}
         >
           <div className="flex w-0 grow items-center">
             {!isFlat && (

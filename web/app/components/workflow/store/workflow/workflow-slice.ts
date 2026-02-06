@@ -18,6 +18,8 @@ type MousePosition = {
   pageY: number
   elementX: number
   elementY: number
+  // human input form schema or data cached when node is in 'Paused' status
+  extraContentAndFormData?: Record<string, any>
 }
 
 export type WorkflowSliceShape = {

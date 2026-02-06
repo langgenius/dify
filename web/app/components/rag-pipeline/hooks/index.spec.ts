@@ -70,11 +70,15 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 // Mock workflow constants
-vi.mock('@/app/components/workflow/constants', () => ({
-  DSL_EXPORT_CHECK: 'DSL_EXPORT_CHECK',
-  WORKFLOW_DATA_UPDATE: 'WORKFLOW_DATA_UPDATE',
-  START_INITIAL_POSITION: { x: 100, y: 100 },
-}))
+vi.mock('@/app/components/workflow/constants', async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>
+  return {
+    ...actual,
+    DSL_EXPORT_CHECK: 'DSL_EXPORT_CHECK',
+    WORKFLOW_DATA_UPDATE: 'WORKFLOW_DATA_UPDATE',
+    START_INITIAL_POSITION: { x: 100, y: 100 },
+  }
+})
 
 // Mock workflow constants/node
 vi.mock('@/app/components/workflow/constants/node', () => ({

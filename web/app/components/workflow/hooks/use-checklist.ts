@@ -57,7 +57,7 @@ import {
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
-import { isNodePluginMissing } from '../utils/plugin-install-check'
+import { isNodePluginMissing, PLUGIN_DEPENDENT_TYPES } from '../utils/plugin-install-check'
 import { getTriggerCheckParams } from '../utils/trigger'
 import useNodesAvailableVarList, { useGetNodesAvailableVarList } from './use-nodes-available-var-list'
 
@@ -162,7 +162,18 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       if (node.type === CUSTOM_NODE) {
         const checkData = getCheckData(node.data)
         const validator = nodesExtraData?.[node.data.type as BlockEnum]?.checkValid
-        const isPluginMissing = isNodePluginMissing(node.data, { builtInTools: buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, dataSourceList })
+        const pluginInstallLocked = (node.data as { _pluginInstallLocked?: boolean })._pluginInstallLocked
+        const isPluginMissing = (
+          PLUGIN_DEPENDENT_TYPES.includes(node.data.type as BlockEnum)
+          && pluginInstallLocked
+        ) || isNodePluginMissing(node.data, {
+          builtInTools: buildInTools,
+          customTools,
+          workflowTools,
+          mcpTools,
+          triggerPlugins,
+          dataSourceList,
+        })
 
         // Check if plugin is installed for plugin-dependent nodes first
         let errorMessage: string | undefined
@@ -420,7 +431,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [store, notify, t, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData, workflowStore, buildInTools, customTools, workflowTools, shouldCheckStartNode])
+  }, [store, workflowStore, getNodesAvailableVarList, shouldCheckStartNode, nodesExtraData, notify, t, updateDatasetsDetail, buildInTools, customTools, workflowTools, language, getCheckData, strategyProviders])
 
   return {
     handleCheckBeforePublish,

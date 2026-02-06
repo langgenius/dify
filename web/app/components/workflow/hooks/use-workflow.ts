@@ -460,13 +460,27 @@ export const useNodesReadOnly = () => {
   const isRestoring = useStore(s => s.isRestoring)
 
   const getNodesReadOnly = useCallback((): boolean => {
-    const state = workflowStore.getState()
+    const {
+      workflowRunningData,
+      historyWorkflowData,
+      isRestoring,
+    } = workflowStore.getState()
 
-    return !!(state.workflowRunningData?.result.status === WorkflowRunningStatus.Running || state.historyWorkflowData || state.isRestoring)
+    return !!(
+      workflowRunningData?.result.status === WorkflowRunningStatus.Running
+      || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
+      || historyWorkflowData
+      || isRestoring
+    )
   }, [workflowStore])
 
   return {
-    nodesReadOnly: !!(workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring),
+    nodesReadOnly: !!(
+      workflowRunningData?.result.status === WorkflowRunningStatus.Running
+      || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
+      || historyWorkflowData
+      || isRestoring
+    ),
     getNodesReadOnly,
   }
 }

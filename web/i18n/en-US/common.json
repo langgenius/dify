@@ -513,6 +513,8 @@
   "promptEditor.placeholderSandboxNoTools": "Write instructions here, <0>/</0> <1>insert</1>",
   "promptEditor.query.item.desc": "Insert user query template",
   "promptEditor.query.item.title": "Query",
+  "promptEditor.requestURL.item.desc": "Insert request URL",
+  "promptEditor.requestURL.item.title": "Request URL",
   "promptEditor.skillMarkdown.placeholderPrefix": "Type to write,",
   "promptEditor.skillMarkdown.placeholderReferenceFiles": "reference files,",
   "promptEditor.skillMarkdown.placeholderUseTools": "use tools",

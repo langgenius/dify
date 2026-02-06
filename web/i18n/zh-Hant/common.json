@@ -513,6 +513,8 @@
   "promptEditor.placeholderSandboxNoTools": "在這裡寫你的指令，<0>/</0> <1>插入</1>",
   "promptEditor.query.item.desc": "插入使用者查詢模板",
   "promptEditor.query.item.title": "查詢內容",
+  "promptEditor.requestURL.item.desc": "插入請求 URL",
+  "promptEditor.requestURL.item.title": "請求 URL",
   "promptEditor.skillMarkdown.placeholderPrefix": "輸入",
   "promptEditor.skillMarkdown.placeholderReferenceFiles": "參考檔案，",
   "promptEditor.skillMarkdown.placeholderUseTools": "使用工具",

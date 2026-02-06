@@ -295,6 +295,8 @@ vi.mock('@/utils/var', () => ({
 // Mock provider context
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => createMockProviderContextValue(),
+  useProviderContextSelector: <T,>(selector: (state: ReturnType<typeof createMockProviderContextValue>) => T): T =>
+    selector(createMockProviderContextValue()),
 }))
 
 // Mock WorkflowWithInnerContext

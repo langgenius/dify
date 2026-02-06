@@ -5,7 +5,7 @@ const { mockSaveAllDirty } = vi.hoisted(() => ({
   mockSaveAllDirty: vi.fn(),
 }))
 
-vi.mock('./use-skill-save-manager', () => ({
+vi.mock('./skill-save-context', () => ({
   useSkillSaveManager: () => ({
     saveAllDirty: mockSaveAllDirty,
   }),

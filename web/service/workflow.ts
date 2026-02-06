@@ -5,6 +5,7 @@ import type { FlowType } from '@/types/common'
 import type {
   ConversationVariableResponse,
   FetchWorkflowDraftResponse,
+  HumanInputFormData,
   NestedNodeGraphPayload,
   NestedNodeGraphResponse,
   NodesDefaultConfigsResponse,
@@ -148,4 +149,31 @@ export const updateFeatures = ({ appId, features }: {
     params: { appId },
     body: { features },
   })
+}
+
+export const submitHumanInputForm = (token: string, data: {
+  inputs: Record<string, string>
+  action: string
+}) => {
+  return post(`/form/human_input/${token}`, { body: data })
+}
+
+export const fetchHumanInputNodeStepRunForm = (
+  url: string,
+  data: {
+    inputs: Record<string, string>
+  },
+) => {
+  return post<HumanInputFormData>(`${url}/preview`, { body: data })
+}
+
+export const submitHumanInputNodeStepRunForm = (
+  url: string,
+  data: {
+    inputs: Record<string, string> | undefined
+    form_inputs: Record<string, string> | undefined
+    action: string
+  },
+) => {
+  return post<CommonResponse>(`${url}/run`, { body: data })
 }

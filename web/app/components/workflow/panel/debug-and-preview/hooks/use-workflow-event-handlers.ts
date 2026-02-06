@@ -1,6 +1,12 @@
 import type { UpdateCurrentQAParams } from './types'
 import type { ChatItem } from '@/app/components/base/chat/types'
-import type { AgentLogItem, NodeTracing } from '@/types/workflow'
+import type {
+  AgentLogItem,
+  HumanInputFilledFormData,
+  HumanInputFormData,
+  HumanInputFormTimeoutData,
+  NodeTracing,
+} from '@/types/workflow'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../../types'
 
 type WorkflowEventHandlersContext = {
@@ -92,6 +98,56 @@ export function createWorkflowEventHandlers(ctx: WorkflowEventHandlersContext) {
 
     onNodeFinished: ({ data }: { data: TracingData }) => {
       updateTracingItem(data)
+    },
+
+    onHumanInputRequired: ({ data }: { data: HumanInputFormData }) => {
+      if (!responseItem.humanInputFormDataList) {
+        responseItem.humanInputFormDataList = [data]
+      }
+      else {
+        const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
+        if (currentFormIndex > -1)
+          responseItem.humanInputFormDataList[currentFormIndex] = data
+        else
+          responseItem.humanInputFormDataList.push(data)
+      }
+
+      const currentTracingIndex = responseItem.workflowProcess?.tracing?.findIndex(item => item.node_id === data.node_id) ?? -1
+      if (currentTracingIndex > -1) {
+        responseItem.workflowProcess!.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+      }
+
+      updateTree()
+    },
+
+    onHumanInputFormFilled: ({ data }: { data: HumanInputFilledFormData }) => {
+      if (responseItem.humanInputFormDataList?.length) {
+        const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
+        if (currentFormIndex > -1)
+          responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+      }
+
+      if (!responseItem.humanInputFilledFormDataList)
+        responseItem.humanInputFilledFormDataList = [data]
+      else
+        responseItem.humanInputFilledFormDataList.push(data)
+
+      updateTree()
+    },
+
+    onHumanInputFormTimeout: ({ data }: { data: HumanInputFormTimeoutData }) => {
+      if (responseItem.humanInputFormDataList?.length) {
+        const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
+        if (currentFormIndex > -1)
+          responseItem.humanInputFormDataList[currentFormIndex].expiration_time = data.expiration_time
+      }
+      updateTree()
+    },
+
+    onWorkflowPaused: () => {
+      if (responseItem.workflowProcess)
+        responseItem.workflowProcess.status = WorkflowRunningStatus.Paused
+      updateTree()
     },
 
     onAgentLog: ({ data }: { data: AgentLogData }) => {

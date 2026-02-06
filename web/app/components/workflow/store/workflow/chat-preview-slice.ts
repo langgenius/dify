@@ -11,6 +11,7 @@ type ChatPreviewState = {
   activeTaskId: string
   hasStopResponded: boolean
   suggestedQuestionsAbortController: AbortController | null
+  workflowEventsAbortController: AbortController | null
 }
 
 type ChatPreviewActions = {
@@ -23,6 +24,7 @@ type ChatPreviewActions = {
   setActiveTaskId: (taskId: string) => void
   setHasStopResponded: (hasStopResponded: boolean) => void
   setSuggestedQuestionsAbortController: (controller: AbortController | null) => void
+  setWorkflowEventsAbortController: (controller: AbortController | null) => void
   startRun: () => number
   invalidateRun: () => number
   resetChatPreview: () => void
@@ -40,6 +42,7 @@ const initialState: ChatPreviewState = {
   activeTaskId: '',
   hasStopResponded: false,
   suggestedQuestionsAbortController: null,
+  workflowEventsAbortController: null,
 }
 
 export const createChatPreviewSlice: StateCreator<ChatPreviewSliceShape> = (set, get) => ({
@@ -68,6 +71,8 @@ export const createChatPreviewSlice: StateCreator<ChatPreviewSliceShape> = (set,
 
   setSuggestedQuestionsAbortController: suggestedQuestionsAbortController => set({ suggestedQuestionsAbortController }),
 
+  setWorkflowEventsAbortController: workflowEventsAbortController => set({ workflowEventsAbortController }),
+
   startRun: () => {
     const activeRunId = get().activeRunId + 1
     set({
@@ -75,6 +80,7 @@ export const createChatPreviewSlice: StateCreator<ChatPreviewSliceShape> = (set,
       activeTaskId: '',
       hasStopResponded: false,
       suggestedQuestionsAbortController: null,
+      workflowEventsAbortController: null,
     })
     return activeRunId
   },
@@ -85,6 +91,7 @@ export const createChatPreviewSlice: StateCreator<ChatPreviewSliceShape> = (set,
       activeRunId,
       activeTaskId: '',
       suggestedQuestionsAbortController: null,
+      workflowEventsAbortController: null,
     })
     return activeRunId
   },
