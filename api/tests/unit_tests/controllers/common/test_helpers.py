@@ -1,5 +1,3 @@
-import importlib
-import sys
 from uuid import UUID
 
 import httpx
@@ -161,8 +159,8 @@ class TestMagicImportWarnings:
         platform_name,
         expected_message,
     ):
-        import importlib
         import builtins
+        import importlib
 
         # Force ImportError when "magic" is imported
         real_import = builtins.__import__
