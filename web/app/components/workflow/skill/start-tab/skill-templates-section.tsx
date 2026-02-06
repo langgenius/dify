@@ -4,6 +4,7 @@ import type { SkillTemplateSummary } from './templates/types'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { SearchMenu } from '@/app/components/base/icons/src/vender/knowledge'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useBatchUpload } from '@/service/use-app-asset'
 import { useExistingSkillNames } from '../hooks/use-skill-asset-tree'
@@ -89,18 +90,29 @@ const SkillTemplatesSection = () => {
           <TemplateSearch onChange={setSearchQuery} />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-3 px-6">
-        {filtered.map(entry => (
-          <TemplateCard
-            key={entry.id}
-            template={entry}
-            added={existingNames?.has(entry.id) ?? false}
-            disabled={loadingId !== null}
-            loading={loadingId === entry.id}
-            onUse={handleUse}
-          />
-        ))}
-      </div>
+      {filtered.length === 0 && searchQuery
+        ? (
+            <div className="flex flex-col items-center justify-center gap-y-2 py-16">
+              <SearchMenu className="size-8 text-text-quaternary" />
+              <span className="system-sm-regular text-text-tertiary">
+                {t('skill.startTab.noTemplatesFound')}
+              </span>
+            </div>
+          )
+        : (
+            <div className="grid grid-cols-3 gap-3 px-6">
+              {filtered.map(entry => (
+                <TemplateCard
+                  key={entry.id}
+                  template={entry}
+                  added={existingNames?.has(entry.id) ?? false}
+                  disabled={loadingId !== null}
+                  loading={loadingId === entry.id}
+                  onUse={handleUse}
+                />
+              ))}
+            </div>
+          )}
     </section>
   )
 }
