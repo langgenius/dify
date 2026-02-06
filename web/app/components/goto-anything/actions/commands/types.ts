@@ -1,10 +1,11 @@
 import type { CommandSearchResult } from '../types'
+import type { Locale } from '@/i18n-config/language'
 
 /**
  * Slash command handler interface
  * Each slash command should implement this interface
  */
-export type SlashCommandHandler<TDeps = any> = {
+export type SlashCommandHandler<TDeps = unknown> = {
   /** Command name (e.g., 'theme', 'language') */
   name: string
 
@@ -50,4 +51,32 @@ export type SlashCommandHandler<TDeps = any> = {
    * Called when unregistering command
    */
   unregister?: () => void
+}
+
+/**
+ * Theme command dependencies
+ */
+export type ThemeCommandDeps = {
+  setTheme?: (value: 'light' | 'dark' | 'system') => void
+}
+
+/**
+ * Language command dependencies
+ */
+export type LanguageCommandDeps = {
+  setLocale?: (locale: Locale, reloadPage?: boolean) => Promise<void>
+}
+
+/**
+ * Commands without external dependencies
+ */
+export type NoDepsCommandDeps = Record<string, never>
+
+/**
+ * Union type of all slash command dependencies
+ * Used for type-safe dependency injection in registerSlashCommands
+ */
+export type SlashCommandDependencies = {
+  setTheme?: (value: 'light' | 'dark' | 'system') => void
+  setLocale?: (locale: Locale, reloadPage?: boolean) => Promise<void>
 }

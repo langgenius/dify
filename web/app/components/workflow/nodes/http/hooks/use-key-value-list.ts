@@ -5,6 +5,9 @@ import { useCallback, useEffect, useState } from 'react'
 
 const UNIQUE_ID_PREFIX = 'key-value-'
 const strToKeyValueList = (value: string) => {
+  if (typeof value !== 'string' || !value)
+    return []
+
   return value.split('\n').map((item) => {
     const [key, ...others] = item.split(':')
     return {
@@ -16,7 +19,7 @@ const strToKeyValueList = (value: string) => {
 }
 
 const useKeyValueList = (value: string, onChange: (value: string) => void, noFilter?: boolean) => {
-  const [list, doSetList] = useState<KeyValue[]>(() => value ? strToKeyValueList(value) : [])
+  const [list, doSetList] = useState<KeyValue[]>(() => typeof value === 'string' && value ? strToKeyValueList(value) : [])
   const setList = (l: KeyValue[]) => {
     doSetList(l.map((item) => {
       return {

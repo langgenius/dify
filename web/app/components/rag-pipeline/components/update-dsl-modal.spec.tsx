@@ -134,6 +134,22 @@ vi.mock('@/app/components/workflow/constants', () => ({
   WORKFLOW_DATA_UPDATE: 'WORKFLOW_DATA_UPDATE',
 }))
 
+// Mock FileReader
+class MockFileReader {
+  result: string | null = null
+  onload: ((e: { target: { result: string | null } }) => void) | null = null
+
+  readAsText(_file: File) {
+    // Simulate async file reading using queueMicrotask for more reliable async behavior
+    queueMicrotask(() => {
+      this.result = 'test file content'
+      if (this.onload) {
+        this.onload({ target: { result: this.result } })
+      }
+    })
+  }
+}
+
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
@@ -143,6 +159,7 @@ describe('UpdateDSLModal', () => {
   const mockOnCancel = vi.fn()
   const mockOnBackup = vi.fn()
   const mockOnImport = vi.fn()
+  let originalFileReader: typeof FileReader
 
   const defaultProps = {
     onCancel: mockOnCancel,
@@ -158,6 +175,14 @@ describe('UpdateDSLModal', () => {
       pipeline_id: 'test-pipeline-id',
     })
     mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
+
+    // Mock FileReader
+    originalFileReader = globalThis.FileReader
+    globalThis.FileReader = MockFileReader as unknown as typeof FileReader
+  })
+
+  afterEach(() => {
+    globalThis.FileReader = originalFileReader
   })
 
   describe('rendering', () => {
@@ -527,7 +552,6 @@ describe('UpdateDSLModal', () => {
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
 
-      // Wait for FileReader to process and button to be enabled
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
         expect(importButton).not.toBeDisabled()
@@ -552,11 +576,14 @@ describe('UpdateDSLModal', () => {
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
       fireEvent.change(fileInput, { target: { files: [file] } })
 
-      // Wait for FileReader to complete and button to be enabled
+      // Wait for FileReader to complete (setTimeout 0) and button to be enabled
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
         expect(importButton).not.toBeDisabled()
       })
+
+      // Give extra time for the FileReader's setTimeout to complete
+      await new Promise(resolve => setTimeout(resolve, 10))
 
       const importButton = screen.getByText('common.overwriteAndImport')
       fireEvent.click(importButton)
@@ -584,11 +611,6 @@ describe('UpdateDSLModal', () => {
       await waitFor(() => {
         const importButton = screen.getByText('common.overwriteAndImport')
         expect(importButton).not.toBeDisabled()
-      })
-
-      // Flush the FileReader microtask to ensure fileContent is set
-      await act(async () => {
-        await new Promise<void>(resolve => queueMicrotask(resolve))
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
@@ -692,7 +714,7 @@ describe('UpdateDSLModal', () => {
       await waitFor(() => {
         expect(screen.getByText('1.0.0')).toBeInTheDocument()
         expect(screen.getByText('2.0.0')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 500 })
     })
 
     it('should close error modal when cancel button is clicked', async () => {
@@ -721,7 +743,7 @@ describe('UpdateDSLModal', () => {
       // Wait for error modal
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 500 })
 
       // Find and click cancel button in error modal - it should be the one with secondary variant
       const cancelButtons = screen.getAllByText('newApp.Cancel')
@@ -739,8 +761,6 @@ describe('UpdateDSLModal', () => {
     })
 
     it('should call importDSLConfirm when confirm button is clicked in error modal', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-
       mockImportDSL.mockResolvedValue({
         id: 'import-id',
         status: DSLImportStatus.PENDING,
@@ -758,27 +778,20 @@ describe('UpdateDSLModal', () => {
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
+      fireEvent.change(fileInput, { target: { files: [file] } })
 
-      await act(async () => {
-        fireEvent.change(fileInput, { target: { files: [file] } })
-        // Flush microtasks scheduled by the FileReader mock (which uses queueMicrotask)
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+      await waitFor(() => {
+        const importButton = screen.getByText('common.overwriteAndImport')
+        expect(importButton).not.toBeDisabled()
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
-      expect(importButton).not.toBeDisabled()
+      fireEvent.click(importButton)
 
-      await act(async () => {
-        fireEvent.click(importButton)
-        // Flush the promise resolution from mockImportDSL
-        await Promise.resolve()
-        // Advance past the 300ms setTimeout in the component
-        await vi.advanceTimersByTimeAsync(350)
-      })
-
+      // Wait for error modal
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 500 })
 
       // Click confirm button
       const confirmButton = screen.getByText('newApp.Confirm')
@@ -787,8 +800,6 @@ describe('UpdateDSLModal', () => {
       await waitFor(() => {
         expect(mockImportDSLConfirm).toHaveBeenCalledWith('import-id')
       })
-
-      vi.useRealTimers()
     })
 
     it('should show success notification after confirm completes', async () => {
@@ -821,7 +832,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 500 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -863,7 +874,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 500 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -902,7 +913,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 500 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -944,7 +955,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 500 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -986,7 +997,7 @@ describe('UpdateDSLModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 500 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -997,8 +1008,6 @@ describe('UpdateDSLModal', () => {
     })
 
     it('should call handleCheckPluginDependencies after confirm', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-
       mockImportDSL.mockResolvedValue({
         id: 'import-id',
         status: DSLImportStatus.PENDING,
@@ -1016,27 +1025,19 @@ describe('UpdateDSLModal', () => {
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
+      fireEvent.change(fileInput, { target: { files: [file] } })
 
-      await act(async () => {
-        fireEvent.change(fileInput, { target: { files: [file] } })
-        // Flush microtasks scheduled by the FileReader mock (which uses queueMicrotask)
-        await new Promise<void>(resolve => queueMicrotask(resolve))
+      await waitFor(() => {
+        const importButton = screen.getByText('common.overwriteAndImport')
+        expect(importButton).not.toBeDisabled()
       })
 
       const importButton = screen.getByText('common.overwriteAndImport')
-      expect(importButton).not.toBeDisabled()
-
-      await act(async () => {
-        fireEvent.click(importButton)
-        // Flush the promise resolution from mockImportDSL
-        await Promise.resolve()
-        // Advance past the 300ms setTimeout in the component
-        await vi.advanceTimersByTimeAsync(350)
-      })
+      fireEvent.click(importButton)
 
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 500 })
 
       const confirmButton = screen.getByText('newApp.Confirm')
       fireEvent.click(confirmButton)
@@ -1044,8 +1045,6 @@ describe('UpdateDSLModal', () => {
       await waitFor(() => {
         expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('test-pipeline-id', true)
       })
-
-      vi.useRealTimers()
     })
 
     it('should handle undefined imported_dsl_version and current_dsl_version', async () => {
@@ -1074,7 +1073,7 @@ describe('UpdateDSLModal', () => {
       // Should show error modal even with undefined versions
       await waitFor(() => {
         expect(screen.getByText('newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 500 })
     })
 
     it('should not call importDSLConfirm when importId is not set', async () => {

@@ -1,9 +1,25 @@
-import type { ActionItem } from '../actions/types'
+import type { ScopeDescriptor } from '../actions/types'
 import { act, renderHook } from '@testing-library/react'
 import { useGotoAnythingSearch } from './use-goto-anything-search'
 
 let mockContextValue = { isWorkflowPage: false, isRagPipelinePage: false }
-let mockMatchActionResult: Partial<ActionItem> | undefined
+let mockMatchActionResult: ScopeDescriptor | undefined
+
+const baseScopesMock: ScopeDescriptor[] = [
+  { id: 'slash', shortcut: '/', title: 'Slash', description: 'Slash commands', search: vi.fn() },
+  { id: 'app', shortcut: '@app', title: 'App', description: 'Search apps', search: vi.fn() },
+  { id: 'knowledge', shortcut: '@knowledge', title: 'Knowledge', description: 'Search KB', search: vi.fn() },
+]
+
+const workflowScopesMock: ScopeDescriptor[] = [
+  ...baseScopesMock,
+  { id: 'node', shortcut: '@node', title: 'Node', description: 'Search nodes', search: vi.fn() },
+]
+
+const ragScopesMock: ScopeDescriptor[] = [
+  ...baseScopesMock,
+  { id: 'ragNode', shortcut: '@node', title: 'RAG Node', description: 'Search RAG nodes', search: vi.fn() },
+]
 
 vi.mock('ahooks', () => ({
   useDebounce: <T>(value: T) => value,
@@ -14,19 +30,12 @@ vi.mock('../context', () => ({
 }))
 
 vi.mock('../actions', () => ({
-  createActions: (isWorkflowPage: boolean, isRagPipelinePage: boolean) => {
-    const base = {
-      slash: { key: '/', shortcut: '/' },
-      app: { key: '@app', shortcut: '@app' },
-      knowledge: { key: '@knowledge', shortcut: '@kb' },
-    }
-    if (isWorkflowPage) {
-      return { ...base, node: { key: '@node', shortcut: '@node' } }
-    }
-    if (isRagPipelinePage) {
-      return { ...base, ragNode: { key: '@node', shortcut: '@node' } }
-    }
-    return base
+  useGotoAnythingScopes: (context: { isWorkflowPage: boolean, isRagPipelinePage: boolean }) => {
+    if (context.isWorkflowPage)
+      return workflowScopesMock
+    if (context.isRagPipelinePage)
+      return ragScopesMock
+    return baseScopesMock
   },
   matchAction: () => mockMatchActionResult,
 }))
@@ -74,30 +83,30 @@ describe('useGotoAnythingSearch', () => {
     })
   })
 
-  describe('Actions', () => {
-    it('should provide Actions based on context', () => {
+  describe('scopes', () => {
+    it('should provide scopes based on context', () => {
       const { result } = renderHook(() => useGotoAnythingSearch())
-      expect(result.current.Actions).toBeDefined()
-      expect(typeof result.current.Actions).toBe('object')
+      expect(result.current.scopes).toBeDefined()
+      expect(Array.isArray(result.current.scopes)).toBe(true)
     })
 
-    it('should include node action when on workflow page', () => {
+    it('should include node scope when on workflow page', () => {
       mockContextValue = { isWorkflowPage: true, isRagPipelinePage: false }
       const { result } = renderHook(() => useGotoAnythingSearch())
-      expect(result.current.Actions.node).toBeDefined()
+      expect(result.current.scopes.find(s => s.id === 'node')).toBeDefined()
     })
 
-    it('should include ragNode action when on RAG pipeline page', () => {
+    it('should include ragNode scope when on RAG pipeline page', () => {
       mockContextValue = { isWorkflowPage: false, isRagPipelinePage: true }
       const { result } = renderHook(() => useGotoAnythingSearch())
-      expect(result.current.Actions.ragNode).toBeDefined()
+      expect(result.current.scopes.find(s => s.id === 'ragNode')).toBeDefined()
     })
 
-    it('should not include node actions when on regular page', () => {
+    it('should not include node scopes when on regular page', () => {
       mockContextValue = { isWorkflowPage: false, isRagPipelinePage: false }
       const { result } = renderHook(() => useGotoAnythingSearch())
-      expect(result.current.Actions.node).toBeUndefined()
-      expect(result.current.Actions.ragNode).toBeUndefined()
+      expect(result.current.scopes.find(s => s.id === 'node')).toBeUndefined()
+      expect(result.current.scopes.find(s => s.id === 'ragNode')).toBeUndefined()
     })
   })
 
@@ -145,7 +154,7 @@ describe('useGotoAnythingSearch', () => {
     })
 
     it('should return false when query starts with "@" and action matches', () => {
-      mockMatchActionResult = { key: '@app', shortcut: '@app' }
+      mockMatchActionResult = baseScopesMock.find(s => s.id === 'app')
       const { result } = renderHook(() => useGotoAnythingSearch())
 
       act(() => {
@@ -206,8 +215,8 @@ describe('useGotoAnythingSearch', () => {
       expect(result.current.searchMode).toBe('general')
     })
 
-    it('should return action key when action matches', () => {
-      mockMatchActionResult = { key: '@app', shortcut: '@app' }
+    it('should return action shortcut when action matches', () => {
+      mockMatchActionResult = baseScopesMock.find(s => s.id === 'app')
       const { result } = renderHook(() => useGotoAnythingSearch())
 
       act(() => {
@@ -217,8 +226,8 @@ describe('useGotoAnythingSearch', () => {
       expect(result.current.searchMode).toBe('@app')
     })
 
-    it('should return "@command" when action key is "/"', () => {
-      mockMatchActionResult = { key: '/', shortcut: '/' }
+    it('should return "@command" when action is slash', () => {
+      mockMatchActionResult = baseScopesMock.find(s => s.id === 'slash')
       const { result } = renderHook(() => useGotoAnythingSearch())
 
       act(() => {

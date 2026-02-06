@@ -1,9 +1,10 @@
 'use client'
 
-import type { ActionItem } from '../actions/types'
+import type { ScopeDescriptor } from '../actions/types'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
-import { createActions, matchAction } from '../actions'
+import { matchAction, useGotoAnythingScopes } from '../actions'
+import { ACTION_KEYS } from '../constants'
 import { useGotoAnythingContext } from '../context'
 
 export type UseGotoAnythingSearchReturn = {
@@ -15,7 +16,7 @@ export type UseGotoAnythingSearchReturn = {
   cmdVal: string
   setCmdVal: (val: string) => void
   clearSelection: () => void
-  Actions: Record<string, ActionItem>
+  scopes: ScopeDescriptor[]
 }
 
 export const useGotoAnythingSearch = (): UseGotoAnythingSearchReturn => {
@@ -23,10 +24,8 @@ export const useGotoAnythingSearch = (): UseGotoAnythingSearchReturn => {
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [cmdVal, setCmdVal] = useState<string>('_')
 
-  // Filter actions based on context
-  const Actions = useMemo(() => {
-    return createActions(isWorkflowPage, isRagPipelinePage)
-  }, [isWorkflowPage, isRagPipelinePage])
+  // Fetch scopes from registry based on context
+  const scopes = useGotoAnythingScopes({ isWorkflowPage, isRagPipelinePage })
 
   const searchQueryDebouncedValue = useDebounce(searchQuery.trim(), {
     wait: 300,
@@ -35,28 +34,30 @@ export const useGotoAnythingSearch = (): UseGotoAnythingSearchReturn => {
   const isCommandsMode = useMemo(() => {
     const trimmed = searchQuery.trim()
     return trimmed === '@' || trimmed === '/'
-      || (trimmed.startsWith('@') && !matchAction(trimmed, Actions))
-      || (trimmed.startsWith('/') && !matchAction(trimmed, Actions))
-  }, [searchQuery, Actions])
+      || (trimmed.startsWith('@') && !matchAction(trimmed, scopes))
+      || (trimmed.startsWith('/') && !matchAction(trimmed, scopes))
+  }, [searchQuery, scopes])
 
   const searchMode = useMemo(() => {
     if (isCommandsMode) {
-      // Distinguish between @ (scopes) and / (commands) mode
       if (searchQuery.trim().startsWith('@'))
         return 'scopes'
       else if (searchQuery.trim().startsWith('/'))
         return 'commands'
-      return 'commands' // default fallback
+      return 'commands'
     }
 
     const query = searchQueryDebouncedValue.toLowerCase()
-    const action = matchAction(query, Actions)
+    const action = matchAction(query, scopes)
 
     if (!action)
       return 'general'
 
-    return action.key === '/' ? '@command' : action.key
-  }, [searchQueryDebouncedValue, Actions, isCommandsMode, searchQuery])
+    if (action.id === 'slash' || action.shortcut === ACTION_KEYS.SLASH)
+      return '@command'
+
+    return action.shortcut
+  }, [searchQueryDebouncedValue, scopes, isCommandsMode, searchQuery])
 
   // Prevent automatic selection of the first option when cmdVal is not set
   const clearSelection = useCallback(() => {
@@ -72,6 +73,6 @@ export const useGotoAnythingSearch = (): UseGotoAnythingSearchReturn => {
     cmdVal,
     setCmdVal,
     clearSelection,
-    Actions,
+    scopes,
   }
 }

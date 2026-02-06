@@ -160,7 +160,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         }
       }
       else {
-        usedVars = getNodeUsedVars(node).filter(v => v.length > 0)
+        usedVars = getNodeUsedVars(node).filter(v => v && v.length > 0)
       }
 
       if (node.type === CUSTOM_NODE) {
@@ -359,7 +359,7 @@ export const useChecklistBeforePublish = () => {
         }
       }
       else {
-        usedVars = getNodeUsedVars(node).filter(v => v.length > 0)
+        usedVars = getNodeUsedVars(node).filter(v => v && v.length > 0)
       }
       const checkData = getCheckData(node.data, datasets)
       const { errorMessage } = nodesExtraData![node.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)

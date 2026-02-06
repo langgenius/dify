@@ -10,9 +10,15 @@ type VersionSelectorProps = {
   versionLen: number
   value: number
   onChange: (index: number) => void
+  contentClassName?: string
 }
 
-const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, onChange }) => {
+const VersionSelector: React.FC<VersionSelectorProps> = ({
+  versionLen,
+  value,
+  onChange,
+  contentClassName,
+}) => {
   const { t } = useTranslation()
   const [isOpen, {
     setFalse: handleOpenFalse,
@@ -64,6 +70,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={cn(
         'z-[99]',
+        contentClassName,
       )}
       >
         <div

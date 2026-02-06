@@ -1,8 +1,12 @@
+import logging
 from collections.abc import Sequence
 from typing import Any
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
+
 
 from controllers.console import console_ns
 from controllers.console.app.error import (
