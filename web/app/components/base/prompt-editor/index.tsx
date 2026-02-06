@@ -377,7 +377,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
                 <ToolBlock />
                 <ToolGroupBlockReplacementBlock />
                 <ToolBlockReplacementBlock />
-                {editable && !disableToolBlocks && <ToolPickerBlock />}
+                {editable && !disableToolBlocks && <ToolPickerBlock enableAutoDefault />}
               </>
             )}
             <ComponentPickerBlock

@@ -15,6 +15,7 @@ import ReactDOM from 'react-dom'
 import { v4 as uuid } from 'uuid'
 import { useBasicTypeaheadTriggerMatch } from '@/app/components/base/prompt-editor/hooks'
 import { $splitNodeContainingQuery } from '@/app/components/base/prompt-editor/utils'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
@@ -31,9 +32,10 @@ class ToolPickerMenuOption extends MenuOption {
 
 type ToolPickerBlockProps = {
   scope?: string
+  enableAutoDefault?: boolean
 }
 
-const ToolPickerBlock = ({ scope = 'all' }: ToolPickerBlockProps) => {
+const ToolPickerBlock = ({ scope = 'all', enableAutoDefault = false }: ToolPickerBlockProps) => {
   const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
     minLength: 0,
@@ -43,6 +45,11 @@ const ToolPickerBlock = ({ scope = 'all' }: ToolPickerBlockProps) => {
   const toolBlockContext = useToolBlockContext()
   const isUsingExternalMetadata = Boolean(toolBlockContext?.onMetadataChange)
   const [queryString, setQueryString] = useState('')
+
+  const canUseAutoByType = useCallback(
+    (type: string) => ![FormTypeEnum.modelSelector, FormTypeEnum.appSelector].includes(type as FormTypeEnum),
+    [],
+  )
 
   const options = useMemo(() => [new ToolPickerMenuOption()], [])
 
@@ -70,7 +77,7 @@ const ToolPickerBlock = ({ scope = 'all' }: ToolPickerBlockProps) => {
       const fields = schemas.map(schema => ({
         id: schema.variable,
         value: schema.default ?? null,
-        auto: schema.form === 'llm',
+        auto: enableAutoDefault ? canUseAutoByType(schema.type) : schema.form === 'llm',
       }))
       nextTools[configId] = {
         type: tool.provider_type,
@@ -81,7 +88,7 @@ const ToolPickerBlock = ({ scope = 'all' }: ToolPickerBlockProps) => {
       ...metadata,
       tools: nextTools,
     }
-  }, [])
+  }, [canUseAutoByType, enableAutoDefault])
 
   const insertTools = useCallback((tools: ToolDefaultValue[]) => {
     const toolEntries = tools.map(tool => ({

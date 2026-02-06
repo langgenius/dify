@@ -60,7 +60,7 @@ const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
 type ToolConfigField = {
   id: string
   value: unknown
-  auto: boolean
+  auto?: boolean
 }
 
 type ToolConfigMetadata = {
@@ -86,6 +86,9 @@ const getVarKindType = (type: FormTypeEnum | string) => {
     return VarKindType.mixed
   return VarKindType.constant
 }
+
+const canUseAutoByType = (type: string) =>
+  ![FormTypeEnum.modelSelector, FormTypeEnum.appSelector].includes(type as FormTypeEnum)
 
 const normalizeCredentialId = (credentialId?: string) => {
   if (!credentialId || credentialId === '__workspace_default__')
@@ -230,7 +233,9 @@ const ToolBlockComponent = ({
         const field = fieldsById.get(schema.variable)
         if (!field)
           return
-        const isAuto = Boolean(field.auto)
+        const isAuto = field.auto === undefined
+          ? canUseAutoByType(schema.type)
+          : Boolean(field.auto)
         if (isAuto) {
           nextValue[schema.variable] = { auto: 1, value: null }
           return

@@ -159,7 +159,7 @@ const SkillEditor = ({
             <ToolBlockReplacementBlock />
             <FileReferenceReplacementBlock />
             {editable && <FilePickerBlock />}
-            {editable && <ToolPickerBlock scope={toolPickerScope} />}
+            {editable && <ToolPickerBlock scope={toolPickerScope} enableAutoDefault />}
           </>
           <OnChangePlugin onChange={handleEditorChange} />
           {editable && autoFocus && <EditorAutoFocusPlugin onAutoFocus={onAutoFocus} />}

@@ -93,6 +93,8 @@ const ToolSettingsSection = ({
 
   const showSettingsSection = currentToolSettings.length > 0
   const showParamsSection = currentToolParams.length > 0
+  const canUseAutoByType = (type: string) =>
+    ![FormTypeEnum.modelSelector, FormTypeEnum.appSelector].includes(type as FormTypeEnum)
   const getVarKindType = (type: FormTypeEnum | string) => {
     if (type === FormTypeEnum.file || type === FormTypeEnum.files)
       return VarKindType.variable
@@ -107,8 +109,9 @@ const ToolSettingsSection = ({
     schemas.forEach((schema) => {
       const currentValue = nextValue[schema.variable]
       if (!currentValue) {
+        const canUseAuto = canUseAutoByType(schema.type)
         nextValue[schema.variable] = {
-          auto: 0,
+          auto: canUseAuto ? 1 : 0,
           value: {
             type: getVarKindType(schema.type),
             value: schema.default ?? null,
@@ -117,7 +120,7 @@ const ToolSettingsSection = ({
         return
       }
       if (currentValue.auto === undefined)
-        currentValue.auto = 0
+        currentValue.auto = canUseAutoByType(schema.type) ? 1 : 0
       if (currentValue.value === undefined) {
         currentValue.value = {
           type: getVarKindType(schema.type),
