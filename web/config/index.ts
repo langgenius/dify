@@ -7,23 +7,18 @@ import { AgentStrategy } from '@/types/app'
 import pkg from '../package.json'
 
 const getBooleanConfig = (
-  envVar: string | undefined,
+  envVar: boolean | undefined,
   defaultValue: boolean = true,
 ) => {
-  if (envVar !== undefined && envVar !== '')
-    return envVar === 'true'
-  return defaultValue
+  return envVar ?? defaultValue
 }
 
 const getNumberConfig = (
-  envVar: string | undefined,
+  envVar: number | undefined,
   defaultValue: number,
 ) => {
-  if (envVar) {
-    const parsed = Number.parseInt(envVar)
-    if (!Number.isNaN(parsed) && parsed > 0)
-      return parsed
-  }
+  if (typeof envVar === 'number' && Number.isFinite(envVar) && envVar > 0)
+    return envVar
   return defaultValue
 }
 
@@ -317,7 +312,7 @@ export const VAR_REGEX
 export const resetReg = () => (VAR_REGEX.lastIndex = 0)
 
 export const DISABLE_UPLOAD_IMAGE_AS_ICON
-  = env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON === 'true'
+  = getBooleanConfig(env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON, false)
 
 export const GITHUB_ACCESS_TOKEN
   = env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN || ''
@@ -405,7 +400,7 @@ export const ZENDESK_FIELD_IDS = {
 }
 export const APP_VERSION = pkg.version
 
-export const IS_MARKETPLACE = env.NEXT_PUBLIC_IS_MARKETPLACE === 'true'
+export const IS_MARKETPLACE = getBooleanConfig(env.NEXT_PUBLIC_IS_MARKETPLACE, false)
 
 export const RAG_PIPELINE_PREVIEW_CHUNK_NUM = 20
 

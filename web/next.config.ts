@@ -18,12 +18,12 @@ const withMDX = createMDX({
   },
 })
 const withBundleAnalyzer = withBundleAnalyzerInit({
-  enabled: env.ANALYZE === 'true',
+  enabled: env.ANALYZE ?? false,
 })
 
 // the default url to prevent parse url error when running jest
 const hasSetWebPrefix = env.NEXT_PUBLIC_WEB_PREFIX
-const port = env.PORT || '3000'
+const port = env.PORT ?? 3000
 const locImageURLs = !hasSetWebPrefix ? [new URL(`http://localhost:${port}/**`), new URL(`http://127.0.0.1:${port}/**`)] : []
 const remoteImageURLs = ([hasSetWebPrefix ? new URL(`${env.NEXT_PUBLIC_WEB_PREFIX}/**`) : '', ...locImageURLs].filter(item => !!item)) as URL[]
 

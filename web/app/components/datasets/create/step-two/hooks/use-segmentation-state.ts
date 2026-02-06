@@ -9,10 +9,7 @@ import unescape from './unescape'
 export const DEFAULT_SEGMENT_IDENTIFIER = '\\n\\n'
 export const DEFAULT_MAXIMUM_CHUNK_LENGTH = 1024
 export const DEFAULT_OVERLAP = 50
-export const MAXIMUM_CHUNK_TOKEN_LENGTH = Number.parseInt(
-  env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH || '4000',
-  10,
-)
+export const MAXIMUM_CHUNK_TOKEN_LENGTH = env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH ?? 4000
 
 export type ParentChildConfig = {
   chunkForContext: ParentMode

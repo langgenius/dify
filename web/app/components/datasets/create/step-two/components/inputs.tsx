@@ -47,7 +47,7 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
 }
 
 export const MaxLengthInput: FC<InputNumberProps> = (props) => {
-  const maxValue = Number.parseInt(env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH || '4000', 10)
+  const maxValue = env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH ?? 4000
 
   const { t } = useTranslation()
   return (

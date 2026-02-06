@@ -13,8 +13,8 @@ type Props = {
 }
 
 const maxTopK = (() => {
-  const configValue = Number.parseInt(env.NEXT_PUBLIC_TOP_K_MAX_VALUE || '', 10)
-  if (configValue && !isNaN(configValue))
+  const configValue = env.NEXT_PUBLIC_TOP_K_MAX_VALUE
+  if (configValue && !Number.isNaN(configValue))
     return configValue
   return 10
 })()
