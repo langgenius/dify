@@ -23,6 +23,7 @@ from core.ops.entities.trace_entity import (
     GenerateNameTraceInfo,
     MessageTraceInfo,
     ModerationTraceInfo,
+    OperationType,
     PromptGenerationTraceInfo,
     SuggestedQuestionTraceInfo,
     ToolTraceInfo,
@@ -216,11 +217,17 @@ class EnterpriseOtelTrace:
             tenant_id=tenant_id or "",
             app_id=app_id or "",
         )
-        self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, labels)
+        token_labels = self._labels(
+            **labels,
+            operation_type=OperationType.WORKFLOW,
+        )
+        self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, token_labels)
         if info.prompt_tokens is not None and info.prompt_tokens > 0:
-            self._exporter.increment_counter(EnterpriseTelemetryCounter.INPUT_TOKENS, info.prompt_tokens, labels)
+            self._exporter.increment_counter(EnterpriseTelemetryCounter.INPUT_TOKENS, info.prompt_tokens, token_labels)
         if info.completion_tokens is not None and info.completion_tokens > 0:
-            self._exporter.increment_counter(EnterpriseTelemetryCounter.OUTPUT_TOKENS, info.completion_tokens, labels)
+            self._exporter.increment_counter(
+                EnterpriseTelemetryCounter.OUTPUT_TOKENS, info.completion_tokens, token_labels
+            )
         invoke_from = metadata.get("triggered_from", "")
         self._exporter.increment_counter(
             EnterpriseTelemetryCounter.REQUESTS,
@@ -365,6 +372,7 @@ class EnterpriseOtelTrace:
             token_labels = self._labels(
                 **labels,
                 model_name=info.model_name or "",
+                operation_type=OperationType.NODE_EXECUTION,
             )
             self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, token_labels)
             if info.prompt_tokens is not None and info.prompt_tokens > 0:
@@ -454,7 +462,15 @@ class EnterpriseOtelTrace:
             model_provider=metadata.get("ls_provider", ""),
             model_name=metadata.get("ls_model_name", ""),
         )
-        self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, labels)
+        token_labels = self._labels(
+            **labels,
+            operation_type=OperationType.MESSAGE,
+        )
+        self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, token_labels)
+        if info.message_tokens > 0:
+            self._exporter.increment_counter(EnterpriseTelemetryCounter.INPUT_TOKENS, info.message_tokens, token_labels)
+        if info.answer_tokens > 0:
+            self._exporter.increment_counter(EnterpriseTelemetryCounter.OUTPUT_TOKENS, info.answer_tokens, token_labels)
         invoke_from = metadata.get("from_source", "")
         self._exporter.increment_counter(
             EnterpriseTelemetryCounter.REQUESTS,

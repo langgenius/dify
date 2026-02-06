@@ -27,11 +27,8 @@ from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
-<<<<<<< HEAD
-from core.ops.entities.trace_entity import TraceTaskName
+from core.ops.entities.trace_entity import TraceTaskName, OperationType
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-=======
->>>>>>> 81c62ae9a0 (feat(telemetry): add enterprise OTEL telemetry with gateway, traces, metrics, and logs)
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
@@ -209,7 +206,7 @@ class LLMGenerator:
                     tenant_id=tenant_id,
                     user_id=user_id,
                     app_id=app_id,
-                    operation_type="rule_generate",
+                    operation_type=OperationType.RULE_GENERATE,
                     instruction=instruction,
                     generated_output=generated_output,
                     llm_result=llm_result,
@@ -271,7 +268,7 @@ class LLMGenerator:
                             tenant_id=tenant_id,
                             user_id=user_id,
                             app_id=app_id,
-                            operation_type="rule_generate",
+                            operation_type=OperationType.RULE_GENERATE,
                             instruction=instruction,
                             generated_output="",
                             llm_result=llm_result,
@@ -352,7 +349,7 @@ class LLMGenerator:
                 tenant_id=tenant_id,
                 user_id=user_id,
                 app_id=app_id,
-                operation_type="rule_generate",
+                operation_type=OperationType.RULE_GENERATE,
                 instruction=instruction,
                 generated_output=str(generated_output) if generated_output else "",
                 llm_result=llm_result,
@@ -426,7 +423,7 @@ class LLMGenerator:
                 tenant_id=tenant_id,
                 user_id=user_id,
                 app_id=app_id,
-                operation_type="code_generate",
+                operation_type=OperationType.CODE_GENERATE,
                 instruction=instruction,
                 generated_output=result.get("code", ""),
                 llm_result=llm_result,
@@ -535,7 +532,7 @@ class LLMGenerator:
                 tenant_id=tenant_id,
                 user_id=user_id,
                 app_id=app_id,
-                operation_type="structured_output",
+                operation_type=OperationType.STRUCTURED_OUTPUT,
                 instruction=instruction,
                 generated_output=result.get("output", ""),
                 llm_result=llm_result,
@@ -728,27 +725,58 @@ class LLMGenerator:
         ]
         model_parameters = {"temperature": 0.4}
 
-        try:
-            response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
+        llm_result = None
+        error = None
+        result = {}
+
+        with measure_time() as timer:
+            try:
+                llm_result = model_instance.invoke_llm(
+                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
+                )
+
+                generated_raw = llm_result.message.get_text_content()
+                first_brace = generated_raw.find("{")
+                last_brace = generated_raw.rfind("}")
+                if first_brace == -1 or last_brace == -1 or last_brace < first_brace:
+                    raise ValueError(f"Could not find a valid JSON object in response: {generated_raw}")
+                json_str = generated_raw[first_brace : last_brace + 1]
+                data = json_repair.loads(json_str)
+                if not isinstance(data, dict):
+                    raise TypeError(f"Expected a JSON object, but got {type(data).__name__}")
+                result = data
+            except InvokeError as e:
+                error = str(e)
+                result = {"error": f"Failed to generate code. Error: {error}"}
+            except Exception as e:
+                logger.exception(
+                    "Failed to invoke LLM model, model: %s", json.dumps(model_config.get("name")), exc_info=True
+                )
+                error = str(e)
+                result = {"error": f"An unexpected error occurred: {str(e)}"}
+
+        if user_id:
+            generated_output = ""
+            if isinstance(result, dict):
+                for key in ["prompt", "code", "output", "modified"]:
+                    if result.get(key):
+                        generated_output = str(result[key])
+                        break
+
+            LLMGenerator._emit_prompt_generation_trace(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                app_id=app_id,
+                operation_type=OperationType.INSTRUCTION_MODIFY,
+                instruction=instruction,
+                generated_output=generated_output,
+                llm_result=llm_result,
+                model_config=model_config,
+                timer=timer,
+                error=error,
             )
 
-            generated_raw = response.message.get_text_content()
-            first_brace = generated_raw.find("{")
-            last_brace = generated_raw.rfind("}")
-            if first_brace == -1 or last_brace == -1 or last_brace < first_brace:
-                raise ValueError(f"Could not find a valid JSON object in response: {generated_raw}")
-            json_str = generated_raw[first_brace : last_brace + 1]
-            data = json_repair.loads(json_str)
-            if not isinstance(data, dict):
-                raise TypeError(f"Expected a JSON object, but got {type(data).__name__}")
-            return data
-        except InvokeError as e:
-            error = str(e)
-            return {"error": f"Failed to generate code. Error: {error}"}
-        except Exception as e:
-            logger.exception("Failed to invoke LLM model, model: %s", json.dumps(model_config.name), exc_info=True)
-            return {"error": f"An unexpected error occurred: {str(e)}"}
+        return result
 
     @classmethod
     def _emit_prompt_generation_trace(
@@ -756,7 +784,7 @@ class LLMGenerator:
         tenant_id: str,
         user_id: str,
         app_id: str | None,
-        operation_type: str,
+        operation_type: OperationType,
         instruction: str,
         generated_output: str,
         llm_result: LLMResult | None,
