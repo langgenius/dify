@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import builtins
 import logging
 from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
+from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -340,7 +342,7 @@ class PluginService:
         )
 
     @staticmethod
-    def batch_upgrade_plugins_from_marketplace(tenant_id: str) -> dict[str, list[dict]]:
+    def batch_upgrade_plugins_from_marketplace(tenant_id: str) -> dict[str, builtins.list[dict[str, Any]]]:
         """
         Batch upgrade all marketplace plugins that have updates available
 
@@ -353,7 +355,7 @@ class PluginService:
             raise ValueError("marketplace is not enabled")
 
         manager = PluginInstaller()
-        result: dict[str, list[dict]] = {
+        result: dict[str, builtins.list[dict[str, Any]]] = {
             "success": [],
             "failed": [],
             "skipped": [],
