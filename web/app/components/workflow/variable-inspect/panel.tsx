@@ -40,7 +40,8 @@ const Panel: FC = () => {
   const environmentVariables = useStore(s => s.environmentVariables)
   const currentFocusNodeId = useStore(s => s.currentFocusNodeId)
   const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
-  const [currentVarId, setCurrentVarId] = useState('')
+  // Track user's explicit variable selection
+  const [userSelectedVarId, setUserSelectedVarId] = useState<string>('')
 
   const {
     conversationVars,
@@ -53,6 +54,58 @@ const Panel: FC = () => {
     const allVars = [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars]
     return allVars.length === 0
   }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
+
+  // Compute the actual current variable ID from user selection and auto-selection logic
+  const currentVarId = useMemo(() => {
+    if (!currentFocusNodeId)
+      return ''
+
+    // Check if we need to auto-select a variable
+    const needsAutoSelect = !userSelectedVarId || (() => {
+      // Check if current variable belongs to the focused node
+      switch (currentFocusNodeId) {
+        case VarInInspectType.environment:
+          return !environmentVariables.find(v => v.id === userSelectedVarId)
+        case VarInInspectType.conversation:
+          return !conversationVars.find(v => v.id === userSelectedVarId)
+        case VarInInspectType.system:
+          return !systemVars.find(v => v.id === userSelectedVarId)
+        default: {
+          const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
+          const currentVar = targetNode?.vars.find(v => v.id === userSelectedVarId)
+          return !currentVar || !currentVar.visible
+        }
+      }
+    })()
+
+    if (!needsAutoSelect)
+      return userSelectedVarId
+
+    // Auto-select first available variable
+    switch (currentFocusNodeId) {
+      case VarInInspectType.environment:
+        if (environmentVariables.length > 0)
+          return environmentVariables[0].id
+        break
+      case VarInInspectType.conversation:
+        if (conversationVars.length > 0)
+          return conversationVars[0].id
+        break
+      case VarInInspectType.system:
+        if (systemVars.length > 0)
+          return systemVars[0].id
+        break
+      default: {
+        const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
+        const visibleVars = targetNode?.vars.filter(v => v.visible)
+        if (visibleVars?.length)
+          return visibleVars[0].id
+        break
+      }
+    }
+
+    return ''
+  }, [currentFocusNodeId, userSelectedVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
   const currentNodeInfo = useMemo(() => {
     if (!currentFocusNodeId)
@@ -139,8 +192,8 @@ const Panel: FC = () => {
 
   const handleNodeVarSelect = useCallback((node: currentVarType) => {
     setCurrentFocusNodeId(node.nodeId)
-    setCurrentVarId(node.var.id)
-  }, [setCurrentFocusNodeId, setCurrentVarId])
+    setUserSelectedVarId(node.var.id)
+  }, [setCurrentFocusNodeId])
 
   const { isLoading, schemaTypeDefinitions } = useMatchSchemaType()
   const { eventEmitter } = useEventEmitterContextContext()

@@ -135,6 +135,7 @@ const LastRun: FC<Props> = ({
         created_by={(runResult as any)?.created_by_account?.created_by || otherResultPanelProps?.created_by}
         nodeInfo={runResult as NodeTracing}
         showSteps={false}
+        nodeId={nodeId}
       />
     </div>
   )
