@@ -17,12 +17,13 @@ if TYPE_CHECKING:
     from core.workflow.entities import GraphInitParams
     from core.workflow.runtime import GraphRuntimeState
 
-MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
+DEFAULT_TEMPLATE_TRANSFORM_MAX_OUTPUT_LENGTH = 400_000
 
 
 class TemplateTransformNode(Node[TemplateTransformNodeData]):
     node_type = NodeType.TEMPLATE_TRANSFORM
     _template_renderer: Jinja2TemplateRenderer
+    _max_output_length: int
 
     def __init__(
         self,
@@ -32,6 +33,7 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
         graph_runtime_state: "GraphRuntimeState",
         *,
         template_renderer: Jinja2TemplateRenderer | None = None,
+        max_output_length: int | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -40,6 +42,10 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
             graph_runtime_state=graph_runtime_state,
         )
         self._template_renderer = template_renderer or CodeExecutorJinja2TemplateRenderer()
+
+        if max_output_length is not None and max_output_length <= 0:
+            raise ValueError("max_output_length must be a positive integer")
+        self._max_output_length = max_output_length or DEFAULT_TEMPLATE_TRANSFORM_MAX_OUTPUT_LENGTH
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -70,11 +76,11 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
         except TemplateRenderError as e:
             return NodeRunResult(inputs=variables, status=WorkflowNodeExecutionStatus.FAILED, error=str(e))
 
-        if len(rendered) > MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH:
+        if len(rendered) > self._max_output_length:
             return NodeRunResult(
                 inputs=variables,
                 status=WorkflowNodeExecutionStatus.FAILED,
-                error=f"Output length exceeds {MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH} characters",
+                error=f"Output length exceeds {self._max_output_length} characters",
             )
 
         return NodeRunResult(

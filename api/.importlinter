@@ -136,7 +136,6 @@ ignore_imports =
     core.workflow.nodes.llm.llm_utils -> models.provider
     core.workflow.nodes.llm.llm_utils -> services.credit_pool_service
     core.workflow.nodes.llm.node -> core.tools.signature
-    core.workflow.nodes.template_transform.template_transform_node -> configs
     core.workflow.nodes.tool.tool_node -> core.callback_handler.workflow_tool_callback_handler
     core.workflow.nodes.tool.tool_node -> core.tools.tool_engine
     core.workflow.nodes.tool.tool_node -> core.tools.tool_manager
