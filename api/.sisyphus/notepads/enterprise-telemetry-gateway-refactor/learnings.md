@@ -168,3 +168,84 @@ basedpyright <files>                                                    # 0 erro
 Task 3 (gateway implementation) will wire `TelemetryGateway.emit()` to call `process_enterprise_telemetry.delay()`.
 Once Task 3 completes, handlers can optionally be updated to call gateway directly instead of task.
 
+## [2026-02-06] Task 3: TelemetryGateway Implementation
+
+### Implementation Decisions
+
+**Gateway Architecture:**
+- `TelemetryGateway.emit(case, context, payload, trace_manager)` as main entry point
+- Routes based on `CASE_ROUTING[case].signal_type`:
+  - `trace` → TraceQueueManager.add_trace_task()
+  - `metric_log` → process_enterprise_telemetry.delay()
+- Feature flag `ENTERPRISE_TELEMETRY_GATEWAY_ENABLED` gates new vs legacy behavior
+
+**CE Eligibility:**
+- Trace cases with `ce_eligible=False` dropped when enterprise disabled
+- CE-eligible traces (WORKFLOW_RUN, MESSAGE_RUN) always processed
+- Enterprise-only traces (NODE_EXECUTION, DRAFT_NODE_EXECUTION, PROMPT_GENERATION) require EE
+
+**Payload Sizing:**
+- Threshold: 1MB (PAYLOAD_SIZE_THRESHOLD_BYTES)
+- Large payloads stored to `telemetry/{tenant_id}/{event_id}.json`
+- Storage failures fall back to inline payload (best-effort)
+
+**Legacy Path:**
+- When gateway disabled, mimics original TelemetryFacade behavior
+- Only processes trace cases, metric/log cases dropped
+- Imports deferred until after route check to avoid circular imports
+
+### Testing Patterns
+
+**Circular Import Workaround:**
+- `ops_trace_manager` has deep import chain causing circular imports in tests
+- Solution: `mock_ops_trace_manager` fixture patches `sys.modules` before import
+- Trace routing tests require fixture; metric/log tests don't
+
+**Mock Parameter Naming:**
+- Prefixed unused mock params with `_` (e.g., `_mock_ee_enabled`)
+- Ruff PT019 warnings are style hints, not errors
+
+**Coverage:**
+- 38 tests total
+- Feature flag on/off paths
+- Trace routing (CE-eligible and enterprise-only)
+- Metric/log routing
+- Large payload storage and fallback
+- Legacy path behavior
+
+### Files Modified/Created
+
+- `enterprise/telemetry/gateway.py` (350 lines, expanded from 27)
+  - Added TelemetryGateway class
+  - Added CASE_TO_TRACE_TASK_NAME mapping
+  - Added is_gateway_enabled() and _is_enterprise_telemetry_enabled()
+  - Added module-level emit() convenience function
+- `tests/unit_tests/enterprise/telemetry/test_gateway.py` (NEW, 422 lines, 38 tests)
+
+### Verification
+
+```bash
+pytest tests/unit_tests/enterprise/telemetry/test_gateway.py -v  # 38 passed
+ruff check --fix <files>                                         # 22 PT019 warnings (style)
+basedpyright <files>                                             # 0 errors, 0 warnings
+```
+
+### Key Insights
+
+**Import Deferral:**
+- Legacy path must defer `ops_trace_manager` import until after route check
+- Otherwise metric/log cases trigger circular import chain
+- Pattern: check signal_type first, then import if needed
+
+**TelemetryCase to TraceTaskName Mapping:**
+- WORKFLOW_RUN → "workflow"
+- MESSAGE_RUN → "message"
+- NODE_EXECUTION → "node_execution"
+- DRAFT_NODE_EXECUTION → "draft_node_execution"
+- PROMPT_GENERATION → "prompt_generation"
+
+**Feature Flag Design:**
+- Default OFF for safe rollout
+- Env var: ENTERPRISE_TELEMETRY_GATEWAY_ENABLED
+- Truthy values: "true", "1", "yes" (case-insensitive)
+
