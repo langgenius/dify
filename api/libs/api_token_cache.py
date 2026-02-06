@@ -8,7 +8,7 @@ keeping them out of the controller layer.
 
 import logging
 from datetime import datetime
-from typing import Any, cast
+from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy import select

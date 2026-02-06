@@ -6,8 +6,6 @@ import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from libs.api_token_cache import (
     CACHE_KEY_PREFIX,
     CACHE_NULL_TTL_SECONDS,
