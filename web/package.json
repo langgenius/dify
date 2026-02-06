@@ -54,7 +54,7 @@
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
     "preinstall": "npx only-allow pnpm",
-    "analyze": "ANALYZE=true pnpm build",
+    "analyze": "next experimental-analyze",
     "knip": "knip"
   },
   "dependencies": {
@@ -170,7 +170,6 @@
     "@eslint-react/eslint-plugin": "2.9.4",
     "@mdx-js/loader": "3.1.1",
     "@mdx-js/react": "3.1.1",
-    "@next/bundle-analyzer": "16.1.5",
     "@next/eslint-plugin-next": "16.1.6",
     "@next/mdx": "16.1.5",
     "@rgrove/parse-xml": "4.2.0",

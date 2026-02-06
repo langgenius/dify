@@ -1,5 +1,4 @@
 import type { NextConfig } from 'next'
-import withBundleAnalyzerInit from '@next/bundle-analyzer'
 import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { env } from './env'
@@ -16,9 +15,6 @@ const withMDX = createMDX({
     // If you use `MDXProvider`, uncomment the following line.
     // providerImportSource: "@mdx-js/react",
   },
-})
-const withBundleAnalyzer = withBundleAnalyzerInit({
-  enabled: env.ANALYZE ?? false,
 })
 
 // the default url to prevent parse url error when running jest
@@ -72,4 +68,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default withBundleAnalyzer(withMDX(nextConfig))
+export default withMDX(nextConfig)

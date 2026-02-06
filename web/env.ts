@@ -137,7 +137,6 @@ const clientSchema = {
 
 export const env = createEnv({
   server: {
-    ANALYZE: coercedBoolean.default(false),
     /**
      * Maximum length of segmentation tokens for indexing
      */
