@@ -1155,6 +1155,16 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=0,
     )
 
+    # API token last_used_at batch update
+    ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK: bool = Field(
+        description="Enable periodic batch update of API token last_used_at timestamps",
+        default=True,
+    )
+    API_TOKEN_LAST_USED_UPDATE_INTERVAL: int = Field(
+        description="Interval in minutes for batch updating API token last_used_at (default 30)",
+        default=30,
+    )
+
     # Trigger provider refresh (simple version)
     ENABLE_TRIGGER_PROVIDER_REFRESH_TASK: bool = Field(
         description="Enable trigger provider refresh poller",
