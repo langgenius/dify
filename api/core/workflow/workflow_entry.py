@@ -12,6 +12,7 @@ from core.app.workflow.node_factory import DifyNodeFactory
 from core.file.models import File
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.repositories import Repositories
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
@@ -135,6 +136,7 @@ class WorkflowEntry:
         user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
+        repositories: Repositories | None = None,
     ) -> tuple[Node, Generator[GraphNodeEventBase, None, None]]:
         """
         Single step run workflow node
@@ -142,6 +144,7 @@ class WorkflowEntry:
         :param node_id: node id
         :param user_id: user id
         :param user_inputs: user inputs
+        :param repositories: Optional repository container for dependency injection
         :return:
         """
         node_config = workflow.get_node_config_by_id(node_id)
@@ -149,6 +152,8 @@ class WorkflowEntry:
 
         # Get node type
         node_type = NodeType(node_config_data["type"])
+
+        # init repositories for nodes that require data access
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
@@ -160,6 +165,7 @@ class WorkflowEntry:
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
             call_depth=0,
+            repositories=repositories,
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 

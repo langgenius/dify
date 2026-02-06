@@ -11,8 +11,11 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.app.workflow.node_factory import DifyNodeFactory
+from core.db.session_factory import session_factory
+from core.repositories.sqlalchemy_knowledge_repository import SQLAlchemyKnowledgeRepository
 from core.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from core.workflow.entities.graph_init_params import GraphInitParams
+from core.workflow.entities.repositories import Repositories
 from core.workflow.enums import WorkflowType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphEngineEvent, GraphRunFailedEvent
@@ -98,6 +101,11 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         db.session.close()
 
+        repositories = Repositories(
+            knowledge_repo=SQLAlchemyKnowledgeRepository(session_factory.get_session_maker()),
+            workflow_execution_repo=self._workflow_execution_repository,
+        )
+
         # if only single iteration run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             # Handle single iteration or single loop run
@@ -105,6 +113,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow=workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
+                repositories=repositories,
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -157,6 +166,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow=workflow,
                 user_from=user_from,
                 invoke_from=invoke_from,
+                repositories=repositories,
             )
 
         # RUN WORKFLOW
@@ -220,6 +230,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         start_node_id: str | None = None,
         user_from: UserFrom = UserFrom.ACCOUNT,
         invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
+        repositories: Repositories | None = None,
     ) -> Graph:
         """
         Init pipeline graph
@@ -265,6 +276,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             user_from=user_from,
             invoke_from=invoke_from,
             call_depth=0,
+            repositories=repositories,
         )
 
         node_factory = DifyNodeFactory(

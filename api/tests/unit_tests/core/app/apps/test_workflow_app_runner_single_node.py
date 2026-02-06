@@ -98,6 +98,7 @@ def test_run_uses_single_node_execution_branch(
         workflow=workflow,
         single_iteration_run=single_iteration_run,
         single_loop_run=single_loop_run,
+        repositories=None,
     )
     init_graph.assert_not_called()
 

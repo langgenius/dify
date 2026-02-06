@@ -430,6 +430,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             user_from=self.user_from.value,
             invoke_from=self.invoke_from.value,
             call_depth=self.workflow_call_depth,
+            repositories=self.graph_init_params.repositories,
         )
 
         # Create a new GraphRuntimeState for this iteration

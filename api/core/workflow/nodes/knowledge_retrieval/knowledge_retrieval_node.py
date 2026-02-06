@@ -2,12 +2,8 @@ import json
 import logging
 import re
 import time
-from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
-
-from sqlalchemy import and_, func, or_, select
-from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -51,10 +47,9 @@ from core.workflow.nodes.knowledge_retrieval.template_prompts import (
 from core.workflow.nodes.llm.entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, ModelConfig
 from core.workflow.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
 from core.workflow.nodes.llm.node import LLMNode
-from extensions.ext_database import db
+from core.workflow.repositories.knowledge_repository import KnowledgeRepository
 from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
-from models.dataset import Dataset, DatasetMetadata, Document, RateLimitLog
 from services.feature_service import FeatureService
 
 from .entities import KnowledgeRetrievalNodeData
@@ -120,6 +115,21 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
     def version(cls):
         return "1"
 
+    def _get_knowledge_repo(self) -> KnowledgeRepository:
+        repositories = self.graph_init_params.repositories
+        if repositories is None:
+            raise KnowledgeRetrievalNodeError("Knowledge repository is not configured.")
+        return repositories.knowledge_repo
+
+    def _close_repository_session(self) -> None:
+        repositories = self.graph_init_params.repositories
+        if repositories is None:
+            return
+        try:
+            repositories.knowledge_repo.close_session()
+        except Exception:
+            logger.exception("Failed to close knowledge repository session")
+
     def _run(self) -> NodeRunResult:
         if not self._node_data.query_variable_selector and not self._node_data.query_attachment_selector:
             return NodeRunResult(
@@ -156,6 +166,8 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             else:
                 variables["attachments"] = [variable.value]
 
+        knowledge_repo = self._get_knowledge_repo()
+
         # TODO(-LAN-): Move this check outside.
         # check rate limit
         knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(self.tenant_id)
@@ -166,14 +178,18 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             redis_client.zremrangebyscore(key, 0, current_time - 60000)
             request_count = redis_client.zcard(key)
             if request_count > knowledge_rate_limit.limit:
-                with sessionmaker(db.engine).begin() as session:
-                    # add ratelimit record
-                    rate_limit_log = RateLimitLog(
+                # add ratelimit record
+                try:
+                    knowledge_repo.add_rate_limit_log(
                         tenant_id=self.tenant_id,
                         subscription_plan=knowledge_rate_limit.subscription_plan,
                         operation="knowledge",
                     )
-                    session.add(rate_limit_log)
+                except Exception:
+                    logger.exception(
+                        "Failed to record knowledge rate limit log for tenant_id=%s",
+                        self.tenant_id,
+                    )
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=variables,
@@ -200,7 +216,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             )
 
         except KnowledgeRetrievalNodeError as e:
-            logger.warning("Error when running knowledge retrieval node")
+            logger.warning("Knowledge retrieval failed: %s", e, exc_info=True)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,
@@ -210,6 +226,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             )
         # Temporary handle all exceptions from DatasetRetrieval class here.
         except Exception as e:
+            logger.exception("Unhandled error when running knowledge retrieval node")
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,
@@ -218,13 +235,14 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 llm_usage=usage,
             )
         finally:
-            db.session.close()
+            self._close_repository_session()
 
     def _fetch_dataset_retriever(
         self, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
     ) -> tuple[list[dict[str, Any]], LLMUsage]:
         usage = LLMUsage.empty_usage()
         available_datasets = []
+        knowledge_repo = self._get_knowledge_repo()
         dataset_ids = node_data.dataset_ids
         query = variables.get("query")
         attachments = variables.get("attachments")
@@ -232,29 +250,10 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         metadata_condition = None
         metadata_usage = LLMUsage.empty_usage()
         # Subquery: Count the number of available documents for each dataset
-        subquery = (
-            db.session.query(Document.dataset_id, func.count(Document.id).label("available_document_count"))
-            .where(
-                Document.indexing_status == "completed",
-                Document.enabled == True,
-                Document.archived == False,
-                Document.dataset_id.in_(dataset_ids),
-            )
-            .group_by(Document.dataset_id)
-            .having(func.count(Document.id) > 0)
-            .subquery()
-        )
-
-        results = (
-            db.session.query(Dataset)
-            .outerjoin(subquery, Dataset.id == subquery.c.dataset_id)
-            .where(Dataset.tenant_id == self.tenant_id, Dataset.id.in_(dataset_ids))
-            .where((subquery.c.available_document_count > 0) | (Dataset.provider == "external"))
-            .all()
-        )
+        results = knowledge_repo.get_datasets_with_available_documents(self.tenant_id, dataset_ids)
 
         # avoid blocking at retrieval
-        db.session.close()
+        knowledge_repo.close_session()
 
         for dataset in results:
             # pass if dataset is not available
@@ -379,22 +378,17 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             if records:
                 for record in records:
                     segment = record.segment
-                    dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()  # type: ignore
-                    stmt = select(Document).where(
-                        Document.id == segment.document_id,
-                        Document.enabled == True,
-                        Document.archived == False,
-                    )
-                    document = db.session.scalar(stmt)
-                    if dataset and document:
+                    dataset_entity = knowledge_repo.get_dataset(self.tenant_id, segment.dataset_id)
+                    document_entity = knowledge_repo.get_document(self.tenant_id, segment.document_id)
+                    if dataset_entity and document_entity:
                         source = {
                             "metadata": {
                                 "_source": "knowledge",
-                                "dataset_id": dataset.id,
-                                "dataset_name": dataset.name,
-                                "document_id": document.id,
-                                "document_name": document.name,
-                                "data_source_type": document.data_source_type,
+                                "dataset_id": dataset_entity.id,
+                                "dataset_name": dataset_entity.name,
+                                "document_id": document_entity.id,
+                                "document_name": document_entity.name,
+                                "data_source_type": document_entity.data_source_type,
                                 "segment_id": segment.id,
                                 "retriever_from": "workflow",
                                 "score": record.score or 0.0,
@@ -411,9 +405,9 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                                 "segment_word_count": segment.word_count,
                                 "segment_position": segment.position,
                                 "segment_index_node_hash": segment.index_node_hash,
-                                "doc_metadata": document.doc_metadata,
+                                "doc_metadata": document_entity.doc_metadata,
                             },
-                            "title": document.name,
+                            "title": document_entity.name,
                             "files": list(record.files) if record.files else None,
                         }
                         if segment.answer:
@@ -446,13 +440,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
     ) -> tuple[dict[str, list[str]] | None, MetadataCondition | None, LLMUsage]:
         usage = LLMUsage.empty_usage()
-        document_query = db.session.query(Document).where(
-            Document.dataset_id.in_(dataset_ids),
-            Document.indexing_status == "completed",
-            Document.enabled == True,
-            Document.archived == False,
-        )
-        filters: list[Any] = []
+        # filters logic removed
         metadata_condition = None
         match node_data.metadata_filtering_mode:
             case "disabled":
@@ -464,19 +452,12 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 usage = self._merge_usage(usage, automatic_usage)
                 if automatic_metadata_filters:
                     conditions = []
-                    for sequence, filter in enumerate(automatic_metadata_filters):
-                        DatasetRetrieval.process_metadata_filter_func(
-                            sequence,
-                            filter.get("condition", ""),
-                            filter.get("metadata_name", ""),
-                            filter.get("value"),
-                            filters,
-                        )
+                    for filter_item in automatic_metadata_filters:
                         conditions.append(
                             Condition(
-                                name=filter.get("metadata_name"),  # type: ignore
-                                comparison_operator=filter.get("condition"),  # type: ignore
-                                value=filter.get("value"),
+                                name=filter_item.get("metadata_name"),  # type: ignore
+                                comparison_operator=filter_item.get("condition"),  # type: ignore
+                                value=filter_item.get("value"),
                             )
                         )
                     metadata_condition = MetadataCondition(
@@ -488,7 +469,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             case "manual":
                 if node_data.metadata_filtering_conditions:
                     conditions = []
-                    for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):  # type: ignore
+                    for condition in node_data.metadata_filtering_conditions.conditions:  # type: ignore
                         metadata_name = condition.name
                         expected_value = condition.value
                         if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
@@ -509,32 +490,18 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                                 value=expected_value,
                             )
                         )
-                        filters = DatasetRetrieval.process_metadata_filter_func(
-                            sequence,
-                            condition.comparison_operator,
-                            metadata_name,
-                            expected_value,
-                            filters,
-                        )
                     metadata_condition = MetadataCondition(
                         logical_operator=node_data.metadata_filtering_conditions.logical_operator,
                         conditions=conditions,
                     )
             case _:
                 raise ValueError("Invalid metadata filtering mode")
-        if filters:
-            if (
-                node_data.metadata_filtering_conditions
-                and node_data.metadata_filtering_conditions.logical_operator == "and"
-            ):
-                document_query = document_query.where(and_(*filters))
-            else:
-                document_query = document_query.where(or_(*filters))
-        documents = document_query.all()
-        # group by dataset_id
-        metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
-        for document in documents:
-            metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore
+        knowledge_repo = self._get_knowledge_repo()
+        metadata_filter_document_ids = knowledge_repo.get_document_ids_by_filtering(
+            self.tenant_id,
+            dataset_ids,
+            metadata_condition,
+        )
         return metadata_filter_document_ids, metadata_condition, usage
 
     def _automatic_metadata_filter_func(
@@ -542,8 +509,8 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
     ) -> tuple[list[dict[str, Any]], LLMUsage]:
         usage = LLMUsage.empty_usage()
         # get all metadata field
-        stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
-        metadata_fields = db.session.scalars(stmt).all()
+        knowledge_repo = self._get_knowledge_repo()
+        metadata_fields = knowledge_repo.get_metadata_fields(self.tenant_id, dataset_ids)
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
         if node_data.metadata_model_config is None:
             raise ValueError("metadata_model_config is required")
