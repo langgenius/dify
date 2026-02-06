@@ -1,5 +1,8 @@
+import type { ReactNode } from 'react'
 import type { CustomCollectionBackend } from '../types'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthType } from '../types'
 import CustomCreateCard from './custom-create-card'
@@ -78,6 +81,17 @@ vi.mock('@/app/components/base/toast', () => ({
   },
 }))
 
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return ({ children }: { children: ReactNode }) =>
+    React.createElement(QueryClientProvider, { client: queryClient }, children)
+}
+
+const renderWithProvider = (ui: React.ReactElement) =>
+  render(ui, { wrapper: createWrapper() })
+
 describe('CustomCreateCard', () => {
   const mockOnRefreshData = vi.fn()
 
@@ -93,7 +107,7 @@ describe('CustomCreateCard', () => {
     it('should render card when user is workspace manager', () => {
       mockIsWorkspaceManager = true
 
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Card should be visible with create text
       expect(screen.getByText(/createCustomTool/i)).toBeInTheDocument()
@@ -102,7 +116,7 @@ describe('CustomCreateCard', () => {
     it('should not render anything when user is not workspace manager', () => {
       mockIsWorkspaceManager = false
 
-      const { container } = render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      const { container } = renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Container should be empty (firstChild is null when nothing renders)
       expect(container.firstChild).toBeNull()
@@ -112,13 +126,13 @@ describe('CustomCreateCard', () => {
   // Tests for card rendering and styling
   describe('Card Rendering', () => {
     it('should render without crashing', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       expect(screen.getByText(/createCustomTool/i)).toBeInTheDocument()
     })
 
     it('should render add icon', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // RiAddCircleFill icon should be present
       const iconContainer = document.querySelector('.h-10.w-10')
@@ -126,7 +140,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should have proper card styling', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       const card = document.querySelector('.min-h-\\[135px\\]')
       expect(card).toBeInTheDocument()
@@ -137,7 +151,7 @@ describe('CustomCreateCard', () => {
   // Tests for modal interaction
   describe('Modal Interaction', () => {
     it('should open modal when card is clicked', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Click on the card area (the group div)
       const cardClickArea = document.querySelector('.group.grow')
@@ -148,7 +162,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should pass null payload to modal', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       const cardClickArea = document.querySelector('.group.grow')
       fireEvent.click(cardClickArea!)
@@ -157,7 +171,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should close modal when onHide is called', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
       const cardClickArea = document.querySelector('.group.grow')
@@ -173,7 +187,7 @@ describe('CustomCreateCard', () => {
   // Tests for custom collection creation
   describe('Custom Collection Creation', () => {
     it('should call createCustomCollection when form is submitted', async () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
       const cardClickArea = document.querySelector('.group.grow')
@@ -188,7 +202,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should show success toast after successful creation', async () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
       const cardClickArea = document.querySelector('.group.grow')
@@ -206,7 +220,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should close modal after successful creation', async () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
       const cardClickArea = document.querySelector('.group.grow')
@@ -222,7 +236,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should call onRefreshData after successful creation', async () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
       const cardClickArea = document.querySelector('.group.grow')
@@ -237,7 +251,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should pass correct data to createCustomCollection', async () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
       const cardClickArea = document.querySelector('.group.grow')
@@ -262,7 +276,7 @@ describe('CustomCreateCard', () => {
     it('should call createCustomCollection and handle successful response', async () => {
       mockCreateCustomCollection.mockResolvedValue({ success: true })
 
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
       const cardClickArea = document.querySelector('.group.grow')
@@ -283,7 +297,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should not call onRefreshData if modal is just closed without submitting', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
       const cardClickArea = document.querySelector('.group.grow')
@@ -296,7 +310,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should handle rapid open/close of modal', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       const cardClickArea = document.querySelector('.group.grow')
 
@@ -312,14 +326,14 @@ describe('CustomCreateCard', () => {
   // Tests for hover styling
   describe('Hover Styling', () => {
     it('should have hover styles on card', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       const card = document.querySelector('.transition-all.duration-200')
       expect(card).toBeInTheDocument()
     })
 
     it('should have group hover styles on icon container', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+      renderWithProvider(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       const iconContainer = document.querySelector('.group-hover\\:border-state-accent-hover-alt')
       expect(iconContainer).toBeInTheDocument()

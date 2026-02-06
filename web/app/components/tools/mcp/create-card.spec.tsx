@@ -13,6 +13,7 @@ vi.mock('@/service/use-tools', () => ({
   useCreateMCP: () => ({
     mutateAsync: mockCreateMCP,
   }),
+  useInvalidateAllMCPTools: () => vi.fn(),
 }))
 
 // Mock the MCP Modal

@@ -33,6 +33,7 @@ vi.mock('@/service/use-tools', () => ({
     isFetching: mockIsFetching,
   }),
   useInvalidateMCPTools: () => mockInvalidateMCPTools,
+  useInvalidateAllMCPTools: () => vi.fn(),
   useUpdateMCPTools: () => ({
     mutateAsync: mockUpdateTools,
     isPending: mockIsUpdating,
