@@ -14,7 +14,6 @@ from sqlalchemy.orm import sessionmaker
 from configs import dify_config
 from core.db.session_factory import session_factory
 from extensions.ext_database import db
-from services.api_token_service import ApiTokenCache
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from models import (
     ApiToken,
@@ -49,6 +48,7 @@ from models.workflow import (
     WorkflowArchiveLog,
 )
 from repositories.factory import DifyAPIRepositoryFactory
+from services.api_token_service import ApiTokenCache
 
 logger = logging.getLogger(__name__)
 

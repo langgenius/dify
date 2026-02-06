@@ -6,11 +6,11 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
-from services.api_token_service import ApiTokenCache
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
 from models.model import ApiToken, App
+from services.api_token_service import ApiTokenCache
 
 from . import console_ns
 from .wraps import account_initialization_required, edit_permission_required, setup_required

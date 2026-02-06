@@ -13,8 +13,8 @@ from unittest.mock import patch
 import pytest
 
 from extensions.ext_redis import redis_client
-from services.api_token_service import ApiTokenCache, CachedApiToken
 from models.model import ApiToken
+from services.api_token_service import ApiTokenCache, CachedApiToken
 
 
 class TestApiTokenCacheRedisIntegration:

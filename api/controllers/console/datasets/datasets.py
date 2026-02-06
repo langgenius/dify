@@ -51,11 +51,11 @@ from fields.dataset_fields import (
     weighted_score_fields,
 )
 from fields.document_fields import document_status_fields
-from services.api_token_service import ApiTokenCache
 from libs.login import current_account_with_tenant, login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
+from services.api_token_service import ApiTokenCache
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
 # Register models for flask_restx to avoid dict type issues in Swagger
