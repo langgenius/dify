@@ -616,6 +616,35 @@ describe('Model Config Utilities', () => {
       expect((result[0] as any)['text-input']?.required).toBe(true)
       expect((result[1] as any)['text-input']?.required).toBe(false)
     })
+
+    /**
+     * Test that default values are preserved
+     */
+    it('should preserve default values', () => {
+      const promptVariables: PromptVariable[] = [
+        {
+          key: 'var1',
+          name: 'Var 1',
+          required: true,
+          type: 'string',
+          options: [],
+          default: 'default_value',
+        },
+        {
+          key: 'var2',
+          name: 'Var 2',
+          required: true,
+          type: 'number',
+          options: [],
+          default: 123,
+        },
+      ]
+
+      const result = promptVariablesToUserInputsForm(promptVariables)
+
+      expect((result[0] as any)['text-input']?.default).toBe('default_value')
+      expect((result[1] as any).number?.default).toBe(123)
+    })
   })
 
   describe('formatBooleanInputs', () => {

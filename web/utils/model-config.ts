@@ -146,7 +146,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           variable: item.key,
           required: item.required !== false, // default true
           max_length: item.max_length,
-          default: '',
+          default: item.default || '',
           hide: item.hide,
         },
       } as any)
@@ -158,7 +158,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           label: item.name,
           variable: item.key,
           required: item.required !== false, // default true
-          default: '',
+          default: item.default != null ? item.default : '',
           hide: item.hide,
         },
       } as any)
