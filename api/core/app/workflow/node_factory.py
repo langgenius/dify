@@ -47,6 +47,7 @@ class DifyNodeFactory(NodeFactory):
         code_providers: Sequence[type[CodeNodeProvider]] | None = None,
         code_limits: CodeNodeLimits | None = None,
         template_renderer: Jinja2TemplateRenderer | None = None,
+        template_transform_max_output_length: int | None = None,
         http_request_http_client: HttpClientProtocol | None = None,
         http_request_tool_file_manager_factory: Callable[[], ToolFileManager] = ToolFileManager,
         http_request_file_manager: FileManagerProtocol | None = None,
@@ -68,6 +69,9 @@ class DifyNodeFactory(NodeFactory):
             max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
         )
         self._template_renderer = template_renderer or CodeExecutorJinja2TemplateRenderer()
+        self._template_transform_max_output_length = (
+            template_transform_max_output_length or dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
+        )
         self._http_request_http_client = http_request_http_client or ssrf_proxy
         self._http_request_tool_file_manager_factory = http_request_tool_file_manager_factory
         self._http_request_file_manager = http_request_file_manager or file_manager
@@ -122,6 +126,7 @@ class DifyNodeFactory(NodeFactory):
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 template_renderer=self._template_renderer,
+                max_output_length=self._template_transform_max_output_length,
             )
 
         if node_type == NodeType.HTTP_REQUEST:
