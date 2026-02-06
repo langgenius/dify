@@ -1,6 +1,7 @@
 'use client'
 
 import type { OnMount } from '@monaco-editor/react'
+import type { SkillFileDataMode } from './hooks/use-skill-file-data'
 import type { AppAssetTreeView } from '@/types/app-asset'
 import { loader } from '@monaco-editor/react'
 import isDeepEqual from 'fast-deep-equal'
@@ -20,6 +21,7 @@ import { START_TAB_ID } from './constants'
 import CodeFileEditor from './editor/code-file-editor'
 import MarkdownFileEditor from './editor/markdown-file-editor'
 import { useSkillSaveManager } from './hooks/skill-save-context'
+import { useFileNodeViewState } from './hooks/use-file-node-view-state'
 import { useFileTypeInfo } from './hooks/use-file-type-info'
 import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
 import { useSkillFileData } from './hooks/use-skill-file-data'
@@ -69,7 +71,12 @@ const FileContentPanel = () => {
   const activeTabId = useStore(s => s.activeTabId)
   const editorAutoFocusFileId = useStore(s => s.editorAutoFocusFileId)
   const storeApi = useWorkflowStore()
-  const { data: nodeMap } = useSkillAssetNodeMap()
+  const {
+    data: nodeMap,
+    isLoading: isNodeMapLoading,
+    isFetching: isNodeMapFetching,
+    isFetched: isNodeMapFetched,
+  } = useSkillAssetNodeMap()
 
   const isStartTab = activeTabId === START_TAB_ID
   const fileTabId = isStartTab ? null : activeTabId
@@ -80,10 +87,23 @@ const FileContentPanel = () => {
 
   const currentFileNode = fileTabId ? nodeMap?.get(fileTabId) : undefined
   const shouldAutoFocusEditor = Boolean(fileTabId && editorAutoFocusFileId === fileTabId)
+  const fileNodeViewState = useFileNodeViewState({
+    fileTabId,
+    hasCurrentFileNode: Boolean(currentFileNode),
+    isNodeMapLoading,
+    isNodeMapFetching,
+    isNodeMapFetched,
+  })
+  const isNodeReady = fileNodeViewState === 'ready'
 
-  const { isMarkdown, isCodeOrText, isImage, isVideo, isPdf, isSQLite, isEditable, isPreviewable } = useFileTypeInfo(currentFileNode)
+  const { isMarkdown, isCodeOrText, isImage, isVideo, isPdf, isSQLite, isEditable, isPreviewable } = useFileTypeInfo(isNodeReady ? currentFileNode : undefined)
+  const fileDataMode: SkillFileDataMode = !fileTabId || !isNodeReady
+    ? 'none'
+    : isEditable
+      ? 'content'
+      : 'download'
 
-  const { fileContent, downloadUrlData, isLoading, error } = useSkillFileData(appId, fileTabId, isEditable)
+  const { fileContent, downloadUrlData, isLoading, error } = useSkillFileData(appId, fileTabId, fileDataMode)
 
   const originalContent = fileContent?.content ?? ''
   const currentContent = draftContent !== undefined ? draftContent : originalContent
@@ -241,6 +261,24 @@ const FileContentPanel = () => {
       <div className="flex h-full w-full items-center justify-center bg-components-panel-bg text-text-tertiary">
         <span className="system-sm-regular">
           {t('skillSidebar.empty')}
+        </span>
+      </div>
+    )
+  }
+
+  if (fileNodeViewState === 'resolving') {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-components-panel-bg">
+        <Loading type="area" />
+      </div>
+    )
+  }
+
+  if (fileNodeViewState === 'missing') {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-components-panel-bg text-text-tertiary">
+        <span className="system-sm-regular">
+          {t('skillSidebar.loadError')}
         </span>
       </div>
     )
