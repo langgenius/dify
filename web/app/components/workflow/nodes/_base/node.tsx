@@ -32,6 +32,7 @@ import {
   NodeRunningStatus,
 } from '@/app/components/workflow/types'
 import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
+import { useAllWorkflowTools } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
@@ -67,6 +68,16 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)
+  const { data: workflowTools } = useAllWorkflowTools()
+
+  // Get the latest provider name for workflow tools
+  const displayTitle = useMemo(() => {
+    if (data.type === BlockEnum.Tool && data.provider_type === ToolTypeEnum.Workflow) {
+      const latestTool = workflowTools?.find(tool => tool.id === data.provider_id)
+      return latestTool?.name || data.title
+    }
+    return data.title
+  }, [data.type, data.provider_type, data.provider_id, data.title, workflowTools])
 
   useEffect(() => {
     if (nodeRef.current && data.selected && data.isInIteration) {
@@ -250,11 +261,11 @@ const BaseNode: FC<BaseNodeProps> = ({
             toolIcon={toolIcon}
           />
           <div
-            title={data.title}
+            title={displayTitle}
             className="system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary"
           >
             <div>
-              {data.title}
+              {displayTitle}
             </div>
             {
               data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (

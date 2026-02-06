@@ -11,7 +11,7 @@ from typing import Any, Literal, cast
 
 import sqlalchemy as sa
 from redis.exceptions import LockNotOwnedError
-from sqlalchemy import exists, func, select
+from sqlalchemy import delete, exists, func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -1699,8 +1699,8 @@ class DocumentService:
         if dataset.doc_form is not None:
             batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
-        for document in documents:
-            db.session.delete(document)
+        document_delete_stmt = delete(Document).where(Document.id.in_(document_ids))
+        db.session.execute(document_delete_stmt)
         db.session.commit()
 
     @staticmethod
