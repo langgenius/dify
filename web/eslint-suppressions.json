@@ -3141,14 +3141,6 @@
       "count": 1
     }
   },
-  "app/components/share/text-generation/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 8
-    }
-  },
   "app/components/share/text-generation/menu-dropdown.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -3180,14 +3172,6 @@
   "app/components/share/text-generation/run-batch/csv-reader/index.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/share/text-generation/run-once/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "app/components/share/utils.ts": {
