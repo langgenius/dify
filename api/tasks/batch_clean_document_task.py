@@ -40,8 +40,12 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
     total_image_upload_file_ids: list[str] = []
 
     try:
-        # ============ Step 1: Query segment and file data (short read-only transaction) ============
+        # ============ Step 1: Query data (short read-only transaction) ============
         with session_factory.create_session() as session:
+            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+            if not dataset:
+                raise Exception("Document has no dataset")
+
             # Get segments info
             segments = session.scalars(
                 select(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))
@@ -92,10 +96,14 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
         # ============ Step 3: Delete metadata binding (separate short transaction) ============
         try:
             with session_factory.create_session() as session:
-                deleted_count = session.query(DatasetMetadataBinding).where(
-                    DatasetMetadataBinding.dataset_id == dataset_id,
-                    DatasetMetadataBinding.document_id.in_(document_ids),
-                ).delete(synchronize_session=False)
+                deleted_count = (
+                    session.query(DatasetMetadataBinding)
+                    .where(
+                        DatasetMetadataBinding.dataset_id == dataset_id,
+                        DatasetMetadataBinding.document_id.in_(document_ids),
+                    )
+                    .delete(synchronize_session=False)
+                )
                 session.commit()
                 logger.debug("Deleted %d metadata bindings for dataset_id: %s", deleted_count, dataset_id)
         except Exception:
