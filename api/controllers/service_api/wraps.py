@@ -16,7 +16,7 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.api_token_cache import ApiTokenCache
+from libs.api_token_cache import ApiTokenCache, CachedApiToken
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
@@ -352,7 +352,7 @@ def _query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
         return api_token
 
 
-def _fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiToken:
+def _fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiToken | CachedApiToken:
     """
     Fetch token from DB with single-flight pattern using Redis lock.
 
