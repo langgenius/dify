@@ -363,6 +363,71 @@ Chat applications support session persistence, allowing previous chat history to
 ---
 
 <Heading
+  url='/end-users/:end_user_id'
+  method='GET'
+  title='Get End User'
+  name='#end-user'
+/>
+<Row>
+  <Col>
+    Retrieve an end user by ID.
+
+    This is useful when other APIs return an end-user ID (e.g. `created_by` from File Upload).
+
+    ### Path Parameters
+    - `end_user_id` (uuid) Required
+      End user ID.
+
+    ### Response
+    Returns an EndUser object.
+    - `id` (uuid) ID
+    - `tenant_id` (uuid) Tenant ID
+    - `app_id` (uuid) App ID
+    - `type` (string) End user type
+    - `external_user_id` (string) External user ID
+    - `name` (string) Name
+    - `is_anonymous` (boolean) Whether anonymous
+    - `session_id` (string) Session ID
+    - `created_at` (string) ISO 8601 datetime
+    - `updated_at` (string) ISO 8601 datetime
+
+    ### Errors
+    - 404, `end_user_not_found`, end user not found
+    - 500, internal server error
+
+  </Col>
+  <Col sticky>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/end-users/:end_user_id"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/end-users/6ad1ab0a-73ff-4ac1-b9e4-cdb312f71f13' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "6ad1ab0a-73ff-4ac1-b9e4-cdb312f71f13",
+      "tenant_id": "8c0f3f3a-66b0-4b55-a0bf-8b8e0d6aee7d",
+      "app_id": "6c8c3f41-2c6f-4e1b-8f4f-7f11c8f2ad2a",
+      "type": "service_api",
+      "external_user_id": "abc-123",
+      "name": "Alice",
+      "is_anonymous": false,
+      "session_id": "abc-123",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
   url='/files/:file_id/preview'
   method='GET'
   title='File Preview'
