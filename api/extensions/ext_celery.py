@@ -189,8 +189,7 @@ def init_app(app: DifyApp) -> Celery:
         imports.append("schedule.update_api_token_last_used_task")
         beat_schedule["batch_update_api_token_last_used"] = {
             "task": "schedule.update_api_token_last_used_task.batch_update_api_token_last_used",
-            # "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),
-            "schedule": timedelta(minutes=2),
+            "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),
         }
 
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
