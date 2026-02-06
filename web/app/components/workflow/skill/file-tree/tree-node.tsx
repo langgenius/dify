@@ -103,7 +103,7 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
         hasContextMenu && !isSelected && 'bg-state-base-hover',
         isDragOver && 'bg-state-accent-hover ring-1 ring-inset ring-state-accent-solid',
         isBlinking && 'animate-drag-blink',
-        isCut && 'opacity-50',
+        (isCut || node.isDragging) && 'opacity-50',
       )}
       onKeyDown={handleKeyDown}
       onContextMenu={handleContextMenu}
