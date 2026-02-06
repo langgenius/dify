@@ -1113,6 +1113,7 @@
   "skillEditor.authorizationBadge": "Auth",
   "skillEditor.authorizationRequired": "Authorization required before use.",
   "skillEditor.fileNotFound": "The file does not exist",
+  "skillEditor.folderNotFound": "The folder does not exist",
   "skillEditor.openInSkillEditor": "Open in Skill Editor",
   "skillEditor.previewUnavailable": "Preview unavailable",
   "skillEditor.referenceFiles": "Reference files",

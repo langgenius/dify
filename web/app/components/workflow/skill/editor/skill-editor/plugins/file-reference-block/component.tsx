@@ -75,10 +75,13 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
     ? getFileIconType(currentNode?.name || '', currentNode?.extension)
     : null
   const pathForTooltip = (currentNode?.path ?? (resourceId.includes('/') ? resourceId : undefined))?.slice(1) // remove leading slash for better display
+  const missingMessage = isFolder
+    ? t('skillEditor.folderNotFound', { ns: 'workflow' })
+    : t('skillEditor.fileNotFound', { ns: 'workflow' })
   const tooltipContent = isMissing
     ? (
         <div className="space-y-1">
-          <div className="system-xs-medium text-text-secondary">{t('skillEditor.fileNotFound', { ns: 'workflow' })}</div>
+          <div className="system-xs-medium text-text-secondary">{missingMessage}</div>
           {pathForTooltip && (
             <div>{pathForTooltip}</div>
           )}
