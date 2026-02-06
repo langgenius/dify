@@ -24,6 +24,29 @@ class EnterpriseMetricHandler:
     and payload rehydration with fallback.
     """
 
+    def _increment_diagnostic_counter(self, counter_name: str, labels: dict[str, str] | None = None) -> None:
+        """Increment a diagnostic counter for operational monitoring.
+
+        Args:
+            counter_name: Name of the counter (e.g., 'processed_total', 'deduped_total').
+            labels: Optional labels for the counter.
+        """
+        try:
+            from extensions.ext_enterprise_telemetry import get_enterprise_exporter
+
+            exporter = get_enterprise_exporter()
+            if not exporter:
+                return
+
+            full_counter_name = f"enterprise_telemetry.handler.{counter_name}"
+            logger.debug(
+                "Diagnostic counter: %s, labels=%s",
+                full_counter_name,
+                labels or {},
+            )
+        except Exception:
+            logger.debug("Failed to increment diagnostic counter: %s", counter_name, exc_info=True)
+
     def handle(self, envelope: TelemetryEnvelope) -> None:
         """Main entry point for processing telemetry envelopes.
 
@@ -37,32 +60,44 @@ class EnterpriseMetricHandler:
                 envelope.tenant_id,
                 envelope.event_id,
             )
+            self._increment_diagnostic_counter("deduped_total")
             return
 
         # Route to appropriate handler based on case
         case = envelope.case
         if case == TelemetryCase.APP_CREATED:
             self._on_app_created(envelope)
+            self._increment_diagnostic_counter("processed_total", {"case": "app_created"})
         elif case == TelemetryCase.APP_UPDATED:
             self._on_app_updated(envelope)
+            self._increment_diagnostic_counter("processed_total", {"case": "app_updated"})
         elif case == TelemetryCase.APP_DELETED:
             self._on_app_deleted(envelope)
+            self._increment_diagnostic_counter("processed_total", {"case": "app_deleted"})
         elif case == TelemetryCase.FEEDBACK_CREATED:
             self._on_feedback_created(envelope)
+            self._increment_diagnostic_counter("processed_total", {"case": "feedback_created"})
         elif case == TelemetryCase.MESSAGE_RUN:
             self._on_message_run(envelope)
+            self._increment_diagnostic_counter("processed_total", {"case": "message_run"})
         elif case == TelemetryCase.TOOL_EXECUTION:
             self._on_tool_execution(envelope)
+            self._increment_diagnostic_counter("processed_total", {"case": "tool_execution"})
         elif case == TelemetryCase.MODERATION_CHECK:
             self._on_moderation_check(envelope)
+            self._increment_diagnostic_counter("processed_total", {"case": "moderation_check"})
         elif case == TelemetryCase.SUGGESTED_QUESTION:
             self._on_suggested_question(envelope)
+            self._increment_diagnostic_counter("processed_total", {"case": "suggested_question"})
         elif case == TelemetryCase.DATASET_RETRIEVAL:
             self._on_dataset_retrieval(envelope)
+            self._increment_diagnostic_counter("processed_total", {"case": "dataset_retrieval"})
         elif case == TelemetryCase.GENERATE_NAME:
             self._on_generate_name(envelope)
+            self._increment_diagnostic_counter("processed_total", {"case": "generate_name"})
         elif case == TelemetryCase.PROMPT_GENERATION:
             self._on_prompt_generation(envelope)
+            self._increment_diagnostic_counter("processed_total", {"case": "prompt_generation"})
         else:
             logger.warning(
                 "Unknown telemetry case: %s (tenant_id=%s, event_id=%s)",
@@ -155,6 +190,7 @@ class EnterpriseMetricHandler:
                 },
                 tenant_id=envelope.tenant_id,
             )
+            self._increment_diagnostic_counter("rehydration_failed_total")
             return {}
 
         return payload

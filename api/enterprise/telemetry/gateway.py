@@ -60,16 +60,15 @@ def is_gateway_enabled() -> bool:
 
 
 def _is_enterprise_telemetry_enabled() -> bool:
-    """Check if enterprise telemetry is enabled.
-
-    Wraps the check from core.telemetry to handle import failures gracefully.
-    """
     try:
         from enterprise.telemetry.exporter import is_enterprise_telemetry_enabled
 
         return is_enterprise_telemetry_enabled()
     except Exception:
         return False
+
+
+is_enterprise_telemetry_enabled = _is_enterprise_telemetry_enabled
 
 
 class TelemetryGateway:
@@ -100,6 +99,7 @@ class TelemetryGateway:
             trace_manager: Optional TraceQueueManager for trace routing.
         """
         if not is_gateway_enabled():
+            logger.debug("Gateway disabled, using legacy path for case=%s", case)
             self._emit_legacy(case, context, payload, trace_manager)
             return
 
@@ -107,6 +107,13 @@ class TelemetryGateway:
         if route is None:
             logger.warning("Unknown telemetry case: %s, dropping event", case)
             return
+
+        logger.debug(
+            "Gateway routing: case=%s, signal_type=%s, ce_eligible=%s",
+            case,
+            route.signal_type,
+            route.ce_eligible,
+        )
 
         if route.signal_type == "trace":
             self._emit_trace(case, context, payload, route, trace_manager)
