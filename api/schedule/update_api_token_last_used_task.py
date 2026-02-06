@@ -80,10 +80,9 @@ def batch_update_api_token_last_used():
                 redis_client.delete(*keys_to_delete)
             return
 
-        # Batch update in database using actual usage timestamps from Redis
-for token, scope, usage_time in token_entries:
-    with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            for token, scope, usage_time in token_entries:
+        # Update each token in its own short transaction to avoid long transactions
+        for token, scope, usage_time in token_entries:
+            with Session(db.engine, expire_on_commit=False) as session, session.begin():
                 stmt = (
                     update(ApiToken)
                     .where(
@@ -97,9 +96,6 @@ for token, scope, usage_time in token_entries:
                 rowcount = getattr(result, "rowcount", 0)
                 if rowcount > 0:
                     updated_count += 1
-
-            if updated_count > 0:
-                session.commit()
 
         # Delete processed keys from Redis
         if keys_to_delete:
