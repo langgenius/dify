@@ -27,6 +27,7 @@ from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
+from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
@@ -647,6 +648,7 @@ class WorkflowService:
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
         node_data = node_config.get("data", {})
+        workflow_execution_id: str | None = None
         if node_type.is_start_node:
             with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
@@ -672,10 +674,13 @@ class WorkflowService:
                     node_type=node_type,
                     conversation_id=conversation_id,
                 )
+                workflow_execution_id = variable_pool.system_variables.workflow_execution_id
 
         else:
+            workflow_execution_id = str(uuid.uuid4())
+            system_variable = SystemVariable(workflow_execution_id=workflow_execution_id)
             variable_pool = VariablePool(
-                system_variables=SystemVariable.default(),
+                system_variables=system_variable,
                 user_inputs=user_inputs,
                 environment_variables=draft_workflow.environment_variables,
                 conversation_variables=[],
@@ -728,6 +733,13 @@ class WorkflowService:
 
         with Session(db.engine) as session:
             outputs = workflow_node_execution.load_full_outputs(session, storage)
+
+        enqueue_draft_node_execution_trace(
+            execution=workflow_node_execution,
+            outputs=outputs,
+            workflow_execution_id=workflow_execution_id,
+            user_id=account.id,
+        )
 
         with Session(bind=db.engine) as session, session.begin():
             draft_var_saver = DraftVariableSaver(
@@ -784,19 +796,20 @@ class WorkflowService:
         Returns:
             WorkflowNodeExecution: The execution result
         """
+        created_at = naive_utc_now()
         node, node_run_result, run_succeeded, error = self._execute_node_safely(invoke_node_fn)
+        finished_at = naive_utc_now()
 
-        # Create base node execution
         node_execution = WorkflowNodeExecution(
-            id=str(uuid.uuid4()),
+            id=node.execution_id or str(uuid.uuid4()),
             workflow_id="",  # Single-step execution has no workflow ID
             index=1,
             node_id=node_id,
             node_type=node.node_type,
             title=node.title,
             elapsed_time=time.perf_counter() - start_at,
-            created_at=naive_utc_now(),
-            finished_at=naive_utc_now(),
+            created_at=created_at,
+            finished_at=finished_at,
         )
 
         # Populate execution result data

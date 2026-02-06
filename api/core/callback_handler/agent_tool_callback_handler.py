@@ -4,8 +4,9 @@ from typing import Any, TextIO, Union
 from pydantic import BaseModel
 
 from configs import dify_config
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.ops.ops_trace_manager import TraceQueueManager
+from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
+from core.telemetry import emit as telemetry_emit
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
 _TEXT_COLOR_MAPPING = {
@@ -36,13 +37,15 @@ class DifyAgentCallbackHandler(BaseModel):
 
     color: str | None = ""
     current_loop: int = 1
+    tenant_id: str | None = None
 
-    def __init__(self, color: str | None = None):
+    def __init__(self, color: str | None = None, tenant_id: str | None = None):
         super().__init__()
         """Initialize callback handler."""
         # use a specific color is not specified
         self.color = color or "green"
         self.current_loop = 1
+        self.tenant_id = tenant_id
 
     def on_tool_start(
         self,
@@ -71,15 +74,23 @@ class DifyAgentCallbackHandler(BaseModel):
             print_text("\n")
 
         if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.TOOL_TRACE,
-                    message_id=message_id,
-                    tool_name=tool_name,
-                    tool_inputs=tool_inputs,
-                    tool_outputs=tool_outputs,
-                    timer=timer,
-                )
+            telemetry_emit(
+                TelemetryEvent(
+                    name=TraceTaskName.TOOL_TRACE,
+                    context=TelemetryContext(
+                        tenant_id=self.tenant_id,
+                        app_id=trace_manager.app_id,
+                        user_id=trace_manager.user_id,
+                    ),
+                    payload={
+                        "message_id": message_id,
+                        "tool_name": tool_name,
+                        "tool_inputs": tool_inputs,
+                        "tool_outputs": tool_outputs,
+                        "timer": timer,
+                    },
+                ),
+                trace_manager=trace_manager,
             )
 
     def on_tool_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any):
