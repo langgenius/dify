@@ -1,7 +1,7 @@
 import pytest
 from openinference.semconv.trace import OpenInferenceSpanKindValues
 
-from core.ops.arize_phoenix_trace.arize_phoenix_trace import _get_node_span_kind, _NODE_TYPE_TO_SPAN_KIND
+from core.ops.arize_phoenix_trace.arize_phoenix_trace import _NODE_TYPE_TO_SPAN_KIND, _get_node_span_kind
 from core.workflow.enums import NodeType
 
 
