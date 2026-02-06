@@ -2,7 +2,7 @@ import types
 from unittest.mock import patch
 
 import pytest
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, NotFound
 
 import controllers.files.tool_files as module
 
@@ -128,8 +128,6 @@ class TestToolFileApi:
         mock_tool_file_manager,
         mock_verify,
     ):
-        from werkzeug.exceptions import NotFound
-
         module.request = fake_request(
             {
                 "timestamp": "123",
