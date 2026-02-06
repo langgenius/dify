@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Literal
 
 import sqlalchemy as sa
@@ -41,6 +42,20 @@ class BaseConversationQuery(BaseModel):
         if value == "":
             return None
         return value
+
+
+class FormatTypeEnum(StrEnum):
+    csv = "csv"
+    jsonl = "jsonl"
+
+
+class ChatConversationExportApiModel(BaseModel):
+    format: FormatTypeEnum
+    keyword: str | None = Field(None, description="keyword")
+    start: str | None = Field(None, description="start date")
+    end: str | None = Field(None, description="end date")
+    annotation_status: str = Field("all", description="annotation status")
+    sort_by: str = Field("-created_at", description="sort by")
 
 
 class CompletionConversationQuery(BaseConversationQuery):
@@ -540,6 +555,56 @@ class ChatConversationApi(Resource):
         conversations = db.paginate(query, page=args.page, per_page=args.limit, error_out=False)
 
         return conversations
+
+
+@console_ns.route("/apps/<uuid:app_id>/chat-conversations/export")
+class ChatConversationExportApi(Resource):
+    @console_ns.doc(
+        "export_chat_conversations",
+        description="Export chat conversations in streaming format with filters",
+        params={"app_id": "Application ID"},
+    )
+    @console_ns.response(200, "Success - streaming response")
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @edit_permission_required
+    def get(self, app_model):
+        """
+        Export chat conversations in streaming format.
+        Query params: keyword, start, end, annotation_status, sort_by, format
+        """
+        current_user, _ = current_account_with_tenant()
+        args = ChatConversationExportApiModel.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        format_type = args.format
+        keyword = args.keyword
+        start = args.start
+        end = args.end
+        annotation_status = args.annotation_status
+        sort_by = args.sort_by
+
+        # Parse time range
+        account = current_user
+        if account.timezone is None:
+            abort(400, description="User timezone is not set.")
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(start, end, account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
+
+        # Get streaming response from service
+        return ConversationService.export_conversations_streaming(
+            app_id=str(app_model.id),
+            format_type=format_type,
+            keyword=keyword,
+            start_datetime_utc=start_datetime_utc,
+            end_datetime_utc=end_datetime_utc,
+            annotation_status=annotation_status,
+            sort_by=sort_by,
+            exclude_debugger=(app_model.mode == AppMode.ADVANCED_CHAT),
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")

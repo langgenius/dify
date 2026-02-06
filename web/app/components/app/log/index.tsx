@@ -10,8 +10,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Pagination from '@/app/components/base/pagination'
+import Toast from '@/app/components/base/toast'
 import { APP_PAGE_LIMIT } from '@/config'
-import { useChatConversations, useCompletionConversations } from '@/service/use-log'
+import { exportChatConversations, useChatConversations, useCompletionConversations } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import EmptyElement from './empty-element'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
@@ -45,6 +46,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const [exporting, setExporting] = useState(false)
   const getPageFromParams = useCallback(() => {
     const pageParam = Number.parseInt(searchParams.get('page') || '1', 10)
     if (Number.isNaN(pageParam) || pageParam < 1)
@@ -116,11 +118,56 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
   }, [pathname, router, searchParams])
 
+  const handleExport = useCallback(async (format: 'jsonl' | 'csv') => {
+    if (!isChatMode)
+      return
+    setExporting(true)
+    try {
+      // Convert period to start/end if needed
+      const filters: {
+        keyword?: string
+        start?: string
+        end?: string
+        annotation_status?: string
+        sort_by?: string
+      } = {
+        keyword: queryParams.keyword,
+        annotation_status: queryParams.annotation_status,
+        sort_by: queryParams.sort_by,
+      }
+
+      // Convert period to start/end dates (same logic as query)
+      if (queryParams.period !== '9') {
+        const daysAgo = TIME_PERIOD_MAPPING[queryParams.period].value
+        filters.start = dayjs().subtract(daysAgo, 'day').startOf('day').format('YYYY-MM-DD HH:mm')
+        filters.end = dayjs().endOf('day').format('YYYY-MM-DD HH:mm')
+      }
+
+      await exportChatConversations(appDetail.id, format, filters)
+      Toast.notify({ type: 'success', message: t('operation.exportSuccess', { ns: 'common' }) })
+    }
+    catch (error) {
+      console.error('Export failed:', error)
+      Toast.notify({ type: 'error', message: (error as Error).message || t('operation.exportFailed', { ns: 'common' }) })
+    }
+    finally {
+      setExporting(false)
+    }
+  }, [appDetail.id, isChatMode, queryParams, t])
+
   return (
     <div className="flex h-full grow flex-col">
       <p className="system-sm-regular shrink-0 text-text-tertiary">{t('description', { ns: 'appLog' })}</p>
       <div className="flex max-h-[calc(100%-16px)] flex-1 grow flex-col py-4">
-        <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={handleQueryParamsChange} />
+        <Filter
+          isChatMode={isChatMode}
+          appId={appDetail.id}
+          queryParams={queryParams}
+          setQueryParams={handleQueryParamsChange}
+          showExport={isChatMode}
+          onExport={handleExport}
+          exporting={exporting}
+        />
         {total === undefined
           ? <Loading type="app" />
           : total > 0

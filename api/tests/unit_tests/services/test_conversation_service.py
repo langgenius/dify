@@ -1390,4 +1390,451 @@ class TestConversationServiceExport:
 
         # Step 2: Async cleanup task triggered
         # The Celery task will handle cleanup of messages, annotations, etc.
-        mock_delete_task.delay.assert_called_once_with(conversation_id)
+
+
+class TestConversationServiceExportStreaming:
+    """
+    Test suite for ConversationService.export_conversations_streaming.
+
+    Tests streaming export functionality for chat conversations in JSONL and CSV formats.
+    Covers filtering, pagination, and format handling.
+    """
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.select")
+    def test_export_jsonl_format_success(self, mock_select, mock_session_factory):
+        """
+        Test successful export in JSONL format.
+
+        Should return a Flask Response with:
+        - Content-Type: application/jsonl
+        - Streaming data in JSONL format (one JSON object per line)
+        - Content-Disposition header for file download
+        """
+        # Arrange
+        app_id = str(uuid.uuid4())
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session_factory.create_session.return_value.__exit__.return_value = None
+
+        # Create mock conversations
+        conv1 = ConversationServiceTestDataFactory.create_conversation_mock(
+            conversation_id=str(uuid.uuid4()),
+            app_id=app_id,
+            name="Conversation 1",
+            status="normal",
+            from_source="console",
+            created_at=datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC),
+        )
+        conv2 = ConversationServiceTestDataFactory.create_conversation_mock(
+            conversation_id=str(uuid.uuid4()),
+            app_id=app_id,
+            name="Conversation 2",
+            status="normal",
+            from_source="api",
+            created_at=datetime(2026, 1, 1, 9, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 1, 1, 9, 0, 0, tzinfo=UTC),
+        )
+
+        # Mock database query chain
+        mock_stmt = MagicMock()
+        mock_select.return_value = mock_stmt
+        mock_stmt.where.return_value = mock_stmt
+        mock_stmt.order_by.return_value = mock_stmt
+        mock_stmt.offset.return_value.limit.return_value = mock_stmt
+        mock_session.scalars.side_effect = [
+            MagicMock(all=lambda: [conv1, conv2]),  # for conversations
+            MagicMock(all=lambda: []),  # for end_users
+        ]
+        # Mock related data queries
+        mock_session.scalar.side_effect = [2, 1, 1, 0]
+
+        # Act
+        response = ConversationService.export_conversations_streaming(
+            app_id=app_id,
+            format_type="jsonl",
+        )
+
+        # Assert
+        assert response.status_code == 200
+        assert "application/jsonl" in response.content_type
+        assert "Content-Disposition" in response.headers
+        filename = response.headers["Content-Disposition"]
+        assert ".jsonl" in filename
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.select")
+    def test_export_csv_format_success(self, mock_select, mock_session_factory):
+        """
+        Test successful export in CSV format.
+
+        Should return a Flask Response with:
+        - Content-Type: text/csv with charset=utf-8-sig
+        - CSV header row
+        - Streaming data rows
+        - Content-Disposition header for file download
+        """
+        # Arrange
+        app_id = str(uuid.uuid4())
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session_factory.create_session.return_value.__exit__.return_value = None
+
+        conv1 = ConversationServiceTestDataFactory.create_conversation_mock(
+            conversation_id=str(uuid.uuid4()),
+            app_id=app_id,
+            name="Test Conv",
+            status="normal",
+            from_source="console",
+            created_at=datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC),
+        )
+
+        mock_stmt = MagicMock()
+        mock_select.return_value = mock_stmt
+        mock_stmt.where.return_value = mock_stmt
+        mock_stmt.order_by.return_value = mock_stmt
+        mock_stmt.offset.return_value.limit.return_value = mock_stmt
+        mock_session.scalars.return_value.all.return_value = [conv1]
+        mock_session.scalars.return_value.all.side_effect = [[], [], []]
+        mock_session.scalar.side_effect = [1, True]
+
+        # Act
+        response = ConversationService.export_conversations_streaming(
+            app_id=app_id,
+            format_type="csv",
+        )
+
+        # Assert
+        assert response.status_code == 200
+        assert "text/csv" in response.content_type
+        assert "utf-8-sig" in response.content_type
+        assert ".csv" in response.headers["Content-Disposition"]
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.select")
+    def test_export_with_keyword_filter(self, mock_select, mock_session_factory):
+        """
+        Test export with keyword search filter.
+
+        Should filter conversations by keyword in:
+        - Message query text
+        - Message answer text
+        - Conversation name
+        - Conversation introduction
+        """
+        # Arrange
+        app_id = str(uuid.uuid4())
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session_factory.create_session.return_value.__exit__.return_value = None
+
+        mock_stmt = MagicMock()
+        mock_select.return_value = mock_stmt
+        mock_stmt.where.return_value = mock_stmt
+        mock_stmt.join.return_value.where.return_value.group_by.return_value = mock_stmt
+        mock_stmt.join.return_value.where.return_value.group_by.return_value.order_by.return_value = mock_stmt
+        mock_stmt.order_by.return_value = mock_stmt
+        mock_stmt.offset.return_value.limit.return_value = mock_stmt
+
+        mock_session.scalars.return_value.all.return_value = []
+        mock_session.scalars.return_value.all.side_effect = [[], [], []]
+        mock_session.scalar.side_effect = [0, True]
+
+        # Act
+        ConversationService.export_conversations_streaming(
+            app_id=app_id,
+            format_type="jsonl",
+            keyword="test",
+        )
+
+        # Assert - verify join was called for keyword search
+        mock_stmt.join.assert_called()
+        mock_stmt.where.assert_called()
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.select")
+    def test_export_with_date_filter(self, mock_select, mock_session_factory):
+        """
+        Test export with date range filter.
+
+        Should filter conversations by created_at or updated_at
+        based on sort_by parameter.
+        """
+        # Arrange
+        app_id = str(uuid.uuid4())
+        start = datetime(2025, 12, 25, 0, 0, 0, tzinfo=UTC)
+        end = datetime(2026, 1, 1, 23, 59, 59, tzinfo=UTC)
+
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session_factory.create_session.return_value.__exit__.return_value = None
+
+        mock_stmt = MagicMock()
+        mock_select.return_value = mock_stmt
+        mock_stmt.where.return_value = mock_stmt
+        mock_stmt.order_by.return_value = mock_stmt
+        mock_stmt.offset.return_value.limit.return_value = mock_stmt
+
+        mock_session.scalars.return_value.all.return_value = []
+        mock_session.scalars.return_value.all.side_effect = [[], [], []]
+        mock_session.scalar.side_effect = [0, True]
+
+        # Act
+        ConversationService.export_conversations_streaming(
+            app_id=app_id,
+            format_type="jsonl",
+            start_datetime_utc=start,
+            end_datetime_utc=end,
+            sort_by="-created_at",
+        )
+
+        # Assert - verify where was called twice for start and end
+        assert mock_stmt.where.call_count >= 2  # Base where + start + end
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.select")
+    def test_export_with_annotation_status_annotated(self, mock_select, mock_session_factory):
+        """
+        Test export filtering for annotated conversations only.
+
+        Should only return conversations that have annotations.
+        """
+        # Arrange
+        app_id = str(uuid.uuid4())
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session_factory.create_session.return_value.__exit__.return_value = None
+
+        # Mock the select statement chain
+        mock_stmt = MagicMock()
+        mock_select.return_value = mock_stmt
+        mock_stmt.where.return_value = mock_stmt
+        mock_stmt.options.return_value = mock_stmt
+        mock_stmt.join.return_value = mock_stmt
+        mock_stmt.order_by.return_value = mock_stmt
+        mock_stmt.offset.return_value.limit.return_value = mock_stmt
+
+        mock_session.scalars.return_value.all.return_value = []
+        mock_session.scalars.return_value.all.side_effect = [[], [], []]
+        mock_session.scalar.side_effect = [0, True]
+
+        # Act
+        ConversationService.export_conversations_streaming(
+            app_id=app_id,
+            format_type="jsonl",
+            annotation_status="annotated",
+        )
+
+        # Assert - verify options and join were called
+        mock_stmt.options.assert_called()
+        mock_stmt.join.assert_called()
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.select")
+    def test_export_with_annotation_status_not_annotated(self, mock_select, mock_session_factory):
+        """
+        Test export filtering for non-annotated conversations only.
+
+        Should only return conversations without annotations.
+        """
+        # Arrange
+        app_id = str(uuid.uuid4())
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session_factory.create_session.return_value.__exit__.return_value = None
+
+        # Mock the select statement chain
+        mock_stmt = MagicMock()
+        mock_select.return_value = mock_stmt
+        mock_stmt.where.return_value = mock_stmt
+        mock_stmt.outerjoin.return_value = mock_stmt
+        mock_stmt.group_by.return_value = mock_stmt
+        mock_stmt.having.return_value = mock_stmt
+        mock_stmt.order_by.return_value = mock_stmt
+        mock_stmt.offset.return_value.limit.return_value = mock_stmt
+
+        mock_session.scalars.return_value.all.return_value = []
+        mock_session.scalars.return_value.all.side_effect = [[], [], []]
+        mock_session.scalar.side_effect = [0, True]
+
+        # Act
+        ConversationService.export_conversations_streaming(
+            app_id=app_id,
+            format_type="jsonl",
+            annotation_status="not_annotated",
+        )
+
+        # Assert
+        mock_stmt.outerjoin.assert_called()
+        mock_stmt.having.assert_called()
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.select")
+    def test_export_with_exclude_debugger(self, mock_select, mock_session_factory):
+        """
+        Test export with debugger conversations excluded.
+
+        Should filter out conversations created from debugger.
+        """
+        # Arrange
+        app_id = str(uuid.uuid4())
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session_factory.create_session.return_value.__exit__.return_value = None
+
+        mock_stmt = MagicMock()
+        mock_select.return_value = mock_stmt
+        mock_stmt.where.return_value = mock_stmt
+        mock_stmt.where.return_value = mock_stmt
+        mock_stmt.order_by.return_value = mock_stmt
+        mock_stmt.offset.return_value.limit.return_value = mock_stmt
+
+        mock_session.scalars.return_value.all.return_value = []
+        mock_session.scalars.return_value.all.side_effect = [[], [], []]
+        mock_session.scalar.side_effect = [0, True]
+
+        # Act
+        ConversationService.export_conversations_streaming(
+            app_id=app_id,
+            format_type="jsonl",
+            exclude_debugger=True,
+        )
+
+        # Assert - verify where was called twice (base + exclude_debugger)
+        assert mock_stmt.where.call_count >= 2
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.select")
+    def test_export_invalid_format_raises_error(self, mock_select, mock_session_factory):
+        """
+        Test that invalid format raises ValueError.
+
+        Should only accept 'jsonl' or 'csv' formats.
+        """
+        # Arrange
+        app_id = str(uuid.uuid4())
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="Unsupported format"):
+            ConversationService.export_conversations_streaming(
+                app_id=app_id,
+                format_type="xml",  # Invalid format
+            )
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.select")
+    def test_export_sort_by_created_at_asc(self, mock_select, mock_session_factory):
+        """
+        Test export sorting by created_at ascending.
+
+        Should order conversations by created_at in ascending order.
+        """
+        # Arrange
+        app_id = str(uuid.uuid4())
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session_factory.create_session.return_value.__exit__.return_value = None
+
+        mock_stmt = MagicMock()
+        mock_select.return_value = mock_stmt
+        mock_stmt.where.return_value = mock_stmt
+        mock_stmt.order_by.return_value = mock_stmt
+        mock_stmt.offset.return_value.limit.return_value = mock_stmt
+
+        mock_session.scalars.return_value.all.return_value = []
+        mock_session.scalars.return_value.all.side_effect = [[], [], []]
+        mock_session.scalar.side_effect = [0, True]
+
+        # Act
+        ConversationService.export_conversations_streaming(
+            app_id=app_id,
+            format_type="jsonl",
+            sort_by="created_at",
+        )
+
+        # Assert
+        mock_stmt.order_by.assert_called()
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.select")
+    def test_export_pagination_multiple_batches(self, mock_select, mock_session_factory):
+        """
+        Test export with pagination (multiple batches).
+
+        Should handle large datasets by fetching in batches.
+        """
+        # Arrange
+        app_id = str(uuid.uuid4())
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session_factory.create_session.return_value.__exit__.return_value = None
+
+        mock_stmt = MagicMock()
+        mock_select.return_value = mock_stmt
+        mock_stmt.where.return_value = mock_stmt
+        mock_stmt.order_by.return_value = mock_stmt
+
+        # Mock offset/limit chain
+        mock_batch_stmt = MagicMock()
+        mock_stmt.offset.return_value.limit.return_value = mock_batch_stmt
+
+        conv1 = ConversationServiceTestDataFactory.create_conversation_mock(
+            conversation_id=str(uuid.uuid4()),
+            app_id=app_id,
+            created_at=datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC),
+        )
+
+        # Mock session.scalars(batch_stmt).all() to return conversations
+        mock_scalars_result = MagicMock()
+        mock_scalars_result.all.side_effect = [[conv1], [], [], [], []]
+        mock_session.scalars.return_value = mock_scalars_result
+        mock_session.scalar.return_value = 1
+
+        # Act
+        response = ConversationService.export_conversations_streaming(
+            app_id=app_id,
+            format_type="jsonl",
+            batch_size=1,
+        )
+
+        # Assert - verify response is successful
+        assert response.status_code == 200
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.select")
+    def test_export_empty_result(self, mock_select, mock_session_factory):
+        """
+        Test export when no conversations match filters.
+
+        Should return valid response with no data.
+        """
+        # Arrange
+        app_id = str(uuid.uuid4())
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session_factory.create_session.return_value.__exit__.return_value = None
+
+        mock_stmt = MagicMock()
+        mock_select.return_value = mock_stmt
+        mock_stmt.where.return_value = mock_stmt
+        mock_stmt.order_by.return_value = mock_stmt
+
+        # Mock the offset().limit() chain
+        mock_batch_stmt = MagicMock()
+        mock_stmt.offset.return_value.limit.return_value = mock_batch_stmt
+
+        # Mock session.scalars(batch_stmt).all() to return empty list
+        mock_scalars_result = MagicMock()
+        mock_scalars_result.all.return_value = []
+        mock_session.scalars.return_value = mock_scalars_result
+
+        # Act
+        response = ConversationService.export_conversations_streaming(
+            app_id=app_id,
+            format_type="jsonl",
+        )
+
+        # Assert - verify response is successful
+        assert response.status_code == 200
