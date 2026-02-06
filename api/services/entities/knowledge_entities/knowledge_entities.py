@@ -112,6 +112,11 @@ class MetaDataConfig(BaseModel):
     doc_metadata: dict
 
 
+class DocumentMetadataInput(BaseModel):
+    metadata_id: str
+    value: str | int | float | None = None
+
+
 class KnowledgeConfig(BaseModel):
     original_document_id: str | None = None
     duplicate: bool = True
@@ -126,6 +131,8 @@ class KnowledgeConfig(BaseModel):
     embedding_model_provider: str | None = None
     name: str | None = None
     is_multimodal: bool = False
+    enable_built_in_metadata: bool = False
+    doc_metadata: list[DocumentMetadataInput] | None = None
 
 
 class SegmentCreateArgs(BaseModel):

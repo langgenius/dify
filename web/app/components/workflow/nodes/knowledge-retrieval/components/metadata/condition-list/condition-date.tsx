@@ -32,10 +32,10 @@ const ConditionDate = ({
     handleClickTrigger,
   }: TriggerProps) => {
     return (
-      <div className="group flex items-center" onClick={handleClickTrigger}>
+      <div className="group flex w-full items-center" onClick={handleClickTrigger}>
         <div
           className={cn(
-            'system-sm-regular mr-0.5 flex h-6 grow cursor-pointer items-center px-1',
+            'system-xs-regular mr-0.5 h-6 grow cursor-pointer truncate px-1 leading-6',
             value ? 'text-text-secondary' : 'text-text-tertiary',
           )}
         >
@@ -71,7 +71,7 @@ const ConditionDate = ({
   }, [value, handleDateChange, timezone, t])
 
   return (
-    <div className="h-8 px-2 py-1">
+    <div className="flex h-8 items-center pl-1 pr-2">
       <DatePicker
         timezone={timezone}
         value={value ? dayjs(value * 1000) : undefined}
