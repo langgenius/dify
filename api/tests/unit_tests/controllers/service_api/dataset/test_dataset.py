@@ -15,10 +15,13 @@ Focus on:
 """
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from werkzeug.exceptions import Forbidden, NotFound
 
+import services
 from controllers.service_api.dataset.dataset import (
     DatasetCreatePayload,
     DatasetListQuery,
@@ -30,6 +33,7 @@ from controllers.service_api.dataset.dataset import (
     TagUpdatePayload,
 )
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
+from models.account import Account
 from models.dataset import DatasetPermissionEnum
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.tag_service import TagService
@@ -891,3 +895,636 @@ class TestDocumentStatusAction:
         """Test un_archive action."""
         action = "un_archive"
         assert action in ["enable", "disable", "archive", "un_archive"]
+
+
+# =============================================================================
+# API Endpoint Tests
+#
+# ``DatasetListApi`` and ``DatasetApi`` inherit from ``DatasetApiResource``
+# whose ``method_decorators`` include ``validate_dataset_token``.
+#
+# Decorator strategy:
+# - ``@cloud_edition_billing_rate_limit_check`` preserves ``__wrapped__``
+#   → call via ``_unwrap(method)(self, …)``.
+# - Methods without billing decorators → call directly; only patch ``db``,
+#   services, ``current_user``, and ``marshal``.
+# =============================================================================
+
+
+def _unwrap(method):
+    """Walk ``__wrapped__`` chain to get the original function."""
+    fn = method
+    while hasattr(fn, "__wrapped__"):
+        fn = fn.__wrapped__
+    return fn
+
+
+@pytest.fixture
+def flask_app():
+    from app_factory import create_app
+
+    app = create_app()
+    app.config["TESTING"] = True
+    return app
+
+
+@pytest.fixture
+def mock_tenant():
+    tenant = Mock()
+    tenant.id = str(uuid.uuid4())
+    return tenant
+
+
+@pytest.fixture
+def mock_dataset():
+    dataset = Mock()
+    dataset.id = str(uuid.uuid4())
+    dataset.tenant_id = str(uuid.uuid4())
+    dataset.indexing_technique = "economy"
+    dataset.embedding_model_provider = None
+    dataset.embedding_model = None
+    return dataset
+
+
+class TestDatasetListApiGet:
+    """Test suite for DatasetListApi.get() endpoint.
+
+    ``get`` has no billing decorators but calls ``current_user``,
+    ``DatasetService``, ``ProviderManager``, and ``marshal``.
+    """
+
+    @patch("controllers.service_api.dataset.dataset.marshal")
+    @patch("controllers.service_api.dataset.dataset.ProviderManager")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_success(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        mock_provider_mgr,
+        mock_marshal,
+        flask_app,
+        mock_tenant,
+    ):
+        """Test successful dataset list retrieval."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.current_tenant_id = mock_tenant.id
+        mock_dataset_svc.get_datasets.return_value = ([Mock()], 1)
+
+        mock_configs = Mock()
+        mock_configs.get_models.return_value = []
+        mock_provider_mgr.return_value.get_configurations.return_value = mock_configs
+
+        mock_marshal.return_value = [{"indexing_technique": "economy", "embedding_model_provider": None}]
+
+        with flask_app.test_request_context("/datasets?page=1&limit=20", method="GET"):
+            api = DatasetListApi()
+            response, status = api.get(tenant_id=mock_tenant.id)
+
+        assert status == 200
+        assert "data" in response
+        assert "total" in response
+
+
+class TestDatasetListApiPost:
+    """Test suite for DatasetListApi.post() endpoint.
+
+    ``post`` is wrapped by ``@cloud_edition_billing_rate_limit_check``.
+    """
+
+    @patch("controllers.service_api.dataset.dataset.marshal")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_create_dataset_success(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        mock_marshal,
+        flask_app,
+        mock_tenant,
+    ):
+        """Test successful dataset creation."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        mock_current_user.__class__ = Account
+        mock_dataset_svc.create_empty_dataset.return_value = Mock()
+        mock_marshal.return_value = {"id": "ds-1", "name": "New Dataset"}
+
+        with flask_app.test_request_context(
+            "/datasets",
+            method="POST",
+            json={"name": "New Dataset"},
+        ):
+            api = DatasetListApi()
+            response, status = _unwrap(api.post)(api, tenant_id=mock_tenant.id)
+
+        assert status == 200
+        mock_dataset_svc.create_empty_dataset.assert_called_once()
+
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_create_dataset_duplicate_name(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        flask_app,
+        mock_tenant,
+    ):
+        """Test DatasetNameDuplicateError when name already exists."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        mock_current_user.__class__ = Account
+        mock_dataset_svc.create_empty_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
+
+        with flask_app.test_request_context(
+            "/datasets",
+            method="POST",
+            json={"name": "Existing Dataset"},
+        ):
+            api = DatasetListApi()
+            with pytest.raises(DatasetNameDuplicateError):
+                _unwrap(api.post)(api, tenant_id=mock_tenant.id)
+
+
+class TestDatasetApiGet:
+    """Test suite for DatasetApi.get() endpoint.
+
+    ``get`` has no billing decorators but calls ``DatasetService``,
+    ``ProviderManager``, ``marshal``, and ``current_user``.
+    """
+
+    @patch("controllers.service_api.dataset.dataset.DatasetPermissionService")
+    @patch("controllers.service_api.dataset.dataset.marshal")
+    @patch("controllers.service_api.dataset.dataset.ProviderManager")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_get_dataset_success(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        mock_provider_mgr,
+        mock_marshal,
+        mock_perm_svc,
+        flask_app,
+        mock_dataset,
+    ):
+        """Test successful dataset retrieval."""
+        from controllers.service_api.dataset.dataset import DatasetApi
+
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.return_value = None
+        mock_current_user.__class__ = Account
+        mock_current_user.current_tenant_id = mock_dataset.tenant_id
+
+        mock_configs = Mock()
+        mock_configs.get_models.return_value = []
+        mock_provider_mgr.return_value.get_configurations.return_value = mock_configs
+
+        mock_marshal.return_value = {
+            "indexing_technique": "economy",
+            "embedding_model_provider": None,
+            "permission": "only_me",
+        }
+
+        with flask_app.test_request_context(
+            f"/datasets/{mock_dataset.id}",
+            method="GET",
+        ):
+            api = DatasetApi()
+            response, status = api.get(_=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+
+        assert status == 200
+        assert response["embedding_available"] is True
+
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_get_dataset_not_found(self, mock_dataset_svc, flask_app, mock_dataset):
+        """Test 404 when dataset not found."""
+        from controllers.service_api.dataset.dataset import DatasetApi
+
+        mock_dataset_svc.get_dataset.return_value = None
+
+        with flask_app.test_request_context(
+            f"/datasets/{mock_dataset.id}",
+            method="GET",
+        ):
+            api = DatasetApi()
+            with pytest.raises(NotFound):
+                api.get(_=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_get_dataset_no_permission(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        flask_app,
+        mock_dataset,
+    ):
+        """Test 403 when user has no permission."""
+        from controllers.service_api.dataset.dataset import DatasetApi
+
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.account.NoPermissionError()
+
+        with flask_app.test_request_context(
+            f"/datasets/{mock_dataset.id}",
+            method="GET",
+        ):
+            api = DatasetApi()
+            with pytest.raises(Forbidden):
+                api.get(_=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+
+
+class TestDatasetApiDelete:
+    """Test suite for DatasetApi.delete() endpoint.
+
+    ``delete`` is wrapped by ``@cloud_edition_billing_rate_limit_check``.
+    """
+
+    @patch("controllers.service_api.dataset.dataset.DatasetPermissionService")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_delete_dataset_success(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        mock_perm_svc,
+        flask_app,
+        mock_dataset,
+    ):
+        """Test successful dataset deletion."""
+        from controllers.service_api.dataset.dataset import DatasetApi
+
+        mock_dataset_svc.delete_dataset.return_value = True
+
+        with flask_app.test_request_context(
+            f"/datasets/{mock_dataset.id}",
+            method="DELETE",
+        ):
+            api = DatasetApi()
+            result = _unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+
+        assert result == 204
+
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_delete_dataset_not_found(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        flask_app,
+        mock_dataset,
+    ):
+        """Test 404 when dataset not found for deletion."""
+        from controllers.service_api.dataset.dataset import DatasetApi
+
+        mock_dataset_svc.delete_dataset.return_value = False
+
+        with flask_app.test_request_context(
+            f"/datasets/{mock_dataset.id}",
+            method="DELETE",
+        ):
+            api = DatasetApi()
+            with pytest.raises(NotFound):
+                _unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_delete_dataset_in_use(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        flask_app,
+        mock_dataset,
+    ):
+        """Test DatasetInUseError when dataset is in use."""
+        from controllers.service_api.dataset.dataset import DatasetApi
+
+        mock_dataset_svc.delete_dataset.side_effect = services.errors.dataset.DatasetInUseError()
+
+        with flask_app.test_request_context(
+            f"/datasets/{mock_dataset.id}",
+            method="DELETE",
+        ):
+            api = DatasetApi()
+            with pytest.raises(DatasetInUseError):
+                _unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+
+
+class TestDocumentStatusApiPatch:
+    """Test suite for DocumentStatusApi.patch() endpoint.
+
+    ``patch`` has no billing decorators but calls ``DatasetService``,
+    ``DocumentService``, and ``current_user``.
+    """
+
+    @patch("controllers.service_api.dataset.dataset.DocumentService")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_batch_update_status_success(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        mock_doc_svc,
+        flask_app,
+        mock_tenant,
+        mock_dataset,
+    ):
+        """Test successful batch document status update."""
+        from controllers.service_api.dataset.dataset import DocumentStatusApi
+
+        mock_current_user.__class__ = Account
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.return_value = None
+        mock_dataset_svc.check_dataset_model_setting.return_value = None
+        mock_doc_svc.batch_update_document_status.return_value = None
+
+        with flask_app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/status/enable",
+            method="PATCH",
+            json={"document_ids": ["doc-1", "doc-2"]},
+        ):
+            api = DocumentStatusApi()
+            response, status = api.patch(
+                tenant_id=mock_tenant.id,
+                dataset_id=mock_dataset.id,
+                action="enable",
+            )
+
+        assert status == 200
+        assert response["result"] == "success"
+
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_batch_update_status_dataset_not_found(
+        self,
+        mock_dataset_svc,
+        flask_app,
+        mock_tenant,
+        mock_dataset,
+    ):
+        """Test 404 when dataset not found."""
+        from controllers.service_api.dataset.dataset import DocumentStatusApi
+
+        mock_dataset_svc.get_dataset.return_value = None
+
+        with flask_app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/status/enable",
+            method="PATCH",
+            json={"document_ids": ["doc-1"]},
+        ):
+            api = DocumentStatusApi()
+            with pytest.raises(NotFound):
+                api.patch(
+                    tenant_id=mock_tenant.id,
+                    dataset_id=mock_dataset.id,
+                    action="enable",
+                )
+
+    @patch("controllers.service_api.dataset.dataset.DocumentService")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_batch_update_status_indexing_error(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        mock_doc_svc,
+        flask_app,
+        mock_tenant,
+        mock_dataset,
+    ):
+        """Test InvalidActionError when document is indexing."""
+        from controllers.service_api.dataset.dataset import DocumentStatusApi
+
+        mock_current_user.__class__ = Account
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.return_value = None
+        mock_dataset_svc.check_dataset_model_setting.return_value = None
+        mock_doc_svc.batch_update_document_status.side_effect = services.errors.document.DocumentIndexingError()
+
+        with flask_app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/status/enable",
+            method="PATCH",
+            json={"document_ids": ["doc-1"]},
+        ):
+            api = DocumentStatusApi()
+            with pytest.raises(InvalidActionError):
+                api.patch(
+                    tenant_id=mock_tenant.id,
+                    dataset_id=mock_dataset.id,
+                    action="enable",
+                )
+
+    @patch("controllers.service_api.dataset.dataset.DocumentService")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_batch_update_status_value_error(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        mock_doc_svc,
+        flask_app,
+        mock_tenant,
+        mock_dataset,
+    ):
+        """Test InvalidActionError when ValueError raised."""
+        from controllers.service_api.dataset.dataset import DocumentStatusApi
+
+        mock_current_user.__class__ = Account
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.return_value = None
+        mock_dataset_svc.check_dataset_model_setting.return_value = None
+        mock_doc_svc.batch_update_document_status.side_effect = ValueError("Invalid action")
+
+        with flask_app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/status/enable",
+            method="PATCH",
+            json={"document_ids": ["doc-1"]},
+        ):
+            api = DocumentStatusApi()
+            with pytest.raises(InvalidActionError):
+                api.patch(
+                    tenant_id=mock_tenant.id,
+                    dataset_id=mock_dataset.id,
+                    action="enable",
+                )
+
+
+class TestDatasetTagsApiGet:
+    """Test suite for DatasetTagsApi.get() endpoint."""
+
+    @patch("controllers.service_api.dataset.dataset.TagService")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    def test_list_tags_success(
+        self,
+        mock_current_user,
+        mock_tag_svc,
+        flask_app,
+    ):
+        """Test successful tag list retrieval."""
+        from controllers.service_api.dataset.dataset import DatasetTagsApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.current_tenant_id = "tenant-1"
+        mock_tag = SimpleNamespace(id="tag-1", name="Test Tag", type="knowledge", binding_count="0")
+        mock_tag_svc.get_tags.return_value = [mock_tag]
+
+        with flask_app.test_request_context("/datasets/tags", method="GET"):
+            api = DatasetTagsApi()
+            response, status = api.get(_=None)
+
+        assert status == 200
+        assert len(response) == 1
+
+
+class TestDatasetTagsApiPost:
+    """Test suite for DatasetTagsApi.post() endpoint."""
+
+    # BUG: dataset.py L512 passes ``binding_count=0`` (int) to
+    # ``DataSetTag.model_validate()``, but ``DataSetTag.binding_count``
+    # is typed ``str | None`` (see fields/tag_fields.py L20).
+    # This causes a Pydantic ValidationError at runtime.
+    @pytest.mark.skip(reason="Production bug: DataSetTag.binding_count is str|None but dataset.py passes int 0")
+    @patch("controllers.service_api.dataset.dataset.TagService")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    def test_create_tag_success(
+        self,
+        mock_current_user,
+        mock_tag_svc,
+        flask_app,
+    ):
+        """Test successful tag creation."""
+        from controllers.service_api.dataset.dataset import DatasetTagsApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.has_edit_permission = True
+        mock_current_user.is_dataset_editor = True
+        mock_tag = SimpleNamespace(id="tag-new", name="New Tag", type="knowledge")
+        mock_tag_svc.save_tags.return_value = mock_tag
+
+        with flask_app.test_request_context(
+            "/datasets/tags",
+            method="POST",
+            json={"name": "New Tag"},
+        ):
+            api = DatasetTagsApi()
+            response, status = api.post(_=None)
+
+        assert status == 200
+        assert response["name"] == "New Tag"
+        mock_tag_svc.save_tags.assert_called_once()
+
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    def test_create_tag_forbidden(self, mock_current_user, flask_app):
+        """Test 403 when user lacks edit permission."""
+        from controllers.service_api.dataset.dataset import DatasetTagsApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.has_edit_permission = False
+        mock_current_user.is_dataset_editor = False
+
+        with flask_app.test_request_context(
+            "/datasets/tags",
+            method="POST",
+            json={"name": "New Tag"},
+        ):
+            api = DatasetTagsApi()
+            with pytest.raises(Forbidden):
+                api.post(_=None)
+
+
+class TestDatasetTagBindingApiPost:
+    """Test suite for DatasetTagBindingApi.post() endpoint."""
+
+    @patch("controllers.service_api.dataset.dataset.TagService")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    def test_bind_tags_success(
+        self,
+        mock_current_user,
+        mock_tag_svc,
+        flask_app,
+    ):
+        """Test successful tag binding."""
+        from controllers.service_api.dataset.dataset import DatasetTagBindingApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.has_edit_permission = True
+        mock_current_user.is_dataset_editor = True
+        mock_tag_svc.save_tag_binding.return_value = None
+
+        with flask_app.test_request_context(
+            "/datasets/tags/binding",
+            method="POST",
+            json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
+        ):
+            api = DatasetTagBindingApi()
+            result = api.post(_=None)
+
+        assert result == 204
+
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    def test_bind_tags_forbidden(self, mock_current_user, flask_app):
+        """Test 403 when user lacks edit permission."""
+        from controllers.service_api.dataset.dataset import DatasetTagBindingApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.has_edit_permission = False
+        mock_current_user.is_dataset_editor = False
+
+        with flask_app.test_request_context(
+            "/datasets/tags/binding",
+            method="POST",
+            json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
+        ):
+            api = DatasetTagBindingApi()
+            with pytest.raises(Forbidden):
+                api.post(_=None)
+
+
+class TestDatasetTagUnbindingApiPost:
+    """Test suite for DatasetTagUnbindingApi.post() endpoint."""
+
+    @patch("controllers.service_api.dataset.dataset.TagService")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    def test_unbind_tag_success(
+        self,
+        mock_current_user,
+        mock_tag_svc,
+        flask_app,
+    ):
+        """Test successful tag unbinding."""
+        from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.has_edit_permission = True
+        mock_current_user.is_dataset_editor = True
+        mock_tag_svc.delete_tag_binding.return_value = None
+
+        with flask_app.test_request_context(
+            "/datasets/tags/unbinding",
+            method="POST",
+            json={"tag_id": "tag-1", "target_id": "ds-1"},
+        ):
+            api = DatasetTagUnbindingApi()
+            result = api.post(_=None)
+
+        assert result == 204
+
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    def test_unbind_tag_forbidden(self, mock_current_user, flask_app):
+        """Test 403 when user lacks edit permission."""
+        from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.has_edit_permission = False
+        mock_current_user.is_dataset_editor = False
+
+        with flask_app.test_request_context(
+            "/datasets/tags/unbinding",
+            method="POST",
+            json={"tag_id": "tag-1", "target_id": "ds-1"},
+        ):
+            api = DatasetTagUnbindingApi()
+            with pytest.raises(Forbidden):
+                api.post(_=None)

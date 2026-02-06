@@ -403,3 +403,175 @@ class TestWorkflowRunRepository:
         result = repo.get_workflow_run_by_id(tenant_id="tenant_123", app_id="app_456", run_id="run_789")
 
         assert result.status == "succeeded"
+
+
+# =============================================================================
+# API Endpoint Tests
+#
+# ``WorkflowRunDetailApi``, ``WorkflowTaskStopApi``, and
+# ``WorkflowAppLogApi`` use ``@validate_app_token`` which preserves
+# ``__wrapped__`` via ``functools.wraps``.  We call the unwrapped method
+# directly to bypass the decorator.
+# =============================================================================
+
+
+def _unwrap(method):
+    """Walk ``__wrapped__`` chain to get the original function."""
+    fn = method
+    while hasattr(fn, "__wrapped__"):
+        fn = fn.__wrapped__
+    return fn
+
+
+@pytest.fixture
+def flask_app():
+    from app_factory import create_app
+
+    app = create_app()
+    app.config["TESTING"] = True
+    return app
+
+
+@pytest.fixture
+def mock_workflow_app():
+    app = Mock(spec=App)
+    app.id = str(uuid.uuid4())
+    app.tenant_id = str(uuid.uuid4())
+    app.mode = AppMode.WORKFLOW.value
+    return app
+
+
+class TestWorkflowRunDetailApiGet:
+    """Test suite for WorkflowRunDetailApi.get() endpoint.
+
+    ``get`` is wrapped by ``@validate_app_token`` (preserves ``__wrapped__``)
+    and ``@service_api_ns.marshal_with``.  We call the unwrapped method
+    directly; ``marshal_with`` is a no-op when calling directly.
+    """
+
+    @patch("controllers.service_api.app.workflow.DifyAPIRepositoryFactory")
+    @patch("controllers.service_api.app.workflow.db")
+    def test_get_workflow_run_success(
+        self,
+        mock_db,
+        mock_repo_factory,
+        flask_app,
+        mock_workflow_app,
+    ):
+        """Test successful workflow run detail retrieval."""
+        mock_run = Mock()
+        mock_run.id = "run-1"
+        mock_run.status = "succeeded"
+        mock_repo = Mock()
+        mock_repo.get_workflow_run_by_id.return_value = mock_run
+        mock_repo_factory.create_api_workflow_run_repository.return_value = mock_repo
+
+        from controllers.service_api.app.workflow import WorkflowRunDetailApi
+
+        with flask_app.test_request_context(
+            f"/workflows/run/{mock_run.id}",
+            method="GET",
+        ):
+            api = WorkflowRunDetailApi()
+            result = _unwrap(api.get)(api, app_model=mock_workflow_app, workflow_run_id=mock_run.id)
+
+        assert result == mock_run
+
+    @patch("controllers.service_api.app.workflow.db")
+    def test_get_workflow_run_wrong_app_mode(self, mock_db, flask_app):
+        """Test NotWorkflowAppError when app mode is not workflow or advanced_chat."""
+        from controllers.service_api.app.workflow import WorkflowRunDetailApi
+
+        mock_app = Mock(spec=App)
+        mock_app.mode = AppMode.CHAT.value
+
+        with flask_app.test_request_context("/workflows/run/run-1", method="GET"):
+            api = WorkflowRunDetailApi()
+            with pytest.raises(NotWorkflowAppError):
+                _unwrap(api.get)(api, app_model=mock_app, workflow_run_id="run-1")
+
+
+class TestWorkflowTaskStopApiPost:
+    """Test suite for WorkflowTaskStopApi.post() endpoint.
+
+    ``post`` is wrapped by ``@validate_app_token(fetch_user_arg=...)``.
+    """
+
+    @patch("controllers.service_api.app.workflow.GraphEngineManager")
+    @patch("controllers.service_api.app.workflow.AppQueueManager")
+    def test_stop_workflow_task_success(
+        self,
+        mock_queue_mgr,
+        mock_graph_mgr,
+        flask_app,
+        mock_workflow_app,
+    ):
+        """Test successful workflow task stop."""
+        from controllers.service_api.app.workflow import WorkflowTaskStopApi
+
+        with flask_app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
+            api = WorkflowTaskStopApi()
+            result = _unwrap(api.post)(
+                api,
+                app_model=mock_workflow_app,
+                end_user=Mock(),
+                task_id="task-1",
+            )
+
+        assert result == {"result": "success"}
+        mock_queue_mgr.set_stop_flag_no_user_check.assert_called_once_with("task-1")
+        mock_graph_mgr.send_stop_command.assert_called_once_with("task-1")
+
+    def test_stop_workflow_task_wrong_app_mode(self, flask_app):
+        """Test NotWorkflowAppError when app mode is not workflow."""
+        from controllers.service_api.app.workflow import WorkflowTaskStopApi
+
+        mock_app = Mock(spec=App)
+        mock_app.mode = AppMode.COMPLETION.value
+
+        with flask_app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
+            api = WorkflowTaskStopApi()
+            with pytest.raises(NotWorkflowAppError):
+                _unwrap(api.post)(api, app_model=mock_app, end_user=Mock(), task_id="task-1")
+
+
+class TestWorkflowAppLogApiGet:
+    """Test suite for WorkflowAppLogApi.get() endpoint.
+
+    ``get`` is wrapped by ``@validate_app_token`` and
+    ``@service_api_ns.marshal_with``.
+    """
+
+    @patch("controllers.service_api.app.workflow.WorkflowAppService")
+    @patch("controllers.service_api.app.workflow.db")
+    def test_get_workflow_logs_success(
+        self,
+        mock_db,
+        mock_wf_svc_cls,
+        flask_app,
+        mock_workflow_app,
+    ):
+        """Test successful workflow log retrieval."""
+        mock_pagination = Mock()
+        mock_pagination.data = []
+        mock_svc_instance = Mock()
+        mock_svc_instance.get_paginate_workflow_app_logs.return_value = mock_pagination
+        mock_wf_svc_cls.return_value = mock_svc_instance
+
+        # Mock Session context manager
+        mock_session = Mock()
+        mock_db.engine = Mock()
+        mock_session.__enter__ = Mock(return_value=mock_session)
+        mock_session.__exit__ = Mock(return_value=False)
+
+        from controllers.service_api.app.workflow import WorkflowAppLogApi
+
+        with flask_app.test_request_context(
+            "/workflows/logs?page=1&limit=20",
+            method="GET",
+        ):
+            with patch("controllers.service_api.app.workflow.Session", return_value=mock_session):
+                api = WorkflowAppLogApi()
+                result = _unwrap(api.get)(api, app_model=mock_workflow_app)
+
+        assert result == mock_pagination

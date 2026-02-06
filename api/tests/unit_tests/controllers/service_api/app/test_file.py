@@ -248,3 +248,222 @@ class TestCommonFileTypes:
         supported_extensions = ["mp4", "mov", "avi", "webm"]
         for ext in supported_extensions:
             assert len(ext) > 0
+
+
+# =============================================================================
+# API Endpoint Tests
+#
+# ``FileApi.post`` is wrapped by ``@validate_app_token(fetch_user_arg=...)``
+# which preserves ``__wrapped__`` via ``functools.wraps``.  We call the
+# unwrapped method directly to bypass the decorator.
+# =============================================================================
+
+
+def _unwrap(method):
+    """Walk ``__wrapped__`` chain to get the original function."""
+    fn = method
+    while hasattr(fn, "__wrapped__"):
+        fn = fn.__wrapped__
+    return fn
+
+
+@pytest.fixture
+def flask_app():
+    from app_factory import create_app
+
+    app = create_app()
+    app.config["TESTING"] = True
+    return app
+
+
+@pytest.fixture
+def mock_app_model():
+    from models import App
+
+    app = Mock(spec=App)
+    app.id = str(uuid.uuid4())
+    app.tenant_id = str(uuid.uuid4())
+    return app
+
+
+@pytest.fixture
+def mock_end_user():
+    from models import EndUser
+
+    user = Mock(spec=EndUser)
+    user.id = str(uuid.uuid4())
+    return user
+
+
+class TestFileApiPost:
+    """Test suite for FileApi.post() endpoint.
+
+    ``post`` is wrapped by ``@validate_app_token(fetch_user_arg=...)``
+    which preserves ``__wrapped__``.
+    """
+
+    @patch("controllers.service_api.app.file.FileService")
+    @patch("controllers.service_api.app.file.db")
+    def test_upload_file_success(
+        self,
+        mock_db,
+        mock_file_svc_cls,
+        flask_app,
+        mock_app_model,
+        mock_end_user,
+    ):
+        """Test successful file upload."""
+        from io import BytesIO
+
+        from controllers.service_api.app.file import FileApi
+
+        mock_upload = Mock()
+        mock_upload.id = str(uuid.uuid4())
+        mock_upload.name = "test.pdf"
+        mock_upload.size = 1024
+        mock_upload.extension = "pdf"
+        mock_upload.mime_type = "application/pdf"
+        mock_upload.created_by = str(mock_end_user.id)
+        mock_upload.created_by_role = "end_user"
+        mock_upload.created_at = 1700000000
+        mock_upload.preview_url = None
+        mock_upload.source_url = None
+        mock_upload.original_url = None
+        mock_upload.user_id = None
+        mock_upload.tenant_id = None
+        mock_upload.conversation_id = None
+        mock_upload.file_key = None
+        mock_file_svc_cls.return_value.upload_file.return_value = mock_upload
+
+        data = {"file": (BytesIO(b"file content"), "test.pdf", "application/pdf")}
+
+        with flask_app.test_request_context(
+            "/files/upload",
+            method="POST",
+            content_type="multipart/form-data",
+            data=data,
+        ):
+            api = FileApi()
+            response, status = _unwrap(api.post)(
+                api,
+                app_model=mock_app_model,
+                end_user=mock_end_user,
+            )
+
+        assert status == 201
+        mock_file_svc_cls.return_value.upload_file.assert_called_once()
+
+    def test_upload_no_file(self, flask_app, mock_app_model, mock_end_user):
+        """Test NoFileUploadedError when no file in request."""
+        from controllers.service_api.app.file import FileApi
+
+        with flask_app.test_request_context(
+            "/files/upload",
+            method="POST",
+            content_type="multipart/form-data",
+            data={},
+        ):
+            api = FileApi()
+            with pytest.raises(NoFileUploadedError):
+                _unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
+
+    def test_upload_too_many_files(self, flask_app, mock_app_model, mock_end_user):
+        """Test TooManyFilesError when multiple files uploaded."""
+        from io import BytesIO
+
+        from controllers.service_api.app.file import FileApi
+
+        data = {
+            "file": (BytesIO(b"content1"), "file1.pdf", "application/pdf"),
+            "extra": (BytesIO(b"content2"), "file2.pdf", "application/pdf"),
+        }
+
+        with flask_app.test_request_context(
+            "/files/upload",
+            method="POST",
+            content_type="multipart/form-data",
+            data=data,
+        ):
+            api = FileApi()
+            with pytest.raises(TooManyFilesError):
+                _unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
+
+    def test_upload_no_mimetype(self, flask_app, mock_app_model, mock_end_user):
+        """Test UnsupportedFileTypeError when file has no mimetype."""
+        from io import BytesIO
+
+        from controllers.service_api.app.file import FileApi
+
+        data = {"file": (BytesIO(b"content"), "test.bin", "")}
+
+        with flask_app.test_request_context(
+            "/files/upload",
+            method="POST",
+            content_type="multipart/form-data",
+            data=data,
+        ):
+            api = FileApi()
+            with pytest.raises(UnsupportedFileTypeError):
+                _unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
+
+    @patch("controllers.service_api.app.file.FileService")
+    @patch("controllers.service_api.app.file.db")
+    def test_upload_file_too_large(
+        self,
+        mock_db,
+        mock_file_svc_cls,
+        flask_app,
+        mock_app_model,
+        mock_end_user,
+    ):
+        """Test FileTooLargeError when file exceeds size limit."""
+        from io import BytesIO
+
+        import services.errors.file
+        from controllers.service_api.app.file import FileApi
+
+        mock_file_svc_cls.return_value.upload_file.side_effect = services.errors.file.FileTooLargeError(
+            "File exceeds 15MB limit"
+        )
+
+        data = {"file": (BytesIO(b"big content"), "big.pdf", "application/pdf")}
+
+        with flask_app.test_request_context(
+            "/files/upload",
+            method="POST",
+            content_type="multipart/form-data",
+            data=data,
+        ):
+            api = FileApi()
+            with pytest.raises(FileTooLargeError):
+                _unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
+
+    @patch("controllers.service_api.app.file.FileService")
+    @patch("controllers.service_api.app.file.db")
+    def test_upload_unsupported_file_type(
+        self,
+        mock_db,
+        mock_file_svc_cls,
+        flask_app,
+        mock_app_model,
+        mock_end_user,
+    ):
+        """Test UnsupportedFileTypeError from FileService."""
+        from io import BytesIO
+
+        import services.errors.file
+        from controllers.service_api.app.file import FileApi
+
+        mock_file_svc_cls.return_value.upload_file.side_effect = services.errors.file.UnsupportedFileTypeError()
+
+        data = {"file": (BytesIO(b"content"), "test.xyz", "application/octet-stream")}
+
+        with flask_app.test_request_context(
+            "/files/upload",
+            method="POST",
+            content_type="multipart/form-data",
+            data=data,
+        ):
+            api = FileApi()
+            with pytest.raises(UnsupportedFileTypeError):
+                _unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
