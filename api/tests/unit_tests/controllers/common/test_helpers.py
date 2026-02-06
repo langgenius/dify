@@ -161,28 +161,26 @@ class TestMagicImportWarnings:
         platform_name,
         expected_message,
     ):
-        # Save original state
-        orig_magic = sys.modules.get("magic")
-        orig_helpers = sys.modules.get(helpers.__name__)
-        
-        try:
-            sys.modules.pop("magic", None)
+        import importlib
+        import builtins
 
-            monkeypatch.setitem(sys.modules, "magic", None)
+        # Force ImportError when "magic" is imported
+        real_import = builtins.__import__
 
-            monkeypatch.setattr(helpers.platform, "system", lambda: platform_name)
+        def fake_import(name, *args, **kwargs):
+            if name == "magic":
+                raise ImportError("No module named magic")
+            return real_import(name, *args, **kwargs)
 
-            with pytest.warns(UserWarning, match="To use python-magic") as warning:
-                importlib.reload(helpers)
+        monkeypatch.setattr(builtins, "__import__", fake_import)
+        monkeypatch.setattr("platform.system", lambda: platform_name)
 
-            assert expected_message in str(warning[0].message)
-            assert helpers.magic is None
-        finally:
-            if orig_magic is None:
-                sys.modules.pop("magic", None)
-            else:
-                sys.modules["magic"] = orig_magic
-            
-            if orig_helpers is not None:
-                sys.modules[helpers.__name__] = orig_helpers
-                importlib.reload(orig_helpers)
+        # Remove helpers so it imports fresh
+        import sys
+        sys.modules.pop(helpers.__name__, None)
+
+        with pytest.warns(UserWarning, match="To use python-magic") as warning:
+            imported_helpers = importlib.import_module(helpers.__name__)
+
+        assert expected_message in str(warning[0].message)
+        assert imported_helpers.magic is None

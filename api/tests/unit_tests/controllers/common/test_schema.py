@@ -110,17 +110,17 @@ class PriorityEnum(StrEnum):
     LOW = "low"
 
 
-def test_get_or_create_model_returns_existing_model():
+@patch("controllers.console.console_ns")
+def test_get_or_create_model_returns_existing_model(mock_console_ns):
     from controllers.common.schema import get_or_create_model
 
-    with patch("controllers.console.console_ns") as mock_console_ns:
-        existing_model = MagicMock()
-        mock_console_ns.models = {"TestModel": existing_model}
+    existing_model = MagicMock()
+    mock_console_ns.models = {"TestModel": existing_model}
 
-        result = get_or_create_model("TestModel", {"key": "value"})
+    result = get_or_create_model("TestModel", {"key": "value"})
 
-        assert result == existing_model
-        mock_console_ns.model.assert_not_called()
+    assert result == existing_model
+    mock_console_ns.model.assert_not_called()
 
 
 @patch("controllers.console.console_ns")
