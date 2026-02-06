@@ -5,6 +5,7 @@ import {
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { TerminalSquare } from '@/app/components/base/icons/src/vender/line/development'
 import { Thinking } from '@/app/components/base/icons/src/vender/workflow'
 import { Markdown } from '@/app/components/base/markdown'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -17,6 +18,9 @@ type ToolCallItemComponentProps = {
   className?: string
   payload: LLMGenerationItem
 }
+
+const isBashTool = (toolName?: string) => !!toolName?.toLowerCase().includes('bash')
+
 const ToolCallItemComponent = ({
   className,
   payload,
@@ -53,11 +57,19 @@ const ToolCallItemComponent = ({
         }
         {
           payload.type === 'tool' && (
-            <BlockIcon
-              type={BlockEnum.Tool}
-              toolIcon={payload.toolIcon}
-              className="mr-1 h-4 w-4 shrink-0"
-            />
+            isBashTool(payload.toolName)
+              ? (
+                  <div className="mr-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-[0.5px] border-white/2 bg-components-icon-bg-midnight-solid text-white shadow-xs">
+                    <TerminalSquare className="h-3 w-3" />
+                  </div>
+                )
+              : (
+                  <BlockIcon
+                    type={BlockEnum.Tool}
+                    toolIcon={payload.toolIcon}
+                    className="mr-1 h-4 w-4 shrink-0"
+                  />
+                )
           )
         }
         {
