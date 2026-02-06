@@ -141,6 +141,9 @@ class EnterpriseExporter:
             EnterpriseTelemetryCounter.DATASET_RETRIEVALS: meter.create_counter(
                 "dify.dataset.retrievals.total", unit="{retrieval}"
             ),
+            EnterpriseTelemetryCounter.APP_CREATED: meter.create_counter("dify.app.created.total", unit="{app}"),
+            EnterpriseTelemetryCounter.APP_UPDATED: meter.create_counter("dify.app.updated.total", unit="{app}"),
+            EnterpriseTelemetryCounter.APP_DELETED: meter.create_counter("dify.app.deleted.total", unit="{app}"),
         }
         self._histograms = {
             EnterpriseTelemetryHistogram.WORKFLOW_DURATION: meter.create_histogram("dify.workflow.duration", unit="s"),
