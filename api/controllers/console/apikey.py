@@ -32,7 +32,7 @@ api_key_list_model = console_ns.model(
 )
 
 
-def _get_resource(resource_id, tenant_id, resource_model):
+def _get_resource(resource_id: str, tenant_id: str, resource_model: type[App | Dataset]) -> App | Dataset:
     if resource_model == App:
         with Session(db.engine) as session:
             resource = session.execute(
@@ -54,7 +54,7 @@ class BaseApiKeyListResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
-    resource_model: type | None = None
+    resource_model: type[App | Dataset] | None = None
     resource_id_field: str | None = None
     token_prefix: str | None = None
     max_keys = 10
@@ -108,7 +108,7 @@ class BaseApiKeyResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
-    resource_model: type | None = None
+    resource_model: type[App | Dataset] | None = None
     resource_id_field: str | None = None
 
     def delete(self, resource_id: str, api_key_id: str):
