@@ -267,6 +267,7 @@ const Editor: FC<Props> = ({
                       placeholder={placeholder}
                       placeholderClassName={placeholderClassName}
                       instanceId={instanceId}
+                      nodeId={nodeId}
                       compact
                       className={cn('min-h-[56px]', inputClassName)}
                       style={isExpand ? { height: editorExpandHeight - 5 } : {}}

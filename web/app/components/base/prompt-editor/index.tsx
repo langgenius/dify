@@ -20,6 +20,7 @@ import type {
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
+import type { EventPayload } from '@/context/event-emitter'
 import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -51,17 +52,18 @@ import { ToolBlockContextProvider } from '@/app/components/workflow/skill/editor
 import ToolPickerBlock from '@/app/components/workflow/skill/editor/skill-editor/plugins/tool-block/tool-picker-block'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { cn } from '@/utils/classnames'
+import { useWorkflow } from '../../workflow/hooks'
 import {
   UPDATE_DATASETS_EVENT_EMITTER,
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
+
 import ComponentPickerBlock from './plugins/component-picker-block'
 import {
   ContextBlock,
   ContextBlockNode,
   ContextBlockReplacementBlock,
 } from './plugins/context-block'
-
 import {
   CurrentBlock,
   CurrentBlockNode,
@@ -169,6 +171,7 @@ const EnterCommandPlugin: FC<{ onEnter?: (event: KeyboardEvent) => void }> = ({ 
 
 export type PromptEditorProps = {
   instanceId?: string
+  nodeId?: string
   compact?: boolean
   wrapperClassName?: string
   className?: string
@@ -203,6 +206,7 @@ export type PromptEditorProps = {
 
 const PromptEditor: FC<PromptEditorProps> = ({
   instanceId,
+  nodeId,
   compact,
   wrapperClassName,
   className,
@@ -275,14 +279,20 @@ const PromptEditor: FC<PromptEditorProps> = ({
     eventEmitter?.emit({
       type: UPDATE_DATASETS_EVENT_EMITTER,
       payload: contextBlock?.datasets,
-    } as any)
+    } as EventPayload)
   }, [eventEmitter, contextBlock?.datasets])
   useEffect(() => {
     eventEmitter?.emit({
       type: UPDATE_HISTORY_EVENT_EMITTER,
       payload: historyBlock?.history,
-    } as any)
+    } as EventPayload)
   }, [eventEmitter, historyBlock?.history])
+
+  const { getBeforeNodesInSameBranch } = useWorkflow()
+  const availableNodes = React.useMemo(
+    () => nodeId && isSupportSandbox ? getBeforeNodesInSameBranch(nodeId || '') : [],
+    [getBeforeNodesInSameBranch, isSupportSandbox, nodeId],
+  )
 
   const toolBlockContextValue = React.useMemo(() => {
     if (!onToolMetadataChange)
@@ -291,8 +301,11 @@ const PromptEditor: FC<PromptEditorProps> = ({
       metadata: toolMetadata,
       onMetadataChange: onToolMetadataChange,
       useModal: true,
+      nodeId,
+      nodesOutputVars: workflowVariableBlock?.variables,
+      availableNodes,
     }
-  }, [onToolMetadataChange, toolMetadata])
+  }, [availableNodes, nodeId, onToolMetadataChange, toolMetadata, workflowVariableBlock?.variables])
 
   const sandboxPlaceHolder = React.useMemo(() => {
     if (!isSupportSandbox)

@@ -611,7 +611,10 @@ const ToolGroupBlockComponent = ({
         currentTool={currentTool}
         value={toolValue}
         onChange={handleToolValueChange}
-        nodeId={undefined}
+        nodeId={toolBlockContext?.nodeId}
+        nodesOutputVars={toolBlockContext?.nodesOutputVars}
+        availableNodes={toolBlockContext?.availableNodes}
+        enableVariableReference={useModal}
       />
     </div>
   )
