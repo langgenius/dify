@@ -252,9 +252,6 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         # Subquery: Count the number of available documents for each dataset
         results = knowledge_repo.get_datasets_with_available_documents(self.tenant_id, dataset_ids)
 
-        # avoid blocking at retrieval
-        knowledge_repo.close_session()
-
         for dataset in results:
             # pass if dataset is not available
             if not dataset:

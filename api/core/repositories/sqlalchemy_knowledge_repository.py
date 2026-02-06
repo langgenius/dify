@@ -4,12 +4,11 @@ from collections import defaultdict
 from collections.abc import Sequence
 from typing import Any, cast
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, literal, or_, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.entities.metadata_entities import MetadataCondition
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.repositories.knowledge_repository import (
     DatasetEntity,
     DatasetMetadataEntity,
@@ -148,7 +147,7 @@ class SQLAlchemyKnowledgeRepository(KnowledgeRepository):
         compiled_filters: list[Any] = []
         if filters and filters.conditions:
             for sequence, condition in enumerate(filters.conditions):
-                DatasetRetrieval.process_metadata_filter_func(
+                self._append_metadata_filter(
                     sequence,
                     condition.comparison_operator,
                     condition.name,
@@ -173,6 +172,86 @@ class SQLAlchemyKnowledgeRepository(KnowledgeRepository):
             metadata_filter_document_ids[row.dataset_id].append(row.id)
 
         return dict(metadata_filter_document_ids)
+
+    @staticmethod
+    def _append_metadata_filter(
+        sequence: int,
+        condition: str,
+        metadata_name: str,
+        value: Any | None,
+        filters: list[Any],
+    ) -> list[Any]:
+        if value is None and condition not in ("empty", "not empty"):
+            return filters
+
+        json_field = Document.doc_metadata[metadata_name].as_string()
+
+        from libs.helper import escape_like_pattern
+
+        match condition:
+            case "contains":
+                escaped_value = escape_like_pattern(str(value))
+                filters.append(json_field.like(f"%{escaped_value}%", escape="\\"))
+
+            case "not contains":
+                escaped_value = escape_like_pattern(str(value))
+                filters.append(json_field.notlike(f"%{escaped_value}%", escape="\\"))
+
+            case "start with":
+                escaped_value = escape_like_pattern(str(value))
+                filters.append(json_field.like(f"{escaped_value}%", escape="\\"))
+
+            case "end with":
+                escaped_value = escape_like_pattern(str(value))
+                filters.append(json_field.like(f"%{escaped_value}", escape="\\"))
+
+            case "is" | "=":
+                if isinstance(value, str):
+                    filters.append(json_field == value)
+                elif isinstance(value, (int, float)):
+                    filters.append(Document.doc_metadata[metadata_name].as_float() == value)
+
+            case "is not" | "≠":
+                if isinstance(value, str):
+                    filters.append(json_field != value)
+                elif isinstance(value, (int, float)):
+                    filters.append(Document.doc_metadata[metadata_name].as_float() != value)
+
+            case "empty":
+                filters.append(Document.doc_metadata[metadata_name].is_(None))
+
+            case "not empty":
+                filters.append(Document.doc_metadata[metadata_name].isnot(None))
+
+            case "before" | "<":
+                filters.append(Document.doc_metadata[metadata_name].as_float() < value)
+
+            case "after" | ">":
+                filters.append(Document.doc_metadata[metadata_name].as_float() > value)
+
+            case "≤" | "<=":
+                filters.append(Document.doc_metadata[metadata_name].as_float() <= value)
+
+            case "≥" | ">=":
+                filters.append(Document.doc_metadata[metadata_name].as_float() >= value)
+
+            case "in" | "not in":
+                if isinstance(value, str):
+                    value_list = [v.strip() for v in value.split(",") if v.strip()]
+                elif isinstance(value, (list, tuple)):
+                    value_list = [str(v) for v in value if v is not None]
+                else:
+                    value_list = [str(value)] if value is not None else []
+
+                if not value_list:
+                    filters.append(literal(condition == "not in"))
+                else:
+                    op = json_field.in_ if condition == "in" else json_field.notin_
+                    filters.append(op(value_list))
+            case _:
+                pass
+
+        return filters
 
     def close_session(self) -> None:
         return
