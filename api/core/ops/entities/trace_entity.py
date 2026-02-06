@@ -211,6 +211,22 @@ trace_info_info_map = {
 }
 
 
+class OperationType(StrEnum):
+    """Operation type for token metric labels.
+
+    Used as a metric attribute on ``dify.tokens.input`` / ``dify.tokens.output``
+    counters so consumers can break down token usage by operation.
+    """
+
+    WORKFLOW = "workflow"
+    NODE_EXECUTION = "node_execution"
+    MESSAGE = "message"
+    RULE_GENERATE = "rule_generate"
+    CODE_GENERATE = "code_generate"
+    STRUCTURED_OUTPUT = "structured_output"
+    INSTRUCTION_MODIFY = "instruction_modify"
+
+
 class TraceTaskName(StrEnum):
     CONVERSATION_TRACE = "conversation"
     WORKFLOW_TRACE = "workflow"
