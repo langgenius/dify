@@ -5,7 +5,7 @@ describe('semver utilities', () => {
     it('should return the latest version from a list of versions', () => {
       expect(getLatestVersion(['1.0.0', '1.1.0', '1.0.1'])).toBe('1.1.0')
       expect(getLatestVersion(['2.0.0', '1.9.9', '1.10.0'])).toBe('2.0.0')
-      expect(getLatestVersion(['1.0.0-alpha', '1.0.0-beta', '1.0.0'])).toBe('1.0.1')
+      expect(getLatestVersion(['1.0.0-alpha', '1.0.0-beta', '1.0.0'])).toBe('1.0.0')
     })
 
     it('should handle patch versions correctly', () => {
