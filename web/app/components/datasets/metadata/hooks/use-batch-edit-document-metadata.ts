@@ -87,36 +87,58 @@ const useBatchEditDocumentMetadata = ({
     const res: MetadataBatchEditToServer = documentIds.map((documentId) => {
       // Find the document in docList to get its metadata
       const docIndex = docList.findIndex(doc => doc.id === documentId)
-      const oldMetadataList = docIndex >= 0 ? metaDataList[docIndex] : []
-      let newMetadataList: MetadataItemWithValue[] = [...oldMetadataList, ...addedList]
-        .filter((item) => {
-          return !removedList.find(removedItem => removedItem.id === item.id)
-        })
-        .map(item => ({
-          id: item.id,
-          name: item.name,
-          type: item.type,
-          value: item.value,
-        }))
-      if (isApplyToAllSelectDocument) {
-        // add missing metadata item
-        updatedList.forEach((editedItem) => {
-          if (!newMetadataList.find(i => i.id === editedItem.id) && !editedItem.isMultipleValue)
-            newMetadataList.push(editedItem)
+      const isDocumentInCurrentPage = docIndex >= 0
+      const oldMetadataList = isDocumentInCurrentPage ? metaDataList[docIndex] : []
+      
+      // For cross-page documents, we need to handle metadata differently
+      // We only send the changes (added/updated/removed) instead of full metadata
+      let newMetadataList: MetadataItemWithValue[]
+      
+      if (!isDocumentInCurrentPage) {
+        // Cross-page document: only send changes
+        newMetadataList = [...addedList, ...updatedList]
+          .filter((item) => {
+            return !removedList.find(removedItem => removedItem.id === item.id)
+          })
+          .map(item => ({
+            id: item.id,
+            name: item.name,
+            type: item.type,
+            value: item.value,
+          }))
+      } else {
+        // Current page document: merge with existing metadata
+        newMetadataList = [...oldMetadataList, ...addedList]
+          .filter((item) => {
+            return !removedList.find(removedItem => removedItem.id === item.id)
+          })
+          .map(item => ({
+            id: item.id,
+            name: item.name,
+            type: item.type,
+            value: item.value,
+          }))
+        
+        if (isApplyToAllSelectDocument) {
+          // add missing metadata item
+          updatedList.forEach((editedItem) => {
+            if (!newMetadataList.find(i => i.id === editedItem.id) && !editedItem.isMultipleValue)
+              newMetadataList.push(editedItem)
+          })
+        }
+
+        newMetadataList = newMetadataList.map((item) => {
+          const editedItem = updatedList.find(i => i.id === item.id)
+          if (editedItem)
+            return editedItem
+          return item
         })
       }
-
-      newMetadataList = newMetadataList.map((item) => {
-        const editedItem = updatedList.find(i => i.id === item.id)
-        if (editedItem)
-          return editedItem
-        return item
-      })
 
       return {
         document_id: documentId,
         metadata_list: newMetadataList,
-        partial_update: docIndex < 0,
+        partial_update: !isDocumentInCurrentPage,
       }
     })
     return res
