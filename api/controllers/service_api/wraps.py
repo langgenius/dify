@@ -327,6 +327,37 @@ def validate_and_get_api_token(scope: str | None = None):
 
     # Cache miss - use Redis lock for single-flight mode
     # This ensures only one request queries DB for the same token concurrently
+    return _fetch_token_with_single_flight(auth_token, scope)
+
+
+def _query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
+    """
+    Query API token from database, update last_used_at, and cache the result.
+    
+    Raises Unauthorized if token is invalid.
+    """
+    with Session(db.engine, expire_on_commit=False) as session:
+        current_time = naive_utc_now()
+        update_token_last_used_at(auth_token, scope, current_time, session=session)
+
+        stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
+        api_token = session.scalar(stmt)
+
+        if not api_token:
+            ApiTokenCache.set(auth_token, scope, None)
+            raise Unauthorized("Access token is invalid")
+
+        ApiTokenCache.set(auth_token, scope, api_token)
+        return api_token
+
+
+def _fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiToken:
+    """
+    Fetch token from DB with single-flight pattern using Redis lock.
+    
+    Ensures only one concurrent request queries the database for the same token.
+    Falls back to direct query if lock acquisition fails.
+    """
     logger.debug("Token cache miss, attempting to acquire query lock for scope: %s", scope)
 
     lock_key = f"api_token_query_lock:{scope}:{auth_token}"
@@ -342,54 +373,17 @@ def validate_and_get_api_token(scope: str | None = None):
                     logger.debug("Token cached by concurrent request, using cached version")
                     return cached_token
 
-                # Still not cached - query database
-                with Session(db.engine, expire_on_commit=False) as session:
-                    current_time = naive_utc_now()
-                    update_token_last_used_at(auth_token, scope, current_time, session=session)
-
-                    stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
-                    api_token = session.scalar(stmt)
-
-                    if not api_token:
-                        ApiTokenCache.set(auth_token, scope, None)
-                        raise Unauthorized("Access token is invalid")
-
-                    ApiTokenCache.set(auth_token, scope, api_token)
-                    return api_token
+                return _query_token_from_db(auth_token, scope)
             finally:
                 lock.release()
         else:
-            # Lock acquisition timeout - fallback to direct query
             logger.warning("Lock timeout for token: %s, proceeding with direct query", auth_token[:10])
-            with Session(db.engine, expire_on_commit=False) as session:
-                current_time = naive_utc_now()
-                update_token_last_used_at(auth_token, scope, current_time, session=session)
-
-                stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
-                api_token = session.scalar(stmt)
-
-                if not api_token:
-                    ApiTokenCache.set(auth_token, scope, None)
-                    raise Unauthorized("Access token is invalid")
-
-                ApiTokenCache.set(auth_token, scope, api_token)
-                return api_token
+            return _query_token_from_db(auth_token, scope)
+    except Unauthorized:
+        raise
     except Exception as e:
-        # Redis lock failure - fallback to direct query to ensure service availability
         logger.warning("Redis lock failed for token query: %s, proceeding anyway", e)
-        with Session(db.engine, expire_on_commit=False) as session:
-            current_time = naive_utc_now()
-            update_token_last_used_at(auth_token, scope, current_time, session=session)
-
-            stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
-            api_token = session.scalar(stmt)
-
-            if not api_token:
-                ApiTokenCache.set(auth_token, scope, None)
-                raise Unauthorized("Access token is invalid")
-
-            ApiTokenCache.set(auth_token, scope, api_token)
-            return api_token
+        return _query_token_from_db(auth_token, scope)
 
 
 def _async_update_token_last_used_at(auth_token: str, scope: str | None):
