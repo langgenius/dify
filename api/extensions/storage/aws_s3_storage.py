@@ -122,11 +122,10 @@ class AwsS3Storage(BaseStorage):
                 downloads the file with this name instead of the S3 key.
         """
         params: dict = {"Bucket": self.bucket_name, "Key": filename}
-        if download_filename:
-            # RFC 5987 / RFC 6266: Use both filename and filename* for compatibility.
-            # filename* with UTF-8 encoding handles non-ASCII characters.
-            encoded = quote(download_filename)
-            params["ResponseContentDisposition"] = f"attachment; filename=\"{encoded}\"; filename*=UTF-8''{encoded}"
+        # RFC 5987 / RFC 6266: Use both filename and filename* for compatibility.
+        # filename* with UTF-8 encoding handles non-ASCII characters.
+        encoded = quote(download_filename or filename)
+        params["ResponseContentDisposition"] = f"attachment; filename=\"{encoded}\"; filename*=UTF-8''{encoded}"
         url: str = self.client.generate_presigned_url(
             ClientMethod="get_object",
             Params=params,

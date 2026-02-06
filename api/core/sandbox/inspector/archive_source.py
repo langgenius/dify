@@ -158,7 +158,9 @@ class SandboxFileArchiveSource(SandboxFileSource):
             except PipelineExecutionError as exc:
                 raise RuntimeError(str(exc)) from exc
 
-            download_url = sandbox_storage.get_download_url(export_key, self._EXPORT_EXPIRES_IN_SECONDS)
+            download_url = sandbox_storage.get_download_url(
+                export_key, self._EXPORT_EXPIRES_IN_SECONDS, download_filename=filename
+            )
 
         return SandboxFileDownloadTicket(
             download_url=download_url,

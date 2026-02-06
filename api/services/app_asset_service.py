@@ -363,9 +363,7 @@ class AppAssetService:
     ) -> str:
         with Session(db.engine) as session:
             assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
-            tree = assets.asset_tree
-
-            node = tree.get(node_id)
+            node = assets.asset_tree.get(node_id)
             if not node or node.node_type != AssetNodeType.FILE:
                 raise AppAssetNodeNotFoundError(f"File node {node_id} not found")
 
