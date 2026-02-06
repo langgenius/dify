@@ -192,6 +192,30 @@ class ToolNode(Node[ToolNodeData]):
         tool_parameters_dictionary = {parameter.name: parameter for parameter in tool_parameters}
 
         result: dict[str, Any] = {}
+
+        # Auto-inject sys.files for FILES/SYSTEM_FILES type parameters not explicitly configured
+        # This fixes an issue where files parameters are lost in iteration nodes after the first iteration
+        for parameter in tool_parameters:
+            if parameter.type in {
+                ToolParameter.ToolParameterType.FILES,
+                ToolParameter.ToolParameterType.SYSTEM_FILES,
+            }:
+                # If this parameter is not in user configuration, auto-inject from sys.files
+                if parameter.name not in node_data.tool_parameters:
+                    files_var = variable_pool.get(["sys", "files"])
+                    if files_var is not None:
+                        if for_log:
+                            # Convert to string representation for logging
+                            if isinstance(files_var.value, list):
+                                result[parameter.name] = [
+                                    f"<File: {f.filename}>" if isinstance(f, File) else str(f)
+                                    for f in files_var.value
+                                ]
+                            else:
+                                result[parameter.name] = "<Files>"
+                        else:
+                            result[parameter.name] = files_var.value
+
         for parameter_name in node_data.tool_parameters:
             parameter = tool_parameters_dictionary.get(parameter_name)
             if not parameter:
