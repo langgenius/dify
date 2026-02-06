@@ -63,7 +63,8 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade, TraceTaskName
+from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
+from core.telemetry import emit as telemetry_emit
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.nodes import NodeType
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
@@ -832,7 +833,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         session.add_all(message_files)
 
         if trace_manager:
-            TelemetryFacade.emit(
+            telemetry_emit(
                 TelemetryEvent(
                     name=TraceTaskName.MESSAGE_TRACE,
                     context=TelemetryContext(

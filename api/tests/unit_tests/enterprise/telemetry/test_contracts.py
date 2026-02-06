@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from enterprise.telemetry.contracts import CaseRoute, TelemetryCase, TelemetryEnvelope
+from enterprise.telemetry.contracts import CaseRoute, SignalType, TelemetryCase, TelemetryEnvelope
 from enterprise.telemetry.gateway import CASE_ROUTING
 
 
@@ -56,14 +56,14 @@ class TestCaseRoute:
 
     def test_valid_trace_route(self) -> None:
         """Verify valid trace route creation."""
-        route = CaseRoute(signal_type="trace", ce_eligible=True)
-        assert route.signal_type == "trace"
+        route = CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True)
+        assert route.signal_type == SignalType.TRACE
         assert route.ce_eligible is True
 
     def test_valid_metric_log_route(self) -> None:
         """Verify valid metric_log route creation."""
-        route = CaseRoute(signal_type="metric_log", ce_eligible=False)
-        assert route.signal_type == "metric_log"
+        route = CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False)
+        assert route.signal_type == SignalType.METRIC_LOG
         assert route.ce_eligible is False
 
     def test_invalid_signal_type(self) -> None:
@@ -199,7 +199,7 @@ class TestCaseRouting:
         }
         for case in ce_eligible_trace_cases:
             route = CASE_ROUTING[case]
-            assert route.signal_type == "trace"
+            assert route.signal_type == SignalType.TRACE
             assert route.ce_eligible is True
 
     def test_trace_enterprise_only_cases(self) -> None:
@@ -211,7 +211,7 @@ class TestCaseRouting:
         }
         for case in enterprise_only_trace_cases:
             route = CASE_ROUTING[case]
-            assert route.signal_type == "trace"
+            assert route.signal_type == SignalType.TRACE
             assert route.ce_eligible is False
 
     def test_metric_log_cases(self) -> None:
@@ -229,7 +229,7 @@ class TestCaseRouting:
         }
         for case in metric_log_cases:
             route = CASE_ROUTING[case]
-            assert route.signal_type == "metric_log"
+            assert route.signal_type == SignalType.METRIC_LOG
             assert route.ce_eligible is False
 
     def test_routing_table_completeness(self) -> None:
@@ -258,7 +258,7 @@ class TestCaseRouting:
         assert all_cases == set(TelemetryCase)
 
         for case in trace_cases:
-            assert CASE_ROUTING[case].signal_type == "trace"
+            assert CASE_ROUTING[case].signal_type == SignalType.TRACE
 
         for case in metric_log_cases:
-            assert CASE_ROUTING[case].signal_type == "metric_log"
+            assert CASE_ROUTING[case].signal_type == SignalType.METRIC_LOG

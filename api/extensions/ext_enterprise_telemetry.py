@@ -1,9 +1,11 @@
 """Flask extension for enterprise telemetry lifecycle management.
 
-Initializes the EnterpriseExporter singleton during ``create_app()`` (single-threaded),
-registers blinker event handlers, and hooks atexit for graceful shutdown.
+Initializes the EnterpriseExporter and TelemetryGateway singletons during
+``create_app()`` (single-threaded), registers blinker event handlers,
+and hooks atexit for graceful shutdown.
 
-Skipped entirely when ``ENTERPRISE_ENABLED`` and ``ENTERPRISE_TELEMETRY_ENABLED`` are false (``is_enabled()`` gate).
+Skipped entirely when ``ENTERPRISE_ENABLED`` and ``ENTERPRISE_TELEMETRY_ENABLED``
+are false (``is_enabled()`` gate).
 """
 
 from __future__ import annotations
@@ -17,10 +19,12 @@ from configs import dify_config
 if TYPE_CHECKING:
     from dify_app import DifyApp
     from enterprise.telemetry.exporter import EnterpriseExporter
+    from enterprise.telemetry.gateway import TelemetryGateway
 
 logger = logging.getLogger(__name__)
 
 _exporter: EnterpriseExporter | None = None
+_gateway: TelemetryGateway | None = None
 
 
 def is_enabled() -> bool:
@@ -28,14 +32,16 @@ def is_enabled() -> bool:
 
 
 def init_app(app: DifyApp) -> None:
-    global _exporter
+    global _exporter, _gateway
 
     if not is_enabled():
         return
 
     from enterprise.telemetry.exporter import EnterpriseExporter
+    from enterprise.telemetry.gateway import TelemetryGateway
 
     _exporter = EnterpriseExporter(dify_config)
+    _gateway = TelemetryGateway()
     atexit.register(_exporter.shutdown)
 
     # Import to trigger @signal.connect decorator registration
@@ -46,3 +52,7 @@ def init_app(app: DifyApp) -> None:
 
 def get_enterprise_exporter() -> EnterpriseExporter | None:
     return _exporter
+
+
+def get_gateway() -> TelemetryGateway | None:
+    return _gateway

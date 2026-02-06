@@ -43,10 +43,9 @@ def process_trace_tasks(file_info):
         if trace_type:
             trace_info = trace_type(**trace_info)
 
-        # process enterprise trace separately
-        from enterprise.telemetry.exporter import is_enterprise_telemetry_enabled
+        from extensions.ext_enterprise_telemetry import is_enabled as is_ee_telemetry_enabled
 
-        if is_enterprise_telemetry_enabled():
+        if is_ee_telemetry_enabled():
             from enterprise.telemetry.enterprise_trace import EnterpriseOtelTrace
 
             try:

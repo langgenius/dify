@@ -1,16 +1,11 @@
-"""Unit tests for TelemetryFacade.emit() routing and enterprise-only filtering.
+"""Unit tests for core.telemetry.emit() routing and enterprise-only filtering."""
 
-This test suite verifies that TelemetryFacade correctly:
-1. Routes telemetry events to TraceQueueManager via enum-based TraceTaskName
-2. Blocks community traces (returns early)
-3. Allows enterprise-only traces to be routed to TraceQueueManager
-4. Passes TraceTaskName enum directly to TraceTask constructor
-"""
+from __future__ import annotations
 
 import queue
 import sys
 import types
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -19,11 +14,8 @@ from core.telemetry.events import TelemetryContext, TelemetryEvent
 
 
 @pytest.fixture
-def facade_test_setup(monkeypatch):
-    """Fixture to provide TelemetryFacade with mocked TraceQueueManager."""
+def telemetry_test_setup(monkeypatch):
     module_name = "core.ops.ops_trace_manager"
-
-    # Always create a fresh stub module for testing
     ops_stub = types.ModuleType(module_name)
 
     class StubTraceTask:
@@ -55,22 +47,15 @@ def facade_test_setup(monkeypatch):
     ops_stub.trace_manager_queue = MagicMock(spec=queue.Queue)
     monkeypatch.setitem(sys.modules, module_name, ops_stub)
 
-    from core.telemetry.facade import TelemetryFacade
+    from core.telemetry import emit
 
-    return TelemetryFacade, ops_stub.trace_manager_queue
+    return emit, ops_stub.trace_manager_queue
 
 
-class TestTelemetryFacadeEmit:
-    """Test TelemetryFacade.emit() routing and filtering."""
-
-    def test_emit_valid_name_creates_trace_task(self, facade_test_setup):
-        """Verify emit with enterprise-only trace creates and enqueues a trace task.
-
-        When emit() is called with an enterprise-only trace name
-        (DRAFT_NODE_EXECUTION_TRACE), TraceQueueManager.add_trace_task()
-        should be called with a TraceTask.
-        """
-        TelemetryFacade, mock_queue = facade_test_setup
+class TestTelemetryEmit:
+    @patch("core.telemetry._is_enterprise_telemetry_enabled", return_value=True)
+    def test_emit_enterprise_trace_creates_trace_task(self, _mock_ee, telemetry_test_setup):
+        emit_fn, mock_queue = telemetry_test_setup
 
         event = TelemetryEvent(
             name=TraceTaskName.DRAFT_NODE_EXECUTION_TRACE,
@@ -82,22 +67,14 @@ class TestTelemetryFacadeEmit:
             payload={"key": "value"},
         )
 
-        TelemetryFacade.emit(event)
+        emit_fn(event)
 
-        # Verify add_trace_task was called
         mock_queue.put.assert_called_once()
-
-        # Verify the TraceTask was created with the correct name
         called_task = mock_queue.put.call_args[0][0]
         assert called_task.trace_type == TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
 
-    def test_emit_community_trace_returns_early(self, facade_test_setup):
-        """Verify community trace is blocked by early return.
-
-        When emit() is called with a community trace (WORKFLOW_TRACE),
-        the facade should return early without calling add_trace_task.
-        """
-        TelemetryFacade, mock_queue = facade_test_setup
+    def test_emit_community_trace_enqueued(self, telemetry_test_setup):
+        emit_fn, mock_queue = telemetry_test_setup
 
         event = TelemetryEvent(
             name=TraceTaskName.WORKFLOW_TRACE,
@@ -109,18 +86,12 @@ class TestTelemetryFacadeEmit:
             payload={},
         )
 
-        TelemetryFacade.emit(event)
+        emit_fn(event)
 
-        # Community traces should not reach the queue
-        mock_queue.put.assert_not_called()
+        mock_queue.put.assert_called_once()
 
-    def test_emit_enterprise_only_trace_allowed(self, facade_test_setup):
-        """Verify enterprise-only trace is routed to TraceQueueManager.
-
-        When emit() is called with DRAFT_NODE_EXECUTION_TRACE,
-        add_trace_task should be called.
-        """
-        TelemetryFacade, mock_queue = facade_test_setup
+    def test_emit_enterprise_only_trace_dropped_when_ee_disabled(self, telemetry_test_setup):
+        emit_fn, mock_queue = telemetry_test_setup
 
         event = TelemetryEvent(
             name=TraceTaskName.DRAFT_NODE_EXECUTION_TRACE,
@@ -132,26 +103,13 @@ class TestTelemetryFacadeEmit:
             payload={},
         )
 
-        TelemetryFacade.emit(event)
+        emit_fn(event)
 
-        # Verify add_trace_task was called and task was enqueued
-        mock_queue.put.assert_called_once()
+        mock_queue.put.assert_not_called()
 
-        # Verify the TraceTask was created with the correct name
-        called_task = mock_queue.put.call_args[0][0]
-        assert called_task.trace_type == TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
-
-    def test_emit_all_enterprise_only_traces_allowed(self, facade_test_setup):
-        """Verify all 3 enterprise-only traces are correctly identified.
-
-        The three enterprise-only traces are:
-        - DRAFT_NODE_EXECUTION_TRACE
-        - NODE_EXECUTION_TRACE
-        - PROMPT_GENERATION_TRACE
-
-        When these are emitted, they should be routed to add_trace_task.
-        """
-        TelemetryFacade, mock_queue = facade_test_setup
+    @patch("core.telemetry._is_enterprise_telemetry_enabled", return_value=True)
+    def test_emit_all_enterprise_only_traces_allowed_when_ee_enabled(self, _mock_ee, telemetry_test_setup):
+        emit_fn, mock_queue = telemetry_test_setup
 
         enterprise_only_traces = [
             TraceTaskName.DRAFT_NODE_EXECUTION_TRACE,
@@ -172,22 +130,15 @@ class TestTelemetryFacadeEmit:
                 payload={},
             )
 
-            TelemetryFacade.emit(event)
+            emit_fn(event)
 
-            # All enterprise-only traces should be routed
             mock_queue.put.assert_called_once()
-
-            # Verify the correct trace name was passed
             called_task = mock_queue.put.call_args[0][0]
             assert called_task.trace_type == trace_name
 
-    def test_emit_passes_name_directly_to_trace_task(self, facade_test_setup):
-        """Verify event.name (TraceTaskName enum) is passed directly to TraceTask.
-
-        The facade should pass the TraceTaskName enum directly as the first
-        argument to TraceTask(), not convert it to a string.
-        """
-        TelemetryFacade, mock_queue = facade_test_setup
+    @patch("core.telemetry._is_enterprise_telemetry_enabled", return_value=True)
+    def test_emit_passes_name_directly_to_trace_task(self, _mock_ee, telemetry_test_setup):
+        emit_fn, mock_queue = telemetry_test_setup
 
         event = TelemetryEvent(
             name=TraceTaskName.DRAFT_NODE_EXECUTION_TRACE,
@@ -199,25 +150,16 @@ class TestTelemetryFacadeEmit:
             payload={"extra": "data"},
         )
 
-        TelemetryFacade.emit(event)
+        emit_fn(event)
 
-        # Verify add_trace_task was called
         mock_queue.put.assert_called_once()
-
-        # Verify the TraceTask was created with the enum directly
         called_task = mock_queue.put.call_args[0][0]
-
-        # The trace_type should be the enum, not a string
         assert called_task.trace_type == TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
         assert isinstance(called_task.trace_type, TraceTaskName)
 
-    def test_emit_with_provided_trace_manager(self, facade_test_setup):
-        """Verify emit uses provided trace_manager instead of creating one.
-
-        When a trace_manager is provided, emit should use it directly
-        instead of creating a new TraceQueueManager.
-        """
-        TelemetryFacade, mock_queue = facade_test_setup
+    @patch("core.telemetry._is_enterprise_telemetry_enabled", return_value=True)
+    def test_emit_with_provided_trace_manager(self, _mock_ee, telemetry_test_setup):
+        emit_fn, mock_queue = telemetry_test_setup
 
         mock_trace_manager = MagicMock()
         mock_trace_manager.add_trace_task = MagicMock()
@@ -232,11 +174,8 @@ class TestTelemetryFacadeEmit:
             payload={},
         )
 
-        TelemetryFacade.emit(event, trace_manager=mock_trace_manager)
+        emit_fn(event, trace_manager=mock_trace_manager)
 
-        # Verify the provided trace_manager was used
         mock_trace_manager.add_trace_task.assert_called_once()
-
-        # Verify the TraceTask was created with the correct name
         called_task = mock_trace_manager.add_trace_task.call_args[0][0]
         assert called_task.trace_type == TraceTaskName.NODE_EXECUTION_TRACE

@@ -5,7 +5,8 @@ from pydantic import BaseModel
 
 from configs import dify_config
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade, TraceTaskName
+from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
+from core.telemetry import emit as telemetry_emit
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
 _TEXT_COLOR_MAPPING = {
@@ -73,7 +74,7 @@ class DifyAgentCallbackHandler(BaseModel):
             print_text("\n")
 
         if trace_manager:
-            TelemetryFacade.emit(
+            telemetry_emit(
                 TelemetryEvent(
                     name=TraceTaskName.TOOL_TRACE,
                     context=TelemetryContext(

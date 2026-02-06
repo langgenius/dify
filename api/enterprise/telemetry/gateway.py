@@ -1,20 +1,23 @@
-"""Telemetry gateway routing configuration and implementation.
+"""Telemetry gateway routing and dispatch.
 
-This module defines the routing table that maps telemetry cases to their
-processing routes (trace vs metric/log) and customer engagement eligibility.
-It also provides the TelemetryGateway class that routes events to the
-appropriate processing path.
+Maps ``TelemetryCase`` → ``CaseRoute`` (signal type + CE eligibility)
+and dispatches events to either the trace pipeline or the metric/log
+Celery queue.
+
+Singleton lifecycle is managed by ``ext_enterprise_telemetry.init_app()``
+which creates the instance during single-threaded Flask app startup.
+Access via ``ext_enterprise_telemetry.get_gateway()``.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import os
 import uuid
 from typing import TYPE_CHECKING, Any
 
-from enterprise.telemetry.contracts import CaseRoute, TelemetryCase, TelemetryEnvelope
+from core.ops.entities.trace_entity import TraceTaskName
+from enterprise.telemetry.contracts import CaseRoute, SignalType, TelemetryCase, TelemetryEnvelope
 from extensions.ext_storage import storage
 
 if TYPE_CHECKING:
@@ -24,39 +27,30 @@ logger = logging.getLogger(__name__)
 
 PAYLOAD_SIZE_THRESHOLD_BYTES = 1 * 1024 * 1024
 
-CASE_TO_TRACE_TASK_NAME: dict[TelemetryCase, str] = {
-    TelemetryCase.WORKFLOW_RUN: "workflow",
-    TelemetryCase.MESSAGE_RUN: "message",
-    TelemetryCase.NODE_EXECUTION: "node_execution",
-    TelemetryCase.DRAFT_NODE_EXECUTION: "draft_node_execution",
-    TelemetryCase.PROMPT_GENERATION: "prompt_generation",
+CASE_TO_TRACE_TASK: dict[TelemetryCase, TraceTaskName] = {
+    TelemetryCase.WORKFLOW_RUN: TraceTaskName.WORKFLOW_TRACE,
+    TelemetryCase.MESSAGE_RUN: TraceTaskName.MESSAGE_TRACE,
+    TelemetryCase.NODE_EXECUTION: TraceTaskName.NODE_EXECUTION_TRACE,
+    TelemetryCase.DRAFT_NODE_EXECUTION: TraceTaskName.DRAFT_NODE_EXECUTION_TRACE,
+    TelemetryCase.PROMPT_GENERATION: TraceTaskName.PROMPT_GENERATION_TRACE,
 }
 
 CASE_ROUTING: dict[TelemetryCase, CaseRoute] = {
-    TelemetryCase.WORKFLOW_RUN: CaseRoute(signal_type="trace", ce_eligible=True),
-    TelemetryCase.MESSAGE_RUN: CaseRoute(signal_type="trace", ce_eligible=True),
-    TelemetryCase.NODE_EXECUTION: CaseRoute(signal_type="trace", ce_eligible=False),
-    TelemetryCase.DRAFT_NODE_EXECUTION: CaseRoute(signal_type="trace", ce_eligible=False),
-    TelemetryCase.PROMPT_GENERATION: CaseRoute(signal_type="trace", ce_eligible=False),
-    TelemetryCase.APP_CREATED: CaseRoute(signal_type="metric_log", ce_eligible=False),
-    TelemetryCase.APP_UPDATED: CaseRoute(signal_type="metric_log", ce_eligible=False),
-    TelemetryCase.APP_DELETED: CaseRoute(signal_type="metric_log", ce_eligible=False),
-    TelemetryCase.FEEDBACK_CREATED: CaseRoute(signal_type="metric_log", ce_eligible=False),
-    TelemetryCase.TOOL_EXECUTION: CaseRoute(signal_type="metric_log", ce_eligible=False),
-    TelemetryCase.MODERATION_CHECK: CaseRoute(signal_type="metric_log", ce_eligible=False),
-    TelemetryCase.SUGGESTED_QUESTION: CaseRoute(signal_type="metric_log", ce_eligible=False),
-    TelemetryCase.DATASET_RETRIEVAL: CaseRoute(signal_type="metric_log", ce_eligible=False),
-    TelemetryCase.GENERATE_NAME: CaseRoute(signal_type="metric_log", ce_eligible=False),
+    TelemetryCase.WORKFLOW_RUN: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
+    TelemetryCase.MESSAGE_RUN: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
+    TelemetryCase.NODE_EXECUTION: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=False),
+    TelemetryCase.DRAFT_NODE_EXECUTION: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=False),
+    TelemetryCase.PROMPT_GENERATION: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=False),
+    TelemetryCase.APP_CREATED: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
+    TelemetryCase.APP_UPDATED: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
+    TelemetryCase.APP_DELETED: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
+    TelemetryCase.FEEDBACK_CREATED: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
+    TelemetryCase.TOOL_EXECUTION: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
+    TelemetryCase.MODERATION_CHECK: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
+    TelemetryCase.SUGGESTED_QUESTION: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
+    TelemetryCase.DATASET_RETRIEVAL: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
+    TelemetryCase.GENERATE_NAME: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
 }
-
-
-def is_gateway_enabled() -> bool:
-    """Check if the telemetry gateway is enabled via feature flag.
-
-    Returns:
-        True if ENTERPRISE_TELEMETRY_GATEWAY_ENABLED is set to a truthy value.
-    """
-    return os.environ.get("ENTERPRISE_TELEMETRY_GATEWAY_ENABLED", "").lower() in ("true", "1", "yes")
 
 
 def _is_enterprise_telemetry_enabled() -> bool:
@@ -68,15 +62,16 @@ def _is_enterprise_telemetry_enabled() -> bool:
         return False
 
 
-is_enterprise_telemetry_enabled = _is_enterprise_telemetry_enabled
+def _should_drop_ee_only_event(route: CaseRoute) -> bool:
+    """Return True when the event is enterprise-only and EE telemetry is disabled."""
+    return not route.ce_eligible and not _is_enterprise_telemetry_enabled()
 
 
 class TelemetryGateway:
-    """Gateway for routing telemetry events to appropriate processing paths.
+    """Routes telemetry events to the trace pipeline or the metric/log Celery queue.
 
-    Routes trace-shaped events to TraceQueueManager and metric/log events
-    to the enterprise telemetry Celery queue. Handles CE eligibility checks,
-    large payload storage, and feature flag gating.
+    Stateless — instantiated once during ``ext_enterprise_telemetry.init_app()``
+    and shared for the lifetime of the process.
     """
 
     def emit(
@@ -86,23 +81,6 @@ class TelemetryGateway:
         payload: dict[str, Any],
         trace_manager: TraceQueueManager | None = None,
     ) -> None:
-        """Emit a telemetry event through the gateway.
-
-        Routes the event based on its case type:
-        - trace: Routes to TraceQueueManager for existing trace pipeline
-        - metric_log: Routes to enterprise telemetry Celery task
-
-        Args:
-            case: The telemetry case type.
-            context: Event context containing tenant_id, app_id, user_id.
-            payload: The event payload data.
-            trace_manager: Optional TraceQueueManager for trace routing.
-        """
-        if not is_gateway_enabled():
-            logger.debug("Gateway disabled, using legacy path for case=%s", case)
-            self._emit_legacy(case, context, payload, trace_manager)
-            return
-
         route = CASE_ROUTING.get(case)
         if route is None:
             logger.warning("Unknown telemetry case: %s, dropping event", case)
@@ -115,58 +93,10 @@ class TelemetryGateway:
             route.ce_eligible,
         )
 
-        if route.signal_type == "trace":
+        if route.signal_type is SignalType.TRACE:
             self._emit_trace(case, context, payload, route, trace_manager)
         else:
             self._emit_metric_log(case, context, payload)
-
-    def _emit_legacy(
-        self,
-        case: TelemetryCase,
-        context: dict[str, Any],
-        payload: dict[str, Any],
-        trace_manager: TraceQueueManager | None,
-    ) -> None:
-        """Emit using legacy path (TelemetryFacade behavior).
-
-        Used when gateway feature flag is disabled.
-        """
-        route = CASE_ROUTING.get(case)
-        if route is None or route.signal_type != "trace":
-            return
-
-        trace_task_name_str = CASE_TO_TRACE_TASK_NAME.get(case)
-        if trace_task_name_str is None:
-            return
-
-        if not route.ce_eligible and not _is_enterprise_telemetry_enabled():
-            return
-
-        from core.ops.entities.trace_entity import TraceTaskName
-        from core.ops.ops_trace_manager import (
-            TraceQueueManager as LocalTraceQueueManager,
-        )
-        from core.ops.ops_trace_manager import (
-            TraceTask,
-        )
-
-        try:
-            trace_task_name = TraceTaskName(trace_task_name_str)
-        except ValueError:
-            logger.warning("Invalid trace task name: %s", trace_task_name_str)
-            return
-
-        queue_manager = trace_manager or LocalTraceQueueManager(
-            app_id=context.get("app_id"),
-            user_id=context.get("user_id"),
-        )
-
-        queue_manager.add_trace_task(
-            TraceTask(
-                trace_task_name,
-                **payload,
-            )
-        )
 
     def _emit_trace(
         self,
@@ -176,39 +106,16 @@ class TelemetryGateway:
         route: CaseRoute,
         trace_manager: TraceQueueManager | None,
     ) -> None:
-        """Emit a trace-shaped event to TraceQueueManager.
+        from core.ops.ops_trace_manager import TraceQueueManager as LocalTraceQueueManager
+        from core.ops.ops_trace_manager import TraceTask
 
-        Args:
-            case: The telemetry case type.
-            context: Event context.
-            payload: The event payload.
-            route: Routing configuration for this case.
-            trace_manager: Optional TraceQueueManager.
-        """
-        from core.ops.entities.trace_entity import TraceTaskName
-        from core.ops.ops_trace_manager import (
-            TraceQueueManager as LocalTraceQueueManager,
-        )
-        from core.ops.ops_trace_manager import (
-            TraceTask,
-        )
-
-        if not route.ce_eligible and not _is_enterprise_telemetry_enabled():
-            logger.debug(
-                "Dropping enterprise-only trace event: case=%s (EE disabled)",
-                case,
-            )
+        if _should_drop_ee_only_event(route):
+            logger.debug("Dropping enterprise-only trace event: case=%s (EE disabled)", case)
             return
 
-        trace_task_name_str = CASE_TO_TRACE_TASK_NAME.get(case)
-        if trace_task_name_str is None:
+        trace_task_name = CASE_TO_TRACE_TASK.get(case)
+        if trace_task_name is None:
             logger.warning("No TraceTaskName mapping for case: %s", case)
-            return
-
-        try:
-            trace_task_name = TraceTaskName(trace_task_name_str)
-        except ValueError:
-            logger.warning("Invalid trace task name: %s", trace_task_name_str)
             return
 
         queue_manager = trace_manager or LocalTraceQueueManager(
@@ -216,17 +123,8 @@ class TelemetryGateway:
             user_id=context.get("user_id"),
         )
 
-        queue_manager.add_trace_task(
-            TraceTask(
-                trace_task_name,
-                **payload,
-            )
-        )
-        logger.debug(
-            "Enqueued trace task: case=%s, app_id=%s",
-            case,
-            context.get("app_id"),
-        )
+        queue_manager.add_trace_task(TraceTask(trace_task_name, **payload))
+        logger.debug("Enqueued trace task: case=%s, app_id=%s", case, context.get("app_id"))
 
     def _emit_metric_log(
         self,
@@ -234,13 +132,6 @@ class TelemetryGateway:
         context: dict[str, Any],
         payload: dict[str, Any],
     ) -> None:
-        """Emit a metric/log event to the enterprise telemetry Celery queue.
-
-        Args:
-            case: The telemetry case type.
-            context: Event context containing tenant_id.
-            payload: The event payload.
-        """
         from tasks.enterprise_telemetry_task import process_enterprise_telemetry
 
         tenant_id = context.get("tenant_id", "")
@@ -270,22 +161,6 @@ class TelemetryGateway:
         tenant_id: str,
         event_id: str,
     ) -> tuple[dict[str, Any], str | None]:
-        """Handle large payload storage.
-
-        If payload exceeds threshold, stores to shared storage and returns
-        a reference. Otherwise returns payload as-is.
-
-        Args:
-            payload: The event payload.
-            tenant_id: Tenant identifier for storage path.
-            event_id: Event identifier for storage path.
-
-        Returns:
-            Tuple of (payload_for_envelope, payload_ref).
-            If stored, payload_for_envelope is empty and payload_ref is set.
-            Otherwise, payload_for_envelope is the original payload and
-            payload_ref is None.
-        """
         try:
             payload_json = json.dumps(payload)
             payload_size = len(payload_json.encode("utf-8"))
@@ -306,35 +181,19 @@ class TelemetryGateway:
             return payload, None
 
 
-_gateway: TelemetryGateway | None = None
-
-
-def get_gateway() -> TelemetryGateway:
-    """Get the module-level gateway instance.
-
-    Returns:
-        The singleton TelemetryGateway instance.
-    """
-    global _gateway
-    if _gateway is None:
-        _gateway = TelemetryGateway()
-    return _gateway
-
-
 def emit(
     case: TelemetryCase,
     context: dict[str, Any],
     payload: dict[str, Any],
     trace_manager: TraceQueueManager | None = None,
 ) -> None:
-    """Emit a telemetry event through the gateway.
+    """Module-level convenience wrapper.
 
-    Convenience function that uses the module-level gateway instance.
-
-    Args:
-        case: The telemetry case type.
-        context: Event context containing tenant_id, app_id, user_id.
-        payload: The event payload data.
-        trace_manager: Optional TraceQueueManager for trace routing.
+    Fetches the gateway singleton from the extension; no-ops when
+    enterprise telemetry is disabled (gateway is ``None``).
     """
-    get_gateway().emit(case, context, payload, trace_manager)
+    from extensions.ext_enterprise_telemetry import get_gateway
+
+    gateway = get_gateway()
+    if gateway is not None:
+        gateway.emit(case, context, payload, trace_manager)

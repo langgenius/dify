@@ -7,7 +7,7 @@ configuration that determines how each event type is processed.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, field_validator
 
@@ -31,15 +31,22 @@ class TelemetryCase(StrEnum):
     FEEDBACK_CREATED = "feedback_created"
 
 
+class SignalType(StrEnum):
+    """Signal routing type for telemetry cases."""
+
+    TRACE = "trace"
+    METRIC_LOG = "metric_log"
+
+
 class CaseRoute(BaseModel):
     """Routing configuration for a telemetry case.
 
     Attributes:
-        signal_type: The type of signal ("trace" or "metric_log").
-        ce_eligible: Whether this case is eligible for customer engagement.
+        signal_type: The type of signal (trace or metric_log).
+        ce_eligible: Whether this case is eligible for community edition tracing.
     """
 
-    signal_type: Literal["trace", "metric_log"]
+    signal_type: SignalType
     ce_eligible: bool
 
 

@@ -55,7 +55,8 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade, TraceTaskName
+from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
+from core.telemetry import emit as telemetry_emit
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -409,7 +410,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         message.message_metadata = self._task_state.metadata.model_dump_json()
 
         if trace_manager:
-            TelemetryFacade.emit(
+            telemetry_emit(
                 TelemetryEvent(
                     name=TraceTaskName.MESSAGE_TRACE,
                     context=TelemetryContext(

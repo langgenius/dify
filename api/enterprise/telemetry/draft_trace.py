@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from core.telemetry import TelemetryContext, TelemetryEvent, TelemetryFacade, TraceTaskName
+from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
+from core.telemetry import emit as telemetry_emit
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey
 from models.workflow import WorkflowNodeExecutionModel
 
@@ -20,7 +21,7 @@ def enqueue_draft_node_execution_trace(
         outputs=outputs,
         workflow_execution_id=workflow_execution_id,
     )
-    TelemetryFacade.emit(
+    telemetry_emit(
         TelemetryEvent(
             name=TraceTaskName.DRAFT_NODE_EXECUTION_TRACE,
             context=TelemetryContext(
