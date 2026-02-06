@@ -11,6 +11,8 @@ const _dirname = typeof __dirname !== 'undefined'
   ? __dirname
   : path.dirname(fileURLToPath(import.meta.url))
 
+const isProduction = process.env.NODE_ENV === 'production'
+
 const config = {
   theme: {
     typography,
@@ -163,13 +165,13 @@ const config = {
           source: path.resolve(_dirname, 'app/components/base/icons/assets/public'),
           prefix: 'custom-public',
           ignoreImportErrors: true,
-          runSVGO: false,
+          runSVGO: isProduction,
         }),
         ...importSvgCollections({
           source: path.resolve(_dirname, 'app/components/base/icons/assets/vender'),
           prefix: 'custom-vender',
           ignoreImportErrors: true,
-          runSVGO: false,
+          runSVGO: isProduction,
         }),
       },
       extraProperties: {
