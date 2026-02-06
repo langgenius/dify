@@ -20,7 +20,13 @@ from core.workflow.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from core.workflow.node_events import NodeEventBase, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from core.workflow.node_events import (
+    NodeEventBase,
+    NodeRunResult,
+    RunRetrieverResourceEvent,
+    StreamChunkEvent,
+    StreamCompletedEvent,
+)
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
@@ -398,6 +404,12 @@ class ToolNode(Node[ToolNodeData]):
                         dict_metadata["icon"] = icon
                         dict_metadata["icon_dark"] = icon_dark
                         message.message.metadata = dict_metadata
+            elif message.type == ToolInvokeMessage.MessageType.RETRIEVER_RESOURCES:
+                assert isinstance(message.message, ToolInvokeMessage.RetrieverResourceMessage)
+                yield RunRetrieverResourceEvent(
+                    retriever_resources=message.message.retriever_resources,
+                    context=message.message.context,
+                )
 
         # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
         json_output: list[dict[str, Any] | list[Any]] = []
