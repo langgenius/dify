@@ -6,25 +6,6 @@ Only requires a matching ``trace(trace_info)`` method signature.
 Signal strategy:
 - **Traces (spans)**: workflow run, node execution, draft node execution only.
 - **Metrics + structured logs**: all other event types.
-
-Token metric labels (unified structure):
-All token metrics (dify.tokens.input, dify.tokens.output, dify.tokens.total) use the
-same label set for consistent filtering and aggregation:
-- tenant_id: Tenant identifier
-- app_id: Application identifier
-- operation_type: Source of token usage (workflow | node_execution | message | rule_generate | etc.)
-- model_provider: LLM provider name (empty string if not applicable)
-- model_name: LLM model name (empty string if not applicable)
-- node_type: Workflow node type (empty string if not node_execution)
-
-This unified structure allows filtering by operation_type to separate:
-- Workflow-level aggregates (operation_type=workflow)
-- Individual node executions (operation_type=node_execution)
-- Direct message calls (operation_type=message)
-- Prompt generation operations (operation_type=rule_generate, code_generate, etc.)
-
-Without this, tokens are double-counted when querying totals (workflow totals include
-node totals, since workflow.total_tokens is the sum of all node tokens).
 """
 
 from __future__ import annotations
@@ -42,7 +23,6 @@ from core.ops.entities.trace_entity import (
     GenerateNameTraceInfo,
     MessageTraceInfo,
     ModerationTraceInfo,
-    OperationType,
     PromptGenerationTraceInfo,
     SuggestedQuestionTraceInfo,
     ToolTraceInfo,
@@ -51,10 +31,8 @@ from core.ops.entities.trace_entity import (
 )
 from enterprise.telemetry.entities import (
     EnterpriseTelemetryCounter,
-    EnterpriseTelemetryEvent,
     EnterpriseTelemetryHistogram,
     EnterpriseTelemetrySpan,
-    TokenMetricLabels,
 )
 from enterprise.telemetry.telemetry_log import emit_metric_only_event, emit_telemetry_log
 
@@ -224,7 +202,7 @@ class EnterpriseOtelTrace:
         log_attrs["dify.workflow.query"] = self._content_or_ref(info.query, ref)
 
         emit_telemetry_log(
-            event_name=EnterpriseTelemetryEvent.WORKFLOW_RUN,
+            event_name="dify.workflow.run",
             attributes=log_attrs,
             signal="span_detail",
             trace_id_source=info.workflow_run_id,
@@ -238,21 +216,11 @@ class EnterpriseOtelTrace:
             tenant_id=tenant_id or "",
             app_id=app_id or "",
         )
-        token_labels = TokenMetricLabels(
-            tenant_id=tenant_id or "",
-            app_id=app_id or "",
-            operation_type=OperationType.WORKFLOW,
-            model_provider="",
-            model_name="",
-            node_type="",
-        ).to_dict()
-        self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, token_labels)
+        self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, labels)
         if info.prompt_tokens is not None and info.prompt_tokens > 0:
-            self._exporter.increment_counter(EnterpriseTelemetryCounter.INPUT_TOKENS, info.prompt_tokens, token_labels)
+            self._exporter.increment_counter(EnterpriseTelemetryCounter.INPUT_TOKENS, info.prompt_tokens, labels)
         if info.completion_tokens is not None and info.completion_tokens > 0:
-            self._exporter.increment_counter(
-                EnterpriseTelemetryCounter.OUTPUT_TOKENS, info.completion_tokens, token_labels
-            )
+            self._exporter.increment_counter(EnterpriseTelemetryCounter.OUTPUT_TOKENS, info.completion_tokens, labels)
         invoke_from = metadata.get("triggered_from", "")
         self._exporter.increment_counter(
             EnterpriseTelemetryCounter.REQUESTS,
@@ -394,14 +362,10 @@ class EnterpriseOtelTrace:
             model_provider=info.model_provider or "",
         )
         if info.total_tokens:
-            token_labels = TokenMetricLabels(
-                tenant_id=tenant_id or "",
-                app_id=app_id or "",
-                operation_type=OperationType.NODE_EXECUTION,
-                model_provider=info.model_provider or "",
+            token_labels = self._labels(
+                **labels,
                 model_name=info.model_name or "",
-                node_type=info.node_type,
-            ).to_dict()
+            )
             self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, token_labels)
             if info.prompt_tokens is not None and info.prompt_tokens > 0:
                 self._exporter.increment_counter(
@@ -476,7 +440,7 @@ class EnterpriseOtelTrace:
         attrs["dify.message.outputs"] = self._content_or_ref(outputs, ref)
 
         emit_metric_only_event(
-            event_name=EnterpriseTelemetryEvent.MESSAGE_RUN,
+            event_name="dify.message.run",
             attributes=attrs,
             trace_id_source=metadata.get("workflow_run_id") or str(info.message_id) if info.message_id else None,
             span_id_source=node_execution_id,
@@ -490,19 +454,7 @@ class EnterpriseOtelTrace:
             model_provider=metadata.get("ls_provider", ""),
             model_name=metadata.get("ls_model_name", ""),
         )
-        token_labels = TokenMetricLabels(
-            tenant_id=tenant_id or "",
-            app_id=app_id or "",
-            operation_type=OperationType.MESSAGE,
-            model_provider=metadata.get("ls_provider", ""),
-            model_name=metadata.get("ls_model_name", ""),
-            node_type="",
-        ).to_dict()
-        self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, token_labels)
-        if info.message_tokens > 0:
-            self._exporter.increment_counter(EnterpriseTelemetryCounter.INPUT_TOKENS, info.message_tokens, token_labels)
-        if info.answer_tokens > 0:
-            self._exporter.increment_counter(EnterpriseTelemetryCounter.OUTPUT_TOKENS, info.answer_tokens, token_labels)
+        self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, labels)
         invoke_from = metadata.get("from_source", "")
         self._exporter.increment_counter(
             EnterpriseTelemetryCounter.REQUESTS,
@@ -557,7 +509,7 @@ class EnterpriseOtelTrace:
         attrs["dify.tool.config"] = self._content_or_ref(info.tool_config, ref)
 
         emit_metric_only_event(
-            event_name=EnterpriseTelemetryEvent.TOOL_EXECUTION,
+            event_name="dify.tool.execution",
             attributes=attrs,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
@@ -611,7 +563,7 @@ class EnterpriseOtelTrace:
         )
 
         emit_metric_only_event(
-            event_name=EnterpriseTelemetryEvent.MODERATION_CHECK,
+            event_name="dify.moderation.check",
             attributes=attrs,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
@@ -656,7 +608,7 @@ class EnterpriseOtelTrace:
         )
 
         emit_metric_only_event(
-            event_name=EnterpriseTelemetryEvent.SUGGESTED_QUESTION_GENERATION,
+            event_name="dify.suggested_question.generation",
             attributes=attrs,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
@@ -743,7 +695,7 @@ class EnterpriseOtelTrace:
         attrs["dify.dataset.documents"] = self._content_or_ref(structured_docs, ref)
 
         emit_metric_only_event(
-            event_name=EnterpriseTelemetryEvent.DATASET_RETRIEVAL,
+            event_name="dify.dataset.retrieval",
             attributes=attrs,
             trace_id_source=metadata.get("workflow_run_id") or str(info.message_id) if info.message_id else None,
             span_id_source=node_execution_id or (str(info.message_id) if info.message_id else None),
@@ -790,7 +742,7 @@ class EnterpriseOtelTrace:
         attrs["dify.generate_name.outputs"] = self._content_or_ref(outputs, ref)
 
         emit_metric_only_event(
-            event_name=EnterpriseTelemetryEvent.GENERATE_NAME_EXECUTION,
+            event_name="dify.generate_name.execution",
             attributes=attrs,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
@@ -843,21 +795,12 @@ class EnterpriseOtelTrace:
         attrs["dify.prompt_generation.output"] = self._content_or_ref(outputs, ref)
 
         emit_metric_only_event(
-            event_name=EnterpriseTelemetryEvent.PROMPT_GENERATION_EXECUTION,
+            event_name="dify.prompt_generation.execution",
             attributes=attrs,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
         )
-
-        token_labels = TokenMetricLabels(
-            tenant_id=tenant_id or "",
-            app_id=app_id or "",
-            operation_type=info.operation_type,
-            model_provider=info.model_provider,
-            model_name=info.model_name,
-            node_type="",
-        ).to_dict()
 
         labels = self._labels(
             tenant_id=tenant_id or "",
@@ -867,13 +810,11 @@ class EnterpriseOtelTrace:
             model_name=info.model_name,
         )
 
-        self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, token_labels)
+        self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, labels)
         if info.prompt_tokens > 0:
-            self._exporter.increment_counter(EnterpriseTelemetryCounter.INPUT_TOKENS, info.prompt_tokens, token_labels)
+            self._exporter.increment_counter(EnterpriseTelemetryCounter.INPUT_TOKENS, info.prompt_tokens, labels)
         if info.completion_tokens > 0:
-            self._exporter.increment_counter(
-                EnterpriseTelemetryCounter.OUTPUT_TOKENS, info.completion_tokens, token_labels
-            )
+            self._exporter.increment_counter(EnterpriseTelemetryCounter.OUTPUT_TOKENS, info.completion_tokens, labels)
 
         status = "failed" if info.error else "success"
         self._exporter.increment_counter(

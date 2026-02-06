@@ -122,7 +122,6 @@ These commands assume you start from the repository root.
 
    ```bash
    cd api
-   # Note: enterprise_telemetry queue is only used in Enterprise Edition
    uv run celery -A app.celery worker -P threads -c 2 --loglevel INFO -Q dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,enterprise_telemetry
    ```
 

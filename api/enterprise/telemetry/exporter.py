@@ -64,20 +64,19 @@ def _datetime_to_ns(dt: datetime) -> int:
 
 
 class _ExporterFactory:
-    def __init__(self, protocol: str, endpoint: str, headers: dict[str, str], insecure: bool):
+    def __init__(self, protocol: str, endpoint: str, headers: dict[str, str]):
         self._protocol = protocol
         self._endpoint = endpoint
         self._headers = headers
         self._grpc_headers = tuple(headers.items()) if headers else None
         self._http_headers = headers or None
-        self._insecure = insecure
 
     def create_trace_exporter(self) -> HTTPSpanExporter | GRPCSpanExporter:
         if self._protocol == "grpc":
             return GRPCSpanExporter(
                 endpoint=self._endpoint or None,
                 headers=self._grpc_headers,
-                insecure=self._insecure,
+                insecure=True,
             )
         trace_endpoint = f"{self._endpoint}/v1/traces" if self._endpoint else ""
         return HTTPSpanExporter(endpoint=trace_endpoint or None, headers=self._http_headers)
@@ -87,7 +86,7 @@ class _ExporterFactory:
             return GRPCMetricExporter(
                 endpoint=self._endpoint or None,
                 headers=self._grpc_headers,
-                insecure=self._insecure,
+                insecure=True,
             )
         metric_endpoint = f"{self._endpoint}/v1/metrics" if self._endpoint else ""
         return HTTPMetricExporter(endpoint=metric_endpoint or None, headers=self._http_headers)
@@ -108,9 +107,6 @@ class EnterpriseExporter:
         service_name: str = getattr(config, "ENTERPRISE_SERVICE_NAME", "dify")
         sampling_rate: float = getattr(config, "ENTERPRISE_OTEL_SAMPLING_RATE", 1.0)
         self.include_content: bool = getattr(config, "ENTERPRISE_INCLUDE_CONTENT", True)
-        api_key: str = getattr(config, "ENTERPRISE_OTLP_API_KEY", "")
-        # Auto-detect TLS: when bearer token is configured, use secure channel
-        insecure: bool = not bool(api_key)
 
         resource = Resource(
             attributes={
@@ -123,14 +119,7 @@ class EnterpriseExporter:
         self._tracer_provider = TracerProvider(resource=resource, sampler=sampler, id_generator=id_generator)
 
         headers = _parse_otlp_headers(headers_raw)
-        if api_key:
-            if "authorization" in headers:
-                logger.warning(
-                    "ENTERPRISE_OTLP_API_KEY is set but ENTERPRISE_OTLP_HEADERS also contains "
-                    "'authorization'; the API key will take precedence."
-                )
-            headers["authorization"] = f"Bearer {api_key}"
-        factory = _ExporterFactory(protocol, endpoint, headers, insecure=insecure)
+        factory = _ExporterFactory(protocol, endpoint, headers)
 
         trace_exporter = factory.create_trace_exporter()
         self._tracer_provider.add_span_processor(BatchSpanProcessor(trace_exporter))
@@ -152,9 +141,6 @@ class EnterpriseExporter:
             EnterpriseTelemetryCounter.DATASET_RETRIEVALS: meter.create_counter(
                 "dify.dataset.retrievals.total", unit="{retrieval}"
             ),
-            EnterpriseTelemetryCounter.APP_CREATED: meter.create_counter("dify.app.created.total", unit="{app}"),
-            EnterpriseTelemetryCounter.APP_UPDATED: meter.create_counter("dify.app.updated.total", unit="{app}"),
-            EnterpriseTelemetryCounter.APP_DELETED: meter.create_counter("dify.app.deleted.total", unit="{app}"),
         }
         self._histograms = {
             EnterpriseTelemetryHistogram.WORKFLOW_DURATION: meter.create_histogram("dify.workflow.duration", unit="s"),

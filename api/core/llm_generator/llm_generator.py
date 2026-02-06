@@ -25,7 +25,6 @@ from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
-from core.ops.entities.trace_entity import OperationType
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
@@ -216,7 +215,7 @@ class LLMGenerator:
                     tenant_id=tenant_id,
                     user_id=user_id,
                     app_id=app_id,
-                    operation_type=OperationType.RULE_GENERATE,
+                    operation_type="rule_generate",
                     instruction=instruction,
                     generated_output=generated_output,
                     llm_result=llm_result,
@@ -273,7 +272,7 @@ class LLMGenerator:
                             tenant_id=tenant_id,
                             user_id=user_id,
                             app_id=app_id,
-                            operation_type=OperationType.RULE_GENERATE,
+                            operation_type="rule_generate",
                             instruction=instruction,
                             generated_output="",
                             llm_result=llm_result,
@@ -339,7 +338,7 @@ class LLMGenerator:
                 tenant_id=tenant_id,
                 user_id=user_id,
                 app_id=app_id,
-                operation_type=OperationType.RULE_GENERATE,
+                operation_type="rule_generate",
                 instruction=instruction,
                 generated_output=str(generated_output) if generated_output else "",
                 llm_result=llm_result,
@@ -410,7 +409,7 @@ class LLMGenerator:
                 tenant_id=tenant_id,
                 user_id=user_id,
                 app_id=app_id,
-                operation_type=OperationType.CODE_GENERATE,
+                operation_type="code_generate",
                 instruction=instruction,
                 generated_output=result.get("code", ""),
                 llm_result=llm_result,
@@ -505,7 +504,7 @@ class LLMGenerator:
                 tenant_id=tenant_id,
                 user_id=user_id,
                 app_id=app_id,
-                operation_type=OperationType.STRUCTURED_OUTPUT,
+                operation_type="structured_output",
                 instruction=instruction,
                 generated_output=result.get("output", ""),
                 llm_result=llm_result,
@@ -737,7 +736,7 @@ class LLMGenerator:
                 tenant_id=tenant_id,
                 user_id=user_id,
                 app_id=app_id,
-                operation_type=OperationType.INSTRUCTION_MODIFY,
+                operation_type="instruction_modify",
                 instruction=instruction,
                 generated_output=generated_output,
                 llm_result=llm_result,
@@ -754,7 +753,7 @@ class LLMGenerator:
         tenant_id: str,
         user_id: str,
         app_id: str | None,
-        operation_type: OperationType,
+        operation_type: str,
         instruction: str,
         generated_output: str,
         llm_result: LLMResult | None,
