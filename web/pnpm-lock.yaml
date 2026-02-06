@@ -526,8 +526,8 @@ importers:
         specifier: https://pkg.pr.new/hyoban/eslint-plugin-better-tailwindcss@c0161c7
         version: https://pkg.pr.new/hyoban/eslint-plugin-better-tailwindcss@c0161c7(eslint@9.39.2(jiti@1.21.7))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)
       eslint-plugin-hyoban:
-        specifier: 0.9.4
-        version: 0.9.4(eslint@9.39.2(jiti@1.21.7))
+        specifier: 0.10.1
+        version: 0.10.1(eslint@9.39.2(jiti@1.21.7))
       eslint-plugin-react-hooks:
         specifier: 7.0.1
         version: 7.0.1(eslint@9.39.2(jiti@1.21.7))
@@ -4577,8 +4577,8 @@ packages:
     peerDependencies:
       eslint: '>=8'
 
-  eslint-plugin-hyoban@0.9.4:
-    resolution: {integrity: sha512-3UUeMLkcox88/i5TyDm6r5f1K1TWW9X7L1N7byXtOhPTbB2D7Fe9y3fT9poMiFjkBa5na9tAbcjaTQ2VMn683Q==}
+  eslint-plugin-hyoban@0.10.1:
+    resolution: {integrity: sha512-fQhK6COgm4branMemO0c52XNRYMLNW19jAhjBLS90Lup+QdzTEsFF9xDq8UA7JhID2wF+wDXBjTjEqUux6ZjfA==}
     peerDependencies:
       eslint: '*'
 
@@ -12113,7 +12113,7 @@ snapshots:
       eslint: 9.39.2(jiti@1.21.7)
       eslint-compat-utils: 0.5.1(eslint@9.39.2(jiti@1.21.7))
 
-  eslint-plugin-hyoban@0.9.4(eslint@9.39.2(jiti@1.21.7)):
+  eslint-plugin-hyoban@0.10.1(eslint@9.39.2(jiti@1.21.7)):
     dependencies:
       eslint: 9.39.2(jiti@1.21.7)
 

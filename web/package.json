@@ -217,7 +217,7 @@
     "esbuild": "0.27.2",
     "eslint": "9.39.2",
     "eslint-plugin-better-tailwindcss": "https://pkg.pr.new/hyoban/eslint-plugin-better-tailwindcss@c0161c7",
-    "eslint-plugin-hyoban": "0.9.4",
+    "eslint-plugin-hyoban": "0.10.1",
     "eslint-plugin-react-hooks": "7.0.1",
     "eslint-plugin-react-refresh": "0.5.0",
     "eslint-plugin-sonarjs": "3.0.6",

@@ -80,13 +80,14 @@ export default antfu(
     },
   },
   {
-    plugins: { dify },
+    name: 'dify/custom/setup',
+    plugins: {
+      dify,
+      hyoban,
+    },
   },
   {
     files: ['**/*.tsx'],
-    plugins: {
-      hyoban,
-    },
     rules: {
       'hyoban/prefer-tailwind-icons': ['warn', {
         prefix: 'i-',
@@ -128,7 +129,7 @@ export default antfu(
       'max-lines': 'off',
       'jsonc/sort-keys': 'error',
 
-      'dify/valid-i18n-keys': 'error',
+      'hyoban/i18n-flat-key': 'error',
       'dify/no-extra-keys': 'error',
       'dify/consistent-placeholders': 'error',
     },
@@ -136,7 +137,7 @@ export default antfu(
   {
     files: ['**/package.json'],
     rules: {
-      'dify/no-version-prefix': 'error',
+      'hyoban/no-dependency-version-prefix': 'error',
     },
   },
 )
