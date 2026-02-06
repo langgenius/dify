@@ -121,14 +121,10 @@ class EnterpriseMetricHandler:
         dedup_key = f"telemetry:dedup:{envelope.tenant_id}:{envelope.event_id}"
 
         try:
-            # Try to get existing value
-            existing = redis_client.get(dedup_key)
-            if existing is not None:
-                return True
-
-            # First time seeing this event - mark as seen with 1h TTL
-            redis_client.setex(dedup_key, 3600, b"1")
-            return False
+            # Atomic set-if-not-exists with 1h TTL
+            # Returns True if key was set (first time), None if already exists (duplicate)
+            was_set = redis_client.set(dedup_key, b"1", nx=True, ex=3600)
+            return was_set is None
         except Exception:
             # Fail open: if Redis is unavailable, process the event
             # (prefer occasional duplicate over lost data)
