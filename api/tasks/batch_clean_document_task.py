@@ -40,12 +40,8 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
     total_image_upload_file_ids: list[str] = []
 
     try:
-        # ============ Step 1: Query data (short read-only transaction) ============
+        # ============ Step 1: Query segment and file data (short read-only transaction) ============
         with session_factory.create_session() as session:
-            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
-            if not dataset:
-                raise Exception("Document has no dataset")
-
             # Get segments info
             segments = session.scalars(
                 select(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))
