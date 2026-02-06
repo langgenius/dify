@@ -7,6 +7,24 @@ class EnterpriseTelemetrySpan(StrEnum):
     DRAFT_NODE_EXECUTION = "dify.node.execution.draft"
 
 
+class EnterpriseTelemetryEvent(StrEnum):
+    """Event names for enterprise telemetry logs."""
+
+    APP_CREATED = "dify.app.created"
+    APP_UPDATED = "dify.app.updated"
+    APP_DELETED = "dify.app.deleted"
+    FEEDBACK_CREATED = "dify.feedback.created"
+    WORKFLOW_RUN = "dify.workflow.run"
+    MESSAGE_RUN = "dify.message.run"
+    TOOL_EXECUTION = "dify.tool.execution"
+    MODERATION_CHECK = "dify.moderation.check"
+    SUGGESTED_QUESTION_GENERATION = "dify.suggested_question.generation"
+    DATASET_RETRIEVAL = "dify.dataset.retrieval"
+    GENERATE_NAME_EXECUTION = "dify.generate_name.execution"
+    PROMPT_GENERATION_EXECUTION = "dify.prompt_generation.execution"
+    REHYDRATION_FAILED = "dify.telemetry.rehydration_failed"
+
+
 class EnterpriseTelemetryCounter(StrEnum):
     TOKENS = "tokens"
     INPUT_TOKENS = "input_tokens"
@@ -15,6 +33,9 @@ class EnterpriseTelemetryCounter(StrEnum):
     ERRORS = "errors"
     FEEDBACK = "feedback"
     DATASET_RETRIEVALS = "dataset_retrievals"
+    APP_CREATED = "app_created"
+    APP_UPDATED = "app_updated"
+    APP_DELETED = "app_deleted"
 
 
 class EnterpriseTelemetryHistogram(StrEnum):
@@ -28,6 +49,7 @@ class EnterpriseTelemetryHistogram(StrEnum):
 
 __all__ = [
     "EnterpriseTelemetryCounter",
+    "EnterpriseTelemetryEvent",
     "EnterpriseTelemetryHistogram",
     "EnterpriseTelemetrySpan",
 ]

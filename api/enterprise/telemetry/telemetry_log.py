@@ -9,7 +9,10 @@ from __future__ import annotations
 import logging
 import uuid
 from functools import lru_cache
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from enterprise.telemetry.entities import EnterpriseTelemetryEvent
 
 logger = logging.getLogger("dify.telemetry")
 
@@ -48,7 +51,7 @@ def compute_span_id_hex(uuid_str: str | None) -> str:
 
 def emit_telemetry_log(
     *,
-    event_name: str,
+    event_name: str | EnterpriseTelemetryEvent,
     attributes: dict[str, Any],
     signal: str = "metric_only",
     trace_id_source: str | None = None,
@@ -101,7 +104,7 @@ def emit_telemetry_log(
 
 def emit_metric_only_event(
     *,
-    event_name: str,
+    event_name: str | EnterpriseTelemetryEvent,
     attributes: dict[str, Any],
     trace_id_source: str | None = None,
     span_id_source: str | None = None,

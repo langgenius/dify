@@ -174,10 +174,11 @@ class EnterpriseMetricHandler:
                 envelope.case,
             )
             # Emit degraded event marker
+            from enterprise.telemetry.entities import EnterpriseTelemetryEvent
             from enterprise.telemetry.telemetry_log import emit_metric_only_event
 
             emit_metric_only_event(
-                event_name="dify.telemetry.rehydration_failed",
+                event_name=EnterpriseTelemetryEvent.REHYDRATION_FAILED,
                 attributes={
                     "dify.tenant_id": envelope.tenant_id,
                     "dify.event_id": envelope.event_id,
@@ -196,7 +197,7 @@ class EnterpriseMetricHandler:
 
     def _on_app_created(self, envelope: TelemetryEnvelope) -> None:
         """Handle app created event."""
-        from enterprise.telemetry.entities import EnterpriseTelemetryCounter
+        from enterprise.telemetry.entities import EnterpriseTelemetryCounter, EnterpriseTelemetryEvent
         from enterprise.telemetry.telemetry_log import emit_metric_only_event
         from extensions.ext_enterprise_telemetry import get_enterprise_exporter
 
@@ -216,22 +217,23 @@ class EnterpriseMetricHandler:
         }
 
         emit_metric_only_event(
-            event_name="dify.app.created",
+            event_name=EnterpriseTelemetryEvent.APP_CREATED,
             attributes=attrs,
             tenant_id=envelope.tenant_id,
         )
         exporter.increment_counter(
-            EnterpriseTelemetryCounter.REQUESTS,
+            EnterpriseTelemetryCounter.APP_CREATED,
             1,
             {
-                "type": "app.created",
                 "tenant_id": envelope.tenant_id,
+                "app_id": str(payload.get("app_id", "")),
+                "mode": str(payload.get("mode", "")),
             },
         )
 
     def _on_app_updated(self, envelope: TelemetryEnvelope) -> None:
         """Handle app updated event."""
-        from enterprise.telemetry.entities import EnterpriseTelemetryCounter
+        from enterprise.telemetry.entities import EnterpriseTelemetryCounter, EnterpriseTelemetryEvent
         from enterprise.telemetry.telemetry_log import emit_metric_only_event
         from extensions.ext_enterprise_telemetry import get_enterprise_exporter
 
@@ -250,22 +252,22 @@ class EnterpriseMetricHandler:
         }
 
         emit_metric_only_event(
-            event_name="dify.app.updated",
+            event_name=EnterpriseTelemetryEvent.APP_UPDATED,
             attributes=attrs,
             tenant_id=envelope.tenant_id,
         )
         exporter.increment_counter(
-            EnterpriseTelemetryCounter.REQUESTS,
+            EnterpriseTelemetryCounter.APP_UPDATED,
             1,
             {
-                "type": "app.updated",
                 "tenant_id": envelope.tenant_id,
+                "app_id": str(payload.get("app_id", "")),
             },
         )
 
     def _on_app_deleted(self, envelope: TelemetryEnvelope) -> None:
         """Handle app deleted event."""
-        from enterprise.telemetry.entities import EnterpriseTelemetryCounter
+        from enterprise.telemetry.entities import EnterpriseTelemetryCounter, EnterpriseTelemetryEvent
         from enterprise.telemetry.telemetry_log import emit_metric_only_event
         from extensions.ext_enterprise_telemetry import get_enterprise_exporter
 
@@ -284,22 +286,22 @@ class EnterpriseMetricHandler:
         }
 
         emit_metric_only_event(
-            event_name="dify.app.deleted",
+            event_name=EnterpriseTelemetryEvent.APP_DELETED,
             attributes=attrs,
             tenant_id=envelope.tenant_id,
         )
         exporter.increment_counter(
-            EnterpriseTelemetryCounter.REQUESTS,
+            EnterpriseTelemetryCounter.APP_DELETED,
             1,
             {
-                "type": "app.deleted",
                 "tenant_id": envelope.tenant_id,
+                "app_id": str(payload.get("app_id", "")),
             },
         )
 
     def _on_feedback_created(self, envelope: TelemetryEnvelope) -> None:
         """Handle feedback created event."""
-        from enterprise.telemetry.entities import EnterpriseTelemetryCounter
+        from enterprise.telemetry.entities import EnterpriseTelemetryCounter, EnterpriseTelemetryEvent
         from enterprise.telemetry.telemetry_log import emit_metric_only_event
         from extensions.ext_enterprise_telemetry import get_enterprise_exporter
 
@@ -327,7 +329,7 @@ class EnterpriseMetricHandler:
 
         user_id = payload.get("from_end_user_id") or payload.get("from_account_id")
         emit_metric_only_event(
-            event_name="dify.feedback.created",
+            event_name=EnterpriseTelemetryEvent.FEEDBACK_CREATED,
             attributes=attrs,
             tenant_id=envelope.tenant_id,
             user_id=str(user_id or ""),
