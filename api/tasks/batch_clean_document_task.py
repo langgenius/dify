@@ -40,12 +40,8 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
     total_image_upload_file_ids: list[str] = []
 
     try:
-        # ============ Step 1: Query data (short read-only transaction) ============
+        # ============ Step 1: Query segment and file data (short read-only transaction) ============
         with session_factory.create_session() as session:
-            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
-            if not dataset:
-                raise Exception("Document has no dataset")
-
             # Get segments info
             segments = session.scalars(
                 select(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))
@@ -72,14 +68,19 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                 files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
                 storage_keys_to_delete.extend([f.key for f in files if f and f.key])
 
-
-        # ============ Step 2: Clean vector index (external service, no DB transaction) ============
-        if index_node_ids and dataset:
+        # ============ Step 2: Clean vector index (external service, fresh session for dataset) ============
+        if index_node_ids:
             try:
-                index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-                index_processor.clean(
-                    dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
-                )
+                # Fetch dataset in a fresh session to avoid DetachedInstanceError
+                with session_factory.create_session() as session:
+                    dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+                    if not dataset:
+                        logger.warning("Dataset not found for vector index cleanup, dataset_id: %s", dataset_id)
+                    else:
+                        index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+                        index_processor.clean(
+                            dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
+                        )
             except Exception:
                 logger.exception(
                     "Failed to clean vector index for dataset_id: %s, document_ids: %s, index_node_ids count: %d",
