@@ -77,20 +77,20 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     model.error = data.get("error_message") or data.get("error")
 
     # Handle datetime fields
-    started_at = data.get("started_at") or data.get("created_at")
-    if started_at:
-        if isinstance(started_at, str):
-            model.created_at = datetime.fromisoformat(started_at)
-        elif isinstance(started_at, (int, float)):
-            model.created_at = datetime.fromtimestamp(started_at)
+    created_at = data.get("created_at") or data.get("started_at")
+    if created_at and created_at not in {"null", ""}:
+        if isinstance(created_at, str):
+            model.created_at = datetime.fromisoformat(created_at)
+        elif isinstance(created_at, (int, float)):
+            model.created_at = datetime.fromtimestamp(created_at)
         else:
-            model.created_at = started_at
+            model.created_at = created_at
     else:
         # Provide default created_at if missing
         model.created_at = datetime.now()
 
     finished_at = data.get("finished_at")
-    if finished_at:
+    if finished_at and finished_at not in {"null", ""}:
         if isinstance(finished_at, str):
             model.finished_at = datetime.fromisoformat(finished_at)
         elif isinstance(finished_at, (int, float)):
@@ -98,13 +98,15 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
         else:
             model.finished_at = finished_at
 
-    # Compute elapsed_time from started_at and finished_at
-    # LogStore doesn't store elapsed_time, it's computed in WorkflowExecution domain entity
-    if model.finished_at and model.created_at:
+    # Handle elapsed_time
+    elapsed_time_value = data.get("elapsed_time")
+    if elapsed_time_value is not None and elapsed_time_value not in {"null", ""}:
+        model.elapsed_time = safe_float(elapsed_time_value)
+    elif model.finished_at and model.created_at:
+        # Compute from timestamps if not stored
         model.elapsed_time = (model.finished_at - model.created_at).total_seconds()
     else:
-        # Use safe conversion to handle 'null' strings and None values
-        model.elapsed_time = safe_float(data.get("elapsed_time", 0))
+        model.elapsed_time = 0.0
 
     return model
 

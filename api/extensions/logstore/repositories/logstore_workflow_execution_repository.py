@@ -136,7 +136,8 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
                 else "{}",
             ),
             ("status", domain_model.status.value),
-            ("error_message", domain_model.error_message or ""),
+            ("error", domain_model.error_message or ""),
+            ("elapsed_time", str(domain_model.elapsed_time)),
             ("total_tokens", str(domain_model.total_tokens)),
             ("total_steps", str(domain_model.total_steps)),
             ("exceptions_count", str(domain_model.exceptions_count)),
@@ -147,7 +148,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
                 else str(self._creator_user_role),
             ),
             ("created_by", self._creator_user_id),
-            ("started_at", domain_model.started_at.isoformat() if domain_model.started_at else ""),
+            ("created_at", domain_model.started_at.isoformat() if domain_model.started_at else ""),
             ("finished_at", domain_model.finished_at.isoformat() if domain_model.finished_at else ""),
         ]
 
