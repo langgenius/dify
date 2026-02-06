@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 import app
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.api_token_cache import ACTIVE_TOKEN_KEY_PREFIX
+from services.api_token_service import ACTIVE_TOKEN_KEY_PREFIX
 from models.model import ApiToken
 
 logger = logging.getLogger(__name__)

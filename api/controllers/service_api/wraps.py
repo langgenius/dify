@@ -14,7 +14,7 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.api_token_cache import ApiTokenCache, record_token_usage
+from services.api_token_service import ApiTokenCache, record_token_usage
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog

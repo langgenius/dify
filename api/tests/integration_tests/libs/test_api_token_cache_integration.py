@@ -13,7 +13,7 @@ from unittest.mock import patch
 import pytest
 
 from extensions.ext_redis import redis_client
-from libs.api_token_cache import ApiTokenCache, CachedApiToken
+from services.api_token_service import ApiTokenCache, CachedApiToken
 from models.model import ApiToken
 
 
@@ -224,7 +224,7 @@ class TestTokenUsageRecording:
 
     def test_record_token_usage_sets_redis_key(self):
         """Test that record_token_usage writes an active key to Redis."""
-        from libs.api_token_cache import record_token_usage
+        from services.api_token_service import record_token_usage
 
         record_token_usage(self.test_token, self.test_scope)
 
@@ -239,7 +239,7 @@ class TestTokenUsageRecording:
 
     def test_record_token_usage_has_ttl(self):
         """Test that active keys have a TTL as safety net."""
-        from libs.api_token_cache import record_token_usage
+        from services.api_token_service import record_token_usage
 
         record_token_usage(self.test_token, self.test_scope)
 
@@ -248,7 +248,7 @@ class TestTokenUsageRecording:
 
     def test_record_token_usage_overwrites(self):
         """Test that repeated calls overwrite the same key (no accumulation)."""
-        from libs.api_token_cache import record_token_usage
+        from services.api_token_service import record_token_usage
 
         record_token_usage(self.test_token, self.test_scope)
         first_value = redis_client.get(self.active_key)
@@ -360,7 +360,7 @@ class TestEndToEndCacheFlow:
 class TestRedisFailover:
     """Test behavior when Redis is unavailable."""
 
-    @patch("libs.api_token_cache.redis_client")
+    @patch("services.api_token_service.redis_client")
     def test_graceful_degradation_when_redis_fails(self, mock_redis):
         """Test system degrades gracefully when Redis is unavailable."""
         from redis import RedisError
