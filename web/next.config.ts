@@ -5,7 +5,18 @@ import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 
 const isDev = process.env.NODE_ENV === 'development'
-const enableProdSourceMaps = process.env.ENABLE_PROD_SOURCEMAP === 'true'
+const parseBooleanEnv = (value: string | undefined): boolean | undefined => {
+  if (value === 'true')
+    return true
+  if (value === 'false')
+    return false
+
+  return undefined
+}
+
+const enableSourceMap = parseBooleanEnv(process.env.ENABLE_SOURCE_MAP)
+const enableProdSourceMapsFallback = parseBooleanEnv(process.env.ENABLE_PROD_SOURCEMAP) ?? false
+const enableProdSourceMaps = enableSourceMap ?? enableProdSourceMapsFallback
 const withMDX = createMDX({
   extension: /\.mdx?$/,
   options: {
