@@ -175,6 +175,7 @@ class TestMagicImportWarnings:
 
         # Remove helpers so it imports fresh
         import sys
+
         original_helpers = sys.modules.get(helpers.__name__)
         sys.modules.pop(helpers.__name__, None)
 
