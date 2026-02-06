@@ -1,5 +1,5 @@
 import { createEnv } from '@t3-oss/env-nextjs'
-import { kebabCase, replace } from 'string-ts'
+import { camelCase, kebabCase, replace } from 'string-ts'
 import * as z from 'zod'
 import { isServer } from './utils/client'
 
@@ -63,26 +63,18 @@ export type ClientDatasetAttrKey = DatasetAttrKeyFromEnvKey<ClientEnvKey>
 
 export const clientEnvKeys = Object.keys(clientSchema) as ReadonlyArray<ClientEnvKey>
 
-const getClientEnvSuffix = (key: ClientEnvKey) => kebabCase(replace(key, CLIENT_ENV_PREFIX, ''))
-
-export const getDatasetAttrKeyFromEnvKey = <K extends ClientEnvKey>(key: K) => {
-  const suffix = getClientEnvSuffix(key)
+export function getDatasetAttrKeyFromEnvKey<K extends ClientEnvKey>(key: K) {
+  const suffix = kebabCase(replace(key, CLIENT_ENV_PREFIX, ''))
   return `data-${suffix}` as const
 }
 
-const getRuntimeEnvFromBody = <K extends ClientEnvKey>(key: K) => {
-  if (typeof window === 'undefined')
-    return undefined
+function getRuntimeEnvFromBody<K extends ClientEnvKey>(key: K) {
+  if (typeof window === 'undefined') {
+    throw new TypeError('getRuntimeEnvFromBody can only be called in the browser')
+  }
 
-  const body = globalThis.document?.body
-  if (!body)
-    return undefined
-
-  const value = body.getAttribute(getDatasetAttrKeyFromEnvKey(key))
-  if (value !== null && value !== '')
-    return value
-
-  return undefined
+  const value = document.body.dataset[camelCase(replace(key, CLIENT_ENV_PREFIX, ''))]
+  return value || undefined
 }
 
 export const env = createEnv({
