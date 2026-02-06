@@ -72,7 +72,6 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                 files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
                 storage_keys_to_delete.extend([f.key for f in files if f and f.key])
 
-
         # ============ Step 2: Clean vector index (external service, no DB transaction) ============
         if index_node_ids and dataset:
             try:
@@ -91,10 +90,14 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
         # ============ Step 3: Delete metadata binding (separate short transaction) ============
         try:
             with session_factory.create_session() as session:
-                deleted_count = session.query(DatasetMetadataBinding).where(
-                    DatasetMetadataBinding.dataset_id == dataset_id,
-                    DatasetMetadataBinding.document_id.in_(document_ids),
-                ).delete(synchronize_session=False)
+                deleted_count = (
+                    session.query(DatasetMetadataBinding)
+                    .where(
+                        DatasetMetadataBinding.dataset_id == dataset_id,
+                        DatasetMetadataBinding.document_id.in_(document_ids),
+                    )
+                    .delete(synchronize_session=False)
+                )
                 session.commit()
                 logger.debug("Deleted %d metadata bindings for dataset_id: %s", deleted_count, dataset_id)
         except Exception:
