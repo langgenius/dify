@@ -198,7 +198,7 @@ const ConfigContent: FC<Props> = ({
             <div className="system-xs-semibold-uppercase mr-2 shrink-0 text-text-secondary">
               {t('rerankSettings', { ns: 'dataset' })}
             </div>
-            <Divider bgStyle="gradient" className="mx-0 !h-px" />
+            <Divider bgStyle="gradient" className="mx-0 my-0 !h-px" />
           </div>
           {
             selectedDatasetsMode.inconsistentEmbeddingModel
