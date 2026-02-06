@@ -28,6 +28,7 @@ import { useSkillTreeCollaboration } from '../hooks/use-skill-tree-collaboration
 import { useSyncTreeWithActiveTab } from '../hooks/use-sync-tree-with-active-tab'
 import { isDescendantOf } from '../utils/tree-utils'
 import DragActionTooltip from './drag-action-tooltip'
+import SearchResultList from './search-result-list'
 import TreeContextMenu from './tree-context-menu'
 import TreeNode from './tree-node'
 import UploadStatusTooltip from './upload-status-tooltip'
@@ -362,6 +363,17 @@ const FileTree = ({ className }: FileTreeProps) => {
             {t('skillSidebar.resetFilter')}
           </Button>
         </div>
+      </div>
+    )
+  }
+
+  if (searchTerm) {
+    return (
+      <div className={cn('flex min-h-[150px] flex-1 flex-col overflow-y-auto', className)}>
+        <SearchResultList
+          searchTerm={searchTerm}
+          treeChildren={treeChildren as AppAssetTreeView[]}
+        />
       </div>
     )
   }

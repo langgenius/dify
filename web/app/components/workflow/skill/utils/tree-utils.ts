@@ -199,6 +199,37 @@ function insertDraftNodeAtParent(
   return { nodes: inserted ? nextNodes : nodes, inserted }
 }
 
+export type FlatSearchResult = {
+  node: AppAssetTreeView
+  parentPath: string
+}
+
+export function flattenMatchingNodes(
+  nodes: AppAssetTreeView[],
+  searchTerm: string,
+): FlatSearchResult[] {
+  if (!searchTerm)
+    return []
+
+  const results: FlatSearchResult[] = []
+  const lowerTerm = searchTerm.toLowerCase()
+
+  function traverse(nodeList: AppAssetTreeView[]): void {
+    for (const node of nodeList) {
+      if (node.name.toLowerCase().includes(lowerTerm)) {
+        const lastSlash = node.path.lastIndexOf('/')
+        const parentPath = lastSlash > 0 ? node.path.slice(1, lastSlash) : ''
+        results.push({ node, parentPath })
+      }
+      if (node.children && node.children.length > 0)
+        traverse(node.children)
+    }
+  }
+
+  traverse(nodes)
+  return results
+}
+
 export function insertDraftTreeNode(
   nodes: AppAssetTreeView[],
   parentId: string | null,
