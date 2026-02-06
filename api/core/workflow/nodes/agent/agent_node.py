@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Union, cast
 
 from packaging.version import Version
 from pydantic import ValidationError
@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
+from core.db.session_factory import session_factory
 from core.file import File, FileTransferMethod
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
@@ -49,6 +50,12 @@ from factories import file_factory
 from factories.agent_factory import get_plugin_agent_strategy
 from models import ToolFile
 from models.model import Conversation
+from models.tools import (
+    ApiToolProvider,
+    BuiltinToolProvider,
+    MCPToolProvider,
+    WorkflowToolProvider,
+)
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .exc import (
@@ -259,7 +266,7 @@ class AgentNode(Node[AgentNodeData]):
                     value = cast(list[dict[str, Any]], value)
                     tool_value = []
                     for tool in value:
-                        provider_type = ToolProviderType(tool.get("type", ToolProviderType.BUILT_IN))
+                        provider_type = self._infer_tool_provider_type(tool, self.tenant_id)
                         setting_params = tool.get("settings", {})
                         parameters = tool.get("parameters", {})
                         manual_input_params = [key for key, value in parameters.items() if value is not None]
@@ -748,3 +755,34 @@ class AgentNode(Node[AgentNodeData]):
                 llm_usage=llm_usage,
             )
         )
+
+    @staticmethod
+    def _infer_tool_provider_type(tool_config: dict[str, Any], tenant_id: str) -> ToolProviderType:
+        provider_type_str = tool_config.get("type")
+        if provider_type_str:
+            return ToolProviderType(provider_type_str)
+
+        provider_id = tool_config.get("provider_name")
+        if not provider_id:
+            return ToolProviderType.BUILT_IN
+
+        with session_factory.create_session() as session:
+            provider_map: dict[
+                type[Union[WorkflowToolProvider, MCPToolProvider, ApiToolProvider, BuiltinToolProvider]],
+                ToolProviderType,
+            ] = {
+                WorkflowToolProvider: ToolProviderType.WORKFLOW,
+                MCPToolProvider: ToolProviderType.MCP,
+                ApiToolProvider: ToolProviderType.API,
+                BuiltinToolProvider: ToolProviderType.BUILT_IN,
+            }
+
+            for provider_model, provider_type in provider_map.items():
+                stmt = select(provider_model).where(
+                    provider_model.id == provider_id,
+                    provider_model.tenant_id == tenant_id,
+                )
+                if session.scalar(stmt):
+                    return provider_type
+
+        raise AgentNodeError(f"Tool provider with ID '{provider_id}' not found.")
