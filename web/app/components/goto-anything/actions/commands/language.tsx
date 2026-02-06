@@ -1,12 +1,13 @@
 import type { CommandSearchResult } from '../types'
 import type { SlashCommandHandler } from './types'
+import type { Locale } from '@/i18n-config/language'
 import { getI18n } from 'react-i18next'
 import { languages } from '@/i18n-config/language'
 import { registerCommands, unregisterCommands } from './command-bus'
 
 // Language dependency types
 type LanguageDeps = {
-  setLocale?: (locale: string) => Promise<void>
+  setLocale?: (locale: Locale, reloadPage?: boolean) => Promise<void>
 }
 
 const buildLanguageCommands = (query: string): CommandSearchResult[] => {

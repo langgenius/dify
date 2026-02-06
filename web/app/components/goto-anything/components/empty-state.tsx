@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import type { ActionItem } from '../actions/types'
+import type { ScopeDescriptor } from '../actions/types'
 import { useTranslation } from 'react-i18next'
 
 export type EmptyStateVariant = 'no-results' | 'error' | 'default' | 'loading'
@@ -10,14 +10,14 @@ export type EmptyStateProps = {
   variant: EmptyStateVariant
   searchMode?: string
   error?: Error | null
-  Actions?: Record<string, ActionItem>
+  Actions?: ScopeDescriptor[]
 }
 
 const EmptyState: FC<EmptyStateProps> = ({
   variant,
   searchMode = 'general',
   error,
-  Actions = {},
+  Actions = [],
 }) => {
   const { t } = useTranslation()
 
@@ -88,7 +88,7 @@ const EmptyState: FC<EmptyStateProps> = ({
       return t('gotoAnything.emptyState.tryDifferentTerm', { ns: 'app' })
     }
 
-    const shortcuts = Object.values(Actions).map(action => action.shortcut).join(', ')
+    const shortcuts = Actions.map(scope => scope.shortcut).join(', ')
     return t('gotoAnything.emptyState.trySpecificSearch', { ns: 'app', shortcuts })
   }
 

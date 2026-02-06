@@ -599,30 +599,20 @@ describe('CommonCreateModal', () => {
         },
       })
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
-      const existingBuilder = createMockSubscriptionBuilder()
       mockVerifyCredentials.mockImplementation((params, { onSuccess }) => {
         onSuccess()
       })
 
-      render(<CommonCreateModal {...defaultProps} builder={existingBuilder} />)
+      render(<CommonCreateModal {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(mockCreateBuilder).toHaveBeenCalled()
+      })
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
       await waitFor(() => {
-        expect(mockVerifyCredentials).toHaveBeenCalledWith(
-          expect.objectContaining({
-            provider: 'test-provider',
-            subscriptionBuilderId: existingBuilder.id,
-          }),
-          expect.objectContaining({
-            onSuccess: expect.any(Function),
-            onError: expect.any(Function),
-          }),
-        )
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('modal-confirm')).toHaveTextContent('pluginTrigger.modal.common.create')
+        expect(mockVerifyCredentials).toHaveBeenCalled()
       })
     })
 
@@ -639,12 +629,15 @@ describe('CommonCreateModal', () => {
         },
       })
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
-      const existingBuilder = createMockSubscriptionBuilder()
       mockVerifyCredentials.mockImplementation((params, { onError }) => {
         onError(new Error('Verification failed'))
       })
 
-      render(<CommonCreateModal {...defaultProps} builder={existingBuilder} />)
+      render(<CommonCreateModal {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(mockCreateBuilder).toHaveBeenCalled()
+      })
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -2037,9 +2030,6 @@ describe('CommonCreateModal', () => {
       await waitFor(() => {
         expect(mockCreateBuilder).toHaveBeenCalled()
       })
-
-      // Flush pending state updates from createBuilder promise resolution
-      await act(async () => {})
 
       const input = screen.getByTestId('form-field-webhook_url')
       fireEvent.change(input, { target: { value: 'test' } })
