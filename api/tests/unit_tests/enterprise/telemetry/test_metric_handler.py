@@ -269,10 +269,12 @@ def test_rehydration_emits_degraded_event_on_failure():
     with patch("enterprise.telemetry.telemetry_log.emit_metric_only_event") as mock_emit:
         payload = handler._rehydrate(envelope)
 
+        from enterprise.telemetry.entities import EnterpriseTelemetryEvent
+
         assert payload == {}
         mock_emit.assert_called_once()
         call_args = mock_emit.call_args
-        assert call_args[1]["event_name"] == "dify.telemetry.rehydration_failed"
+        assert call_args[1]["event_name"] == EnterpriseTelemetryEvent.REHYDRATION_FAILED
         assert call_args[1]["attributes"]["rehydration_failed"] is True
 
 
@@ -295,8 +297,10 @@ def test_on_app_created_emits_correct_event(mock_redis):
 
         handler._on_app_created(envelope)
 
+        from enterprise.telemetry.entities import EnterpriseTelemetryEvent
+
         mock_emit.assert_called_once_with(
-            event_name="dify.app.created",
+            event_name=EnterpriseTelemetryEvent.APP_CREATED,
             attributes={
                 "dify.app.id": "app-789",
                 "dify.tenant_id": "tenant-123",
@@ -304,11 +308,15 @@ def test_on_app_created_emits_correct_event(mock_redis):
             },
             tenant_id="tenant-123",
         )
+        from enterprise.telemetry.entities import EnterpriseTelemetryCounter
+
         mock_exporter.increment_counter.assert_called_once()
         call_args = mock_exporter.increment_counter.call_args
+        assert call_args[0][0] == EnterpriseTelemetryCounter.APP_CREATED
         assert call_args[0][1] == 1
-        assert call_args[0][2]["type"] == "app.created"
         assert call_args[0][2]["tenant_id"] == "tenant-123"
+        assert call_args[0][2]["app_id"] == "app-789"
+        assert call_args[0][2]["mode"] == "chat"
 
 
 def test_on_app_updated_emits_correct_event(mock_redis):
@@ -330,17 +338,24 @@ def test_on_app_updated_emits_correct_event(mock_redis):
 
         handler._on_app_updated(envelope)
 
+        from enterprise.telemetry.entities import EnterpriseTelemetryEvent
+
         mock_emit.assert_called_once_with(
-            event_name="dify.app.updated",
+            event_name=EnterpriseTelemetryEvent.APP_UPDATED,
             attributes={
                 "dify.app.id": "app-789",
                 "dify.tenant_id": "tenant-123",
             },
             tenant_id="tenant-123",
         )
+        from enterprise.telemetry.entities import EnterpriseTelemetryCounter
+
         mock_exporter.increment_counter.assert_called_once()
         call_args = mock_exporter.increment_counter.call_args
-        assert call_args[0][2]["type"] == "app.updated"
+        assert call_args[0][0] == EnterpriseTelemetryCounter.APP_UPDATED
+        assert call_args[0][1] == 1
+        assert call_args[0][2]["tenant_id"] == "tenant-123"
+        assert call_args[0][2]["app_id"] == "app-789"
 
 
 def test_on_app_deleted_emits_correct_event(mock_redis):
@@ -362,17 +377,24 @@ def test_on_app_deleted_emits_correct_event(mock_redis):
 
         handler._on_app_deleted(envelope)
 
+        from enterprise.telemetry.entities import EnterpriseTelemetryEvent
+
         mock_emit.assert_called_once_with(
-            event_name="dify.app.deleted",
+            event_name=EnterpriseTelemetryEvent.APP_DELETED,
             attributes={
                 "dify.app.id": "app-789",
                 "dify.tenant_id": "tenant-123",
             },
             tenant_id="tenant-123",
         )
+        from enterprise.telemetry.entities import EnterpriseTelemetryCounter
+
         mock_exporter.increment_counter.assert_called_once()
         call_args = mock_exporter.increment_counter.call_args
-        assert call_args[0][2]["type"] == "app.deleted"
+        assert call_args[0][0] == EnterpriseTelemetryCounter.APP_DELETED
+        assert call_args[0][1] == 1
+        assert call_args[0][2]["tenant_id"] == "tenant-123"
+        assert call_args[0][2]["app_id"] == "app-789"
 
 
 def test_on_feedback_created_emits_correct_event(mock_redis):

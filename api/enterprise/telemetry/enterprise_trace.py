@@ -32,6 +32,7 @@ from core.ops.entities.trace_entity import (
 )
 from enterprise.telemetry.entities import (
     EnterpriseTelemetryCounter,
+    EnterpriseTelemetryEvent,
     EnterpriseTelemetryHistogram,
     EnterpriseTelemetrySpan,
 )
@@ -203,7 +204,7 @@ class EnterpriseOtelTrace:
         log_attrs["dify.workflow.query"] = self._content_or_ref(info.query, ref)
 
         emit_telemetry_log(
-            event_name="dify.workflow.run",
+            event_name=EnterpriseTelemetryEvent.WORKFLOW_RUN,
             attributes=log_attrs,
             signal="span_detail",
             trace_id_source=info.workflow_run_id,
@@ -448,7 +449,7 @@ class EnterpriseOtelTrace:
         attrs["dify.message.outputs"] = self._content_or_ref(outputs, ref)
 
         emit_metric_only_event(
-            event_name="dify.message.run",
+            event_name=EnterpriseTelemetryEvent.MESSAGE_RUN,
             attributes=attrs,
             trace_id_source=metadata.get("workflow_run_id") or str(info.message_id) if info.message_id else None,
             span_id_source=node_execution_id,
@@ -525,7 +526,7 @@ class EnterpriseOtelTrace:
         attrs["dify.tool.config"] = self._content_or_ref(info.tool_config, ref)
 
         emit_metric_only_event(
-            event_name="dify.tool.execution",
+            event_name=EnterpriseTelemetryEvent.TOOL_EXECUTION,
             attributes=attrs,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
@@ -579,7 +580,7 @@ class EnterpriseOtelTrace:
         )
 
         emit_metric_only_event(
-            event_name="dify.moderation.check",
+            event_name=EnterpriseTelemetryEvent.MODERATION_CHECK,
             attributes=attrs,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
@@ -624,7 +625,7 @@ class EnterpriseOtelTrace:
         )
 
         emit_metric_only_event(
-            event_name="dify.suggested_question.generation",
+            event_name=EnterpriseTelemetryEvent.SUGGESTED_QUESTION_GENERATION,
             attributes=attrs,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
@@ -711,7 +712,7 @@ class EnterpriseOtelTrace:
         attrs["dify.dataset.documents"] = self._content_or_ref(structured_docs, ref)
 
         emit_metric_only_event(
-            event_name="dify.dataset.retrieval",
+            event_name=EnterpriseTelemetryEvent.DATASET_RETRIEVAL,
             attributes=attrs,
             trace_id_source=metadata.get("workflow_run_id") or str(info.message_id) if info.message_id else None,
             span_id_source=node_execution_id or (str(info.message_id) if info.message_id else None),
@@ -758,7 +759,7 @@ class EnterpriseOtelTrace:
         attrs["dify.generate_name.outputs"] = self._content_or_ref(outputs, ref)
 
         emit_metric_only_event(
-            event_name="dify.generate_name.execution",
+            event_name=EnterpriseTelemetryEvent.GENERATE_NAME_EXECUTION,
             attributes=attrs,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
@@ -811,7 +812,7 @@ class EnterpriseOtelTrace:
         attrs["dify.prompt_generation.output"] = self._content_or_ref(outputs, ref)
 
         emit_metric_only_event(
-            event_name="dify.prompt_generation.execution",
+            event_name=EnterpriseTelemetryEvent.PROMPT_GENERATION_EXECUTION,
             attributes=attrs,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
