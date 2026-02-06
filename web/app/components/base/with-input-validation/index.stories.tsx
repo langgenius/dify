@@ -430,7 +430,7 @@ export const UsageDocumentation: Story = {
         <div>
           <h4 className="mb-2 text-sm font-semibold text-gray-900">Usage Example</h4>
           <pre className="overflow-x-auto rounded-lg bg-gray-900 p-4 text-xs text-gray-100">
-            {`import * as z from "zod"
+            {`import * as z from 'zod'
 import withValidation from './withValidation'
 
 // Define your component
