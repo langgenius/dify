@@ -8,7 +8,6 @@ from sqlalchemy import delete, select
 from core.db.session_factory import session_factory
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 
@@ -27,7 +26,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
     logger.info(click.style(f"Start update document: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
-    with session_factory.create_session() as session:
+    with session_factory.create_session() as session, session.begin():
         document = session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
 
         if not document:
@@ -36,7 +35,6 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
 
         document.indexing_status = "parsing"
         document.processing_started_at = naive_utc_now()
-        session.commit()
 
         # delete all document segment and index
         try:
@@ -56,7 +54,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
                 segment_ids = [segment.id for segment in segments]
                 segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
                 session.execute(segment_delete_stmt)
-                db.session.commit()
+
             end_at = time.perf_counter()
             logger.info(
                 click.style(
