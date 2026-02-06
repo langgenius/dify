@@ -34,7 +34,7 @@ const clientSchema = {
   /**
    * The base path for the application
    */
-  NEXT_PUBLIC_BASE_PATH: z.string().regex(/^\/.*$/).or(z.literal('')).default(''),
+  NEXT_PUBLIC_BASE_PATH: z.string().regex(/^\/.*[^/]$/).or(z.literal('')).default(''),
   /**
    * number of concurrency
    */
