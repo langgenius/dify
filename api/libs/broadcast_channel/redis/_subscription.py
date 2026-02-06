@@ -7,6 +7,7 @@ from typing import Self
 
 from libs.broadcast_channel.channel import Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
+from redis import Redis, RedisCluster
 from redis.client import PubSub
 
 _logger = logging.getLogger(__name__)
@@ -22,10 +23,12 @@ class RedisSubscriptionBase(Subscription):
 
     def __init__(
         self,
+        client: Redis | RedisCluster,
         pubsub: PubSub,
         topic: str,
     ):
         # The _pubsub is None only if the subscription is closed.
+        self._client = client
         self._pubsub: PubSub | None = pubsub
         self._topic = topic
         self._closed = threading.Event()
