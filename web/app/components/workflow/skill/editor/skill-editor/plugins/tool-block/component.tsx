@@ -4,7 +4,7 @@ import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppAssetTreeView } from '@/types/app-asset'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { RiAlertFill } from '@remixicon/react'
+import { RiAlertFill, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -358,11 +358,31 @@ const ToolBlockComponent = ({
         />
       )
     })()
+    const hoverIcon = (
+      <RiEqualizer2Line
+        className={cn(
+          'hidden size-[14px]',
+          needAuthorization ? 'text-text-warning' : 'text-text-accent',
+          isInteractive && 'group-hover:block',
+        )}
+      />
+    )
+    const normalIcon = (
+      <span className={cn('flex items-center justify-center', isInteractive && 'group-hover:hidden')}>
+        {iconNode}
+      </span>
+    )
+    const iconContent = (
+      <span className="flex size-4 items-center justify-center">
+        {normalIcon}
+        {isInteractive && hoverIcon}
+      </span>
+    )
     if (!needAuthorization)
-      return iconNode
+      return iconContent
     return (
       <span className="flex size-4 items-center justify-center rounded-[5px] border border-components-panel-border-subtle bg-background-default-dodge">
-        {iconNode}
+        {iconContent}
       </span>
     )
   }
@@ -521,7 +541,7 @@ const ToolBlockComponent = ({
       <span
         ref={ref}
         className={cn(
-          'inline-flex items-center gap-[2px] rounded-[5px] border py-px pl-px pr-[3px] shadow-xs',
+          'group inline-flex items-center gap-[2px] rounded-[5px] border py-px pl-px pr-[3px] shadow-xs',
           isInteractive ? 'cursor-pointer' : 'cursor-default',
           needAuthorization ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
           isSelected && 'border-text-accent',

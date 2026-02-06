@@ -3,6 +3,7 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { RiAlertFill, RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -105,6 +106,7 @@ const ToolGroupBlockComponent = ({
   nodeKey,
   tools,
 }: ToolGroupBlockComponentProps) => {
+  const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_TOOL_BLOCK_COMMAND)
   const { t } = useTranslation()
   const authBadgeLabel = t('skillEditor.authorizationBadge', { ns: 'workflow' })
@@ -113,6 +115,7 @@ const ToolGroupBlockComponent = ({
   const toolBlockContext = useToolBlockContext()
   const isUsingExternalMetadata = Boolean(toolBlockContext?.onMetadataChange)
   const useModal = Boolean(toolBlockContext?.useModal)
+  const isInteractive = editor.isEditable()
   const [isSettingOpen, setIsSettingOpen] = useState(false)
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
   const [expandedToolId, setExpandedToolId] = useState<string | null>(null)
@@ -535,11 +538,31 @@ const ToolGroupBlockComponent = ({
         />
       )
     })()
+    const hoverIcon = (
+      <RiEqualizer2Line
+        className={cn(
+          'hidden size-[14px]',
+          needAuthorization ? 'text-text-warning' : 'text-text-accent',
+          isInteractive && 'group-hover:block',
+        )}
+      />
+    )
+    const normalIcon = (
+      <span className={cn('flex items-center justify-center', isInteractive && 'group-hover:hidden')}>
+        {iconNode}
+      </span>
+    )
+    const iconContent = (
+      <span className="flex size-4 items-center justify-center">
+        {normalIcon}
+        {isInteractive && hoverIcon}
+      </span>
+    )
     if (!needAuthorization)
-      return iconNode
+      return iconContent
     return (
       <span className="flex size-4 items-center justify-center rounded-[5px] border border-components-panel-border-subtle bg-background-default-dodge">
-        {iconNode}
+        {iconContent}
       </span>
     )
   }
@@ -779,12 +802,15 @@ const ToolGroupBlockComponent = ({
       <span
         ref={ref}
         className={cn(
-          'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border px-px py-[1px] shadow-xs',
+          'inline-flex items-center gap-[2px] rounded-[5px] border px-px py-[1px] shadow-xs',
+          isInteractive ? 'group cursor-pointer' : 'cursor-default',
           needAuthorization ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
           isSelected && 'border-text-accent',
         )}
         title={providerLabel}
         onMouseDown={() => {
+          if (!isInteractive)
+            return
           if (!toolItems.length)
             return
           setIsSettingOpen(true)
