@@ -16,6 +16,8 @@ import type {
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
+import type { Node } from '@/app/components/workflow/types'
+import type { EventPayload } from '@/context/event-emitter'
 import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -52,12 +54,12 @@ import {
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
 import ComponentPickerBlock from './plugins/component-picker-block'
+
 import {
   ContextBlock,
   ContextBlockNode,
   ContextBlockReplacementBlock,
 } from './plugins/context-block'
-
 import {
   CurrentBlock,
   CurrentBlockNode,
@@ -153,6 +155,7 @@ const EnterCommandPlugin: FC<{ onEnter?: (event: KeyboardEvent) => void }> = ({ 
 
 export type PromptEditorProps = {
   instanceId?: string
+  nodeId?: string
   compact?: boolean
   wrapperClassName?: string
   className?: string
@@ -184,6 +187,7 @@ export type PromptEditorProps = {
 
 const PromptEditor: FC<PromptEditorProps> = ({
   instanceId,
+  nodeId,
   compact,
   wrapperClassName,
   className,
@@ -251,14 +255,29 @@ const PromptEditor: FC<PromptEditorProps> = ({
     eventEmitter?.emit({
       type: UPDATE_DATASETS_EVENT_EMITTER,
       payload: contextBlock?.datasets,
-    } as any)
+    } as EventPayload)
   }, [eventEmitter, contextBlock?.datasets])
   useEffect(() => {
     eventEmitter?.emit({
       type: UPDATE_HISTORY_EVENT_EMITTER,
       payload: historyBlock?.history,
-    } as any)
+    } as EventPayload)
   }, [eventEmitter, historyBlock?.history])
+
+  const availableNodes = React.useMemo<Node[] | undefined>(() => {
+    if (!workflowVariableBlock?.workflowNodesMap)
+      return undefined
+    return Object.entries(workflowVariableBlock.workflowNodesMap).map(([id, data]) => ({
+      id,
+      data: {
+        title: data.title,
+        type: data.type,
+      } as any,
+      position: data.position ?? { x: 0, y: 0 },
+      width: data.width,
+      height: data.height,
+    })) as Node[]
+  }, [workflowVariableBlock?.workflowNodesMap])
 
   const toolBlockContextValue = React.useMemo(() => {
     if (!onToolMetadataChange)
@@ -267,8 +286,11 @@ const PromptEditor: FC<PromptEditorProps> = ({
       metadata: toolMetadata,
       onMetadataChange: onToolMetadataChange,
       useModal: true,
+      nodeId,
+      nodesOutputVars: workflowVariableBlock?.variables,
+      availableNodes,
     }
-  }, [onToolMetadataChange, toolMetadata])
+  }, [availableNodes, nodeId, onToolMetadataChange, toolMetadata, workflowVariableBlock?.variables])
 
   const sandboxPlaceHolder = React.useMemo(() => {
     if (!isSupportSandbox)

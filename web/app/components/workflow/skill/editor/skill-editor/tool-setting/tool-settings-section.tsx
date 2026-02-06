@@ -2,7 +2,7 @@
 
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,6 +34,9 @@ type ToolSettingsSectionProps = {
   currentTool?: Tool
   value?: ToolValue
   nodeId?: string
+  nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
+  enableVariableReference?: boolean
   onChange?: (value: ToolValue) => void
 }
 
@@ -42,10 +45,13 @@ const ToolSettingsSection = ({
   currentTool,
   value,
   nodeId,
+  nodesOutputVars,
+  availableNodes,
+  enableVariableReference = false,
   onChange,
 }: ToolSettingsSectionProps) => {
   const { t } = useTranslation()
-  const safeNodeId = nodeId ?? ''
+  const resolvedNodeId = enableVariableReference ? (nodeId || 'workflow') : undefined
 
   const currentToolSettings = useMemo(() => {
     if (!currentTool)
@@ -144,8 +150,10 @@ const ToolSettingsSection = ({
           value={getSafeConfigValue(value?.settings as ToolConfigValueMap, settingsFormSchemas)}
           onChange={handleSettingsFormChange}
           schemas={settingsFormSchemas}
-          nodeId={safeNodeId}
-          disableVariableReference
+          nodeId={resolvedNodeId}
+          nodeOutputVars={nodesOutputVars}
+          availableNodes={availableNodes}
+          disableVariableReference={!enableVariableReference}
         />
       )}
       {showParamsSection && (
@@ -153,8 +161,10 @@ const ToolSettingsSection = ({
           value={getSafeConfigValue(value?.parameters as ToolConfigValueMap, paramsFormSchemas)}
           onChange={handleParamsFormChange}
           schemas={paramsFormSchemas}
-          nodeId={safeNodeId}
-          disableVariableReference
+          nodeId={resolvedNodeId}
+          nodeOutputVars={nodesOutputVars}
+          availableNodes={availableNodes}
+          disableVariableReference={!enableVariableReference}
         />
       )}
     </>

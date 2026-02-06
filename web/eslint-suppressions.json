@@ -1429,7 +1429,7 @@
   },
   "app/components/base/prompt-editor/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {

@@ -535,7 +535,10 @@ const ToolBlockComponent = ({
         currentTool={currentTool}
         value={toolValue}
         onChange={handleToolValueChange}
-        nodeId={undefined}
+        nodeId={toolBlockContext?.nodeId}
+        nodesOutputVars={toolBlockContext?.nodesOutputVars}
+        availableNodes={toolBlockContext?.availableNodes}
+        enableVariableReference={useModal}
       />
       {readmeEntrance}
     </div>
