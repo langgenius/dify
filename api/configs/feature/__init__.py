@@ -1363,7 +1363,6 @@ class FeatureConfig(
     CeleryBeatConfig,
     CeleryScheduleTasksConfig,
     WorkflowLogConfig,
-    SpecificWorkflowLogConfig,
     WorkflowVariableTruncationConfig,
 ):
     pass
