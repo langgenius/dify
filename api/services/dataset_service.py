@@ -3129,39 +3129,39 @@ class SegmentService:
                     segment_document.word_count += len(args["answer"])
                     segment_document.answer = args["answer"]
 
-            db.session.add(segment_document)
-            # update document word count
-            assert document.word_count is not None
-            document.word_count += segment_document.word_count
-            db.session.add(document)
-            db.session.commit()
-
-            if args["attachment_ids"]:
-                for attachment_id in args["attachment_ids"]:
-                    binding = SegmentAttachmentBinding(
-                        tenant_id=current_user.current_tenant_id,
-                        dataset_id=document.dataset_id,
-                        document_id=document.id,
-                        segment_id=segment_document.id,
-                        attachment_id=attachment_id,
-                    )
-                    db.session.add(binding)
+                db.session.add(segment_document)
+                # update document word count
+                assert document.word_count is not None
+                document.word_count += segment_document.word_count
+                db.session.add(document)
                 db.session.commit()
 
-            # save vector index
-            try:
-                keywords = args.get("keywords")
-                keywords_list = [keywords] if keywords is not None else None
-                VectorService.create_segments_vector(keywords_list, [segment_document], dataset, document.doc_form)
-            except Exception as e:
-                logger.exception("create segment index failed")
-                segment_document.enabled = False
-                segment_document.disabled_at = naive_utc_now()
-                segment_document.status = "error"
-                segment_document.error = str(e)
-                db.session.commit()
-            segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
-            return segment
+                if args["attachment_ids"]:
+                    for attachment_id in args["attachment_ids"]:
+                        binding = SegmentAttachmentBinding(
+                            tenant_id=current_user.current_tenant_id,
+                            dataset_id=document.dataset_id,
+                            document_id=document.id,
+                            segment_id=segment_document.id,
+                            attachment_id=attachment_id,
+                        )
+                        db.session.add(binding)
+                    db.session.commit()
+
+                # save vector index
+                try:
+                    keywords = args.get("keywords")
+                    keywords_list = [keywords] if keywords is not None else None
+                    VectorService.create_segments_vector(keywords_list, [segment_document], dataset, document.doc_form)
+                except Exception as e:
+                    logger.exception("create segment index failed")
+                    segment_document.enabled = False
+                    segment_document.disabled_at = naive_utc_now()
+                    segment_document.status = "error"
+                    segment_document.error = str(e)
+                    db.session.commit()
+                segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
+                return segment
         except LockNotOwnedError:
             pass
 
