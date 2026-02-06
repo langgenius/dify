@@ -4,36 +4,23 @@ import { env } from '@/env'
 import { PromptRole } from '@/models/debug'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { AgentStrategy } from '@/types/app'
-import { DatasetAttr } from '@/types/feature'
 import pkg from '../package.json'
 
 const getBooleanConfig = (
   envVar: string | undefined,
-  dataAttrKey: DatasetAttr,
   defaultValue: boolean = true,
 ) => {
   if (envVar !== undefined && envVar !== '')
     return envVar === 'true'
-  const attrValue = globalThis.document?.body?.getAttribute(dataAttrKey)
-  if (attrValue !== undefined && attrValue !== '')
-    return attrValue === 'true'
   return defaultValue
 }
 
 const getNumberConfig = (
   envVar: string | undefined,
-  dataAttrKey: DatasetAttr,
   defaultValue: number,
 ) => {
   if (envVar) {
     const parsed = Number.parseInt(envVar)
-    if (!Number.isNaN(parsed) && parsed > 0)
-      return parsed
-  }
-
-  const attrValue = globalThis.document?.body?.getAttribute(dataAttrKey)
-  if (attrValue) {
-    const parsed = Number.parseInt(attrValue)
     if (!Number.isNaN(parsed) && parsed > 0)
       return parsed
   }
@@ -42,42 +29,32 @@ const getNumberConfig = (
 
 const getStringConfig = (
   envVar: string | undefined,
-  dataAttrKey: DatasetAttr,
   defaultValue: string,
 ) => {
   if (envVar)
     return envVar
-
-  const attrValue = globalThis.document?.body?.getAttribute(dataAttrKey)
-  if (attrValue)
-    return attrValue
   return defaultValue
 }
 
 export const API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_API_PREFIX,
-  DatasetAttr.DATA_API_PREFIX,
   'http://localhost:5001/console/api',
 )
 export const PUBLIC_API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_PUBLIC_API_PREFIX,
-  DatasetAttr.DATA_PUBLIC_API_PREFIX,
   'http://localhost:5001/api',
 )
 export const MARKETPLACE_API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
-  DatasetAttr.DATA_MARKETPLACE_API_PREFIX,
   'http://localhost:5002/api',
 )
 export const MARKETPLACE_URL_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX,
-  DatasetAttr.DATA_MARKETPLACE_URL_PREFIX,
   '',
 )
 
 const EDITION = getStringConfig(
   env.NEXT_PUBLIC_EDITION,
-  DatasetAttr.DATA_PUBLIC_EDITION,
   'SELF_HOSTED',
 )
 
@@ -86,16 +63,15 @@ export const IS_CLOUD_EDITION = EDITION === 'CLOUD'
 
 export const AMPLITUDE_API_KEY = getStringConfig(
   env.NEXT_PUBLIC_AMPLITUDE_API_KEY,
-  DatasetAttr.DATA_PUBLIC_AMPLITUDE_API_KEY,
   '',
 )
 
 export const IS_DEV = env.NODE_ENV === 'development'
 export const IS_PROD = env.NODE_ENV === 'production'
 
-export const SUPPORT_MAIL_LOGIN = !!(
-  env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN
-  || globalThis.document?.body?.getAttribute('data-public-support-mail-login')
+export const SUPPORT_MAIL_LOGIN = getBooleanConfig(
+  env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN,
+  false,
 )
 
 export const TONE_LIST = [
@@ -163,13 +139,11 @@ export const LOCALE_COOKIE_NAME = 'locale'
 
 const COOKIE_DOMAIN = getStringConfig(
   env.NEXT_PUBLIC_COOKIE_DOMAIN,
-  DatasetAttr.DATA_PUBLIC_COOKIE_DOMAIN,
   '',
 ).trim()
 
 export const BATCH_CONCURRENCY = getNumberConfig(
   env.NEXT_PUBLIC_BATCH_CONCURRENCY,
-  DatasetAttr.DATA_PUBLIC_BATCH_CONCURRENCY,
   5, // default
 )
 
@@ -355,58 +329,47 @@ export const JSON_SCHEMA_MAX_DEPTH = 10
 
 export const MAX_TOOLS_NUM = getNumberConfig(
   env.NEXT_PUBLIC_MAX_TOOLS_NUM,
-  DatasetAttr.DATA_PUBLIC_MAX_TOOLS_NUM,
   10,
 )
 export const MAX_PARALLEL_LIMIT = getNumberConfig(
   env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT,
-  DatasetAttr.DATA_PUBLIC_MAX_PARALLEL_LIMIT,
   10,
 )
 export const TEXT_GENERATION_TIMEOUT_MS = getNumberConfig(
   env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS,
-  DatasetAttr.DATA_PUBLIC_TEXT_GENERATION_TIMEOUT_MS,
   60000,
 )
 export const LOOP_NODE_MAX_COUNT = getNumberConfig(
   env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT,
-  DatasetAttr.DATA_PUBLIC_LOOP_NODE_MAX_COUNT,
   100,
 )
 export const MAX_ITERATIONS_NUM = getNumberConfig(
   env.NEXT_PUBLIC_MAX_ITERATIONS_NUM,
-  DatasetAttr.DATA_PUBLIC_MAX_ITERATIONS_NUM,
   99,
 )
 export const MAX_TREE_DEPTH = getNumberConfig(
   env.NEXT_PUBLIC_MAX_TREE_DEPTH,
-  DatasetAttr.DATA_PUBLIC_MAX_TREE_DEPTH,
   50,
 )
 
 export const ALLOW_UNSAFE_DATA_SCHEME = getBooleanConfig(
   env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME,
-  DatasetAttr.DATA_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME,
   false,
 )
 export const ENABLE_WEBSITE_JINAREADER = getBooleanConfig(
   env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER,
-  DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_JINAREADER,
   true,
 )
 export const ENABLE_WEBSITE_FIRECRAWL = getBooleanConfig(
   env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL,
-  DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_FIRECRAWL,
   true,
 )
 export const ENABLE_WEBSITE_WATERCRAWL = getBooleanConfig(
   env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL,
-  DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL,
   false,
 )
 export const ENABLE_SINGLE_DOLLAR_LATEX = getBooleanConfig(
   env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX,
-  DatasetAttr.DATA_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX,
   false,
 )
 
@@ -416,39 +379,33 @@ export const validPassword = /^(?=.*[a-z])(?=.*\d)\S{8,}$/i
 
 export const ZENDESK_WIDGET_KEY = getStringConfig(
   env.NEXT_PUBLIC_ZENDESK_WIDGET_KEY,
-  DatasetAttr.NEXT_PUBLIC_ZENDESK_WIDGET_KEY,
   '',
 )
 export const ZENDESK_FIELD_IDS = {
   ENVIRONMENT: getStringConfig(
     env.NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT,
-    DatasetAttr.NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT,
     '',
   ),
   VERSION: getStringConfig(
     env.NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION,
-    DatasetAttr.NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION,
     '',
   ),
   EMAIL: getStringConfig(
     env.NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL,
-    DatasetAttr.NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL,
     '',
   ),
   WORKSPACE_ID: getStringConfig(
     env.NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID,
-    DatasetAttr.NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID,
     '',
   ),
   PLAN: getStringConfig(
     env.NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN,
-    DatasetAttr.NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN,
     '',
   ),
 }
 export const APP_VERSION = pkg.version
 
-export const IS_MARKETPLACE = globalThis.document?.body?.getAttribute('data-is-marketplace') === 'true'
+export const IS_MARKETPLACE = env.NEXT_PUBLIC_IS_MARKETPLACE === 'true'
 
 export const RAG_PIPELINE_PREVIEW_CHUNK_NUM = 20
 

@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { env } from '@/env'
 import ParamItem from '.'
 
 type Props = {
@@ -12,7 +13,7 @@ type Props = {
 }
 
 const maxTopK = (() => {
-  const configValue = Number.parseInt(globalThis.document?.body?.getAttribute('data-public-top-k-max-value') || '', 10)
+  const configValue = Number.parseInt(env.NEXT_PUBLIC_TOP_K_MAX_VALUE || '', 10)
   if (configValue && !isNaN(configValue))
     return configValue
   return 10
