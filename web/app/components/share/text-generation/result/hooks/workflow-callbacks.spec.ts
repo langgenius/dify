@@ -292,4 +292,306 @@ describe('createWorkflowCallbacks', () => {
       expect(produced.resultText).toBe('new')
     })
   })
+
+  // handleGroupNext with valid node_id (covers findTrace)
+  describe('handleGroupNext', () => {
+    it('should push empty details to matching group when node_id exists', () => {
+      const existingTrace = createTrace({
+        node_id: 'group-node',
+        execution_metadata: { parallel_id: 'p1' } as NodeTracing['execution_metadata'],
+        details: [[]],
+      } as Partial<NodeTracing>)
+      const deps = createMockDeps({
+        getProcessData: vi.fn(() => createProcess({ tracing: [existingTrace] })),
+        requestData: { inputs: {}, node_id: 'group-node', execution_metadata: { parallel_id: 'p1' } },
+      })
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onIterationNext()
+
+      const produced = (deps.setProcessData as ReturnType<typeof vi.fn>).mock.calls[0][0] as WorkflowProcess
+      expect(produced.tracing[0].details).toHaveLength(2)
+      expect(produced.expand).toBe(true)
+    })
+
+    it('should handle no matching group gracefully', () => {
+      const deps = createMockDeps({
+        getProcessData: vi.fn(() => createProcess({ tracing: [] })),
+        requestData: { inputs: {}, node_id: 'nonexistent' },
+      })
+      const cb = createWorkflowCallbacks(deps)
+
+      // Should not throw even when no matching trace is found
+      cb.onLoopNext()
+
+      expect(deps.setProcessData).toHaveBeenCalled()
+    })
+  })
+
+  // markNodesStopped edge cases
+  describe('markNodesStopped', () => {
+    it('should handle undefined tracing gracefully', () => {
+      const deps = createMockDeps({
+        getProcessData: vi.fn(() => ({
+          status: WorkflowRunningStatus.Running,
+          expand: false,
+          resultText: '',
+        } as unknown as WorkflowProcess)),
+      })
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onWorkflowFinished({
+        data: { status: WorkflowRunningStatus.Stopped },
+      } as never)
+
+      expect(deps.setProcessData).toHaveBeenCalled()
+      expect(deps.onCompleted).toHaveBeenCalledWith('', undefined, false)
+    })
+
+    it('should recursively mark running/waiting nodes and nested structures as stopped', () => {
+      const nestedTrace = createTrace({ node_id: 'nested', status: NodeRunningStatus.Running })
+      const retryTrace = createTrace({ node_id: 'retry', status: NodeRunningStatus.Waiting })
+      const parallelChild = createTrace({ node_id: 'p-child', status: NodeRunningStatus.Running })
+      const parentTrace = createTrace({
+        node_id: 'parent',
+        status: NodeRunningStatus.Running,
+        details: [[nestedTrace]],
+        retryDetail: [retryTrace],
+        parallelDetail: { children: [parallelChild] },
+      } as Partial<NodeTracing>)
+
+      const deps = createMockDeps({
+        getProcessData: vi.fn(() => createProcess({ tracing: [parentTrace] })),
+      })
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onWorkflowFinished({
+        data: { status: WorkflowRunningStatus.Stopped },
+      } as never)
+
+      const produced = (deps.setProcessData as ReturnType<typeof vi.fn>).mock.calls[0][0] as WorkflowProcess
+      expect(produced.tracing[0].status).toBe(NodeRunningStatus.Stopped)
+      expect(produced.tracing[0].details![0][0].status).toBe(NodeRunningStatus.Stopped)
+      expect(produced.tracing[0].retryDetail![0].status).toBe(NodeRunningStatus.Stopped)
+      const parallel = produced.tracing[0].parallelDetail as { children: NodeTracing[] }
+      expect(parallel.children[0].status).toBe(NodeRunningStatus.Stopped)
+    })
+
+    it('should not change status of already succeeded nodes', () => {
+      const succeededTrace = createTrace({
+        node_id: 'done',
+        status: NodeRunningStatus.Succeeded,
+      })
+      const deps = createMockDeps({
+        getProcessData: vi.fn(() => createProcess({ tracing: [succeededTrace] })),
+      })
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onWorkflowFinished({
+        data: { status: WorkflowRunningStatus.Stopped },
+      } as never)
+
+      const produced = (deps.setProcessData as ReturnType<typeof vi.fn>).mock.calls[0][0] as WorkflowProcess
+      expect(produced.tracing[0].status).toBe(NodeRunningStatus.Succeeded)
+    })
+
+    it('should handle trace with no nested details/retryDetail/parallelDetail', () => {
+      const simpleTrace = createTrace({ node_id: 'simple', status: NodeRunningStatus.Running })
+      const deps = createMockDeps({
+        getProcessData: vi.fn(() => createProcess({ tracing: [simpleTrace] })),
+      })
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onWorkflowFinished({
+        data: { status: WorkflowRunningStatus.Stopped },
+      } as never)
+
+      const produced = (deps.setProcessData as ReturnType<typeof vi.fn>).mock.calls[0][0] as WorkflowProcess
+      expect(produced.tracing[0].status).toBe(NodeRunningStatus.Stopped)
+    })
+  })
+
+  // Branch coverage: handleGroupNext early return
+  describe('handleGroupNext - early return', () => {
+    it('should return early when requestData has no node_id', () => {
+      const deps = createMockDeps({
+        requestData: { inputs: {} }, // no node_id
+      })
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onIterationNext()
+
+      expect(deps.setProcessData).not.toHaveBeenCalled()
+    })
+  })
+
+  // Branch coverage: onNodeFinished edge cases
+  describe('onNodeFinished - branch coverage', () => {
+    it('should preserve existing extras when updating trace', () => {
+      const trace = createTrace({
+        node_id: 'n1',
+        execution_metadata: { parallel_id: 'p1' } as NodeTracing['execution_metadata'],
+        extras: { key: 'val' },
+      } as Partial<NodeTracing>)
+      const deps = createMockDeps({
+        getProcessData: vi.fn(() => createProcess({ tracing: [trace] })),
+      })
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onNodeFinished({
+        data: createTrace({
+          node_id: 'n1',
+          execution_metadata: { parallel_id: 'p1' } as NodeTracing['execution_metadata'],
+          status: NodeRunningStatus.Succeeded as NodeTracing['status'],
+        }),
+      } as never)
+
+      const produced = (deps.setProcessData as ReturnType<typeof vi.fn>).mock.calls[0][0] as WorkflowProcess
+      expect(produced.tracing[0].extras).toEqual({ key: 'val' })
+    })
+
+    it('should not add extras when existing trace has no extras', () => {
+      const trace = createTrace({
+        node_id: 'n1',
+        execution_metadata: { parallel_id: 'p1' } as NodeTracing['execution_metadata'],
+      })
+      const deps = createMockDeps({
+        getProcessData: vi.fn(() => createProcess({ tracing: [trace] })),
+      })
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onNodeFinished({
+        data: createTrace({
+          node_id: 'n1',
+          execution_metadata: { parallel_id: 'p1' } as NodeTracing['execution_metadata'],
+        }),
+      } as never)
+
+      const produced = (deps.setProcessData as ReturnType<typeof vi.fn>).mock.calls[0][0] as WorkflowProcess
+      expect(produced.tracing[0]).not.toHaveProperty('extras')
+    })
+
+    it('should do nothing when trace is not found (idx === -1)', () => {
+      const deps = createMockDeps({
+        getProcessData: vi.fn(() => createProcess({ tracing: [] })),
+      })
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onNodeFinished({
+        data: createTrace({ node_id: 'nonexistent' }),
+      } as never)
+
+      const produced = (deps.setProcessData as ReturnType<typeof vi.fn>).mock.calls[0][0] as WorkflowProcess
+      expect(produced.tracing).toHaveLength(0)
+    })
+  })
+
+  // Branch coverage: handleGroupFinish without error
+  describe('handleGroupFinish - branch coverage', () => {
+    it('should set expand=false when no error', () => {
+      const existing = createTrace({
+        node_id: 'n1',
+        execution_metadata: { parallel_id: 'p1' } as NodeTracing['execution_metadata'],
+      })
+      const deps = createMockDeps({
+        getProcessData: vi.fn(() => createProcess({ tracing: [existing] })),
+      })
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onLoopFinish({
+        data: createTrace({
+          node_id: 'n1',
+          execution_metadata: { parallel_id: 'p1' } as NodeTracing['execution_metadata'],
+        }),
+      } as never)
+
+      const produced = (deps.setProcessData as ReturnType<typeof vi.fn>).mock.calls[0][0] as WorkflowProcess
+      expect(produced.tracing[0].expand).toBe(false)
+    })
+  })
+
+  // Branch coverage: handleWorkflowEnd without error
+  describe('handleWorkflowEnd - branch coverage', () => {
+    it('should not notify when no error message', () => {
+      const deps = createMockDeps()
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onWorkflowFinished({
+        data: { status: WorkflowRunningStatus.Stopped },
+      } as never)
+
+      expect(deps.notify).not.toHaveBeenCalled()
+    })
+  })
+
+  // Branch coverage: findTraceIndex matching via parallel_id vs execution_metadata
+  describe('findTrace matching', () => {
+    it('should match trace via parallel_id field', () => {
+      const trace = createTrace({
+        node_id: 'n1',
+        parallel_id: 'p1',
+      } as Partial<NodeTracing>)
+      const deps = createMockDeps({
+        getProcessData: vi.fn(() => createProcess({ tracing: [trace] })),
+      })
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onNodeFinished({
+        data: createTrace({
+          node_id: 'n1',
+          execution_metadata: { parallel_id: 'p1' } as NodeTracing['execution_metadata'],
+          status: NodeRunningStatus.Succeeded as NodeTracing['status'],
+        }),
+      } as never)
+
+      const produced = (deps.setProcessData as ReturnType<typeof vi.fn>).mock.calls[0][0] as WorkflowProcess
+      expect(produced.tracing[0].status).toBe(NodeRunningStatus.Succeeded)
+    })
+
+    it('should not match when both parallel_id fields differ', () => {
+      const trace = createTrace({
+        node_id: 'group-node',
+        execution_metadata: { parallel_id: 'other' } as NodeTracing['execution_metadata'],
+        parallel_id: 'also-other',
+        details: [[]],
+      } as Partial<NodeTracing>)
+      const deps = createMockDeps({
+        getProcessData: vi.fn(() => createProcess({ tracing: [trace] })),
+        requestData: { inputs: {}, node_id: 'group-node', execution_metadata: { parallel_id: 'target' } },
+      })
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onIterationNext()
+
+      // group not found, details unchanged
+      const produced = (deps.setProcessData as ReturnType<typeof vi.fn>).mock.calls[0][0] as WorkflowProcess
+      expect(produced.tracing[0].details).toHaveLength(1)
+    })
+  })
+
+  // Branch coverage: onWorkflowFinished success with multiple output keys
+  describe('onWorkflowFinished - output branches', () => {
+    it('should not set resultText when outputs have multiple keys', () => {
+      const deps = createMockDeps()
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onWorkflowFinished({
+        data: { status: 'succeeded', outputs: { key1: 'val1', key2: 'val2' } },
+      } as never)
+
+      // setProcessData called once (for succeeded status), not twice (no resultText)
+      expect(deps.setProcessData).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not set resultText when single key is not a string', () => {
+      const deps = createMockDeps()
+      const cb = createWorkflowCallbacks(deps)
+
+      cb.onWorkflowFinished({
+        data: { status: 'succeeded', outputs: { data: { nested: true } } },
+      } as never)
+
+      expect(deps.setProcessData).toHaveBeenCalledTimes(1)
+    })
+  })
 })
