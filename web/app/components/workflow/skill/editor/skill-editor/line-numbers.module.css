@@ -48,5 +48,5 @@
 
 .lineNumbersPlaceholder {
   pointer-events: none;
-  left: calc(var(--line-number-gutter) + var(--line-number-gap));
+  left: calc(var(--line-number-gutter) + var(--line-number-gap)) !important;
 }
