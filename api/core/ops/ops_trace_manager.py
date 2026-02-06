@@ -15,7 +15,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
-from core.ops.entities.config_entity import OPS_FILE_PATH, TracingProviderEnum
+from core.ops.entities.config_entity import (
+    OPS_FILE_PATH,
+    TracingProviderEnum,
+)
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
@@ -28,8 +31,11 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import get_message_data
+from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.engine import db
+from models.account import Tenant
+from models.dataset import Dataset
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog
 from tasks.ops_trace_task import process_trace_tasks
@@ -466,8 +472,6 @@ class TraceTask:
 
     @classmethod
     def _get_workflow_run_repo(cls):
-        from repositories.factory import DifyAPIRepositoryFactory
-
         if cls._workflow_run_repo is None:
             with cls._repo_lock:
                 if cls._workflow_run_repo is None:
@@ -777,6 +781,35 @@ class TraceTask:
         if not message_data:
             return {}
 
+        tenant_id = ""
+        with Session(db.engine) as session:
+            tid = session.scalar(select(App.tenant_id).where(App.id == message_data.app_id))
+            if tid:
+                tenant_id = str(tid)
+
+        app_name, workspace_name = _lookup_app_and_workspace_names(message_data.app_id, tenant_id)
+
+        doc_list = [doc.model_dump() for doc in documents] if documents else []
+        dataset_ids: set[str] = set()
+        for doc in doc_list:
+            doc_meta = doc.get("metadata") or {}
+            did = doc_meta.get("dataset_id")
+            if did:
+                dataset_ids.add(did)
+
+        embedding_models: dict[str, dict[str, str]] = {}
+        if dataset_ids:
+            with Session(db.engine) as session:
+                rows = session.execute(
+                    select(Dataset.id, Dataset.embedding_model, Dataset.embedding_model_provider).where(
+                        Dataset.id.in_(list(dataset_ids))
+                    )
+                ).all()
+                for row in rows:
+                    embedding_models[str(row[0])] = {
+                        "embedding_model": row[1] or "",
+                        "embedding_model_provider": row[2] or "",
+                    }
         metadata = {
             "message_id": message_id,
             "ls_provider": message_data.model_provider,
@@ -787,6 +820,13 @@ class TraceTask:
             "agent_based": message_data.agent_based,
             "workflow_run_id": message_data.workflow_run_id,
             "from_source": message_data.from_source,
+            "from_source": message_data.from_source,
+            "tenant_id": tenant_id,
+            "app_id": message_data.app_id,
+            "user_id": message_data.from_end_user_id or message_data.from_account_id,
+            "app_name": app_name,
+            "workspace_name": workspace_name,
+            "embedding_models": embedding_models,
         }
 
         dataset_retrieval_trace_info = DatasetRetrievalTraceInfo(
