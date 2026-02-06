@@ -243,6 +243,11 @@ class PluginConfig(BaseSettings):
         default=15728640 * 12,
     )
 
+    PLUGIN_MODEL_SCHEMA_CACHE_TTL: PositiveInt = Field(
+        description="TTL in seconds for caching plugin model schemas in Redis",
+        default=60 * 60,
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """
@@ -1148,6 +1153,16 @@ class CeleryScheduleTasksConfig(BaseSettings):
     WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK: int = Field(
         description="Maximum schedules to dispatch per tick (0=unlimited, circuit breaker)",
         default=0,
+    )
+
+    # API token last_used_at batch update
+    ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK: bool = Field(
+        description="Enable periodic batch update of API token last_used_at timestamps",
+        default=True,
+    )
+    API_TOKEN_LAST_USED_UPDATE_INTERVAL: int = Field(
+        description="Interval in minutes for batch updating API token last_used_at (default 30)",
+        default=30,
     )
 
     # Trigger provider refresh (simple version)
