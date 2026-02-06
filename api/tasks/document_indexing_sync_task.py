@@ -28,7 +28,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
     logger.info(click.style(f"Start sync document: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
-    with session_factory.create_session() as session:
+    with session_factory.create_session() as session, session.begin():
         document = session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
 
         if not document:
@@ -68,7 +68,6 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                 document.indexing_status = "error"
                 document.error = "Datasource credential not found. Please reconnect your Notion workspace."
                 document.stopped_at = naive_utc_now()
-                session.commit()
                 return
 
             loader = NotionExtractor(
@@ -85,7 +84,6 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
             if last_edited_time != page_edited_time:
                 document.indexing_status = "parsing"
                 document.processing_started_at = naive_utc_now()
-                session.commit()
 
                 # delete all document segment and index
                 try:
