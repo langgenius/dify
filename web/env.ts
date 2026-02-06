@@ -1,8 +1,7 @@
 import { createEnv } from '@t3-oss/env-nextjs'
 import { kebabCase, replace } from 'string-ts'
 import { z } from 'zod'
-
-const isServer = typeof window === 'undefined'
+import { isServer } from './utils/client'
 
 const optionalString = z.string().optional()
 const CLIENT_ENV_PREFIX = 'NEXT_PUBLIC_' as const
