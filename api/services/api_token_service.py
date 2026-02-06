@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Pydantic DTO
 # ---------------------------------------------------------------------
 
+
 class CachedApiToken(BaseModel):
     """
     Pydantic model for cached API token data.
@@ -59,6 +60,7 @@ ACTIVE_TOKEN_KEY_PREFIX = "api_token_active:"
 # ---------------------------------------------------------------------
 # Cache class
 # ---------------------------------------------------------------------
+
 
 class ApiTokenCache:
     """
@@ -255,6 +257,7 @@ class ApiTokenCache:
 # Token usage recording (for batch update)
 # ---------------------------------------------------------------------
 
+
 def record_token_usage(auth_token: str, scope: str | None) -> None:
     """
     Record token usage in Redis for later batch update by a scheduled job.
@@ -273,6 +276,7 @@ def record_token_usage(auth_token: str, scope: str | None) -> None:
 # ---------------------------------------------------------------------
 # Database query + single-flight
 # ---------------------------------------------------------------------
+
 
 def query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
     """
