@@ -54,6 +54,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     vision: {
       enabled: false,
     },
+    max_iterations: 100,
   },
   defaultRunInputData: {
     '#context#': [RETRIEVAL_OUTPUT_STRUCT],
