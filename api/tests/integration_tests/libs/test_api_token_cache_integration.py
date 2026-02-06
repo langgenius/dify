@@ -337,6 +337,7 @@ class TestEndToEndCacheFlow:
         ApiTokenCache.set(test_token_value, test_scope, mock_token)
 
         try:
+
             def read_cache():
                 return ApiTokenCache.get(test_token_value, test_scope)
 

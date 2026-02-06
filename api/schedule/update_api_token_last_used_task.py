@@ -57,7 +57,7 @@ def batch_update_api_token_last_used():
         token_scope_pairs: list[tuple[str, str | None]] = []
         for key in keys_to_process:
             # Strip prefix
-            suffix = key[len(ACTIVE_TOKEN_KEY_PREFIX):]
+            suffix = key[len(ACTIVE_TOKEN_KEY_PREFIX) :]
             # Split into scope:token (scope may be "None")
             parts = suffix.split(":", 1)
             if len(parts) == 2:
