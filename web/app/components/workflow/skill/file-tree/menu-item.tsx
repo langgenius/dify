@@ -81,13 +81,15 @@ const MenuItem = ({ icon: Icon, label, kbd, onClick, disabled, variant, tooltip 
           popupContent={tooltip}
           position="right"
         >
-          <button
-            type="button"
+          <span
             className="flex shrink-0 items-center justify-center"
-            onClick={e => e.stopPropagation()}
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
           >
             <RiQuestionLine className="size-4 text-text-quaternary hover:text-text-tertiary" />
-          </button>
+          </span>
         </Tooltip>
       )}
     </button>
