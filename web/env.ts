@@ -2,12 +2,13 @@ import type { CamelCase, Replace } from 'string-ts'
 import { createEnv } from '@t3-oss/env-nextjs'
 import { concat, kebabCase, length, slice } from 'string-ts'
 import * as z from 'zod'
-import { isServer } from './utils/client'
+import { isClient, isServer } from './utils/client'
 import { ObjectFromEntries, ObjectKeys } from './utils/object'
 
-const optionalString = z.string().optional()
-const CLIENT_ENV_PREFIX = 'NEXT_PUBLIC_' as const
+const CLIENT_ENV_PREFIX = 'NEXT_PUBLIC_'
 type ClientSchema = Record<`${typeof CLIENT_ENV_PREFIX}${string}`, z.ZodType>
+
+const optionalString = z.string().optional()
 
 /// keep-sorted
 const clientSchema = {
@@ -52,18 +53,6 @@ const clientSchema = {
   NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID: optionalString,
   NEXT_PUBLIC_ZENDESK_WIDGET_KEY: optionalString,
 } satisfies ClientSchema
-
-type ClientEnvKey = keyof typeof clientSchema
-type DatasetKey = CamelCase<Replace<ClientEnvKey, typeof CLIENT_ENV_PREFIX>>
-
-function getRuntimeEnvFromBody(key: DatasetKey) {
-  if (typeof window === 'undefined') {
-    throw new TypeError('getRuntimeEnvFromBody can only be called in the browser')
-  }
-
-  const value = document.body.dataset[key]
-  return value || undefined
-}
 
 export const env = createEnv({
   server: {
@@ -123,7 +112,28 @@ export const env = createEnv({
   emptyStringAsUndefined: true,
 })
 
+type ClientEnvKey = keyof typeof clientSchema
+type DatasetKey = CamelCase<Replace<ClientEnvKey, typeof CLIENT_ENV_PREFIX>>
+
+/**
+ * Browser-only function to get runtime env value from HTML body dataset.
+ */
+function getRuntimeEnvFromBody(key: DatasetKey) {
+  if (typeof window === 'undefined') {
+    throw new TypeError('getRuntimeEnvFromBody can only be called in the browser')
+  }
+
+  const value = document.body.dataset[key]
+  return value || undefined
+}
+
+/**
+ * Server-only function to get dataset map for embedding into the HTML body.
+ */
 export function getDatasetMap() {
+  if (isClient) {
+    throw new TypeError('getDatasetMap can only be called on the server')
+  }
   return ObjectFromEntries(
     ObjectKeys(clientSchema)
       .map(envKey => [
