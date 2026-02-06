@@ -111,16 +111,15 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
 
         # ============ Step 4: Batch delete UploadFile records (multiple short transactions) ============
         if total_image_upload_file_ids:
-            deleted_image_files = 0
             failed_batches = 0
+            total_batches = (len(total_image_upload_file_ids) + BATCH_SIZE - 1) // BATCH_SIZE
             for i in range(0, len(total_image_upload_file_ids), BATCH_SIZE):
                 batch = total_image_upload_file_ids[i : i + BATCH_SIZE]
                 try:
                     with session_factory.create_session() as session:
                         stmt = delete(UploadFile).where(UploadFile.id.in_(batch))
-                        result = session.execute(stmt)
+                        session.execute(stmt)
                         session.commit()
-                        deleted_image_files += result.rowcount
                 except Exception:
                     failed_batches += 1
                     logger.exception(
@@ -131,25 +130,23 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                     )
             if failed_batches > 0:
                 logger.warning(
-                    "Image UploadFile deletion completed with %d failed batches out of %d total batches",
+                    "Image UploadFile deletion: %d/%d batches failed for dataset_id: %s",
                     failed_batches,
-                    (len(total_image_upload_file_ids) + BATCH_SIZE - 1) // BATCH_SIZE,
+                    total_batches,
+                    dataset_id,
                 )
-            else:
-                logger.debug("Deleted %d image UploadFile records for dataset_id: %s", deleted_image_files, dataset_id)
 
         # ============ Step 5: Batch delete DocumentSegment records (multiple short transactions) ============
         if segment_ids:
-            deleted_segments = 0
             failed_batches = 0
+            total_batches = (len(segment_ids) + BATCH_SIZE - 1) // BATCH_SIZE
             for i in range(0, len(segment_ids), BATCH_SIZE):
                 batch = segment_ids[i : i + BATCH_SIZE]
                 try:
                     with session_factory.create_session() as session:
                         segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(batch))
-                        result = session.execute(segment_delete_stmt)
+                        session.execute(segment_delete_stmt)
                         session.commit()
-                        deleted_segments += result.rowcount
                 except Exception:
                     failed_batches += 1
                     logger.exception(
@@ -160,18 +157,10 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                         document_ids,
                     )
             if failed_batches > 0:
-                total_batches = (len(segment_ids) + BATCH_SIZE - 1) // BATCH_SIZE
                 logger.warning(
                     "DocumentSegment deletion: %d/%d batches failed, document_ids: %s",
                     failed_batches,
                     total_batches,
-                    document_ids,
-                )
-            else:
-                logger.debug(
-                    "Deleted %d DocumentSegment records for dataset_id: %s, document_ids: %s",
-                    deleted_segments,
-                    dataset_id,
                     document_ids,
                 )
 
@@ -180,9 +169,8 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
             try:
                 with session_factory.create_session() as session:
                     stmt = delete(UploadFile).where(UploadFile.id.in_(file_ids))
-                    result = session.execute(stmt)
+                    session.execute(stmt)
                     session.commit()
-                    logger.debug("Deleted %d document UploadFile records for file_ids: %s", result.rowcount, file_ids)
             except Exception:
                 logger.exception(
                     "Failed to delete document UploadFile records for dataset_id: %s, file_ids: %s",
