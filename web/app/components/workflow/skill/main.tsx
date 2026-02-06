@@ -1,6 +1,6 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
+import { parseAsString, useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
@@ -33,17 +33,16 @@ const ContentRouter = () => {
 const SkillMain = () => {
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
-  const searchParams = useSearchParams()
+  const [queryFileId] = useQueryState('fileId', parseAsString)
   const storeApi = useWorkflowStore()
   const openedFileRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
-    const fileId = searchParams.get('fileId')
-    if (!fileId || openedFileRef.current === fileId)
+    if (!queryFileId || openedFileRef.current === queryFileId)
       return
-    openedFileRef.current = fileId
-    storeApi.getState().openTab(fileId, { pinned: true })
-  }, [searchParams, storeApi])
+    openedFileRef.current = queryFileId
+    storeApi.getState().openTab(queryFileId, { pinned: true })
+  }, [queryFileId, storeApi])
 
   return (
     <div className="h-full bg-workflow-canvas-workflow-top-bar-1 pl-3 pt-[52px]">
