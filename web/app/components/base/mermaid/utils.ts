@@ -184,8 +184,10 @@ export function isMermaidCodeComplete(code: string): boolean {
     // Check for common syntax errors
     const hasNoSyntaxErrors = !trimmedCode.includes('undefined')
       && !trimmedCode.includes('[object Object]')
-      && trimmedCode.split('\n').every(line =>
-        !(line.includes('-->') && !line.match(/\S+\s*-->\s*\S+/)))
+      && trimmedCode.split('\n').every((line) => {
+        const regex = /\S+\s*-->\s*\S+/
+        return !(line.includes('-->') && !regex.exec(line))
+      })
 
     return hasValidStart && isBalanced && hasNoSyntaxErrors
   }
