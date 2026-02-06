@@ -62,12 +62,12 @@ const FileContentPanel = () => {
   const { t } = useTranslation('workflow')
   const { theme: appTheme } = useTheme()
   const [isMounted, setIsMounted] = useState(false)
-  const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
 
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
 
   const activeTabId = useStore(s => s.activeTabId)
+  const editorAutoFocusFileId = useStore(s => s.editorAutoFocusFileId)
   const storeApi = useWorkflowStore()
   const { data: nodeMap } = useSkillAssetNodeMap()
 
@@ -79,6 +79,7 @@ const FileContentPanel = () => {
   const isMetadataDirty = useStore(s => fileTabId ? s.dirtyMetadataIds.has(fileTabId) : false)
 
   const currentFileNode = fileTabId ? nodeMap?.get(fileTabId) : undefined
+  const shouldAutoFocusEditor = Boolean(fileTabId && editorAutoFocusFileId === fileTabId)
 
   const { isMarkdown, isCodeOrText, isImage, isVideo, isPdf, isSQLite, isEditable, isPreviewable } = useFileTypeInfo(currentFileNode)
 
@@ -199,8 +200,13 @@ const FileContentPanel = () => {
     }
   }, [fileTabId, isEditable])
 
-  const handleEditorDidMount: OnMount = useCallback((editor, monaco) => {
-    editorRef.current = editor
+  const handleEditorAutoFocus = useCallback(() => {
+    if (!fileTabId)
+      return
+    storeApi.getState().clearEditorAutoFocus(fileTabId)
+  }, [fileTabId, storeApi])
+
+  const handleEditorDidMount: OnMount = useCallback((_editor, monaco) => {
     monaco.editor.setTheme(appTheme === Theme.light ? 'light' : 'vs-dark')
     setIsMounted(true)
   }, [appTheme])
@@ -273,6 +279,8 @@ const FileContentPanel = () => {
               instanceId={fileTabId || undefined}
               value={currentContent}
               onChange={handleMarkdownCollaborativeChange}
+              autoFocus={shouldAutoFocusEditor}
+              onAutoFocus={handleEditorAutoFocus}
               collaborationEnabled={canInitCollaboration}
             />
           )
@@ -286,6 +294,8 @@ const FileContentPanel = () => {
               value={currentContent}
               onChange={handleCodeCollaborativeChange}
               onMount={handleEditorDidMount}
+              autoFocus={shouldAutoFocusEditor}
+              onAutoFocus={handleEditorAutoFocus}
               fileId={fileTabId}
               collaborationEnabled={canInitCollaboration}
             />

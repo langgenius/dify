@@ -96,7 +96,7 @@ const FileTree = ({ className }: FileTreeProps) => {
   const containerSize = useSize(containerRef)
   const dragInsertTargetRef = useRef<DragInsertTarget | null>(null)
 
-  const { data: treeData, isLoading, error } = useSkillAssetTreeData()
+  const { data: treeData, isLoading, error, dataUpdatedAt } = useSkillAssetTreeData()
   const isMutating = useIsMutating() > 0
 
   const expandedFolderIds = useStore(s => s.expandedFolderIds)
@@ -304,6 +304,8 @@ const FileTree = ({ className }: FileTreeProps) => {
   useSyncTreeWithActiveTab({
     treeRef,
     activeTabId,
+    syncSignal: dataUpdatedAt,
+    isTreeLoading: isLoading,
   })
 
   useSkillShortcuts({ treeRef })

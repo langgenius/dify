@@ -3328,9 +3328,6 @@
     }
   },
   "app/components/workflow/nodes/code/use-config.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
     "regexp/no-useless-assertions": {
       "count": 2
     },

@@ -90,7 +90,7 @@ export function useInlineCreateNode({
           emitTreeUpdate()
           const extension = getFileExtension(trimmedName, createdFile.extension)
           if (isTextLikeFile(extension))
-            storeApi.getState().openTab(createdFile.id, { pinned: true })
+            storeApi.getState().openTab(createdFile.id, { pinned: true, autoFocusEditor: true })
           Toast.notify({
             type: 'success',
             message: t('skillSidebar.menu.fileCreated'),

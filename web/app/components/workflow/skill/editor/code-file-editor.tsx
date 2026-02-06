@@ -10,6 +10,8 @@ type CodeFileEditorProps = {
   value: string
   onChange: (value: string | undefined) => void
   onMount: OnMount
+  autoFocus?: boolean
+  onAutoFocus?: () => void
   fileId?: string | null
   collaborationEnabled?: boolean
   readOnly?: boolean
@@ -21,6 +23,8 @@ const CodeFileEditor = ({
   value,
   onChange,
   onMount,
+  autoFocus = false,
+  onAutoFocus,
   fileId,
   collaborationEnabled,
   readOnly,
@@ -34,7 +38,13 @@ const CodeFileEditor = ({
   const handleMount = React.useCallback<OnMount>((editor, monaco) => {
     setEditorInstance(editor)
     onMount(editor, monaco)
-  }, [onMount])
+    if (autoFocus && !readOnly) {
+      requestAnimationFrame(() => {
+        editor.focus()
+        onAutoFocus?.()
+      })
+    }
+  }, [autoFocus, onAutoFocus, onMount, readOnly])
 
   return (
     <div className="relative h-full w-full">

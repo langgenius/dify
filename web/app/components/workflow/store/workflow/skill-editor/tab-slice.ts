@@ -13,16 +13,28 @@ export const createTabSlice: StateCreator<
   openTabIds: [],
   activeTabId: START_TAB_ID,
   previewTabId: null,
+  editorAutoFocusFileId: null,
 
   openTab: (fileId: string, options?: OpenTabOptions) => {
-    const { openTabIds, activeTabId, previewTabId } = get()
+    const { openTabIds, activeTabId, previewTabId, editorAutoFocusFileId } = get()
     const isPinned = options?.pinned ?? false
+    const autoFocusEditor = options?.autoFocusEditor ?? false
 
     if (openTabIds.includes(fileId)) {
-      if (isPinned && previewTabId === fileId)
-        set({ activeTabId: fileId, previewTabId: null })
-      else if (activeTabId !== fileId)
-        set({ activeTabId: fileId })
+      const nextState: Partial<TabSliceShape> = {}
+      if (isPinned && previewTabId === fileId) {
+        nextState.activeTabId = fileId
+        nextState.previewTabId = null
+      }
+      else if (activeTabId !== fileId) {
+        nextState.activeTabId = fileId
+      }
+
+      if (autoFocusEditor)
+        nextState.editorAutoFocusFileId = fileId
+
+      if (Object.keys(nextState).length > 0)
+        set(nextState)
       return
     }
 
@@ -35,18 +47,20 @@ export const createTabSlice: StateCreator<
         openTabIds: [...newOpenTabIds, fileId],
         activeTabId: fileId,
         previewTabId: fileId,
+        editorAutoFocusFileId: autoFocusEditor ? fileId : editorAutoFocusFileId,
       })
     }
     else {
       set({
         openTabIds: [...newOpenTabIds, fileId],
         activeTabId: fileId,
+        editorAutoFocusFileId: autoFocusEditor ? fileId : editorAutoFocusFileId,
       })
     }
   },
 
   closeTab: (fileId: string) => {
-    const { openTabIds, activeTabId, previewTabId } = get()
+    const { openTabIds, activeTabId, previewTabId, editorAutoFocusFileId } = get()
     const newOpenTabIds = openTabIds.filter(id => id !== fileId)
 
     let newActiveTabId = activeTabId
@@ -66,6 +80,7 @@ export const createTabSlice: StateCreator<
       openTabIds: newOpenTabIds,
       activeTabId: newActiveTabId,
       previewTabId: newPreviewTabId,
+      editorAutoFocusFileId: editorAutoFocusFileId === fileId ? null : editorAutoFocusFileId,
     })
   },
 
@@ -81,6 +96,14 @@ export const createTabSlice: StateCreator<
       return
     if (previewTabId === fileId)
       set({ previewTabId: null })
+  },
+
+  clearEditorAutoFocus: (fileId?: string) => {
+    const { editorAutoFocusFileId } = get()
+    if (!editorAutoFocusFileId)
+      return
+    if (!fileId || editorAutoFocusFileId === fileId)
+      set({ editorAutoFocusFileId: null })
   },
 
   isPreviewTab: (fileId: string) => {

@@ -2,16 +2,19 @@ import type { ContextMenuType } from '@/app/components/workflow/skill/constants'
 
 export type OpenTabOptions = {
   pinned?: boolean
+  autoFocusEditor?: boolean
 }
 
 export type TabSliceShape = {
   openTabIds: string[]
   activeTabId: string | null
   previewTabId: string | null
+  editorAutoFocusFileId: string | null
   openTab: (fileId: string, options?: OpenTabOptions) => void
   closeTab: (fileId: string) => void
   activateTab: (fileId: string) => void
   pinTab: (fileId: string) => void
+  clearEditorAutoFocus: (fileId?: string) => void
   isPreviewTab: (fileId: string) => boolean
 }
 

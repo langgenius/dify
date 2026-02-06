@@ -3,6 +3,7 @@
 import type { EditorState } from 'lexical'
 import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
@@ -45,11 +46,33 @@ export type SkillEditorProps = {
   style?: React.CSSProperties
   value?: string
   editable?: boolean
+  autoFocus?: boolean
   collaborationEnabled?: boolean
   onChange?: (text: string) => void
   onBlur?: () => void
   onFocus?: () => void
+  onAutoFocus?: () => void
   toolPickerScope?: string
+}
+
+type EditorAutoFocusPluginProps = {
+  onAutoFocus?: () => void
+}
+
+const EditorAutoFocusPlugin = ({ onAutoFocus }: EditorAutoFocusPluginProps) => {
+  const [editor] = useLexicalComposerContext()
+
+  React.useEffect(() => {
+    editor.focus(() => {
+      const activeElement = document.activeElement
+      const rootElement = editor.getRootElement()
+      if (rootElement !== null && (activeElement === null || !rootElement.contains(activeElement)))
+        rootElement.focus({ preventScroll: true })
+      onAutoFocus?.()
+    })
+  }, [editor, onAutoFocus])
+
+  return null
 }
 
 const SkillEditor = ({
@@ -63,10 +86,12 @@ const SkillEditor = ({
   style,
   value,
   editable = true,
+  autoFocus = false,
   collaborationEnabled,
   onChange,
   onBlur,
   onFocus,
+  onAutoFocus,
   toolPickerScope = 'all',
 }: SkillEditorProps) => {
   const initialConfig = {
@@ -137,6 +162,7 @@ const SkillEditor = ({
             {editable && <ToolPickerBlock scope={toolPickerScope} />}
           </>
           <OnChangePlugin onChange={handleEditorChange} />
+          {editable && autoFocus && <EditorAutoFocusPlugin onAutoFocus={onAutoFocus} />}
           <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
           <UpdateBlock instanceId={instanceId} />
           <LocalCursorPlugin fileId={instanceId} enabled={collaborationEnabled} />

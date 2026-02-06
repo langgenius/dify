@@ -9,6 +9,8 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 type UseSyncTreeWithActiveTabOptions = {
   treeRef: React.RefObject<TreeApi<TreeNodeData> | null>
   activeTabId: string | null
+  syncSignal?: number
+  isTreeLoading?: boolean
 }
 
 /**
@@ -21,25 +23,26 @@ type UseSyncTreeWithActiveTabOptions = {
 export function useSyncTreeWithActiveTab({
   treeRef,
   activeTabId,
+  syncSignal,
+  isTreeLoading,
 }: UseSyncTreeWithActiveTabOptions): void {
   const storeApi = useWorkflowStore()
 
   useEffect(() => {
-    if (!activeTabId)
+    if (!activeTabId || isTreeLoading)
       return
 
-    const tree = treeRef.current
-    if (!tree)
-      return
+    const frame = requestAnimationFrame(() => {
+      const tree = treeRef.current
+      if (!tree)
+        return
 
-    if (activeTabId === START_TAB_ID || isArtifactTab(activeTabId)) {
-      requestAnimationFrame(() => {
-        tree.deselectAll()
-      })
-      return
-    }
+      if (activeTabId === START_TAB_ID || isArtifactTab(activeTabId)) {
+        if (tree.selectedNodes.length > 0)
+          tree.deselectAll()
+        return
+      }
 
-    requestAnimationFrame(() => {
       const node = tree.get(activeTabId)
       if (!node)
         return
@@ -54,9 +57,22 @@ export function useSyncTreeWithActiveTab({
       if (ancestors.length > 0)
         storeApi.getState().revealFile(ancestors)
 
-      tree.openParents(node)
-      tree.select(activeTabId)
-      tree.scrollTo(activeTabId)
+      let hasClosedAncestor = false
+      current = node.parent
+      while (current && !current.isRoot) {
+        if (!current.isOpen) {
+          hasClosedAncestor = true
+          break
+        }
+        current = current.parent
+      }
+      if (hasClosedAncestor)
+        tree.openParents(node)
+
+      if (!node.isSelected)
+        tree.select(activeTabId)
     })
-  }, [activeTabId, treeRef, storeApi])
+
+    return () => cancelAnimationFrame(frame)
+  }, [activeTabId, isTreeLoading, storeApi, syncSignal, treeRef])
 }

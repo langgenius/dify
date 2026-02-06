@@ -36,6 +36,7 @@ export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...a
       openTabIds: [],
       activeTabId: START_TAB_ID,
       previewTabId: null,
+      editorAutoFocusFileId: null,
       expandedFolderIds: new Set<string>(),
       selectedTreeNodeId: null,
       selectedNodeIds: new Set<string>(),

@@ -51,7 +51,10 @@ const PdfFilePreview = ({ downloadUrl }: PdfFilePreviewProps) => {
       <div className="h-full w-full overflow-auto">
         <div
           className="min-h-full p-6"
-          style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: 'top center',
+          }}
         >
           <PdfLoader
             workerSrc="/pdf.worker.min.mjs"

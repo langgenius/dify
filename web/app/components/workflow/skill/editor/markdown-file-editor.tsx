@@ -6,6 +6,8 @@ type MarkdownFileEditorProps = {
   instanceId?: string
   value: string
   onChange: (value: string) => void
+  autoFocus?: boolean
+  onAutoFocus?: () => void
   collaborationEnabled?: boolean
   readOnly?: boolean
 }
@@ -14,6 +16,8 @@ const MarkdownFileEditor = ({
   instanceId,
   value,
   onChange,
+  autoFocus = false,
+  onAutoFocus,
   collaborationEnabled,
   readOnly,
 }: MarkdownFileEditorProps) => {
@@ -31,6 +35,8 @@ const MarkdownFileEditor = ({
         value={value}
         onChange={handleChange}
         editable={!readOnly}
+        autoFocus={!readOnly && autoFocus}
+        onAutoFocus={onAutoFocus}
         collaborationEnabled={readOnly ? false : collaborationEnabled}
         showLineNumbers
         className="h-full"
