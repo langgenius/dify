@@ -333,7 +333,7 @@ def validate_and_get_api_token(scope: str | None = None):
 def _query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
     """
     Query API token from database, update last_used_at, and cache the result.
-    
+
     Raises Unauthorized if token is invalid.
     """
     with Session(db.engine, expire_on_commit=False) as session:
@@ -354,7 +354,7 @@ def _query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
 def _fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiToken:
     """
     Fetch token from DB with single-flight pattern using Redis lock.
-    
+
     Ensures only one concurrent request queries the database for the same token.
     Falls back to direct query if lock acquisition fails.
     """

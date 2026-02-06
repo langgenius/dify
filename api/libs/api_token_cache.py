@@ -81,7 +81,7 @@ class ApiTokenCache:
         # If it's already a Pydantic model, use model_dump_json directly
         if isinstance(api_token, CachedApiToken):
             return api_token.model_dump_json().encode("utf-8")
-        
+
         # Otherwise, convert from SQLAlchemy model to CachedApiToken first
         cached = CachedApiToken(
             id=str(api_token.id),
