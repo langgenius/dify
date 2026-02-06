@@ -241,6 +241,7 @@ class RetrievalService:
         exceptions: list,
         document_ids_filter: list[str] | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
+        original_top_k: int | None = None,
     ):
         with flask_app.app_context():
             try:
@@ -298,7 +299,7 @@ class RetrievalService:
                                         query=query,
                                         documents=documents,
                                         score_threshold=score_threshold,
-                                        top_n=len(documents),
+                                        top_n=original_top_k or len(documents),
                                         query_type=query_type,
                                     )
                                 )
@@ -311,7 +312,7 @@ class RetrievalService:
                                     query=query,
                                     documents=documents,
                                     score_threshold=score_threshold,
-                                    top_n=len(documents),
+                                    top_n=original_top_k or len(documents),
                                     query_type=query_type,
                                 )
                             )
@@ -334,6 +335,7 @@ class RetrievalService:
         retrieval_method: str,
         exceptions: list,
         document_ids_filter: list[str] | None = None,
+        original_top_k: int | None = None,
     ):
         with flask_app.app_context():
             try:
@@ -361,7 +363,7 @@ class RetrievalService:
                                 query=query,
                                 documents=documents,
                                 score_threshold=score_threshold,
-                                top_n=len(documents),
+                                top_n=original_top_k or len(documents),
                             )
                         )
                     else:
@@ -703,6 +705,28 @@ class RetrievalService:
             return
         with flask_app.app_context():
             all_documents_item: list[Document] = []
+            original_top_k = top_k
+            enable_rerank = bool(
+                reranking_model
+                and reranking_model.get("reranking_provider_name")
+                and reranking_model.get("reranking_model_name")
+            )
+            support_expand = retrieval_method in {
+                RetrievalMethod.SEMANTIC_SEARCH,
+                RetrievalMethod.FULL_TEXT_SEARCH,
+                RetrievalMethod.HYBRID_SEARCH,
+            }
+            expanded_top_k = top_k
+            if (
+                enable_rerank
+                and support_expand
+                and original_top_k < dify_config.RERANK_TOPK_CAP
+                and dify_config.RERANK_TOPK_MULTIPLIER > 1
+            ):
+                expanded_top_k = min(
+                    original_top_k * dify_config.RERANK_TOPK_MULTIPLIER,
+                    dify_config.RERANK_TOPK_CAP,
+                )
             # Optimize multithreading with thread pools
             with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
                 futures = []
@@ -713,7 +737,7 @@ class RetrievalService:
                             flask_app=current_app._get_current_object(),  # type: ignore
                             dataset_id=dataset.id,
                             query=query,
-                            top_k=top_k,
+                            top_k=original_top_k,
                             all_documents=all_documents_item,
                             exceptions=exceptions,
                             document_ids_filter=document_ids_filter,
@@ -727,7 +751,7 @@ class RetrievalService:
                                 flask_app=current_app._get_current_object(),  # type: ignore
                                 dataset_id=dataset.id,
                                 query=query,
-                                top_k=top_k,
+                                top_k=expanded_top_k,
                                 score_threshold=score_threshold,
                                 reranking_model=reranking_model,
                                 all_documents=all_documents_item,
@@ -735,6 +759,7 @@ class RetrievalService:
                                 exceptions=exceptions,
                                 document_ids_filter=document_ids_filter,
                                 query_type=QueryType.TEXT_QUERY,
+                                original_top_k=original_top_k,
                             )
                         )
                     if attachment_id:
@@ -744,7 +769,7 @@ class RetrievalService:
                                 flask_app=current_app._get_current_object(),  # type: ignore
                                 dataset_id=dataset.id,
                                 query=attachment_id,
-                                top_k=top_k,
+                                top_k=expanded_top_k,
                                 score_threshold=score_threshold,
                                 reranking_model=reranking_model,
                                 all_documents=all_documents_item,
@@ -752,6 +777,7 @@ class RetrievalService:
                                 exceptions=exceptions,
                                 document_ids_filter=document_ids_filter,
                                 query_type=QueryType.IMAGE_QUERY,
+                                original_top_k=original_top_k,
                             )
                         )
                 if RetrievalMethod.is_support_fulltext_search(retrieval_method) and query:
@@ -761,13 +787,14 @@ class RetrievalService:
                             flask_app=current_app._get_current_object(),  # type: ignore
                             dataset_id=dataset.id,
                             query=query,
-                            top_k=top_k,
+                            top_k=expanded_top_k,
                             score_threshold=score_threshold,
                             reranking_model=reranking_model,
                             all_documents=all_documents_item,
                             retrieval_method=retrieval_method,
                             exceptions=exceptions,
                             document_ids_filter=document_ids_filter,
+                            original_top_k=original_top_k,
                         )
                     )
                 # Use as_completed for early error propagation - cancel remaining futures on first error
@@ -798,7 +825,7 @@ class RetrievalService:
                     query=query,
                     documents=all_documents_item,
                     score_threshold=score_threshold,
-                    top_n=top_k,
+                    top_n=original_top_k,
                     query_type=QueryType.TEXT_QUERY if query else QueryType.IMAGE_QUERY,
                 )
 
