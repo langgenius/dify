@@ -322,6 +322,8 @@ class LLMNode(Node[LLMNodeData]):
                     outputs=outputs,
                     metadata={
                         WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                        WorkflowNodeExecutionMetadataKey.PROMPT_TOKENS: usage.prompt_tokens,
+                        WorkflowNodeExecutionMetadataKey.COMPLETION_TOKENS: usage.completion_tokens,
                         WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
                         WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
                     },

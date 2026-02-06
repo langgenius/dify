@@ -147,9 +147,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         inputs: Mapping[str, Any] = args["inputs"]
 
-        extras = {
+        extras: dict[str, Any] = {
             **extract_external_trace_id_from_args(args),
         }
+        parent_trace_context = args.get("_parent_trace_context")
+        if parent_trace_context:
+            extras["parent_trace_context"] = parent_trace_context
         workflow_run_id = str(uuid.uuid4())
         # FIXME (Yeuoly): we need to remove the SKIP_PREPARE_USER_INPUTS_KEY from the args
         # trigger shouldn't prepare user inputs

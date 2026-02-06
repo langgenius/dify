@@ -52,10 +52,11 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
 )
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
+from core.telemetry import emit as telemetry_emit
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -409,10 +410,19 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         message.message_metadata = self._task_state.metadata.model_dump_json()
 
         if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.MESSAGE_TRACE, conversation_id=self._conversation_id, message_id=self._message_id
-                )
+            telemetry_emit(
+                TelemetryEvent(
+                    name=TraceTaskName.MESSAGE_TRACE,
+                    context=TelemetryContext(
+                        tenant_id=self._application_generate_entity.app_config.tenant_id,
+                        app_id=self._application_generate_entity.app_config.app_id,
+                    ),
+                    payload={
+                        "conversation_id": self._conversation_id,
+                        "message_id": self._message_id,
+                    },
+                ),
+                trace_manager=trace_manager,
             )
 
         message_was_created.send(

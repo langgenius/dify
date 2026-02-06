@@ -15,8 +15,7 @@ from datetime import datetime
 from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities import WorkflowExecution, WorkflowNodeExecution
 from core.workflow.enums import (
@@ -373,6 +372,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         self._workflow_node_execution_repository.save(domain_execution)
         self._workflow_node_execution_repository.save_execution_data(domain_execution)
+        self._enqueue_node_trace_task(domain_execution)
 
     def _fail_running_node_executions(self, *, error_message: str) -> None:
         now = naive_utc_now()
@@ -390,17 +390,131 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         conversation_id = self._system_variables().get(SystemVariableKey.CONVERSATION_ID.value)
         external_trace_id = None
+        parent_trace_context = None
         if isinstance(self._application_generate_entity, (WorkflowAppGenerateEntity, AdvancedChatAppGenerateEntity)):
             external_trace_id = self._application_generate_entity.extras.get("external_trace_id")
+            parent_trace_context = self._application_generate_entity.extras.get("parent_trace_context")
 
-        trace_task = TraceTask(
-            TraceTaskName.WORKFLOW_TRACE,
-            workflow_execution=execution,
-            conversation_id=conversation_id,
-            user_id=self._trace_manager.user_id,
-            external_trace_id=external_trace_id,
+        from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
+        from core.telemetry import emit as telemetry_emit
+
+        telemetry_emit(
+            TelemetryEvent(
+                name=TraceTaskName.WORKFLOW_TRACE,
+                context=TelemetryContext(
+                    tenant_id=self._application_generate_entity.app_config.tenant_id,
+                    user_id=self._trace_manager.user_id,
+                    app_id=self._application_generate_entity.app_config.app_id,
+                ),
+                payload={
+                    "workflow_execution": execution,
+                    "conversation_id": conversation_id,
+                    "user_id": self._trace_manager.user_id,
+                    "external_trace_id": external_trace_id,
+                    "parent_trace_context": parent_trace_context,
+                },
+            ),
+            trace_manager=self._trace_manager,
         )
-        self._trace_manager.add_trace_task(trace_task)
+
+    def _enqueue_node_trace_task(self, domain_execution: WorkflowNodeExecution) -> None:
+        if not self._trace_manager:
+            return
+
+        execution = self._get_workflow_execution()
+        meta = domain_execution.metadata or {}
+
+        parent_trace_context = None
+        if isinstance(self._application_generate_entity, (WorkflowAppGenerateEntity, AdvancedChatAppGenerateEntity)):
+            parent_trace_context = self._application_generate_entity.extras.get("parent_trace_context")
+
+        node_data: dict[str, Any] = {
+            "workflow_id": domain_execution.workflow_id,
+            "workflow_execution_id": execution.id_,
+            "tenant_id": self._application_generate_entity.app_config.tenant_id,
+            "app_id": self._application_generate_entity.app_config.app_id,
+            "node_execution_id": domain_execution.id,
+            "node_id": domain_execution.node_id,
+            "node_type": str(domain_execution.node_type.value),
+            "title": domain_execution.title,
+            "status": str(domain_execution.status.value),
+            "error": domain_execution.error,
+            "elapsed_time": domain_execution.elapsed_time,
+            "index": domain_execution.index,
+            "predecessor_node_id": domain_execution.predecessor_node_id,
+            "created_at": domain_execution.created_at,
+            "finished_at": domain_execution.finished_at,
+            "total_tokens": meta.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS, 0),
+            "prompt_tokens": meta.get(WorkflowNodeExecutionMetadataKey.PROMPT_TOKENS),
+            "completion_tokens": meta.get(WorkflowNodeExecutionMetadataKey.COMPLETION_TOKENS),
+            "total_price": meta.get(WorkflowNodeExecutionMetadataKey.TOTAL_PRICE, 0.0),
+            "currency": meta.get(WorkflowNodeExecutionMetadataKey.CURRENCY),
+            "tool_name": (meta.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO) or {}).get("tool_name")
+            if isinstance(meta.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO), dict)
+            else None,
+            "iteration_id": meta.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID),
+            "iteration_index": meta.get(WorkflowNodeExecutionMetadataKey.ITERATION_INDEX),
+            "loop_id": meta.get(WorkflowNodeExecutionMetadataKey.LOOP_ID),
+            "loop_index": meta.get(WorkflowNodeExecutionMetadataKey.LOOP_INDEX),
+            "parallel_id": meta.get(WorkflowNodeExecutionMetadataKey.PARALLEL_ID),
+            "node_inputs": dict(domain_execution.inputs) if domain_execution.inputs else None,
+            "node_outputs": dict(domain_execution.outputs) if domain_execution.outputs else None,
+            "process_data": dict(domain_execution.process_data) if domain_execution.process_data else None,
+        }
+        node_data["invoke_from"] = self._application_generate_entity.invoke_from.value
+        node_data["user_id"] = self._system_variables().get(SystemVariableKey.USER_ID.value)
+
+        if domain_execution.node_type.value == "knowledge-retrieval" and domain_execution.outputs:
+            results = domain_execution.outputs.get("result") or []
+            dataset_ids: list[str] = []
+            dataset_names: list[str] = []
+            for doc in results:
+                if not isinstance(doc, dict):
+                    continue
+                doc_meta = doc.get("metadata") or {}
+                did = doc_meta.get("dataset_id")
+                dname = doc_meta.get("dataset_name")
+                if did and did not in dataset_ids:
+                    dataset_ids.append(did)
+                if dname and dname not in dataset_names:
+                    dataset_names.append(dname)
+            if dataset_ids:
+                node_data["dataset_ids"] = dataset_ids
+            if dataset_names:
+                node_data["dataset_names"] = dataset_names
+
+        tool_info = meta.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO)
+        if isinstance(tool_info, dict):
+            plugin_id = tool_info.get("plugin_unique_identifier")
+            if plugin_id:
+                node_data["plugin_name"] = plugin_id
+            credential_id = tool_info.get("credential_id")
+            if credential_id:
+                node_data["credential_id"] = credential_id
+                node_data["credential_provider_type"] = tool_info.get("provider_type")
+
+        conversation_id = self._system_variables().get(SystemVariableKey.CONVERSATION_ID.value)
+        if conversation_id:
+            node_data["conversation_id"] = conversation_id
+
+        if parent_trace_context:
+            node_data["parent_trace_context"] = parent_trace_context
+
+        from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
+        from core.telemetry import emit as telemetry_emit
+
+        telemetry_emit(
+            TelemetryEvent(
+                name=TraceTaskName.NODE_EXECUTION_TRACE,
+                context=TelemetryContext(
+                    tenant_id=node_data.get("tenant_id"),
+                    user_id=node_data.get("user_id"),
+                    app_id=node_data.get("app_id"),
+                ),
+                payload={"node_execution_data": node_data},
+            ),
+            trace_manager=self._trace_manager,
+        )
 
     def _system_variables(self) -> Mapping[str, Any]:
         runtime_state = self.graph_runtime_state
