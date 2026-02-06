@@ -114,6 +114,21 @@ def mock_db_session():
         session = MagicMock()
         # Ensure tests can observe session.close() via context manager teardown
         session.close = MagicMock()
+        session.commit = MagicMock()
+
+        # Mock session.begin() context manager to auto-commit on exit
+        begin_cm = MagicMock()
+        begin_cm.__enter__.return_value = session
+
+        def _begin_exit_side_effect(*args, **kwargs):
+            # session.begin().__exit__() should commit if no exception
+            if args[0] is None:  # No exception
+                session.commit()
+
+        begin_cm.__exit__.side_effect = _begin_exit_side_effect
+        session.begin.return_value = begin_cm
+
+        # Mock create_session() context manager
         cm = MagicMock()
         cm.__enter__.return_value = session
 
