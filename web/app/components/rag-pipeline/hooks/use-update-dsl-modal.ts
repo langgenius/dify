@@ -97,7 +97,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
         hash,
         rag_pipeline_variables: rag_pipeline_variables || [],
       },
-    } as unknown as string)
+    })
   }, [eventEmitter])
 
   const completeImport = useCallback(async (
