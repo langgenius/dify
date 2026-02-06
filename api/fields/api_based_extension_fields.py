@@ -1,23 +1,53 @@
-from flask_restx import fields
+from __future__ import annotations
 
-from libs.helper import TimestampField
+from datetime import datetime
 
-
-class HiddenAPIKey(fields.Raw):
-    def output(self, key, obj, **kwargs):
-        api_key = obj.api_key
-        # If the length of the api_key is less than 8 characters, show the first and last characters
-        if len(api_key) <= 8:
-            return api_key[0] + "******" + api_key[-1]
-        # If the api_key is greater than 8 characters, show the first three and the last three characters
-        else:
-            return api_key[:3] + "******" + api_key[-3:]
+from pydantic import BaseModel, ConfigDict, RootModel, field_validator
 
 
-api_based_extension_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "api_endpoint": fields.String,
-    "api_key": HiddenAPIKey,
-    "created_at": TimestampField,
-}
+def _mask_api_key(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if value == "":
+        return value
+    if len(value) <= 8:
+        return value[0] + "******" + value[-1]
+    return value[:3] + "******" + value[-3:]
+
+
+def _to_timestamp(value: datetime | int | None) -> int | None:
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
+
+
+class ResponseModel(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="ignore",
+        populate_by_name=True,
+        serialize_by_alias=True,
+        protected_namespaces=(),
+    )
+
+
+class APIBasedExtensionResponse(ResponseModel):
+    id: str
+    name: str
+    api_endpoint: str
+    api_key: str | None = None
+    created_at: int | None = None
+
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def _normalize_api_key(cls, value: str | None) -> str | None:
+        return _mask_api_key(value)
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        return _to_timestamp(value)
+
+
+class APIBasedExtensionList(RootModel[list[APIBasedExtensionResponse]]):
+    pass
