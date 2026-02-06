@@ -248,5 +248,3 @@ class TestApiTokenCacheIntegration:
         args = mock_redis.setex.call_args[0]
         assert args[2] == b"null"
         assert args[1] == CACHE_NULL_TTL_SECONDS  # Shorter TTL for null values
-
-

@@ -174,7 +174,7 @@ class ApiTokenCache:
         """
         if not tenant_id:
             return
-        
+
         try:
             index_key = ApiTokenCache._make_tenant_index_key(tenant_id)
             redis_client.sadd(index_key, cache_key)
@@ -188,14 +188,14 @@ class ApiTokenCache:
     def _remove_from_tenant_index(tenant_id: str | None, cache_key: str) -> None:
         """
         Remove cache key from tenant index.
-        
+
         Args:
             tenant_id: The tenant ID
             cache_key: The cache key to remove from the index
         """
         if not tenant_id:
             return
-        
+
         try:
             index_key = ApiTokenCache._make_tenant_index_key(tenant_id)
             redis_client.srem(index_key, cache_key)

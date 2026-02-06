@@ -373,5 +373,3 @@ class TestRedisFailover:
 
         result_set = ApiTokenCache.set("test-token", "app", None)
         assert result_set is False
-
-

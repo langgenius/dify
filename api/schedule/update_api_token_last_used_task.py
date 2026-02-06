@@ -65,7 +65,7 @@ def batch_update_api_token_last_used():
                 continue
 
             # Parse token info from key: api_token_active:{scope}:{token}
-            suffix = key[len(ACTIVE_TOKEN_KEY_PREFIX):]
+            suffix = key[len(ACTIVE_TOKEN_KEY_PREFIX) :]
             parts = suffix.split(":", 1)
             if len(parts) == 2:
                 scope_str, token = parts
