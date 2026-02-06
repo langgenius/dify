@@ -469,9 +469,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
     def _record_files(self):
         with Session(db.engine, expire_on_commit=False) as session:
-            message_files = session.scalars(
-                select(MessageFile).where(MessageFile.message_id == self._message_id)
-            ).all()
+            message_files = session.scalars(select(MessageFile).where(MessageFile.message_id == self._message_id)).all()
 
             files_list = []
             if message_files:
@@ -482,9 +480,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 ]
                 upload_files_map = {}
                 if upload_file_ids:
-                    upload_files = session.scalars(
-                        select(UploadFile).where(UploadFile.id.in_(upload_file_ids))
-                    ).all()
+                    upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
                     upload_files_map = {uf.id: uf for uf in upload_files}
 
                 for message_file in message_files:
@@ -534,9 +530,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
                     transfer_method_value = message_file.transfer_method
                     remote_url = (
-                        message_file.url
-                        if message_file.transfer_method == FileTransferMethod.REMOTE_URL
-                        else ""
+                        message_file.url if message_file.transfer_method == FileTransferMethod.REMOTE_URL else ""
                     )
                     file_dict = {
                         "related_id": message_file.id,
