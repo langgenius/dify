@@ -30,7 +30,7 @@ const clientSchema = {
    * different from api or web app domain.
    * example: http://cloud.dify.ai/console/api
    */
-  NEXT_PUBLIC_API_PREFIX: z.httpUrl().optional(),
+  NEXT_PUBLIC_API_PREFIX: z.url().optional(),
   /**
    * The base path for the application
    */
@@ -81,11 +81,11 @@ const clientSchema = {
   /**
    * The API PREFIX for MARKETPLACE
    */
-  NEXT_PUBLIC_MARKETPLACE_API_PREFIX: z.httpUrl().optional(),
+  NEXT_PUBLIC_MARKETPLACE_API_PREFIX: z.url().optional(),
   /**
    * The URL for MARKETPLACE
    */
-  NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: z.httpUrl().optional(),
+  NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: z.url().optional(),
   /**
    * The maximum number of iterations for agent setting
    */
@@ -107,7 +107,7 @@ const clientSchema = {
    * console or api domain.
    * example: http://udify.app/api
    */
-  NEXT_PUBLIC_PUBLIC_API_PREFIX: z.httpUrl().optional(),
+  NEXT_PUBLIC_PUBLIC_API_PREFIX: z.url().optional(),
   /**
    * SENTRY
    */
