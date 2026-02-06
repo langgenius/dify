@@ -82,6 +82,7 @@
     "@remixicon/react": "4.7.0",
     "@sentry/react": "8.55.0",
     "@svgdotjs/svg.js": "3.2.5",
+    "@t3-oss/env-nextjs": "0.13.10",
     "@tailwindcss/typography": "0.5.19",
     "@tanstack/react-form": "1.23.7",
     "@tanstack/react-query": "5.90.5",
@@ -159,7 +160,7 @@
     "ufo": "1.6.3",
     "use-context-selector": "2.0.0",
     "uuid": "10.0.0",
-    "zod": "3.25.76",
+    "zod": "4.3.6",
     "zundo": "2.3.0",
     "zustand": "5.0.9"
   },

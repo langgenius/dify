@@ -4912,11 +4912,6 @@
       "count": 7
     }
   },
-  "app/install/installForm.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/reset-password/layout.tsx": {
     "ts/no-explicit-any": {
       "count": 1
