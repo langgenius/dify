@@ -584,9 +584,6 @@ class DatasetIndexingEstimateApi(Resource):
                 select(UploadFile).where(UploadFile.tenant_id == current_tenant_id, UploadFile.id.in_(file_ids))
             ).all()
 
-            if file_details is None:
-                raise NotFound("File not found.")
-
             if file_details:
                 for file_detail in file_details:
                     extract_setting = ExtractSetting(

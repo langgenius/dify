@@ -23,7 +23,7 @@ class DatasourcePluginProviderController(ABC):
 
         :return: whether the provider needs credentials
         """
-        return self.entity.credentials_schema is not None and len(self.entity.credentials_schema) != 0
+        return len(self.entity.credentials_schema) != 0
 
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
         """
@@ -59,9 +59,6 @@ class DatasourcePluginProviderController(ABC):
         :param credentials: the credentials of the tool
         """
         credentials_schema = dict[str, ProviderConfig]()
-        if credentials_schema is None:
-            return
-
         for credential in self.entity.credentials_schema:
             credentials_schema[credential.name] = credential
 

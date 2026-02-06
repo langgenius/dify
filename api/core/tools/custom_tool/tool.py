@@ -50,8 +50,6 @@ class ApiTool(Tool):
         fork a new tool with metadata
         :return: the new tool
         """
-        if self.api_bundle is None:
-            raise ValueError("api_bundle is required")
         return self.__class__(
             entity=self.entity,
             api_bundle=self.api_bundle.model_copy(),
@@ -82,9 +80,6 @@ class ApiTool(Tool):
 
     def assembling_request(self, parameters: dict[str, Any]) -> dict[str, Any]:
         headers = {}
-        if self.runtime is None:
-            raise ToolProviderCredentialValidationError("runtime not initialized")
-
         credentials = self.runtime.credentials or {}
         if "auth_type" not in credentials:
             raise ToolProviderCredentialValidationError("Missing auth_type")

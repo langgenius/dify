@@ -128,13 +128,13 @@ class ToolFileMessageTransformer:
                     yield ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                         message=ToolInvokeMessage.TextMessage(text=url),
-                        meta=meta.copy() if meta is not None else {},
+                        meta=meta.copy(),
                     )
                 else:
                     yield ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.BINARY_LINK,
                         message=ToolInvokeMessage.TextMessage(text=url),
-                        meta=meta.copy() if meta is not None else {},
+                        meta=meta.copy(),
                     )
             elif message.type == ToolInvokeMessage.MessageType.FILE:
                 meta = message.meta or {}
@@ -147,13 +147,13 @@ class ToolFileMessageTransformer:
                             yield ToolInvokeMessage(
                                 type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                                 message=ToolInvokeMessage.TextMessage(text=url),
-                                meta=meta.copy() if meta is not None else {},
+                                meta=meta.copy(),
                             )
                         else:
                             yield ToolInvokeMessage(
                                 type=ToolInvokeMessage.MessageType.LINK,
                                 message=ToolInvokeMessage.TextMessage(text=url),
-                                meta=meta.copy() if meta is not None else {},
+                                meta=meta.copy(),
                             )
                     else:
                         yield message

@@ -7,7 +7,6 @@ import uuid
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.http import parse_options_header
@@ -343,7 +342,7 @@ def _get_remote_file_info(url: str):
     mime_type = _guess_mime_type(filename)
 
     resp = ssrf_proxy.head(url, follow_redirects=True)
-    if resp.status_code == httpx.codes.OK:
+    if resp.status_code == 200:
         content_disposition = resp.headers.get("Content-Disposition")
         extracted_filename = _extract_filename(url_path, content_disposition)
         if extracted_filename:
@@ -487,7 +486,7 @@ def _is_file_valid_with_config(
 
     if (
         input_file_type == FileType.CUSTOM
-        and config.allowed_file_extensions is not None
+        and config.allowed_file_extensions
         and file_extension not in config.allowed_file_extensions
     ):
         return False
