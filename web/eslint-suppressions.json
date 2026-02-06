@@ -3151,19 +3151,6 @@
       "count": 1
     }
   },
-  "app/components/share/text-generation/result/header.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 3
-    }
-  },
-  "app/components/share/text-generation/result/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/share/text-generation/run-batch/csv-reader/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 2
