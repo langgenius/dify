@@ -22,7 +22,6 @@ describe('VersionMismatchModal', () => {
     vi.clearAllMocks()
   })
 
-  // Rendering tests
   describe('rendering', () => {
     it('should render dialog when isShow is true', () => {
       render(<VersionMismatchModal {...defaultProps} />)
@@ -66,7 +65,6 @@ describe('VersionMismatchModal', () => {
     })
   })
 
-  // User interaction tests
   describe('user interactions', () => {
     it('should call onClose when cancel button is clicked', () => {
       render(<VersionMismatchModal {...defaultProps} />)
@@ -85,7 +83,6 @@ describe('VersionMismatchModal', () => {
     })
   })
 
-  // Button variant tests — check real CSS classes from base Button
   describe('button variants', () => {
     it('should render cancel button with secondary variant', () => {
       render(<VersionMismatchModal {...defaultProps} />)
@@ -103,7 +100,6 @@ describe('VersionMismatchModal', () => {
     })
   })
 
-  // Edge cases
   describe('edge cases', () => {
     it('should handle undefined versions gracefully', () => {
       render(<VersionMismatchModal {...defaultProps} versions={undefined} />)

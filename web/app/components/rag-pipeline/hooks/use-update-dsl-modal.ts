@@ -97,11 +97,9 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
         hash,
         rag_pipeline_variables: rag_pipeline_variables || [],
       },
-      // eslint-disable-next-line ts/no-explicit-any
-    } as any)
+    } as unknown as string)
   }, [eventEmitter])
 
-  // Shared success handler for both initial import and confirm flows
   const completeImport = useCallback(async (
     pipelineId: string | undefined,
     status: DSLImportStatus = DSLImportStatus.COMPLETED,
