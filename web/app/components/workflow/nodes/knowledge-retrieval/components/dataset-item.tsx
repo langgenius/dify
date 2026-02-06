@@ -81,7 +81,7 @@ const DatasetItem: FC<Props> = ({
         <div className="system-sm-medium w-0 grow truncate text-text-secondary">{payload.name}</div>
       </div>
       {!readonly && (
-        <div className="ml-2 hidden shrink-0 items-center  space-x-1 group-hover/dataset-item:flex">
+        <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover/dataset-item:flex">
           {
             editable && (
               <ActionButton

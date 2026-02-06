@@ -22,7 +22,7 @@ const WebsitePreview = ({
         <div className="flex grow flex-col gap-y-1">
           <div className="system-2xs-semibold-uppercase">{t('addDocuments.stepOne.preview', { ns: 'datasetPipeline' })}</div>
           <div className="title-md-semi-bold text-tex-primary">{currentWebsite.title}</div>
-          <div className="system-xs-medium flex gap-x-1  text-text-tertiary">
+          <div className="system-xs-medium flex gap-x-1 text-text-tertiary">
             <RiGlobalLine className="size-3.5" />
             <span className="uppercase" title={currentWebsite.source_url}>{currentWebsite.source_url}</span>
             <span>·</span>

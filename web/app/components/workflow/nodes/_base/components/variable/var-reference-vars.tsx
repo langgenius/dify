@@ -212,7 +212,7 @@ const Item: FC<ItemProps> = ({
         <div
           ref={setItemRef}
           className={cn(
-            (isObj || isStructureOutput) ? ' pr-1' : 'pr-[18px]',
+            (isObj || isStructureOutput) ? 'pr-1' : 'pr-[18px]',
             (isHovering || isHighlighted) && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
             'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3',
             className,
@@ -565,10 +565,10 @@ const VarReferenceVars: FC<Props> = ({
                       )
                     })}
                     {item.isFlat && !filteredVars[i + 1]?.isFlat && !!filteredVars.find(item => !item.isFlat) && (
-                      <div className="relative mt-[14px] flex  items-center space-x-1">
+                      <div className="relative mt-[14px] flex items-center space-x-1">
                         <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
                         <div className="system-2xs-semibold-uppercase text-text-tertiary">{t('debug.lastOutput', { ns: 'workflow' })}</div>
-                        <div className="h-0  shrink-0 grow border border-divider-subtle"></div>
+                        <div className="h-0 shrink-0 grow border border-divider-subtle"></div>
                       </div>
                     )}
                   </div>

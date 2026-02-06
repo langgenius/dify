@@ -8,7 +8,6 @@ const FilePreviewContext = React.createContext<FilePreviewContextValue>({ enable
 
 export const FilePreviewContextProvider = FilePreviewContext.Provider
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useFilePreviewContext = () => {
   return React.useContext(FilePreviewContext)
 }

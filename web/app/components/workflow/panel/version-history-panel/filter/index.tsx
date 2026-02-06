@@ -53,7 +53,7 @@ const Filter: FC<FilterProps> = ({
             isFiltering ? 'bg-state-accent-active-alt' : 'hover:bg-state-base-hover',
           )}
         >
-          <RiFilter3Line className={cn('h-4 w-4', isFiltering ? 'text-text-accent' : ' text-text-tertiary')} />
+          <RiFilter3Line className={cn('h-4 w-4', isFiltering ? 'text-text-accent' : 'text-text-tertiary')} />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[12]">

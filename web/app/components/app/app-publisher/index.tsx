@@ -450,7 +450,7 @@ const AppPublisher = ({
                           <p className="system-xs-medium text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</p>
                         </div>
                         <div
-                          className="flex h-8 cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2 hover:bg-primary-50 hover:text-text-accent"
+                          className="flex h-8 cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2 hover:bg-primary-50 hover:text-text-accent"
                           onClick={() => {
                             setShowAppAccessControl(true)
                           }}

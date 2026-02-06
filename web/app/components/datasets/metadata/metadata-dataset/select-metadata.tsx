@@ -47,7 +47,7 @@ const SelectMetadata: FC<Props> = ({
           return (
             <div
               key={item.id}
-              className="mx-1 flex h-6 cursor-pointer  items-center justify-between rounded-md px-3 hover:bg-state-base-hover"
+              className="mx-1 flex h-6 cursor-pointer items-center justify-between rounded-md px-3 hover:bg-state-base-hover"
               onClick={() => onSelect({
                 id: item.id,
                 name: item.name,
@@ -70,7 +70,7 @@ const SelectMetadata: FC<Props> = ({
           <RiAddLine className="size-3.5" />
           <div className="system-sm-medium">{t(`${i18nPrefix}.newAction`, { ns: 'dataset' })}</div>
         </div>
-        <div className="flex h-6 items-center text-text-secondary ">
+        <div className="flex h-6 items-center text-text-secondary">
           <div className="mr-[3px] h-3 w-px bg-divider-regular"></div>
           <div className="flex h-full cursor-pointer items-center rounded-md px-1.5 hover:bg-state-base-hover" onClick={onManage}>
             <div className="system-sm-medium mr-1">{t(`${i18nPrefix}.manageAction`, { ns: 'dataset' })}</div>

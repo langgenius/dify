@@ -75,7 +75,7 @@ const Item: FC<ItemProps> = ({
     >
       <div
         className={cn(
-          'flex h-8 items-center justify-between  px-2',
+          'flex h-8 items-center justify-between px-2',
           disabled && 'opacity-30', // not include border and bg
         )}
       >

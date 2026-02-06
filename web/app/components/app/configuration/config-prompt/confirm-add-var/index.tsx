@@ -35,7 +35,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
   // }, mainContentRef)
   return (
     <div
-      className="absolute inset-0  flex items-center justify-center rounded-xl"
+      className="absolute inset-0 flex items-center justify-center rounded-xl"
       style={{
         backgroundColor: 'rgba(35, 56, 118, 0.2)',
       }}

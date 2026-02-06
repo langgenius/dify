@@ -46,7 +46,7 @@ const Operation: FC<Props> = ({
       >
         <div className={cn('flex cursor-pointer items-center rounded-lg p-1.5 pl-2 text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
           <div className="system-md-semibold">{title}</div>
-          <RiArrowDownSLine className="h-4 w-4 " />
+          <RiArrowDownSLine className="h-4 w-4" />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">

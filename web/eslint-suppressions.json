@@ -1442,9 +1442,34 @@
       "count": 1
     }
   },
+  "app/components/base/prompt-editor/plugins/context-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/current-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/error-message-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
   "app/components/base/prompt-editor/plugins/history-block/component.tsx": {
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "app/components/base/prompt-editor/plugins/history-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/last-run-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
     }
   },
   "app/components/base/prompt-editor/plugins/on-blur-or-focus-block.tsx": {
@@ -1452,9 +1477,24 @@
       "count": 1
     }
   },
+  "app/components/base/prompt-editor/plugins/query-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
   "app/components/base/prompt-editor/plugins/update-block.tsx": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/variable-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "app/components/base/prompt-editor/plugins/workflow-variable-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 4
     }
   },
   "app/components/base/prompt-editor/plugins/workflow-variable-block/node.tsx": {
@@ -2466,6 +2506,11 @@
       "count": 1
     }
   },
+  "app/components/plugins/plugin-detail-panel/subscription-list/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
   "app/components/plugins/plugin-detail-panel/subscription-list/log-viewer.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -2851,11 +2896,6 @@
   },
   "app/components/workflow/block-selector/all-start-blocks.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/block-selector/constants.tsx": {
-    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -4053,7 +4093,12 @@
       "count": 4
     }
   },
-  "app/components/workflow/skill/editor/skill-editor/plugins/tool-block/tool-block-context.tsx": {
+  "app/components/workflow/skill/editor/skill-editor/plugins/tool-block/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    }
+  },
+  "app/components/workflow/skill/file-tree/node-menu.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
     }
@@ -4144,7 +4189,7 @@
   },
   "app/components/workflow/workflow-history-store.tsx": {
     "react-refresh/only-export-components": {
-      "count": 2
+      "count": 3
     }
   },
   "app/components/workflow/workflow-preview/components/nodes/constants.ts": {

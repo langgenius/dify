@@ -61,14 +61,14 @@ const GetSchema: FC<Props> = ({
       <div ref={importURLRef}>
         <Button
           size="small"
-          className="space-x-1 "
+          className="space-x-1"
           onClick={() => { setShowImportFromUrl(!showImportFromUrl) }}
         >
           <RiAddLine className="h-3 w-3" />
           <div className="system-xs-medium text-text-secondary">{t('createTool.importFromUrl', { ns: 'tools' })}</div>
         </Button>
         {showImportFromUrl && (
-          <div className=" absolute left-[-35px] top-[26px] rounded-lg border border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
+          <div className="absolute left-[-35px] top-[26px] rounded-lg border border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
             <div className="relative">
               <Input
                 type="text"

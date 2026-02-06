@@ -103,7 +103,7 @@ const MCPCard = ({
             )}
           </div>
           <div className={cn('system-xs-regular text-divider-deep', (!data.is_team_authorization || !data.tools.length) && 'sm:hidden')}>/</div>
-          <div className={cn('system-xs-regular truncate text-text-tertiary', (!data.is_team_authorization || !data.tools.length) && ' sm:hidden')} title={`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}>{`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}</div>
+          <div className={cn('system-xs-regular truncate text-text-tertiary', (!data.is_team_authorization || !data.tools.length) && 'sm:hidden')} title={`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}>{`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}</div>
         </div>
         {data.is_team_authorization && data.tools.length > 0 && <Indicator color="green" className="shrink-0" />}
         {(!data.is_team_authorization || !data.tools.length) && (

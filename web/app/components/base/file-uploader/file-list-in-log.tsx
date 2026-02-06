@@ -86,7 +86,7 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
         <div className="flex flex-col gap-3">
           {fileList.map(item => (
             <div key={item.varName} className="system-xs-regular flex flex-col gap-1">
-              <div className="py-1 text-text-tertiary ">{item.varName}</div>
+              <div className="py-1 text-text-tertiary">{item.varName}</div>
               {item.list.map(file => (
                 <FileItem
                   key={file.id}

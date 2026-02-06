@@ -241,7 +241,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                       href="https://swagger.io/specification/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex h-[18px] items-center space-x-1  text-text-accent"
+                      className="flex h-[18px] items-center space-x-1 text-text-accent"
                     >
                       <div className="text-xs font-normal">{t('createTool.viewSchemaSpec', { ns: 'tools' })}</div>
                       <LinkExternal02 className="h-3 w-3" />
@@ -350,7 +350,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                   <Button variant="warning" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
                 )
               }
-              <div className="flex space-x-2 ">
+              <div className="flex space-x-2">
                 <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
                 <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
               </div>

@@ -744,7 +744,7 @@ const ToolGroupBlockComponent = ({
                             <RiEqualizer2Line className="size-3.5" />
                             <span className="system-xs-medium">{t('operation.settings', { ns: 'common' })}</span>
                           </button>
-                          <div className="mx-1 h-3 w-px bg-divider-regular "></div>
+                          <div className="mx-1 h-3 w-px bg-divider-regular"></div>
                         </div>
                       )
                     : null}

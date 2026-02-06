@@ -43,7 +43,7 @@ const CardWrapperComponent = ({
   if (showInstallButton) {
     return (
       <div
-        className="group relative cursor-pointer rounded-xl  hover:bg-components-panel-on-panel-item-bg-hover"
+        className="group relative cursor-pointer rounded-xl hover:bg-components-panel-on-panel-item-bg-hover"
       >
         <Card
           key={plugin.name}

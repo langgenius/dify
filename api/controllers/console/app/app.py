@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime
 from enum import StrEnum
@@ -55,6 +56,8 @@ from services.feature_service import FeatureService
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 
 register_enum_models(console_ns, IconType)
+
+_logger = logging.getLogger(__name__)
 
 
 class RuntimeType(StrEnum):
@@ -513,6 +516,7 @@ class AppListApi(Resource):
                     select(Workflow).where(
                         Workflow.version == Workflow.VERSION_DRAFT,
                         Workflow.app_id.in_(workflow_capable_app_ids),
+                        Workflow.tenant_id == current_tenant_id,
                     )
                 )
                 .scalars()
@@ -528,12 +532,14 @@ class AppListApi(Resource):
                 if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
                     sandbox_app_ids.add(str(workflow.app_id))
 
+                node_id = None
                 try:
-                    for _, node_data in workflow.walk_nodes():
+                    for node_id, node_data in workflow.walk_nodes():
                         if node_data.get("type") in trigger_node_types:
                             draft_trigger_app_ids.add(str(workflow.app_id))
                             break
                 except Exception:
+                    _logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, node_id)
                     continue
 
         for app in app_pagination.items:

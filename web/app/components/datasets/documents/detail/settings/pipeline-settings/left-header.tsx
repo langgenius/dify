@@ -34,7 +34,7 @@ const LeftHeader = ({
         onClick={navigateBack}
         aria-label={t('operation.back', { ns: 'common' })}
       >
-        <RiArrowLeftLine className="size-5 " />
+        <RiArrowLeftLine className="size-5" />
       </Button>
       <Effect className="left-8 top-[-34px] opacity-20" />
     </div>

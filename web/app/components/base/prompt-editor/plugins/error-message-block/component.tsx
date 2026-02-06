@@ -25,7 +25,7 @@ const ErrorMessageBlockComponent: FC<Props> = ({
     <div
       className={cn(
         'group/wrap relative mx-0.5 flex h-[18px] select-none items-center rounded-[5px] border pl-0.5 pr-[3px] text-util-colors-orange-dark-orange-dark-600 hover:border-state-accent-solid hover:bg-state-accent-hover',
-        isSelected ? ' border-state-accent-solid bg-state-accent-hover' : ' border-components-panel-border-subtle bg-components-badge-white-to-dark',
+        isSelected ? 'border-state-accent-solid bg-state-accent-hover' : 'border-components-panel-border-subtle bg-components-badge-white-to-dark',
       )}
       onClick={(e) => {
         e.stopPropagation()

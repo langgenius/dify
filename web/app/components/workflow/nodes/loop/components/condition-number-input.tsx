@@ -147,7 +147,7 @@ const ConditionNumberInput = ({
         }
         {
           numberVarType === NumberVarType.constant && (
-            <div className=" relative">
+            <div className="relative">
               <input
                 className={cn('block w-full appearance-none bg-transparent px-2 text-[13px] text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder', unit && 'pr-6')}
                 type="number"

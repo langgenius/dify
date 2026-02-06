@@ -45,7 +45,7 @@ const ListWithCollection = ({
               {
                 collection.searchable && (
                   <div
-                    className="system-xs-medium flex cursor-pointer items-center text-text-accent "
+                    className="system-xs-medium flex cursor-pointer items-center text-text-accent"
                     onClick={() => onMoreClick(collection.search_params)}
                   >
                     {t('marketplace.viewMore', { ns: 'plugin' })}

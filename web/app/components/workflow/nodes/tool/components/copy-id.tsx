@@ -36,7 +36,7 @@ const CopyFeedbackNew = ({ content }: Props) => {
         }
       >
         <div
-          className="group/copy flex w-full items-center gap-0.5 "
+          className="group/copy flex w-full items-center gap-0.5"
           onClick={onClickCopy}
         >
           <div

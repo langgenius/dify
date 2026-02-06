@@ -427,7 +427,7 @@ const BasePanel: FC<BasePanelProps> = ({
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
-        'relative mr-1  h-full',
+        'relative mr-1 h-full',
       )}
       >
         <div
@@ -467,7 +467,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
     return (
       <div className={cn(
-        'relative mr-1  h-full',
+        'relative mr-1 h-full',
       )}
       >
         <div

@@ -243,7 +243,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
                 disabled={isLoading}
               >
                 <Generator className="h-4 w-4" />
-                <span className="text-xs font-semibold ">{t('codegen.generate', { ns: 'appDebug' })}</span>
+                <span className="text-xs font-semibold">{t('codegen.generate', { ns: 'appDebug' })}</span>
               </Button>
             </div>
           </div>
