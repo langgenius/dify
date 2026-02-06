@@ -16,7 +16,6 @@ import type {
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
-import type { Node } from '@/app/components/workflow/types'
 import type { EventPayload } from '@/context/event-emitter'
 import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
@@ -49,12 +48,13 @@ import { ToolBlockContextProvider } from '@/app/components/workflow/skill/editor
 import ToolPickerBlock from '@/app/components/workflow/skill/editor/skill-editor/plugins/tool-block/tool-picker-block'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { cn } from '@/utils/classnames'
+import { useWorkflow } from '../../workflow/hooks'
 import {
   UPDATE_DATASETS_EVENT_EMITTER,
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
-import ComponentPickerBlock from './plugins/component-picker-block'
 
+import ComponentPickerBlock from './plugins/component-picker-block'
 import {
   ContextBlock,
   ContextBlockNode,
@@ -264,20 +264,11 @@ const PromptEditor: FC<PromptEditorProps> = ({
     } as EventPayload)
   }, [eventEmitter, historyBlock?.history])
 
-  const availableNodes = React.useMemo<Node[] | undefined>(() => {
-    if (!workflowVariableBlock?.workflowNodesMap)
-      return undefined
-    return Object.entries(workflowVariableBlock.workflowNodesMap).map(([id, data]) => ({
-      id,
-      data: {
-        title: data.title,
-        type: data.type,
-      } as any,
-      position: data.position ?? { x: 0, y: 0 },
-      width: data.width,
-      height: data.height,
-    })) as Node[]
-  }, [workflowVariableBlock?.workflowNodesMap])
+  const { getBeforeNodesInSameBranch } = useWorkflow()
+  const availableNodes = React.useMemo(
+    () => nodeId && isSupportSandbox ? getBeforeNodesInSameBranch(nodeId || '') : [],
+    [getBeforeNodesInSameBranch, isSupportSandbox, nodeId],
+  )
 
   const toolBlockContextValue = React.useMemo(() => {
     if (!onToolMetadataChange)

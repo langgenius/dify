@@ -1427,11 +1427,6 @@
       "count": 2
     }
   },
-  "app/components/base/prompt-editor/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
