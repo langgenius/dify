@@ -9,7 +9,7 @@ const CLIENT_ENV_PREFIX = 'NEXT_PUBLIC_'
 type ClientSchema = Record<`${typeof CLIENT_ENV_PREFIX}${string}`, z.ZodType>
 
 const coercedBoolean = z.string().transform(s => s !== 'false' && s !== '0')
-const coercedNumber = z.coerce.number().int().nonnegative()
+const coercedNumber = z.coerce.number().int().positive()
 
 /// keep-sorted
 const clientSchema = {
@@ -34,7 +34,7 @@ const clientSchema = {
   /**
    * The base path for the application
    */
-  NEXT_PUBLIC_BASE_PATH: z.string().regex(/^\/.*$/).optional(),
+  NEXT_PUBLIC_BASE_PATH: z.string().regex(/^\/.*$/).or(z.literal('')).default(''),
   /**
    * number of concurrency
    */
@@ -67,7 +67,7 @@ const clientSchema = {
   /**
    * Github Access Token, used for invoking Github API
    */
-  NEXT_PUBLIC_GITHUB_ACCESS_TOKEN: z.string().optional(),
+  NEXT_PUBLIC_GITHUB_ACCESS_TOKEN: z.string().default(''),
   /**
    * The maximum number of tokens for segmentation
    */

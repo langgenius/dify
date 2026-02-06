@@ -16,12 +16,7 @@ export type TopKAndScoreThresholdProps = {
   hiddenScoreThreshold?: boolean
 }
 
-const maxTopK = (() => {
-  const configValue = env.NEXT_PUBLIC_TOP_K_MAX_VALUE
-  if (configValue && !Number.isNaN(configValue))
-    return configValue
-  return 10
-})()
+const maxTopK = env.NEXT_PUBLIC_TOP_K_MAX_VALUE
 const TOP_K_VALUE_LIMIT = {
   amount: 1,
   min: 1,

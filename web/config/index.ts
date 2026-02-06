@@ -6,22 +6,6 @@ import { PipelineInputVarType } from '@/models/pipeline'
 import { AgentStrategy } from '@/types/app'
 import pkg from '../package.json'
 
-const getBooleanConfig = (
-  envVar: boolean | undefined,
-  defaultValue: boolean = true,
-) => {
-  return envVar ?? defaultValue
-}
-
-const getNumberConfig = (
-  envVar: number | undefined,
-  defaultValue: number,
-) => {
-  if (typeof envVar === 'number' && Number.isFinite(envVar) && envVar > 0)
-    return envVar
-  return defaultValue
-}
-
 const getStringConfig = (
   envVar: string | undefined,
   defaultValue: string,
@@ -48,10 +32,7 @@ export const MARKETPLACE_URL_PREFIX = getStringConfig(
   '',
 )
 
-const EDITION = getStringConfig(
-  env.NEXT_PUBLIC_EDITION,
-  'SELF_HOSTED',
-)
+const EDITION = env.NEXT_PUBLIC_EDITION
 
 export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
 export const IS_CLOUD_EDITION = EDITION === 'CLOUD'
@@ -64,10 +45,7 @@ export const AMPLITUDE_API_KEY = getStringConfig(
 export const IS_DEV = env.NODE_ENV === 'development'
 export const IS_PROD = env.NODE_ENV === 'production'
 
-export const SUPPORT_MAIL_LOGIN = getBooleanConfig(
-  env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN,
-  false,
-)
+export const SUPPORT_MAIL_LOGIN = env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN
 
 export const TONE_LIST = [
   {
@@ -137,10 +115,7 @@ const COOKIE_DOMAIN = getStringConfig(
   '',
 ).trim()
 
-export const BATCH_CONCURRENCY = getNumberConfig(
-  env.NEXT_PUBLIC_BATCH_CONCURRENCY,
-  5, // default
-)
+export const BATCH_CONCURRENCY = env.NEXT_PUBLIC_BATCH_CONCURRENCY
 
 export const CSRF_COOKIE_NAME = () => {
   if (COOKIE_DOMAIN)
@@ -312,61 +287,28 @@ export const VAR_REGEX
 export const resetReg = () => (VAR_REGEX.lastIndex = 0)
 
 export const DISABLE_UPLOAD_IMAGE_AS_ICON
-  = getBooleanConfig(env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON, false)
+  = env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON
 
 export const GITHUB_ACCESS_TOKEN
-  = env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN || ''
+  = env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN
 
 export const SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS = '.difypkg,.difybndl'
 export const FULL_DOC_PREVIEW_LENGTH = 50
 
 export const JSON_SCHEMA_MAX_DEPTH = 10
 
-export const MAX_TOOLS_NUM = getNumberConfig(
-  env.NEXT_PUBLIC_MAX_TOOLS_NUM,
-  10,
-)
-export const MAX_PARALLEL_LIMIT = getNumberConfig(
-  env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT,
-  10,
-)
-export const TEXT_GENERATION_TIMEOUT_MS = getNumberConfig(
-  env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS,
-  60000,
-)
-export const LOOP_NODE_MAX_COUNT = getNumberConfig(
-  env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT,
-  100,
-)
-export const MAX_ITERATIONS_NUM = getNumberConfig(
-  env.NEXT_PUBLIC_MAX_ITERATIONS_NUM,
-  99,
-)
-export const MAX_TREE_DEPTH = getNumberConfig(
-  env.NEXT_PUBLIC_MAX_TREE_DEPTH,
-  50,
-)
+export const MAX_TOOLS_NUM = env.NEXT_PUBLIC_MAX_TOOLS_NUM
+export const MAX_PARALLEL_LIMIT = env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT
+export const TEXT_GENERATION_TIMEOUT_MS = env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS
+export const LOOP_NODE_MAX_COUNT = env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT
+export const MAX_ITERATIONS_NUM = env.NEXT_PUBLIC_MAX_ITERATIONS_NUM
+export const MAX_TREE_DEPTH = env.NEXT_PUBLIC_MAX_TREE_DEPTH
 
-export const ALLOW_UNSAFE_DATA_SCHEME = getBooleanConfig(
-  env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME,
-  false,
-)
-export const ENABLE_WEBSITE_JINAREADER = getBooleanConfig(
-  env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER,
-  true,
-)
-export const ENABLE_WEBSITE_FIRECRAWL = getBooleanConfig(
-  env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL,
-  true,
-)
-export const ENABLE_WEBSITE_WATERCRAWL = getBooleanConfig(
-  env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL,
-  false,
-)
-export const ENABLE_SINGLE_DOLLAR_LATEX = getBooleanConfig(
-  env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX,
-  false,
-)
+export const ALLOW_UNSAFE_DATA_SCHEME = env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME
+export const ENABLE_WEBSITE_JINAREADER = env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER
+export const ENABLE_WEBSITE_FIRECRAWL = env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL
+export const ENABLE_WEBSITE_WATERCRAWL = env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL
+export const ENABLE_SINGLE_DOLLAR_LATEX = env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX
 
 export const VALUE_SELECTOR_DELIMITER = '@@@'
 
@@ -400,7 +342,7 @@ export const ZENDESK_FIELD_IDS = {
 }
 export const APP_VERSION = pkg.version
 
-export const IS_MARKETPLACE = getBooleanConfig(env.NEXT_PUBLIC_IS_MARKETPLACE, false)
+export const IS_MARKETPLACE = env.NEXT_PUBLIC_IS_MARKETPLACE
 
 export const RAG_PIPELINE_PREVIEW_CHUNK_NUM = 20
 

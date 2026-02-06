@@ -130,7 +130,7 @@ export const getVars = (value: string) => {
 
 // Set the value of basePath
 // example: /dify
-export const basePath = env.NEXT_PUBLIC_BASE_PATH || ''
+export const basePath = env.NEXT_PUBLIC_BASE_PATH
 
 export function getMarketplaceUrl(path: string, params?: Record<string, string | undefined>) {
   const searchParams = new URLSearchParams({ source: encodeURIComponent(window.location.origin) })

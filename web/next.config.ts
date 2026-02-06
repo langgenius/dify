@@ -19,12 +19,12 @@ const withMDX = createMDX({
 
 // the default url to prevent parse url error when running jest
 const hasSetWebPrefix = env.NEXT_PUBLIC_WEB_PREFIX
-const port = env.PORT ?? 3000
+const port = env.PORT
 const locImageURLs = !hasSetWebPrefix ? [new URL(`http://localhost:${port}/**`), new URL(`http://127.0.0.1:${port}/**`)] : []
 const remoteImageURLs = ([hasSetWebPrefix ? new URL(`${env.NEXT_PUBLIC_WEB_PREFIX}/**`) : '', ...locImageURLs].filter(item => !!item)) as URL[]
 
 const nextConfig: NextConfig = {
-  basePath: env.NEXT_PUBLIC_BASE_PATH || '',
+  basePath: env.NEXT_PUBLIC_BASE_PATH,
   serverExternalPackages: ['esbuild'],
   transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   turbopack: {

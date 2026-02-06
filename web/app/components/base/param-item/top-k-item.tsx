@@ -12,12 +12,7 @@ type Props = {
   enable: boolean
 }
 
-const maxTopK = (() => {
-  const configValue = env.NEXT_PUBLIC_TOP_K_MAX_VALUE
-  if (configValue && !Number.isNaN(configValue))
-    return configValue
-  return 10
-})()
+const maxTopK = env.NEXT_PUBLIC_TOP_K_MAX_VALUE
 const VALUE_LIMIT = {
   default: 2,
   step: 1,

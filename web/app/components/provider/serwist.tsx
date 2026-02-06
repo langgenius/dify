@@ -11,7 +11,7 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
     return <DisabledPWAProvider>{children}</DisabledPWAProvider>
   }
 
-  const basePath = env.NEXT_PUBLIC_BASE_PATH || ''
+  const basePath = env.NEXT_PUBLIC_BASE_PATH
   const swUrl = `${basePath}/serwist/sw.js`
 
   return (
