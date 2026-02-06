@@ -1,21 +1,19 @@
 """
-Integration tests for API Token Cache with Redis and Celery.
+Integration tests for API Token Cache with Redis.
 
 These tests require:
 - Redis server running
 - Test database configured
-- Celery worker running (for full integration test)
 """
 
 import time
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from extensions.ext_redis import redis_client
 from libs.api_token_cache import ApiTokenCache, CachedApiToken
-from libs.api_token_updater import update_token_last_used_at
 from models.model import ApiToken
 
 
@@ -38,18 +36,14 @@ class TestApiTokenCacheRedisIntegration:
     def _cleanup(self):
         """Remove test data from Redis."""
         try:
-            # Delete test cache key
             redis_client.delete(self.cache_key)
-            # Delete any test tenant index
             redis_client.delete("tenant_tokens:test-tenant-id")
-            # Delete any test locks
-            redis_client.delete(f"api_token_last_used_lock:{self.test_scope}:{self.test_token}")
+            redis_client.delete(f"api_token_active:{self.test_scope}:{self.test_token}")
         except Exception:
             pass  # Ignore cleanup errors
 
     def test_cache_set_and_get_with_real_redis(self):
         """Test cache set and get operations with real Redis."""
-        # Create a mock token
         from unittest.mock import MagicMock
 
         mock_token = MagicMock()
@@ -92,30 +86,24 @@ class TestApiTokenCacheRedisIntegration:
         mock_token.last_used_at = None
         mock_token.created_at = datetime.now()
 
-        # Set in cache
         ApiTokenCache.set(self.test_token, self.test_scope, mock_token)
 
-        # Check TTL
         ttl = redis_client.ttl(self.cache_key)
         assert 595 <= ttl <= 600  # Should be around 600 seconds (10 minutes)
 
     def test_cache_null_value_for_invalid_token(self):
-        """Test caching null value for invalid tokens"""
-        # Cache null value
+        """Test caching null value for invalid tokens."""
         result = ApiTokenCache.set(self.test_token, self.test_scope, None)
         assert result is True
 
-        # Verify in Redis
         cached_data = redis_client.get(self.cache_key)
         assert cached_data == b"null"
 
-        # Get from cache should return None
         cached_token = ApiTokenCache.get(self.test_token, self.test_scope)
         assert cached_token is None
 
-        # Check TTL is shorter for null values
         ttl = redis_client.ttl(self.cache_key)
-        assert 55 <= ttl <= 60  # Should be around 60 seconds
+        assert 55 <= ttl <= 60
 
     def test_cache_delete_with_real_redis(self):
         """Test cache deletion with real Redis."""
@@ -130,15 +118,11 @@ class TestApiTokenCacheRedisIntegration:
         mock_token.last_used_at = None
         mock_token.created_at = datetime.now()
 
-        # Set in cache
         ApiTokenCache.set(self.test_token, self.test_scope, mock_token)
         assert redis_client.exists(self.cache_key) == 1
 
-        # Delete from cache
         result = ApiTokenCache.delete(self.test_token, self.test_scope)
         assert result is True
-
-        # Verify deleted
         assert redis_client.exists(self.cache_key) == 0
 
     def test_tenant_index_creation(self):
@@ -155,14 +139,11 @@ class TestApiTokenCacheRedisIntegration:
         mock_token.last_used_at = None
         mock_token.created_at = datetime.now()
 
-        # Set in cache
         ApiTokenCache.set(self.test_token, self.test_scope, mock_token)
 
-        # Verify tenant index exists
         index_key = f"tenant_tokens:{tenant_id}"
         assert redis_client.exists(index_key) == 1
 
-        # Verify cache key is in the index
         members = redis_client.smembers(index_key)
         cache_keys = [m.decode("utf-8") if isinstance(m, bytes) else m for m in members]
         assert self.cache_key in cache_keys
@@ -173,7 +154,6 @@ class TestApiTokenCacheRedisIntegration:
 
         tenant_id = "test-tenant-id"
 
-        # Create multiple tokens for the same tenant
         for i in range(3):
             token_value = f"test-token-{i}"
             mock_token = MagicMock()
@@ -187,21 +167,17 @@ class TestApiTokenCacheRedisIntegration:
 
             ApiTokenCache.set(token_value, "app", mock_token)
 
-        # Verify all cached
         for i in range(3):
             key = f"api_token:app:test-token-{i}"
             assert redis_client.exists(key) == 1
 
-        # Invalidate by tenant
         result = ApiTokenCache.invalidate_by_tenant(tenant_id)
         assert result is True
 
-        # Verify all deleted
         for i in range(3):
             key = f"api_token:app:test-token-{i}"
             assert redis_client.exists(key) == 0
 
-        # Verify index also deleted
         assert redis_client.exists(f"tenant_tokens:{tenant_id}") == 0
 
     def test_concurrent_cache_access(self):
@@ -218,151 +194,72 @@ class TestApiTokenCacheRedisIntegration:
         mock_token.last_used_at = None
         mock_token.created_at = datetime.now()
 
-        # Set once
         ApiTokenCache.set(self.test_token, self.test_scope, mock_token)
 
-        # Concurrent reads
         def get_from_cache():
             return ApiTokenCache.get(self.test_token, self.test_scope)
 
-        # Execute 50 concurrent reads
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             futures = [executor.submit(get_from_cache) for _ in range(50)]
             results = [f.result() for f in concurrent.futures.as_completed(futures)]
 
-        # All should succeed
         assert len(results) == 50
         assert all(r is not None for r in results)
         assert all(isinstance(r, CachedApiToken) for r in results)
 
 
-class TestApiTokenUpdaterIntegration:
-    """Integration tests for unified token updater."""
+class TestTokenUsageRecording:
+    """Tests for recording token usage in Redis (batch update approach)."""
 
-    @pytest.mark.usefixtures("db_session")
-    def test_update_token_last_used_at_with_session(self, db_session):
-        """Test unified update method with provided session."""
-        # Create a test token in database
-        test_token = ApiToken()
-        test_token.id = "test-updater-id"
-        test_token.token = "test-updater-token"
-        test_token.type = "app"
-        test_token.app_id = "test-app"
-        test_token.tenant_id = "test-tenant"
-        test_token.last_used_at = datetime.now() - timedelta(minutes=10)
-        test_token.created_at = datetime.now() - timedelta(days=30)
+    def setup_method(self):
+        self.test_token = "test-usage-token"
+        self.test_scope = "app"
+        self.active_key = f"api_token_active:{self.test_scope}:{self.test_token}"
 
-        db_session.add(test_token)
-        db_session.commit()
-
+    def teardown_method(self):
         try:
-            # Update using unified method
-            start_time = datetime.now()
-            result = update_token_last_used_at(test_token.token, test_token.type, start_time, session=db_session)
+            redis_client.delete(self.active_key)
+        except Exception:
+            pass
 
-            # Verify result
-            assert result["status"] == "updated"
-            assert result["rowcount"] == 1
+    def test_record_token_usage_sets_redis_key(self):
+        """Test that _record_token_usage writes an active key to Redis."""
+        from controllers.service_api.wraps import _record_token_usage
 
-            # Verify in database
-            db_session.refresh(test_token)
-            assert test_token.last_used_at >= start_time
+        _record_token_usage(self.test_token, self.test_scope)
 
-        finally:
-            # Cleanup
-            db_session.delete(test_token)
-            db_session.commit()
+        # Key should exist
+        assert redis_client.exists(self.active_key) == 1
 
+        # Value should be an ISO timestamp
+        value = redis_client.get(self.active_key)
+        if isinstance(value, bytes):
+            value = value.decode("utf-8")
+        datetime.fromisoformat(value)  # Should not raise
 
-@pytest.mark.celery_integration
-class TestCeleryTaskIntegration:
-    """
-    Integration tests for Celery task.
+    def test_record_token_usage_has_ttl(self):
+        """Test that active keys have a TTL as safety net."""
+        from controllers.service_api.wraps import _record_token_usage
 
-    Requires Celery worker running with api_token_update queue.
-    Run with: pytest -m celery_integration
-    """
+        _record_token_usage(self.test_token, self.test_scope)
 
-    @pytest.mark.usefixtures("db_session")
-    def test_celery_task_execution(self, db_session):
-        """Test Celery task can be executed successfully."""
-        from tasks.update_api_token_last_used_task import update_api_token_last_used_task
+        ttl = redis_client.ttl(self.active_key)
+        assert 3595 <= ttl <= 3600  # ~1 hour
 
-        # Create a test token in database
-        test_token = ApiToken()
-        test_token.id = "test-celery-id"
-        test_token.token = "test-celery-token"
-        test_token.type = "app"
-        test_token.app_id = "test-app"
-        test_token.tenant_id = "test-tenant"
-        test_token.last_used_at = datetime.now() - timedelta(minutes=10)
-        test_token.created_at = datetime.now() - timedelta(days=30)
+    def test_record_token_usage_overwrites(self):
+        """Test that repeated calls overwrite the same key (no accumulation)."""
+        from controllers.service_api.wraps import _record_token_usage
 
-        db_session.add(test_token)
-        db_session.commit()
+        _record_token_usage(self.test_token, self.test_scope)
+        first_value = redis_client.get(self.active_key)
 
-        try:
-            # Send task
-            start_time_iso = datetime.now().isoformat()
-            result = update_api_token_last_used_task.delay(test_token.token, test_token.type, start_time_iso)
+        time.sleep(0.01)  # Tiny delay so timestamp differs
 
-            # Wait for task to complete (with timeout)
-            task_result = result.get(timeout=10)
+        _record_token_usage(self.test_token, self.test_scope)
+        second_value = redis_client.get(self.active_key)
 
-            # Verify task executed
-            assert task_result["status"] in ["updated", "no_update_needed"]
-
-            # Verify in database
-            db_session.refresh(test_token)
-            # last_used_at should be updated or already recent
-            assert test_token.last_used_at is not None
-
-        finally:
-            # Cleanup
-            db_session.delete(test_token)
-            db_session.commit()
-
-    @pytest.mark.usefixtures("db_session")
-    def test_concurrent_celery_tasks_with_redis_lock(self, db_session):
-        """Test multiple Celery tasks with Redis lock (防抖)."""
-        from tasks.update_api_token_last_used_task import update_api_token_last_used_task
-
-        # Create a test token
-        test_token = ApiToken()
-        test_token.id = "test-concurrent-id"
-        test_token.token = "test-concurrent-token"
-        test_token.type = "app"
-        test_token.app_id = "test-app"
-        test_token.tenant_id = "test-tenant"
-        test_token.last_used_at = datetime.now() - timedelta(minutes=10)
-        test_token.created_at = datetime.now() - timedelta(days=30)
-
-        db_session.add(test_token)
-        db_session.commit()
-
-        try:
-            # Send 10 tasks concurrently
-            start_time_iso = datetime.now().isoformat()
-            tasks = []
-            for _ in range(10):
-                result = update_api_token_last_used_task.delay(test_token.token, test_token.type, start_time_iso)
-                tasks.append(result)
-
-            # Wait for all tasks
-            results = [task.get(timeout=15) for task in tasks]
-
-            # Count how many actually updated
-            updated_count = sum(1 for r in results if r["status"] == "updated")
-            skipped_count = sum(1 for r in results if r["status"] == "skipped")
-
-            # Due to Redis lock, most should be skipped
-            assert skipped_count >= 8  # At least 8 out of 10 should be skipped
-            assert updated_count <= 2  # At most 2 should actually update
-
-        finally:
-            # Cleanup
-            db_session.delete(test_token)
-            db_session.commit()
+        # Key count should still be 1 (overwritten, not accumulated)
+        assert redis_client.exists(self.active_key) == 1
 
 
 class TestEndToEndCacheFlow:
@@ -376,11 +273,9 @@ class TestEndToEndCacheFlow:
         2. Second request (cache hit) -> return from cache
         3. Verify Redis state
         """
-
         test_token_value = "test-e2e-token"
         test_scope = "app"
 
-        # Create test token in DB
         test_token = ApiToken()
         test_token.id = "test-e2e-id"
         test_token.token = test_token_value
@@ -397,7 +292,6 @@ class TestEndToEndCacheFlow:
             # Step 1: Cache miss - set token in cache
             ApiTokenCache.set(test_token_value, test_scope, test_token)
 
-            # Verify cached
             cache_key = f"api_token:{test_scope}:{test_token_value}"
             assert redis_client.exists(cache_key) == 1
 
@@ -415,11 +309,9 @@ class TestEndToEndCacheFlow:
             # Step 4: Delete and verify cleanup
             ApiTokenCache.delete(test_token_value, test_scope)
             assert redis_client.exists(cache_key) == 0
-            # Index should be cleaned up
             assert cache_key.encode() not in redis_client.smembers(index_key)
 
         finally:
-            # Cleanup
             db_session.delete(test_token)
             db_session.commit()
             redis_client.delete(f"api_token:{test_scope}:{test_token_value}")
@@ -433,7 +325,6 @@ class TestEndToEndCacheFlow:
         test_token_value = "test-concurrent-token"
         test_scope = "app"
 
-        # Setup cache
         mock_token = MagicMock()
         mock_token.id = "concurrent-id"
         mock_token.app_id = "test-app"
@@ -446,7 +337,6 @@ class TestEndToEndCacheFlow:
         ApiTokenCache.set(test_token_value, test_scope, mock_token)
 
         try:
-            # Simulate 100 concurrent cache reads
             def read_cache():
                 return ApiTokenCache.get(test_token_value, test_scope)
 
@@ -456,18 +346,12 @@ class TestEndToEndCacheFlow:
                 results = [f.result() for f in concurrent.futures.as_completed(futures)]
             elapsed = time.time() - start_time
 
-            # All should succeed
             assert len(results) == 100
             assert all(r is not None for r in results)
 
-            # Should be fast (< 1 second for 100 reads)
             assert elapsed < 1.0, f"Too slow: {elapsed}s for 100 cache reads"
 
-            print(f"\n✓ 100 concurrent cache reads in {elapsed:.3f}s")
-            print(f"✓ Average: {(elapsed / 100) * 1000:.2f}ms per read")
-
         finally:
-            # Cleanup
             ApiTokenCache.delete(test_token_value, test_scope)
             redis_client.delete(f"tenant_tokens:{mock_token.tenant_id}")
 
@@ -480,29 +364,22 @@ class TestRedisFailover:
         """Test system degrades gracefully when Redis is unavailable."""
         from redis import RedisError
 
-        # Simulate Redis failure
         mock_redis.get.side_effect = RedisError("Connection failed")
         mock_redis.setex.side_effect = RedisError("Connection failed")
 
-        # Cache operations should not raise exceptions
         result_get = ApiTokenCache.get("test-token", "app")
-        assert result_get is None  # Returns None (fallback)
+        assert result_get is None
 
         result_set = ApiTokenCache.set("test-token", "app", None)
-        assert result_set is False  # Returns False (fallback)
-
-        # Application should continue working (using database directly)
+        assert result_set is False
 
 
 if __name__ == "__main__":
-    # Run integration tests
     pytest.main(
         [
             __file__,
             "-v",
             "-s",
             "--tb=short",
-            "-m",
-            "not celery_integration",  # Skip Celery tests by default
         ]
     )

@@ -104,7 +104,6 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
-        "tasks.update_api_token_last_used_task",  # async API token last_used_at update
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -185,6 +184,14 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.trigger_provider_refresh_task.trigger_provider_refresh",
             "schedule": timedelta(minutes=dify_config.TRIGGER_PROVIDER_REFRESH_INTERVAL),
         }
+
+    if dify_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK:
+        imports.append("schedule.update_api_token_last_used_task")
+        beat_schedule["batch_update_api_token_last_used"] = {
+            "task": "schedule.update_api_token_last_used_task.batch_update_api_token_last_used",
+            "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),
+        }
+
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app

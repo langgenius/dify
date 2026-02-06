@@ -17,7 +17,6 @@ from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.api_token_cache import ApiTokenCache
-from libs.api_token_updater import update_token_last_used_at
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
@@ -321,8 +320,8 @@ def validate_and_get_api_token(scope: str | None = None):
     cached_token = ApiTokenCache.get(auth_token, scope)
     if cached_token is not None:
         logger.debug("Token validation served from cache for scope: %s", scope)
-        # Asynchronously update last_used_at (non-blocking)
-        _async_update_token_last_used_at(auth_token, scope)
+        # Record usage in Redis for later batch update (no Celery task per request)
+        _record_token_usage(auth_token, scope)
         return cached_token
 
     # Cache miss - use Redis lock for single-flight mode
@@ -332,14 +331,14 @@ def validate_and_get_api_token(scope: str | None = None):
 
 def _query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
     """
-    Query API token from database, update last_used_at, and cache the result.
+    Query API token from database and cache the result.
+
+    last_used_at is NOT updated here -- it is handled by the periodic batch
+    task via _record_token_usage().
 
     Raises Unauthorized if token is invalid.
     """
     with Session(db.engine, expire_on_commit=False) as session:
-        current_time = naive_utc_now()
-        update_token_last_used_at(auth_token, scope, current_time, session=session)
-
         stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
         api_token = session.scalar(stmt)
 
@@ -348,6 +347,8 @@ def _query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
             raise Unauthorized("Access token is invalid")
 
         ApiTokenCache.set(auth_token, scope, api_token)
+        # Record usage for later batch update
+        _record_token_usage(auth_token, scope)
         return api_token
 
 
@@ -386,27 +387,19 @@ def _fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiTo
         return _query_token_from_db(auth_token, scope)
 
 
-def _async_update_token_last_used_at(auth_token: str, scope: str | None):
+def _record_token_usage(auth_token: str, scope: str | None):
     """
-    Asynchronously update the last_used_at timestamp for a token.
+    Record token usage in Redis for later batch update by a scheduled job.
 
-    This schedules a Celery task to update the database without blocking
-    the current request. The update time is passed to ensure only older
-    records are updated, providing natural concurrency control.
+    Instead of dispatching a Celery task per request, we simply SET a key in Redis.
+    A Celery Beat scheduled task will periodically scan these keys and batch-update
+    last_used_at in the database.
     """
     try:
-        from tasks.update_api_token_last_used_task import update_api_token_last_used_task
-
-        # Record the update time for concurrency control
-        update_time = naive_utc_now()
-        update_time_iso = update_time.isoformat()
-
-        # Fire and forget - don't wait for result
-        update_api_token_last_used_task.delay(auth_token, scope, update_time_iso)
-        logger.debug("Scheduled async update for last_used_at (scope: %s, update_time: %s)", scope, update_time_iso)
+        key = f"api_token_active:{scope}:{auth_token}"
+        redis_client.set(key, naive_utc_now().isoformat(), ex=3600)  # TTL 1 hour as safety net
     except Exception as e:
-        # Don't fail the request if task scheduling fails
-        logger.warning("Failed to schedule last_used_at update task: %s", e)
+        logger.warning("Failed to record token usage: %s", e)
 
 
 class DatasetApiResource(Resource):

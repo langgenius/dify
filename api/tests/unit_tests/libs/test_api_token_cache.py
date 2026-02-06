@@ -2,6 +2,7 @@
 Unit tests for API Token Cache module.
 """
 
+import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -42,10 +43,8 @@ class TestApiTokenCache:
 
     def test_serialize_token(self):
         """Test token serialization."""
-        import orjson
-
         serialized = ApiTokenCache._serialize_token(self.mock_token)
-        data = orjson.loads(serialized)  # orjson to parse bytes
+        data = json.loads(serialized)
 
         assert data["id"] == "test-token-id-123"
         assert data["app_id"] == "test-app-id-456"
@@ -57,8 +56,6 @@ class TestApiTokenCache:
 
     def test_serialize_token_with_nulls(self):
         """Test token serialization with None values."""
-        import orjson
-
         mock_token = MagicMock()
         mock_token.id = "test-id"
         mock_token.app_id = None
@@ -69,7 +66,7 @@ class TestApiTokenCache:
         mock_token.created_at = datetime(2026, 1, 1, 0, 0, 0)
 
         serialized = ApiTokenCache._serialize_token(mock_token)
-        data = orjson.loads(serialized)  # orjson to parse bytes
+        data = json.loads(serialized)
 
         assert data["app_id"] is None
         assert data["tenant_id"] is None
@@ -77,9 +74,7 @@ class TestApiTokenCache:
 
     def test_deserialize_token(self):
         """Test token deserialization."""
-        import orjson
-
-        cached_data = orjson.dumps(
+        cached_data = json.dumps(
             {
                 "id": "test-id",
                 "app_id": "test-app",
@@ -115,9 +110,7 @@ class TestApiTokenCache:
     @patch("libs.api_token_cache.redis_client")
     def test_get_cache_hit(self, mock_redis):
         """Test cache hit scenario."""
-        import orjson
-
-        cached_data = orjson.dumps(
+        cached_data = json.dumps(
             {
                 "id": "test-id",
                 "app_id": "test-app",
@@ -127,8 +120,8 @@ class TestApiTokenCache:
                 "last_used_at": "2026-02-03T10:00:00",
                 "created_at": "2026-01-01T00:00:00",
             }
-        )
-        mock_redis.get.return_value = cached_data  # orjson returns bytes
+        ).encode("utf-8")
+        mock_redis.get.return_value = cached_data
 
         result = ApiTokenCache.get("test-token", "app")
 
@@ -168,7 +161,7 @@ class TestApiTokenCache:
         args = mock_redis.setex.call_args[0]
         assert args[0] == f"{CACHE_KEY_PREFIX}:app:invalid-token"
         assert args[1] == CACHE_NULL_TTL_SECONDS
-        assert args[2] == b"null"  # orjson returns bytes
+        assert args[2] == b"null"
 
     @patch("libs.api_token_cache.redis_client")
     def test_delete_with_scope(self, mock_redis):
@@ -238,7 +231,7 @@ class TestApiTokenCacheIntegration:
 
         # 2. Simulate cache hit
         cached_data = ApiTokenCache._serialize_token(mock_token)
-        mock_redis.get.return_value = cached_data  # Already bytes from orjson
+        mock_redis.get.return_value = cached_data  # bytes from model_dump_json().encode()
 
         retrieved = ApiTokenCache.get("token-abc", "app")
         assert retrieved is not None
@@ -255,7 +248,7 @@ class TestApiTokenCacheIntegration:
         ApiTokenCache.set("non-existent-token", "app", None)
 
         args = mock_redis.setex.call_args[0]
-        assert args[2] == b"null"  # orjson returns bytes
+        assert args[2] == b"null"
         assert args[1] == CACHE_NULL_TTL_SECONDS  # Shorter TTL for null values
 
 
