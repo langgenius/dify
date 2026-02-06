@@ -9,6 +9,7 @@ records into the database in a single batch operation.
 
 import logging
 import time
+from datetime import datetime
 
 import click
 from sqlalchemy import update
@@ -17,15 +18,13 @@ from sqlalchemy.orm import Session
 import app
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.datetime_utils import naive_utc_now
+from libs.api_token_cache import ACTIVE_TOKEN_KEY_PREFIX
 from models.model import ApiToken
 
 logger = logging.getLogger(__name__)
 
-ACTIVE_TOKEN_KEY_PREFIX = "api_token_active:"
 
-
-@app.celery.task(queue="api_token_update")
+@app.celery.task(queue="api_token")
 def batch_update_api_token_last_used():
     """
     Batch update last_used_at for all recently active API tokens.
@@ -38,44 +37,60 @@ def batch_update_api_token_last_used():
 
     updated_count = 0
     scanned_count = 0
-    current_time = naive_utc_now()
 
     try:
-        # Collect all active token keys
-        keys_to_process: list[str] = []
+        # Collect all active token keys and their values (the actual usage timestamps)
+        token_entries: list[tuple[str, str | None, datetime]] = []  # (token, scope, usage_time)
+        keys_to_delete: list[str | bytes] = []
+
         for key in redis_client.scan_iter(match=f"{ACTIVE_TOKEN_KEY_PREFIX}*", count=200):
             if isinstance(key, bytes):
                 key = key.decode("utf-8")
-            keys_to_process.append(key)
             scanned_count += 1
 
-        if not keys_to_process:
-            click.echo(click.style("batch_update_api_token_last_used: no active tokens found.", fg="yellow"))
-            return
+            # Read the value (ISO timestamp recorded at actual request time)
+            value = redis_client.get(key)
+            if not value:
+                keys_to_delete.append(key)
+                continue
 
-        # Parse token info from keys: api_token_active:{scope}:{token}
-        token_scope_pairs: list[tuple[str, str | None]] = []
-        for key in keys_to_process:
-            # Strip prefix
-            suffix = key[len(ACTIVE_TOKEN_KEY_PREFIX) :]
-            # Split into scope:token (scope may be "None")
+            if isinstance(value, bytes):
+                value = value.decode("utf-8")
+
+            try:
+                usage_time = datetime.fromisoformat(value)
+            except (ValueError, TypeError):
+                logger.warning("Invalid timestamp in key %s: %s", key, value)
+                keys_to_delete.append(key)
+                continue
+
+            # Parse token info from key: api_token_active:{scope}:{token}
+            suffix = key[len(ACTIVE_TOKEN_KEY_PREFIX):]
             parts = suffix.split(":", 1)
             if len(parts) == 2:
                 scope_str, token = parts
                 scope = None if scope_str == "None" else scope_str
-                token_scope_pairs.append((token, scope))
+                token_entries.append((token, scope, usage_time))
+            keys_to_delete.append(key)
 
-        # Batch update in database
+        if not token_entries:
+            click.echo(click.style("batch_update_api_token_last_used: no active tokens found.", fg="yellow"))
+            # Still clean up any invalid keys
+            if keys_to_delete:
+                redis_client.delete(*keys_to_delete)
+            return
+
+        # Batch update in database using actual usage timestamps from Redis
         with Session(db.engine, expire_on_commit=False) as session:
-            for token, scope in token_scope_pairs:
+            for token, scope, usage_time in token_entries:
                 stmt = (
                     update(ApiToken)
                     .where(
                         ApiToken.token == token,
                         ApiToken.type == scope,
-                        (ApiToken.last_used_at.is_(None) | (ApiToken.last_used_at < current_time)),
+                        (ApiToken.last_used_at.is_(None) | (ApiToken.last_used_at < usage_time)),
                     )
-                    .values(last_used_at=current_time)
+                    .values(last_used_at=usage_time)
                 )
                 result = session.execute(stmt)
                 rowcount = getattr(result, "rowcount", 0)
@@ -86,8 +101,8 @@ def batch_update_api_token_last_used():
                 session.commit()
 
         # Delete processed keys from Redis
-        if keys_to_process:
-            redis_client.delete(*[k.encode("utf-8") if isinstance(k, str) else k for k in keys_to_process])
+        if keys_to_delete:
+            redis_client.delete(*keys_to_delete)
 
     except Exception:
         logger.exception("batch_update_api_token_last_used failed")

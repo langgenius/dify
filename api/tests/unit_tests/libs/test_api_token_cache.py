@@ -252,5 +252,3 @@ class TestApiTokenCacheIntegration:
         assert args[1] == CACHE_NULL_TTL_SECONDS  # Shorter TTL for null values
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

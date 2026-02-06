@@ -9,15 +9,12 @@ from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restx import Resource
 from pydantic import BaseModel
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.api_token_cache import ApiTokenCache
-from libs.datetime_utils import naive_utc_now
+from libs.api_token_cache import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
@@ -321,85 +318,12 @@ def validate_and_get_api_token(scope: str | None = None):
     if cached_token is not None:
         logger.debug("Token validation served from cache for scope: %s", scope)
         # Record usage in Redis for later batch update (no Celery task per request)
-        _record_token_usage(auth_token, scope)
+        record_token_usage(auth_token, scope)
         return cast(ApiToken, cached_token)
 
     # Cache miss - use Redis lock for single-flight mode
     # This ensures only one request queries DB for the same token concurrently
-    return _fetch_token_with_single_flight(auth_token, scope)
-
-
-def _query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
-    """
-    Query API token from database and cache the result.
-
-    last_used_at is NOT updated here -- it is handled by the periodic batch
-    task via _record_token_usage().
-
-    Raises Unauthorized if token is invalid.
-    """
-    with Session(db.engine, expire_on_commit=False) as session:
-        stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
-        api_token = session.scalar(stmt)
-
-        if not api_token:
-            ApiTokenCache.set(auth_token, scope, None)
-            raise Unauthorized("Access token is invalid")
-
-        ApiTokenCache.set(auth_token, scope, api_token)
-        # Record usage for later batch update
-        _record_token_usage(auth_token, scope)
-        return api_token
-
-
-def _fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiToken:
-    """
-    Fetch token from DB with single-flight pattern using Redis lock.
-
-    Ensures only one concurrent request queries the database for the same token.
-    Falls back to direct query if lock acquisition fails.
-    """
-    logger.debug("Token cache miss, attempting to acquire query lock for scope: %s", scope)
-
-    lock_key = f"api_token_query_lock:{scope}:{auth_token}"
-    lock = redis_client.lock(lock_key, timeout=10, blocking_timeout=5)
-
-    try:
-        if lock.acquire(blocking=True):
-            try:
-                # Double-check cache after acquiring lock
-                # (another concurrent request might have already cached it)
-                cached_token = ApiTokenCache.get(auth_token, scope)
-                if cached_token is not None:
-                    logger.debug("Token cached by concurrent request, using cached version")
-                    return cast(ApiToken, cached_token)
-
-                return _query_token_from_db(auth_token, scope)
-            finally:
-                lock.release()
-        else:
-            logger.warning("Lock timeout for token: %s, proceeding with direct query", auth_token[:10])
-            return _query_token_from_db(auth_token, scope)
-    except Unauthorized:
-        raise
-    except Exception as e:
-        logger.warning("Redis lock failed for token query: %s, proceeding anyway", e)
-        return _query_token_from_db(auth_token, scope)
-
-
-def _record_token_usage(auth_token: str, scope: str | None):
-    """
-    Record token usage in Redis for later batch update by a scheduled job.
-
-    Instead of dispatching a Celery task per request, we simply SET a key in Redis.
-    A Celery Beat scheduled task will periodically scan these keys and batch-update
-    last_used_at in the database.
-    """
-    try:
-        key = f"api_token_active:{scope}:{auth_token}"
-        redis_client.set(key, naive_utc_now().isoformat(), ex=3600)  # TTL 1 hour as safety net
-    except Exception as e:
-        logger.warning("Failed to record token usage: %s", e)
+    return fetch_token_with_single_flight(auth_token, scope)
 
 
 class DatasetApiResource(Resource):

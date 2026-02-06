@@ -37,8 +37,8 @@ class TestApiTokenCacheRedisIntegration:
         """Remove test data from Redis."""
         try:
             redis_client.delete(self.cache_key)
-            redis_client.delete("tenant_tokens:test-tenant-id")
-            redis_client.delete(f"api_token_active:{self.test_scope}:{self.test_token}")
+            redis_client.delete(ApiTokenCache._make_tenant_index_key("test-tenant-id"))
+            redis_client.delete(ApiTokenCache.make_active_key(self.test_token, self.test_scope))
         except Exception:
             pass  # Ignore cleanup errors
 
@@ -141,7 +141,7 @@ class TestApiTokenCacheRedisIntegration:
 
         ApiTokenCache.set(self.test_token, self.test_scope, mock_token)
 
-        index_key = f"tenant_tokens:{tenant_id}"
+        index_key = ApiTokenCache._make_tenant_index_key(tenant_id)
         assert redis_client.exists(index_key) == 1
 
         members = redis_client.smembers(index_key)
@@ -178,7 +178,7 @@ class TestApiTokenCacheRedisIntegration:
             key = f"api_token:app:test-token-{i}"
             assert redis_client.exists(key) == 0
 
-        assert redis_client.exists(f"tenant_tokens:{tenant_id}") == 0
+        assert redis_client.exists(ApiTokenCache._make_tenant_index_key(tenant_id)) == 0
 
     def test_concurrent_cache_access(self):
         """Test concurrent cache access doesn't cause issues."""
@@ -214,7 +214,7 @@ class TestTokenUsageRecording:
     def setup_method(self):
         self.test_token = "test-usage-token"
         self.test_scope = "app"
-        self.active_key = f"api_token_active:{self.test_scope}:{self.test_token}"
+        self.active_key = ApiTokenCache.make_active_key(self.test_token, self.test_scope)
 
     def teardown_method(self):
         try:
@@ -223,10 +223,10 @@ class TestTokenUsageRecording:
             pass
 
     def test_record_token_usage_sets_redis_key(self):
-        """Test that _record_token_usage writes an active key to Redis."""
-        from controllers.service_api.wraps import _record_token_usage
+        """Test that record_token_usage writes an active key to Redis."""
+        from libs.api_token_cache import record_token_usage
 
-        _record_token_usage(self.test_token, self.test_scope)
+        record_token_usage(self.test_token, self.test_scope)
 
         # Key should exist
         assert redis_client.exists(self.active_key) == 1
@@ -239,23 +239,23 @@ class TestTokenUsageRecording:
 
     def test_record_token_usage_has_ttl(self):
         """Test that active keys have a TTL as safety net."""
-        from controllers.service_api.wraps import _record_token_usage
+        from libs.api_token_cache import record_token_usage
 
-        _record_token_usage(self.test_token, self.test_scope)
+        record_token_usage(self.test_token, self.test_scope)
 
         ttl = redis_client.ttl(self.active_key)
         assert 3595 <= ttl <= 3600  # ~1 hour
 
     def test_record_token_usage_overwrites(self):
         """Test that repeated calls overwrite the same key (no accumulation)."""
-        from controllers.service_api.wraps import _record_token_usage
+        from libs.api_token_cache import record_token_usage
 
-        _record_token_usage(self.test_token, self.test_scope)
+        record_token_usage(self.test_token, self.test_scope)
         first_value = redis_client.get(self.active_key)
 
         time.sleep(0.01)  # Tiny delay so timestamp differs
 
-        _record_token_usage(self.test_token, self.test_scope)
+        record_token_usage(self.test_token, self.test_scope)
         second_value = redis_client.get(self.active_key)
 
         # Key count should still be 1 (overwritten, not accumulated)
@@ -302,7 +302,7 @@ class TestEndToEndCacheFlow:
             assert cached_token.token == test_token_value
 
             # Step 3: Verify tenant index
-            index_key = f"tenant_tokens:{test_token.tenant_id}"
+            index_key = ApiTokenCache._make_tenant_index_key(test_token.tenant_id)
             assert redis_client.exists(index_key) == 1
             assert cache_key.encode() in redis_client.smembers(index_key)
 
@@ -315,7 +315,7 @@ class TestEndToEndCacheFlow:
             db_session.delete(test_token)
             db_session.commit()
             redis_client.delete(f"api_token:{test_scope}:{test_token_value}")
-            redis_client.delete(f"tenant_tokens:{test_token.tenant_id}")
+            redis_client.delete(ApiTokenCache._make_tenant_index_key(test_token.tenant_id))
 
     def test_high_concurrency_simulation(self):
         """Simulate high concurrency access to cache."""
@@ -354,7 +354,7 @@ class TestEndToEndCacheFlow:
 
         finally:
             ApiTokenCache.delete(test_token_value, test_scope)
-            redis_client.delete(f"tenant_tokens:{mock_token.tenant_id}")
+            redis_client.delete(ApiTokenCache._make_tenant_index_key(mock_token.tenant_id))
 
 
 class TestRedisFailover:
@@ -375,12 +375,3 @@ class TestRedisFailover:
         assert result_set is False
 
 
-if __name__ == "__main__":
-    pytest.main(
-        [
-            __file__,
-            "-v",
-            "-s",
-            "--tb=short",
-        ]
-    )

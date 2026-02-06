@@ -2,15 +2,22 @@
 API Token Cache Module
 
 Provides Redis-based caching for API token validation to reduce database load.
+Also contains DB/Redis operations for token fetching and usage recording,
+keeping them out of the controller layer.
 """
 
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import Unauthorized
 
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
+from libs.datetime_utils import naive_utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +51,7 @@ class CachedApiToken(BaseModel):
 CACHE_KEY_PREFIX = "api_token"
 CACHE_TTL_SECONDS = 600  # 10 minutes
 CACHE_NULL_TTL_SECONDS = 60  # 1 minute for non-existent tokens
+ACTIVE_TOKEN_KEY_PREFIX = "api_token_active:"
 
 
 class ApiTokenCache:
@@ -51,6 +59,16 @@ class ApiTokenCache:
     Redis cache wrapper for API tokens.
     Handles serialization, deserialization, and cache invalidation.
     """
+
+    @staticmethod
+    def make_active_key(token: str, scope: str | None = None) -> str:
+        """Generate Redis key for recording token usage."""
+        return f"{ACTIVE_TOKEN_KEY_PREFIX}{scope}:{token}"
+
+    @staticmethod
+    def _make_tenant_index_key(tenant_id: str) -> str:
+        """Generate Redis key for tenant token index."""
+        return f"tenant_tokens:{tenant_id}"
 
     @staticmethod
     def _make_cache_key(token: str, scope: str | None = None) -> str:
@@ -156,9 +174,9 @@ class ApiTokenCache:
         """
         if not tenant_id:
             return
-
+        
         try:
-            index_key = f"tenant_tokens:{tenant_id}"
+            index_key = ApiTokenCache._make_tenant_index_key(tenant_id)
             redis_client.sadd(index_key, cache_key)
             # Set TTL on the index itself (slightly longer than cache TTL)
             redis_client.expire(index_key, CACHE_TTL_SECONDS + 60)
@@ -170,16 +188,16 @@ class ApiTokenCache:
     def _remove_from_tenant_index(tenant_id: str | None, cache_key: str) -> None:
         """
         Remove cache key from tenant index.
-
+        
         Args:
             tenant_id: The tenant ID
             cache_key: The cache key to remove from the index
         """
         if not tenant_id:
             return
-
+        
         try:
-            index_key = f"tenant_tokens:{tenant_id}"
+            index_key = ApiTokenCache._make_tenant_index_key(tenant_id)
             redis_client.srem(index_key, cache_key)
         except Exception as e:
             # Don't fail if index update fails
@@ -275,3 +293,77 @@ class ApiTokenCache:
             except Exception as e:
                 logger.warning("Failed to delete token cache: %s", e)
                 return False
+
+
+def record_token_usage(auth_token: str, scope: str | None) -> None:
+    """
+    Record token usage in Redis for later batch update by a scheduled job.
+
+    Instead of dispatching a Celery task per request, we simply SET a key in Redis.
+    A Celery Beat scheduled task will periodically scan these keys and batch-update
+    last_used_at in the database.
+    """
+    try:
+        key = ApiTokenCache.make_active_key(auth_token, scope)
+        redis_client.set(key, naive_utc_now().isoformat(), ex=3600)  # TTL 1 hour as safety net
+    except Exception as e:
+        logger.warning("Failed to record token usage: %s", e)
+
+
+def query_token_from_db(auth_token: str, scope: str | None) -> Any:
+    """
+    Query API token from database and cache the result.
+
+    last_used_at is NOT updated here -- it is handled by the periodic batch
+    task via record_token_usage().
+
+    Raises Unauthorized if token is invalid.
+    """
+    from models.model import ApiToken
+
+    with Session(db.engine, expire_on_commit=False) as session:
+        stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
+        api_token = session.scalar(stmt)
+
+        if not api_token:
+            ApiTokenCache.set(auth_token, scope, None)
+            raise Unauthorized("Access token is invalid")
+
+        ApiTokenCache.set(auth_token, scope, api_token)
+        record_token_usage(auth_token, scope)
+        return api_token
+
+
+def fetch_token_with_single_flight(auth_token: str, scope: str | None) -> Any:
+    """
+    Fetch token from DB with single-flight pattern using Redis lock.
+
+    Ensures only one concurrent request queries the database for the same token.
+    Falls back to direct query if lock acquisition fails.
+    """
+    logger.debug("Token cache miss, attempting to acquire query lock for scope: %s", scope)
+
+    lock_key = f"api_token_query_lock:{scope}:{auth_token}"
+    lock = redis_client.lock(lock_key, timeout=10, blocking_timeout=5)
+
+    try:
+        if lock.acquire(blocking=True):
+            try:
+                # Double-check cache after acquiring lock
+                # (another concurrent request might have already cached it)
+                cached_token = ApiTokenCache.get(auth_token, scope)
+                if cached_token is not None:
+                    logger.debug("Token cached by concurrent request, using cached version")
+                    return cached_token
+
+                return query_token_from_db(auth_token, scope)
+            finally:
+                lock.release()
+        else:
+            logger.warning("Lock timeout for token: %s, proceeding with direct query", auth_token[:10])
+            return query_token_from_db(auth_token, scope)
+    except Unauthorized:
+        raise
+    except Exception as e:
+        logger.warning("Redis lock failed for token query: %s, proceeding anyway", e)
+        return query_token_from_db(auth_token, scope)
