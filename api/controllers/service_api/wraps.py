@@ -3,7 +3,7 @@ import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Concatenate, ParamSpec, TypeVar
+from typing import Concatenate, ParamSpec, TypeVar, cast
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -16,7 +16,7 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.api_token_cache import ApiTokenCache, CachedApiToken
+from libs.api_token_cache import ApiTokenCache
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
@@ -322,7 +322,7 @@ def validate_and_get_api_token(scope: str | None = None):
         logger.debug("Token validation served from cache for scope: %s", scope)
         # Record usage in Redis for later batch update (no Celery task per request)
         _record_token_usage(auth_token, scope)
-        return cached_token
+        return cast(ApiToken, cached_token)
 
     # Cache miss - use Redis lock for single-flight mode
     # This ensures only one request queries DB for the same token concurrently
@@ -352,7 +352,7 @@ def _query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
         return api_token
 
 
-def _fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiToken | CachedApiToken:
+def _fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiToken:
     """
     Fetch token from DB with single-flight pattern using Redis lock.
 
@@ -372,7 +372,7 @@ def _fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiTo
                 cached_token = ApiTokenCache.get(auth_token, scope)
                 if cached_token is not None:
                     logger.debug("Token cached by concurrent request, using cached version")
-                    return cached_token
+                    return cast(ApiToken, cached_token)
 
                 return _query_token_from_db(auth_token, scope)
             finally:
