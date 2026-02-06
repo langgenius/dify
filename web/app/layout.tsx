@@ -5,7 +5,7 @@ import { Instrument_Serif } from 'next/font/google'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { TanstackQueryInitializer } from '@/context/query-client'
-import { clientEnvKeys, env, getDatasetAttrKeyFromEnvKey } from '@/env'
+import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { cn } from '@/utils/classnames'
 import { ToastProvider } from './components/base/toast'
@@ -39,7 +39,7 @@ const LocaleLayout = async ({
   children: React.ReactNode
 }) => {
   const locale = await getLocaleOnServer()
-  const datasetMap = Object.fromEntries(clientEnvKeys.map(envKey => [getDatasetAttrKeyFromEnvKey(envKey), env[envKey]]))
+  const datasetMap = getDatasetMap()
 
   return (
     <html lang={locale ?? 'en'} className={cn('h-full', instrumentSerif.variable)} suppressHydrationWarning>

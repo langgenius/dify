@@ -50,23 +50,7 @@ const clientSchema = {
   NEXT_PUBLIC_ZENDESK_WIDGET_KEY: optionalString,
 } satisfies ClientSchema
 
-export type ClientEnvKey = keyof typeof clientSchema
-
-type SnakeToKebabCase<S extends string> = S extends `${infer Head}_${infer Tail}`
-  ? `${Lowercase<Head>}-${SnakeToKebabCase<Tail>}`
-  : Lowercase<S>
-type DatasetAttrKeyFromEnvKey<K extends ClientEnvKey> = K extends `${typeof CLIENT_ENV_PREFIX}${infer Suffix}`
-  ? `data-${SnakeToKebabCase<Suffix>}`
-  : never
-
-export type ClientDatasetAttrKey = DatasetAttrKeyFromEnvKey<ClientEnvKey>
-
-export const clientEnvKeys = Object.keys(clientSchema) as ReadonlyArray<ClientEnvKey>
-
-export function getDatasetAttrKeyFromEnvKey<K extends ClientEnvKey>(key: K) {
-  const suffix = kebabCase(replace(key, CLIENT_ENV_PREFIX, ''))
-  return `data-${suffix}` as const
-}
+type ClientEnvKey = keyof typeof clientSchema
 
 function getRuntimeEnvFromBody<K extends ClientEnvKey>(key: K) {
   if (typeof window === 'undefined') {
@@ -134,3 +118,14 @@ export const env = createEnv({
   },
   emptyStringAsUndefined: true,
 })
+
+function getDatasetAttrKeyFromEnvKey<K extends ClientEnvKey>(key: K) {
+  const suffix = kebabCase(replace(key, CLIENT_ENV_PREFIX, ''))
+  return `data-${suffix}` as const
+}
+
+const clientEnvKeys = Object.keys(clientSchema) as ReadonlyArray<ClientEnvKey>
+
+export function getDatasetMap() {
+  return Object.fromEntries(clientEnvKeys.map(envKey => [getDatasetAttrKeyFromEnvKey(envKey), env[envKey]]))
+}
