@@ -138,9 +138,8 @@ class TestLoginRequired:
         def protected_view():
             return "Protected content"
 
-        # Remove ensure_sync to simulate Flask 1.x
-        if hasattr(setup_app, "ensure_sync"):
-            delattr(setup_app, "ensure_sync")
+        # Mock ensure_sync to return the function directly (simulating Flask 1.x behavior)
+        setup_app.ensure_sync = MagicMock(side_effect=lambda func: func)
 
         with setup_app.test_request_context():
             mock_user = MockUser("test_user", is_authenticated=True)
