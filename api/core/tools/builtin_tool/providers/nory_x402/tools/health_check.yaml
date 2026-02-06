@@ -1,0 +1,12 @@
+identity:
+  name: health_check
+  author: Nory
+  label:
+    en_US: Health Check
+    zh_Hans: 健康检查
+description:
+  human:
+    en_US: Check Nory service health and see supported networks.
+    zh_Hans: 检查 Nory 服务健康状况并查看支持的网络。
+  llm: Check Nory service health. Verify the payment service is operational and see supported networks.
+parameters: []

@@ -1,0 +1,23 @@
+identity:
+  name: verify_payment
+  author: Nory
+  label:
+    en_US: Verify Payment
+    zh_Hans: 验证支付
+description:
+  human:
+    en_US: Verify a signed payment transaction before settlement. Validates that a payment is correct before submitting to blockchain.
+    zh_Hans: 在结算前验证已签名的支付交易。在提交到区块链之前验证支付是否正确。
+  llm: Verify a signed payment transaction before submitting to blockchain. Returns verification result including validity and payer info.
+parameters:
+  - name: payload
+    type: string
+    required: true
+    label:
+      en_US: Payment Payload
+      zh_Hans: 支付载荷
+    human_description:
+      en_US: Base64-encoded payment payload containing signed transaction
+      zh_Hans: 包含已签名交易的 Base64 编码支付载荷
+    llm_description: Base64-encoded payment payload containing signed transaction
+    form: llm

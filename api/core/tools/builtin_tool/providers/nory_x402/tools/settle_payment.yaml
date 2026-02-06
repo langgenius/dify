@@ -1,0 +1,23 @@
+identity:
+  name: settle_payment
+  author: Nory
+  label:
+    en_US: Settle Payment
+    zh_Hans: 结算支付
+description:
+  human:
+    en_US: Settle a payment on-chain. Submits a verified payment to the blockchain with ~400ms settlement time.
+    zh_Hans: 在链上结算支付。将已验证的支付提交到区块链，结算时间约 400ms。
+  llm: Settle a payment on-chain. Submits a verified payment transaction to the blockchain. Settlement typically completes in under 400ms.
+parameters:
+  - name: payload
+    type: string
+    required: true
+    label:
+      en_US: Payment Payload
+      zh_Hans: 支付载荷
+    human_description:
+      en_US: Base64-encoded payment payload
+      zh_Hans: Base64 编码的支付载荷
+    llm_description: Base64-encoded payment payload to settle
+    form: llm

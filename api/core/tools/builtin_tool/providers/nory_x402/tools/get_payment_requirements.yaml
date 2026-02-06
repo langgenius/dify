@@ -1,0 +1,73 @@
+identity:
+  name: get_payment_requirements
+  author: Nory
+  label:
+    en_US: Get Payment Requirements
+    zh_Hans: 获取支付要求
+description:
+  human:
+    en_US: Get x402 payment requirements for accessing a paid resource. Use this when you encounter an HTTP 402 Payment Required response.
+    zh_Hans: 获取访问付费资源的 x402 支付要求。当遇到 HTTP 402 Payment Required 响应时使用。
+  llm: Get x402 payment requirements for a resource. Returns amount, supported networks, and wallet address needed to make a payment.
+parameters:
+  - name: resource
+    type: string
+    required: true
+    label:
+      en_US: Resource Path
+      zh_Hans: 资源路径
+    human_description:
+      en_US: The resource path requiring payment (e.g., /api/premium/data)
+      zh_Hans: 需要支付的资源路径（例如 /api/premium/data）
+    llm_description: The resource path requiring payment
+    form: llm
+  - name: amount
+    type: string
+    required: true
+    label:
+      en_US: Amount
+      zh_Hans: 金额
+    human_description:
+      en_US: Amount in human-readable format (e.g., '0.10' for $0.10 USDC)
+      zh_Hans: 人类可读格式的金额（例如 '0.10' 表示 $0.10 USDC）
+    llm_description: Amount in human-readable format (e.g., 0.10 for $0.10 USDC)
+    form: llm
+  - name: network
+    type: select
+    required: false
+    label:
+      en_US: Network
+      zh_Hans: 网络
+    human_description:
+      en_US: Preferred blockchain network
+      zh_Hans: 首选区块链网络
+    llm_description: Preferred blockchain network for payment
+    form: form
+    options:
+      - value: solana-mainnet
+        label:
+          en_US: Solana Mainnet
+      - value: solana-devnet
+        label:
+          en_US: Solana Devnet
+      - value: base-mainnet
+        label:
+          en_US: Base
+      - value: polygon-mainnet
+        label:
+          en_US: Polygon
+      - value: arbitrum-mainnet
+        label:
+          en_US: Arbitrum
+      - value: optimism-mainnet
+        label:
+          en_US: Optimism
+      - value: avalanche-mainnet
+        label:
+          en_US: Avalanche
+      - value: sei-mainnet
+        label:
+          en_US: Sei
+      - value: iotex-mainnet
+        label:
+          en_US: IoTeX

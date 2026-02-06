@@ -1,0 +1,25 @@
+identity:
+  author: Nory
+  name: nory_x402
+  label:
+    en_US: Nory x402 Payments
+    zh_Hans: Nory x402 支付
+  description:
+    en_US: AI agent payment tools using the x402 HTTP protocol. Supports Solana and 7 EVM chains with sub-400ms settlement.
+    zh_Hans: 使用 x402 HTTP 协议的 AI 代理支付工具。支持 Solana 和 7 条 EVM 链，结算时间低于 400ms。
+  icon: icon.svg
+  tags:
+    - finance
+credentials_for_provider:
+  api_key:
+    type: secret-input
+    required: false
+    label:
+      en_US: API Key
+      zh_Hans: API 密钥
+    placeholder:
+      en_US: Enter your Nory API key (optional)
+      zh_Hans: 输入您的 Nory API 密钥（可选）
+    help:
+      en_US: Optional API key for authenticated Nory endpoints
+      zh_Hans: 用于经过身份验证的 Nory 端点的可选 API 密钥

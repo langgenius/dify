@@ -1,0 +1,62 @@
+identity:
+  name: lookup_transaction
+  author: Nory
+  label:
+    en_US: Lookup Transaction
+    zh_Hans: 查询交易
+description:
+  human:
+    en_US: Look up the status of a previously submitted payment transaction.
+    zh_Hans: 查询先前提交的支付交易的状态。
+  llm: Look up transaction status. Check the status of a previously submitted payment. Returns transaction details including status and confirmations.
+parameters:
+  - name: transaction_id
+    type: string
+    required: true
+    label:
+      en_US: Transaction ID
+      zh_Hans: 交易 ID
+    human_description:
+      en_US: Transaction ID or signature
+      zh_Hans: 交易 ID 或签名
+    llm_description: Transaction ID or signature to look up
+    form: llm
+  - name: network
+    type: select
+    required: true
+    label:
+      en_US: Network
+      zh_Hans: 网络
+    human_description:
+      en_US: Network where the transaction was submitted
+      zh_Hans: 提交交易的网络
+    llm_description: Network where the transaction was submitted
+    form: llm
+    options:
+      - value: solana-mainnet
+        label:
+          en_US: Solana Mainnet
+      - value: solana-devnet
+        label:
+          en_US: Solana Devnet
+      - value: base-mainnet
+        label:
+          en_US: Base
+      - value: polygon-mainnet
+        label:
+          en_US: Polygon
+      - value: arbitrum-mainnet
+        label:
+          en_US: Arbitrum
+      - value: optimism-mainnet
+        label:
+          en_US: Optimism
+      - value: avalanche-mainnet
+        label:
+          en_US: Avalanche
+      - value: sei-mainnet
+        label:
+          en_US: Sei
+      - value: iotex-mainnet
+        label:
+          en_US: IoTeX
