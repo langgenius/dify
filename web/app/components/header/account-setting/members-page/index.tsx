@@ -104,7 +104,7 @@ const MembersPage = () => {
             <UpgradeBtn className="mr-2" loc="member-invite" />
           )}
           <div className="shrink-0">
-            <InviteButton disabled={!isCurrentWorkspaceManager || isMemberFull} onClick={() => setInviteModalVisible(true)} />
+            {isCurrentWorkspaceManager && <InviteButton disabled={isMemberFull} onClick={() => setInviteModalVisible(true)} />}
           </div>
         </div>
         <div className="overflow-visible lg:overflow-visible">
