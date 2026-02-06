@@ -81,11 +81,11 @@ const clientSchema = {
   /**
    * The API PREFIX for MARKETPLACE
    */
-  NEXT_PUBLIC_MARKETPLACE_API_PREFIX: z.string().regex(/^(https?:\/\/|\/).*/).optional(),
+  NEXT_PUBLIC_MARKETPLACE_API_PREFIX: z.httpUrl().optional(),
   /**
    * The URL for MARKETPLACE
    */
-  NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: z.string().url().optional(),
+  NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: z.httpUrl().optional(),
   /**
    * The maximum number of iterations for agent setting
    */
