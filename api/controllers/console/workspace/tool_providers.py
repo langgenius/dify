@@ -1156,8 +1156,8 @@ class ToolMCPListAllApi(Resource):
 
         with Session(db.engine) as session, session.begin():
             service = MCPToolManageService(session=session)
-            # Skip sensitive data decryption for list view to improve performance
-            tools = service.list_providers(tenant_id=tenant_id, include_sensitive=False)
+            # for_list=True so "id" is the provider UUID, usable for detail/update/delete APIs
+            tools = service.list_providers(tenant_id=tenant_id, for_list=True, include_sensitive=False)
 
             return [tool.to_dict() for tool in tools]
 
