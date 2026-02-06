@@ -1,6 +1,6 @@
 import { createEnv } from '@t3-oss/env-nextjs'
 import { kebabCase, replace } from 'string-ts'
-import { z } from 'zod'
+import * as z from 'zod'
 import { isServer } from './utils/client'
 
 const optionalString = z.string().optional()
