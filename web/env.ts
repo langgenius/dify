@@ -124,8 +124,7 @@ function getDatasetAttrKeyFromEnvKey<K extends ClientEnvKey>(key: K) {
   return `data-${suffix}` as const
 }
 
-const clientEnvKeys = Object.keys(clientSchema) as ReadonlyArray<ClientEnvKey>
-
 export function getDatasetMap() {
+  const clientEnvKeys = Object.keys(clientSchema) as ReadonlyArray<ClientEnvKey>
   return Object.fromEntries(clientEnvKeys.map(envKey => [getDatasetAttrKeyFromEnvKey(envKey), env[envKey]]))
 }
