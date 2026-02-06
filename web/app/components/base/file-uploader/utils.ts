@@ -18,7 +18,7 @@ import { FileAppearanceTypeEnum } from './types'
 export const getFileUploadErrorMessage = (error: any, defaultMessage: string, t: TFunction): string => {
   const errorCode = error?.response?.code
 
-  if (errorCode === 'forbidden')
+  if (errorCode === 'forbidden' || errorCode === 'invalid_param')
     return error?.response?.message
 
   if (errorCode === 'file_extension_blocked')
