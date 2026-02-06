@@ -81,7 +81,8 @@ def batch_update_api_token_last_used():
             return
 
         # Batch update in database using actual usage timestamps from Redis
-        with Session(db.engine, expire_on_commit=False) as session:
+for token, scope, usage_time in token_entries:
+    with Session(db.engine, expire_on_commit=False) as session, session.begin():
             for token, scope, usage_time in token_entries:
                 stmt = (
                     update(ApiToken)
