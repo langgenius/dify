@@ -424,15 +424,6 @@ def _unwrap(method):
 
 
 @pytest.fixture
-def flask_app():
-    from app_factory import create_app
-
-    app = create_app()
-    app.config["TESTING"] = True
-    return app
-
-
-@pytest.fixture
 def mock_workflow_app():
     app = Mock(spec=App)
     app.id = str(uuid.uuid4())

@@ -44,15 +44,6 @@ def mock_dataset():
     return dataset
 
 
-@pytest.fixture
-def flask_app():
-    from app_factory import create_app
-
-    app = create_app()
-    app.config["TESTING"] = True
-    return app
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
