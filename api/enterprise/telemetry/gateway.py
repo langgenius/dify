@@ -86,6 +86,10 @@ class TelemetryGateway:
             logger.warning("Unknown telemetry case: %s, dropping event", case)
             return
 
+        if _should_drop_ee_only_event(route):
+            logger.debug("Dropping EE-only event: case=%s (EE disabled)", case)
+            return
+
         logger.debug(
             "Gateway routing: case=%s, signal_type=%s, ce_eligible=%s",
             case,
@@ -108,10 +112,6 @@ class TelemetryGateway:
     ) -> None:
         from core.ops.ops_trace_manager import TraceQueueManager as LocalTraceQueueManager
         from core.ops.ops_trace_manager import TraceTask
-
-        if _should_drop_ee_only_event(route):
-            logger.debug("Dropping enterprise-only trace event: case=%s (EE disabled)", case)
-            return
 
         trace_task_name = CASE_TO_TRACE_TASK.get(case)
         if trace_task_name is None:
