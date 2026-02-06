@@ -33,7 +33,7 @@ BATCH_SIZE = dify_config.WORKFLOW_LOG_CLEANUP_BATCH_SIZE
 
 
 def _get_specific_workflow_ids() -> list[str]:
-    workflow_ids_str = dify_config.SPECIFIC_WORKFLOW_IDS.strip()
+    workflow_ids_str = dify_config.WORKFLOW_LOG_CLEANUP_SPECIFIC_WORKFLOW_IDS.strip()
     if not workflow_ids_str:
         return []
     return [wid.strip() for wid in workflow_ids_str.split(",") if wid.strip()]

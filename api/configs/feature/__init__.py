@@ -1279,19 +1279,8 @@ class WorkflowLogConfig(BaseSettings):
     WORKFLOW_LOG_CLEANUP_BATCH_SIZE: int = Field(
         default=100, description="Batch size for workflow run log cleanup operations"
     )
-
-
-class SpecificWorkflowLogConfig(BaseSettings):
-    """Configuration for cleaning logs of specific workflows with independent retention policy."""
-
-    SPECIFIC_WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(
-        default=False, description="Enable specific workflow log cleanup task"
-    )
-    SPECIFIC_WORKFLOW_IDS: str = Field(
+    WORKFLOW_LOG_CLEANUP_SPECIFIC_WORKFLOW_IDS: str = Field(
         default="", description="Comma-separated list of workflow IDs to clean logs for"
-    )
-    SPECIFIC_WORKFLOW_LOG_RETENTION_DAYS: int = Field(
-        default=7, description="Retention days for specific workflow logs"
     )
 
 
