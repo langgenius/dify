@@ -177,6 +177,8 @@
   "feature.tools.tips": "Alat menyediakan metode panggilan API standar, mengambil input atau variabel pengguna sebagai parameter permintaan untuk mengkueri data eksternal sebagai konteks.",
   "feature.tools.title": "Perkakas",
   "feature.tools.toolsInUse": "{{count}} alat yang digunakan",
+  "feature.videoUpload.description": "Mengaktifkan Video akan memungkinkan model memproses file video untuk transkripsi dan analisis.",
+  "feature.videoUpload.title": "Video",
   "formattingChangedText": "Memodifikasi pemformatan akan mengatur ulang area debug, apakah Anda yakin?",
   "formattingChangedTitle": "Pemformatan diubah",
   "generate.apply": "Berlaku",
