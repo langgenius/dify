@@ -3,11 +3,10 @@ from typing import Any
 
 import requests
 
+from core.tools.builtin_tool.providers.nory_x402.nory_x402 import NORY_API_BASE
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
-
-NORY_API_BASE = "https://noryx402.com"
 
 
 class SettlePaymentTool(BuiltinTool):
@@ -43,5 +42,5 @@ class SettlePaymentTool(BuiltinTool):
             response.raise_for_status()
 
             yield self.create_text_message(response.text)
-        except Exception as e:
-            raise ToolInvokeError(str(e))
+        except requests.exceptions.RequestException as e:
+            raise ToolInvokeError(f"Request failed: {e}")
