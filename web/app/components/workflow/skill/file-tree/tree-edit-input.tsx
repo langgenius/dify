@@ -19,8 +19,16 @@ const TreeEditInput = ({ node }: TreeEditInputProps) => {
     : t('skillSidebar.fileNamePlaceholder')
 
   useEffect(() => {
-    inputRef.current?.focus()
-    inputRef.current?.select()
+    const input = inputRef.current
+    if (!input)
+      return
+    input.focus()
+    const name = input.value
+    const dotIndex = isFolder ? -1 : name.lastIndexOf('.')
+    if (dotIndex > 0)
+      input.setSelectionRange(0, dotIndex)
+    else
+      input.select()
   }, [])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
