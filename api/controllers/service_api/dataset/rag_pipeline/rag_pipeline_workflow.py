@@ -3,7 +3,7 @@ from typing import Any
 
 from flask import request
 from pydantic import BaseModel
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
@@ -16,7 +16,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from libs import helper
 from libs.login import current_user
 from models import Account
-from models.dataset import Pipeline
+from models.dataset import Dataset, Pipeline
 from models.engine import db
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService
@@ -64,6 +64,11 @@ class DatasourcePluginsApi(DatasetApiResource):
     )
     def get(self, tenant_id: str, dataset_id: str):
         """Resource for getting datasource plugins."""
+        # Verify dataset ownership
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
         # Get query parameter to determine published or draft
         is_published: bool = request.args.get("is_published", default=True, type=bool)
 
@@ -103,6 +108,11 @@ class DatasourceNodeRunApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[DatasourceNodeRunPayload.__name__])
     def post(self, tenant_id: str, dataset_id: str, node_id: str):
         """Resource for getting datasource plugins."""
+        # Verify dataset ownership
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
         payload = DatasourceNodeRunPayload.model_validate(service_api_ns.payload or {})
         assert isinstance(current_user, Account)
         rag_pipeline_service: RagPipelineService = RagPipelineService()
@@ -160,6 +170,11 @@ class PipelineRunApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[PipelineRunApiEntity.__name__])
     def post(self, tenant_id: str, dataset_id: str):
         """Resource for running a rag pipeline."""
+        # Verify dataset ownership
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
         payload = PipelineRunApiEntity.model_validate(service_api_ns.payload or {})
 
         if not isinstance(current_user, Account):

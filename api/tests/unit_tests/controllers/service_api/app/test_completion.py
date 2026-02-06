@@ -274,9 +274,9 @@ class TestCompletionControllerLogic:
         """Create Flask test application."""
         from flask import Flask
 
-        flask_app = Flask(__name__)
-        flask_app.config["TESTING"] = True
-        return flask_app
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        return app
 
     @patch("controllers.service_api.app.completion.service_api_ns")
     @patch("controllers.service_api.app.completion.AppGenerateService")

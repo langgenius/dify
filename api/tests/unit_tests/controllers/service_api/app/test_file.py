@@ -299,7 +299,7 @@ class TestFileApiPost:
         self,
         mock_db,
         mock_file_svc_cls,
-        flask_app,
+        app,
         mock_app_model,
         mock_end_user,
     ):
@@ -328,7 +328,7 @@ class TestFileApiPost:
 
         data = {"file": (BytesIO(b"file content"), "test.pdf", "application/pdf")}
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/files/upload",
             method="POST",
             content_type="multipart/form-data",
@@ -344,11 +344,11 @@ class TestFileApiPost:
         assert status == 201
         mock_file_svc_cls.return_value.upload_file.assert_called_once()
 
-    def test_upload_no_file(self, flask_app, mock_app_model, mock_end_user):
+    def test_upload_no_file(self, app, mock_app_model, mock_end_user):
         """Test NoFileUploadedError when no file in request."""
         from controllers.service_api.app.file import FileApi
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/files/upload",
             method="POST",
             content_type="multipart/form-data",
@@ -358,7 +358,7 @@ class TestFileApiPost:
             with pytest.raises(NoFileUploadedError):
                 _unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
 
-    def test_upload_too_many_files(self, flask_app, mock_app_model, mock_end_user):
+    def test_upload_too_many_files(self, app, mock_app_model, mock_end_user):
         """Test TooManyFilesError when multiple files uploaded."""
         from io import BytesIO
 
@@ -369,7 +369,7 @@ class TestFileApiPost:
             "extra": (BytesIO(b"content2"), "file2.pdf", "application/pdf"),
         }
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/files/upload",
             method="POST",
             content_type="multipart/form-data",
@@ -379,7 +379,7 @@ class TestFileApiPost:
             with pytest.raises(TooManyFilesError):
                 _unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
 
-    def test_upload_no_mimetype(self, flask_app, mock_app_model, mock_end_user):
+    def test_upload_no_mimetype(self, app, mock_app_model, mock_end_user):
         """Test UnsupportedFileTypeError when file has no mimetype."""
         from io import BytesIO
 
@@ -387,7 +387,7 @@ class TestFileApiPost:
 
         data = {"file": (BytesIO(b"content"), "test.bin", "")}
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/files/upload",
             method="POST",
             content_type="multipart/form-data",
@@ -403,7 +403,7 @@ class TestFileApiPost:
         self,
         mock_db,
         mock_file_svc_cls,
-        flask_app,
+        app,
         mock_app_model,
         mock_end_user,
     ):
@@ -419,7 +419,7 @@ class TestFileApiPost:
 
         data = {"file": (BytesIO(b"big content"), "big.pdf", "application/pdf")}
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/files/upload",
             method="POST",
             content_type="multipart/form-data",
@@ -435,7 +435,7 @@ class TestFileApiPost:
         self,
         mock_db,
         mock_file_svc_cls,
-        flask_app,
+        app,
         mock_app_model,
         mock_end_user,
     ):
@@ -449,7 +449,7 @@ class TestFileApiPost:
 
         data = {"file": (BytesIO(b"content"), "test.xyz", "application/octet-stream")}
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/files/upload",
             method="POST",
             content_type="multipart/form-data",

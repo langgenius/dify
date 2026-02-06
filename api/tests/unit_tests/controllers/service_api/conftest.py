@@ -18,11 +18,11 @@ from tests.unit_tests.conftest import setup_mock_tenant_account_query
 
 
 @pytest.fixture
-def flask_app():
+def app():
     """Create Flask test application with proper configuration."""
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    return app
+    flask_app = Flask(__name__)
+    flask_app.config["TESTING"] = True
+    return flask_app
 
 
 @pytest.fixture

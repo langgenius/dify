@@ -298,7 +298,7 @@ class TestSegmentServiceMockedBehavior:
         mock_segments = [Mock(), Mock()]
         mock_get.return_value = (mock_segments, 2)
 
-        segments, count = SegmentService.get_segments(document_id=mock_document.id, page=1, per_page=20)
+        segments, count = SegmentService.get_segments(document_id=mock_document.id, page=1, limit=20)
 
         assert len(segments) == 2
         assert count == 2
@@ -308,7 +308,7 @@ class TestSegmentServiceMockedBehavior:
         """Test get_segment_by_id returns segment."""
         mock_get.return_value = mock_segment
 
-        result = SegmentService.get_segment_by_id(document_id=mock_segment.document_id, segment_id=mock_segment.id)
+        result = SegmentService.get_segment_by_id(segment_id=mock_segment.id, tenant_id=mock_segment.tenant_id)
 
         assert result == mock_segment
 
@@ -317,7 +317,7 @@ class TestSegmentServiceMockedBehavior:
         """Test get_segment_by_id returns None when not found."""
         mock_get.return_value = None
 
-        result = SegmentService.get_segment_by_id(document_id=str(uuid.uuid4()), segment_id=str(uuid.uuid4()))
+        result = SegmentService.get_segment_by_id(segment_id=str(uuid.uuid4()), tenant_id=str(uuid.uuid4()))
 
         assert result is None
 
@@ -367,7 +367,13 @@ class TestChildChunkServiceMockedBehavior:
         mock_pagination.pages = 1
         mock_get.return_value = mock_pagination
 
-        result = SegmentService.get_child_chunks(segment_id=mock_segment.id, page=1, per_page=20)
+        result = SegmentService.get_child_chunks(
+            segment_id=mock_segment.id,
+            document_id=str(uuid.uuid4()),
+            dataset_id=str(uuid.uuid4()),
+            page=1,
+            limit=20,
+        )
 
         assert len(result.items) == 2
         assert result.total == 2
@@ -377,7 +383,9 @@ class TestChildChunkServiceMockedBehavior:
         """Test get_child_chunk_by_id returns chunk."""
         mock_get.return_value = mock_child_chunk
 
-        result = SegmentService.get_child_chunk_by_id(child_chunk_id=mock_child_chunk.id)
+        result = SegmentService.get_child_chunk_by_id(
+            child_chunk_id=mock_child_chunk.id, tenant_id=mock_child_chunk.tenant_id
+        )
 
         assert result == mock_child_chunk
 
@@ -755,7 +763,7 @@ class TestSegmentApiGet:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
         mock_segment,
@@ -769,7 +777,7 @@ class TestSegmentApiGet:
         mock_marshal.return_value = [{"id": mock_segment.id}]
 
         # Act
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments?page=1&limit=20",
             method="GET",
         ):
@@ -784,14 +792,14 @@ class TestSegmentApiGet:
 
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
     @patch("controllers.service_api.dataset.segment.db")
-    def test_list_segments_dataset_not_found(self, mock_db, mock_account_fn, flask_app, mock_tenant, mock_dataset):
+    def test_list_segments_dataset_not_found(self, mock_db, mock_account_fn, app, mock_tenant, mock_dataset):
         """Test 404 when dataset not found."""
         # Arrange
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.query.return_value.where.return_value.first.return_value = None
 
         # Act & Assert
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments",
             method="GET",
         ):
@@ -803,7 +811,7 @@ class TestSegmentApiGet:
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
     @patch("controllers.service_api.dataset.segment.db")
     def test_list_segments_document_not_found(
-        self, mock_db, mock_account_fn, mock_doc_svc, flask_app, mock_tenant, mock_dataset
+        self, mock_db, mock_account_fn, mock_doc_svc, app, mock_tenant, mock_dataset
     ):
         """Test 404 when document not found."""
         # Arrange
@@ -812,7 +820,7 @@ class TestSegmentApiGet:
         mock_doc_svc.get_document.return_value = None
 
         # Act & Assert
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments",
             method="GET",
         ):
@@ -863,7 +871,7 @@ class TestSegmentApiPost:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
         mock_segment,
@@ -889,7 +897,7 @@ class TestSegmentApiPost:
         segments_data = [{"content": "Test segment content", "answer": "Test answer"}]
 
         # Act
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments",
             method="POST",
             json={"segments": segments_data},
@@ -915,7 +923,7 @@ class TestSegmentApiPost:
         mock_db,
         mock_account_fn,
         mock_doc_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -933,7 +941,7 @@ class TestSegmentApiPost:
         mock_doc_svc.get_document.return_value = mock_doc
 
         # Act
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments",
             method="POST",
             json={},  # No segments field
@@ -958,7 +966,7 @@ class TestSegmentApiPost:
         mock_db,
         mock_account_fn,
         mock_doc_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -974,7 +982,7 @@ class TestSegmentApiPost:
         mock_doc_svc.get_document.return_value = mock_doc
 
         # Act & Assert
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments",
             method="POST",
             json={"segments": [{"content": "Test"}]},
@@ -1010,7 +1018,7 @@ class TestDatasetSegmentApiDelete:
         mock_doc_svc,
         mock_dataset_svc,
         mock_seg_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
         mock_segment,
@@ -1028,7 +1036,7 @@ class TestDatasetSegmentApiDelete:
         mock_seg_svc.delete_segment.return_value = None
 
         # Act
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
             method="DELETE",
         ):
@@ -1055,7 +1063,7 @@ class TestDatasetSegmentApiDelete:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1073,7 +1081,7 @@ class TestDatasetSegmentApiDelete:
         mock_seg_svc.get_segment_by_id.return_value = None  # Segment not found
 
         # Act & Assert
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-not-found",
             method="DELETE",
         ):
@@ -1097,7 +1105,7 @@ class TestDatasetSegmentApiDelete:
         mock_account_fn,
         mock_doc_svc,
         mock_dataset_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1107,7 +1115,7 @@ class TestDatasetSegmentApiDelete:
         mock_db.session.query.return_value.where.return_value.first.return_value = None
 
         # Act & Assert
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id",
             method="DELETE",
         ):
@@ -1131,7 +1139,7 @@ class TestDatasetSegmentApiDelete:
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1143,7 +1151,7 @@ class TestDatasetSegmentApiDelete:
         mock_doc_svc.get_document.return_value = None
 
         # Act & Assert
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id",
             method="DELETE",
         ):
@@ -1199,7 +1207,7 @@ class TestDatasetSegmentApiUpdate:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
         mock_segment,
@@ -1216,7 +1224,7 @@ class TestDatasetSegmentApiUpdate:
         mock_seg_svc.update_segment.return_value = updated
         mock_marshal.return_value = {"id": mock_segment.id}
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
             method="POST",
             json={"segment": {"content": "updated content"}},
@@ -1248,7 +1256,7 @@ class TestDatasetSegmentApiUpdate:
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1257,7 +1265,7 @@ class TestDatasetSegmentApiUpdate:
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.query.return_value.where.return_value.first.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id",
             method="POST",
             json={"segment": {"content": "x"}},
@@ -1288,7 +1296,7 @@ class TestDatasetSegmentApiUpdate:
         mock_dataset_svc,
         mock_doc_svc,
         mock_seg_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1301,7 +1309,7 @@ class TestDatasetSegmentApiUpdate:
         mock_doc_svc.get_document.return_value = Mock()
         mock_seg_svc.get_segment_by_id.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id",
             method="POST",
             json={"segment": {"content": "x"}},
@@ -1338,7 +1346,7 @@ class TestDatasetSegmentApiGetSingle:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
         mock_segment,
@@ -1352,7 +1360,7 @@ class TestDatasetSegmentApiGetSingle:
         mock_seg_svc.get_segment_by_id.return_value = mock_segment
         mock_marshal.return_value = {"id": mock_segment.id}
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
             method="GET",
         ):
@@ -1374,7 +1382,7 @@ class TestDatasetSegmentApiGetSingle:
         self,
         mock_db,
         mock_account_fn,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1382,7 +1390,7 @@ class TestDatasetSegmentApiGetSingle:
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.query.return_value.where.return_value.first.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id",
             method="GET",
         ):
@@ -1405,7 +1413,7 @@ class TestDatasetSegmentApiGetSingle:
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1415,7 +1423,7 @@ class TestDatasetSegmentApiGetSingle:
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.get_document.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id",
             method="GET",
         ):
@@ -1440,7 +1448,7 @@ class TestDatasetSegmentApiGetSingle:
         mock_dataset_svc,
         mock_doc_svc,
         mock_seg_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1451,7 +1459,7 @@ class TestDatasetSegmentApiGetSingle:
         mock_doc_svc.get_document.return_value = Mock()
         mock_seg_svc.get_segment_by_id.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id",
             method="GET",
         ):
@@ -1484,7 +1492,7 @@ class TestChildChunkApiGet:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1501,7 +1509,7 @@ class TestChildChunkApiGet:
         mock_seg_svc.get_child_chunks.return_value = mock_pagination
         mock_marshal.return_value = [{"id": "c1"}, {"id": "c2"}]
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks?page=1&limit=20",
             method="GET",
         ):
@@ -1523,7 +1531,7 @@ class TestChildChunkApiGet:
         self,
         mock_db,
         mock_account_fn,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1531,7 +1539,7 @@ class TestChildChunkApiGet:
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.query.return_value.where.return_value.first.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
             method="GET",
         ):
@@ -1552,7 +1560,7 @@ class TestChildChunkApiGet:
         mock_db,
         mock_account_fn,
         mock_doc_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1561,7 +1569,7 @@ class TestChildChunkApiGet:
         mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
             method="GET",
         ):
@@ -1584,7 +1592,7 @@ class TestChildChunkApiGet:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1594,7 +1602,7 @@ class TestChildChunkApiGet:
         mock_doc_svc.get_document.return_value = Mock()
         mock_seg_svc.get_segment_by_id.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
             method="GET",
         ):
@@ -1643,7 +1651,7 @@ class TestChildChunkApiPost:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1658,7 +1666,7 @@ class TestChildChunkApiPost:
         mock_seg_svc.create_child_chunk.return_value = mock_child
         mock_marshal.return_value = {"id": "child-1"}
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
             method="POST",
             json={"content": "child chunk content"},
@@ -1685,7 +1693,7 @@ class TestChildChunkApiPost:
         mock_feature_svc,
         mock_db,
         mock_account_fn,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1694,7 +1702,7 @@ class TestChildChunkApiPost:
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.query.return_value.where.return_value.first.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
             method="POST",
             json={"content": "x"},
@@ -1723,7 +1731,7 @@ class TestChildChunkApiPost:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1734,7 +1742,7 @@ class TestChildChunkApiPost:
         mock_doc_svc.get_document.return_value = Mock()
         mock_seg_svc.get_segment_by_id.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
             method="POST",
             json={"content": "x"},
@@ -1777,7 +1785,7 @@ class TestDatasetChildChunkApiDelete:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1800,7 +1808,7 @@ class TestDatasetChildChunkApiDelete:
         mock_seg_svc.get_child_chunk_by_id.return_value = mock_child
         mock_seg_svc.delete_child_chunk.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{segment_id}/child_chunks/{child_chunk_id}",
             method="DELETE",
         ):
@@ -1827,7 +1835,7 @@ class TestDatasetChildChunkApiDelete:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1843,7 +1851,7 @@ class TestDatasetChildChunkApiDelete:
         mock_seg_svc.get_segment_by_id.return_value = mock_segment
         mock_seg_svc.get_child_chunk_by_id.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{segment_id}/child_chunks/cc-id",
             method="DELETE",
         ):
@@ -1868,7 +1876,7 @@ class TestDatasetChildChunkApiDelete:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1883,7 +1891,7 @@ class TestDatasetChildChunkApiDelete:
         mock_segment.document_id = "different-doc-id"
         mock_seg_svc.get_segment_by_id.return_value = mock_segment
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{segment_id}/child_chunks/cc-id",
             method="DELETE",
         ):
@@ -1908,7 +1916,7 @@ class TestDatasetChildChunkApiDelete:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1927,7 +1935,7 @@ class TestDatasetChildChunkApiDelete:
         mock_child.segment_id = "different-segment-id"
         mock_seg_svc.get_child_chunk_by_id.return_value = mock_child
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{segment_id}/child_chunks/cc-id",
             method="DELETE",
         ):
