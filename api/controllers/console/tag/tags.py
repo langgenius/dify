@@ -120,7 +120,7 @@ class TagUpdateDeleteApi(Resource):
 
         TagService.delete_tag(tag_id)
 
-        return 204
+        return "", 204
 
 
 @console_ns.route("/tag-bindings/create")
