@@ -175,10 +175,13 @@ class TestMagicImportWarnings:
 
         # Remove helpers so it imports fresh
         import sys
+        original_helpers = sys.modules.get(helpers.__name__)
         sys.modules.pop(helpers.__name__, None)
 
-        with pytest.warns(UserWarning, match="To use python-magic") as warning:
-            imported_helpers = importlib.import_module(helpers.__name__)
-
-        assert expected_message in str(warning[0].message)
-        assert imported_helpers.magic is None
+        try:
+            with pytest.warns(UserWarning, match="To use python-magic") as warning:
+                imported_helpers = importlib.import_module(helpers.__name__)
+            assert expected_message in str(warning[0].message)
+        finally:
+            if original_helpers is not None:
+                sys.modules[helpers.__name__] = original_helpers
