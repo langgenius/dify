@@ -3091,11 +3091,6 @@
       "count": 2
     }
   },
-  "app/components/rag-pipeline/components/update-dsl-modal.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/rag-pipeline/hooks/use-DSL.ts": {
     "ts/no-explicit-any": {
       "count": 1
