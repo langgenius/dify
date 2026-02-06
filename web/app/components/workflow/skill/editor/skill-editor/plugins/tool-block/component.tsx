@@ -368,12 +368,12 @@ const ToolBlockComponent = ({
         className={cn(
           'hidden size-[14px]',
           needAuthorization ? 'text-text-warning' : 'text-text-accent',
-          isInteractive && 'group-hover:block',
+          isInteractive && 'group-hover/tool:block',
         )}
       />
     )
     const normalIcon = (
-      <span className={cn('flex items-center justify-center', isInteractive && 'group-hover:hidden')}>
+      <span className={cn('flex items-center justify-center', isInteractive && 'group-hover/tool:hidden')}>
         {iconNode}
       </span>
     )
@@ -549,7 +549,7 @@ const ToolBlockComponent = ({
       <span
         ref={ref}
         className={cn(
-          'group inline-flex items-center gap-[2px] rounded-[5px] border py-px pl-px pr-[3px] shadow-xs',
+          'group/tool inline-flex items-center gap-[2px] rounded-[5px] border py-px pl-px pr-[3px] shadow-xs',
           isInteractive ? 'cursor-pointer' : 'cursor-default',
           needAuthorization ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
           isSelected && 'border-text-accent',
