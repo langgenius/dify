@@ -275,9 +275,9 @@ class TestConversationAppModeValidation:
         app.mode = AppMode.COMPLETION.value
 
         app_mode = AppMode.value_of(app.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            with pytest.raises(NotChatAppError):
-                raise NotChatAppError()
+        assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        with pytest.raises(NotChatAppError):
+            raise NotChatAppError()
 
     def test_workflow_mode_is_invalid_for_conversation_endpoints(self):
         """Test that WORKFLOW mode is invalid for conversation endpoints.
@@ -289,9 +289,9 @@ class TestConversationAppModeValidation:
         app.mode = AppMode.WORKFLOW.value
 
         app_mode = AppMode.value_of(app.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            with pytest.raises(NotChatAppError):
-                raise NotChatAppError()
+        assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        with pytest.raises(NotChatAppError):
+            raise NotChatAppError()
 
 
 class TestConversationErrorTypes:
