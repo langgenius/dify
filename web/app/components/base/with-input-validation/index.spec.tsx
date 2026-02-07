@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
-import { z } from 'zod'
+import * as z from 'zod'
 import withValidation from '.'
 
 describe('withValidation HOC', () => {

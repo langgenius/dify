@@ -4,15 +4,16 @@ import * as Sentry from '@sentry/react'
 import { useEffect } from 'react'
 
 import { IS_DEV } from '@/config'
+import { env } from '@/env'
 
 const SentryInitializer = ({
   children,
 }: { children: React.ReactElement }) => {
   useEffect(() => {
-    const SENTRY_DSN = document?.body?.getAttribute('data-public-sentry-dsn')
-    if (!IS_DEV && SENTRY_DSN) {
+    const sentryDsn = env.NEXT_PUBLIC_SENTRY_DSN
+    if (!IS_DEV && sentryDsn) {
       Sentry.init({
-        dsn: SENTRY_DSN,
+        dsn: sentryDsn,
         integrations: [
           Sentry.browserTracingIntegration(),
           Sentry.replayIntegration(),

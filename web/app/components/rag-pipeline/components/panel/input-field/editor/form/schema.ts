@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next'
 import type { SchemaOptions } from './types'
-import { z } from 'zod'
+import * as z from 'zod'
 import { InputTypeEnum } from '@/app/components/base/form/components/field/input-type-select/types'
 import { MAX_VAR_KEY_LENGTH } from '@/config'
 import { PipelineInputVarType } from '@/models/pipeline'
@@ -41,49 +41,47 @@ export const createInputFieldSchema = (type: PipelineInputVarType, t: TFunction,
     tooltips: z.string().optional(),
   })
   if (type === PipelineInputVarType.textInput || type === PipelineInputVarType.paragraph) {
-    return z.object({
+    return z.looseObject({
       maxLength: z.number().min(1).max(TEXT_MAX_LENGTH),
       default: z.string().optional(),
-    }).merge(commonSchema).passthrough()
+    }).extend(commonSchema.shape)
   }
   if (type === PipelineInputVarType.number) {
-    return z.object({
+    return z.looseObject({
       default: z.number().optional(),
       unit: z.string().optional(),
       placeholder: z.string().optional(),
-    }).merge(commonSchema).passthrough()
+    }).extend(commonSchema.shape)
   }
   if (type === PipelineInputVarType.select) {
-    return z.object({
-      options: z.array(z.string()).nonempty({
-        message: t('variableConfig.errorMsg.atLeastOneOption', { ns: 'appDebug' }),
-      }).refine(
+    return z.looseObject({
+      options: z.tuple([z.string()], z.string()).refine(
         arr => new Set(arr).size === arr.length,
         {
           message: t('variableConfig.errorMsg.optionRepeat', { ns: 'appDebug' }),
         },
       ),
       default: z.string().optional(),
-    }).merge(commonSchema).passthrough()
+    }).extend(commonSchema.shape)
   }
   if (type === PipelineInputVarType.singleFile) {
-    return z.object({
+    return z.looseObject({
       allowedFileUploadMethods: z.array(TransferMethod),
-      allowedTypesAndExtensions: z.object({
+      allowedTypesAndExtensions: z.looseObject({
         allowedFileExtensions: z.array(z.string()).optional(),
         allowedFileTypes: z.array(SupportedFileTypes),
       }),
-    }).merge(commonSchema).passthrough()
+    }).extend(commonSchema.shape)
   }
   if (type === PipelineInputVarType.multiFiles) {
-    return z.object({
+    return z.looseObject({
       allowedFileUploadMethods: z.array(TransferMethod),
-      allowedTypesAndExtensions: z.object({
+      allowedTypesAndExtensions: z.looseObject({
         allowedFileExtensions: z.array(z.string()).optional(),
         allowedFileTypes: z.array(SupportedFileTypes),
       }),
       maxLength: z.number().min(1).max(maxFileUploadLimit),
-    }).merge(commonSchema).passthrough()
+    }).extend(commonSchema.shape)
   }
-  return commonSchema.passthrough()
+  return z.looseObject(commonSchema.shape)
 }

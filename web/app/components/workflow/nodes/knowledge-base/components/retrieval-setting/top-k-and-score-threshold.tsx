@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { InputNumber } from '@/app/components/base/input-number'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import { env } from '@/env'
 
 export type TopKAndScoreThresholdProps = {
   topK: number
@@ -15,12 +16,7 @@ export type TopKAndScoreThresholdProps = {
   hiddenScoreThreshold?: boolean
 }
 
-const maxTopK = (() => {
-  const configValue = Number.parseInt(globalThis.document?.body?.getAttribute('data-public-top-k-max-value') || '', 10)
-  if (configValue && !isNaN(configValue))
-    return configValue
-  return 10
-})()
+const maxTopK = env.NEXT_PUBLIC_TOP_K_MAX_VALUE
 const TOP_K_VALUE_LIMIT = {
   amount: 1,
   min: 1,

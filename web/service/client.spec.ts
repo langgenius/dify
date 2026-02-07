@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const loadGetBaseURL = async (isClientValue: boolean) => {
   vi.resetModules()
-  vi.doMock('@/utils/client', () => ({ isClient: isClientValue }))
+  vi.doMock('@/utils/client', () => ({ isClient: isClientValue, isServer: !isClientValue }))
   const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
   // eslint-disable-next-line next/no-assign-module-variable
   const module = await import('./client')

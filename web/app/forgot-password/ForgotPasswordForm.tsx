@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { z } from 'zod'
+import * as z from 'zod'
 import Button from '@/app/components/base/button'
 import { formContext, useAppForm } from '@/app/components/base/form'
 import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
@@ -22,10 +22,10 @@ import Input from '../components/base/input'
 import Loading from '../components/base/loading'
 
 const accountFormSchema = z.object({
-  email: z
-    .string()
-    .min(1, { message: 'error.emailInValid' })
-    .email('error.emailInValid'),
+  email: z.email('error.emailInValid')
+    .min(1, {
+      error: 'error.emailInValid',
+    }),
 })
 
 const ForgotPasswordForm = () => {
