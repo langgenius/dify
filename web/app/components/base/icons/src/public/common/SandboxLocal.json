@@ -1,0 +1,226 @@
+{
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "40",
+      "height": "40",
+      "viewBox": "0 0 40 40",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M0 16C0 10.3995 0 7.59921 1.08993 5.46009C2.04867 3.57847 3.57847 2.04867 5.46009 1.08993C7.59921 0 10.3995 0 16 0H24C29.6005 0 32.4008 0 34.5399 1.08993C36.4215 2.04867 37.9513 3.57847 38.9101 5.46009C40 7.59921 40 10.3995 40 16V24C40 29.6005 40 32.4008 38.9101 34.5399C37.9513 36.4215 36.4215 37.9513 34.5399 38.9101C32.4008 40 29.6005 40 24 40H16C10.3995 40 7.59921 40 5.46009 38.9101C3.57847 37.9513 2.04867 36.4215 1.08993 34.5399C0 32.4008 0 29.6005 0 24V16Z",
+          "fill": "#828DAD"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M0 16C0 10.3995 0 7.59921 1.08993 5.46009C2.04867 3.57847 3.57847 2.04867 5.46009 1.08993C7.59921 0 10.3995 0 16 0H24C29.6005 0 32.4008 0 34.5399 1.08993C36.4215 2.04867 37.9513 3.57847 38.9101 5.46009C40 7.59921 40 10.3995 40 16V24C40 29.6005 40 32.4008 38.9101 34.5399C37.9513 36.4215 36.4215 37.9513 34.5399 38.9101C32.4008 40 29.6005 40 24 40H16C10.3995 40 7.59921 40 5.46009 38.9101C3.57847 37.9513 2.04867 36.4215 1.08993 34.5399C0 32.4008 0 29.6005 0 24V16Z",
+          "fill": "url(#paint0_linear_515_28967)"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M16 0.5H24C26.8085 0.5 28.8849 0.500573 30.5273 0.634766C32.1637 0.768464 33.3253 1.03224 34.3125 1.53516C36.1 2.44595 37.554 3.89996 38.4648 5.6875C38.9678 6.67471 39.2315 7.83635 39.3652 9.47266C39.4994 11.1151 39.5 13.1915 39.5 16V24C39.5 26.8085 39.4994 28.8849 39.3652 30.5273C39.2315 32.1637 38.9678 33.3253 38.4648 34.3125C37.554 36.1 36.1 37.554 34.3125 38.4648C33.3253 38.9678 32.1637 39.2315 30.5273 39.3652C28.8849 39.4994 26.8085 39.5 24 39.5H16C13.1915 39.5 11.1151 39.4994 9.47266 39.3652C7.83635 39.2315 6.67471 38.9678 5.6875 38.4648C3.89996 37.554 2.44595 36.1 1.53516 34.3125C1.03224 33.3253 0.768464 32.1637 0.634766 30.5273C0.500573 28.8849 0.5 26.8085 0.5 24V16C0.5 13.1915 0.500573 11.1151 0.634766 9.47266C0.768464 7.83635 1.03224 6.67471 1.53516 5.6875C2.44595 3.89996 3.89996 2.44595 5.6875 1.53516C6.67471 1.03224 7.83635 0.768464 9.47266 0.634766C11.1151 0.500573 13.1915 0.5 16 0.5Z",
+          "stroke": "#101828",
+          "stroke-opacity": "0.08"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "filter": "url(#filter0_d_515_28967)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M20 9L29.5 14.5V25.5L21 30.4211V19.4234L11.4979 13.9222L20 9ZM10.5 15.6555V25.5L19 30.4211V20.5765L10.5 15.6555Z",
+              "fill": "url(#paint1_linear_515_28967)",
+              "shape-rendering": "crispEdges"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "filter",
+            "attributes": {
+              "id": "filter0_d_515_28967",
+              "x": "10",
+              "y": "8.75",
+              "width": "20",
+              "height": "22.4211",
+              "filterUnits": "userSpaceOnUse",
+              "color-interpolation-filters": "sRGB"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "feFlood",
+                "attributes": {
+                  "flood-opacity": "0",
+                  "result": "BackgroundImageFix"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "SourceAlpha",
+                  "type": "matrix",
+                  "values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0",
+                  "result": "hardAlpha"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feOffset",
+                "attributes": {
+                  "dy": "0.25"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feGaussianBlur",
+                "attributes": {
+                  "stdDeviation": "0.25"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in2": "hardAlpha",
+                  "operator": "out"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "type": "matrix",
+                  "values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.2 0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feBlend",
+                "attributes": {
+                  "mode": "normal",
+                  "in2": "BackgroundImageFix",
+                  "result": "effect1_dropShadow_515_28967"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feBlend",
+                "attributes": {
+                  "mode": "normal",
+                  "in": "SourceGraphic",
+                  "in2": "effect1_dropShadow_515_28967",
+                  "result": "shape"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "paint0_linear_515_28967",
+              "x1": "0",
+              "y1": "0",
+              "x2": "40",
+              "y2": "40",
+              "gradientUnits": "userSpaceOnUse"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "stop-color": "white",
+                  "stop-opacity": "0.12"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "1",
+                  "stop-color": "white",
+                  "stop-opacity": "0.08"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "paint1_linear_515_28967",
+              "x1": "20",
+              "y1": "9",
+              "x2": "20",
+              "y2": "30.4211",
+              "gradientUnits": "userSpaceOnUse"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "stop-color": "white"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "1",
+                  "stop-color": "white",
+                  "stop-opacity": "0.9"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "SandboxLocal"
+}
