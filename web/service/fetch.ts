@@ -242,18 +242,26 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
 
 /**
  * Fire-and-forget POST with `keepalive: true` for use during page unload.
- * Includes credentials and CSRF header so the request is authenticated,
- * matching the headers sent by the standard `base()` fetch wrapper.
+ * Includes credentials, Authorization (if available), and CSRF header
+ * so the request is authenticated, matching the headers sent by the
+ * standard `base()` fetch wrapper.
  */
 export function postWithKeepalive(url: string, body: Record<string, unknown>): void {
+  const headers: Record<string, string> = {
+    'Content-Type': ContentType.json,
+    [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+  }
+
+  // Add Authorization header if an access token is available
+  const accessToken = getWebAppAccessToken()
+  if (accessToken)
+    headers.Authorization = `Bearer ${accessToken}`
+
   globalThis.fetch(url, {
     method: 'POST',
     keepalive: true,
     credentials: 'include',
-    headers: {
-      'Content-Type': ContentType.json,
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-    },
+    headers,
     body: JSON.stringify(body),
   }).catch(() => {})
 }
