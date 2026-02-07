@@ -224,7 +224,7 @@ export const useInspectVarsCrudCommon = ({
     await Promise.all([
       invalidateConversationVarValues(),
       invalidateSysVarValues(),
-      invalidateSandboxFiles(),
+      invalidateSandboxFiles({ refetchDownloadFile: false }),
     ])
     deleteAllInspectVars()
     handleEdgeCancelRunningStatus()
