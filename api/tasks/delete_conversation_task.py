@@ -67,4 +67,4 @@ def delete_conversation_related_data(conversation_id: str):
         except Exception as e:
             logger.exception("Failed to delete data from db for conversation_id: %s failed", conversation_id)
             session.rollback()
-            raise e
+            raise
