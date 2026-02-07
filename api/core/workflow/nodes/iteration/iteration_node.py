@@ -605,6 +605,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             user_from=self.user_from.value,
             invoke_from=self.invoke_from.value,
             call_depth=self.workflow_call_depth,
+            repositories=self.graph_init_params.repositories,
         )
         # Create a deep copy of the variable pool for each iteration
         variable_pool_copy = self.graph_runtime_state.variable_pool.model_copy(deep=True)

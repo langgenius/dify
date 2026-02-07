@@ -50,7 +50,6 @@ ignore_imports =
     core.workflow.nodes.agent.agent_node -> extensions.ext_database
     core.workflow.nodes.datasource.datasource_node -> extensions.ext_database
     core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_database
     core.workflow.nodes.llm.file_saver -> extensions.ext_database
     core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
@@ -124,7 +123,6 @@ ignore_imports =
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.index_processor_factory
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.rag.datasource.retrieval_service
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.rag.retrieval.dataset_retrieval
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> models.dataset
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> services.feature_service
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.model_runtime.model_providers.__base.large_language_model
     core.workflow.nodes.llm.llm_utils -> configs
@@ -287,7 +285,6 @@ ignore_imports =
     core.workflow.nodes.agent.agent_node -> extensions.ext_database
     core.workflow.nodes.datasource.datasource_node -> extensions.ext_database
     core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_database
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_redis
     core.workflow.nodes.llm.file_saver -> extensions.ext_database
     core.workflow.nodes.llm.llm_utils -> extensions.ext_database

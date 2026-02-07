@@ -1,4 +1,3 @@
-import logging
 import time
 from collections.abc import Sequence
 from typing import cast
@@ -8,6 +7,7 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.workflow.entities.repositories import Repositories
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
@@ -21,8 +21,6 @@ from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from libs.datetime_utils import naive_utc_now
 from models.workflow import Workflow
-
-logger = logging.getLogger(__name__)
 
 
 class WorkflowAppRunner(WorkflowBasedAppRunner):
@@ -42,6 +40,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        repositories: Repositories | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -55,6 +54,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._root_node_id = root_node_id
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._repositories = repositories
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
@@ -84,6 +84,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 workflow=self._workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
+                repositories=self._repositories,
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -109,6 +110,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=self._root_node_id,
+                repositories=self._repositories,
             )
 
         # RUN WORKFLOW

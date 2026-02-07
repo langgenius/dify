@@ -27,6 +27,7 @@ from core.app.entities.queue_entities import (
 )
 from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.repositories import Repositories
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events import (
@@ -93,9 +94,10 @@ class WorkflowBasedAppRunner:
         tenant_id: str = "",
         user_id: str = "",
         root_node_id: str | None = None,
+        repositories: Repositories | None = None,
     ) -> Graph:
         """
-        Init graph
+        Init graph.
         """
         if "nodes" not in graph_config or "edges" not in graph_config:
             raise ValueError("nodes or edges not found in workflow graph")
@@ -116,6 +118,7 @@ class WorkflowBasedAppRunner:
             user_from=user_from,
             invoke_from=invoke_from,
             call_depth=0,
+            repositories=repositories,
         )
 
         # Use the provided graph_runtime_state for consistent state management
@@ -138,6 +141,7 @@ class WorkflowBasedAppRunner:
         workflow: Workflow,
         single_iteration_run: Any | None = None,
         single_loop_run: Any | None = None,
+        repositories: Repositories | None = None,
     ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
@@ -147,6 +151,7 @@ class WorkflowBasedAppRunner:
             workflow: The workflow instance
             single_iteration_run: SingleIterationRunEntity if running single iteration, None otherwise
             single_loop_run: SingleLoopRunEntity if running single loop, None otherwise
+            repositories: Optional repository container to pass to the graph runtime
 
         Returns:
             A tuple containing (graph, variable_pool, graph_runtime_state)
@@ -173,6 +178,7 @@ class WorkflowBasedAppRunner:
                 graph_runtime_state=graph_runtime_state,
                 node_type_filter_key="iteration_id",
                 node_type_label="iteration",
+                repositories=repositories,
             )
         elif single_loop_run:
             graph, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
@@ -182,6 +188,7 @@ class WorkflowBasedAppRunner:
                 graph_runtime_state=graph_runtime_state,
                 node_type_filter_key="loop_id",
                 node_type_label="loop",
+                repositories=repositories,
             )
         else:
             raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
@@ -198,6 +205,7 @@ class WorkflowBasedAppRunner:
         graph_runtime_state: GraphRuntimeState,
         node_type_filter_key: str,  # 'iteration_id' or 'loop_id'
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
+        repositories: Repositories | None = None,
     ) -> tuple[Graph, VariablePool]:
         """
         Get graph and variable pool for single node execution (iteration or loop).
@@ -209,6 +217,7 @@ class WorkflowBasedAppRunner:
             graph_runtime_state: The graph runtime state
             node_type_filter_key: The key to filter nodes ('iteration_id' or 'loop_id')
             node_type_label: Label for error messages ('iteration' or 'loop')
+            repositories: Optional repository container to pass to the graph runtime
 
         Returns:
             A tuple containing (graph, variable_pool)
@@ -264,6 +273,7 @@ class WorkflowBasedAppRunner:
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
             call_depth=0,
+            repositories=repositories,
         )
 
         node_factory = DifyNodeFactory(

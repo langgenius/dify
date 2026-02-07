@@ -30,6 +30,8 @@ from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
+from core.repositories.sqlalchemy_knowledge_repository import SQLAlchemyKnowledgeRepository
+from core.workflow.entities.repositories import Repositories
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -182,7 +184,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create repositories
         #
         # Create session factory
-        session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         # Create workflow execution(aka workflow run) repository
         if triggered_from is not None:
             # Use explicitly provided triggered_from (for async triggers)
@@ -192,14 +194,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
         else:
             workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
-            session_factory=session_factory,
+            session_factory=session_maker,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=workflow_triggered_from,
         )
         # Create workflow node execution repository
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-            session_factory=session_factory,
+            session_factory=session_maker,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -507,6 +509,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     # For internal calls, use the original user ID
                     system_user_id = application_generate_entity.user_id
 
+            # Create repositories container
+            repositories = Repositories(
+                knowledge_repo=SQLAlchemyKnowledgeRepository(session_factory.get_session_maker()),
+                workflow_execution_repo=workflow_execution_repository,
+            )
+
             runner = WorkflowAppRunner(
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
@@ -517,6 +525,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow_node_execution_repository=workflow_node_execution_repository,
                 root_node_id=root_node_id,
                 graph_engine_layers=graph_engine_layers,
+                repositories=repositories,
             )
 
             try:

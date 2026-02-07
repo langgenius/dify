@@ -35,8 +35,10 @@ from core.rag.entities.event import (
     DatasourceProcessingEvent,
 )
 from core.repositories.factory import DifyCoreRepositoryFactory
+from core.repositories.sqlalchemy_knowledge_repository import SQLAlchemyKnowledgeRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables.variables import VariableBase
+from core.workflow.entities.repositories import Repositories
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
@@ -429,6 +431,10 @@ class RagPipelineService:
         else:
             enclosing_node_id = None
 
+        repositories = Repositories(
+            knowledge_repo=SQLAlchemyKnowledgeRepository(db.engine),
+        )
+
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
                 workflow=draft_workflow,
@@ -447,6 +453,7 @@ class RagPipelineService:
                     app_id=pipeline.id,
                     tenant_id=pipeline.tenant_id,
                 ),
+                repositories=repositories,
             ),
             start_at=start_at,
             tenant_id=pipeline.tenant_id,
@@ -1189,6 +1196,10 @@ class RagPipelineService:
         else:
             enclosing_node_id = None
 
+        repositories = Repositories(
+            knowledge_repo=SQLAlchemyKnowledgeRepository(db.engine),
+        )
+
         system_inputs = SystemVariable(
             datasource_type=args.get("datasource_type", "online_document"),
             datasource_info=args.get("datasource_info", {}),
@@ -1212,6 +1223,7 @@ class RagPipelineService:
                     app_id=pipeline.id,
                     tenant_id=pipeline.tenant_id,
                 ),
+                repositories=repositories,
             ),
             start_at=start_at,
             tenant_id=pipeline.tenant_id,

@@ -13,9 +13,11 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
+from core.repositories.sqlalchemy_knowledge_repository import SQLAlchemyKnowledgeRepository
 from core.variables import VariableBase
 from core.variables.variables import Variable
 from core.workflow.entities import WorkflowNodeExecution
+from core.workflow.entities.repositories import Repositories
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
@@ -693,6 +695,10 @@ class WorkflowService:
         else:
             enclosing_node_id = None
 
+        repositories = Repositories(
+            knowledge_repo=SQLAlchemyKnowledgeRepository(db.engine),
+        )
+
         run = WorkflowEntry.single_step_run(
             workflow=draft_workflow,
             node_id=node_id,
@@ -700,6 +706,7 @@ class WorkflowService:
             user_id=account.id,
             variable_pool=variable_pool,
             variable_loader=variable_loader,
+            repositories=repositories,
         )
 
         # run draft workflow node

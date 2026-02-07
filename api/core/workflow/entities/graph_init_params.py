@@ -1,7 +1,9 @@
 from collections.abc import Mapping
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, SkipValidation
+
+from core.workflow.entities.repositories import Repositories
 
 
 class GraphInitParams(BaseModel):
@@ -18,3 +20,6 @@ class GraphInitParams(BaseModel):
         ..., description="invoke from, service-api, web-app, explore or debugger"
     )  # Should be InvokeFrom enum: 'service-api' | 'web-app' | 'explore' | 'debugger'
     call_depth: int = Field(..., description="call depth")
+    repositories: SkipValidation[Repositories] | None = Field(default=None, description="repositories for data access")
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
