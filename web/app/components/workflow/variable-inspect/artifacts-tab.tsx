@@ -4,7 +4,7 @@ import {
   RiCloseLine,
   RiMenuLine,
 } from '@remixicon/react'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import SearchLinesSparkle from '@/app/components/base/icons/src/vender/knowledge/SearchLinesSparkle'
@@ -62,15 +62,27 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
   )
   const isResponding = useStore(s => s.isResponding)
 
-  const { data: treeData, hasFiles, isLoading } = useSandboxFilesTree(appId, {
+  const { data: treeData, flatData, hasFiles, isLoading } = useSandboxFilesTree(appId, {
     enabled: !!appId,
     refetchInterval: (isWorkflowRunning || isResponding) ? 5000 : false,
   })
   const { mutateAsync: fetchDownloadUrl, isPending: isDownloading } = useDownloadSandboxFile(appId)
   const [selectedFile, setSelectedFile] = useState<SandboxFileTreeNode | null>(null)
+  const selectedFilePath = useMemo(() => {
+    if (!selectedFile)
+      return undefined
+
+    const selectedExists = flatData?.some(
+      node => !node.is_dir && node.path === selectedFile.path,
+    ) ?? false
+
+    return selectedExists ? selectedFile.path : undefined
+  }, [flatData, selectedFile])
+
   const { data: downloadUrlData, isLoading: isDownloadUrlLoading } = useSandboxFileDownloadUrl(
     appId,
-    selectedFile?.path,
+    selectedFilePath,
+    { retry: false },
   )
 
   const handleFileSelect = useCallback((node: SandboxFileTreeNode) => {
@@ -113,7 +125,7 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
     )
   }
 
-  const file = selectedFile
+  const file = selectedFilePath ? selectedFile : null
   const parts = file?.path.split('/') ?? []
   let cumPath = ''
   const pathSegments = parts.map((part, i) => {
@@ -130,7 +142,7 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
             data={treeData}
             onDownload={handleTreeDownload}
             onSelect={handleFileSelect}
-            selectedPath={selectedFile?.path}
+            selectedPath={selectedFilePath}
             isDownloading={isDownloading}
           />
         </div>

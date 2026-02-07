@@ -14,6 +14,15 @@ type UseGetSandboxFilesOptions = {
   refetchInterval?: number | false
 }
 
+type UseSandboxFileDownloadUrlOptions = {
+  enabled?: boolean
+  retry?: boolean | number
+}
+
+type InvalidateSandboxFilesOptions = {
+  refetchDownloadFile?: boolean
+}
+
 export function useGetSandboxFiles(
   appId: string | undefined,
   options?: UseGetSandboxFilesOptions,
@@ -39,6 +48,7 @@ export function useGetSandboxFiles(
 export function useSandboxFileDownloadUrl(
   appId: string | undefined,
   path: string | undefined,
+  options?: UseSandboxFileDownloadUrlOptions,
 ) {
   return useQuery({
     queryKey: consoleQuery.sandboxFile.downloadFile.queryKey({
@@ -48,19 +58,22 @@ export function useSandboxFileDownloadUrl(
       params: { appId: appId! },
       body: { path: path! },
     }),
-    enabled: !!appId && !!path,
+    enabled: !!appId && !!path && (options?.enabled ?? true),
+    retry: options?.retry,
   })
 }
 
 export function useInvalidateSandboxFiles() {
   const queryClient = useQueryClient()
-  return useCallback(() => {
+  return useCallback((options?: InvalidateSandboxFilesOptions) => {
+    const shouldRefetchDownloadFile = options?.refetchDownloadFile ?? true
     return Promise.all([
       queryClient.invalidateQueries({
         queryKey: consoleQuery.sandboxFile.listFiles.key(),
       }),
       queryClient.invalidateQueries({
         queryKey: consoleQuery.sandboxFile.downloadFile.key(),
+        ...(shouldRefetchDownloadFile ? {} : { refetchType: 'none' as const }),
       }),
     ])
   }, [queryClient])
