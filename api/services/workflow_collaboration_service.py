@@ -120,6 +120,30 @@ class WorkflowCollaborationService:
 
             return {"msg": "skill_file_active_updated"}, 200
 
+        if event_type == "sync_request":
+            leader_sid = self._repository.get_current_leader(workflow_id)
+            if leader_sid and (
+                self.is_session_active(workflow_id, leader_sid)
+                and self._repository.is_graph_active(workflow_id, leader_sid)
+            ):
+                target_sid = leader_sid
+            else:
+                if leader_sid:
+                    self._repository.delete_leader(workflow_id)
+                target_sid = self._select_graph_leader(workflow_id, preferred_sid=sid)
+                if target_sid:
+                    self._repository.set_leader(workflow_id, target_sid)
+                    self.broadcast_leader_change(workflow_id, target_sid)
+            if not target_sid:
+                return {"msg": "no_active_leader"}, 200
+
+            self._socketio.emit(
+                "collaboration_update",
+                {"type": event_type, "userId": user_id, "data": event_data, "timestamp": timestamp},
+                room=target_sid,
+            )
+            return {"msg": "sync_request_forwarded"}, 200
+
         self._socketio.emit(
             "collaboration_update",
             {"type": event_type, "userId": user_id, "data": event_data, "timestamp": timestamp},
@@ -232,11 +256,44 @@ class WorkflowCollaborationService:
     def get_current_leader(self, workflow_id: str) -> str | None:
         return self._repository.get_current_leader(workflow_id)
 
+    def _prune_inactive_sessions(self, workflow_id: str) -> list[WorkflowSessionInfo]:
+        """Remove inactive sessions from storage and return active sessions only."""
+        sessions = self._repository.list_sessions(workflow_id)
+        if not sessions:
+            return []
+
+        active_sessions: list[WorkflowSessionInfo] = []
+        stale_sids: list[str] = []
+        for session in sessions:
+            sid = session["sid"]
+            if self.is_session_active(workflow_id, sid):
+                active_sessions.append(session)
+            else:
+                stale_sids.append(sid)
+
+        for sid in stale_sids:
+            self._repository.delete_session(workflow_id, sid)
+
+        return active_sessions
+
     def broadcast_online_users(self, workflow_id: str) -> None:
-        users = self._repository.list_sessions(workflow_id)
+        users = self._prune_inactive_sessions(workflow_id)
         users.sort(key=lambda x: x.get("connected_at") or 0)
 
         leader_sid = self.get_current_leader(workflow_id)
+        previous_leader = leader_sid
+        active_sids = {user["sid"] for user in users}
+        if leader_sid and leader_sid not in active_sids:
+            self._repository.delete_leader(workflow_id)
+            leader_sid = None
+
+        if not leader_sid and users:
+            leader_sid = self._select_graph_leader(workflow_id)
+            if leader_sid:
+                self._repository.set_leader(workflow_id, leader_sid)
+
+        if leader_sid != previous_leader:
+            self.broadcast_leader_change(workflow_id, leader_sid)
 
         self._socketio.emit(
             "online_users",
@@ -293,7 +350,9 @@ class WorkflowCollaborationService:
 
     def _select_graph_leader(self, workflow_id: str, preferred_sid: str | None = None) -> str | None:
         session_sids = [
-            session["sid"] for session in self._repository.list_sessions(workflow_id) if session.get("graph_active")
+            session["sid"]
+            for session in self._repository.list_sessions(workflow_id)
+            if session.get("graph_active") and self.is_session_active(workflow_id, session["sid"])
         ]
         if not session_sids:
             return None

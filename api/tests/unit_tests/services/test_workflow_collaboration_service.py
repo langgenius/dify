@@ -140,9 +140,19 @@ class TestWorkflowCollaborationService:
         collaboration_service, repository, _socketio = service
         repository.get_current_leader.return_value = "sid-1"
         repository.set_leader_if_absent.return_value = True
+        repository.list_sessions.return_value = [
+            {
+                "user_id": "u-2",
+                "username": "B",
+                "avatar": None,
+                "sid": "sid-2",
+                "connected_at": 1,
+                "graph_active": True,
+            }
+        ]
 
         with (
-            patch.object(collaboration_service, "is_session_active", return_value=False),
+            patch.object(collaboration_service, "is_session_active", side_effect=lambda _wf, sid: sid != "sid-1"),
             patch.object(collaboration_service, "broadcast_leader_change") as broadcast_leader_change,
         ):
             # Act
@@ -161,6 +171,16 @@ class TestWorkflowCollaborationService:
         collaboration_service, repository, _socketio = service
         repository.get_current_leader.side_effect = [None, "sid-3"]
         repository.set_leader_if_absent.return_value = False
+        repository.list_sessions.return_value = [
+            {
+                "user_id": "u-2",
+                "username": "B",
+                "avatar": None,
+                "sid": "sid-2",
+                "connected_at": 1,
+                "graph_active": True,
+            }
+        ]
 
         # Act
         result = collaboration_service.get_or_set_leader("wf-1", "sid-2")
@@ -174,9 +194,21 @@ class TestWorkflowCollaborationService:
         # Arrange
         collaboration_service, repository, _socketio = service
         repository.get_current_leader.return_value = "sid-1"
-        repository.get_session_sids.return_value = ["sid-2"]
+        repository.list_sessions.return_value = [
+            {
+                "user_id": "u-2",
+                "username": "B",
+                "avatar": None,
+                "sid": "sid-2",
+                "connected_at": 1,
+                "graph_active": True,
+            }
+        ]
 
-        with patch.object(collaboration_service, "broadcast_leader_change") as broadcast_leader_change:
+        with (
+            patch.object(collaboration_service, "is_session_active", return_value=True),
+            patch.object(collaboration_service, "broadcast_leader_change") as broadcast_leader_change,
+        ):
             # Act
             collaboration_service.handle_leader_disconnect("wf-1", "sid-1")
 
@@ -190,7 +222,7 @@ class TestWorkflowCollaborationService:
         # Arrange
         collaboration_service, repository, _socketio = service
         repository.get_current_leader.return_value = "sid-1"
-        repository.get_session_sids.return_value = []
+        repository.list_sessions.return_value = []
 
         # Act
         collaboration_service.handle_leader_disconnect("wf-1", "sid-1")
@@ -209,8 +241,9 @@ class TestWorkflowCollaborationService:
         ]
         repository.get_current_leader.return_value = "sid-1"
 
-        # Act
-        collaboration_service.broadcast_online_users("wf-1")
+        with patch.object(collaboration_service, "is_session_active", return_value=True):
+            # Act
+            collaboration_service.broadcast_online_users("wf-1")
 
         # Assert
         socketio.emit.assert_called_once_with(
@@ -248,8 +281,21 @@ class TestWorkflowCollaborationService:
         # Arrange
         collaboration_service, repository, _socketio = service
         repository.get_current_leader.return_value = None
+        repository.list_sessions.return_value = [
+            {
+                "user_id": "u-2",
+                "username": "B",
+                "avatar": None,
+                "sid": "sid-2",
+                "connected_at": 1,
+                "graph_active": True,
+            }
+        ]
 
-        with patch.object(collaboration_service, "broadcast_leader_change") as broadcast_leader_change:
+        with (
+            patch.object(collaboration_service, "is_session_active", return_value=True),
+            patch.object(collaboration_service, "broadcast_leader_change") as broadcast_leader_change,
+        ):
             # Act
             collaboration_service.refresh_session_state("wf-1", "sid-2")
 

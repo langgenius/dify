@@ -10,6 +10,7 @@ import {
   useWorkflowMoveMode,
   useWorkflowOrganize,
 } from '.'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useWorkflowStore } from '../store'
 import {
   getKeyboardKeyCodeBySystem,
@@ -265,6 +266,13 @@ export const useShortcuts = (enabled = true): void => {
     exactMatch: true,
     useCapture: true,
   })
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.l`, (e) => {
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      collaborationManager.downloadGraphImportLog()
+    }
+  }, { exactMatch: true, useCapture: true })
 
   // Shift ↓
   useKeyPress(
