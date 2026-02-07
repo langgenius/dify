@@ -137,6 +137,8 @@ audit_log = trust_manager.get_audit_log(limit=100)
 # }
 ```
 
+> **Note:** Audit logs, trust scores, and verification caches are stored in in-memory process state. In multi-worker deployments (e.g., gunicorn with multiple workers), this data will not be shared across workers and will be lost on restart. For production deployments requiring persistent audit trails, consider extending the `TrustManager` to persist to an external store (Redis, PostgreSQL, etc.).
+
 ## Configuration
 
 Environment variables (TODO: not yet wired up - currently require programmatic initialization):

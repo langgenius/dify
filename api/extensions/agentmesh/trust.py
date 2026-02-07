@@ -58,7 +58,7 @@ class TrustManager:
     def set_identity(self, identity: CMVKIdentity) -> None:
         """Set or update the local identity."""
         self.identity = identity
-        logger.info(f"Trust identity set: {identity.did}")
+        logger.info("Trust identity set: %s", identity.did)
     
     def verify_peer(
         self,
@@ -76,10 +76,10 @@ class TrustManager:
                 if not self._peer_has_capability(peer_caps, req_cap):
                     missing.append(req_cap)
             if missing:
-                return self._fail(f"Missing capabilities: {missing}", peer_did)
+                return self._fail("Missing capabilities: %s" % missing, peer_did)
         
-        # Check identity cache (identity only, not capabilities)
-        cached = self._get_cached(peer_did)
+        # Check identity cache - includes public key for security
+        cached = self._get_cached(peer_did, peer_public_key)
         if cached is not None:
             return cached
         
@@ -92,7 +92,7 @@ class TrustManager:
         
         if trust_score < self.min_trust_score:
             return self._fail(
-                f"Trust score {trust_score:.2f} below minimum {self.min_trust_score}",
+                "Trust score %.2f below minimum %.2f" % (trust_score, self.min_trust_score),
                 peer_did,
                 trust_score=trust_score
             )
@@ -106,7 +106,7 @@ class TrustManager:
             verified_capabilities=peer_capabilities or [],
         )
         
-        self._cache(peer_did, result)
+        self._cache(peer_did, peer_public_key, result)
         self._log_audit("verify_peer", peer_did, True, trust_score)
         
         return result
@@ -120,27 +120,28 @@ class TrustManager:
     ) -> TrustVerificationResult:
         """Verify trust for a workflow step execution."""
         if not self.identity:
-            return self._fail("No identity configured", f"{workflow_id}:{step_id}")
+            return self._fail("No identity configured", "%s:%s" % (workflow_id, step_id))
         
         # Check capability for step type
-        capability = required_capability or f"workflow:{step_type}"
+        capability = required_capability or "workflow:%s" % step_type
         if not self.identity.has_capability(capability) and not self.identity.has_capability("*"):
             return self._fail(
-                f"Missing capability: {capability}",
-                f"{workflow_id}:{step_id}"
+                "Missing capability: %s" % capability,
+                "%s:%s" % (workflow_id, step_id)
             )
         
-        trust_score = self._trust_scores.get(self.identity.did, 0.7)
+        with self._lock:
+            trust_score = self._trust_scores.get(self.identity.did, 0.7)
         
         result = TrustVerificationResult(
             verified=True,
             trust_score=trust_score,
             peer_did=self.identity.did,
-            reason=f"Step {step_type} authorized",
+            reason="Step %s authorized" % step_type,
             verified_capabilities=[capability],
         )
         
-        self._log_audit("verify_step", f"{workflow_id}:{step_id}", True, trust_score)
+        self._log_audit("verify_step", "%s:%s" % (workflow_id, step_id), True, trust_score)
         return result
     
     def record_success(self, did: str) -> None:
@@ -197,23 +198,25 @@ class TrustManager:
             self._trust_scores[peer_did] = score
             return score
     
-    def _get_cached(self, peer_did: str) -> Optional[TrustVerificationResult]:
-        """Get cached result if valid."""
+    def _get_cached(self, peer_did: str, peer_public_key: str) -> Optional[TrustVerificationResult]:
+        """Get cached result if valid (key includes DID + public key for security)."""
+        cache_key = "%s:%s" % (peer_did, peer_public_key[:32] if peer_public_key else "")
         with self._lock:
-            if peer_did not in self._verified_peers:
+            if cache_key not in self._verified_peers:
                 return None
             
-            result, cached_at = self._verified_peers[peer_did]
+            result, cached_at = self._verified_peers[cache_key]
             if datetime.now(timezone.utc) - cached_at > self.cache_ttl:
-                del self._verified_peers[peer_did]
+                del self._verified_peers[cache_key]
                 return None
             
             return result
     
-    def _cache(self, peer_did: str, result: TrustVerificationResult) -> None:
-        """Cache a verification result."""
+    def _cache(self, peer_did: str, peer_public_key: str, result: TrustVerificationResult) -> None:
+        """Cache a verification result (key includes DID + public key for security)."""
+        cache_key = "%s:%s" % (peer_did, peer_public_key[:32] if peer_public_key else "")
         with self._lock:
-            self._verified_peers[peer_did] = (result, datetime.now(timezone.utc))
+            self._verified_peers[cache_key] = (result, datetime.now(timezone.utc))
     
     def _fail(
         self,
@@ -239,7 +242,7 @@ class TrustManager:
         trust_score: float,
         reason: str = ""
     ) -> None:
-        """Log an audit entry."""
+        """Log an audit entry (thread-safe)."""
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "action": action,
@@ -249,8 +252,10 @@ class TrustManager:
             "reason": reason,
             "identity_did": self.identity.did if self.identity else None,
         }
-        self._audit_log.append(entry)
         
-        # Keep log bounded
-        if len(self._audit_log) > 10000:
-            self._audit_log = self._audit_log[-5000:]
+        with self._lock:
+            self._audit_log.append(entry)
+            
+            # Keep log bounded
+            if len(self._audit_log) > 10000:
+                self._audit_log = self._audit_log[-5000:]
