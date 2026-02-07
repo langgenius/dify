@@ -64,6 +64,10 @@ class ToolFileApi(Resource):
 
             if not stream or not tool_file:
                 raise NotFound("file is not found")
+
+        except NotFound:
+            raise
+
         except Exception:
             raise UnsupportedFileTypeError()
 
