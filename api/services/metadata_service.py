@@ -220,8 +220,8 @@ class MetadataService:
                     doc_metadata[BuiltInField.source] = MetadataDataSource[document.data_source_type]
                 document.doc_metadata = doc_metadata
                 db.session.add(document)
-                db.session.commit()
-                # deal metadata binding
+
+                # deal metadata binding (in the same transaction as the doc_metadata update)
                 if not operation.partial_update:
                     db.session.query(DatasetMetadataBinding).filter_by(document_id=operation.document_id).delete()
 
@@ -247,7 +247,9 @@ class MetadataService:
                     db.session.add(dataset_metadata_binding)
                 db.session.commit()
             except Exception:
+                db.session.rollback()
                 logger.exception("Update documents metadata failed")
+                raise
             finally:
                 redis_client.delete(lock_key)
 
