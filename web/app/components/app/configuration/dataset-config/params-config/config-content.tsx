@@ -194,8 +194,8 @@ const ConfigContent: FC<Props> = ({
       </div>
       {type === RETRIEVE_TYPE.multiWay && (
         <>
-          <div className="my-2 flex h-6 items-center py-1">
-            <div className="system-xs-semibold-uppercase mr-2 shrink-0 text-text-secondary">
+          <div className="my-2 flex flex-col py-1">
+            <div className="system-xs-semibold-uppercase mb-2 text-text-secondary">
               {t('rerankSettings', { ns: 'dataset' })}
             </div>
             <Divider bgStyle="gradient" className="mx-0 my-0 !h-px" />
