@@ -10,6 +10,7 @@ import logging
 
 from celery import shared_task
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from core.db.session_factory import session_factory
 from core.workflow.entities.workflow_execution import WorkflowExecution
@@ -48,29 +49,36 @@ def save_workflow_execution_task(
         with session_factory.create_session() as session:
             # Deserialize execution data
             execution = WorkflowExecution.model_validate(execution_data)
-
-            # Check if workflow run already exists
             existing_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == execution.id_))
-
             if existing_run:
-                # Update existing workflow run
                 _update_workflow_run_from_execution(existing_run, execution)
-                logger.debug("Updated existing workflow run: %s", execution.id_)
-            else:
-                # Create new workflow run
-                workflow_run = _create_workflow_run_from_execution(
-                    execution=execution,
-                    tenant_id=tenant_id,
-                    app_id=app_id,
-                    triggered_from=WorkflowRunTriggeredFrom(triggered_from),
-                    creator_user_id=creator_user_id,
-                    creator_user_role=CreatorUserRole(creator_user_role),
-                )
+                session.commit()
+                return True
+            workflow_run = _create_workflow_run_from_execution(
+                execution=execution,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                triggered_from=WorkflowRunTriggeredFrom(triggered_from),
+                creator_user_id=creator_user_id,
+                creator_user_role=CreatorUserRole(creator_user_role),
+            )
+            try:
                 session.add(workflow_run)
-                logger.debug("Created new workflow run: %s", execution.id_)
-
-            session.commit()
-            return True
+                session.commit()
+                return True
+            except IntegrityError:
+                session.rollback()
+                existing_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == execution.id_))
+                if existing_run:
+                    _update_workflow_run_from_execution(existing_run, execution)
+                    session.commit()
+                    return True
+                # This case is rare. Let Celery's retry mechanism handle it.
+                logger.warning(
+                    "IntegrityError on insert but record with id %s not found after rollback. Task will be retried.",
+                    execution.id_,
+                )
+                raise
 
     except Exception as e:
         logger.exception("Failed to save workflow execution %s", execution_data.get("id_", "unknown"))
@@ -116,12 +124,21 @@ def _create_workflow_run_from_execution(
     return workflow_run
 
 
-def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: WorkflowExecution):
-    """
-    Update a WorkflowRun database model from a WorkflowExecution domain entity.
-    """
+WORKFLOW_TERMINAL_STATES = {"succeeded", "failed", "stopped", "partial-succeeded"}
+
+
+def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: WorkflowExecution) -> None:
     json_converter = WorkflowRuntimeTypeConverter()
-    workflow_run.status = execution.status.value
+    current_status = workflow_run.status
+    new_status = execution.status.value
+
+    if current_status in WORKFLOW_TERMINAL_STATES and new_status not in WORKFLOW_TERMINAL_STATES:
+        # If current status is terminal, do not update to a non-terminal status.
+        # Only update finished_at if it's not set.
+        workflow_run.finished_at = workflow_run.finished_at or execution.finished_at
+        return
+
+    workflow_run.status = new_status
     workflow_run.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     )
@@ -129,4 +146,4 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
     workflow_run.elapsed_time = execution.elapsed_time
     workflow_run.total_tokens = execution.total_tokens
     workflow_run.total_steps = execution.total_steps
-    workflow_run.finished_at = execution.finished_at
+    workflow_run.finished_at = workflow_run.finished_at or execution.finished_at
