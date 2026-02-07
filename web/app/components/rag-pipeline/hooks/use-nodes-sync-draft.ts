@@ -9,6 +9,7 @@ import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
+import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { usePipelineRefreshDraft } from '.'
 
@@ -76,12 +77,8 @@ export const useNodesSyncDraft = () => {
       return
     const postParams = getPostParams()
 
-    if (postParams) {
-      navigator.sendBeacon(
-        `${API_PREFIX}${postParams.url}`,
-        JSON.stringify(postParams.params),
-      )
-    }
+    if (postParams)
+      postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
   }, [getPostParams, getNodesReadOnly])
 
   const performSync = useCallback(async (
