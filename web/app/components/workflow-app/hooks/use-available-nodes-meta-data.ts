@@ -3,6 +3,7 @@ import type { CommonNodeType, NodeDefault, NodeDefaultBase } from '@/app/compone
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import AnswerDefault from '@/app/components/workflow/nodes/answer/default'
 import EndDefault from '@/app/components/workflow/nodes/end/default'
@@ -17,6 +18,7 @@ import { useIsChatMode } from './use-is-chat-mode'
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
+  const isSandboxed = useAppStore(s => s.appDetail?.runtime_type === 'sandboxed')
   const docLink = useDocLink()
 
   const startNodeMetaData = useMemo(() => ({
@@ -28,7 +30,9 @@ export const useAvailableNodesMetaData = () => {
   }), [isChatMode])
 
   const mergedNodesMetaData = useMemo(() => [
-    ...WORKFLOW_COMMON_NODES,
+    ...(isSandboxed
+      ? WORKFLOW_COMMON_NODES.filter(node => node.metaData.type !== BlockEnum.Agent)
+      : WORKFLOW_COMMON_NODES),
     startNodeMetaData,
     ...(
       isChatMode
@@ -40,7 +44,7 @@ export const useAvailableNodesMetaData = () => {
             TriggerPluginDefault,
           ]
     ),
-  ] as AvailableNodesMetaData['nodes'], [isChatMode, startNodeMetaData])
+  ] as AvailableNodesMetaData['nodes'], [isChatMode, isSandboxed, startNodeMetaData])
 
   const availableNodesMetaData = useMemo<NodeDefaultBase[]>(() => {
     const toNodeDefaultBase = (
@@ -69,7 +73,9 @@ export const useAvailableNodesMetaData = () => {
       // normalize per-node defaults into a shared metadata shape.
       const typedNode = node as NodeDefault<CommonNodeType>
       const { metaData } = typedNode
-      const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
+      const title = isSandboxed && metaData.type === BlockEnum.LLM
+        ? t('blocks.agent', { ns: 'workflow' })
+        : t(`blocks.${metaData.type}` as const, { ns: 'workflow' })
       const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
       const helpLinkPath = `/use-dify/nodes/${metaData.helpLinkUri}` as DocPathWithoutLang
       return toNodeDefaultBase(typedNode, {
@@ -83,7 +89,7 @@ export const useAvailableNodesMetaData = () => {
         title,
       })
     })
-  }, [mergedNodesMetaData, t, docLink])
+  }, [mergedNodesMetaData, t, docLink, isSandboxed])
 
   const availableNodesMetaDataMap = useMemo(() => availableNodesMetaData.reduce((acc, node) => {
     acc![node.metaData.type] = node

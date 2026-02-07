@@ -1,5 +1,6 @@
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
@@ -12,6 +13,7 @@ import { useIsChatMode } from './use-is-chat-mode'
 
 export const useWorkflowTemplate = () => {
   const isChatMode = useIsChatMode()
+  const isSandboxed = useAppStore(s => s.appDetail?.runtime_type === 'sandboxed')
   const { t } = useTranslation()
 
   const { newNode: startNode } = generateNewNode({
@@ -24,6 +26,10 @@ export const useWorkflowTemplate = () => {
   })
 
   if (isChatMode) {
+    const llmTitle = isSandboxed
+      ? t('blocks.agent', { ns: 'workflow' })
+      : t(`blocks.${llmDefault.metaData.type}` as const, { ns: 'workflow' })
+
     const { newNode: llmNode } = generateNewNode({
       id: 'llm',
       data: {
@@ -34,7 +40,7 @@ export const useWorkflowTemplate = () => {
         },
         selected: true,
         type: llmDefault.metaData.type,
-        title: t(`blocks.${llmDefault.metaData.type}`, { ns: 'workflow' }),
+        title: llmTitle,
       },
       position: {
         x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET,
