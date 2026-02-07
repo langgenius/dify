@@ -77,10 +77,12 @@ export const useNodesSyncDraft = () => {
     const postParams = getPostParams()
 
     if (postParams) {
-      navigator.sendBeacon(
-        `${API_PREFIX}${postParams.url}`,
-        JSON.stringify(postParams.params),
-      )
+      fetch(`${API_PREFIX}${postParams.url}`, {
+        method: 'POST',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(postParams.params),
+      }).catch(() => {})
     }
   }, [getPostParams, getNodesReadOnly])
 

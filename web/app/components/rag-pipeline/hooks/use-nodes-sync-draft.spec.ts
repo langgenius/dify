@@ -73,17 +73,13 @@ vi.mock('@/config', () => ({
 // ============================================================================
 
 describe('useNodesSyncDraft', () => {
-  const mockSendBeacon = vi.fn()
+  const mockFetch = vi.fn().mockResolvedValue(new Response())
 
   beforeEach(() => {
     vi.clearAllMocks()
 
-    // Setup navigator.sendBeacon mock
-    Object.defineProperty(navigator, 'sendBeacon', {
-      value: mockSendBeacon,
-      writable: true,
-      configurable: true,
-    })
+    // Setup fetch mock for keepalive requests
+    globalThis.fetch = mockFetch
 
     // Default store state
     mockStoreGetState.mockReturnValue({
@@ -143,7 +139,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      expect(mockSendBeacon).not.toHaveBeenCalled()
+      expect(mockFetch).not.toHaveBeenCalled()
     })
 
     it('should call sendBeacon with correct URL and params', () => {
@@ -158,9 +154,13 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      expect(mockSendBeacon).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         '/api/rag/pipelines/test-pipeline-id/workflows/draft',
-        expect.any(String),
+        expect.objectContaining({
+          method: 'POST',
+          keepalive: true,
+          body: expect.any(String),
+        }),
       )
     })
 
@@ -178,7 +178,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      expect(mockSendBeacon).not.toHaveBeenCalled()
+      expect(mockFetch).not.toHaveBeenCalled()
     })
 
     it('should not call sendBeacon when nodes array is empty', () => {
@@ -190,7 +190,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      expect(mockSendBeacon).not.toHaveBeenCalled()
+      expect(mockFetch).not.toHaveBeenCalled()
     })
 
     it('should filter out temp nodes', () => {
@@ -205,7 +205,7 @@ describe('useNodesSyncDraft', () => {
       })
 
       // Should not call sendBeacon because after filtering temp nodes, array is empty
-      expect(mockSendBeacon).not.toHaveBeenCalled()
+      expect(mockFetch).not.toHaveBeenCalled()
     })
 
     it('should remove underscore-prefixed data keys from nodes', () => {
@@ -219,8 +219,8 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      expect(mockSendBeacon).toHaveBeenCalled()
-      const sentData = JSON.parse(mockSendBeacon.mock.calls[0][1])
+      expect(mockFetch).toHaveBeenCalled()
+      const sentData = JSON.parse(mockFetch.mock.calls[0][1].body)
       expect(sentData.graph.nodes[0].data._privateData).toBeUndefined()
     })
   })
@@ -395,7 +395,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentData = JSON.parse(mockSendBeacon.mock.calls[0][1])
+      const sentData = JSON.parse(mockFetch.mock.calls[0][1].body)
       expect(sentData.graph.viewport).toEqual({ x: 100, y: 200, zoom: 1.5 })
     })
 
@@ -418,7 +418,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentData = JSON.parse(mockSendBeacon.mock.calls[0][1])
+      const sentData = JSON.parse(mockFetch.mock.calls[0][1].body)
       expect(sentData.environment_variables).toEqual([{ key: 'API_KEY', value: 'secret' }])
     })
 
@@ -441,7 +441,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentData = JSON.parse(mockSendBeacon.mock.calls[0][1])
+      const sentData = JSON.parse(mockFetch.mock.calls[0][1].body)
       expect(sentData.rag_pipeline_variables).toEqual([{ variable: 'input', type: 'text-input' }])
     })
 
@@ -461,7 +461,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentData = JSON.parse(mockSendBeacon.mock.calls[0][1])
+      const sentData = JSON.parse(mockFetch.mock.calls[0][1].body)
       expect(sentData.graph.edges[0].data._hidden).toBeUndefined()
       expect(sentData.graph.edges[0].data.visible).toBe(false)
     })
