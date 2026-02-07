@@ -180,3 +180,49 @@ When HITL is finalized:
 - Keep commits incremental and reproducible.
 - Keep HITL event/data flow as non-regression priority.
 - Export frontend result as content-only alignment (`web/`) to sandbox branch.
+
+## 11. Mainline Merge Replay Risk and Web Preservation Procedure (2026-02-07)
+
+### Verified conclusion
+
+Even if `web/` content is already aligned, Git can still replay frontend conflicts in a later merge to `main` if the branch only copied files but did not record merge ancestry with HITL.
+
+Observed in local probes:
+
+1. `origin/feat/support-agent-sandbox` + merge `origin/build/feat/hitl`:
+   - `web` conflicts: `24`
+2. `pre-align-hitl-frontend` + merge `origin/build/feat/hitl`:
+   - `web` conflicts: `0`
+3. Sandbox branch with one `web` alignment commit (`git checkout pre-align-hitl-frontend -- web`) + merge `origin/build/feat/hitl`:
+   - `web` conflicts: `31`
+
+Interpretation:
+
+- File-content alignment commit is not equivalent to merge-lineage alignment.
+- `git checkout --ours -- web` resolves conflicting paths only, but does not revert auto-merged non-conflict web changes.
+
+### Recommended operational flow when backend later merges `main`
+
+Preconditions:
+
+1. Freeze a stable window: no new commits on `main` and sandbox during operation.
+2. Update `pre-align-hitl-frontend` by merging latest `main` and latest sandbox first.
+3. Export `web/` from `pre-align-hitl-frontend` to sandbox and commit one explicit alignment commit.
+
+When backend branch performs `git merge origin/main`:
+
+1. If the decision is to keep current branch's frontend completely, restore `web/` to pre-merge `HEAD`:
+   - `git restore --source=HEAD --staged --worktree -- web`
+2. If restore is blocked by unmerged `modify/delete` entries, use fallback:
+   - `git checkout HEAD -- web`
+   - resolve remaining unmerged web paths to ours (for delete-on-ours case: `git rm <path>`)
+   - `git restore --source=HEAD --staged --worktree --no-overlay -- web`
+3. Confirm `web/` is fully unchanged in merge state:
+   - `git diff --name-only --diff-filter=U -- web` should be empty
+   - `git diff --cached --name-only -- web` should be empty
+   - `git diff --name-only -- web` should be empty
+4. Continue resolving only non-web conflicts and finish merge commit.
+
+### Practical rule
+
+If the intent is "this merge should not change frontend", enforce it with `restore` to `HEAD` on `web/` rather than relying only on `checkout --ours -- web`.
