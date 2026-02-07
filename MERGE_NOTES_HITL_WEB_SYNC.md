@@ -218,6 +218,7 @@ When backend branch performs `git merge origin/main`:
    - resolve remaining unmerged web paths to ours (for delete-on-ours case: `git rm <path>`)
    - `git restore --source=HEAD --staged --worktree --no-overlay -- web`
 3. Confirm `web/` is fully unchanged in merge state:
+   - `git status --short -- web` should be empty
    - `git diff --name-only --diff-filter=U -- web` should be empty
    - `git diff --cached --name-only -- web` should be empty
    - `git diff --name-only -- web` should be empty
