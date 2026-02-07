@@ -100,7 +100,9 @@ When trust is enabled, agents should include these headers:
 | `X-Agent-DID` | Agent's decentralized identifier |
 | `X-Agent-Public-Key` | Base64-encoded Ed25519 public key |
 | `X-Agent-Capabilities` | Comma-separated list of capabilities |
-| `X-Agent-Signature` | Signature of request body (optional) |
+| `X-Agent-Signature` | Signature of request body (TODO: not yet verified by middleware) |
+
+> **Note:** Request body signature verification (`X-Agent-Signature`) is documented for future implementation but is not currently enforced by the middleware. The current trust layer verifies identity presence and capabilities but does not cryptographically bind requests to the claimed identity.
 
 ## Trust Score Calculation
 

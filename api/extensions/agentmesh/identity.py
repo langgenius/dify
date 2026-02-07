@@ -21,6 +21,35 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def capability_matches(owned_capability: str, required_capability: str) -> bool:
+    """Check if an owned capability matches a required capability.
+    
+    Supports:
+    - Exact match: "workflow:execute" matches "workflow:execute"
+    - Universal wildcard: "*" matches anything
+    - Prefix wildcard: "workflow:*" matches "workflow:execute"
+    
+    Args:
+        owned_capability: The capability the entity has
+        required_capability: The capability being checked for
+        
+    Returns:
+        True if owned_capability grants required_capability
+    """
+    # Universal wildcard
+    if owned_capability == "*":
+        return True
+    # Exact match
+    if owned_capability == required_capability:
+        return True
+    # Prefix wildcard (e.g., "workflow:*" matches "workflow:execute")
+    if owned_capability.endswith(":*"):
+        prefix = owned_capability[:-1]  # "workflow:"
+        if required_capability.startswith(prefix):
+            return True
+    return False
+
+
 @dataclass
 class CMVKSignature:
     """Cryptographic signature from a CMVK identity."""
@@ -136,7 +165,7 @@ class CMVKIdentity:
             signature_bytes = base64.b64decode(signature.signature)
             public_key_obj.verify(signature_bytes, data.encode('utf-8'))
             return True
-        except (InvalidSignature, ValueError, Exception):
+        except (InvalidSignature, ValueError):
             return False
     
     def to_dict(self) -> Dict[str, Any]:
@@ -174,15 +203,6 @@ class CMVKIdentity:
     def has_capability(self, capability: str) -> bool:
         """Check if identity has a capability (supports wildcards)."""
         for own_capability in self.capabilities:
-            # Universal wildcard
-            if own_capability == "*":
+            if capability_matches(own_capability, capability):
                 return True
-            # Exact match
-            if own_capability == capability:
-                return True
-            # Prefix wildcard (e.g., "workflow:*" matches "workflow:execute")
-            if own_capability.endswith(":*"):
-                prefix = own_capability[:-1]  # "workflow:"
-                if capability.startswith(prefix):
-                    return True
         return False

@@ -8,7 +8,7 @@ import threading
 from typing import Any, Dict, List, Optional, Tuple
 import logging
 
-from extensions.agentmesh.identity import CMVKIdentity
+from extensions.agentmesh.identity import CMVKIdentity, capability_matches
 
 logger = logging.getLogger(__name__)
 
@@ -175,17 +175,8 @@ class TrustManager:
     def _peer_has_capability(self, peer_caps: List[str], required: str) -> bool:
         """Check if peer has a required capability (supports wildcards)."""
         for cap in peer_caps:
-            # Universal wildcard
-            if cap == "*":
+            if capability_matches(cap, required):
                 return True
-            # Exact match
-            if cap == required:
-                return True
-            # Prefix wildcard (e.g., "workflow:*" matches "workflow:execute")
-            if cap.endswith(":*"):
-                prefix = cap[:-1]  # "workflow:"
-                if required.startswith(prefix):
-                    return True
         return False
     
     def _calculate_trust_score(self, peer_did: str, peer_public_key: str) -> float:
