@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -16,6 +17,8 @@ try:
     CRYPTO_AVAILABLE = True
 except ImportError:
     CRYPTO_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -122,16 +125,19 @@ class CMVKIdentity:
         if signature.public_key != self.public_key:
             return False
         
-        if CRYPTO_AVAILABLE:
-            try:
-                public_key_bytes = base64.b64decode(self.public_key)
-                public_key_obj = ed25519.Ed25519PublicKey.from_public_bytes(public_key_bytes)
-                signature_bytes = base64.b64decode(signature.signature)
-                public_key_obj.verify(signature_bytes, data.encode('utf-8'))
-                return True
-            except (InvalidSignature, ValueError, Exception):
-                return False
-        return True
+        if not CRYPTO_AVAILABLE:
+            # Fail securely - require cryptography library for signature verification
+            logger.warning("Cryptography library not available - signature verification disabled")
+            return False
+        
+        try:
+            public_key_bytes = base64.b64decode(self.public_key)
+            public_key_obj = ed25519.Ed25519PublicKey.from_public_bytes(public_key_bytes)
+            signature_bytes = base64.b64decode(signature.signature)
+            public_key_obj.verify(signature_bytes, data.encode('utf-8'))
+            return True
+        except (InvalidSignature, ValueError, Exception):
+            return False
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary (excludes private key)."""
@@ -166,7 +172,17 @@ class CMVKIdentity:
         )
     
     def has_capability(self, capability: str) -> bool:
-        """Check if identity has a capability."""
-        if "*" in self.capabilities:
-            return True
-        return capability in self.capabilities
+        """Check if identity has a capability (supports wildcards)."""
+        for own_capability in self.capabilities:
+            # Universal wildcard
+            if own_capability == "*":
+                return True
+            # Exact match
+            if own_capability == capability:
+                return True
+            # Prefix wildcard (e.g., "workflow:*" matches "workflow:execute")
+            if own_capability.endswith(":*"):
+                prefix = own_capability[:-1]  # "workflow:"
+                if capability.startswith(prefix):
+                    return True
+        return False

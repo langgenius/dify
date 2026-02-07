@@ -51,8 +51,16 @@ class TrustMiddleware:
         cls,
         min_score: float = 0.5,
         required_capabilities: Optional[List[str]] = None,
+        require_headers: bool = False,
     ) -> Callable:
-        """Decorator to require trust verification for an endpoint."""
+        """Decorator to require trust verification for an endpoint.
+        
+        Args:
+            min_score: Minimum trust score required
+            required_capabilities: List of capabilities the peer must have
+            require_headers: If True, reject requests without trust headers.
+                           If False (default), allow unauthenticated requests (backward compatible).
+        """
         def decorator(f: Callable) -> Callable:
             @wraps(f)
             def decorated_function(*args: Any, **kwargs: Any) -> Any:
@@ -69,7 +77,13 @@ class TrustMiddleware:
                 peer_capabilities = [c.strip() for c in peer_capabilities if c.strip()]
                 
                 if not peer_did:
-                    # No trust headers, allow through (backward compatible)
+                    if require_headers:
+                        # Strict mode: reject requests without trust headers
+                        return jsonify({
+                            "error": "Trust headers required",
+                            "reason": "Missing X-Agent-DID header",
+                        }), 401
+                    # Permissive mode: allow through (backward compatible)
                     return f(*args, **kwargs)
                 
                 # Verify trust
@@ -121,9 +135,18 @@ class TrustMiddleware:
 def trust_required(
     min_score: float = 0.5,
     capabilities: Optional[List[str]] = None,
+    require_headers: bool = False,
 ) -> Callable:
-    """Convenience decorator for trust verification."""
+    """Convenience decorator for trust verification.
+    
+    Args:
+        min_score: Minimum trust score required
+        capabilities: List of capabilities the peer must have
+        require_headers: If True, reject requests without trust headers (strict mode).
+                        If False (default), allow unauthenticated requests (permissive).
+    """
     return TrustMiddleware.require_trust(
         min_score=min_score,
         required_capabilities=capabilities,
+        require_headers=require_headers,
     )

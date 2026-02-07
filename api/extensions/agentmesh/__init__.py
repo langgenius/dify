@@ -6,7 +6,7 @@ Provides cryptographic identity and trust verification for Dify agents and workf
 
 from extensions.agentmesh.identity import CMVKIdentity, CMVKSignature
 from extensions.agentmesh.trust import TrustManager, TrustVerificationResult
-from extensions.agentmesh.middleware import TrustMiddleware
+from extensions.agentmesh.middleware import TrustMiddleware, trust_required
 
 __all__ = [
     "CMVKIdentity",
@@ -14,4 +14,5 @@ __all__ = [
     "TrustManager",
     "TrustVerificationResult",
     "TrustMiddleware",
+    "trust_required",
 ]

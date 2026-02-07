@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
+import threading
 from typing import Any, Dict, List, Optional, Tuple
 import logging
 
@@ -35,7 +36,10 @@ class TrustVerificationResult:
 
 
 class TrustManager:
-    """Manages trust verification for Dify workflows and agents."""
+    """Manages trust verification for Dify workflows and agents.
+    
+    Thread-safe: All mutable state access is protected by a lock.
+    """
     
     def __init__(
         self,
@@ -48,6 +52,7 @@ class TrustManager:
         self.min_trust_score = min_trust_score
         self._verified_peers: Dict[str, Tuple[TrustVerificationResult, datetime]] = {}
         self._trust_scores: Dict[str, float] = {}  # DID -> score
+        self._lock = threading.Lock()  # Protect mutable state
         self._audit_log: List[Dict[str, Any]] = []
     
     def set_identity(self, identity: CMVKIdentity) -> None:
@@ -63,7 +68,17 @@ class TrustManager:
         peer_capabilities: Optional[List[str]] = None,
     ) -> TrustVerificationResult:
         """Verify a peer agent's identity and capabilities."""
-        # Check cache
+        # Check capabilities first (always check, don't rely on identity-only cache)
+        peer_caps = peer_capabilities or []
+        if required_capabilities:
+            missing = []
+            for req_cap in required_capabilities:
+                if not self._peer_has_capability(peer_caps, req_cap):
+                    missing.append(req_cap)
+            if missing:
+                return self._fail(f"Missing capabilities: {missing}", peer_did)
+        
+        # Check identity cache (identity only, not capabilities)
         cached = self._get_cached(peer_did)
         if cached is not None:
             return cached
@@ -71,12 +86,6 @@ class TrustManager:
         # Basic validation
         if not peer_did or not peer_public_key:
             return self._fail("Missing DID or public key", peer_did)
-        
-        # Check capabilities
-        if required_capabilities and peer_capabilities:
-            missing = [c for c in required_capabilities if c not in peer_capabilities]
-            if missing:
-                return self._fail(f"Missing capabilities: {missing}", peer_did)
         
         # Calculate trust score
         trust_score = self._calculate_trust_score(peer_did, peer_public_key)
@@ -136,60 +145,84 @@ class TrustManager:
     
     def record_success(self, did: str) -> None:
         """Record successful interaction, increasing trust."""
-        current = self._trust_scores.get(did, 0.5)
-        self._trust_scores[did] = min(1.0, current + 0.01)
-        self._log_audit("record_success", did, True, self._trust_scores[did])
+        with self._lock:
+            current = self._trust_scores.get(did, 0.5)
+            self._trust_scores[did] = min(1.0, current + 0.01)
+            self._log_audit("record_success", did, True, self._trust_scores[did])
     
     def record_failure(self, did: str, severity: float = 0.1) -> None:
         """Record failed interaction, decreasing trust."""
-        current = self._trust_scores.get(did, 0.5)
-        self._trust_scores[did] = max(0.0, current - severity)
-        self._log_audit("record_failure", did, False, self._trust_scores[did])
+        with self._lock:
+            current = self._trust_scores.get(did, 0.5)
+            self._trust_scores[did] = max(0.0, current - severity)
+            self._log_audit("record_failure", did, False, self._trust_scores[did])
     
     def get_trust_score(self, did: str) -> float:
         """Get current trust score for a DID."""
-        return self._trust_scores.get(did, 0.5)
+        with self._lock:
+            return self._trust_scores.get(did, 0.5)
     
     def get_audit_log(self, limit: int = 100) -> List[Dict[str, Any]]:
         """Get recent audit log entries."""
-        return self._audit_log[-limit:]
+        with self._lock:
+            return self._audit_log[-limit:]
     
     def clear_cache(self) -> None:
         """Clear verification cache."""
-        self._verified_peers.clear()
+        with self._lock:
+            self._verified_peers.clear()
+    
+    def _peer_has_capability(self, peer_caps: List[str], required: str) -> bool:
+        """Check if peer has a required capability (supports wildcards)."""
+        for cap in peer_caps:
+            # Universal wildcard
+            if cap == "*":
+                return True
+            # Exact match
+            if cap == required:
+                return True
+            # Prefix wildcard (e.g., "workflow:*" matches "workflow:execute")
+            if cap.endswith(":*"):
+                prefix = cap[:-1]  # "workflow:"
+                if required.startswith(prefix):
+                    return True
+        return False
     
     def _calculate_trust_score(self, peer_did: str, peer_public_key: str) -> float:
         """Calculate trust score for a peer."""
-        # Check if we have historical score
-        if peer_did in self._trust_scores:
-            return self._trust_scores[peer_did]
-        
-        # Base score for new peers
-        score = 0.5
-        
-        # Bonus for having public key
-        if peer_public_key:
-            score += 0.1
-        
-        # Store for future
-        self._trust_scores[peer_did] = score
-        return score
+        with self._lock:
+            # Check if we have historical score
+            if peer_did in self._trust_scores:
+                return self._trust_scores[peer_did]
+            
+            # Base score for new peers
+            score = 0.5
+            
+            # Bonus for having public key
+            if peer_public_key:
+                score += 0.1
+            
+            # Store for future
+            self._trust_scores[peer_did] = score
+            return score
     
     def _get_cached(self, peer_did: str) -> Optional[TrustVerificationResult]:
         """Get cached result if valid."""
-        if peer_did not in self._verified_peers:
-            return None
-        
-        result, cached_at = self._verified_peers[peer_did]
-        if datetime.now(timezone.utc) - cached_at > self.cache_ttl:
-            del self._verified_peers[peer_did]
-            return None
-        
-        return result
+        with self._lock:
+            if peer_did not in self._verified_peers:
+                return None
+            
+            result, cached_at = self._verified_peers[peer_did]
+            if datetime.now(timezone.utc) - cached_at > self.cache_ttl:
+                del self._verified_peers[peer_did]
+                return None
+            
+            return result
     
     def _cache(self, peer_did: str, result: TrustVerificationResult) -> None:
         """Cache a verification result."""
-        self._verified_peers[peer_did] = (result, datetime.now(timezone.utc))
+        with self._lock:
+            self._verified_peers[peer_did] = (result, datetime.now(timezone.utc))
     
     def _fail(
         self,

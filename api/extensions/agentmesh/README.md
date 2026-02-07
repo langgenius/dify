@@ -115,7 +115,7 @@ Trust scores range from 0.0 to 1.0:
 Scores adjust based on:
 - Successful interactions (+0.01)
 - Failed interactions (-0.1 to -0.5 based on severity)
-- Time decay (gradual decrease without activity)
+- Time decay (TODO: not yet implemented)
 
 ## Audit Log
 
@@ -137,7 +137,7 @@ audit_log = trust_manager.get_audit_log(limit=100)
 
 ## Configuration
 
-Environment variables:
+Environment variables (TODO: not yet wired up - currently require programmatic initialization):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
