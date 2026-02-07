@@ -75,17 +75,17 @@ def batch_create_segment_to_index_task(
                 raise ValueError("UploadFile not found.")
 
             dataset_config = {
-                'id': dataset.id,
-                'indexing_technique': dataset.indexing_technique,
-                'tenant_id': dataset.tenant_id,
-                'embedding_model_provider': dataset.embedding_model_provider,
-                'embedding_model': dataset.embedding_model,
+                "id": dataset.id,
+                "indexing_technique": dataset.indexing_technique,
+                "tenant_id": dataset.tenant_id,
+                "embedding_model_provider": dataset.embedding_model_provider,
+                "embedding_model": dataset.embedding_model,
             }
 
             document_config = {
-                'id': dataset_document.id,
-                'doc_form': dataset_document.doc_form,
-                'word_count': dataset_document.word_count or 0,
+                "id": dataset_document.id,
+                "doc_form": dataset_document.doc_form,
+                "word_count": dataset_document.word_count or 0,
             }
 
             upload_file_key = upload_file.key
@@ -122,17 +122,15 @@ def batch_create_segment_to_index_task(
     if dataset_config["indexing_technique"] == "high_quality":
         model_manager = ModelManager()
         embedding_model = model_manager.get_model_instance(
-            tenant_id=dataset_config['tenant_id'],
-            provider=dataset_config['embedding_model_provider'],
+            tenant_id=dataset_config["tenant_id"],
+            provider=dataset_config["embedding_model_provider"],
             model_type=ModelType.TEXT_EMBEDDING,
-            model=dataset_config['embedding_model'],
+            model=dataset_config["embedding_model"],
         )
 
     word_count_change = 0
     if embedding_model:
-        tokens_list = embedding_model.get_text_embedding_num_tokens(
-            texts=[segment["content"] for segment in content]
-        )
+        tokens_list = embedding_model.get_text_embedding_num_tokens(texts=[segment["content"] for segment in content])
     else:
         tokens_list = [0] * len(content)
 
@@ -143,8 +141,8 @@ def batch_create_segment_to_index_task(
             segment_hash = helper.generate_text_hash(content)
             max_position = (
                 session.query(func.max(DocumentSegment.position))
-                    .where(DocumentSegment.document_id == document_config["id"])
-                    .scalar()
+                .where(DocumentSegment.document_id == document_config["id"])
+                .scalar()
             )
             segment_document = DocumentSegment(
                 tenant_id=tenant_id,
@@ -161,7 +159,7 @@ def batch_create_segment_to_index_task(
                 status="completed",
                 completed_at=naive_utc_now(),
             )
-            if document_config['doc_form'] == "qa_model":
+            if document_config["doc_form"] == "qa_model":
                 segment_document.answer = segment["answer"]
                 segment_document.word_count += len(segment["answer"])
             word_count_change += segment_document.word_count
@@ -178,9 +176,7 @@ def batch_create_segment_to_index_task(
     with session_factory.create_session() as session:
         dataset = session.get(Dataset, dataset_id)
         if dataset:
-            VectorService.create_segments_vector(
-                None, document_segments, dataset, document_config['doc_form']
-            )
+            VectorService.create_segments_vector(None, document_segments, dataset, document_config["doc_form"])
 
     redis_client.setex(indexing_cache_key, 600, "completed")
     end_at = time.perf_counter()

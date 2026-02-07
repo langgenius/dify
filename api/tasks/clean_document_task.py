@@ -73,9 +73,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
     with session_factory.create_session() as session, session.begin():
         for segment_content in segment_contents:
             image_upload_file_ids = get_image_upload_file_ids(segment_content)
-            image_files = session.scalars(
-                select(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))
-            ).all()
+            image_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))).all()
             total_image_files.extend([image_file.key for image_file in image_files])
             image_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))
             session.execute(image_file_delete_stmt)
@@ -111,9 +109,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
             session.execute(attachment_file_delete_stmt)
 
         if binding_ids:
-            binding_delete_stmt = delete(SegmentAttachmentBinding).where(
-                SegmentAttachmentBinding.id.in_(binding_ids)
-            )
+            binding_delete_stmt = delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.id.in_(binding_ids))
             session.execute(binding_delete_stmt)
 
     for attachment_file_key in total_attachment_files:

@@ -126,8 +126,9 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                     # Check each document's indexing status and trigger summary generation if completed
 
                     documents = (
-                        session.query(Document).where(Document.id.in_(document_ids),
-                                                      Document.dataset_id == dataset_id).all()
+                        session.query(Document)
+                        .where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                        .all()
                     )
 
                     for document in documents:
