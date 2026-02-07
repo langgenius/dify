@@ -69,11 +69,8 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { t } = useTranslation()
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
-  const { _subGraphEntry, _iconTypeOverride } = data as {
-    _subGraphEntry?: boolean
-    _iconTypeOverride?: BlockEnum
-  }
-  const iconType = _iconTypeOverride ?? data.type
+  const { _subGraphEntry } = data
+  const iconType = data._iconTypeOverride ?? data.type
 
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()

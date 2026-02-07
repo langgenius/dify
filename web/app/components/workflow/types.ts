@@ -91,6 +91,8 @@ export type CommonNodeType<T = {}> = {
   _retryIndex?: number
   _dataSourceStartToAdd?: boolean
   _isTempNode?: boolean
+  _subGraphEntry?: boolean
+  _iconTypeOverride?: BlockEnum
   isInIteration?: boolean
   iteration_id?: string
   selected?: boolean
@@ -369,6 +371,7 @@ export type NodeDefaultBase = {
     classification: BlockClassificationEnum
     sort: number
     type: BlockEnum
+    iconType?: BlockEnum
     title: string
     author: string
     description?: string

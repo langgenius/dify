@@ -1,6 +1,13 @@
 import type { FC } from 'react'
-import { memo } from 'react'
+import {
+  memo,
+  useCallback,
+  useMemo,
+  useSyncExternalStore,
+} from 'react'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { Folder as FolderLine } from '@/app/components/base/icons/src/vender/line/files'
 import {
   Agent,
@@ -28,7 +35,9 @@ import {
   WebhookLine,
   WindowCursor,
 } from '@/app/components/base/icons/src/vender/workflow'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import { BlockEnum } from './types'
 
 type BlockIconProps = {
@@ -114,13 +123,45 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.TriggerWebhook]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.TriggerPlugin]: 'bg-util-colors-blue-blue-500',
 }
+
+const useDisplayBlockType = (type: BlockEnum) => {
+  const appDetail = useAppStore(s => s.appDetail)
+  const featuresStore = useFeaturesStore()
+
+  const subscribe = useCallback((listener: () => void) => {
+    if (!featuresStore)
+      return () => {}
+    return featuresStore.subscribe(listener)
+  }, [featuresStore])
+
+  const getSnapshot = useCallback(() => {
+    if (!featuresStore)
+      return false
+    return featuresStore.getState().features.sandbox?.enabled ?? false
+  }, [featuresStore])
+
+  const isSandboxFeatureEnabled = useSyncExternalStore(subscribe, getSnapshot, () => false)
+  const isSandboxRuntime = appDetail?.runtime_type === 'sandboxed'
+  const isSandboxSelection = useMemo(() => {
+    if (!appDetail?.id)
+      return false
+    return storage.getBoolean(`${STORAGE_KEYS.LOCAL.WORKFLOW.SANDBOX_RUNTIME_PREFIX}${appDetail.id}`) === true
+  }, [appDetail?.id])
+
+  const isSandboxed = isSandboxRuntime || isSandboxFeatureEnabled || isSandboxSelection
+  return isSandboxed && type === BlockEnum.LLM
+    ? BlockEnum.Agent
+    : type
+}
+
 const BlockIcon: FC<BlockIconProps> = ({
   type,
   size = 'sm',
   className,
   toolIcon,
 }) => {
-  const isToolOrDataSourceOrTriggerPlugin = type === BlockEnum.Tool || type === BlockEnum.DataSource || type === BlockEnum.TriggerPlugin
+  const displayType = useDisplayBlockType(type)
+  const isToolOrDataSourceOrTriggerPlugin = displayType === BlockEnum.Tool || displayType === BlockEnum.DataSource || displayType === BlockEnum.TriggerPlugin
   const showDefaultIcon = !isToolOrDataSourceOrTriggerPlugin || !toolIcon
 
   return (
@@ -128,7 +169,7 @@ const BlockIcon: FC<BlockIconProps> = ({
       cn(
         'flex items-center justify-center border-[0.5px] border-white/2 text-white',
         ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
-        showDefaultIcon && ICON_CONTAINER_BG_COLOR_MAP[type],
+        showDefaultIcon && ICON_CONTAINER_BG_COLOR_MAP[displayType],
         toolIcon && '!shadow-none',
         className,
       )
@@ -136,7 +177,7 @@ const BlockIcon: FC<BlockIconProps> = ({
     >
       {
         showDefaultIcon && (
-          getIcon(type, (type === BlockEnum.TriggerSchedule || type === BlockEnum.TriggerWebhook)
+          getIcon(displayType, (displayType === BlockEnum.TriggerSchedule || displayType === BlockEnum.TriggerWebhook)
             ? (size === 'xs' ? 'w-4 h-4' : 'w-4.5 h-4.5')
             : (size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'))
         )
@@ -175,9 +216,11 @@ export const VarBlockIcon: FC<BlockIconProps> = ({
   type,
   className,
 }) => {
+  const displayType = useDisplayBlockType(type)
+
   return (
     <>
-      {getIcon(type, `w-3 h-3 ${className}`)}
+      {getIcon(displayType, `w-3 h-3 ${className}`)}
     </>
   )
 }

@@ -527,7 +527,7 @@ const BasePanel: FC<BasePanelProps> = ({
           <div className="flex items-center px-4 pb-1 pt-4">
             <BlockIcon
               className="mr-1 shrink-0"
-              type={data.type}
+              type={data._iconTypeOverride ?? data.type}
               toolIcon={toolIcon}
               size="md"
             />

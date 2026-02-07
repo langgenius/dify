@@ -8,12 +8,20 @@ import {
 import answerDefault from '@/app/components/workflow/nodes/answer/default'
 import llmDefault from '@/app/components/workflow/nodes/llm/default'
 import startDefault from '@/app/components/workflow/nodes/start/default'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode } from '@/app/components/workflow/utils'
+import { STORAGE_KEYS } from '@/config/storage-keys'
+import { storage } from '@/utils/storage'
 import { useIsChatMode } from './use-is-chat-mode'
 
 export const useWorkflowTemplate = () => {
   const isChatMode = useIsChatMode()
-  const isSandboxed = useAppStore(s => s.appDetail?.runtime_type === 'sandboxed')
+  const appDetail = useAppStore(s => s.appDetail)
+  const isSandboxedByType = appDetail?.runtime_type === 'sandboxed'
+  const isSandboxedBySelection = appDetail?.id
+    ? storage.getBoolean(`${STORAGE_KEYS.LOCAL.WORKFLOW.SANDBOX_RUNTIME_PREFIX}${appDetail.id}`) === true
+    : false
+  const isSandboxed = isSandboxedByType || isSandboxedBySelection
   const { t } = useTranslation()
 
   const { newNode: startNode } = generateNewNode({
@@ -39,6 +47,7 @@ export const useWorkflowTemplate = () => {
           query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
         },
         selected: true,
+        _iconTypeOverride: isSandboxed ? BlockEnum.Agent : undefined,
         type: llmDefault.metaData.type,
         title: llmTitle,
       },

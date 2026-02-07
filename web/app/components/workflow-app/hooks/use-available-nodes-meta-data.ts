@@ -4,6 +4,7 @@ import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useFeatures } from '@/app/components/base/features/hooks'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import AnswerDefault from '@/app/components/workflow/nodes/answer/default'
 import EndDefault from '@/app/components/workflow/nodes/end/default'
@@ -18,7 +19,9 @@ import { useIsChatMode } from './use-is-chat-mode'
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
-  const isSandboxed = useAppStore(s => s.appDetail?.runtime_type === 'sandboxed')
+  const isSandboxFeatureEnabled = useFeatures(s => s.features.sandbox?.enabled) ?? false
+  const isSandboxRuntime = useAppStore(s => s.appDetail?.runtime_type === 'sandboxed')
+  const isSandboxed = isSandboxFeatureEnabled || isSandboxRuntime
   const docLink = useDocLink()
 
   const startNodeMetaData = useMemo(() => ({
@@ -76,10 +79,14 @@ export const useAvailableNodesMetaData = () => {
       const title = isSandboxed && metaData.type === BlockEnum.LLM
         ? t('blocks.agent', { ns: 'workflow' })
         : t(`blocks.${metaData.type}` as const, { ns: 'workflow' })
+      const iconTypeOverride = isSandboxed && metaData.type === BlockEnum.LLM
+        ? BlockEnum.Agent
+        : undefined
       const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
       const helpLinkPath = `/use-dify/nodes/${metaData.helpLinkUri}` as DocPathWithoutLang
       return toNodeDefaultBase(typedNode, {
         ...metaData,
+        iconType: iconTypeOverride,
         title,
         description,
         helpLinkUri: docLink(helpLinkPath),
@@ -87,6 +94,7 @@ export const useAvailableNodesMetaData = () => {
         ...typedNode.defaultValue,
         type: metaData.type,
         title,
+        _iconTypeOverride: iconTypeOverride,
       })
     })
   }, [mergedNodesMetaData, t, docLink, isSandboxed])

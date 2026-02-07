@@ -28,6 +28,7 @@ import OnlineUsers from '@/app/components/workflow/header/online-users'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import {
+  BlockEnum,
   SupportUploadFileTypes,
   ViewType,
 } from '@/app/components/workflow/types'
@@ -221,14 +222,32 @@ const WorkflowAppWithAdditionalContext = () => {
     }
   }, [workflowStore])
 
+  const isSandboxRuntime = appDetail?.runtime_type === 'sandboxed'
+  const isSandboxFeatureEnabled = data?.features?.sandbox?.enabled === true
+  const isSandboxed = isSandboxRuntime || isSandboxFeatureEnabled
+
   const nodesData = useMemo(() => {
     if (data) {
       const processedNodes = initialNodes(data.graph.nodes, data.graph.edges)
-      collaborationManager.setNodes([], processedNodes)
-      return processedNodes
+      const resolvedNodes = isSandboxed
+        ? processedNodes.map((node) => {
+            if (node.data.type !== BlockEnum.LLM)
+              return node
+
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                _iconTypeOverride: BlockEnum.Agent,
+              },
+            }
+          })
+        : processedNodes
+      collaborationManager.setNodes([], resolvedNodes)
+      return resolvedNodes
     }
     return []
-  }, [data])
+  }, [data, isSandboxed])
 
   const edgesData = useMemo(() => {
     if (data) {
@@ -304,7 +323,7 @@ const WorkflowAppWithAdditionalContext = () => {
   }, [replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
 
   const isDataReady = !(!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id)
-  const sandboxEnabled = data?.features?.sandbox?.enabled === true
+  const sandboxEnabled = isSandboxFeatureEnabled
 
   useEffect(() => {
     if (!isDataReady || !appId)
