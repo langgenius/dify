@@ -56,6 +56,28 @@ type LoroContainer = {
   getAttached?: () => unknown
 }
 
+type GraphImportLogEntry = {
+  timestamp: number
+  appId: string | null
+  sources: Array<'nodes' | 'edges'>
+  before: {
+    nodes: Node[]
+    edges: Edge[]
+  }
+  after: {
+    nodes: Node[]
+    edges: Edge[]
+  }
+  meta: {
+    leaderId: string | null
+    isLeader: boolean
+    graphViewActive: boolean | null
+    pendingInitialSync: boolean
+  }
+}
+
+const GRAPH_IMPORT_LOG_LIMIT = 20
+
 const toLoroValue = (value: unknown): Value => cloneDeep(value) as Value
 const toLoroRecord = (value: unknown): Record<string, Value> => cloneDeep(value) as Record<string, Value>
 export class CollaborationManager {
@@ -78,6 +100,15 @@ export class CollaborationManager {
   private rejoinInProgress = false
   private pendingGraphImportEmit = false
   private graphViewActive: boolean | null = null
+  private graphImportLogs: GraphImportLogEntry[] = []
+  private pendingImportLog: {
+    timestamp: number
+    sources: Set<'nodes' | 'edges'>
+    before: {
+      nodes: Node[]
+      edges: Edge[]
+    }
+  } | null = null
 
   private getActiveSocket(): Socket | null {
     if (!this.currentAppId)
@@ -504,6 +535,7 @@ export class CollaborationManager {
     this.onlineUsers = []
     this.isUndoRedoInProgress = false
     this.rejoinInProgress = false
+    this.clearGraphImportLog()
 
     // Only reset leader status when actually disconnecting
     const wasLeader = this.isLeader
@@ -908,6 +940,7 @@ export class CollaborationManager {
         requestAnimationFrame(() => {
           const state = reactFlowStore.getState()
           const previousNodes: Node[] = state.getNodes()
+          this.startImportLog('nodes', { nodes: previousNodes, edges: state.getEdges() })
           const previousNodeMap = new Map(previousNodes.map(node => [node.id, node]))
           const selectedIds = new Set(
             previousNodes
@@ -964,6 +997,7 @@ export class CollaborationManager {
         requestAnimationFrame(() => {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = reactFlowStore.getState()
+          this.startImportLog('edges', { nodes: state.getNodes(), edges: state.getEdges() })
           const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
 
           this.pendingInitialSync = false
@@ -984,6 +1018,7 @@ export class CollaborationManager {
     this.pendingGraphImportEmit = true
     requestAnimationFrame(() => {
       this.pendingGraphImportEmit = false
+      this.finalizeImportLog()
       const mergedNodes = this.mergeLocalNodeState(this.getNodes())
       this.eventEmitter.emit('graphImport', {
         nodes: mergedNodes,
@@ -1032,6 +1067,98 @@ export class CollaborationManager {
       nextNode.data = nextData
       return nextNode
     })
+  }
+
+  getGraphImportLog(): GraphImportLogEntry[] {
+    return cloneDeep(this.graphImportLogs)
+  }
+
+  clearGraphImportLog(): void {
+    this.graphImportLogs = []
+    this.pendingImportLog = null
+  }
+
+  downloadGraphImportLog(): void {
+    if (this.graphImportLogs.length === 0)
+      return
+
+    const payload = {
+      appId: this.currentAppId,
+      generatedAt: new Date().toISOString(),
+      entries: this.graphImportLogs,
+    }
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const appSuffix = this.currentAppId ?? 'unknown'
+    const fileName = `workflow-graph-import-log-${appSuffix}-${stamp}.json`
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  private snapshotReactFlowGraph(): { nodes: Node[], edges: Edge[] } {
+    if (!this.reactFlowStore) {
+      return {
+        nodes: this.getNodes(),
+        edges: this.getEdges(),
+      }
+    }
+
+    const state = this.reactFlowStore.getState()
+    return {
+      nodes: cloneDeep(state.getNodes()),
+      edges: cloneDeep(state.getEdges()),
+    }
+  }
+
+  private startImportLog(source: 'nodes' | 'edges', before?: { nodes: Node[], edges: Edge[] }): void {
+    if (!this.pendingImportLog) {
+      const snapshot = before ?? this.snapshotReactFlowGraph()
+      this.pendingImportLog = {
+        timestamp: Date.now(),
+        sources: new Set([source]),
+        before: {
+          nodes: cloneDeep(snapshot.nodes),
+          edges: cloneDeep(snapshot.edges),
+        },
+      }
+      return
+    }
+    this.pendingImportLog.sources.add(source)
+  }
+
+  private finalizeImportLog(): void {
+    if (!this.pendingImportLog)
+      return
+
+    const afterSnapshot = this.snapshotReactFlowGraph()
+    const entry: GraphImportLogEntry = {
+      timestamp: this.pendingImportLog.timestamp,
+      appId: this.currentAppId,
+      sources: Array.from(this.pendingImportLog.sources),
+      before: {
+        nodes: this.pendingImportLog.before.nodes,
+        edges: this.pendingImportLog.before.edges,
+      },
+      after: {
+        nodes: cloneDeep(afterSnapshot.nodes),
+        edges: cloneDeep(afterSnapshot.edges),
+      },
+      meta: {
+        leaderId: this.leaderId,
+        isLeader: this.isLeader,
+        graphViewActive: this.graphViewActive,
+        pendingInitialSync: this.pendingInitialSync,
+      },
+    }
+
+    this.graphImportLogs.push(entry)
+    if (this.graphImportLogs.length > GRAPH_IMPORT_LOG_LIMIT)
+      this.graphImportLogs.splice(0, this.graphImportLogs.length - GRAPH_IMPORT_LOG_LIMIT)
+    this.pendingImportLog = null
   }
 
   private setupSocketEventListeners(socket: Socket): void {
