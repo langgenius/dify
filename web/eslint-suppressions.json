@@ -4155,11 +4155,6 @@
       "count": 2
     }
   },
-  "app/components/workflow/skill/file-tree/node-menu.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
   "app/components/workflow/store/workflow/debug/inspect-vars-slice.ts": {
     "ts/no-explicit-any": {
       "count": 2

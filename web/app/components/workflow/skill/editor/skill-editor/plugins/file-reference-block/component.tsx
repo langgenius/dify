@@ -18,7 +18,7 @@ import {
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
 import Tooltip from '@/app/components/base/tooltip'
 import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
-import { useSkillAssetNodeMap } from '@/app/components/workflow/skill/hooks/use-skill-asset-tree'
+import { useSkillAssetNodeMap } from '@/app/components/workflow/skill/hooks/file-tree/data/use-skill-asset-tree'
 import { getFileIconType } from '@/app/components/workflow/skill/utils/file-utils'
 import { useStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
