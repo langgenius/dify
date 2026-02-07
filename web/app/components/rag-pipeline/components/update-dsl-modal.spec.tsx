@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from 'react'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DSLImportStatus } from '@/models/app'
 import UpdateDSLModal from './update-dsl-modal'
 
@@ -144,11 +144,6 @@ vi.mock('@/app/components/base/modal', () => ({
 vi.mock('@/app/components/workflow/constants', () => ({
   WORKFLOW_DATA_UPDATE: 'WORKFLOW_DATA_UPDATE',
 }))
-
-afterEach(() => {
-  cleanup()
-  vi.clearAllMocks()
-})
 
 describe('UpdateDSLModal', () => {
   const mockOnCancel = vi.fn()
