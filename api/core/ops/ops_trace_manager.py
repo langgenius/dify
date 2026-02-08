@@ -35,7 +35,6 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog
-from repositories.factory import DifyAPIRepositoryFactory
 from tasks.ops_trace_task import process_trace_tasks
 
 if TYPE_CHECKING:
@@ -473,6 +472,9 @@ class TraceTask:
         if cls._workflow_run_repo is None:
             with cls._repo_lock:
                 if cls._workflow_run_repo is None:
+                    # Lazy import to avoid circular import during module initialization
+                    from repositories.factory import DifyAPIRepositoryFactory
+
                     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
                     cls._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         return cls._workflow_run_repo

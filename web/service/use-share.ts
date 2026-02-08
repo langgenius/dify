@@ -1,6 +1,7 @@
 import type { AppConversationData, ConversationItem } from '@/models/share'
 import { useQuery } from '@tanstack/react-query'
 import {
+  AppSourceType,
   fetchAppInfo,
   fetchAppMeta,
   fetchAppParams,
@@ -14,7 +15,7 @@ import { useInvalid } from './use-base'
 const NAME_SPACE = 'webapp'
 
 type ShareConversationsParams = {
-  isInstalledApp: boolean
+  appSourceType: AppSourceType
   appId?: string
   lastId?: string
   pinned?: boolean
@@ -23,13 +24,13 @@ type ShareConversationsParams = {
 
 type ShareChatListParams = {
   conversationId: string
-  isInstalledApp: boolean
+  appSourceType: AppSourceType
   appId?: string
 }
 
 type ShareConversationNameParams = {
   conversationId: string
-  isInstalledApp: boolean
+  appSourceType: AppSourceType
   appId?: string
 }
 
@@ -73,7 +74,7 @@ export const useGetWebAppParams = () => {
   return useQuery({
     queryKey: shareQueryKeys.appParams,
     queryFn: () => {
-      return fetchAppParams(false)
+      return fetchAppParams(AppSourceType.webApp)
     },
   })
 }
@@ -82,7 +83,7 @@ export const useGetWebAppMeta = () => {
   return useQuery({
     queryKey: shareQueryKeys.appMeta,
     queryFn: () => {
-      return fetchAppMeta(false)
+      return fetchAppMeta(AppSourceType.webApp)
     },
   })
 }
@@ -93,11 +94,11 @@ export const useShareConversations = (params: ShareConversationsParams, options:
     refetchOnReconnect,
     refetchOnWindowFocus,
   } = options
-  const isEnabled = enabled && (!params.isInstalledApp || !!params.appId)
+  const isEnabled = enabled && params.appSourceType !== AppSourceType.tryApp && (params.appSourceType !== AppSourceType.installedApp || !!params.appId)
   return useQuery<AppConversationData>({
     queryKey: shareQueryKeys.conversationList(params),
     queryFn: () => fetchConversations(
-      params.isInstalledApp,
+      params.appSourceType,
       params.appId,
       params.lastId,
       params.pinned,
@@ -115,10 +116,10 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
     refetchOnReconnect,
     refetchOnWindowFocus,
   } = options
-  const isEnabled = enabled && (!params.isInstalledApp || !!params.appId) && !!params.conversationId
+  const isEnabled = enabled && params.appSourceType !== AppSourceType.tryApp && (params.appSourceType !== AppSourceType.installedApp || !!params.appId) && !!params.conversationId
   return useQuery({
     queryKey: shareQueryKeys.chatList(params),
-    queryFn: () => fetchChatList(params.conversationId, params.isInstalledApp, params.appId),
+    queryFn: () => fetchChatList(params.conversationId, params.appSourceType, params.appId),
     enabled: isEnabled,
     refetchOnReconnect,
     refetchOnWindowFocus,
@@ -135,10 +136,10 @@ export const useShareConversationName = (params: ShareConversationNameParams, op
     refetchOnReconnect,
     refetchOnWindowFocus,
   } = options
-  const isEnabled = enabled && (!params.isInstalledApp || !!params.appId) && !!params.conversationId
+  const isEnabled = enabled && (params.appSourceType !== AppSourceType.installedApp || !!params.appId) && !!params.conversationId
   return useQuery<ConversationItem>({
     queryKey: shareQueryKeys.conversationName(params),
-    queryFn: () => generationConversationName(params.isInstalledApp, params.appId, params.conversationId),
+    queryFn: () => generationConversationName(params.appSourceType, params.appId, params.conversationId),
     enabled: isEnabled,
     refetchOnReconnect,
     refetchOnWindowFocus,

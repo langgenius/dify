@@ -4,6 +4,20 @@ set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 NAMESPACE="${NAMESPACE:-acedatacloud}"
 
+checksum_file() {
+  file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file" | awk '{print $1}'
+    return 0
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file" | awk '{print $1}'
+    return 0
+  fi
+  echo "Missing sha256sum/shasum for checksum calculation" >&2
+  return 1
+}
+
 require_resource() {
   kind="$1"
   name="$2"
@@ -46,6 +60,21 @@ if [ -z "${BUILD_NUMBER:-}" ] && [ "${ALLOW_LATEST_IMAGES:-false}" != "true" ]; 
 fi
 
 kubectl apply -f "${SCRIPT_DIR}/production/configmap"
+
+# ConfigMap env vars are only read at container start. To ensure changes take effect, we roll deployments by
+# updating a pod-template annotation with a checksum of the dify-env ConfigMap file (no-op if unchanged).
+CONFIGMAP_FILE="${SCRIPT_DIR}/production/configmap/dify-env.yml"
+if [ -f "${CONFIGMAP_FILE}" ]; then
+  DIFY_ENV_CHECKSUM="$(checksum_file "${CONFIGMAP_FILE}")"
+  for deploy in dify-api dify-worker dify-worker-beat dify-web dify-plugin-daemon dify-nginx dify-sandbox; do
+    if kubectl -n "${NAMESPACE}" get deployment "${deploy}" >/dev/null 2>&1; then
+      kubectl -n "${NAMESPACE}" patch deployment "${deploy}" \
+        -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"dify-env/checksum\":\"${DIFY_ENV_CHECKSUM}\"}}}}}" \
+        >/dev/null 2>&1 || true
+    fi
+  done
+fi
+
 kubectl apply -f "${SCRIPT_DIR}/production/service"
 kubectl apply -f "${SCRIPT_DIR}/production/deployment"
 

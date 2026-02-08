@@ -1,5 +1,5 @@
 {
-  "allExternalTip": "Lorsqu’il utilise uniquement des connaissances externes, l’utilisateur peut choisir d’activer ou non le modèle Rerank. S’il n’est pas activé, les morceaux récupérés seront triés en fonction des scores. Lorsque les stratégies de récupération des différentes bases de connaissances sont incohérentes, elles seront inexactes.",
+  "allExternalTip": "Lorsqu'il utilise uniquement des connaissances externes, l'utilisateur peut choisir d'activer ou non le modèle Rerank. S'il n'est pas activé, les morceaux récupérés seront triés en fonction des scores. Lorsque les stratégies de récupération des différentes bases de connaissances sont incohérentes, elles seront inexactes.",
   "allKnowledge": "Toutes les connaissances",
   "allKnowledgeDescription": "Sélectionnez cette option pour afficher toutes les connaissances dans cet espace de travail. Seul le propriétaire de l’espace de travail peut gérer toutes les connaissances.",
   "appCount": " applications liées",
@@ -7,6 +7,7 @@
   "batchAction.cancel": "Annuler",
   "batchAction.delete": "Supprimer",
   "batchAction.disable": "Désactiver",
+  "batchAction.download": "Télécharger",
   "batchAction.enable": "Activer",
   "batchAction.reIndex": "Réindexer",
   "batchAction.selected": "Sélectionné",

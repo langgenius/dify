@@ -10,7 +10,7 @@ import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/
 import Loading from '@/app/components/base/loading'
 import { AccessMode } from '@/models/access-control'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
-import { useGlobalPublicStore } from './global-public-context'
+import { useIsSystemFeaturesPending } from './global-public-context'
 
 type WebAppStore = {
   shareCode: string | null
@@ -65,7 +65,7 @@ const getShareCodeFromPathname = (pathname: string): string | null => {
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
-  const isGlobalPending = useGlobalPublicStore(s => s.isGlobalPending)
+  const isGlobalPending = useIsSystemFeaturesPending()
   const updateWebAppAccessMode = useWebAppStore(state => state.updateWebAppAccessMode)
   const updateShareCode = useWebAppStore(state => state.updateShareCode)
   const updateEmbeddedUserId = useWebAppStore(state => state.updateEmbeddedUserId)

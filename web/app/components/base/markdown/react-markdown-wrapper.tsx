@@ -30,7 +30,7 @@ export const ReactMarkdownWrapper: FC<ReactMarkdownWrapperProps> = (props) => {
   return (
     <ReactMarkdown
       remarkPlugins={[
-        RemarkGfm,
+        [RemarkGfm, { singleTilde: false }],
         [RemarkMath, { singleDollarTextMath: ENABLE_SINGLE_DOLLAR_LATEX }],
         RemarkBreaks,
       ]}

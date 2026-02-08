@@ -1,14 +1,12 @@
 import type { FC } from 'react'
 import type { SchemaRoot } from '../../types'
-import { RiBracesLine, RiCloseLine, RiExternalLinkLine, RiTimelineView } from '@remixicon/react'
-import * as React from 'react'
+import { RiBracesLine, RiCloseLine, RiTimelineView } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Toast from '@/app/components/base/toast'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
-import { useDocLink } from '@/context/i18n'
 import { SegmentedControl } from '../../../../../base/segmented-control'
 import { Type } from '../../types'
 import {
@@ -55,7 +53,6 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const [currentTab, setCurrentTab] = useState(SchemaView.VisualEditor)
   const [jsonSchema, setJsonSchema] = useState(defaultSchema || DEFAULT_SCHEMA)
   const [json, setJson] = useState(() => JSON.stringify(jsonSchema, null, 2))
@@ -253,15 +250,6 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       </div>
       {/* Footer */}
       <div className="flex items-center gap-x-2 p-6 pt-5">
-        <a
-          className="flex grow items-center gap-x-1 text-text-accent"
-          href={docLink('/guides/workflow/structured-outputs')}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <span className="system-xs-regular">{t('nodes.llm.jsonSchema.doc', { ns: 'workflow' })}</span>
-          <RiExternalLinkLine className="h-3 w-3" />
-        </a>
         <div className="flex items-center gap-x-3">
           <div className="flex items-center gap-x-2">
             <Button variant="secondary" onClick={handleResetDefaults}>

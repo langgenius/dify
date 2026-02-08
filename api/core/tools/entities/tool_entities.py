@@ -130,7 +130,7 @@ class ToolInvokeMessage(BaseModel):
         text: str
 
     class JsonMessage(BaseModel):
-        json_object: dict
+        json_object: dict | list
         suppress_output: bool = Field(default=False, description="Whether to suppress JSON output in result string")
 
     class BlobMessage(BaseModel):
@@ -144,7 +144,14 @@ class ToolInvokeMessage(BaseModel):
         end: bool = Field(..., description="Whether the chunk is the last chunk")
 
     class FileMessage(BaseModel):
-        pass
+        file_marker: str = Field(default="file_marker")
+
+        @model_validator(mode="before")
+        @classmethod
+        def validate_file_message(cls, values):
+            if isinstance(values, dict) and "file_marker" not in values:
+                raise ValueError("Invalid FileMessage: missing file_marker")
+            return values
 
     class VariableMessage(BaseModel):
         variable_name: str = Field(..., description="The name of the variable")
@@ -234,10 +241,22 @@ class ToolInvokeMessage(BaseModel):
 
     @field_validator("message", mode="before")
     @classmethod
-    def decode_blob_message(cls, v):
+    def decode_blob_message(cls, v, info: ValidationInfo):
+        # 处理 blob 解码
         if isinstance(v, dict) and "blob" in v:
             with contextlib.suppress(Exception):
                 v["blob"] = base64.b64decode(v["blob"])
+
+        # Force correct message type based on type field
+        # Only wrap dict types to avoid wrapping already parsed Pydantic model objects
+        if info.data and isinstance(info.data, dict) and isinstance(v, dict):
+            msg_type = info.data.get("type")
+            if msg_type == cls.MessageType.JSON:
+                if "json_object" not in v:
+                    v = {"json_object": v}
+            elif msg_type == cls.MessageType.FILE:
+                v = {"file_marker": "file_marker"}
+
         return v
 
     @field_serializer("message")

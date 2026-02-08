@@ -228,11 +228,28 @@ def test_resolve_user_from_database_falls_back_to_end_user(monkeypatch: pytest.M
         def scalar(self, _stmt):
             return self.results.pop(0)
 
+        # SQLAlchemy Session APIs used by code under test
+        def expunge(self, *_args, **_kwargs):
+            pass
+
+        def close(self):
+            pass
+
+        # support `with session_factory.create_session() as session:`
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            self.close()
+
     tenant = SimpleNamespace(id="tenant_id")
     end_user = SimpleNamespace(id="end_user_id", tenant_id="tenant_id")
-    db_stub = SimpleNamespace(session=StubSession([tenant, None, end_user]))
 
-    monkeypatch.setattr("core.tools.workflow_as_tool.tool.db", db_stub)
+    # Monkeypatch session factory to return our stub session
+    monkeypatch.setattr(
+        "core.tools.workflow_as_tool.tool.session_factory.create_session",
+        lambda: StubSession([tenant, None, end_user]),
+    )
 
     entity = ToolEntity(
         identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
@@ -266,8 +283,23 @@ def test_resolve_user_from_database_returns_none_when_no_tenant(monkeypatch: pyt
         def scalar(self, _stmt):
             return self.results.pop(0)
 
-    db_stub = SimpleNamespace(session=StubSession([None]))
-    monkeypatch.setattr("core.tools.workflow_as_tool.tool.db", db_stub)
+        def expunge(self, *_args, **_kwargs):
+            pass
+
+        def close(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            self.close()
+
+    # Monkeypatch session factory to return our stub session with no tenant
+    monkeypatch.setattr(
+        "core.tools.workflow_as_tool.tool.session_factory.create_session",
+        lambda: StubSession([None]),
+    )
 
     entity = ToolEntity(
         identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),

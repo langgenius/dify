@@ -24,7 +24,7 @@ from core.variables.variables import (
     IntegerVariable,
     ObjectVariable,
     StringVariable,
-    VariableUnion,
+    Variable,
 )
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.runtime import VariablePool
@@ -160,7 +160,7 @@ class TestVariablePoolSerialization:
         )
 
         # Create environment variables with all types including ArrayFileVariable
-        env_vars: list[VariableUnion] = [
+        env_vars: list[Variable] = [
             StringVariable(
                 id="env_string_id",
                 name="env_string",
@@ -182,7 +182,7 @@ class TestVariablePoolSerialization:
         ]
 
         # Create conversation variables with complex data
-        conv_vars: list[VariableUnion] = [
+        conv_vars: list[Variable] = [
             StringVariable(
                 id="conv_string_id",
                 name="conv_string",

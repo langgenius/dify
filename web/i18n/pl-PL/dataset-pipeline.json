@@ -79,7 +79,7 @@
   "pipelineNameAndIcon": "Nazwa i ikona potoku",
   "publishPipeline.error.message": "Nie można opublikować potoku wiedzy",
   "publishPipeline.success.message": "Opublikowano potok wiedzy",
-  "publishPipeline.success.tip": "Przejdź do Dokumenty, aby dodać lub zarządzać dokumentami.",
+  "publishPipeline.success.tip": "Przejdź do <CustomLink>Dokumenty</CustomLink>, aby dodać lub zarządzać dokumentami.",
   "publishTemplate.error.message": "Nie można opublikować szablonu potoku",
   "publishTemplate.success.learnMore": "Dowiedz się więcej",
   "publishTemplate.success.message": "Opublikowano szablon potoku",

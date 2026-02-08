@@ -1,13 +1,14 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, marshal_with
+from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from controllers.common.schema import get_or_create_model
 from extensions.ext_database import db
 from fields.workflow_trigger_fields import trigger_fields, triggers_list_fields, webhook_trigger_fields
 from libs.login import current_user, login_required
@@ -21,6 +22,14 @@ from ..wraps import account_initialization_required, edit_permission_required, s
 
 logger = logging.getLogger(__name__)
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+trigger_model = get_or_create_model("WorkflowTrigger", trigger_fields)
+
+triggers_list_fields_copy = triggers_list_fields.copy()
+triggers_list_fields_copy["data"] = fields.List(fields.Nested(trigger_model))
+triggers_list_model = get_or_create_model("WorkflowTriggerList", triggers_list_fields_copy)
+
+webhook_trigger_model = get_or_create_model("WebhookTrigger", webhook_trigger_fields)
 
 
 class Parser(BaseModel):
@@ -48,7 +57,7 @@ class WebhookTriggerApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.WORKFLOW)
-    @marshal_with(webhook_trigger_fields)
+    @marshal_with(webhook_trigger_model)
     def get(self, app_model: App):
         """Get webhook trigger for a node"""
         args = Parser.model_validate(request.args.to_dict(flat=True))  # type: ignore
@@ -80,7 +89,7 @@ class AppTriggersApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.WORKFLOW)
-    @marshal_with(triggers_list_fields)
+    @marshal_with(triggers_list_model)
     def get(self, app_model: App):
         """Get app triggers list"""
         assert isinstance(current_user, Account)
@@ -120,7 +129,7 @@ class AppTriggerEnableApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_app_model(mode=AppMode.WORKFLOW)
-    @marshal_with(trigger_fields)
+    @marshal_with(trigger_model)
     def post(self, app_model: App):
         """Update app trigger (enable/disable)"""
         args = ParserEnable.model_validate(console_ns.payload)

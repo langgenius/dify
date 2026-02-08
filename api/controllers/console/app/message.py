@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, select
 from werkzeug.exceptions import InternalServerError, NotFound
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -35,7 +36,6 @@ from services.errors.message import MessageNotExistsError, SuggestedQuestionsAft
 from services.message_service import MessageService
 
 logger = logging.getLogger(__name__)
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class ChatMessagesQuery(BaseModel):
@@ -90,13 +90,22 @@ class FeedbackExportQuery(BaseModel):
         raise ValueError("has_comment must be a boolean value")
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+class AnnotationCountResponse(BaseModel):
+    count: int = Field(description="Number of annotations")
 
 
-reg(ChatMessagesQuery)
-reg(MessageFeedbackPayload)
-reg(FeedbackExportQuery)
+class SuggestedQuestionsResponse(BaseModel):
+    data: list[str] = Field(description="Suggested question")
+
+
+register_schema_models(
+    console_ns,
+    ChatMessagesQuery,
+    MessageFeedbackPayload,
+    FeedbackExportQuery,
+    AnnotationCountResponse,
+    SuggestedQuestionsResponse,
+)
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
@@ -231,7 +240,7 @@ class ChatMessageListApi(Resource):
     @marshal_with(message_infinite_scroll_pagination_model)
     @edit_permission_required
     def get(self, app_model):
-        args = ChatMessagesQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ChatMessagesQuery.model_validate(request.args.to_dict())
 
         conversation = (
             db.session.query(Conversation)
@@ -356,7 +365,7 @@ class MessageAnnotationCountApi(Resource):
     @console_ns.response(
         200,
         "Annotation count retrieved successfully",
-        console_ns.model("AnnotationCountResponse", {"count": fields.Integer(description="Number of annotations")}),
+        console_ns.models[AnnotationCountResponse.__name__],
     )
     @get_app_model
     @setup_required
@@ -376,9 +385,7 @@ class MessageSuggestedQuestionApi(Resource):
     @console_ns.response(
         200,
         "Suggested questions retrieved successfully",
-        console_ns.model(
-            "SuggestedQuestionsResponse", {"data": fields.List(fields.String(description="Suggested question"))}
-        ),
+        console_ns.models[SuggestedQuestionsResponse.__name__],
     )
     @console_ns.response(404, "Message or conversation not found")
     @setup_required
@@ -428,7 +435,7 @@ class MessageFeedbackExportApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        args = FeedbackExportQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = FeedbackExportQuery.model_validate(request.args.to_dict())
 
         # Import the service function
         from services.feedback_service import FeedbackService

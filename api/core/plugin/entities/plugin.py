@@ -23,12 +23,17 @@ class PluginInstallationSource(StrEnum):
     Remote = auto()
 
     @classmethod
-    def _missing_(cls, value: object) -> Self | None:
+    def _missing_(cls, value: object) -> "PluginInstallationSource | None":
+        """
+        Backward-compatible parsing for plugin-daemon responses.
+
+        Some plugin-daemon versions return capitalized values like "Marketplace".
+        """
         if isinstance(value, str):
             normalized = value.strip().lower()
-            for member in cls:
-                if member.value == normalized:
-                    return member
+            for item in cls:
+                if item.value == normalized:
+                    return item
         return None
 
 

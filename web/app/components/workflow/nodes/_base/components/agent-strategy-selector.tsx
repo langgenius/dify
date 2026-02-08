@@ -92,13 +92,12 @@ function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => s
 export type AgentStrategySelectorProps = {
   value?: Strategy
   onChange: (value?: Strategy) => void
-  canChooseMCPTool: boolean
 }
 
 export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
-  const { value, onChange, canChooseMCPTool } = props
+  const { value, onChange } = props
   const [open, setOpen] = useState(false)
   const [viewType, setViewType] = useState<ViewType>(ViewType.flat)
   const [query, setQuery] = useState('')
@@ -242,7 +241,6 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               indexBarClassName="top-0 xl:top-36"
               hasSearchText={false}
               canNotSelectMultiple
-              canChooseMCPTool={canChooseMCPTool}
               isAgent
             />
             {enable_marketplace && (

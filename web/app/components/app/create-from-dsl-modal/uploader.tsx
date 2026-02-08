@@ -58,7 +58,7 @@ const Uploader: FC<Props> = ({
     setDragging(false)
     if (!e.dataTransfer)
       return
-    const files = [...e.dataTransfer.files]
+    const files = Array.from(e.dataTransfer.files)
     if (files.length > 1) {
       notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return

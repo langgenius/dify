@@ -82,7 +82,9 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         body: loginData,
       })
       if (res.result === 'success') {
-        setWebAppAccessToken(res.data.access_token)
+        if (res?.data?.access_token) {
+          setWebAppAccessToken(res.data.access_token)
+        }
 
         const { access_token } = await fetchAccessToken({
           appCode: appCode!,

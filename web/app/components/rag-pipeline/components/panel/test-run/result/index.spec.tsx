@@ -590,9 +590,9 @@ describe('formatPreviewChunks', () => {
       const result = formatPreviewChunks(outputs) as GeneralChunks
 
       expect(result).toHaveLength(3)
-      expect(result[0]).toBe('General chunk content 1')
-      expect(result[1]).toBe('General chunk content 2')
-      expect(result[2]).toBe('General chunk content 3')
+      expect((result as GeneralChunks)[0].content).toBe('General chunk content 1')
+      expect((result as GeneralChunks)[1].content).toBe('General chunk content 2')
+      expect((result as GeneralChunks)[2].content).toBe('General chunk content 3')
     })
 
     it('should limit chunks to RAG_PIPELINE_PREVIEW_CHUNK_NUM', () => {

@@ -24,7 +24,7 @@ vi.mock('@/app/components/datasets/documents/detail/metadata', () => ({
     <div data-testid="field-info" data-label={label}>
       <span data-testid="field-label">{label}</span>
       <span data-testid="field-value">{displayedValue}</span>
-      {valueIcon && <span data-testid="field-icon">{valueIcon}</span>}
+      {!!valueIcon && <span data-testid="field-icon">{valueIcon}</span>}
     </div>
   ),
 }))

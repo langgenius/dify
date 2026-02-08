@@ -6,10 +6,12 @@ import {
   useSearchParams,
 } from 'next/navigation'
 import * as React from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContextSelector } from 'use-context-selector'
 import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import AppListContext from '@/context/app-list-context'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
 
@@ -54,6 +56,13 @@ const CreateAppCard = ({
 
     return undefined
   }, [dslUrl])
+
+  const controlHideCreateFromTemplatePanel = useContextSelector(AppListContext, ctx => ctx.controlHideCreateFromTemplatePanel)
+  useEffect(() => {
+    if (controlHideCreateFromTemplatePanel > 0)
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      setShowNewAppTemplateDialog(false)
+  }, [controlHideCreateFromTemplatePanel])
 
   return (
     <div

@@ -1,3 +1,4 @@
+import type { DocLanguage } from '@/types/doc-paths'
 import data from './languages'
 
 export type Item = {
@@ -22,9 +23,9 @@ export const getLanguage = (locale: Locale): Locale => {
   return LanguagesSupported[0].replace('-', '_') as Locale
 }
 
-const DOC_LANGUAGE: Record<string, string> = {
-  'zh-Hans': 'zh-hans',
-  'ja-JP': 'ja-jp',
+const DOC_LANGUAGE: Record<string, DocLanguage | undefined> = {
+  'zh-Hans': 'zh',
+  'ja-JP': 'ja',
   'en-US': 'en',
 }
 
@@ -56,7 +57,7 @@ export const localeMap: Record<Locale, string> = {
   'ar-TN': 'ar',
 }
 
-export const getDocLanguage = (locale: string) => {
+export const getDocLanguage = (locale: string): DocLanguage => {
   return DOC_LANGUAGE[locale] || 'en'
 }
 

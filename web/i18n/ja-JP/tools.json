@@ -99,7 +99,7 @@
   "createTool.viewSchemaSpec": "OpenAPI-Swagger 仕様を表示する",
   "customToolTip": "Dify カスタムツールの詳細",
   "howToGet": "取得方法",
-  "includeToolNum": "{{num}}個のツールが含まれています",
+  "includeToolNum": "{{num}} {{action}} が含まれています",
   "mcp.authorize": "承認",
   "mcp.authorizeTip": "承認後、このページにツールが表示されるようになります。",
   "mcp.authorizing": "承認中...",

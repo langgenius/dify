@@ -73,6 +73,56 @@ describe('Billing', () => {
     })
   })
 
+  it('returns the refetched url from the async callback', async () => {
+    const newUrl = 'https://new-billing-url'
+    refetchMock.mockResolvedValue({ data: newUrl })
+    render(<Billing />)
+
+    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
+    fireEvent.click(actionButton)
+
+    await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
+    const [asyncCallback] = openAsyncWindowMock.mock.calls[0]
+
+    // Execute the async callback passed to openAsyncWindow
+    const result = await asyncCallback()
+    expect(result).toBe(newUrl)
+    expect(refetchMock).toHaveBeenCalled()
+  })
+
+  it('returns null when refetch returns no url', async () => {
+    refetchMock.mockResolvedValue({ data: null })
+    render(<Billing />)
+
+    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
+    fireEvent.click(actionButton)
+
+    await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
+    const [asyncCallback] = openAsyncWindowMock.mock.calls[0]
+
+    // Execute the async callback when url is null
+    const result = await asyncCallback()
+    expect(result).toBeNull()
+  })
+
+  it('handles errors in onError callback', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<Billing />)
+
+    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
+    fireEvent.click(actionButton)
+
+    await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
+    const [, options] = openAsyncWindowMock.mock.calls[0]
+
+    // Execute the onError callback
+    const testError = new Error('Test error')
+    options.onError(testError)
+    expect(consoleError).toHaveBeenCalledWith('Failed to fetch billing url', testError)
+
+    consoleError.mockRestore()
+  })
+
   it('disables the button while billing url is fetching', () => {
     fetching = true
     render(<Billing />)

@@ -208,7 +208,6 @@ export const VAR_ITEM_TEMPLATE = {
   key: '',
   name: '',
   type: 'string',
-  max_length: DEFAULT_VALUE_MAX_LEN,
   required: true,
 }
 
@@ -216,7 +215,6 @@ export const VAR_ITEM_TEMPLATE_IN_WORKFLOW = {
   variable: '',
   label: '',
   type: InputVarType.textInput,
-  max_length: DEFAULT_VALUE_MAX_LEN,
   required: true,
   options: [],
 }
@@ -225,7 +223,6 @@ export const VAR_ITEM_TEMPLATE_IN_PIPELINE = {
   variable: '',
   label: '',
   type: PipelineInputVarType.textInput,
-  max_length: DEFAULT_VALUE_MAX_LEN,
   required: true,
   options: [],
 }

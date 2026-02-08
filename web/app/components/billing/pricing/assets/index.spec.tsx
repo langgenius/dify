@@ -52,6 +52,24 @@ describe('Pricing Assets', () => {
       expect(rects.some(rect => rect.getAttribute('fill') === 'var(--color-saas-dify-blue-accessible)')).toBe(true)
     })
 
+    it('should render inactive state for Cloud', () => {
+      // Arrange
+      const { container } = render(<Cloud isActive={false} />)
+
+      // Assert
+      const rects = Array.from(container.querySelectorAll('rect'))
+      expect(rects.some(rect => rect.getAttribute('fill') === 'var(--color-text-primary)')).toBe(true)
+    })
+
+    it('should render active state for SelfHosted', () => {
+      // Arrange
+      const { container } = render(<SelfHosted isActive />)
+
+      // Assert
+      const rects = Array.from(container.querySelectorAll('rect'))
+      expect(rects.some(rect => rect.getAttribute('fill') === 'var(--color-saas-dify-blue-accessible)')).toBe(true)
+    })
+
     it('should render inactive state for SelfHosted', () => {
       // Arrange
       const { container } = render(<SelfHosted isActive={false} />)

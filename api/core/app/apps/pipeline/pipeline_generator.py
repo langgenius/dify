@@ -120,7 +120,7 @@ class PipelineGenerator(BaseAppGenerator):
                 raise ValueError("Pipeline dataset is required")
         inputs: Mapping[str, Any] = args["inputs"]
         start_node_id: str = args["start_node_id"]
-        datasource_type: str = args["datasource_type"]
+        datasource_type = DatasourceProviderType(args["datasource_type"])
         datasource_info_list: list[Mapping[str, Any]] = self._format_datasource_info_list(
             datasource_type, args["datasource_info_list"], pipeline, workflow, start_node_id, user
         )
@@ -660,7 +660,7 @@ class PipelineGenerator(BaseAppGenerator):
         tenant_id: str,
         dataset_id: str,
         built_in_field_enabled: bool,
-        datasource_type: str,
+        datasource_type: DatasourceProviderType,
         datasource_info: Mapping[str, Any],
         created_from: str,
         position: int,
@@ -668,17 +668,17 @@ class PipelineGenerator(BaseAppGenerator):
         batch: str,
         document_form: str,
     ):
-        if datasource_type == "local_file":
-            name = datasource_info.get("name", "untitled")
-        elif datasource_type == "online_document":
-            name = datasource_info.get("page", {}).get("page_name", "untitled")
-        elif datasource_type == "website_crawl":
-            name = datasource_info.get("title", "untitled")
-        elif datasource_type == "online_drive":
-            name = datasource_info.get("name", "untitled")
-        else:
-            raise ValueError(f"Unsupported datasource type: {datasource_type}")
-
+        match datasource_type:
+            case DatasourceProviderType.LOCAL_FILE:
+                name = datasource_info.get("name", "untitled")
+            case DatasourceProviderType.ONLINE_DOCUMENT:
+                name = datasource_info.get("page", {}).get("page_name", "untitled")
+            case DatasourceProviderType.WEBSITE_CRAWL:
+                name = datasource_info.get("title", "untitled")
+            case DatasourceProviderType.ONLINE_DRIVE:
+                name = datasource_info.get("name", "untitled")
+            case _:
+                raise ValueError(f"Unsupported datasource type: {datasource_type}")
         document = Document(
             tenant_id=tenant_id,
             dataset_id=dataset_id,
@@ -706,7 +706,7 @@ class PipelineGenerator(BaseAppGenerator):
 
     def _format_datasource_info_list(
         self,
-        datasource_type: str,
+        datasource_type: DatasourceProviderType,
         datasource_info_list: list[Mapping[str, Any]],
         pipeline: Pipeline,
         workflow: Workflow,
@@ -716,7 +716,7 @@ class PipelineGenerator(BaseAppGenerator):
         """
         Format datasource info list.
         """
-        if datasource_type == "online_drive":
+        if datasource_type == DatasourceProviderType.ONLINE_DRIVE:
             all_files: list[Mapping[str, Any]] = []
             datasource_node_data = None
             datasource_nodes = workflow.graph_dict.get("nodes", [])

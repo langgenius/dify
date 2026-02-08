@@ -13,8 +13,10 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
 
+from sqlalchemy.orm import Session
+
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from models.workflow import WorkflowNodeExecutionModel
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 
 
 class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Protocol):
@@ -130,6 +132,18 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         """
         ...
 
+    def count_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
+        """
+        Count node executions and offloads for the given workflow run ids.
+        """
+        ...
+
+    def delete_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
+        """
+        Delete node executions and offloads for the given workflow run ids.
+        """
+        ...
+
     def delete_executions_by_app(
         self,
         tenant_id: str,
@@ -193,5 +207,25 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
 
         Returns:
             The number of executions deleted
+        """
+        ...
+
+    def get_offloads_by_execution_ids(
+        self,
+        session: Session,
+        node_execution_ids: Sequence[str],
+    ) -> Sequence[WorkflowNodeExecutionOffload]:
+        """
+        Get offload records by node execution IDs.
+
+        This method retrieves workflow node execution offload records
+        that belong to the given node execution IDs.
+
+        Args:
+            session: The database session to use
+            node_execution_ids: List of node execution IDs to filter by
+
+        Returns:
+            A sequence of WorkflowNodeExecutionOffload instances
         """
         ...

@@ -81,4 +81,205 @@ describe('CommandSelector', () => {
 
     expect(onSelect).toHaveBeenCalledWith('/zen')
   })
+
+  it('should show all slash commands when no filter provided', () => {
+    const actions = createActions()
+    const onSelect = vi.fn()
+
+    render(
+      <Command>
+        <CommandSelector
+          actions={actions}
+          onCommandSelect={onSelect}
+          searchFilter=""
+          originalQuery="/"
+        />
+      </Command>,
+    )
+
+    // Should show the zen command from mock
+    expect(screen.getByText('/zen')).toBeInTheDocument()
+  })
+
+  it('should exclude slash action when in @ mode', () => {
+    const actions = {
+      ...createActions(),
+      slash: {
+        key: '/',
+        shortcut: '/',
+        title: 'Slash',
+        search: vi.fn(),
+        description: '',
+      } as ActionItem,
+    }
+    const onSelect = vi.fn()
+
+    render(
+      <Command>
+        <CommandSelector
+          actions={actions}
+          onCommandSelect={onSelect}
+          searchFilter=""
+          originalQuery="@"
+        />
+      </Command>,
+    )
+
+    // Should show @ commands but not /
+    expect(screen.getByText('@app')).toBeInTheDocument()
+    expect(screen.queryByText('/')).not.toBeInTheDocument()
+  })
+
+  it('should show all actions when no filter in @ mode', () => {
+    const actions = createActions()
+    const onSelect = vi.fn()
+
+    render(
+      <Command>
+        <CommandSelector
+          actions={actions}
+          onCommandSelect={onSelect}
+          searchFilter=""
+          originalQuery="@"
+        />
+      </Command>,
+    )
+
+    expect(screen.getByText('@app')).toBeInTheDocument()
+    expect(screen.getByText('@plugin')).toBeInTheDocument()
+  })
+
+  it('should set default command value when items exist but value does not', () => {
+    const actions = createActions()
+    const onSelect = vi.fn()
+    const onCommandValueChange = vi.fn()
+
+    render(
+      <Command>
+        <CommandSelector
+          actions={actions}
+          onCommandSelect={onSelect}
+          searchFilter=""
+          originalQuery="@"
+          commandValue="non-existent"
+          onCommandValueChange={onCommandValueChange}
+        />
+      </Command>,
+    )
+
+    expect(onCommandValueChange).toHaveBeenCalledWith('@app')
+  })
+
+  it('should NOT set command value when value already exists in items', () => {
+    const actions = createActions()
+    const onSelect = vi.fn()
+    const onCommandValueChange = vi.fn()
+
+    render(
+      <Command>
+        <CommandSelector
+          actions={actions}
+          onCommandSelect={onSelect}
+          searchFilter=""
+          originalQuery="@"
+          commandValue="@app"
+          onCommandValueChange={onCommandValueChange}
+        />
+      </Command>,
+    )
+
+    expect(onCommandValueChange).not.toHaveBeenCalled()
+  })
+
+  it('should show no matching commands message when filter has no results', () => {
+    const actions = createActions()
+    const onSelect = vi.fn()
+
+    render(
+      <Command>
+        <CommandSelector
+          actions={actions}
+          onCommandSelect={onSelect}
+          searchFilter="nonexistent"
+          originalQuery="@nonexistent"
+        />
+      </Command>,
+    )
+
+    expect(screen.getByText('app.gotoAnything.noMatchingCommands')).toBeInTheDocument()
+    expect(screen.getByText('app.gotoAnything.tryDifferentSearch')).toBeInTheDocument()
+  })
+
+  it('should show no matching commands for slash mode with no results', () => {
+    const actions = createActions()
+    const onSelect = vi.fn()
+
+    render(
+      <Command>
+        <CommandSelector
+          actions={actions}
+          onCommandSelect={onSelect}
+          searchFilter="nonexistentcommand"
+          originalQuery="/nonexistentcommand"
+        />
+      </Command>,
+    )
+
+    expect(screen.getByText('app.gotoAnything.noMatchingCommands')).toBeInTheDocument()
+  })
+
+  it('should render description for @ commands', () => {
+    const actions = createActions()
+    const onSelect = vi.fn()
+
+    render(
+      <Command>
+        <CommandSelector
+          actions={actions}
+          onCommandSelect={onSelect}
+          searchFilter=""
+          originalQuery="@"
+        />
+      </Command>,
+    )
+
+    expect(screen.getByText('app.gotoAnything.actions.searchApplicationsDesc')).toBeInTheDocument()
+    expect(screen.getByText('app.gotoAnything.actions.searchPluginsDesc')).toBeInTheDocument()
+  })
+
+  it('should render group header for @ mode', () => {
+    const actions = createActions()
+    const onSelect = vi.fn()
+
+    render(
+      <Command>
+        <CommandSelector
+          actions={actions}
+          onCommandSelect={onSelect}
+          searchFilter=""
+          originalQuery="@"
+        />
+      </Command>,
+    )
+
+    expect(screen.getByText('app.gotoAnything.selectSearchType')).toBeInTheDocument()
+  })
+
+  it('should render group header for slash mode', () => {
+    const actions = createActions()
+    const onSelect = vi.fn()
+
+    render(
+      <Command>
+        <CommandSelector
+          actions={actions}
+          onCommandSelect={onSelect}
+          searchFilter=""
+          originalQuery="/"
+        />
+      </Command>,
+    )
+
+    expect(screen.getByText('app.gotoAnything.groups.commands')).toBeInTheDocument()
+  })
 })

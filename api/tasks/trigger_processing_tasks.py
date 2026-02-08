@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import session_factory
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginInvokeError
@@ -27,7 +28,6 @@ from core.trigger.trigger_manager import TriggerManager
 from core.workflow.enums import NodeType, WorkflowExecutionStatus
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from enums.quota_type import QuotaType, unlimited
-from extensions.ext_database import db
 from models.enums import (
     AppTriggerType,
     CreatorUserRole,
@@ -257,7 +257,7 @@ def dispatch_triggered_workflow(
         tenant_id=subscription.tenant_id, provider_id=TriggerProviderID(subscription.provider_id)
     )
     trigger_entity: TriggerProviderEntity = provider_controller.entity
-    with Session(db.engine) as session:
+    with session_factory.create_session() as session:
         workflows: Mapping[str, Workflow] = _get_latest_workflows_by_app_ids(session, subscribers)
 
         end_users: Mapping[str, EndUser] = EndUserService.create_end_user_batch(

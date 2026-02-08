@@ -145,9 +145,9 @@ describe('formatPreviewChunks', () => {
 
       // Assert
       expect(result).toEqual([
-        'First chunk content',
-        'Second chunk content',
-        'Third chunk content',
+        { content: 'First chunk content', summary: undefined },
+        { content: 'Second chunk content', summary: undefined },
+        { content: 'Third chunk content', summary: undefined },
       ])
     })
 
@@ -160,8 +160,8 @@ describe('formatPreviewChunks', () => {
 
       // Assert
       expect(result).toHaveLength(20)
-      expect(result[0]).toBe('Chunk content 1')
-      expect(result[19]).toBe('Chunk content 20')
+      expect((result as GeneralChunks)[0].content).toBe('Chunk content 1')
+      expect((result as GeneralChunks)[19].content).toBe('Chunk content 20')
     })
 
     it('should handle empty preview array for general chunks', () => {
@@ -186,7 +186,10 @@ describe('formatPreviewChunks', () => {
       const result = formatPreviewChunks(outputs) as GeneralChunks
 
       // Assert
-      expect(result).toEqual(['', 'Valid content'])
+      expect(result).toEqual([
+        { content: '', summary: undefined },
+        { content: 'Valid content', summary: undefined },
+      ])
     })
 
     it('should handle general chunks with special characters', () => {
@@ -202,9 +205,9 @@ describe('formatPreviewChunks', () => {
 
       // Assert
       expect(result).toEqual([
-        '<script>alert("xss")</script>',
-        '中文内容 🎉',
-        'Line1\nLine2\tTab',
+        { content: '<script>alert("xss")</script>', summary: undefined },
+        { content: '中文内容 🎉', summary: undefined },
+        { content: 'Line1\nLine2\tTab', summary: undefined },
       ])
     })
 
@@ -217,7 +220,7 @@ describe('formatPreviewChunks', () => {
       const result = formatPreviewChunks(outputs) as GeneralChunks
 
       // Assert
-      expect(result[0]).toHaveLength(10000)
+      expect((result as GeneralChunks)[0].content).toHaveLength(10000)
     })
   })
 
@@ -501,7 +504,7 @@ describe('formatPreviewChunks', () => {
       const result = formatPreviewChunks(outputs) as GeneralChunks
 
       // Assert
-      expect(result).toEqual(['Test'])
+      expect(result).toEqual([{ content: 'Test', summary: undefined }])
     })
   })
 })
@@ -667,7 +670,10 @@ describe('ResultPreview', () => {
         // Assert
         const chunkList = screen.getByTestId('chunk-card-list')
         const chunkInfo = JSON.parse(chunkList.getAttribute('data-chunk-info') || '[]')
-        expect(chunkInfo).toEqual(['Chunk 1', 'Chunk 2'])
+        expect(chunkInfo).toEqual([
+          { content: 'Chunk 1' },
+          { content: 'Chunk 2' },
+        ])
       })
 
       it('should handle parent-child outputs', () => {
@@ -792,7 +798,7 @@ describe('ResultPreview', () => {
         // Assert
         const chunkList = screen.getByTestId('chunk-card-list')
         const chunkInfo = JSON.parse(chunkList.getAttribute('data-chunk-info') || '[]')
-        expect(chunkInfo).toEqual(['Second'])
+        expect(chunkInfo).toEqual([{ content: 'Second' }])
       })
     })
 
@@ -820,7 +826,7 @@ describe('ResultPreview', () => {
 
         let chunkList = screen.getByTestId('chunk-card-list')
         let chunkInfo = JSON.parse(chunkList.getAttribute('data-chunk-info') || '[]')
-        expect(chunkInfo).toEqual(['Original'])
+        expect(chunkInfo).toEqual([{ content: 'Original' }])
 
         // Act - Change outputs
         const outputs2 = createGeneralChunkOutputs([{ content: 'Updated' }])
@@ -829,7 +835,7 @@ describe('ResultPreview', () => {
         // Assert
         chunkList = screen.getByTestId('chunk-card-list')
         chunkInfo = JSON.parse(chunkList.getAttribute('data-chunk-info') || '[]')
-        expect(chunkInfo).toEqual(['Updated'])
+        expect(chunkInfo).toEqual([{ content: 'Updated' }])
       })
 
       it('should handle undefined outputs in useMemo', () => {

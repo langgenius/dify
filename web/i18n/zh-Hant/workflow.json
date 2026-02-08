@@ -363,7 +363,7 @@
   "nodes.agent.strategyNotFoundDescAndSwitchVersion": "已安裝的插件版本不提供此策略。按兩下以切換版本。",
   "nodes.agent.strategyNotInstallTooltip": "{{strategy}} 未安裝",
   "nodes.agent.strategyNotSet": "代理策略未設置",
-  "nodes.agent.toolNotAuthorizedTooltip": "{{工具}}未授權",
+  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} 未授權",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} 未安裝",
   "nodes.agent.toolbox": "工具箱",
   "nodes.agent.tools": "工具",

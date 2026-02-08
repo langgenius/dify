@@ -3,7 +3,7 @@
   "dateTimeFormat": "DD/MM/YYYY hh:mm A",
   "desc": "Preizkusite učinkovitost zadetkov znanja na podlagi podanega poizvedbenega besedila",
   "hit.emptyTip": "Rezultati testiranja pridobivanja bodo prikazani tukaj",
-  "hit.title": "PRIDOBLJENI ODSTAVKI",
+  "hit.title": "{{num}} pridobljeni odstavki",
   "hitChunks": "Zadenite {{num}} podrejene koščke",
   "imageUploader.dropZoneTip": "Povlecite datoteko sem za nalaganje",
   "imageUploader.singleChunkAttachmentLimitTooltip": "Število priponk enega kosa ne sme presegati {{limit}}",

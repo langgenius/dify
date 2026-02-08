@@ -159,7 +159,7 @@ describe('Processing', () => {
 
       // Assert
       const link = screen.getByRole('link', { name: 'datasetPipeline.addDocuments.stepThree.learnMore' })
-      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/en-US/guides/knowledge-base/integrate-knowledge-within-application')
+      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/en-US/use-dify/knowledge/knowledge-pipeline/authorize-data-source')
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noreferrer noopener')
     })

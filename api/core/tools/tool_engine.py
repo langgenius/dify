@@ -1,5 +1,6 @@
 import contextlib
 import json
+import logging
 from collections.abc import Generator, Iterable
 from copy import deepcopy
 from datetime import UTC, datetime
@@ -35,6 +36,8 @@ from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
 from models.enums import CreatorUserRole
 from models.model import Message, MessageFile
+
+logger = logging.getLogger(__name__)
 
 
 class ToolEngine:
@@ -123,25 +126,31 @@ class ToolEngine:
             # transform tool invoke message to get LLM friendly message
             return plain_text, message_files, meta
         except ToolProviderCredentialValidationError as e:
+            logger.error(e, exc_info=True)
             error_response = "Please check your tool provider credentials"
             agent_tool_callback.on_tool_error(e)
         except (ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError) as e:
             error_response = f"there is not a tool named {tool.entity.identity.name}"
+            logger.error(e, exc_info=True)
             agent_tool_callback.on_tool_error(e)
         except ToolParameterValidationError as e:
             error_response = f"tool parameters validation error: {e}, please check your tool parameters"
             agent_tool_callback.on_tool_error(e)
+            logger.error(e, exc_info=True)
         except ToolInvokeError as e:
             error_response = f"tool invoke error: {e}"
             agent_tool_callback.on_tool_error(e)
+            logger.error(e, exc_info=True)
         except ToolEngineInvokeError as e:
             meta = e.meta
             error_response = f"tool invoke error: {meta.error}"
             agent_tool_callback.on_tool_error(e)
+            logger.error(e, exc_info=True)
             return error_response, [], meta
         except Exception as e:
             error_response = f"unknown error: {e}"
             agent_tool_callback.on_tool_error(e)
+            logger.error(e, exc_info=True)
 
         return error_response, [], ToolInvokeMeta.error_instance(error_response)
 

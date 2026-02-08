@@ -33,6 +33,7 @@ const AppNav = () => {
     data: appsData,
     fetchNextPage,
     hasNextPage,
+    isFetchingNextPage,
     refetch,
   } = useInfiniteAppList({
     page: 1,
@@ -111,6 +112,7 @@ const AppNav = () => {
         createText={t('menus.newApp', { ns: 'common' })}
         onCreate={openModal}
         onLoadMore={handleLoadMore}
+        isLoadingMore={isFetchingNextPage}
       />
       <CreateAppModal
         show={showNewAppDialog}

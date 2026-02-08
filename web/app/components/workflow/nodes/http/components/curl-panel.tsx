@@ -41,7 +41,7 @@ const parseCurl = (curlCommand: string): { node: HttpNodeType | null, error: str
       case '--request':
         if (i + 1 >= args.length)
           return { node: null, error: 'Missing HTTP method after -X or --request.' }
-        node.method = (args[++i].replace(/^['"]|['"]$/g, '') as Method) || Method.get
+        node.method = (args[++i].replace(/^['"]|['"]$/g, '').toLowerCase() as Method) || Method.get
         hasData = true
         break
       case '-H':

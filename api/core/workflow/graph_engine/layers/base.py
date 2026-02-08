@@ -8,7 +8,7 @@ intercept and respond to GraphEngine events.
 from abc import ABC, abstractmethod
 
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
-from core.workflow.graph_events import GraphEngineEvent
+from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
 from core.workflow.runtime import ReadOnlyGraphRuntimeState
 
@@ -98,7 +98,7 @@ class GraphEngineLayer(ABC):
         """
         pass
 
-    def on_node_run_start(self, node: Node) -> None:  # noqa: B027
+    def on_node_run_start(self, node: Node) -> None:
         """
         Called immediately before a node begins execution.
 
@@ -109,9 +109,11 @@ class GraphEngineLayer(ABC):
         Args:
             node: The node instance about to be executed
         """
-        pass
+        return
 
-    def on_node_run_end(self, node: Node, error: Exception | None) -> None:  # noqa: B027
+    def on_node_run_end(
+        self, node: Node, error: Exception | None, result_event: GraphNodeEventBase | None = None
+    ) -> None:
         """
         Called after a node finishes execution.
 
@@ -121,5 +123,6 @@ class GraphEngineLayer(ABC):
         Args:
             node: The node instance that just finished execution
             error: Exception instance if the node failed, otherwise None
+            result_event: The final result event from node execution (succeeded/failed/paused), if any
         """
-        pass
+        return

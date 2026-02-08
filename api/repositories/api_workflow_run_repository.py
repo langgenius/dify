@@ -34,15 +34,18 @@ Example:
     ```
 """
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Protocol
 
+from sqlalchemy.orm import Session
+
 from core.workflow.entities.pause_reason import PauseReason
+from core.workflow.enums import WorkflowType
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
     AverageInteractionStats,
@@ -250,6 +253,151 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         Note:
             This method performs hard deletion without backup. Use with caution
             and ensure proper data retention policies are followed.
+        """
+        ...
+
+    def get_runs_batch_by_time_range(
+        self,
+        start_from: datetime | None,
+        end_before: datetime,
+        last_seen: tuple[datetime, str] | None,
+        batch_size: int,
+        run_types: Sequence[WorkflowType] | None = None,
+        tenant_ids: Sequence[str] | None = None,
+    ) -> Sequence[WorkflowRun]:
+        """
+        Fetch ended workflow runs in a time window for archival and clean batching.
+        """
+        ...
+
+    def get_archived_run_ids(
+        self,
+        session: Session,
+        run_ids: Sequence[str],
+    ) -> set[str]:
+        """
+        Fetch workflow run IDs that already have archive log records.
+        """
+        ...
+
+    def get_archived_logs_by_time_range(
+        self,
+        session: Session,
+        tenant_ids: Sequence[str] | None,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int,
+    ) -> Sequence[WorkflowArchiveLog]:
+        """
+        Fetch archived workflow logs by time range for restore.
+        """
+        ...
+
+    def get_archived_log_by_run_id(
+        self,
+        run_id: str,
+    ) -> WorkflowArchiveLog | None:
+        """
+        Fetch a workflow archive log by workflow run ID.
+        """
+        ...
+
+    def delete_archive_log_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> int:
+        """
+        Delete archive log by workflow run ID.
+
+        Used after restoring a workflow run to remove the archive log record,
+        allowing the run to be archived again if needed.
+
+        Args:
+            session: Database session
+            run_id: Workflow run ID
+
+        Returns:
+            Number of records deleted (0 or 1)
+        """
+        ...
+
+    def delete_runs_with_related(
+        self,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> dict[str, int]:
+        """
+        Delete workflow runs and their related records (node executions, offloads, app logs,
+        trigger logs, pauses, pause reasons).
+        """
+        ...
+
+    def get_pause_records_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> Sequence[WorkflowPause]:
+        """
+        Fetch workflow pause records by workflow run ID.
+        """
+        ...
+
+    def get_pause_reason_records_by_run_id(
+        self,
+        session: Session,
+        pause_ids: Sequence[str],
+    ) -> Sequence[WorkflowPauseReason]:
+        """
+        Fetch workflow pause reason records by pause IDs.
+        """
+        ...
+
+    def get_app_logs_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> Sequence[WorkflowAppLog]:
+        """
+        Fetch workflow app logs by workflow run ID.
+        """
+        ...
+
+    def create_archive_logs(
+        self,
+        session: Session,
+        run: WorkflowRun,
+        app_logs: Sequence[WorkflowAppLog],
+        trigger_metadata: str | None,
+    ) -> int:
+        """
+        Create archive log records for a workflow run.
+        """
+        ...
+
+    def get_archived_runs_by_time_range(
+        self,
+        session: Session,
+        tenant_ids: Sequence[str] | None,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int,
+    ) -> Sequence[WorkflowRun]:
+        """
+        Return workflow runs that already have archive logs, for cleanup of `workflow_runs`.
+        """
+        ...
+
+    def count_runs_with_related(
+        self,
+        runs: Sequence[WorkflowRun],
+        count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> dict[str, int]:
+        """
+        Count workflow runs and their related records (node executions, offloads, app logs,
+        trigger logs, pauses, pause reasons) without deleting data.
         """
         ...
 

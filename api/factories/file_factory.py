@@ -115,7 +115,18 @@ def build_from_mappings(
     # TODO(QuantumGhost): Performance concern - each mapping triggers a separate database query.
     # Implement batch processing to reduce database load when handling multiple files.
     # Filter out None/empty mappings to avoid errors
-    valid_mappings = [m for m in mappings if m and m.get("transfer_method")]
+    def is_valid_mapping(m: Mapping[str, Any]) -> bool:
+        if not m or not m.get("transfer_method"):
+            return False
+        # For REMOTE_URL transfer method, ensure url or remote_url is provided and not None
+        transfer_method = m.get("transfer_method")
+        if transfer_method == FileTransferMethod.REMOTE_URL:
+            url = m.get("url") or m.get("remote_url")
+            if not url:
+                return False
+        return True
+
+    valid_mappings = [m for m in mappings if is_valid_mapping(m)]
     files = [
         build_from_mapping(
             mapping=mapping,

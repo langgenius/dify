@@ -111,7 +111,30 @@
             我们注意到您尝试注册，但此电子邮件已注册。
 
             请在此登录: </p>
-        <a href="{{ login_url }}" class="button">登录</a>
+        <div style="text-align: center; margin-bottom: 20px;">
+          <a href="{{ login_url }}"
+             style="background-color:#2563eb;
+                    color:#ffffff !important;
+                    text-decoration:none;
+                    display:inline-block;
+                    font-weight:600;
+                    border-radius:4px;
+                    font-size:14px;
+                    line-height:18px;
+                    font-family: Helvetica, Arial, sans-serif;
+                    text-align:center;
+                    border-top: 10px solid #2563eb;
+                    border-bottom: 10px solid #2563eb;
+                    border-left: 20px solid #2563eb;
+                    border-right: 20px solid #2563eb;
+                    ">登录</a>
+          <p style="font-size: 12px; color: #666666; margin-top: 20px; margin-bottom: 0;">
+              如果按钮无法使用，请将以下链接复制到浏览器打开：<br>
+              <a href="{{ login_url }}" style="color: #2563eb; text-decoration: underline; word-break: break-all;">
+                  {{ login_url }}
+              </a>
+          </p>
+        </div>
         <p class="description">
             如果您忘记了密码，可以在此重置: <a href="{{ reset_password_url }}" class="reset-btn">重置密码</a>
         </p>

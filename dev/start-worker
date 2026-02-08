@@ -83,7 +83,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
-cd "$SCRIPT_DIR/.."
+cd "$SCRIPT_DIR/../api"
 
 if [[ -n "${ENV_FILE}" ]]; then
   if [[ ! -f "${ENV_FILE}" ]]; then
@@ -123,6 +123,6 @@ echo "  Concurrency: ${CONCURRENCY}"
 echo "  Pool: ${POOL}"
 echo "  Log Level: ${LOGLEVEL}"
 
-uv --directory api run \
+uv run \
   celery -A app.celery worker \
   -P ${POOL} -c ${CONCURRENCY} --loglevel ${LOGLEVEL} -Q ${QUEUES}

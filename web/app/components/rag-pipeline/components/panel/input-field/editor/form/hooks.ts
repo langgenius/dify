@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { InputFieldType } from '@/app/components/base/form/form-scenarios/input-field/types'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useFileUploadConfig } from '@/service/use-common'
 import { formatFileSize } from '@/utils/format'
@@ -87,8 +86,6 @@ export const useConfigurations = (props: {
       if (type === PipelineInputVarType.multiFiles)
         setFieldValue('maxLength', DEFAULT_FILE_UPLOAD_SETTING.max_length)
     }
-    if (type === PipelineInputVarType.paragraph)
-      setFieldValue('maxLength', DEFAULT_VALUE_MAX_LEN)
   }, [setFieldValue])
 
   const handleVariableNameBlur = useCallback((value: string) => {

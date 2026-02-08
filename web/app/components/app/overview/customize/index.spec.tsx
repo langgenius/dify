@@ -305,7 +305,7 @@ describe('CustomizeModal', () => {
       // Assert
       expect(mockWindowOpen).toHaveBeenCalledTimes(1)
       expect(mockWindowOpen).toHaveBeenCalledWith(
-        expect.stringContaining('/guides/application-publishing/developing-with-apis'),
+        expect.stringContaining('/use-dify/publish/developing-with-apis'),
         '_blank',
       )
     })

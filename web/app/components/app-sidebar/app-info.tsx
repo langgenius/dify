@@ -31,6 +31,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import { downloadBlob } from '@/utils/download'
 import AppIcon from '../base/app-icon'
 import AppOperations from './app-operations'
 
@@ -145,13 +146,8 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         appID: appDetail.id,
         include,
       })
-      const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      const url = URL.createObjectURL(file)
-      a.href = url
-      a.download = `${appDetail.name}.yml`
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
     }
     catch {
       notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })

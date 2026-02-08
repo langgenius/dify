@@ -53,6 +53,7 @@ select = [
     "S301", # suspicious-pickle-usage, disallow use of `pickle` and its wrappers.
     "S302", # suspicious-marshal-usage, disallow use of `marshal` module
     "S311", # suspicious-non-cryptographic-random-usage,
+    "TID",   # flake8-tidy-imports
 
 ]
 
@@ -88,6 +89,7 @@ ignore = [
     "SIM113",  # enumerate-for-loop
     "SIM117",  # multiple-with-statements
     "SIM210",  # if-expr-with-true-false
+    "TID252",  # allow relative imports from parent modules
 ]
 
 [lint.per-file-ignores]
@@ -109,10 +111,20 @@ ignore = [
     "S110", # allow ignoring exceptions in tests code (currently)
 
 ]
+"controllers/console/explore/trial.py" = ["TID251"]
+"controllers/console/human_input_form.py" = ["TID251"]
+"controllers/web/human_input_form.py" = ["TID251"]
 
 [lint.pyflakes]
 allowed-unused-imports = [
-    "_pytest.monkeypatch",
     "tests.integration_tests",
     "tests.unit_tests",
 ]
+
+[lint.flake8-tidy-imports]
+
+[lint.flake8-tidy-imports.banned-api."flask_restx.reqparse"]
+msg = "Use Pydantic payload/query models instead of reqparse."
+
+[lint.flake8-tidy-imports.banned-api."flask_restx.reqparse.RequestParser"]
+msg = "Use Pydantic payload/query models instead of reqparse."

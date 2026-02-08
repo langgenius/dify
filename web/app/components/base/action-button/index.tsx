@@ -51,11 +51,16 @@ function getActionButtonState(state: ActionButtonState) {
   }
 }
 
-const ActionButton = ({ className, size, state = ActionButtonState.Default, styleCss, children, ref, ...props }: ActionButtonProps) => {
+const ActionButton = ({ className, size, state = ActionButtonState.Default, styleCss, children, ref, disabled, ...props }: ActionButtonProps) => {
   return (
     <button
       type="button"
-      className={cn(actionButtonVariants({ className, size }), getActionButtonState(state))}
+      className={cn(
+        actionButtonVariants({ className, size }),
+        getActionButtonState(state),
+        disabled && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+      )}
+      disabled={disabled}
       ref={ref}
       style={styleCss}
       {...props}

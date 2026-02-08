@@ -7,7 +7,6 @@ import Input from '@/app/components/base/input'
 import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { cn } from '@/utils/classnames'
 
@@ -19,7 +18,7 @@ const ChatUserInput = ({
   inputs,
 }: Props) => {
   const { t } = useTranslation()
-  const { modelConfig, setInputs } = useContext(ConfigContext)
+  const { modelConfig, setInputs, readonly } = useContext(ConfigContext)
 
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
@@ -88,7 +87,8 @@ const ChatUserInput = ({
                     onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                     placeholder={name}
                     autoFocus={index === 0}
-                    maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                    maxLength={max_length}
+                    readOnly={readonly}
                   />
                 )}
                 {type === 'paragraph' && (
@@ -97,6 +97,7 @@ const ChatUserInput = ({
                     placeholder={name}
                     value={inputs[key] ? `${inputs[key]}` : ''}
                     onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                    readOnly={readonly}
                   />
                 )}
                 {type === 'select' && (
@@ -106,6 +107,7 @@ const ChatUserInput = ({
                     onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
                     items={(options || []).map(i => ({ name: i, value: i }))}
                     allowSearch={false}
+                    disabled={readonly}
                   />
                 )}
                 {type === 'number' && (
@@ -115,7 +117,8 @@ const ChatUserInput = ({
                     onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                     placeholder={name}
                     autoFocus={index === 0}
-                    maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                    maxLength={max_length}
+                    readOnly={readonly}
                   />
                 )}
                 {type === 'checkbox' && (
@@ -124,6 +127,7 @@ const ChatUserInput = ({
                     value={!!inputs[key]}
                     required={required}
                     onChange={(value) => { handleInputValueChange(key, value) }}
+                    readonly={readonly}
                   />
                 )}
               </div>

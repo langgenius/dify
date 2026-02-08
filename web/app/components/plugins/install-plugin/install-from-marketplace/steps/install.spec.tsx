@@ -118,7 +118,7 @@ vi.mock('../../../card', () => ({
     <div data-testid="plugin-card">
       <span data-testid="card-payload-name">{payload?.name}</span>
       <span data-testid="card-limited-install">{limitedInstall ? 'true' : 'false'}</span>
-      {titleLeft && <div data-testid="card-title-left">{titleLeft}</div>}
+      {!!titleLeft && <div data-testid="card-title-left">{titleLeft}</div>}
     </div>
   ),
 }))

@@ -16,7 +16,7 @@
   "form.indexMethod": "Metodo di Indicizzazione",
   "form.indexMethodChangeToEconomyDisabledTip": "Non disponibile per il downgrade da HQ a ECO",
   "form.indexMethodEconomy": "Economico",
-  "form.indexMethodEconomyTip": "Usa motori vettoriali offline, indici di parole chiave, ecc. per ridurre l'accuratezza senza spendere token",
+  "form.indexMethodEconomyTip": "Usa {{count}} parole chiave per chunk per il recupero, senza consumare token a costo di minore accuratezza.",
   "form.indexMethodHighQuality": "Alta Qualità",
   "form.indexMethodHighQualityTip": "Chiama il modello di Embedding per l'elaborazione per fornire maggiore accuratezza quando gli utenti fanno query.",
   "form.me": "(Tu)",
@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Impostazioni di recupero",
   "form.save": "Salva",
   "form.searchModel": "Cerca modello",
+  "form.summaryAutoGen": "Generazione Automatica Riepilogo",
+  "form.summaryAutoGenEnableTip": "Una volta abilitato, i riepiloghi verranno generati automaticamente per i documenti appena aggiunti. I documenti esistenti possono ancora essere riassunti manualmente.",
+  "form.summaryAutoGenTip": "I riepiloghi vengono generati automaticamente per i documenti appena aggiunti. I documenti esistenti possono ancora essere riassunti manualmente.",
+  "form.summaryInstructions": "Istruzioni",
+  "form.summaryInstructionsPlaceholder": "Descrivi le regole o lo stile per i riepiloghi generati automaticamente…",
+  "form.summaryModel": "Modello di Riepilogo",
   "form.upgradeHighQualityTip": "Una volta effettuato l'aggiornamento alla modalità Alta qualità, il ripristino della modalità Risparmio non è disponibile",
   "title": "Impostazioni della Conoscenza"
 }

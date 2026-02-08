@@ -1602,6 +1602,7 @@ export const useNodesInteractions = () => {
       const offsetX = currentPosition.x - x
       const offsetY = currentPosition.y - y
       let idMapping: Record<string, string> = {}
+      const parentChildrenToAppend: { parentId: string, childId: string, childType: BlockEnum }[] = []
       clipboardElements.forEach((nodeToPaste, index) => {
         const nodeType = nodeToPaste.data.type
 
@@ -1615,6 +1616,7 @@ export const useNodesInteractions = () => {
               _isBundled: false,
               _connectedSourceHandleIds: [],
               _connectedTargetHandleIds: [],
+              _dimmed: false,
               title: genNewNodeTitleFromOld(nodeToPaste.data.title),
             },
             position: {
@@ -1682,27 +1684,24 @@ export const useNodesInteractions = () => {
               return
 
             // handle paste to nested block
-            if (selectedNode.data.type === BlockEnum.Iteration) {
-              newNode.data.isInIteration = true
-              newNode.data.iteration_id = selectedNode.data.iteration_id
+            if (selectedNode.data.type === BlockEnum.Iteration || selectedNode.data.type === BlockEnum.Loop) {
+              const isIteration = selectedNode.data.type === BlockEnum.Iteration
+
+              newNode.data.isInIteration = isIteration
+              newNode.data.iteration_id = isIteration ? selectedNode.id : undefined
+              newNode.data.isInLoop = !isIteration
+              newNode.data.loop_id = !isIteration ? selectedNode.id : undefined
+
               newNode.parentId = selectedNode.id
+              newNode.zIndex = isIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX
               newNode.positionAbsolute = {
                 x: newNode.position.x,
                 y: newNode.position.y,
               }
               // set position base on parent node
               newNode.position = getNestedNodePosition(newNode, selectedNode)
-            }
-            else if (selectedNode.data.type === BlockEnum.Loop) {
-              newNode.data.isInLoop = true
-              newNode.data.loop_id = selectedNode.data.loop_id
-              newNode.parentId = selectedNode.id
-              newNode.positionAbsolute = {
-                x: newNode.position.x,
-                y: newNode.position.y,
-              }
-              // set position base on parent node
-              newNode.position = getNestedNodePosition(newNode, selectedNode)
+              // update parent children array like native add
+              parentChildrenToAppend.push({ parentId: selectedNode.id, childId: newNode.id, childType: newNode.data.type })
             }
           }
         }
@@ -1733,7 +1732,17 @@ export const useNodesInteractions = () => {
         }
       })
 
-      setNodes([...nodes, ...nodesToPaste])
+      const newNodes = produce(nodes, (draft: Node[]) => {
+        parentChildrenToAppend.forEach(({ parentId, childId, childType }) => {
+          const p = draft.find(n => n.id === parentId)
+          if (p) {
+            p.data._children?.push({ nodeId: childId, nodeType: childType })
+          }
+        })
+        draft.push(...nodesToPaste)
+      })
+
+      setNodes(newNodes)
       setEdges([...edges, ...edgesToPaste])
       saveStateToHistory(WorkflowHistoryEvent.NodePaste, {
         nodeId: nodesToPaste?.[0]?.id,

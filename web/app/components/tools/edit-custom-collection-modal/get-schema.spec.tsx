@@ -23,7 +23,7 @@ describe('GetSchema', () => {
   it('shows an error when the URL is not http', () => {
     fireEvent.click(screen.getByText('tools.createTool.importFromUrl'))
     const input = screen.getByPlaceholderText('tools.createTool.importFromUrlPlaceHolder')
-    // eslint-disable-next-line sonarjs/no-clear-text-protocols
+
     fireEvent.change(input, { target: { value: 'ftp://invalid' } })
     fireEvent.click(screen.getByText('common.operation.ok'))
 

@@ -86,7 +86,7 @@ def graph_init_params() -> GraphInitParams:
 @pytest.fixture
 def graph_runtime_state() -> GraphRuntimeState:
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},
     )
     return GraphRuntimeState(

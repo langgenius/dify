@@ -1,8 +1,13 @@
+import logging
 import os
 from collections.abc import Mapping
 from typing import Any
 
 import httpx
+
+from core.helper.trace_id_helper import generate_traceparent_header
+
+logger = logging.getLogger(__name__)
 
 
 class BaseRequest:
@@ -38,6 +43,15 @@ class BaseRequest:
         headers = {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key}
         url = f"{cls.base_url}{endpoint}"
         mounts = cls._build_mounts()
+
+        try:
+            # ensure traceparent even when OTEL is disabled
+            traceparent = generate_traceparent_header()
+            if traceparent:
+                headers["traceparent"] = traceparent
+        except Exception:
+            logger.debug("Failed to generate traceparent header", exc_info=True)
+
         with httpx.Client(mounts=mounts) as client:
             response = client.request(method, url, json=json, params=params, headers=headers)
         return response.json()

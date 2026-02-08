@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "Nie znaleziono baz wiedzy",
   "gotoAnything.emptyState.noPluginsFound": "Nie znaleziono wtyczek",
   "gotoAnything.emptyState.noWorkflowNodesFound": "Nie znaleziono węzłów przepływu pracy",
-  "gotoAnything.emptyState.tryDifferentTerm": "Spróbuj innego terminu wyszukiwania lub usuń filtr {{mode}}",
+  "gotoAnything.emptyState.tryDifferentTerm": "Spróbuj innego terminu wyszukiwania",
   "gotoAnything.emptyState.trySpecificSearch": "Spróbuj {{shortcuts}} dla konkretnych wyszukiwań",
   "gotoAnything.groups.apps": "Aplikacje",
   "gotoAnything.groups.commands": "Polecenia",

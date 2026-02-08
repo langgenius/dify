@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing, NodeTracingListResponse } from '@/types/workflow'

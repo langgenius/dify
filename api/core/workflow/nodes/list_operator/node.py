@@ -196,13 +196,13 @@ def _get_file_extract_string_func(*, key: str) -> Callable[[File], str]:
         case "name":
             return lambda x: x.filename or ""
         case "type":
-            return lambda x: x.type
+            return lambda x: str(x.type)
         case "extension":
             return lambda x: x.extension or ""
         case "mime_type":
             return lambda x: x.mime_type or ""
         case "transfer_method":
-            return lambda x: x.transfer_method
+            return lambda x: str(x.transfer_method)
         case "url":
             return lambda x: x.remote_url or ""
         case "related_id":
@@ -276,7 +276,6 @@ def _get_boolean_filter_func(*, condition: FilterOperator, value: bool) -> Calla
 
 
 def _get_file_filter_func(*, key: str, condition: str, value: str | Sequence[str]) -> Callable[[File], bool]:
-    extract_func: Callable[[File], Any]
     if key in {"name", "extension", "mime_type", "url", "related_id"} and isinstance(value, str):
         extract_func = _get_file_extract_string_func(key=key)
         return lambda x: _get_string_filter_func(condition=condition, value=value)(extract_func(x))
@@ -284,8 +283,8 @@ def _get_file_filter_func(*, key: str, condition: str, value: str | Sequence[str
         extract_func = _get_file_extract_string_func(key=key)
         return lambda x: _get_sequence_filter_func(condition=condition, value=value)(extract_func(x))
     elif key == "size" and isinstance(value, str):
-        extract_func = _get_file_extract_number_func(key=key)
-        return lambda x: _get_number_filter_func(condition=condition, value=float(value))(extract_func(x))
+        extract_number = _get_file_extract_number_func(key=key)
+        return lambda x: _get_number_filter_func(condition=condition, value=float(value))(extract_number(x))
     else:
         raise InvalidKeyError(f"Invalid key: {key}")
 

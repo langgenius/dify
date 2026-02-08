@@ -10,13 +10,13 @@ import { QAItemType } from './types'
 // Test Data Factories
 // =============================================================================
 
-const createGeneralChunks = (overrides: string[] = []): GeneralChunks => {
+const createGeneralChunks = (overrides: GeneralChunks = []): GeneralChunks => {
   if (overrides.length > 0)
     return overrides
   return [
-    'This is the first chunk of text content.',
-    'This is the second chunk with different content.',
-    'Third chunk here with more text.',
+    { content: 'This is the first chunk of text content.' },
+    { content: 'This is the second chunk with different content.' },
+    { content: 'Third chunk here with more text.' },
   ]
 }
 
@@ -152,14 +152,14 @@ describe('ChunkCard', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content="This is plain text content."
+          content={createGeneralChunks()[0]}
           wordCount={27}
           positionId={1}
         />,
       )
 
       // Assert
-      expect(screen.getByText('This is plain text content.')).toBeInTheDocument()
+      expect(screen.getByText('This is the first chunk of text content.')).toBeInTheDocument()
       expect(screen.getByText(/Chunk-01/)).toBeInTheDocument()
     })
 
@@ -196,7 +196,7 @@ describe('ChunkCard', () => {
         <ChunkCard
           chunkType={ChunkingMode.parentChild}
           parentMode="paragraph"
-          content={childContents}
+          content={createParentChildChunk({ child_contents: childContents })}
           wordCount={50}
           positionId={1}
         />,
@@ -218,7 +218,7 @@ describe('ChunkCard', () => {
         <ChunkCard
           chunkType={ChunkingMode.parentChild}
           parentMode="paragraph"
-          content={['Child content']}
+          content={createParentChildChunk({ child_contents: ['Child content'] })}
           wordCount={13}
           positionId={1}
         />,
@@ -234,7 +234,7 @@ describe('ChunkCard', () => {
         <ChunkCard
           chunkType={ChunkingMode.parentChild}
           parentMode="full-doc"
-          content={['Child content']}
+          content={createParentChildChunk({ child_contents: ['Child content'] })}
           wordCount={13}
           positionId={1}
         />,
@@ -250,7 +250,7 @@ describe('ChunkCard', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content="Text content"
+          content={createGeneralChunks()[0]}
           wordCount={12}
           positionId={5}
         />,
@@ -268,7 +268,7 @@ describe('ChunkCard', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content="Some content"
+          content={createGeneralChunks()[0]}
           wordCount={1234}
           positionId={1}
         />,
@@ -283,7 +283,7 @@ describe('ChunkCard', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content="Some content"
+          content={createGeneralChunks()[0]}
           wordCount={100}
           positionId={1}
         />,
@@ -299,7 +299,7 @@ describe('ChunkCard', () => {
         <ChunkCard
           chunkType={ChunkingMode.parentChild}
           parentMode="full-doc"
-          content={['Child']}
+          content={createParentChildChunk({ child_contents: ['Child'] })}
           wordCount={500}
           positionId={1}
         />,
@@ -317,7 +317,7 @@ describe('ChunkCard', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content="Content"
+          content={createGeneralChunks()[0]}
           wordCount={7}
           positionId={42}
         />,
@@ -332,7 +332,7 @@ describe('ChunkCard', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content="Content"
+          content={createGeneralChunks()[0]}
           wordCount={7}
           positionId="99"
         />,
@@ -347,7 +347,7 @@ describe('ChunkCard', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content="Content"
+          content={createGeneralChunks()[0]}
           wordCount={7}
           positionId={3}
         />,
@@ -366,7 +366,7 @@ describe('ChunkCard', () => {
         <ChunkCard
           chunkType={ChunkingMode.parentChild}
           parentMode="paragraph"
-          content={['Child']}
+          content={createParentChildChunk({ child_contents: ['Child'] })}
           wordCount={5}
           positionId={1}
         />,
@@ -380,7 +380,7 @@ describe('ChunkCard', () => {
         <ChunkCard
           chunkType={ChunkingMode.parentChild}
           parentMode="full-doc"
-          content={['Child']}
+          content={createParentChildChunk({ child_contents: ['Child'] })}
           wordCount={5}
           positionId={1}
         />,
@@ -392,10 +392,13 @@ describe('ChunkCard', () => {
 
     it('should update contentElement memo when content changes', () => {
       // Arrange
+      const initialContent = { content: 'Initial content' }
+      const updatedContent = { content: 'Updated content' }
+
       const { rerender } = render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content="Initial content"
+          content={initialContent}
           wordCount={15}
           positionId={1}
         />,
@@ -408,7 +411,7 @@ describe('ChunkCard', () => {
       rerender(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content="Updated content"
+          content={updatedContent}
           wordCount={15}
           positionId={1}
         />,
@@ -421,10 +424,11 @@ describe('ChunkCard', () => {
 
     it('should update contentElement memo when chunkType changes', () => {
       // Arrange
+      const textContent = { content: 'Text content' }
       const { rerender } = render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content="Text content"
+          content={textContent}
           wordCount={12}
           positionId={1}
         />,
@@ -458,7 +462,7 @@ describe('ChunkCard', () => {
         <ChunkCard
           chunkType={ChunkingMode.parentChild}
           parentMode="paragraph"
-          content={[]}
+          content={createParentChildChunk({ child_contents: [] })}
           wordCount={0}
           positionId={1}
         />,
@@ -490,12 +494,13 @@ describe('ChunkCard', () => {
     it('should handle very long content', () => {
       // Arrange
       const longContent = 'A'.repeat(10000)
+      const longContentChunk = { content: longContent }
 
       // Act
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={longContent}
+          content={longContentChunk}
           wordCount={10000}
           positionId={1}
         />,
@@ -510,7 +515,7 @@ describe('ChunkCard', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content=""
+          content={createGeneralChunks()[0]}
           wordCount={0}
           positionId={1}
         />,
@@ -546,9 +551,9 @@ describe('ChunkCardList', () => {
       )
 
       // Assert
-      expect(screen.getByText(chunks[0])).toBeInTheDocument()
-      expect(screen.getByText(chunks[1])).toBeInTheDocument()
-      expect(screen.getByText(chunks[2])).toBeInTheDocument()
+      expect(screen.getByText(chunks[0].content)).toBeInTheDocument()
+      expect(screen.getByText(chunks[1].content)).toBeInTheDocument()
+      expect(screen.getByText(chunks[2].content)).toBeInTheDocument()
     })
 
     it('should render parent-child chunks correctly', () => {
@@ -594,7 +599,10 @@ describe('ChunkCardList', () => {
   describe('Memoization - chunkList', () => {
     it('should extract chunks from GeneralChunks for text mode', () => {
       // Arrange
-      const chunks: GeneralChunks = ['Chunk 1', 'Chunk 2']
+      const chunks: GeneralChunks = [
+        { content: 'Chunk 1' },
+        { content: 'Chunk 2' },
+      ]
 
       // Act
       render(
@@ -653,7 +661,7 @@ describe('ChunkCardList', () => {
 
     it('should update chunkList when chunkInfo changes', () => {
       // Arrange
-      const initialChunks = createGeneralChunks(['Initial chunk'])
+      const initialChunks = createGeneralChunks([{ content: 'Initial chunk' }])
 
       const { rerender } = render(
         <ChunkCardList
@@ -666,7 +674,7 @@ describe('ChunkCardList', () => {
       expect(screen.getByText('Initial chunk')).toBeInTheDocument()
 
       // Act - update chunks
-      const updatedChunks = createGeneralChunks(['Updated chunk'])
+      const updatedChunks = createGeneralChunks([{ content: 'Updated chunk' }])
       rerender(
         <ChunkCardList
           chunkType={ChunkingMode.text}
@@ -684,7 +692,7 @@ describe('ChunkCardList', () => {
   describe('Word Count Calculation', () => {
     it('should calculate word count for text chunks using string length', () => {
       // Arrange - "Hello" has 5 characters
-      const chunks = createGeneralChunks(['Hello'])
+      const chunks = createGeneralChunks([{ content: 'Hello' }])
 
       // Act
       render(
@@ -747,7 +755,11 @@ describe('ChunkCardList', () => {
   describe('Position ID', () => {
     it('should assign 1-based position IDs to chunks', () => {
       // Arrange
-      const chunks = createGeneralChunks(['First', 'Second', 'Third'])
+      const chunks = createGeneralChunks([
+        { content: 'First' },
+        { content: 'Second' },
+        { content: 'Third' },
+      ])
 
       // Act
       render(
@@ -768,7 +780,7 @@ describe('ChunkCardList', () => {
   describe('Custom className', () => {
     it('should apply custom className to container', () => {
       // Arrange
-      const chunks = createGeneralChunks(['Test'])
+      const chunks = createGeneralChunks([{ content: 'Test' }])
 
       // Act
       const { container } = render(
@@ -785,7 +797,7 @@ describe('ChunkCardList', () => {
 
     it('should merge custom className with default classes', () => {
       // Arrange
-      const chunks = createGeneralChunks(['Test'])
+      const chunks = createGeneralChunks([{ content: 'Test' }])
 
       // Act
       const { container } = render(
@@ -805,7 +817,7 @@ describe('ChunkCardList', () => {
 
     it('should render without className prop', () => {
       // Arrange
-      const chunks = createGeneralChunks(['Test'])
+      const chunks = createGeneralChunks([{ content: 'Test' }])
 
       // Act
       const { container } = render(
@@ -860,7 +872,7 @@ describe('ChunkCardList', () => {
 
     it('should not use parentMode for text type', () => {
       // Arrange
-      const chunks = createGeneralChunks(['Text'])
+      const chunks = createGeneralChunks([{ content: 'Text' }])
 
       // Act
       render(
@@ -937,7 +949,7 @@ describe('ChunkCardList', () => {
 
     it('should handle single item in chunks', () => {
       // Arrange
-      const chunks = createGeneralChunks(['Single chunk'])
+      const chunks = createGeneralChunks([{ content: 'Single chunk' }])
 
       // Act
       render(
@@ -954,7 +966,7 @@ describe('ChunkCardList', () => {
 
     it('should handle large number of chunks', () => {
       // Arrange
-      const chunks = Array.from({ length: 100 }, (_, i) => `Chunk number ${i + 1}`)
+      const chunks = Array.from({ length: 100 }, (_, i) => ({ content: `Chunk number ${i + 1}` }))
 
       // Act
       render(
@@ -975,8 +987,11 @@ describe('ChunkCardList', () => {
   describe('Key Generation', () => {
     it('should generate unique keys for chunks', () => {
       // Arrange - chunks with same content
-      const chunks = createGeneralChunks(['Same content', 'Same content', 'Same content'])
-
+      const chunks = createGeneralChunks([
+        { content: 'Same content' },
+        { content: 'Same content' },
+        { content: 'Same content' },
+      ])
       // Act
       const { container } = render(
         <ChunkCardList
@@ -1006,9 +1021,9 @@ describe('ChunkCardList Integration', () => {
     it('should render complete text chunking workflow', () => {
       // Arrange
       const textChunks = createGeneralChunks([
-        'First paragraph of the document.',
-        'Second paragraph with more information.',
-        'Final paragraph concluding the content.',
+        { content: 'First paragraph of the document.' },
+        { content: 'Second paragraph with more information.' },
+        { content: 'Final paragraph concluding the content.' },
       ])
 
       // Act
@@ -1104,7 +1119,7 @@ describe('ChunkCardList Integration', () => {
   describe('Type Switching', () => {
     it('should handle switching from text to QA type', () => {
       // Arrange
-      const textChunks = createGeneralChunks(['Text content'])
+      const textChunks = createGeneralChunks([{ content: 'Text content' }])
       const qaChunks = createQAChunks()
 
       const { rerender } = render(
@@ -1132,7 +1147,7 @@ describe('ChunkCardList Integration', () => {
 
     it('should handle switching from text to parent-child type', () => {
       // Arrange
-      const textChunks = createGeneralChunks(['Simple text'])
+      const textChunks = createGeneralChunks([{ content: 'Simple text' }])
       const parentChildChunks = createParentChildChunks()
 
       const { rerender } = render(

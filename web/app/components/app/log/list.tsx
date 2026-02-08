@@ -39,6 +39,7 @@ import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchChatMessages, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
+import { AppSourceType } from '@/service/share'
 import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -320,7 +321,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
     // Update pagination anchor ref with the oldest answer ID
     const answerItems = allChatItems.filter(item => item.isAnswer)
-    const oldestAnswer = answerItems[answerItems.length - 1]
+    const oldestAnswer = answerItems[0]
     if (oldestAnswer?.id)
       oldestAnswerIdRef.current = oldestAnswer.id
   }, [allChatItems, hasMore, detail?.model_config?.configs?.introduction])
@@ -505,56 +506,18 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
   }, [detail.id, hasMore, isLoading, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
 
-  useEffect(() => {
+  const handleScroll = useCallback(() => {
     const scrollableDiv = document.getElementById('scrollableDiv')
-    const outerDiv = scrollableDiv?.parentElement
-    const chatContainer = document.querySelector('.mx-1.mb-1.grow.overflow-auto') as HTMLElement
-
-    let scrollContainer: HTMLElement | null = null
-
-    if (outerDiv && outerDiv.scrollHeight > outerDiv.clientHeight) {
-      scrollContainer = outerDiv
-    }
-    else if (scrollableDiv && scrollableDiv.scrollHeight > scrollableDiv.clientHeight) {
-      scrollContainer = scrollableDiv
-    }
-    else if (chatContainer && chatContainer.scrollHeight > chatContainer.clientHeight) {
-      scrollContainer = chatContainer
-    }
-    else {
-      const possibleContainers = document.querySelectorAll('.overflow-auto, .overflow-y-auto')
-      for (let i = 0; i < possibleContainers.length; i++) {
-        const container = possibleContainers[i] as HTMLElement
-        if (container.scrollHeight > container.clientHeight) {
-          scrollContainer = container
-          break
-        }
-      }
-    }
-
-    if (!scrollContainer)
+    if (!scrollableDiv)
       return
+    const clientHeight = scrollableDiv.clientHeight
+    const scrollHeight = scrollableDiv.scrollHeight
+    const currentScrollTop = scrollableDiv.scrollTop
+    // currentScrollTop is negative due to column-reverse flex direction
+    const isNearTop = Math.abs(currentScrollTop) > scrollHeight - clientHeight - 40
 
-    const handleScroll = () => {
-      const currentScrollTop = scrollContainer!.scrollTop
-      const isNearTop = currentScrollTop < 30
-
-      if (isNearTop && hasMore && !isLoading) {
-        loadMoreMessages()
-      }
-    }
-
-    scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
-
-    const handleWheel = (e: WheelEvent) => {
-      if (e.deltaY < 0)
-        handleScroll()
-    }
-    scrollContainer.addEventListener('wheel', handleWheel, { passive: true })
-
-    return () => {
-      scrollContainer!.removeEventListener('scroll', handleScroll)
-      scrollContainer!.removeEventListener('wheel', handleWheel)
+    if (isNearTop && hasMore && !isLoading) {
+      loadMoreMessages()
     }
   }, [hasMore, isLoading, loadMoreMessages])
 
@@ -638,12 +601,12 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   </div>
                 </div>
                 <TextGeneration
+                  appSourceType={AppSourceType.webApp}
                   className="mt-2"
                   content={detail.message.answer}
                   messageId={detail.message.id}
                   isError={false}
                   onRetry={noop}
-                  isInstalledApp={false}
                   supportFeedback
                   feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
                   onFeedback={feedback => onFeedback(detail.message.id, feedback)}
@@ -689,19 +652,10 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 height: '100%',
                 overflow: 'auto',
               }}
+              onScroll={handleScroll}
             >
               {/* Put the scroll bar always on the bottom */}
               <div className="flex w-full flex-col-reverse" style={{ position: 'relative' }}>
-                {/* Loading state indicator - only shown when loading */}
-                {hasMore && isLoading && (
-                  <div className="sticky left-0 right-0 top-0 z-10 bg-primary-50/40 py-3 text-center">
-                    <div className="system-xs-regular text-text-tertiary">
-                      {t('detail.loading', { ns: 'appLog' })}
-                      ...
-                    </div>
-                  </div>
-                )}
-
                 <Chat
                   config={{
                     appId: appDetail?.id,
@@ -727,6 +681,14 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   switchSibling={switchSibling}
                 />
               </div>
+              {hasMore && (
+                <div className="py-3 text-center">
+                  <div className="system-xs-regular text-text-tertiary">
+                    {t('detail.loading', { ns: 'appLog' })}
+                    ...
+                  </div>
+                </div>
+              )}
             </div>
           )}
       </div>

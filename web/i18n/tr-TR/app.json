@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "Bilgi bankası bulunamadı",
   "gotoAnything.emptyState.noPluginsFound": "Eklenti bulunamadı",
   "gotoAnything.emptyState.noWorkflowNodesFound": "İş akışı düğümü bulunamadı",
-  "gotoAnything.emptyState.tryDifferentTerm": "Farklı bir arama terimi deneyin veya {{mode}} filtresini kaldırın",
+  "gotoAnything.emptyState.tryDifferentTerm": "Farklı bir arama terimi deneyin",
   "gotoAnything.emptyState.trySpecificSearch": "Belirli aramalar için {{shortcuts}} deneyin",
   "gotoAnything.groups.apps": "Uygulamalar",
   "gotoAnything.groups.commands": "Komutlar",

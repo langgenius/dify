@@ -247,7 +247,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             />
           </div>
         </div>
-        {currentDataset && currentDataset.indexing_technique && (
+        {!!(currentDataset && currentDataset.indexing_technique) && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
               <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>

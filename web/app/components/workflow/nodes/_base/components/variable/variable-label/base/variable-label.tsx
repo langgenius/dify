@@ -61,7 +61,7 @@ const VariableLabel = ({
         notShowFullPath={notShowFullPath}
       />
       {
-        variableType && (
+        !!variableType && (
           <div className="system-xs-regular shrink-0 text-text-tertiary">
             {capitalize(variableType)}
           </div>

@@ -7,9 +7,9 @@ requiring external services (LLM, Agent, Tool, Knowledge Retrieval, HTTP Request
 
 from typing import TYPE_CHECKING, Any
 
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.enums import NodeType
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.node_factory import DifyNodeFactory
 
 from .test_mock_nodes import (
     MockAgentNode,

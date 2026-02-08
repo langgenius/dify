@@ -430,6 +430,7 @@ x-shared-env: &shared-api-worker-env
   SMTP_PASSWORD: ${SMTP_PASSWORD:-}
   SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
   SMTP_OPPORTUNISTIC_TLS: ${SMTP_OPPORTUNISTIC_TLS:-false}
+  SMTP_LOCAL_HOSTNAME: ${SMTP_LOCAL_HOSTNAME:-}
   SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
   INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-4000}
   INVITE_EXPIRY_HOURS: ${INVITE_EXPIRY_HOURS:-72}
@@ -593,6 +594,7 @@ x-shared-env: &shared-api-worker-env
   PLUGIN_DAEMON_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
   PLUGIN_DAEMON_URL: ${PLUGIN_DAEMON_URL:-http://plugin_daemon:5002}
   PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+  PLUGIN_MODEL_SCHEMA_CACHE_TTL: ${PLUGIN_MODEL_SCHEMA_CACHE_TTL:-3600}
   PLUGIN_PPROF_ENABLED: ${PLUGIN_PPROF_ENABLED:-false}
   PLUGIN_DEBUGGING_HOST: ${PLUGIN_DEBUGGING_HOST:-0.0.0.0}
   PLUGIN_DEBUGGING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
@@ -672,6 +674,7 @@ x-shared-env: &shared-api-worker-env
   ENABLE_CREATE_TIDB_SERVERLESS_TASK: ${ENABLE_CREATE_TIDB_SERVERLESS_TASK:-false}
   ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK: ${ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK:-false}
   ENABLE_CLEAN_MESSAGES: ${ENABLE_CLEAN_MESSAGES:-false}
+  ENABLE_WORKFLOW_RUN_CLEANUP_TASK: ${ENABLE_WORKFLOW_RUN_CLEANUP_TASK:-false}
   ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: ${ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK:-false}
   ENABLE_DATASETS_QUEUE_MONITOR: ${ENABLE_DATASETS_QUEUE_MONITOR:-false}
   ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: ${ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK:-true}
@@ -690,6 +693,7 @@ x-shared-env: &shared-api-worker-env
   SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD: ${SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD:-21}
   SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE: ${SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE:-1000}
   SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: ${SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS:-30}
+  SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL: ${SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL:-90000}
 
 services:
   # Init container to fix permissions
@@ -971,7 +975,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.5.2-local
+    image: langgenius/dify-plugin-daemon:0.5.3-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -1363,13 +1367,14 @@ services:
       - "${IRIS_SUPER_SERVER_PORT:-1972}:1972"
       - "${IRIS_WEB_SERVER_PORT:-52773}:52773"
     volumes:
-      - ./volumes/iris:/opt/iris
+      - ./volumes/iris:/durable
       - ./iris/iris-init.script:/iris-init.script
       - ./iris/docker-entrypoint.sh:/custom-entrypoint.sh
     entrypoint: ["/custom-entrypoint.sh"]
     tty: true
     environment:
       TZ: ${IRIS_TIMEZONE:-UTC}
+      ISC_DATA_DIRECTORY: /durable/iris
 
   # Oracle vector database
   oracle:

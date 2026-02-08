@@ -362,6 +362,18 @@ describe('PreviewDocumentPicker', () => {
       expect(screen.getByText('--')).toBeInTheDocument()
     })
 
+    it('should render when value prop is omitted (optional)', () => {
+      const files = createMockDocumentList(2)
+      const onChange = vi.fn()
+      // Do not pass `value` at all to verify optional behavior
+      render(<PreviewDocumentPicker files={files} onChange={onChange} />)
+
+      // Renders placeholder for missing name
+      expect(screen.getByText('--')).toBeInTheDocument()
+      // Portal wrapper renders
+      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+    })
+
     it('should handle empty files array', () => {
       renderComponent({ files: [] })
 

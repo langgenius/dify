@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from collections.abc import Callable
 from functools import wraps
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from flask import current_app, g, has_request_context, request
 from flask_login.config import EXEMPT_METHODS
@@ -9,7 +11,9 @@ from werkzeug.local import LocalProxy
 from configs import dify_config
 from libs.token import check_csrf_token
 from models import Account
-from models.model import EndUser
+
+if TYPE_CHECKING:
+    from models.model import EndUser
 
 
 def current_account_with_tenant():

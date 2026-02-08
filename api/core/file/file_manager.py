@@ -104,6 +104,8 @@ def download(f: File, /):
     ):
         return _download_file_content(f.storage_key)
     elif f.transfer_method == FileTransferMethod.REMOTE_URL:
+        if f.remote_url is None:
+            raise ValueError("Missing file remote_url")
         response = ssrf_proxy.get(f.remote_url, follow_redirects=True)
         response.raise_for_status()
         return response.content
@@ -134,6 +136,8 @@ def _download_file_content(path: str, /):
 def _get_encoded_string(f: File, /):
     match f.transfer_method:
         case FileTransferMethod.REMOTE_URL:
+            if f.remote_url is None:
+                raise ValueError("Missing file remote_url")
             response = ssrf_proxy.get(f.remote_url, follow_redirects=True)
             response.raise_for_status()
             data = response.content
@@ -164,3 +168,18 @@ def _to_url(f: File, /):
         return sign_tool_file(tool_file_id=f.related_id, extension=f.extension)
     else:
         raise ValueError(f"Unsupported transfer method: {f.transfer_method}")
+
+
+class FileManager:
+    """
+    Adapter exposing file manager helpers behind FileManagerProtocol.
+
+    This is intentionally a thin wrapper over the existing module-level functions so callers can inject it
+    where a protocol-typed file manager is expected.
+    """
+
+    def download(self, f: File, /) -> bytes:
+        return download(f)
+
+
+file_manager = FileManager()

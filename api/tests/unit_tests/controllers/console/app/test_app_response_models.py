@@ -31,6 +31,13 @@ def _load_app_module():
 
         def schema_model(self, name, schema):
             self.models[name] = schema
+            return schema
+
+        def model(self, name, model_dict=None, **kwargs):
+            """Register a model with the namespace (flask-restx compatibility)."""
+            if model_dict is not None:
+                self.models[name] = model_dict
+            return model_dict
 
         def _decorator(self, obj):
             return obj

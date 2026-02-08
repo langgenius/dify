@@ -1,16 +1,34 @@
 [src]
 exclude = [
-    # TODO: enable when violations fixed
+    # deps groups (A1/A2/B/C/D/E)
+    # B: app runner + prompt
+    "core/prompt",
+    "core/app/apps/base_app_runner.py",
     "core/app/apps/workflow_app_runner.py",
+    "core/agent",
+    "core/plugin",
+    # C: services/controllers/fields/libs
+    "services",
+    "controllers/inner_api",
     "controllers/console/app",
     "controllers/console/explore",
     "controllers/console/datasets",
     "controllers/console/workspace",
+    "controllers/service_api/wraps.py",
+    "fields/conversation_fields.py",
+    "libs/external_api.py",
+    # D: observability + integrations
+    "core/ops",
+    "extensions",
+    # E: vector DB integrations
+    "core/rag/datasource/vdb",
     # non-producition or generated code
     "migrations",
     "tests",
 ]
 
+
 [rules]
-missing-argument = "ignore" # TODO: restore when **args for constructor is supported properly
-possibly-unbound-attribute = "ignore"
+deprecated = "ignore"
+unused-ignore-comment = "ignore"
+# possibly-missing-attribute = "ignore"

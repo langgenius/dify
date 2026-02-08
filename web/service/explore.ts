@@ -1,4 +1,5 @@
 import type { AccessMode } from '@/models/access-control'
+import type { Banner } from '@/models/app'
 import type { App, AppCategory } from '@/models/explore'
 import { del, get, patch } from './base'
 
@@ -9,6 +10,7 @@ export const fetchAppList = () => {
   }>('/explore/apps')
 }
 
+// eslint-disable-next-line ts/no-explicit-any
 export const fetchAppDetail = (id: string): Promise<any> => {
   return get(`/explore/apps/${id}`)
 }
@@ -31,4 +33,9 @@ export const updatePinStatus = (id: string, isPinned: boolean) => {
 
 export const getAppAccessModeByAppId = (appId: string) => {
   return get<{ accessMode: AccessMode }>(`/enterprise/webapp/app/access-mode?appId=${appId}`)
+}
+
+export const fetchBanners = (language?: string): Promise<Banner[]> => {
+  const url = language ? `/explore/banners?language=${language}` : '/explore/banners'
+  return get<Banner[]>(url)
 }

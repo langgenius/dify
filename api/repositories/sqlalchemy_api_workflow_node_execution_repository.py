@@ -9,11 +9,14 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import cast
 
-from sqlalchemy import asc, delete, desc, select
+from sqlalchemy import asc, delete, desc, func, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.workflow import WorkflowNodeExecutionModel
+from models.workflow import (
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+)
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 
 
@@ -290,3 +293,85 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             result = cast(CursorResult, session.execute(stmt))
             session.commit()
             return result.rowcount
+
+    def delete_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
+        """
+        Delete node executions (and offloads) for the given workflow runs using workflow_run_id.
+        """
+        if not run_ids:
+            return 0, 0
+
+        run_ids = list(run_ids)
+        run_id_filter = WorkflowNodeExecutionModel.workflow_run_id.in_(run_ids)
+        node_execution_ids = select(WorkflowNodeExecutionModel.id).where(run_id_filter)
+
+        offloads_deleted = (
+            cast(
+                CursorResult,
+                session.execute(
+                    delete(WorkflowNodeExecutionOffload).where(
+                        WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids)
+                    )
+                ),
+            ).rowcount
+            or 0
+        )
+
+        node_executions_deleted = (
+            cast(
+                CursorResult,
+                session.execute(delete(WorkflowNodeExecutionModel).where(run_id_filter)),
+            ).rowcount
+            or 0
+        )
+
+        return node_executions_deleted, offloads_deleted
+
+    def count_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
+        """
+        Count node executions (and offloads) for the given workflow runs using workflow_run_id.
+        """
+        if not run_ids:
+            return 0, 0
+
+        run_ids = list(run_ids)
+        run_id_filter = WorkflowNodeExecutionModel.workflow_run_id.in_(run_ids)
+
+        node_executions_count = (
+            session.scalar(select(func.count()).select_from(WorkflowNodeExecutionModel).where(run_id_filter)) or 0
+        )
+        node_execution_ids = select(WorkflowNodeExecutionModel.id).where(run_id_filter)
+        offloads_count = (
+            session.scalar(
+                select(func.count())
+                .select_from(WorkflowNodeExecutionOffload)
+                .where(WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids))
+            )
+            or 0
+        )
+
+        return int(node_executions_count), int(offloads_count)
+
+    @staticmethod
+    def get_by_run(
+        session: Session,
+        run_id: str,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
+        """
+        Fetch node executions for a run using workflow_run_id.
+        """
+        stmt = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.workflow_run_id == run_id)
+        return list(session.scalars(stmt))
+
+    def get_offloads_by_execution_ids(
+        self,
+        session: Session,
+        node_execution_ids: Sequence[str],
+    ) -> Sequence[WorkflowNodeExecutionOffload]:
+        if not node_execution_ids:
+            return []
+
+        stmt = select(WorkflowNodeExecutionOffload).where(
+            WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids)
+        )
+        return list(session.scalars(stmt))

@@ -250,7 +250,7 @@ class WorkflowResponseConverter:
             data=WorkflowFinishStreamResponse.Data(
                 id=run_id,
                 workflow_id=workflow_id,
-                status=status.value,
+                status=status,
                 outputs=encoded_outputs,
                 error=error,
                 elapsed_time=elapsed_time,
@@ -340,13 +340,13 @@ class WorkflowResponseConverter:
         metadata = self._merge_metadata(event.execution_metadata, snapshot)
 
         if isinstance(event, QueueNodeSucceededEvent):
-            status = WorkflowNodeExecutionStatus.SUCCEEDED.value
+            status = WorkflowNodeExecutionStatus.SUCCEEDED
             error_message = event.error
         elif isinstance(event, QueueNodeFailedEvent):
-            status = WorkflowNodeExecutionStatus.FAILED.value
+            status = WorkflowNodeExecutionStatus.FAILED
             error_message = event.error
         else:
-            status = WorkflowNodeExecutionStatus.EXCEPTION.value
+            status = WorkflowNodeExecutionStatus.EXCEPTION
             error_message = event.error
 
         return NodeFinishStreamResponse(
@@ -413,7 +413,7 @@ class WorkflowResponseConverter:
                 process_data_truncated=process_data_truncated,
                 outputs=outputs,
                 outputs_truncated=outputs_truncated,
-                status=WorkflowNodeExecutionStatus.RETRY.value,
+                status=WorkflowNodeExecutionStatus.RETRY,
                 error=event.error,
                 elapsed_time=elapsed_time,
                 execution_metadata=metadata,

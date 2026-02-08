@@ -1057,6 +1057,10 @@ class TestPluginInstallationSources:
         assert source == PluginInstallationSource.Marketplace
         assert source.value == "marketplace"
 
+    def test_parse_capitalized_marketplace_source(self):
+        # plugin-daemon backward compatibility: some versions return "Marketplace"
+        assert PluginInstallationSource("Marketplace") == PluginInstallationSource.Marketplace
+
     def test_github_installation_source(self):
         """
         Test plugin installation from GitHub source.

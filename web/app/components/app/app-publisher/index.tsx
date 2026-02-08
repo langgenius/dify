@@ -49,7 +49,8 @@ import Divider from '../../base/divider'
 import Loading from '../../base/loading'
 import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
-import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
+import ShortcutsName from '../../workflow/shortcuts-name'
+import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
 import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
@@ -345,13 +346,7 @@ const AppPublisher = ({
                             : (
                                 <div className="flex gap-1">
                                   <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
-                                  <div className="flex gap-0.5">
-                                    {PUBLISH_SHORTCUT.map(key => (
-                                      <span key={key} className="system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface">
-                                        {getKeyboardKeyNameBySystem(key)}
-                                      </span>
-                                    ))}
-                                  </div>
+                                  <ShortcutsName keys={PUBLISH_SHORTCUT} bgColor="white" />
                                 </div>
                               )
                         }

@@ -685,6 +685,8 @@ class LLMNode(Node[LLMNodeData]):
                         if "content" not in item:
                             raise InvalidContextStructureError(f"Invalid context structure: {item}")
 
+                        if item.get("summary"):
+                            context_str += item["summary"] + "\n"
                         context_str += item["content"] + "\n"
 
                         retriever_resource = self._convert_to_original_retriever_resource(item)
@@ -746,6 +748,7 @@ class LLMNode(Node[LLMNodeData]):
                 page=metadata.get("page"),
                 doc_metadata=metadata.get("doc_metadata"),
                 files=context_dict.get("files"),
+                summary=context_dict.get("summary"),
             )
 
             return source
@@ -849,18 +852,16 @@ class LLMNode(Node[LLMNodeData]):
             # Insert histories into the prompt
             prompt_content = prompt_messages[0].content
             # For issue #11247 - Check if prompt content is a string or a list
-            prompt_content_type = type(prompt_content)
-            if prompt_content_type == str:
+            if isinstance(prompt_content, str):
                 prompt_content = str(prompt_content)
                 if "#histories#" in prompt_content:
                     prompt_content = prompt_content.replace("#histories#", memory_text)
                 else:
                     prompt_content = memory_text + "\n" + prompt_content
                 prompt_messages[0].content = prompt_content
-            elif prompt_content_type == list:
-                prompt_content = prompt_content if isinstance(prompt_content, list) else []
+            elif isinstance(prompt_content, list):
                 for content_item in prompt_content:
-                    if content_item.type == PromptMessageContentType.TEXT:
+                    if isinstance(content_item, TextPromptMessageContent):
                         if "#histories#" in content_item.data:
                             content_item.data = content_item.data.replace("#histories#", memory_text)
                         else:
@@ -870,13 +871,12 @@ class LLMNode(Node[LLMNodeData]):
 
             # Add current query to the prompt message
             if sys_query:
-                if prompt_content_type == str:
+                if isinstance(prompt_content, str):
                     prompt_content = str(prompt_messages[0].content).replace("#sys.query#", sys_query)
                     prompt_messages[0].content = prompt_content
-                elif prompt_content_type == list:
-                    prompt_content = prompt_content if isinstance(prompt_content, list) else []
+                elif isinstance(prompt_content, list):
                     for content_item in prompt_content:
-                        if content_item.type == PromptMessageContentType.TEXT:
+                        if isinstance(content_item, TextPromptMessageContent):
                             content_item.data = sys_query + "\n" + content_item.data
                 else:
                     raise ValueError("Invalid prompt content type")
@@ -1030,14 +1030,14 @@ class LLMNode(Node[LLMNodeData]):
         if typed_node_data.prompt_config:
             enable_jinja = False
 
-            if isinstance(prompt_template, list):
+            if isinstance(prompt_template, LLMNodeCompletionModelPromptTemplate):
+                if prompt_template.edition_type == "jinja2":
+                    enable_jinja = True
+            else:
                 for prompt in prompt_template:
                     if prompt.edition_type == "jinja2":
                         enable_jinja = True
                         break
-            else:
-                if prompt_template.edition_type == "jinja2":
-                    enable_jinja = True
 
             if enable_jinja:
                 for variable_selector in typed_node_data.prompt_config.jinja2_variables or []:

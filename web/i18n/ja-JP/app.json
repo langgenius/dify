@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "ナレッジベースが見つかりません",
   "gotoAnything.emptyState.noPluginsFound": "プラグインが見つかりません",
   "gotoAnything.emptyState.noWorkflowNodesFound": "ワークフローノードが見つかりません",
-  "gotoAnything.emptyState.tryDifferentTerm": "別の検索語句を試すか、{{mode}} フィルターを削除してください",
+  "gotoAnything.emptyState.tryDifferentTerm": "別の検索語句を試してください",
   "gotoAnything.emptyState.trySpecificSearch": "特定検索には {{shortcuts}} を試してください",
   "gotoAnything.groups.apps": "アプリケーション",
   "gotoAnything.groups.commands": "コマンド",

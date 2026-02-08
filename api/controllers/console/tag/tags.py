@@ -1,16 +1,26 @@
 from typing import Literal
 
 from flask import request
-from flask_restx import Resource, marshal_with
+from flask_restx import Namespace, Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
-from fields.tag_fields import dataset_tag_fields
 from libs.login import current_account_with_tenant, login_required
 from services.tag_service import TagService
+
+dataset_tag_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "type": fields.String,
+    "binding_count": fields.String,
+}
+
+
+def build_dataset_tag_fields(api_or_ns: Namespace):
+    return api_or_ns.model("DataSetTag", dataset_tag_fields)
 
 
 class TagBasePayload(BaseModel):
@@ -30,11 +40,17 @@ class TagBindingRemovePayload(BaseModel):
     type: Literal["knowledge", "app"] | None = Field(default=None, description="Tag type")
 
 
+class TagListQueryParam(BaseModel):
+    type: Literal["knowledge", "app", ""] = Field("", description="Tag type filter")
+    keyword: str | None = Field(None, description="Search keyword")
+
+
 register_schema_models(
     console_ns,
     TagBasePayload,
     TagBindingPayload,
     TagBindingRemovePayload,
+    TagListQueryParam,
 )
 
 
@@ -43,12 +59,15 @@ class TagListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.doc(
+        params={"type": 'Tag type filter. Can be "knowledge" or "app".', "keyword": "Search keyword for tag name."}
+    )
     @marshal_with(dataset_tag_fields)
     def get(self):
         _, current_tenant_id = current_account_with_tenant()
-        tag_type = request.args.get("type", type=str, default="")
-        keyword = request.args.get("keyword", default=None, type=str)
-        tags = TagService.get_tags(tag_type, current_tenant_id, keyword)
+        raw_args = request.args.to_dict()
+        param = TagListQueryParam.model_validate(raw_args)
+        tags = TagService.get_tags(param.type, current_tenant_id, param.keyword)
 
         return tags, 200
 
@@ -101,7 +120,7 @@ class TagUpdateDeleteApi(Resource):
 
         TagService.delete_tag(tag_id)
 
-        return 204
+        return "", 204
 
 
 @console_ns.route("/tag-bindings/create")

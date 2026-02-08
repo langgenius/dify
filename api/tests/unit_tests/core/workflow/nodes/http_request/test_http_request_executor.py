@@ -16,7 +16,7 @@ from core.workflow.system_variable import SystemVariable
 def test_executor_with_json_body_and_number_variable():
     # Prepare the variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "number"], 42)
@@ -69,7 +69,7 @@ def test_executor_with_json_body_and_number_variable():
 def test_executor_with_json_body_and_object_variable():
     # Prepare the variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "object"], {"name": "John Doe", "age": 30, "email": "john@example.com"})
@@ -124,7 +124,7 @@ def test_executor_with_json_body_and_object_variable():
 def test_executor_with_json_body_and_nested_object_variable():
     # Prepare the variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "object"], {"name": "John Doe", "age": 30, "email": "john@example.com"})
@@ -178,7 +178,7 @@ def test_executor_with_json_body_and_nested_object_variable():
 
 
 def test_extract_selectors_from_template_with_newline():
-    variable_pool = VariablePool(system_variables=SystemVariable.empty())
+    variable_pool = VariablePool(system_variables=SystemVariable.default())
     variable_pool.add(("node_id", "custom_query"), "line1\nline2")
     node_data = HttpRequestNodeData(
         title="Test JSON Body with Nested Object Variable",
@@ -205,7 +205,7 @@ def test_extract_selectors_from_template_with_newline():
 def test_executor_with_form_data():
     # Prepare the variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "text_field"], "Hello, World!")
@@ -290,7 +290,7 @@ def test_init_headers():
         return Executor(
             node_data=node_data,
             timeout=timeout,
-            variable_pool=VariablePool(system_variables=SystemVariable.empty()),
+            variable_pool=VariablePool(system_variables=SystemVariable.default()),
         )
 
     executor = create_executor("aa\n cc:")
@@ -324,7 +324,7 @@ def test_init_params():
         return Executor(
             node_data=node_data,
             timeout=timeout,
-            variable_pool=VariablePool(system_variables=SystemVariable.empty()),
+            variable_pool=VariablePool(system_variables=SystemVariable.default()),
         )
 
     # Test basic key-value pairs
@@ -355,7 +355,7 @@ def test_init_params():
 
 def test_empty_api_key_raises_error_bearer():
     """Test that empty API key raises AuthorizationConfigError for bearer auth."""
-    variable_pool = VariablePool(system_variables=SystemVariable.empty())
+    variable_pool = VariablePool(system_variables=SystemVariable.default())
     node_data = HttpRequestNodeData(
         title="test",
         method="get",
@@ -379,7 +379,7 @@ def test_empty_api_key_raises_error_bearer():
 
 def test_empty_api_key_raises_error_basic():
     """Test that empty API key raises AuthorizationConfigError for basic auth."""
-    variable_pool = VariablePool(system_variables=SystemVariable.empty())
+    variable_pool = VariablePool(system_variables=SystemVariable.default())
     node_data = HttpRequestNodeData(
         title="test",
         method="get",
@@ -403,7 +403,7 @@ def test_empty_api_key_raises_error_basic():
 
 def test_empty_api_key_raises_error_custom():
     """Test that empty API key raises AuthorizationConfigError for custom auth."""
-    variable_pool = VariablePool(system_variables=SystemVariable.empty())
+    variable_pool = VariablePool(system_variables=SystemVariable.default())
     node_data = HttpRequestNodeData(
         title="test",
         method="get",
@@ -427,7 +427,7 @@ def test_empty_api_key_raises_error_custom():
 
 def test_whitespace_only_api_key_raises_error():
     """Test that whitespace-only API key raises AuthorizationConfigError."""
-    variable_pool = VariablePool(system_variables=SystemVariable.empty())
+    variable_pool = VariablePool(system_variables=SystemVariable.default())
     node_data = HttpRequestNodeData(
         title="test",
         method="get",
@@ -451,7 +451,7 @@ def test_whitespace_only_api_key_raises_error():
 
 def test_valid_api_key_works():
     """Test that valid API key works correctly for bearer auth."""
-    variable_pool = VariablePool(system_variables=SystemVariable.empty())
+    variable_pool = VariablePool(system_variables=SystemVariable.default())
     node_data = HttpRequestNodeData(
         title="test",
         method="get",
@@ -475,3 +475,130 @@ def test_valid_api_key_works():
     headers = executor._assembling_headers()
     assert "Authorization" in headers
     assert headers["Authorization"] == "Bearer valid-api-key-123"
+
+
+def test_executor_with_json_body_and_unquoted_uuid_variable():
+    """Test that unquoted UUID variables are correctly handled in JSON body.
+
+    This test verifies the fix for issue #31436 where json_repair would truncate
+    certain UUID patterns (like 57eeeeb1-...) when they appeared as unquoted values.
+    """
+    # UUID that triggers the json_repair truncation bug
+    test_uuid = "57eeeeb1-450b-482c-81b9-4be77e95dee2"
+
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={},
+    )
+    variable_pool.add(["pre_node_id", "uuid"], test_uuid)
+
+    node_data = HttpRequestNodeData(
+        title="Test JSON Body with Unquoted UUID Variable",
+        method="post",
+        url="https://api.example.com/data",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="Content-Type: application/json",
+        params="",
+        body=HttpRequestNodeBody(
+            type="json",
+            data=[
+                BodyData(
+                    key="",
+                    type="text",
+                    # UUID variable without quotes - this is the problematic case
+                    value='{"rowId": {{#pre_node_id.uuid#}}}',
+                )
+            ],
+        ),
+    )
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        variable_pool=variable_pool,
+    )
+
+    # The UUID should be preserved in full, not truncated
+    assert executor.json == {"rowId": test_uuid}
+    assert len(executor.json["rowId"]) == len(test_uuid)
+
+
+def test_executor_with_json_body_and_unquoted_uuid_with_newlines():
+    """Test that unquoted UUID variables with newlines in JSON are handled correctly.
+
+    This is a specific case from issue #31436 where the JSON body contains newlines.
+    """
+    test_uuid = "57eeeeb1-450b-482c-81b9-4be77e95dee2"
+
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={},
+    )
+    variable_pool.add(["pre_node_id", "uuid"], test_uuid)
+
+    node_data = HttpRequestNodeData(
+        title="Test JSON Body with Unquoted UUID and Newlines",
+        method="post",
+        url="https://api.example.com/data",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="Content-Type: application/json",
+        params="",
+        body=HttpRequestNodeBody(
+            type="json",
+            data=[
+                BodyData(
+                    key="",
+                    type="text",
+                    # JSON with newlines and unquoted UUID variable
+                    value='{\n"rowId": {{#pre_node_id.uuid#}}\n}',
+                )
+            ],
+        ),
+    )
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        variable_pool=variable_pool,
+    )
+
+    # The UUID should be preserved in full
+    assert executor.json == {"rowId": test_uuid}
+
+
+def test_executor_with_json_body_preserves_numbers_and_strings():
+    """Test that numbers are preserved and string values are properly quoted."""
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={},
+    )
+    variable_pool.add(["node", "count"], 42)
+    variable_pool.add(["node", "id"], "abc-123")
+
+    node_data = HttpRequestNodeData(
+        title="Test JSON Body with mixed types",
+        method="post",
+        url="https://api.example.com/data",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="",
+        params="",
+        body=HttpRequestNodeBody(
+            type="json",
+            data=[
+                BodyData(
+                    key="",
+                    type="text",
+                    value='{"count": {{#node.count#}}, "id": {{#node.id#}}}',
+                )
+            ],
+        ),
+    )
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        variable_pool=variable_pool,
+    )
+
+    assert executor.json["count"] == 42
+    assert executor.json["id"] == "abc-123"

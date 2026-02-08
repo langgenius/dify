@@ -275,8 +275,8 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
         category: PluginCategoryEnum.model,
         exclude,
         type: 'plugin',
-        sortBy: 'install_count',
-        sortOrder: 'DESC',
+        sort_by: 'install_count',
+        sort_order: 'DESC',
       })
     }
     else {
@@ -284,10 +284,10 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
         query: '',
         category: PluginCategoryEnum.model,
         type: 'plugin',
-        pageSize: 1000,
+        page_size: 1000,
         exclude,
-        sortBy: 'install_count',
-        sortOrder: 'DESC',
+        sort_by: 'install_count',
+        sort_order: 'DESC',
       })
     }
   }, [queryPlugins, queryPluginsWithDebounced, searchText, exclude])

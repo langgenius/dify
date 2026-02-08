@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, Mock, patch
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine
+from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_events import (
     GraphRunStartedEvent,
@@ -41,6 +41,7 @@ class TestStopEventPropagation:
             graph=mock_graph,
             graph_runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
         )
 
         # Verify stop_event was created
@@ -84,6 +85,7 @@ class TestStopEventPropagation:
             graph=mock_graph,
             graph_runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
         )
 
         # Set the stop_event before running
@@ -131,6 +133,7 @@ class TestStopEventPropagation:
             graph=mock_graph,
             graph_runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
         )
 
         # Initially not set
@@ -155,6 +158,7 @@ class TestStopEventPropagation:
             graph=mock_graph,
             graph_runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
         )
 
         # Verify WorkerPool has the stop_event
@@ -174,6 +178,7 @@ class TestStopEventPropagation:
             graph=mock_graph,
             graph_runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
         )
 
         # Verify Dispatcher has the stop_event
@@ -311,6 +316,7 @@ class TestStopEventIntegration:
             graph=mock_graph,
             graph_runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
         )
 
         # Set stop_event before running
@@ -360,6 +366,7 @@ class TestStopEventIntegration:
             graph=mock_graph,
             graph_runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
         )
 
         # All nodes should share the same stop_event
@@ -385,6 +392,7 @@ class TestStopEventTimeoutBehavior:
             graph=mock_graph,
             graph_runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
         )
 
         dispatcher = engine._dispatcher
@@ -411,6 +419,7 @@ class TestStopEventTimeoutBehavior:
             graph=mock_graph,
             graph_runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
         )
 
         worker_pool = engine._worker_pool
@@ -460,6 +469,7 @@ class TestStopEventResumeBehavior:
             graph=mock_graph,
             graph_runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
         )
 
         # Simulate a previous execution that set stop_event
@@ -490,6 +500,7 @@ class TestWorkerStopBehavior:
             graph=mock_graph,
             graph_runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
         )
 
         # Get the worker pool and check workers

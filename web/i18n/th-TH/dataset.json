@@ -7,6 +7,7 @@
   "batchAction.cancel": "ยกเลิก",
   "batchAction.delete": "ลบ",
   "batchAction.disable": "เก",
+  "batchAction.download": "ดาวน์โหลด",
   "batchAction.enable": "เปิด",
   "batchAction.reIndex": "สร้างดัชนีใหม่",
   "batchAction.selected": "เลือก",

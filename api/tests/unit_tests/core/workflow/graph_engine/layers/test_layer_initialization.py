@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from core.workflow.graph_engine import GraphEngine
+from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_engine.layers.base import (
     GraphEngineLayer,
@@ -43,6 +43,7 @@ def test_layer_runtime_state_available_after_engine_layer() -> None:
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
+        config=GraphEngineConfig(),
     )
 
     layer = LayerForTest()

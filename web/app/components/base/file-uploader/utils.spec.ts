@@ -1,4 +1,3 @@
-import type { MockInstance } from 'vitest'
 import mime from 'mime'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { upload } from '@/service/base'
@@ -6,7 +5,6 @@ import { TransferMethod } from '@/types/app'
 import { FILE_EXTS } from '../prompt-editor/constants'
 import { FileAppearanceTypeEnum } from './types'
 import {
-  downloadFile,
   fileIsUploaded,
   fileUpload,
   getFileAppearanceType,
@@ -780,76 +778,6 @@ describe('file-uploader utils', () => {
         transferMethod: TransferMethod.remote_url,
         progress: 100,
       } as any)).toBe(true)
-    })
-  })
-
-  describe('downloadFile', () => {
-    let mockAnchor: HTMLAnchorElement
-    let createElementMock: MockInstance
-    let appendChildMock: MockInstance
-    let removeChildMock: MockInstance
-
-    beforeEach(() => {
-      // Mock createElement and appendChild
-      mockAnchor = {
-        href: '',
-        download: '',
-        style: { display: '' },
-        target: '',
-        title: '',
-        click: vi.fn(),
-      } as unknown as HTMLAnchorElement
-
-      createElementMock = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor as any)
-      appendChildMock = vi.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => {
-        return node
-      })
-      removeChildMock = vi.spyOn(document.body, 'removeChild').mockImplementation((node: Node) => {
-        return node
-      })
-    })
-
-    afterEach(() => {
-      vi.resetAllMocks()
-    })
-
-    it('should create and trigger download with correct attributes', () => {
-      const url = 'https://example.com/test.pdf'
-      const filename = 'test.pdf'
-
-      downloadFile(url, filename)
-
-      // Verify anchor element was created with correct properties
-      expect(createElementMock).toHaveBeenCalledWith('a')
-      expect(mockAnchor.href).toBe(url)
-      expect(mockAnchor.download).toBe(filename)
-      expect(mockAnchor.style.display).toBe('none')
-      expect(mockAnchor.target).toBe('_blank')
-      expect(mockAnchor.title).toBe(filename)
-
-      // Verify DOM operations
-      expect(appendChildMock).toHaveBeenCalledWith(mockAnchor)
-      expect(mockAnchor.click).toHaveBeenCalled()
-      expect(removeChildMock).toHaveBeenCalledWith(mockAnchor)
-    })
-
-    it('should handle empty filename', () => {
-      const url = 'https://example.com/test.pdf'
-      const filename = ''
-
-      downloadFile(url, filename)
-
-      expect(mockAnchor.download).toBe('')
-      expect(mockAnchor.title).toBe('')
-    })
-
-    it('should handle empty url', () => {
-      const url = ''
-      const filename = 'test.pdf'
-
-      downloadFile(url, filename)
-
-      expect(mockAnchor.href).toBe('')
     })
   })
 })

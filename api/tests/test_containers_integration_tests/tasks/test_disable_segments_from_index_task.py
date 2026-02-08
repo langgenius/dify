@@ -70,11 +70,9 @@ class TestDisableSegmentsFromIndexTask:
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
 
-        from extensions.ext_database import db
-
-        db.session.add(tenant)
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         # Set the current tenant for the account
         account.current_tenant = tenant
@@ -110,10 +108,8 @@ class TestDisableSegmentsFromIndexTask:
             built_in_field_enabled=False,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         return dataset
 
@@ -158,10 +154,8 @@ class TestDisableSegmentsFromIndexTask:
         document.archived = False
         document.doc_form = "text_model"  # Use text_model form for testing
         document.doc_language = "en"
-        from extensions.ext_database import db
-
-        db.session.add(document)
-        db.session.commit()
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         return document
 
@@ -211,11 +205,9 @@ class TestDisableSegmentsFromIndexTask:
 
             segments.append(segment)
 
-        from extensions.ext_database import db
-
         for segment in segments:
-            db.session.add(segment)
-        db.session.commit()
+            db_session_with_containers.add(segment)
+        db_session_with_containers.commit()
 
         return segments
 
@@ -645,15 +637,12 @@ class TestDisableSegmentsFromIndexTask:
             with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
                 mock_redis.delete.return_value = True
 
-                # Mock db.session.close to verify it's called
-                with patch("tasks.disable_segments_from_index_task.db.session.close") as mock_close:
-                    # Act
-                    result = disable_segments_from_index_task(segment_ids, dataset.id, document.id)
+                # Act
+                result = disable_segments_from_index_task(segment_ids, dataset.id, document.id)
 
-                    # Assert
-                    assert result is None  # Task should complete without returning a value
-                    # Verify session was closed
-                    mock_close.assert_called()
+                # Assert
+                assert result is None  # Task should complete without returning a value
+                # Session lifecycle is managed by context manager; no explicit close assertion
 
     def test_disable_segments_empty_segment_ids(self, db_session_with_containers):
         """

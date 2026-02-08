@@ -3,7 +3,6 @@ import {
   memo,
   useMemo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
 import Header from '@/app/components/workflow/header'
 import {
   useStore,
@@ -13,9 +12,7 @@ import Publisher from './publisher'
 import RunMode from './run-mode'
 
 const RagPipelineHeader = () => {
-  const { t } = useTranslation()
   const pipelineId = useStore(s => s.pipelineId)
-  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
 
   const viewHistoryProps = useMemo(() => {
     return {
@@ -42,7 +39,7 @@ const RagPipelineHeader = () => {
         viewHistoryProps,
       },
     }
-  }, [viewHistoryProps, showDebugAndPreviewPanel, t])
+  }, [viewHistoryProps])
 
   return (
     <Header {...headerProps} />

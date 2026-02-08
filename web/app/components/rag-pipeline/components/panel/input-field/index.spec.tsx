@@ -49,6 +49,11 @@ vi.mock('@/app/components/workflow/store', () => ({
     }
     return selector(state)
   },
+  useWorkflowStore: () => ({
+    getState: () => ({
+      setRagPipelineVariables: mockSetRagPipelineVariables,
+    }),
+  }),
 }))
 
 // Mock useNodesSyncDraft hook

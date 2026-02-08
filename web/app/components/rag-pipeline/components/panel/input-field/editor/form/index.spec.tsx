@@ -779,27 +779,6 @@ describe('useConfigurations', () => {
       expect(mockSetFieldValue).toHaveBeenCalledWith('maxLength', expect.any(Number))
     })
 
-    it('should call setFieldValue when type changes to paragraph', () => {
-      // Arrange
-      const mockGetFieldValue = vi.fn()
-      const mockSetFieldValue = vi.fn()
-
-      const { result } = renderHookWithProviders(() =>
-        useConfigurations({
-          getFieldValue: mockGetFieldValue,
-          setFieldValue: mockSetFieldValue,
-          supportFile: false,
-        }),
-      )
-
-      // Act
-      const typeConfig = result.current.find(config => config.variable === 'type')
-      typeConfig?.listeners?.onChange?.(createMockEvent(PipelineInputVarType.paragraph))
-
-      // Assert
-      expect(mockSetFieldValue).toHaveBeenCalledWith('maxLength', 48) // DEFAULT_VALUE_MAX_LEN
-    })
-
     it('should set label from variable name on blur when label is empty', () => {
       // Arrange
       const mockGetFieldValue = vi.fn().mockReturnValue('')

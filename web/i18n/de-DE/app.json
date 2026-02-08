@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "Keine Wissensdatenbanken gefunden",
   "gotoAnything.emptyState.noPluginsFound": "Keine Plugins gefunden",
   "gotoAnything.emptyState.noWorkflowNodesFound": "Keine Workflow-Knoten gefunden",
-  "gotoAnything.emptyState.tryDifferentTerm": "Versuchen Sie einen anderen Suchbegriff oder entfernen Sie den {{mode}}-Filter",
+  "gotoAnything.emptyState.tryDifferentTerm": "Versuchen Sie einen anderen Suchbegriff",
   "gotoAnything.emptyState.trySpecificSearch": "Versuchen Sie {{shortcuts}} für spezifische Suchen",
   "gotoAnything.groups.apps": "Apps",
   "gotoAnything.groups.commands": "Befehle",

@@ -126,7 +126,7 @@ vi.mock('@/app/components/plugins/card', () => ({
     <div data-testid={`card-${payload.name}`}>
       <div data-testid="card-name">{payload.name}</div>
       <div data-testid="card-label">{payload.label?.['en-US'] || payload.name}</div>
-      {footer && <div data-testid="card-footer">{footer}</div>}
+      {!!footer && <div data-testid="card-footer">{footer}</div>}
     </div>
   ),
 }))

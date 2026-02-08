@@ -189,16 +189,13 @@ class ToolManager:
                 raise ToolProviderNotFoundError(f"builtin tool {tool_name} not found")
 
             if not provider_controller.need_credentials:
-                return cast(
-                    BuiltinTool,
-                    builtin_tool.fork_tool_runtime(
-                        runtime=ToolRuntime(
-                            tenant_id=tenant_id,
-                            credentials={},
-                            invoke_from=invoke_from,
-                            tool_invoke_from=tool_invoke_from,
-                        )
-                    ),
+                return builtin_tool.fork_tool_runtime(
+                    runtime=ToolRuntime(
+                        tenant_id=tenant_id,
+                        credentials={},
+                        invoke_from=invoke_from,
+                        tool_invoke_from=tool_invoke_from,
+                    )
                 )
             builtin_provider = None
             if isinstance(provider_controller, PluginToolProviderController):
@@ -300,18 +297,15 @@ class ToolManager:
                 decrypted_credentials = refreshed_credentials.credentials
                 cache.delete()
 
-            return cast(
-                BuiltinTool,
-                builtin_tool.fork_tool_runtime(
-                    runtime=ToolRuntime(
-                        tenant_id=tenant_id,
-                        credentials=dict(decrypted_credentials),
-                        credential_type=CredentialType.of(builtin_provider.credential_type),
-                        runtime_parameters={},
-                        invoke_from=invoke_from,
-                        tool_invoke_from=tool_invoke_from,
-                    )
-                ),
+            return builtin_tool.fork_tool_runtime(
+                runtime=ToolRuntime(
+                    tenant_id=tenant_id,
+                    credentials=dict(decrypted_credentials),
+                    credential_type=CredentialType.of(builtin_provider.credential_type),
+                    runtime_parameters={},
+                    invoke_from=invoke_from,
+                    tool_invoke_from=tool_invoke_from,
+                )
             )
 
         elif provider_type == ToolProviderType.API:

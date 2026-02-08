@@ -172,7 +172,6 @@ class TestAgentService:
 
         # Create app model config
         app_model_config = AppModelConfig(
-            id=fake.uuid4(),
             app_id=app.id,
             provider="openai",
             model_id="gpt-3.5-turbo",
@@ -180,6 +179,7 @@ class TestAgentService:
             model="gpt-3.5-turbo",
             agent_mode=json.dumps({"enabled": True, "strategy": "react", "tools": []}),
         )
+        app_model_config.id = fake.uuid4()
         db.session.add(app_model_config)
         db.session.commit()
 
@@ -230,7 +230,6 @@ class TestAgentService:
 
         # Create first agent thought
         thought1 = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to analyze the user's request",
@@ -257,7 +256,6 @@ class TestAgentService:
 
         # Create second agent thought
         thought2 = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=2,
             thought="Based on the analysis, I can provide a response",
@@ -415,7 +413,6 @@ class TestAgentService:
 
         # Create app model config
         app_model_config = AppModelConfig(
-            id=fake.uuid4(),
             app_id=app.id,
             provider="openai",
             model_id="gpt-3.5-turbo",
@@ -423,6 +420,7 @@ class TestAgentService:
             model="gpt-3.5-turbo",
             agent_mode=json.dumps({"enabled": True, "strategy": "react", "tools": []}),
         )
+        app_model_config.id = fake.uuid4()
         db.session.add(app_model_config)
         db.session.commit()
 
@@ -487,7 +485,6 @@ class TestAgentService:
 
         # Create app model config
         app_model_config = AppModelConfig(
-            id=fake.uuid4(),
             app_id=app.id,
             provider="openai",
             model_id="gpt-3.5-turbo",
@@ -495,6 +492,7 @@ class TestAgentService:
             model="gpt-3.5-turbo",
             agent_mode=json.dumps({"enabled": True, "strategy": "react", "tools": []}),
         )
+        app_model_config.id = fake.uuid4()
         db.session.add(app_model_config)
         db.session.commit()
 
@@ -545,7 +543,6 @@ class TestAgentService:
 
         # Create agent thought with tool error
         thought_with_error = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to analyze the user's request",
@@ -759,7 +756,6 @@ class TestAgentService:
 
         # Create agent thought with multiple tools
         complex_thought = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to use multiple tools to complete this task",
@@ -877,7 +873,6 @@ class TestAgentService:
 
         # Create agent thought with files
         thought_with_files = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to process some files",
@@ -957,7 +952,6 @@ class TestAgentService:
 
         # Create agent thought with empty tool data
         empty_thought = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to analyze the user's request",
@@ -999,7 +993,6 @@ class TestAgentService:
 
         # Create agent thought with malformed JSON
         malformed_thought = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to analyze the user's request",
