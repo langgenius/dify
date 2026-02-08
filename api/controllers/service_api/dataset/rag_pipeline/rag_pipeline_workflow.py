@@ -239,5 +239,5 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
             "extension": upload_file.extension,
             "mime_type": upload_file.mime_type,
             "created_by": upload_file.created_by,
-            "created_at": upload_file.created_at,
+            "created_at": upload_file.created_at.isoformat() if upload_file.created_at else None,
         }, 201
