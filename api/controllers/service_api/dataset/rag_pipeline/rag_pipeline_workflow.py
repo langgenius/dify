@@ -11,6 +11,7 @@ import services
 from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
 from controllers.common.schema import register_schema_model
 from controllers.service_api import service_api_ns
+from controllers.service_api.dataset.rag_pipeline.serializers import serialize_upload_file
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.wraps import DatasetApiResource
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
@@ -232,12 +233,4 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return {
-            "id": upload_file.id,
-            "name": upload_file.name,
-            "size": upload_file.size,
-            "extension": upload_file.extension,
-            "mime_type": upload_file.mime_type,
-            "created_by": upload_file.created_by,
-            "created_at": upload_file.created_at.isoformat() if upload_file.created_at else None,
-        }, 201
+        return serialize_upload_file(upload_file), 201
