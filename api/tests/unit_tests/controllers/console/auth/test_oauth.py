@@ -254,7 +254,8 @@ class TestOAuthCallback:
         mock_register_service.is_valid_invite_token.return_value = True
         mock_register_service.get_invitation_by_token.return_value = {"email": "user@example.com"}
 
-        with app.test_request_context("/auth/oauth/github/callback?code=test_code&state=invite123"):
+        with app.test_request_context("/auth/oauth/github/callback?code=test_code&state=invite_nonce"):
+            flask_session["oauth_state_github"] = {"nonce": "invite_nonce", "invite_token": "invite123"}
             resource.get("github")
 
         mock_register_service.get_invitation_by_token.assert_called_once_with(token="invite123")
