@@ -123,12 +123,12 @@ class AgentThought(ResponseModel):
     message_chain_id: str | None = Field(default=None, exclude=True, validation_alias="message_chain_id")
     message_id: str
     position: int
-    thought: str | None = None
+    thought: str | None = Field(default=None, validation_alias="re_sign_file_url_thought")
     tool: str | None = None
     tool_labels: JSONValue
     tool_input: str | None = None
     created_at: int | None = None
-    observation: str | None = None
+    observation: str | None = Field(default=None, validation_alias="re_sign_file_url_observation")
     files: list[str]
 
     @field_validator("created_at", mode="before")
