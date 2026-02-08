@@ -1,5 +1,7 @@
 import type { ChangeEvent, FC, FormEvent } from 'react'
 import type { InputValueTypes } from '../types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { FileUploadConfigResponse } from '@/models/common'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -8,7 +10,7 @@ import {
   RiPlayLargeLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
@@ -50,7 +52,7 @@ const RunOnce: FC<IRunOnceProps> = ({
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
-  const [isInitialized, setIsInitialized] = useState(false)
+  const isInitializedRef = React.useRef(false)
 
   const onClear = () => {
     const newInputs: Record<string, InputValueTypes> = {}
@@ -80,15 +82,16 @@ const RunOnce: FC<IRunOnceProps> = ({
     runControl?.onStop?.()
   }, [isRunning, runControl])
 
-  const handleInputsChange = useCallback((newInputs: Record<string, any>) => {
+  const handleInputsChange = useCallback((newInputs: Record<string, InputValueTypes>) => {
     onInputsChange(newInputs)
     inputsRef.current = newInputs
   }, [onInputsChange, inputsRef])
 
   useEffect(() => {
-    if (isInitialized)
+    if (isInitializedRef.current)
       return
-    const newInputs: Record<string, any> = {}
+    isInitializedRef.current = true
+    const newInputs: Record<string, InputValueTypes> = {}
     promptConfig.prompt_variables.forEach((item) => {
       if (item.type === 'select')
         newInputs[item.key] = item.default
@@ -106,7 +109,6 @@ const RunOnce: FC<IRunOnceProps> = ({
         newInputs[item.key] = undefined
     })
     onInputsChange(newInputs)
-    setIsInitialized(true)
   }, [promptConfig.prompt_variables, onInputsChange])
 
   return (
@@ -114,7 +116,7 @@ const RunOnce: FC<IRunOnceProps> = ({
       <section>
         {/* input form */}
         <form onSubmit={onSubmit}>
-          {(inputs === null || inputs === undefined || Object.keys(inputs).length === 0) || !isInitialized
+          {Object.keys(inputs).length === 0
             ? null
             : promptConfig.prompt_variables.filter(item => item.hide !== true).map(item => (
                 <div className="mt-4 w-full" key={item.key}>
@@ -169,22 +171,21 @@ const RunOnce: FC<IRunOnceProps> = ({
                     )}
                     {item.type === 'file' && (
                       <FileUploaderInAttachmentWrapper
-                        value={(inputs[item.key] && typeof inputs[item.key] === 'object') ? [inputs[item.key]] : []}
+                        value={(inputs[item.key] && typeof inputs[item.key] === 'object') ? [inputs[item.key] as FileEntity] : []}
                         onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files[0] }) }}
                         fileConfig={{
                           ...item.config,
-                          fileUploadConfig: (visionConfig as any).fileUploadConfig,
+                          fileUploadConfig: (visionConfig as VisionSettings & { fileUploadConfig?: FileUploadConfigResponse }).fileUploadConfig,
                         }}
                       />
                     )}
                     {item.type === 'file-list' && (
                       <FileUploaderInAttachmentWrapper
-                        value={Array.isArray(inputs[item.key]) ? inputs[item.key] : []}
+                        value={Array.isArray(inputs[item.key]) ? inputs[item.key] as FileEntity[] : []}
                         onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files }) }}
                         fileConfig={{
                           ...item.config,
-                          // eslint-disable-next-line ts/no-explicit-any
-                          fileUploadConfig: (visionConfig as any).fileUploadConfig,
+                          fileUploadConfig: (visionConfig as VisionSettings & { fileUploadConfig?: FileUploadConfigResponse }).fileUploadConfig,
                         }}
                       />
                     )}

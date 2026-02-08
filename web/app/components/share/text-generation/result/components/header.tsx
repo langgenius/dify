@@ -24,7 +24,7 @@ const Header: FC<IResultHeaderProps> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className="flex w-full items-center justify-between ">
+    <div className="flex w-full items-center justify-between">
       <div className="text-2xl font-normal leading-4 text-gray-800">{t('generation.resultTitle', { ns: 'share' })}</div>
       <div className="flex items-center space-x-2">
         <Button
@@ -50,7 +50,7 @@ const Header: FC<IResultHeaderProps> = ({
                   rating: null,
                 })
               }}
-              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md  border border-primary-200 bg-primary-100 !text-primary-600 hover:border-primary-300 hover:bg-primary-200"
+              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-primary-200 bg-primary-100 !text-primary-600 hover:border-primary-300 hover:bg-primary-200"
             >
               <HandThumbUpIcon width={16} height={16} />
             </div>
@@ -67,7 +67,7 @@ const Header: FC<IResultHeaderProps> = ({
                   rating: null,
                 })
               }}
-              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md  border border-red-200 bg-red-100 !text-red-600 hover:border-red-300 hover:bg-red-200"
+              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-red-200 bg-red-100 !text-red-600 hover:border-red-300 hover:bg-red-200"
             >
               <HandThumbDownIcon width={16} height={16} />
             </div>
