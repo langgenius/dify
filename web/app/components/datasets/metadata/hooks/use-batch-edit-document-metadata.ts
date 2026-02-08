@@ -88,7 +88,7 @@ const useBatchEditDocumentMetadata = ({
       // Find the document in docList to get its metadata
       const docIndex = docList.findIndex(doc => doc.id === documentId)
       const oldMetadataList = docIndex >= 0 ? metaDataList[docIndex] : []
-      let newMetadataList: MetadataItemWithValue[] = [...oldMetadataList, ...addedList]
+      const newMetadataList: MetadataItemWithValue[] = [...oldMetadataList, ...addedList]
         .filter((item) => {
           return !removedList.find(removedItem => removedItem.id === item.id)
         })
@@ -101,21 +101,33 @@ const useBatchEditDocumentMetadata = ({
       if (isApplyToAllSelectDocument) {
         // add missing metadata item
         updatedList.forEach((editedItem) => {
-          if (!newMetadataList.find(i => i.id === editedItem.id) && !editedItem.isMultipleValue)
-            newMetadataList.push(editedItem)
+          if (!newMetadataList.find(i => i.id === editedItem.id) && !editedItem.isMultipleValue) {
+            newMetadataList.push({
+              id: editedItem.id,
+              name: editedItem.name,
+              type: editedItem.type,
+              value: editedItem.value,
+            })
+          }
         })
       }
 
-      newMetadataList = newMetadataList.map((item) => {
+      const finalMetadataList = newMetadataList.map((item) => {
         const editedItem = updatedList.find(i => i.id === item.id)
-        if (editedItem)
-          return editedItem
+        if (editedItem) {
+          return {
+            id: editedItem.id,
+            name: editedItem.name,
+            type: editedItem.type,
+            value: editedItem.value,
+          }
+        }
         return item
       })
 
       return {
         document_id: documentId,
-        metadata_list: newMetadataList,
+        metadata_list: finalMetadataList,
         partial_update: docIndex < 0,
       }
     })
