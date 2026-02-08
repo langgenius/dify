@@ -1,3 +1,4 @@
+from datetime import timedelta
 from enum import StrEnum
 from typing import Literal
 
@@ -48,6 +49,16 @@ class SecurityConfig(BaseSettings):
         default=5,
     )
 
+    WEB_FORM_SUBMIT_RATE_LIMIT_MAX_ATTEMPTS: PositiveInt = Field(
+        description="Maximum number of web form submissions allowed per IP within the rate limit window",
+        default=30,
+    )
+
+    WEB_FORM_SUBMIT_RATE_LIMIT_WINDOW_SECONDS: PositiveInt = Field(
+        description="Time window in seconds for web form submission rate limiting",
+        default=60,
+    )
+
     LOGIN_DISABLED: bool = Field(
         description="Whether to disable login checks",
         default=False,
@@ -80,6 +91,12 @@ class AppExecutionConfig(BaseSettings):
     APP_MAX_ACTIVE_REQUESTS: NonNegativeInt = Field(
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
+    )
+
+    HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS: PositiveInt = Field(
+        description="Maximum seconds a workflow run can stay paused waiting for human input before global timeout.",
+        default=int(timedelta(days=7).total_seconds()),
+        ge=1,
     )
 
 
@@ -1133,6 +1150,14 @@ class CeleryScheduleTasksConfig(BaseSettings):
     ENABLE_DATASETS_QUEUE_MONITOR: bool = Field(
         description="Enable queue monitor task",
         default=False,
+    )
+    ENABLE_HUMAN_INPUT_TIMEOUT_TASK: bool = Field(
+        description="Enable human input timeout check task",
+        default=True,
+    )
+    HUMAN_INPUT_TIMEOUT_TASK_INTERVAL: PositiveInt = Field(
+        description="Human input timeout check interval in minutes",
+        default=1,
     )
     ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: bool = Field(
         description="Enable check upgradable plugin task",

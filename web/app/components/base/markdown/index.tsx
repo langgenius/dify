@@ -18,7 +18,7 @@ export type MarkdownProps = {
   content: string
   className?: string
   pluginInfo?: SimplePluginInfo
-} & Pick<ReactMarkdownWrapperProps, 'customComponents' | 'customDisallowedElements'>
+} & Pick<ReactMarkdownWrapperProps, 'customComponents' | 'customDisallowedElements' | 'rehypePlugins'>
 
 export const Markdown = (props: MarkdownProps) => {
   const { customComponents = {}, pluginInfo } = props
@@ -29,7 +29,13 @@ export const Markdown = (props: MarkdownProps) => {
 
   return (
     <div className={cn('markdown-body', '!text-text-primary', props.className)}>
-      <ReactMarkdown pluginInfo={pluginInfo} latexContent={latexContent} customComponents={customComponents} customDisallowedElements={props.customDisallowedElements} />
+      <ReactMarkdown
+        pluginInfo={pluginInfo}
+        latexContent={latexContent}
+        customComponents={customComponents}
+        customDisallowedElements={props.customDisallowedElements}
+        rehypePlugins={props.rehypePlugins}
+      />
     </div>
   )
 }

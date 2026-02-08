@@ -2,16 +2,20 @@
 
 import type {
   EditorState,
+  LexicalCommand,
 } from 'lexical'
 import type { FC } from 'react'
+import type { Hotkey } from './plugins/shortcuts-popup-plugin'
 import type {
   ContextBlockType,
   CurrentBlockType,
   ErrorMessageBlockType,
   ExternalToolBlockType,
   HistoryBlockType,
+  HITLInputBlockType,
   LastRunBlockType,
   QueryBlockType,
+  RequestURLBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
@@ -27,7 +31,7 @@ import {
   TextNode,
 } from 'lexical'
 import * as React from 'react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { cn } from '@/utils/classnames'
 import {
@@ -46,17 +50,23 @@ import {
   CurrentBlockReplacementBlock,
 } from './plugins/current-block'
 import { CustomTextNode } from './plugins/custom-text/node'
+import DraggableBlockPlugin from './plugins/draggable-plugin'
 import {
   ErrorMessageBlock,
   ErrorMessageBlockNode,
   ErrorMessageBlockReplacementBlock,
 } from './plugins/error-message-block'
-
 import {
   HistoryBlock,
   HistoryBlockNode,
   HistoryBlockReplacementBlock,
 } from './plugins/history-block'
+
+import {
+  HITLInputBlock,
+  HITLInputBlockReplacementBlock,
+  HITLInputNode,
+} from './plugins/hitl-input-block'
 import {
   LastRunBlock,
   LastRunBlockNode,
@@ -70,6 +80,12 @@ import {
   QueryBlockNode,
   QueryBlockReplacementBlock,
 } from './plugins/query-block'
+import {
+  RequestURLBlock,
+  RequestURLBlockNode,
+  RequestURLBlockReplacementBlock,
+} from './plugins/request-url-block'
+import ShortcutsPopupPlugin from './plugins/shortcuts-popup-plugin'
 import UpdateBlock from './plugins/update-block'
 import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
@@ -96,14 +112,17 @@ export type PromptEditorProps = {
   onFocus?: () => void
   contextBlock?: ContextBlockType
   queryBlock?: QueryBlockType
+  requestURLBlock?: RequestURLBlockType
   historyBlock?: HistoryBlockType
   variableBlock?: VariableBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  hitlInputBlock?: HITLInputBlockType
   currentBlock?: CurrentBlockType
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
+  shortcutPopups?: Array<{ hotkey: Hotkey, Popup: React.ComponentType<{ onClose: () => void, onInsert: (command: LexicalCommand<unknown>, params: any[]) => void }> }>
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -121,14 +140,17 @@ const PromptEditor: FC<PromptEditorProps> = ({
   onFocus,
   contextBlock,
   queryBlock,
+  requestURLBlock,
   historyBlock,
   variableBlock,
   externalToolBlock,
   workflowVariableBlock,
+  hitlInputBlock,
   currentBlock,
   errorMessageBlock,
   lastRunBlock,
   isSupportFileVar,
+  shortcutPopups = [],
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -143,8 +165,10 @@ const PromptEditor: FC<PromptEditorProps> = ({
       ContextBlockNode,
       HistoryBlockNode,
       QueryBlockNode,
+      RequestURLBlockNode,
       WorkflowVariableBlockNode,
       VariableValueBlockNode,
+      HITLInputNode,
       CurrentBlockNode,
       ErrorMessageBlockNode,
       LastRunBlockNode, // LastRunBlockNode is used for error message block replacement
@@ -176,9 +200,16 @@ const PromptEditor: FC<PromptEditorProps> = ({
     } as any)
   }, [eventEmitter, historyBlock?.history])
 
+  const [floatingAnchorElem, setFloatingAnchorElem] = useState(null)
+
+  const onRef = (_floatingAnchorElem: any) => {
+    if (_floatingAnchorElem !== null)
+      setFloatingAnchorElem(_floatingAnchorElem)
+  }
+
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
-      <div className={cn('relative', wrapperClassName)}>
+      <div className={cn('relative', wrapperClassName)} ref={onRef}>
         <RichTextPlugin
           contentEditable={(
             <ContentEditable
@@ -199,11 +230,17 @@ const PromptEditor: FC<PromptEditorProps> = ({
           )}
           ErrorBoundary={LexicalErrorBoundary}
         />
+        {shortcutPopups?.map(({ hotkey, Popup }, idx) => (
+          <ShortcutsPopupPlugin key={idx} hotkey={hotkey}>
+            {(closePortal, onInsert) => <Popup onClose={closePortal} onInsert={onInsert} />}
+          </ShortcutsPopupPlugin>
+        ))}
         <ComponentPickerBlock
           triggerString="/"
           contextBlock={contextBlock}
           historyBlock={historyBlock}
           queryBlock={queryBlock}
+          requestURLBlock={requestURLBlock}
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
@@ -217,6 +254,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           contextBlock={contextBlock}
           historyBlock={historyBlock}
           queryBlock={queryBlock}
+          requestURLBlock={requestURLBlock}
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
@@ -266,10 +304,26 @@ const PromptEditor: FC<PromptEditorProps> = ({
           )
         }
         {
+          hitlInputBlock?.show && (
+            <>
+              <HITLInputBlock {...hitlInputBlock} />
+              <HITLInputBlockReplacementBlock {...hitlInputBlock} />
+            </>
+          )
+        }
+        {
           currentBlock?.show && (
             <>
               <CurrentBlock {...currentBlock} />
               <CurrentBlockReplacementBlock {...currentBlock} />
+            </>
+          )
+        }
+        {
+          requestURLBlock?.show && (
+            <>
+              <RequestURLBlock {...requestURLBlock} />
+              <RequestURLBlockReplacementBlock {...requestURLBlock} />
             </>
           )
         }
@@ -298,6 +352,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
         <UpdateBlock instanceId={instanceId} />
         <HistoryPlugin />
+        {floatingAnchorElem && (
+          <DraggableBlockPlugin anchorElem={floatingAnchorElem} />
+        )}
         {/* <TreeView /> */}
       </div>
     </LexicalComposer>

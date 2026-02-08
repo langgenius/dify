@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "在这里写你的提示词，输入'{' 插入变量、输入'/' 插入提示内容块",
   "promptEditor.query.item.desc": "插入用户查询模板",
   "promptEditor.query.item.title": "查询内容",
+  "promptEditor.requestURL.item.desc": "插入请求 URL",
+  "promptEditor.requestURL.item.title": "请求 URL",
   "promptEditor.variable.item.desc": "插入变量和外部工具",
   "promptEditor.variable.item.title": "变量 & 外部工具",
   "promptEditor.variable.modal.add": "添加新变量",

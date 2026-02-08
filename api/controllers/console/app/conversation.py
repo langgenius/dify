@@ -89,6 +89,7 @@ status_count_model = console_ns.model(
         "success": fields.Integer,
         "failed": fields.Integer,
         "partial_success": fields.Integer,
+        "paused": fields.Integer,
     },
 )
 

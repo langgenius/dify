@@ -2309,6 +2309,12 @@ class TestRegisterService:
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
+        from extensions.ext_database import db
+        from models.model import DifySetup
+
+        db.session.query(DifySetup).delete()
+        db.session.commit()
+
         # Execute setup
         RegisterService.setup(
             email=admin_email,
@@ -2319,9 +2325,7 @@ class TestRegisterService:
         )
 
         # Verify account was created
-        from extensions.ext_database import db
         from models import Account
-        from models.model import DifySetup
 
         account = db.session.query(Account).filter_by(email=admin_email).first()
         assert account is not None

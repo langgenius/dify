@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
@@ -943,6 +943,7 @@ class Conversation(Base):
             WorkflowExecutionStatus.FAILED: 0,
             WorkflowExecutionStatus.STOPPED: 0,
             WorkflowExecutionStatus.PARTIAL_SUCCEEDED: 0,
+            WorkflowExecutionStatus.PAUSED: 0,
         }
 
         for message in messages:
@@ -963,6 +964,7 @@ class Conversation(Base):
             "success": status_counts[WorkflowExecutionStatus.SUCCEEDED],
             "failed": status_counts[WorkflowExecutionStatus.FAILED],
             "partial_success": status_counts[WorkflowExecutionStatus.PARTIAL_SUCCEEDED],
+            "paused": status_counts[WorkflowExecutionStatus.PAUSED],
         }
 
     @property
@@ -1344,6 +1346,14 @@ class Message(Base):
 
         db.session.commit()
         return result
+
+    # TODO(QuantumGhost): dirty hacks, fix this later.
+    def set_extra_contents(self, contents: Sequence[dict[str, Any]]) -> None:
+        self._extra_contents = list(contents)
+
+    @property
+    def extra_contents(self) -> list[dict[str, Any]]:
+        return getattr(self, "_extra_contents", [])
 
     @property
     def workflow_run(self):

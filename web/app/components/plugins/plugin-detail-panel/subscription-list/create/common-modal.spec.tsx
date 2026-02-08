@@ -1236,6 +1236,10 @@ describe('CommonCreateModal', () => {
       })
 
       await waitFor(() => {
+        expect(mockUpdateBuilder).toHaveBeenCalled()
+      })
+
+      await waitFor(() => {
         expect(mockToastNotify).toHaveBeenCalledWith({
           type: 'error',
           message: 'Custom update error',

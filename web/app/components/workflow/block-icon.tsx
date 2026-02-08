@@ -11,6 +11,7 @@ import {
   End,
   Home,
   Http,
+  HumanInLoop,
   IfElse,
   Iteration,
   KnowledgeBase,
@@ -71,6 +72,7 @@ const DEFAULT_ICON_MAP: Record<BlockEnum, React.ComponentType<{ className: strin
   [BlockEnum.TriggerSchedule]: Schedule,
   [BlockEnum.TriggerWebhook]: WebhookLine,
   [BlockEnum.TriggerPlugin]: VariableX,
+  [BlockEnum.HumanInput]: HumanInLoop,
 }
 
 const getIcon = (type: BlockEnum, className: string) => {
@@ -102,6 +104,7 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.DocExtractor]: 'bg-util-colors-green-green-500',
   [BlockEnum.ListFilter]: 'bg-util-colors-cyan-cyan-500',
   [BlockEnum.Agent]: 'bg-util-colors-indigo-indigo-500',
+  [BlockEnum.HumanInput]: 'bg-util-colors-cyan-cyan-500',
   [BlockEnum.KnowledgeBase]: 'bg-util-colors-warning-warning-500',
   [BlockEnum.DataSource]: 'bg-components-icon-bg-midnight-solid',
   [BlockEnum.TriggerSchedule]: 'bg-util-colors-violet-violet-500',

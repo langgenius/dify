@@ -58,5 +58,15 @@
   "generation.tabs.create": "Запустить один раз",
   "generation.tabs.saved": "Сохраненные",
   "generation.title": "Завершение ИИ",
+  "humanInput.completed": "Похоже, этот запрос был обработан в другом месте.",
+  "humanInput.expirationTimeNowOrFuture": "Это действие истечет {{relativeTime}}.",
+  "humanInput.expired": "Похоже, срок действия этого запроса истёк.",
+  "humanInput.expiredTip": "Срок действия этого действия истёк.",
+  "humanInput.formNotFound": "Форма не найдена.",
+  "humanInput.rateLimitExceeded": "Слишком много запросов, пожалуйста, попробуйте позже.",
+  "humanInput.recorded": "Ваш ввод был записан.",
+  "humanInput.sorry": "Извините!",
+  "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.thanks": "Спасибо!",
   "login.backToHome": "Назад на главную"
 }

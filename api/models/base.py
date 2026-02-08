@@ -41,7 +41,7 @@ class DefaultFieldsMixin:
     )
 
     updated_at: Mapped[datetime] = mapped_column(
-        __name_pos=DateTime,
+        DateTime,
         nullable=False,
         default=naive_utc_now,
         server_default=func.current_timestamp(),
