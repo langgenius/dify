@@ -37,6 +37,7 @@ from core.workflow.node_events import (
     AgentLogEvent,
     NodeEventBase,
     NodeRunResult,
+    RunRetrieverResourceEvent,
     StreamChunkEvent,
     StreamCompletedEvent,
 )
@@ -688,6 +689,11 @@ class AgentNode(Node[AgentNodeData]):
                     agent_logs.append(agent_log)
 
                 yield agent_log
+            elif message.type == ToolInvokeMessage.MessageType.RETRIEVER_RESOURCES: 
+                assert isinstance(message.message, ToolInvokeMessage.RetrieverResourceMessage)
+                retriever_resources = message.message.retriever_resources
+                context_str = message.message.context
+                yield RunRetrieverResourceEvent(retriever_resources=retriever_resources, context=context_str)
 
         # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
         json_output: list[dict[str, Any] | list[Any]] = []
