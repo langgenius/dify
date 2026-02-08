@@ -155,6 +155,46 @@ console_ns.schema_model(
 )
 
 
+class WorkflowNodeExecutionQuery(BaseModel):
+    """
+    Query parameters for filtering workflow node executions.
+    
+    Why this is important:
+    - When debugging workflows, you often need to find specific nodes (like a payment API call that failed)
+    - Instead of loading ALL nodes and searching through them, you can filter directly
+    - This saves time and makes debugging much faster
+    - Example: Find all failed HTTP requests in a workflow run to see what went wrong
+    """
+
+    node_id: str | None = Field(default=None, description="Filter by node ID")
+    node_type: str | None = Field(default=None, description="Filter by node type (e.g., http-request, llm)")
+    status: Literal["pending", "running", "succeeded", "failed", "exception", "stopped", "paused"] | None = Field(
+        default=None, description="Filter by execution status"
+    )
+
+    @field_validator("node_id")
+    @classmethod
+    def validate_node_id(cls, value: str | None) -> str | None:
+        """Validate node_id is not empty if provided."""
+        if value is not None and not value.strip():
+            raise ValueError("node_id cannot be empty")
+        return value.strip() if value else None
+
+    @field_validator("node_type")
+    @classmethod
+    def validate_node_type(cls, value: str | None) -> str | None:
+        """Validate node_type is not empty if provided."""
+        if value is not None and not value.strip():
+            raise ValueError("node_type cannot be empty")
+        return value.strip() if value else None
+
+
+console_ns.schema_model(
+    WorkflowNodeExecutionQuery.__name__,
+    WorkflowNodeExecutionQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs")
 class AdvancedChatAppWorkflowRunListApi(Resource):
     @console_ns.doc("get_advanced_chat_workflow_runs")
@@ -418,6 +458,14 @@ class WorkflowRunNodeExecutionListApi(Resource):
     @console_ns.doc("get_workflow_run_node_executions")
     @console_ns.doc(description="Get workflow run node execution list")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.doc(
+        params={
+            "node_id": "Filter by node ID (optional)",
+            "node_type": "Filter by node type (optional): e.g., http-request, llm, code",
+            "status": "Filter by status (optional): pending, running, succeeded, failed, exception, stopped, paused",
+        }
+    )
+    @console_ns.expect(console_ns.models[WorkflowNodeExecutionQuery.__name__])
     @console_ns.response(200, "Node executions retrieved successfully", workflow_run_node_execution_list_model)
     @console_ns.response(404, "Workflow run not found")
     @setup_required
@@ -427,9 +475,21 @@ class WorkflowRunNodeExecutionListApi(Resource):
     @marshal_with(workflow_run_node_execution_list_model)
     def get(self, app_model: App, run_id):
         """
-        Get workflow run node execution list
+        Get workflow run node execution list with optional filtering.
+        
+        Why filtering is important:
+        - Workflows can have many nodes (10, 20, or even 100+)
+        - Loading all nodes takes time and uses bandwidth
+        - With filters, you can quickly find what you need:
+          * All failed nodes to debug errors
+          * All HTTP request nodes to check API calls
+          * A specific node by ID to see its details
         """
         run_id = str(run_id)
+
+        # Parse query parameters
+        query_model = WorkflowNodeExecutionQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        filters = query_model.model_dump(exclude_none=True)
 
         workflow_run_service = WorkflowRunService()
         user = cast("Account | EndUser", current_user)
@@ -437,6 +497,49 @@ class WorkflowRunNodeExecutionListApi(Resource):
             app_model=app_model,
             run_id=run_id,
             user=user,
+            node_id=filters.get("node_id"),
+            node_type=filters.get("node_type"),
+            status=filters.get("status"),
         )
 
         return {"data": node_executions}
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions/<string:node_id>")
+class WorkflowRunNodeExecutionDetailApi(Resource):
+    @console_ns.doc("get_workflow_run_node_execution")
+    @console_ns.doc(description="Get a specific node execution by node ID")
+    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID", "node_id": "Node ID"})
+    @console_ns.response(200, "Node execution retrieved successfully", workflow_run_node_execution_model)
+    @console_ns.response(404, "Node execution not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @marshal_with(workflow_run_node_execution_model)
+    def get(self, app_model: App, run_id, node_id):
+        """
+        Get a specific node execution by node ID for a workflow run.
+        
+        Why this endpoint is important:
+        - Sometimes you only need details for ONE specific node (like a payment API call)
+        - Instead of loading all nodes and finding the one you want, you can get it directly
+        - This is much faster and uses less data
+        - Perfect for debugging a specific step in a workflow
+        """
+        run_id = str(run_id)
+        node_id = str(node_id)
+
+        workflow_run_service = WorkflowRunService()
+        user = cast("Account | EndUser", current_user)
+        node_execution = workflow_run_service.get_workflow_run_node_execution_by_node_id(
+            app_model=app_model,
+            run_id=run_id,
+            node_id=node_id,
+            user=user,
+        )
+
+        if not node_execution:
+            return {"code": "node_execution_not_found", "message": "Node execution not found"}, 404
+
+        return node_execution

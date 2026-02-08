@@ -132,14 +132,20 @@ class WorkflowRunService:
             time_range=time_range,
         )
 
-    def get_workflow_run_node_executions(
-        self,
-        app_model: App,
-        run_id: str,
-        user: Account | EndUser,
-    ) -> Sequence[WorkflowNodeExecutionModel]:
+    def _get_run_and_tenant(
+        self, app_model: App, run_id: str, user: Account | EndUser
+    ) -> tuple[WorkflowRun, str] | tuple[None, None]:
         """
-        Get workflow run node execution list
+        Helper method to get workflow run and tenant ID with common setup.
+
+        This extracts the common logic of fetching workflow run, setting up contexts,
+        and validating tenant ID that is shared between node execution methods.
+
+        :param app_model: app model
+        :param run_id: workflow run id
+        :param user: current user (Account or EndUser)
+        :return: Tuple of (WorkflowRun, tenant_id) or (None, None) if workflow run not found
+        :raises ValueError: If user tenant_id is None
         """
         workflow_run = self.get_workflow_run(app_model, run_id)
 
@@ -147,15 +153,80 @@ class WorkflowRunService:
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
         if not workflow_run:
-            return []
+            return None, None
 
         # Get tenant_id from user
         tenant_id = user.tenant_id if isinstance(user, EndUser) else user.current_tenant_id
         if tenant_id is None:
             raise ValueError("User tenant_id cannot be None")
 
+        return workflow_run, tenant_id
+
+    def get_workflow_run_node_executions(
+        self,
+        app_model: App,
+        run_id: str,
+        user: Account | EndUser,
+        node_id: str | None = None,
+        node_type: str | None = None,
+        status: str | None = None,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
+        """
+        Get workflow run node execution list with optional filtering.
+
+        Why filtering matters:
+        - Large workflows can have dozens of nodes, making it hard to find what you need
+        - Filtering lets you quickly find:
+          * Failed nodes to debug errors
+          * HTTP request nodes to check API calls
+          * Specific node types to analyze performance
+        - This makes debugging and monitoring much more efficient
+
+        :param app_model: app model
+        :param run_id: workflow run id
+        :param user: current user (Account or EndUser)
+        :param node_id: optional filter by node ID
+        :param node_type: optional filter by node type
+        :param status: optional filter by execution status
+        """
+        workflow_run, tenant_id = self._get_run_and_tenant(app_model, run_id, user)
+
+        if workflow_run is None:
+            return []
+
         return self._node_execution_service_repo.get_executions_by_workflow_run(
             tenant_id=tenant_id,
             app_id=app_model.id,
             workflow_run_id=run_id,
+            node_id=node_id,
+            node_type=node_type,
+            status=status,
+        )
+
+    def get_workflow_run_node_execution_by_node_id(
+        self,
+        app_model: App,
+        run_id: str,
+        node_id: str,
+        user: Account | EndUser,
+    ) -> WorkflowNodeExecutionModel | None:
+        """
+        Get a specific node execution by node ID for a workflow run.
+
+        :param app_model: app model
+        :param run_id: workflow run id
+        :param node_id: node ID to retrieve
+        :param user: current user (Account or EndUser)
+        :return: WorkflowNodeExecutionModel or None if not found
+        """
+        workflow_run, tenant_id = self._get_run_and_tenant(app_model, run_id, user)
+
+        if workflow_run is None:
+            return None
+
+        return self._node_execution_service_repo.get_execution_by_node_id(
+            tenant_id=tenant_id,
+            app_id=app_model.id,
+            workflow_run_id=run_id,
+            node_id=node_id,
         )
