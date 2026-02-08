@@ -103,7 +103,7 @@ const Blocks = ({
                   <BlockIcon
                     size="md"
                     className="mb-2"
-                    type={block.metaData.type}
+                    type={block.metaData.iconType || block.metaData.type}
                   />
                   <div className="system-md-medium mb-1 text-text-primary">{block.metaData.title}</div>
                   <div className="system-xs-regular text-text-tertiary">{block.metaData.description}</div>
@@ -117,7 +117,7 @@ const Blocks = ({
               >
                 <BlockIcon
                   className="mr-2 shrink-0"
-                  type={block.metaData.type}
+                  type={block.metaData.iconType || block.metaData.type}
                 />
                 <div className="grow text-sm text-text-secondary">{block.metaData.title}</div>
                 {
