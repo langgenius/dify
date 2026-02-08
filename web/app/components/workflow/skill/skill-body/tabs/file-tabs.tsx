@@ -23,6 +23,7 @@ const FileTabs = () => {
   const { data: nodeMap } = useSkillAssetNodeMap()
 
   const isStartTabActive = activeTabId === START_TAB_ID
+  const isStartTabOnly = openTabIds.length === 0
 
   const handleStartTabClick = useCallback(() => {
     storeApi.getState().activateTab(START_TAB_ID)
@@ -69,11 +70,15 @@ const FileTabs = () => {
     <>
       <div
         className={cn(
-          'flex items-center overflow-hidden rounded-t-lg border-b border-components-panel-border-subtle bg-components-panel-bg-alt',
+          'flex items-center overflow-hidden rounded-t-lg',
+          isStartTabOnly
+            ? 'bg-components-panel-bg'
+            : 'border-b border-components-panel-border-subtle bg-components-panel-bg-alt',
         )}
       >
         <StartTabItem
           isActive={isStartTabActive}
+          isOnly={isStartTabOnly}
           onClick={handleStartTabClick}
         />
         {openTabIds.map((fileId) => {
