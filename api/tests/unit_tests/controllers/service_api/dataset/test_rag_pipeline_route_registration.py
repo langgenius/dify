@@ -17,8 +17,17 @@ def test_rag_pipeline_routes_registered():
     assert service_api_init.exists()
     assert rag_pipeline_workflow.exists()
 
-    service_api_init_source = service_api_init.read_text(encoding="utf-8")
-    assert "from .dataset.rag_pipeline import rag_pipeline_workflow" in service_api_init_source
+    init_tree = ast.parse(service_api_init.read_text(encoding="utf-8"))
+    import_found = False
+    for node in ast.walk(init_tree):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        if node.module != "dataset.rag_pipeline" or node.level != 1:
+            continue
+        if any(alias.name == "rag_pipeline_workflow" for alias in node.names):
+            import_found = True
+            break
+    assert import_found, "from .dataset.rag_pipeline import rag_pipeline_workflow not found in service_api/__init__.py"
 
     workflow_tree = ast.parse(rag_pipeline_workflow.read_text(encoding="utf-8"))
     route_paths: set[str] = set()
