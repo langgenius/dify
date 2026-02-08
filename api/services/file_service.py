@@ -130,12 +130,12 @@ class FileService:
         return file_size <= file_size_limit
 
     def get_file_base64(self, file_id: str) -> str:
-        upload_file = (
-            self._session_maker(expire_on_commit=False).query(UploadFile).where(UploadFile.id == file_id).first()
-        )
-        if not upload_file:
-            raise NotFound("File not found")
-        blob = storage.load_once(upload_file.key)
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            if not upload_file:
+                raise NotFound("File not found")
+            file_key = upload_file.key
+        blob = storage.load_once(file_key)
         return base64.b64encode(blob).decode()
 
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
