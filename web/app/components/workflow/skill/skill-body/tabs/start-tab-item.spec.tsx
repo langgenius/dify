@@ -8,6 +8,7 @@ const createProps = (overrides: Partial<StartTabItemProps> = {}) => {
   const onClick = vi.fn()
   const props: StartTabItemProps = {
     isActive: false,
+    isOnly: false,
     onClick,
     ...overrides,
   }

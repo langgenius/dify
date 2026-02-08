@@ -7,11 +7,13 @@ import { cn } from '@/utils/classnames'
 
 type StartTabItemProps = {
   isActive: boolean
+  isOnly: boolean
   onClick: () => void
 }
 
 const StartTabItem = ({
   isActive,
+  isOnly,
   onClick,
 }: StartTabItemProps) => {
   const { t } = useTranslation('workflow')
@@ -19,7 +21,8 @@ const StartTabItem = ({
   return (
     <div
       className={cn(
-        'relative flex shrink-0 items-center border-r border-components-panel-border-subtle',
+        'relative flex shrink-0 items-center',
+        !isOnly && 'border-r border-components-panel-border-subtle',
         isActive ? 'bg-components-panel-bg' : 'bg-transparent hover:bg-state-base-hover',
       )}
     >
