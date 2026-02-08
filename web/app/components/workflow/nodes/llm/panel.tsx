@@ -114,6 +114,10 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
             readonly={readOnly}
+            nodeId={id}
+            filterVar={filterVar}
+            availableVars={availableVars}
+            availableNodes={availableNodesWithParent}
           />
         </Field>
 

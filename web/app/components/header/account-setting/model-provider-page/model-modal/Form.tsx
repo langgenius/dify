@@ -324,6 +324,13 @@ function Form<
         required,
         scope,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
+      // Filter function for model parameter variables (string and number types)
+      // This is used when the ModelParameterModal is in workflow context (isInWorkflow=true)
+      // to filter which variables can be referenced in model parameter string fields
+      const filterVar = (varPayload: any) => {
+        // For model parameters, we typically need string or number type variables
+        return varPayload.type === 'string' || varPayload.type === 'number'
+      }
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
@@ -342,6 +349,10 @@ function Form<
             setModel={model => handleModelChanged(variable, model)}
             readonly={readonly}
             scope={scope}
+            nodeId={nodeId}
+            filterVar={filterVar}
+            availableVars={nodeOutputVars}
+            availableNodes={availableNodes}
           />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
