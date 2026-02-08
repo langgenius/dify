@@ -28,6 +28,7 @@ import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
 import { AgentLogTrigger } from './agent-log'
+import { FallbackLogTrigger } from './fallback-log'
 import { IterationLogTrigger } from './iteration-log'
 import { LoopLogTrigger } from './loop-log'
 import { RetryLogTrigger } from './retry-log'
@@ -42,6 +43,7 @@ type Props = {
   onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
   onShowLoopDetail?: (detail: NodeTracing[][], loopDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
+  onShowFallbackDetail?: (detail: NodeTracing[]) => void
   onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
   notShowIterationNav?: boolean
   notShowLoopNav?: boolean
@@ -57,6 +59,7 @@ const NodePanel: FC<Props> = ({
   onShowIterationDetail,
   onShowLoopDetail,
   onShowRetryDetail,
+  onShowFallbackDetail,
   onShowAgentOrToolLog,
   notShowIterationNav,
   notShowLoopNav,
@@ -94,6 +97,7 @@ const NodePanel: FC<Props> = ({
   const isIterationNode = nodeInfo.node_type === BlockEnum.Iteration && !!nodeInfo.details?.length
   const isLoopNode = nodeInfo.node_type === BlockEnum.Loop && !!nodeInfo.details?.length
   const isRetryNode = hasRetryNode(nodeInfo.node_type) && !!nodeInfo.retryDetail?.length
+  const isFallbackNode = !!nodeInfo.fallbackDetail?.length
   const isAgentNode = nodeInfo.node_type === BlockEnum.Agent && !!nodeInfo.agentLog?.length
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
 
@@ -191,6 +195,12 @@ const NodePanel: FC<Props> = ({
               <RetryLogTrigger
                 nodeInfo={nodeInfo}
                 onShowRetryResultList={onShowRetryDetail}
+              />
+            )}
+            {isFallbackNode && onShowFallbackDetail && (
+              <FallbackLogTrigger
+                nodeInfo={nodeInfo}
+                onShowFallbackResultList={onShowFallbackDetail}
               />
             )}
             {

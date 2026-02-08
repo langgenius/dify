@@ -98,6 +98,7 @@ class NodeExecutionType(StrEnum):
 class ErrorStrategy(StrEnum):
     FAIL_BRANCH = "fail-branch"
     DEFAULT_VALUE = "default-value"
+    FALLBACK_MODEL = "fallback-model"
 
 
 class FailBranchSourceHandle(StrEnum):
@@ -249,6 +250,9 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     ITERATION_DURATION_MAP = "iteration_duration_map"  # single iteration duration if iteration node runs
     LOOP_DURATION_MAP = "loop_duration_map"  # single loop duration if loop node runs
     ERROR_STRATEGY = "error_strategy"  # node in continue on error mode return the field
+    FALLBACK_MODEL_INDEX = (
+        "fallback_model_index"  # index of fallback model being used (-1 for primary, 0+ for fallback)
+    )
     LOOP_VARIABLE_MAP = "loop_variable_map"  # single loop variable output
     DATASOURCE_INFO = "datasource_info"
     COMPLETED_REASON = "completed_reason"  # completed reason for loop node

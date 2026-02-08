@@ -6,6 +6,7 @@ import type {
   NodeTracing,
 } from '@/types/workflow'
 import { AgentResultPanel } from './agent-log'
+import { FallbackResultPanel } from './fallback-log'
 import { IterationResultPanel } from './iteration-log'
 import { LoopResultPanel } from './loop-log'
 import { RetryResultPanel } from './retry-log'
@@ -14,6 +15,10 @@ export type SpecialResultPanelProps = {
   showRetryDetail?: boolean
   setShowRetryDetailFalse?: () => void
   retryResultList?: NodeTracing[]
+
+  showFallbackDetail?: boolean
+  setShowFallbackDetailFalse?: () => void
+  fallbackResultList?: NodeTracing[]
 
   showIteratingDetail?: boolean
   setShowIteratingDetailFalse?: () => void
@@ -34,6 +39,10 @@ const SpecialResultPanel = ({
   showRetryDetail,
   setShowRetryDetailFalse,
   retryResultList,
+
+  showFallbackDetail,
+  setShowFallbackDetailFalse,
+  fallbackResultList,
 
   showIteratingDetail,
   setShowIteratingDetailFalse,
@@ -61,6 +70,14 @@ const SpecialResultPanel = ({
           <RetryResultPanel
             list={retryResultList}
             onBack={setShowRetryDetailFalse}
+          />
+        )
+      }
+      {
+        !!showFallbackDetail && !!fallbackResultList?.length && setShowFallbackDetailFalse && (
+          <FallbackResultPanel
+            list={fallbackResultList}
+            onBack={setShowFallbackDetailFalse}
           />
         )
       }

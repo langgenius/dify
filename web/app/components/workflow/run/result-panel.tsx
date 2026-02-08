@@ -9,6 +9,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log'
+import { FallbackLogTrigger } from '@/app/components/workflow/run/fallback-log'
 import { IterationLogTrigger } from '@/app/components/workflow/run/iteration-log'
 import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
@@ -44,6 +45,7 @@ export type ResultPanelProps = {
   handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
+  onShowFallbackDetail?: (detail: NodeTracing[]) => void
   handleShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
 }
 
@@ -70,12 +72,14 @@ const ResultPanel: FC<ResultPanelProps> = ({
   handleShowIterationResultList,
   handleShowLoopResultList,
   onShowRetryDetail,
+  onShowFallbackDetail,
   handleShowAgentOrToolLog,
 }) => {
   const { t } = useTranslation()
   const isIterationNode = nodeInfo?.node_type === BlockEnum.Iteration && !!nodeInfo?.details?.length
   const isLoopNode = nodeInfo?.node_type === BlockEnum.Loop && !!nodeInfo?.details?.length
   const isRetryNode = hasRetryNode(nodeInfo?.node_type) && !!nodeInfo?.retryDetail?.length
+  const isFallbackNode = !!nodeInfo?.fallbackDetail?.length
   const isAgentNode = nodeInfo?.node_type === BlockEnum.Agent && !!nodeInfo?.agentLog?.length
   const isToolNode = nodeInfo?.node_type === BlockEnum.Tool && !!nodeInfo?.agentLog?.length
 
@@ -113,6 +117,14 @@ const ResultPanel: FC<ResultPanelProps> = ({
             <RetryLogTrigger
               nodeInfo={nodeInfo}
               onShowRetryResultList={onShowRetryDetail}
+            />
+          )
+        }
+        {
+          isFallbackNode && onShowFallbackDetail && (
+            <FallbackLogTrigger
+              nodeInfo={nodeInfo}
+              onShowFallbackResultList={onShowFallbackDetail}
             />
           )
         }

@@ -1,3 +1,4 @@
+import type { BlockEnum } from '@/app/components/workflow/types'
 import {
   RiArrowDownSLine,
   RiCheckLine,
@@ -15,13 +16,16 @@ import { ErrorHandleTypeEnum } from './types'
 type ErrorHandleTypeSelectorProps = {
   value: ErrorHandleTypeEnum
   onSelected: (value: ErrorHandleTypeEnum) => void
+  nodeType?: BlockEnum
 }
 const ErrorHandleTypeSelector = ({
   value,
   onSelected,
+  nodeType,
 }: ErrorHandleTypeSelectorProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const isLLMNode = nodeType === 'llm'
   const options = [
     {
       value: ErrorHandleTypeEnum.none,
@@ -38,6 +42,13 @@ const ErrorHandleTypeSelector = ({
       label: t('nodes.common.errorHandle.failBranch.title', { ns: 'workflow' }),
       description: t('nodes.common.errorHandle.failBranch.desc', { ns: 'workflow' }),
     },
+    ...(isLLMNode
+      ? [{
+          value: ErrorHandleTypeEnum.fallbackModel,
+          label: t('nodes.common.errorHandle.fallbackModel.title', { ns: 'workflow' }),
+          description: t('nodes.common.errorHandle.fallbackModel.desc', { ns: 'workflow' }),
+        }]
+      : []),
   ]
   const selectedOption = options.find(option => option.value === value)
 

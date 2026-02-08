@@ -725,3 +725,357 @@ class TestReasoningFormat:
 
         assert clean_text == text_with_think
         assert reasoning_content == ""
+
+
+class TestFallbackModel:
+    """Test cases for fallback model functionality."""
+
+    @pytest.fixture
+    def fallback_models(self) -> list[ModelConfig]:
+        """Create fallback models for testing."""
+        return [
+            ModelConfig(provider="openai", name="gpt-4", mode="chat", completion_params={}),
+            ModelConfig(provider="anthropic", name="claude-3", mode="chat", completion_params={}),
+        ]
+
+    @pytest.fixture
+    def llm_node_with_fallback(
+        self,
+        graph_init_params: GraphInitParams,
+        graph_runtime_state: GraphRuntimeState,
+        fallback_models: list[ModelConfig],
+    ) -> LLMNode:
+        """Create an LLM node with fallback models configured."""
+        llm_node_data = LLMNodeData(
+            title="Test LLM with Fallback",
+            model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
+            prompt_template=[],
+            memory=None,
+            context=ContextConfig(enabled=False),
+            vision=VisionConfig(enabled=False),
+            fallback_models=fallback_models,
+        )
+        mock_file_saver = mock.MagicMock(spec=LLMFileSaver)
+        node_config = {
+            "id": "llm-node-1",
+            "data": llm_node_data.model_dump(),
+        }
+        node = LLMNode(
+            id="llm-node-1",
+            config=node_config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+            llm_file_saver=mock_file_saver,
+        )
+        return node
+
+    def test_llm_node_uses_primary_model_when_no_fallback_index(self, llm_node_with_fallback: LLMNode, monkeypatch):
+        """Test that LLM node uses primary model when no fallback index is set."""
+        called_models = []
+
+        def mock_fetch_model_config(*, node_data_model: ModelConfig, tenant_id: str):
+            called_models.append(node_data_model)
+            # Return mock model instance and config
+            from unittest.mock import MagicMock
+
+            mock_model_instance = MagicMock()
+            mock_model_config = MagicMock()
+            mock_model_config.mode = "chat"
+            mock_model_config.provider = node_data_model.provider
+            mock_model_config.model = node_data_model.name
+            mock_model_config.parameters = {}
+            return mock_model_instance, mock_model_config
+
+        monkeypatch.setattr(LLMNode, "_fetch_model_config", staticmethod(mock_fetch_model_config))
+
+        # Mock fetch_prompt_messages to avoid database calls
+        def mock_fetch_prompt_messages(**_kwargs):
+            from core.model_runtime.entities.message_entities import UserPromptMessage
+
+            return [UserPromptMessage(content="test")], []
+
+        monkeypatch.setattr(LLMNode, "fetch_prompt_messages", staticmethod(mock_fetch_prompt_messages))
+
+        # Mock invoke_llm to return a result
+        def mock_invoke_llm(**_kwargs):
+            from decimal import Decimal
+
+            from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+            from core.model_runtime.entities.message_entities import AssistantPromptMessage
+
+            mock_usage = LLMUsage(
+                prompt_tokens=10,
+                prompt_unit_price=Decimal("0.001"),
+                prompt_price_unit=Decimal(1000),
+                prompt_price=Decimal("0.00001"),
+                completion_tokens=5,
+                completion_unit_price=Decimal("0.002"),
+                completion_price_unit=Decimal(1000),
+                completion_price=Decimal("0.00001"),
+                total_tokens=15,
+                total_price=Decimal("0.00002"),
+                currency="USD",
+            )
+            mock_message = AssistantPromptMessage(content="Test response")
+            return LLMResult(
+                model="gpt-3.5-turbo",
+                prompt_messages=[],
+                message=mock_message,
+                usage=mock_usage,
+            )
+
+        monkeypatch.setattr(LLMNode, "invoke_llm", staticmethod(mock_invoke_llm))
+
+        # Execute node
+        result = list(llm_node_with_fallback._run())
+
+        # Verify primary model was used
+        assert len(called_models) == 1
+        assert called_models[0].provider == "openai"
+        assert called_models[0].name == "gpt-3.5-turbo"
+
+    def test_llm_node_uses_fallback_model_when_index_set(
+        self, llm_node_with_fallback: LLMNode, graph_runtime_state: GraphRuntimeState, monkeypatch
+    ):
+        """Test that LLM node uses fallback model when index is set in variable pool."""
+        # Set fallback model index in variable pool
+        graph_runtime_state.variable_pool.add(("llm-node-1", "_fallback_model_index"), "0")
+
+        called_models = []
+
+        def mock_fetch_model_config(*, node_data_model: ModelConfig, tenant_id: str):
+            called_models.append(node_data_model)
+            # Return mock model instance and config
+            from unittest.mock import MagicMock
+
+            mock_model_instance = MagicMock()
+            mock_model_config = MagicMock()
+            mock_model_config.mode = "chat"
+            mock_model_config.provider = node_data_model.provider
+            mock_model_config.model = node_data_model.name
+            mock_model_config.parameters = {}
+            return mock_model_instance, mock_model_config
+
+        monkeypatch.setattr(LLMNode, "_fetch_model_config", staticmethod(mock_fetch_model_config))
+
+        # Mock fetch_prompt_messages
+        def mock_fetch_prompt_messages(**_kwargs):
+            from core.model_runtime.entities.message_entities import UserPromptMessage
+
+            return [UserPromptMessage(content="test")], []
+
+        monkeypatch.setattr(LLMNode, "fetch_prompt_messages", staticmethod(mock_fetch_prompt_messages))
+
+        # Mock invoke_llm
+        def mock_invoke_llm(**_kwargs):
+            from decimal import Decimal
+
+            from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+            from core.model_runtime.entities.message_entities import AssistantPromptMessage
+
+            mock_usage = LLMUsage(
+                prompt_tokens=10,
+                prompt_unit_price=Decimal("0.001"),
+                prompt_price_unit=Decimal(1000),
+                prompt_price=Decimal("0.00001"),
+                completion_tokens=5,
+                completion_unit_price=Decimal("0.002"),
+                completion_price_unit=Decimal(1000),
+                completion_price=Decimal("0.00001"),
+                total_tokens=15,
+                total_price=Decimal("0.00002"),
+                currency="USD",
+            )
+            mock_message = AssistantPromptMessage(content="Test response")
+            return LLMResult(
+                model="gpt-4",
+                prompt_messages=[],
+                message=mock_message,
+                usage=mock_usage,
+            )
+
+        monkeypatch.setattr(LLMNode, "invoke_llm", staticmethod(mock_invoke_llm))
+
+        # Execute node
+        result = list(llm_node_with_fallback._run())
+
+        # Verify fallback model was used
+        assert len(called_models) == 1
+        assert called_models[0].provider == "openai"
+        assert called_models[0].name == "gpt-4"  # First fallback model
+
+    def test_llm_node_uses_second_fallback_model(
+        self, llm_node_with_fallback: LLMNode, graph_runtime_state: GraphRuntimeState, monkeypatch
+    ):
+        """Test that LLM node uses second fallback model when index is 1."""
+        # Set fallback model index to 1
+        graph_runtime_state.variable_pool.add(("llm-node-1", "_fallback_model_index"), "1")
+
+        called_models = []
+
+        def mock_fetch_model_config(*, node_data_model: ModelConfig, tenant_id: str):
+            called_models.append(node_data_model)
+            from unittest.mock import MagicMock
+
+            mock_model_instance = MagicMock()
+            mock_model_config = MagicMock()
+            mock_model_config.mode = "chat"
+            mock_model_config.provider = node_data_model.provider
+            mock_model_config.model = node_data_model.name
+            mock_model_config.parameters = {}
+            return mock_model_instance, mock_model_config
+
+        monkeypatch.setattr(LLMNode, "_fetch_model_config", staticmethod(mock_fetch_model_config))
+
+        def mock_fetch_prompt_messages(**_kwargs):
+            from core.model_runtime.entities.message_entities import UserPromptMessage
+
+            return [UserPromptMessage(content="test")], []
+
+        monkeypatch.setattr(LLMNode, "fetch_prompt_messages", staticmethod(mock_fetch_prompt_messages))
+
+        def mock_invoke_llm(**_kwargs):
+            from decimal import Decimal
+
+            from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+            from core.model_runtime.entities.message_entities import AssistantPromptMessage
+
+            mock_usage = LLMUsage(
+                prompt_tokens=10,
+                prompt_unit_price=Decimal("0.001"),
+                prompt_price_unit=Decimal(1000),
+                prompt_price=Decimal("0.00001"),
+                completion_tokens=5,
+                completion_unit_price=Decimal("0.002"),
+                completion_price_unit=Decimal(1000),
+                completion_price=Decimal("0.00001"),
+                total_tokens=15,
+                total_price=Decimal("0.00002"),
+                currency="USD",
+            )
+            mock_message = AssistantPromptMessage(content="Test response")
+            return LLMResult(
+                model="claude-3",
+                prompt_messages=[],
+                message=mock_message,
+                usage=mock_usage,
+            )
+
+        monkeypatch.setattr(LLMNode, "invoke_llm", staticmethod(mock_invoke_llm))
+
+        # Execute node
+        result = list(llm_node_with_fallback._run())
+
+        # Verify second fallback model was used
+        assert len(called_models) == 1
+        assert called_models[0].provider == "anthropic"
+        assert called_models[0].name == "claude-3"  # Second fallback model
+
+    def test_llm_node_handles_invalid_fallback_index(
+        self, llm_node_with_fallback: LLMNode, graph_runtime_state: GraphRuntimeState, monkeypatch
+    ):
+        """Test that LLM node handles invalid fallback index gracefully."""
+        # Set invalid fallback model index (out of range)
+        graph_runtime_state.variable_pool.add(("llm-node-1", "_fallback_model_index"), "999")
+
+        called_models = []
+
+        def mock_fetch_model_config(*, node_data_model: ModelConfig, tenant_id: str):
+            called_models.append(node_data_model)
+            from unittest.mock import MagicMock
+
+            mock_model_instance = MagicMock()
+            mock_model_config = MagicMock()
+            mock_model_config.mode = "chat"
+            mock_model_config.provider = node_data_model.provider
+            mock_model_config.model = node_data_model.name
+            mock_model_config.parameters = {}
+            return mock_model_instance, mock_model_config
+
+        monkeypatch.setattr(LLMNode, "_fetch_model_config", staticmethod(mock_fetch_model_config))
+
+        def mock_fetch_prompt_messages(**_kwargs):
+            from core.model_runtime.entities.message_entities import UserPromptMessage
+
+            return [UserPromptMessage(content="test")], []
+
+        monkeypatch.setattr(LLMNode, "fetch_prompt_messages", staticmethod(mock_fetch_prompt_messages))
+
+        def mock_invoke_llm(**_kwargs):
+            from decimal import Decimal
+
+            from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+            from core.model_runtime.entities.message_entities import AssistantPromptMessage
+
+            mock_usage = LLMUsage(
+                prompt_tokens=10,
+                prompt_unit_price=Decimal("0.001"),
+                prompt_price_unit=Decimal(1000),
+                prompt_price=Decimal("0.00001"),
+                completion_tokens=5,
+                completion_unit_price=Decimal("0.002"),
+                completion_price_unit=Decimal(1000),
+                completion_price=Decimal("0.00001"),
+                total_tokens=15,
+                total_price=Decimal("0.00002"),
+                currency="USD",
+            )
+            mock_message = AssistantPromptMessage(content="Test response")
+            return LLMResult(
+                model="gpt-3.5-turbo",
+                prompt_messages=[],
+                message=mock_message,
+                usage=mock_usage,
+            )
+
+        monkeypatch.setattr(LLMNode, "invoke_llm", staticmethod(mock_invoke_llm))
+
+        # Execute node - should fall back to primary model
+        result = list(llm_node_with_fallback._run())
+
+        # Verify primary model was used (invalid index should be ignored)
+        assert len(called_models) == 1
+        assert called_models[0].provider == "openai"
+        assert called_models[0].name == "gpt-3.5-turbo"
+
+    def test_llm_node_fallback_models_config_parsing(
+        self, graph_init_params: GraphInitParams, graph_runtime_state: GraphRuntimeState
+    ):
+        """Test that fallback_models parameter is correctly parsed."""
+        fallback_models = [
+            ModelConfig(provider="openai", name="gpt-4", mode="chat", completion_params={}),
+            ModelConfig(provider="anthropic", name="claude-3", mode="chat", completion_params={}),
+        ]
+
+        llm_node_data = LLMNodeData(
+            title="Test LLM",
+            model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
+            prompt_template=[],
+            memory=None,
+            context=ContextConfig(enabled=False),
+            vision=VisionConfig(enabled=False),
+            fallback_models=fallback_models,
+        )
+
+        assert llm_node_data.fallback_models is not None
+        assert len(llm_node_data.fallback_models) == 2
+        assert llm_node_data.fallback_models[0].provider == "openai"
+        assert llm_node_data.fallback_models[0].name == "gpt-4"
+        assert llm_node_data.fallback_models[1].provider == "anthropic"
+        assert llm_node_data.fallback_models[1].name == "claude-3"
+
+    def test_llm_node_empty_fallback_models(
+        self, graph_init_params: GraphInitParams, graph_runtime_state: GraphRuntimeState
+    ):
+        """Test that empty fallback_models list is handled correctly."""
+        llm_node_data = LLMNodeData(
+            title="Test LLM",
+            model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
+            prompt_template=[],
+            memory=None,
+            context=ContextConfig(enabled=False),
+            vision=VisionConfig(enabled=False),
+            fallback_models=[],
+        )
+
+        assert llm_node_data.fallback_models == []

@@ -198,9 +198,37 @@ class LLMNode(Node[LLMNodeData]):
             if context_files:
                 node_inputs["#context_files#"] = [file.model_dump() for file in context_files]
 
+            # Check if we should use a fallback model
+            model_to_use = self.node_data.model
+            fallback_model_index_var = variable_pool.get((self._node_id, "_fallback_model_index"))
+            if fallback_model_index_var is not None and self.node_data.fallback_models:
+                try:
+                    # Get the value from the segment
+                    fallback_model_index_str = (
+                        fallback_model_index_var.text
+                        if hasattr(fallback_model_index_var, "text")
+                        else str(fallback_model_index_var.value)
+                    )
+                    fallback_model_index = int(fallback_model_index_str)
+                    if 0 <= fallback_model_index < len(self.node_data.fallback_models):
+                        model_to_use = self.node_data.fallback_models[fallback_model_index]
+                        logger.info(
+                            "Using fallback model %d (%s/%s) for node %s",
+                            fallback_model_index,
+                            model_to_use.provider,
+                            model_to_use.name,
+                            self._node_id,
+                        )
+                except (ValueError, IndexError, AttributeError) as e:
+                    logger.warning(
+                        "Invalid fallback model index for node %s: %s",
+                        self._node_id,
+                        e,
+                    )
+
             # fetch model config
             model_instance, model_config = LLMNode._fetch_model_config(
-                node_data_model=self.node_data.model,
+                node_data_model=model_to_use,
                 tenant_id=self.tenant_id,
             )
 
@@ -238,7 +266,7 @@ class LLMNode(Node[LLMNodeData]):
 
             # handle invoke result
             generator = LLMNode.invoke_llm(
-                node_data_model=self.node_data.model,
+                node_data_model=model_to_use,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,

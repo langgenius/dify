@@ -18,6 +18,7 @@ export type LLMNodeType = CommonNodeType & {
   structured_output_enabled?: boolean
   structured_output?: StructuredOutput
   reasoning_format?: 'tagged' | 'separated'
+  fallback_models?: ModelConfig[]
 }
 
 export enum Type {

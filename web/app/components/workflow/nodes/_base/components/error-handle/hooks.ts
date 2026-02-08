@@ -113,6 +113,19 @@ export const useErrorHandle = (
       setCollapsed(false)
       handleEdgeDeleteByDeleteBranch(id, ErrorHandleTypeEnum.failBranch)
     }
+
+    if (value === ErrorHandleTypeEnum.fallbackModel) {
+      handleNodeDataUpdateWithSyncDraft({
+        id,
+        data: {
+          error_strategy: value,
+          default_value: undefined,
+          fallback_models: [],
+        },
+      })
+      setCollapsed(false)
+      handleEdgeDeleteByDeleteBranch(id, ErrorHandleTypeEnum.failBranch)
+    }
   }, [id, handleNodeDataUpdateWithSyncDraft, handleEdgeDeleteByDeleteBranch])
 
   return {
