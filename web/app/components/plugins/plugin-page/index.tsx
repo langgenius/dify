@@ -5,14 +5,16 @@ import {
   RiBookOpenLine,
   RiDragDropLine,
   RiEqualizer2Line,
+  RiRefreshLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
+import { useToastContext } from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
 import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
@@ -20,7 +22,8 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
-import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
+import { batchUpgradePlugins, fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { sleep } from '@/utils'
 import { cn } from '@/utils/classnames'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
@@ -48,6 +51,8 @@ const PluginPage = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   useDocumentTitle(t('metadata.title', { ns: 'plugin' }))
+  const { notify } = useToastContext()
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   // Use nuqs hook for installation state
   const [{ packageId, bundleInfo }, setInstallState] = usePluginInstallation()
@@ -59,6 +64,9 @@ const PluginPage = ({
     setTrue: showInstallFromMarketplace,
     setFalse: doHideInstallFromMarketplace,
   }] = useBoolean(false)
+
+  const [isBatchUpgrading, setIsBatchUpgrading] = useState(false)
+  const [showBatchUpgradeTooltip, setShowBatchUpgradeTooltip] = useState(true)
 
   const hideInstallFromMarketplace = () => {
     doHideInstallFromMarketplace()
@@ -134,6 +142,45 @@ const PluginPage = ({
     enabled: isPluginsTab && canManagement,
   })
 
+  const handleBatchUpgrade = useCallback(async () => {
+    // Hide tooltip immediately when clicked
+    setShowBatchUpgradeTooltip(false)
+    setIsBatchUpgrading(true)
+    try {
+      const result = await batchUpgradePlugins()
+      const { success, failed, skipped } = result
+
+      // If there are updates (success or failed), show submitted message
+      if (success.length > 0 || failed.length > 0) {
+        notify({
+          type: 'success',
+          message: t('batchUpgrade.submittedMessage', { ns: 'plugin' }),
+        })
+      }
+      // If all plugins are already up to date (only skipped)
+      else if (skipped.length > 0) {
+        notify({
+          type: 'info',
+          message: t('batchUpgrade.noUpdatesMessage', { ns: 'plugin' }),
+        })
+      }
+
+      invalidateInstalledPluginList()
+    }
+    catch (error) {
+      console.error('Failed to batch upgrade plugins:', error)
+      notify({
+        type: 'error',
+        message: t('batchUpgrade.errorMessage', { ns: 'plugin' }),
+      })
+    }
+    finally {
+      setIsBatchUpgrading(false)
+      // Re-enable tooltip after a short delay
+      setTimeout(() => setShowBatchUpgradeTooltip(true), 500)
+    }
+  }, [t, notify, invalidateInstalledPluginList])
+
   const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
   return (
     <div
@@ -185,6 +232,27 @@ const PluginPage = ({
                       {t('publishPlugins', { ns: 'plugin' })}
                     </Button>
                   </Link>
+                  <div className="mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular"></div>
+                </>
+              )
+            }
+            {
+              isPluginsTab && canManagement && (
+                <>
+                  <Tooltip
+                    popupContent={t('batchUpgrade.tooltip', { ns: 'plugin' })}
+                    disabled={!showBatchUpgradeTooltip}
+                  >
+                    <Button
+                      variant="secondary-accent"
+                      className="px-3"
+                      onClick={handleBatchUpgrade}
+                      disabled={isBatchUpgrading}
+                    >
+                      <RiRefreshLine className={cn('mr-1 h-4 w-4', isBatchUpgrading && 'animate-spin')} />
+                      {t('batchUpgrade.button', { ns: 'plugin' })}
+                    </Button>
+                  </Tooltip>
                   <div className="mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular"></div>
                 </>
               )

@@ -578,6 +578,25 @@ class PluginUpgradeFromGithubApi(Resource):
             raise ValueError(e)
 
 
+@console_ns.route("/workspaces/current/plugin/upgrade/batch")
+class PluginBatchUpgradeApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @plugin_permission_required(install_required=True)
+    def post(self):
+        """
+        Batch upgrade all marketplace plugins that have updates available
+        """
+        _, tenant_id = current_account_with_tenant()
+
+        try:
+            result = PluginService.batch_upgrade_plugins_from_marketplace(tenant_id)
+            return jsonable_encoder(result)
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+
 @console_ns.route("/workspaces/current/plugin/uninstall")
 class PluginUninstallApi(Resource):
     @console_ns.expect(console_ns.models[ParserUninstall.__name__])
