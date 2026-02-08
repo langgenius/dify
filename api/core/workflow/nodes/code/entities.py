@@ -4,6 +4,7 @@ from pydantic import AfterValidator, BaseModel
 
 from core.helper.code_executor.code_executor import CodeLanguage
 from core.variables.types import SegmentType
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.base.entities import VariableSelector
 
@@ -31,6 +32,8 @@ class CodeNodeData(BaseNodeData):
     """
     Code Node Data.
     """
+
+    type: NodeType = NodeType.CODE
 
     class Output(BaseModel):
         type: Annotated[SegmentType, AfterValidator(_validate_type)]

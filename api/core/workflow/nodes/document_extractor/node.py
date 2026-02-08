@@ -95,12 +95,10 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: DocumentExtractorNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = DocumentExtractorNodeData.model_validate(node_data)
-
-        return {node_id + ".files": typed_node_data.variable_selector}
+        _ = graph_config  # Explicitly mark as unused
+        return {node_id + ".files": node_data.variable_selector}
 
 
 def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:

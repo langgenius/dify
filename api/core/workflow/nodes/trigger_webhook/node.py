@@ -151,7 +151,7 @@ class TriggerWebhookNode(Node[WebhookData]):
                     outputs[param_name] = raw_data
                 continue
 
-            if param_type == "file":
+            if param_type == SegmentType.FILE:
                 # Get File object (already processed by webhook controller)
                 files = webhook_data.get("files", {})
                 if files and isinstance(files, dict):

@@ -817,15 +817,13 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: ParameterExtractorNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = ParameterExtractorNodeData.model_validate(node_data)
+        _ = graph_config  # Explicitly mark as unused
+        variable_mapping: dict[str, Sequence[str]] = {"query": node_data.query}
 
-        variable_mapping: dict[str, Sequence[str]] = {"query": typed_node_data.query}
-
-        if typed_node_data.instruction:
-            selectors = variable_template_parser.extract_selectors_from_template(typed_node_data.instruction)
+        if node_data.instruction:
+            selectors = variable_template_parser.extract_selectors_from_template(node_data.instruction)
             for selector in selectors:
                 variable_mapping[selector.variable] = selector.value_selector
 

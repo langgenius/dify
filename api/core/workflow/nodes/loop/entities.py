@@ -4,6 +4,7 @@ from typing import Annotated, Any, Literal
 from pydantic import AfterValidator, BaseModel, Field, field_validator
 
 from core.variables.types import SegmentType
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseLoopNodeData, BaseLoopState, BaseNodeData
 from core.workflow.utils.condition.entities import Condition
 
@@ -39,6 +40,7 @@ class LoopVariableData(BaseModel):
 
 
 class LoopNodeData(BaseLoopNodeData):
+    type: NodeType = NodeType.LOOP
     loop_count: int  # Maximum number of loops
     break_conditions: list[Condition]  # Conditions to break the loop
     logical_operator: Literal["and", "or"]
@@ -58,7 +60,7 @@ class LoopStartNodeData(BaseNodeData):
     Loop Start Node Data.
     """
 
-    pass
+    type: NodeType = NodeType.LOOP_START
 
 
 class LoopEndNodeData(BaseNodeData):
@@ -66,7 +68,7 @@ class LoopEndNodeData(BaseNodeData):
     Loop End Node Data.
     """
 
-    pass
+    type: NodeType = NodeType.LOOP_END
 
 
 class LoopState(BaseLoopState):

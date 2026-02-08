@@ -3,12 +3,12 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import Protocol, cast, final
+from typing import Any, Protocol, cast, final
 
 from pydantic import TypeAdapter
 
 from core.workflow.entities.graph_config import NodeConfigDict
-from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType
+from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState
 from core.workflow.nodes.base.node import Node
 from libs.typing import is_str
 
@@ -28,7 +28,7 @@ class NodeFactory(Protocol):
     allowing for different node creation strategies while maintaining type safety.
     """
 
-    def create_node(self, node_config: NodeConfigDict) -> Node:
+    def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
         """
         Create a Node instance from node configuration data.
 
@@ -115,10 +115,7 @@ class Graph:
         start_node_id = None
         for nid in root_candidates:
             node_data = node_configs_map[nid]["data"]
-            node_type = node_data["type"]
-            if not isinstance(node_type, str):
-                continue
-            if NodeType(node_type).is_start_node:
+            if node_data.type.is_start_node:
                 start_node_id = nid
                 break
 

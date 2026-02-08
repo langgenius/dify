@@ -59,6 +59,7 @@ from core.variables import (
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.enums import (
     NodeType,
     SystemVariableKey,
@@ -122,7 +123,7 @@ class LLMNode(Node[LLMNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
         *,
@@ -985,14 +986,11 @@ class LLMNode(Node[LLMNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: LLMNodeData,
     ) -> Mapping[str, Sequence[str]]:
         # graph_config is not used in this node type
         _ = graph_config  # Explicitly mark as unused
-        # Create typed NodeData from dict
-        typed_node_data = LLMNodeData.model_validate(node_data)
-
-        prompt_template = typed_node_data.prompt_template
+        prompt_template = node_data.prompt_template
         variable_selectors = []
         if isinstance(prompt_template, list):
             for prompt in prompt_template:
@@ -1010,7 +1008,7 @@ class LLMNode(Node[LLMNodeData]):
         for variable_selector in variable_selectors:
             variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
-        memory = typed_node_data.memory
+        memory = node_data.memory
         if memory and memory.query_prompt_template:
             query_variable_selectors = VariableTemplateParser(
                 template=memory.query_prompt_template
@@ -1018,16 +1016,16 @@ class LLMNode(Node[LLMNodeData]):
             for variable_selector in query_variable_selectors:
                 variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
-        if typed_node_data.context.enabled:
-            variable_mapping["#context#"] = typed_node_data.context.variable_selector
+        if node_data.context.enabled:
+            variable_mapping["#context#"] = node_data.context.variable_selector
 
-        if typed_node_data.vision.enabled:
-            variable_mapping["#files#"] = typed_node_data.vision.configs.variable_selector
+        if node_data.vision.enabled:
+            variable_mapping["#files#"] = node_data.vision.configs.variable_selector
 
-        if typed_node_data.memory:
+        if node_data.memory:
             variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY]
 
-        if typed_node_data.prompt_config:
+        if node_data.prompt_config:
             enable_jinja = False
 
             if isinstance(prompt_template, LLMNodeCompletionModelPromptTemplate):
@@ -1040,7 +1038,7 @@ class LLMNode(Node[LLMNodeData]):
                         break
 
             if enable_jinja:
-                for variable_selector in typed_node_data.prompt_config.jinja2_variables or []:
+                for variable_selector in node_data.prompt_config.jinja2_variables or []:
                     variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
         variable_mapping = {node_id + "." + key: value for key, value in variable_mapping.items()}

@@ -172,6 +172,7 @@ def test_custom_authorization_header(setup_http_mock):
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     """Test: In custom authentication mode, when the api_key is empty, AuthorizationConfigError should be raised."""
+    from core.workflow.enums import NodeType
     from core.workflow.nodes.http_request.entities import (
         HttpRequestNodeAuthorization,
         HttpRequestNodeData,
@@ -182,7 +183,6 @@ def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     from core.workflow.runtime import VariablePool
     from core.workflow.system_variable import SystemVariable
 
-    # Create variable pool
     variable_pool = VariablePool(
         system_variables=SystemVariable(user_id="test", files=[]),
         user_inputs={},
@@ -190,8 +190,8 @@ def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
         conversation_variables=[],
     )
 
-    # Create node data with custom auth and empty api_key
     node_data = HttpRequestNodeData(
+        type=NodeType.HTTP_REQUEST,
         title="http",
         desc="",
         url="http://example.com",
@@ -210,7 +210,6 @@ def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
         ssl_verify=True,
     )
 
-    # Create executor should raise AuthorizationConfigError
     with pytest.raises(AuthorizationConfigError, match="API key is required"):
         Executor(
             node_data=node_data,
