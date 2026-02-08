@@ -58,7 +58,7 @@ if $web_modified; then
     fi
 
     cd ./web || exit 1
-    lint-staged
+    npx lint-staged
 
     if $web_ts_modified; then
         echo "Running TypeScript type-check:tsgo"

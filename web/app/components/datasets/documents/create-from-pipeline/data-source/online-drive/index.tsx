@@ -166,12 +166,15 @@ const OnlineDrive = ({
   }, [dataSourceStore, supportBatchUpload])
 
   const handleOpenFolder = useCallback((file: OnlineDriveFile) => {
-    const { breadcrumbs, prefix, setBreadcrumbs, setPrefix, setBucket, setOnlineDriveFileList, setSelectedFileIds } = dataSourceStore.getState()
+    const { breadcrumbs, prefix, setBreadcrumbs, setPrefix, setBucket, setOnlineDriveFileList, setSelectedFileIds, setTreeMap, setExpandedFolderIds } = dataSourceStore.getState()
     if (file.type === OnlineDriveFileType.file)
       return
     setOnlineDriveFileList([])
     if (file.type === OnlineDriveFileType.bucket) {
+      // Clear tree state when changing buckets
       setBucket(file.name)
+      setTreeMap({})
+      setExpandedFolderIds(new Set<string>())
     }
     else {
       setSelectedFileIds([])

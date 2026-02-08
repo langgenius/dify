@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "{{name}} के साथ सिंक करने के लिए, पहले {{name}} से कनेक्शन स्थापित करना आवश्यक है।",
   "onlineDrive.notSupportedFileType": "यह फ़ाइल प्रकार समर्थित नहीं है",
   "onlineDrive.resetKeywords": "कीवर्ड रीसेट करें",
+  "onlineDrive.viewMode.flatList": "सपाट सूची दृश्य",
+  "onlineDrive.viewMode.treeView": "ट्री व्यू",
   "operations.backToDataSource": "डेटा स्रोत पर वापस",
   "operations.choose": "चुनें",
   "operations.convert": "रूपांतरित करें",

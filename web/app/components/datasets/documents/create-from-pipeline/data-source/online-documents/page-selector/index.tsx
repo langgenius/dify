@@ -1,7 +1,9 @@
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
+import type { OnlineDriveViewMode as OnlineDriveViewModeType } from '@/models/pipeline'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FixedSizeList as List } from 'react-window'
+import { OnlineDriveViewMode } from '@/models/pipeline'
 import Item from './item'
 import { recursivePushInParentDescendants } from './utils'
 
@@ -16,6 +18,7 @@ type PageSelectorProps = {
   onPreview?: (selectedPageId: string) => void
   isMultipleChoice?: boolean
   currentCredentialId: string
+  viewMode?: OnlineDriveViewModeType
 }
 
 export type NotionPageTreeItem = {
@@ -43,31 +46,11 @@ const PageSelector = ({
   onPreview,
   isMultipleChoice = true,
   currentCredentialId,
+  viewMode = OnlineDriveViewMode.flat,
 }: PageSelectorProps) => {
   const { t } = useTranslation()
   const [dataList, setDataList] = useState<NotionPageItem[]>([])
   const [currentPreviewPageId, setCurrentPreviewPageId] = useState('')
-
-  useEffect(() => {
-    setDataList(list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id]).map((item) => {
-      return {
-        ...item,
-        expand: false,
-        depth: 0,
-      }
-    }))
-  }, [currentCredentialId])
-
-  const searchDataList = list.filter((item) => {
-    return item.page_name.includes(searchValue)
-  }).map((item) => {
-    return {
-      ...item,
-      expand: false,
-      depth: 0,
-    }
-  })
-  const currentDataList = searchValue ? searchDataList : dataList
 
   const listMapWithChildrenAndDescendants = useMemo(() => {
     return list.reduce((prev: NotionPageTreeMap, next: DataSourceNotionPage) => {
@@ -80,7 +63,35 @@ const PageSelector = ({
     }, {})
   }, [list, pagesMap])
 
+  useEffect(() => {
+    // In tree mode, show only root items, otherwise show all with proper depth.
+    const initialList = viewMode === OnlineDriveViewMode.tree
+      ? list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id])
+      : list
+
+    setDataList(initialList.map(item => ({
+      ...item,
+      expand: false,
+      depth: listMapWithChildrenAndDescendants[item.page_id]?.depth ?? 0,
+    })))
+  }, [currentCredentialId, viewMode, list, pagesMap, listMapWithChildrenAndDescendants])
+
+  const searchDataList = list.filter((item) => {
+    return item.page_name.includes(searchValue)
+  }).map((item) => {
+    return {
+      ...item,
+      expand: false,
+      depth: listMapWithChildrenAndDescendants[item.page_id]?.depth ?? 0,
+    }
+  })
+  const currentDataList = searchValue ? searchDataList : dataList
+
   const handleToggle = useCallback((index: number) => {
+    // Disable toggle in flat mode
+    if (viewMode === OnlineDriveViewMode.flat)
+      return
+
     const current = dataList[index]
     const pageId = current.page_id
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
@@ -107,7 +118,7 @@ const PageSelector = ({
       ]
     }
     setDataList(newDataList)
-  }, [dataList, listMapWithChildrenAndDescendants, pagesMap])
+  }, [dataList, listMapWithChildrenAndDescendants, pagesMap, viewMode])
 
   const handleCheck = useCallback((index: number) => {
     const copyValue = new Set(checkedIds)
@@ -180,6 +191,7 @@ const PageSelector = ({
         previewPageId: currentPreviewPageId,
         pagesMap,
         isMultipleChoice,
+        viewMode,
       }}
     >
       {Item}
