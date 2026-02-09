@@ -595,12 +595,7 @@ def _get_conversation(app_model, conversation_id):
     if not conversation:
         raise NotFound("Conversation Not Exists.")
 
-    db.session.execute(
-        sa.update(Conversation)
-        .where(Conversation.id == conversation_id, Conversation.read_at.is_(None))
-        .values(read_at=naive_utc_now(), read_account_id=current_user.id)
-    )
-    db.session.commit()
+    ConversationService.mark_as_read(conversation_id, current_user)
     db.session.refresh(conversation)
 
     return conversation

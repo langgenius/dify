@@ -3,7 +3,7 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any, Union
 
-from sqlalchemy import asc, desc, func, or_, select
+from sqlalchemy import asc, desc, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -31,6 +31,19 @@ logger = logging.getLogger(__name__)
 
 
 class ConversationService:
+    @classmethod
+    def mark_as_read(cls, conversation_id: str, user: Union[Account, EndUser]):
+        db.session.execute(
+            update(Conversation)
+            .where(Conversation.id == conversation_id, Conversation.read_at.is_(None))
+            .values(
+                read_at=naive_utc_now(),
+                read_account_id=user.id,
+                updated_at=Conversation.updated_at,
+            )
+        )
+        db.session.commit()
+
     @classmethod
     def pagination_by_last_id(
         cls,
