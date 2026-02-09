@@ -95,9 +95,9 @@ def test_resolve_tool_provider_type_defaults_to_builtin_when_not_detected():
 
 def test_get_workflow_tool_provider_ids_returns_empty_when_no_missing_type():
     node = _create_agent_node(tools=[])
-    assert node._get_workflow_tool_provider_ids(
-        [{"type": ToolProviderType.BUILT_IN.value, "provider_name": "x"}]
-    ) == set()
+    assert (
+        node._get_workflow_tool_provider_ids([{"type": ToolProviderType.BUILT_IN.value, "provider_name": "x"}]) == set()
+    )
 
 
 def test_get_workflow_tool_provider_ids_queries_existing_workflow_providers():

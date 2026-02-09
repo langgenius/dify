@@ -345,9 +345,7 @@ class AgentNode(Node[AgentNodeData]):
 
     def _get_workflow_tool_provider_ids(self, tools: list[Mapping[str, Any]]) -> set[str]:
         missing_type_provider_ids = {
-            provider_id
-            for tool in tools
-            if not tool.get("type") and (provider_id := tool.get("provider_name"))
+            provider_id for tool in tools if not tool.get("type") and (provider_id := tool.get("provider_name"))
         }
         if not missing_type_provider_ids:
             return set()
@@ -360,9 +358,7 @@ class AgentNode(Node[AgentNodeData]):
             return set(session.scalars(workflow_provider_stmt).all())
 
     @staticmethod
-    def _resolve_tool_provider_type(
-        tool: Mapping[str, Any], workflow_tool_provider_ids: set[str]
-    ) -> ToolProviderType:
+    def _resolve_tool_provider_type(tool: Mapping[str, Any], workflow_tool_provider_ids: set[str]) -> ToolProviderType:
         tool_type = tool.get("type")
         if tool_type:
             return ToolProviderType(tool_type)
