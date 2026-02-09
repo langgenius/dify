@@ -81,7 +81,7 @@ dependencies = [
     "starlette==0.49.1",
     "tiktoken~=0.9.0",
     "transformers~=4.56.1",
-    "unstructured[docx,epub,md,ppt,pptx]~=0.16.1",
+    "unstructured[docx,epub,md,ppt,pptx]~=0.18.18",
     "yarl~=1.18.3",
     "webvtt-py~=0.5.1",
     "sseclient-py~=1.8.0",
