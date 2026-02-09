@@ -340,6 +340,29 @@ const findExceptVarInObject = (
   return res
 }
 
+const getLLMNodeOutputVars = (llmNodeData: LLMNodeType): Var[] => {
+  const isComputerUseEnabled = !!llmNodeData.computer_use
+  const vars = [...LLM_OUTPUT_STRUCT].filter((item) => {
+    if (isComputerUseEnabled)
+      return true
+    return item.variable !== 'generation'
+  })
+
+  if (
+    llmNodeData.structured_output_enabled
+    && llmNodeData.structured_output?.schema?.properties
+    && Object.keys(llmNodeData.structured_output.schema.properties).length > 0
+  ) {
+    vars.push({
+      variable: 'structured_output',
+      type: VarType.object,
+      children: llmNodeData.structured_output,
+    })
+  }
+
+  return vars
+}
+
 const formatItem = (
   item: any,
   isChatMode: boolean,
@@ -415,18 +438,8 @@ const formatItem = (
     }
 
     case BlockEnum.LLM: {
-      res.vars = [...LLM_OUTPUT_STRUCT]
-      if (
-        data.structured_output_enabled
-        && data.structured_output?.schema?.properties
-        && Object.keys(data.structured_output.schema.properties).length > 0
-      ) {
-        res.vars.push({
-          variable: 'structured_output',
-          type: VarType.object,
-          children: data.structured_output,
-        })
-      }
+      const llmNodeData = data as LLMNodeType
+      res.vars = getLLMNodeOutputVars(llmNodeData)
 
       break
     }
@@ -1304,6 +1317,104 @@ export const getNodeInfoById = (nodes: any, id: string) => {
   return nodes.find((node: any) => node.id === id)
 }
 
+const normalizeSpecialValueSelector = (valueSelector: ValueSelector): ValueSelector => {
+  if (valueSelector.length > 1 && isSpecialVar(valueSelector[1]))
+    return valueSelector.slice(1)
+  return valueSelector
+}
+
+const getVarRootSelector = (nodeId: string, variable: string): ValueSelector => {
+  const path = variable.split('.')
+  if (path.length > 0 && isSpecialVar(path[0]))
+    return path
+  return [nodeId, ...path]
+}
+
+const isSelectorPathValidInStructuredProperties = (
+  properties: Record<string, StructField> | undefined,
+  selectorTail: ValueSelector,
+): boolean => {
+  if (!properties)
+    return false
+  if (selectorTail.length === 0)
+    return true
+
+  const [currentKey, ...rest] = selectorTail
+  const property = properties[currentKey]
+  if (!property)
+    return false
+  if (rest.length === 0)
+    return true
+
+  if (property.type === Type.object)
+    return isSelectorPathValidInStructuredProperties(property.properties, rest)
+
+  return false
+}
+
+const isSelectorPathValidInVar = (
+  variable: Var,
+  selectorTail: ValueSelector,
+): boolean => {
+  if (selectorTail.length === 0)
+    return true
+  if (!variable.children)
+    return false
+
+  const structuredProperties = (variable.children as StructuredOutput)?.schema?.properties
+  if (structuredProperties)
+    return isSelectorPathValidInStructuredProperties(structuredProperties, selectorTail)
+
+  if (!Array.isArray(variable.children))
+    return false
+
+  const [currentKey, ...rest] = selectorTail
+  const child = variable.children.find(item => item.variable === currentKey)
+  if (!child)
+    return false
+  return isSelectorPathValidInVar(child, rest)
+}
+
+const isValueSelectorMatchVar = (
+  valueSelector: ValueSelector,
+  nodeId: string,
+  variable: Var,
+): boolean => {
+  const rootSelector = getVarRootSelector(nodeId, variable.variable)
+  if (valueSelector.length < rootSelector.length)
+    return false
+
+  const isRootMatched = rootSelector.every((segment, index) => {
+    return valueSelector[index] === segment
+  })
+  if (!isRootMatched)
+    return false
+
+  const selectorTail = valueSelector.slice(rootSelector.length)
+  return isSelectorPathValidInVar(variable, selectorTail)
+}
+
+export const isValueSelectorInNodeOutputVars = (
+  valueSelector: ValueSelector,
+  nodeOutputVars: NodeOutPutVar[],
+): boolean => {
+  if (!Array.isArray(valueSelector) || valueSelector.length === 0)
+    return false
+
+  const normalizedSelector = normalizeSpecialValueSelector(valueSelector)
+  const selectorsToCheck = [valueSelector]
+  if (normalizedSelector.join('.') !== valueSelector.join('.'))
+    selectorsToCheck.push(normalizedSelector)
+
+  return selectorsToCheck.some((selector) => {
+    return nodeOutputVars.some((nodeOutputVar) => {
+      return nodeOutputVar.vars.some((variable) => {
+        return isValueSelectorMatchVar(selector, nodeOutputVar.nodeId, variable)
+      })
+    })
+  })
+}
+
 const matchNotSystemVars = (prompts: string[]) => {
   if (!prompts)
     return []
@@ -1371,7 +1482,10 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       const contextVar = (data as LLMNodeType).context?.variable_selector
         ? [(data as LLMNodeType).context?.variable_selector]
         : []
-      res = [...inputVars, ...contextVar]
+      const jinja2VarSelectors = payload.prompt_config?.jinja2_variables
+        ?.map(item => item.value_selector)
+        .filter(selector => Array.isArray(selector) && selector.length > 0) || []
+      res = [...inputVars, ...contextVar, ...jinja2VarSelectors]
       break
     }
     case BlockEnum.KnowledgeRetrieval: {
@@ -1414,6 +1528,14 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = (data as TemplateTransformNodeType).variables?.map((v: any) => {
         return v.value_selector
       })
+      break
+    }
+    case BlockEnum.Command: {
+      const payload = data as CommandNodeType
+      res = matchNotSystemVars([
+        payload.command,
+        payload.working_directory,
+      ])
       break
     }
     case BlockEnum.QuestionClassifier: {
@@ -2081,19 +2203,8 @@ export const getNodeOutputVars = (
     }
 
     case BlockEnum.LLM: {
-      const vars = [...LLM_OUTPUT_STRUCT]
       const llmNodeData = data as LLMNodeType
-      if (
-        llmNodeData.structured_output_enabled
-        && llmNodeData.structured_output?.schema?.properties
-        && Object.keys(llmNodeData.structured_output.schema.properties).length > 0
-      ) {
-        vars.push({
-          variable: 'structured_output',
-          type: VarType.object,
-          children: llmNodeData.structured_output,
-        })
-      }
+      const vars = getLLMNodeOutputVars(llmNodeData)
       varsToValueSelectorList(vars, [id], res)
       break
     }

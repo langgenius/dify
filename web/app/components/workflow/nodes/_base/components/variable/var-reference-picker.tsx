@@ -49,7 +49,7 @@ import { cn } from '@/utils/classnames'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import RemoveButton from '../remove-button'
 import ConstantField from './constant-field'
-import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar, removeFileVars, varTypeToStructType } from './utils'
+import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar, isValueSelectorInNodeOutputVars, removeFileVars, varTypeToStructType } from './utils'
 import VarFullPathPanel from './var-full-path-panel'
 import VarReferencePopup from './var-reference-popup'
 
@@ -312,7 +312,9 @@ const VarReferencePicker: FC<Props> = ({
     const isChatVar = isConversationVar(value as ValueSelector)
     const isGlobal = isGlobalVar(value as ValueSelector)
     const isRagVar = isRagVariableVar(value as ValueSelector)
-    const isValidVar = Boolean(outputVarNode) || isEnv || isChatVar || isGlobal || isRagVar
+    const isValidVar = !hasValue || !Array.isArray(value)
+      ? true
+      : isValueSelectorInNodeOutputVars(value, outputVars)
     const isException = isExceptionVariable(varName, outputVarNode?.type)
     return {
       isEnv,
@@ -322,7 +324,7 @@ const VarReferencePicker: FC<Props> = ({
       isValidVar,
       isException,
     }
-  }, [value, outputVarNode, varName])
+  }, [value, hasValue, outputVarNode, outputVars, varName])
 
   // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 17 buff
   const availableWidth = triggerWidth - 56

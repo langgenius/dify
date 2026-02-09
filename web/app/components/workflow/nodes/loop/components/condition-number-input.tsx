@@ -121,6 +121,7 @@ const ConditionNumberInput = ({
                     <VariableTag
                       valueSelector={variableTransformer(value) as string[]}
                       varType={VarType.number}
+                      availableVars={variables}
                       isShort={isShort}
                     />
                   )

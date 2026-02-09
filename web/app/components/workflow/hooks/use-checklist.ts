@@ -46,7 +46,7 @@ import {
   useGetToolIcon,
   useNodesMetaData,
 } from '../hooks'
-import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
+import { getNodeUsedVars, isValueSelectorInNodeOutputVars } from '../nodes/_base/components/variable/utils'
 import {
   useStore,
   useWorkflowStore,
@@ -186,18 +186,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           const availableVars = map[node.id].availableVars
 
           for (const variable of usedVars) {
-            const isSpecialVars = isSpecialVar(variable[0])
-            if (!isSpecialVars) {
-              const usedNode = availableVars.find(v => v.nodeId === variable?.[0])
-              if (usedNode) {
-                const usedVar = usedNode.vars.find(v => v.variable === variable?.[1])
-                if (!usedVar)
-                  errorMessage = t('errorMsg.invalidVariable', { ns: 'workflow' })
-              }
-              else {
-                errorMessage = t('errorMsg.invalidVariable', { ns: 'workflow' })
-              }
-            }
+            if (!isValueSelectorInNodeOutputVars(variable, availableVars))
+              errorMessage = t('errorMsg.invalidVariable', { ns: 'workflow' })
           }
         }
 
@@ -383,20 +373,9 @@ export const useChecklistBeforePublish = () => {
       const availableVars = map[node.id].availableVars
 
       for (const variable of usedVars) {
-        const isSpecialVars = isSpecialVar(variable[0])
-        if (!isSpecialVars) {
-          const usedNode = availableVars.find(v => v.nodeId === variable?.[0])
-          if (usedNode) {
-            const usedVar = usedNode.vars.find(v => v.variable === variable?.[1])
-            if (!usedVar) {
-              notify({ type: 'error', message: `[${node.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}` })
-              return false
-            }
-          }
-          else {
-            notify({ type: 'error', message: `[${node.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}` })
-            return false
-          }
+        if (!isValueSelectorInNodeOutputVars(variable, availableVars)) {
+          notify({ type: 'error', message: `[${node.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}` })
+          return false
         }
       }
 

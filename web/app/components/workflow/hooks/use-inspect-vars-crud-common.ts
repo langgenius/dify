@@ -12,6 +12,7 @@ import {
   isConversationVar,
   isENV,
   isSystemVar,
+  isValueSelectorInNodeOutputVars,
   toNodeOutputVars,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -140,13 +141,15 @@ export const useInspectVarsCrudCommon = ({
     }
     const currentNodeOutputVars = toNodeOutputVars([currentNode], false, () => true, [], [], [], allPluginInfoList, schemaTypeDefinitions)
     const vars = await fetchNodeInspectVars(flowType, flowId, nodeId)
-    const varsWithSchemaType = vars.map((varItem) => {
-      const schemaType = currentNodeOutputVars[0]?.vars.find(v => v.variable === varItem.name)?.schemaType || ''
-      return {
-        ...varItem,
-        schemaType,
-      }
-    })
+    const varsWithSchemaType = vars
+      .filter(varItem => isValueSelectorInNodeOutputVars(varItem.selector, currentNodeOutputVars))
+      .map((varItem) => {
+        const schemaType = currentNodeOutputVars[0]?.vars.find(v => v.variable === varItem.name)?.schemaType || ''
+        return {
+          ...varItem,
+          schemaType,
+        }
+      })
     setNodeInspectVars(nodeId, varsWithSchemaType)
     const resolvedInteractionMode = interactionMode ?? InteractionMode.Default
     if (resolvedInteractionMode !== InteractionMode.Subgraph) {
@@ -154,16 +157,29 @@ export const useInspectVarsCrudCommon = ({
       const nextNodes = applyAgentSubgraphInspectVars(nodesWithInspectVars, nodeArr)
       setNodesWithInspectVars(nextNodes)
     }
-  }, [workflowStore, flowType, flowId, invalidateSysVarValues, invalidateConversationVarValues, buildInTools, customTools, workflowTools, mcpTools, interactionMode])
+  }, [workflowStore, flowType, flowId, invalidateSysVarValues, invalidateConversationVarValues, buildInTools, customTools, workflowTools, mcpTools, interactionMode, store])
 
   // after last run would call this
   const appendNodeInspectVars = useCallback((nodeId: string, payload: VarInInspect[], allNodes: Node[]) => {
+    const { dataSourceList } = workflowStore.getState()
+    const nodeInfo = allNodes.find(node => node.id === nodeId)
+    const allPluginInfoList = {
+      buildInTools: buildInTools || [],
+      customTools: customTools || [],
+      workflowTools: workflowTools || [],
+      mcpTools: mcpTools || [],
+      dataSourceList: dataSourceList || [],
+    }
+    const currentNodeOutputVars = nodeInfo
+      ? toNodeOutputVars([nodeInfo], false, () => true, [], [], [], allPluginInfoList)
+      : []
+    const validPayload = payload.filter(varItem => isValueSelectorInNodeOutputVars(varItem.selector, currentNodeOutputVars))
+
     const {
       nodesWithInspectVars,
       setNodesWithInspectVars,
     } = workflowStore.getState()
     const nodes = produce(nodesWithInspectVars, (draft) => {
-      const nodeInfo = allNodes.find(node => node.id === nodeId)
       if (nodeInfo) {
         const index = draft.findIndex(node => node.nodeId === nodeId)
         if (index === -1) {
@@ -171,12 +187,12 @@ export const useInspectVarsCrudCommon = ({
             nodeId,
             nodeType: nodeInfo.data.type,
             title: nodeInfo.data.title,
-            vars: payload,
+            vars: validPayload,
             nodePayload: nodeInfo.data,
           })
         }
         else {
-          draft[index].vars = payload
+          draft[index].vars = validPayload
           // put the node to the topAdd commentMore actions
           draft.unshift(draft.splice(index, 1)[0])
         }
@@ -187,7 +203,7 @@ export const useInspectVarsCrudCommon = ({
     const nextNodes = shouldApplyAlias ? applyAgentSubgraphInspectVars(nodes, allNodes) : nodes
     setNodesWithInspectVars(nextNodes)
     handleCancelNodeSuccessStatus(nodeId)
-  }, [workflowStore, handleCancelNodeSuccessStatus, interactionMode])
+  }, [workflowStore, handleCancelNodeSuccessStatus, interactionMode, buildInTools, customTools, workflowTools, mcpTools])
 
   const hasNodeInspectVar = useCallback((nodeId: string, varId: string) => {
     const { nodesWithInspectVars } = workflowStore.getState()

@@ -57,6 +57,7 @@ const ConditionVariableSelector = ({
                 valueSelector={valueSelector}
                 varType={varType}
                 availableNodes={availableNodes}
+                availableVars={nodesOutputVars}
                 isShort
               />
             )

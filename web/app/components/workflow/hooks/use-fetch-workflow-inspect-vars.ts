@@ -16,7 +16,7 @@ import {
 import { useInvalidateConversationVarValues, useInvalidateSysVarValues } from '@/service/use-workflow'
 import { fetchAllInspectVars } from '@/service/workflow'
 import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
-import { toNodeOutputVars } from '../nodes/_base/components/variable/utils'
+import { isValueSelectorInNodeOutputVars, toNodeOutputVars } from '../nodes/_base/components/variable/utils'
 import { applyAgentSubgraphInspectVars } from './inspect-vars-agent-alias'
 
 type Params = {
@@ -90,10 +90,14 @@ export const useSetWorkflowVarsWithValue = ({
     const nodesWithVars: NodeWithVar[] = withValueNodes.map((node) => {
       const nodeId = node.id
       const isParentNode = resolvedInteractionMode === InteractionMode.Subgraph && parentNodeIds.has(nodeId)
-      const varsUnderTheNode = inspectVars.filter((varItem) => {
-        return varItem.selector[0] === nodeId
-      })
       const nodeVar = allNodesOutputVars.find(item => item.nodeId === nodeId)
+      const varsUnderTheNode = inspectVars.filter((varItem) => {
+        if (varItem.selector[0] !== nodeId)
+          return false
+        if (!nodeVar)
+          return false
+        return isValueSelectorInNodeOutputVars(varItem.selector, [nodeVar])
+      })
 
       return {
         nodeId,
