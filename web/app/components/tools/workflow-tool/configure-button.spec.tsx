@@ -774,7 +774,9 @@ describe('WorkflowToolConfigureButton', () => {
       })
 
       // Component should still render without crashing
-      expect(screen.getByText('workflow.common.workflowAsTool')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText('workflow.common.workflowAsTool')).toBeInTheDocument()
+      })
     })
 
     it('should handle rapid publish/unpublish state changes', async () => {

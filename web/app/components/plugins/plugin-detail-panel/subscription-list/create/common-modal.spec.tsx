@@ -1138,17 +1138,27 @@ describe('CommonCreateModal', () => {
       mockVerifyCredentials.mockImplementation((params, { onError }) => {
         onError(new Error('Raw error'))
       })
+      const builder = createMockSubscriptionBuilder()
 
-      render(<CommonCreateModal {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockCreateBuilder).toHaveBeenCalled()
-      })
+      render(<CommonCreateModal {...defaultProps} builder={builder} />)
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
       await waitFor(() => {
-        expect(mockParsePluginErrorMessage).toHaveBeenCalled()
+        expect(mockVerifyCredentials).toHaveBeenCalledWith(
+          expect.objectContaining({
+            provider: 'test-provider',
+            subscriptionBuilderId: builder.id,
+          }),
+          expect.objectContaining({
+            onSuccess: expect.any(Function),
+            onError: expect.any(Function),
+          }),
+        )
+      })
+
+      await waitFor(() => {
+        expect(mockParsePluginErrorMessage).toHaveBeenCalledWith(expect.any(Error))
       })
     })
 
