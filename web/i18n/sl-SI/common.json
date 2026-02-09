@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Tukaj vnesite svojo pozivno besedo, vnesite '{' za vstavljanje spremenljivke, vnesite '/', da vstavite blok vsebine",
   "promptEditor.query.item.desc": "Vstavljanje predloge uporabniške poizvedbe",
   "promptEditor.query.item.title": "Poizvedba",
+  "promptEditor.requestURL.item.desc": "Vstavi URL zahteve",
+  "promptEditor.requestURL.item.title": "URL zahteve",
   "promptEditor.variable.item.desc": "Vstavljanje spremenljivk in zunanjih orodij",
   "promptEditor.variable.item.title": "Spremenljivke in zunanja orodja",
   "promptEditor.variable.modal.add": "Nova spremenljivka",
