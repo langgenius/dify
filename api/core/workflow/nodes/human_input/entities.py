@@ -2,7 +2,6 @@
 Human Input node entities.
 """
 
-from core.workflow.enums import NodeType
 import re
 import uuid
 from collections.abc import Mapping, Sequence
@@ -12,6 +11,7 @@ from typing import Annotated, Any, ClassVar, Literal, Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from core.variables.consts import SELECTORS_LENGTH
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.runtime import VariablePool
