@@ -751,6 +751,7 @@
   "nodes.listFilter.selectVariableKeyPlaceholder": "サブ変数キーを選択する",
   "nodes.llm.addContext": "コンテキスト追加",
   "nodes.llm.addMessage": "メッセージ追加",
+  "nodes.llm.chatHistorry": "チャット履歴",
   "nodes.llm.computerUse.disabledByStructuredOutput": "構造化出力を有効にすると、Agent mode は無効になります。",
   "nodes.llm.computerUse.title": "Agent mode",
   "nodes.llm.computerUse.tooltip": "Agent mode で実行時ファイルシステムとツールアクセスを管理します。",

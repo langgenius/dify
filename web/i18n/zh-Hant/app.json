@@ -201,7 +201,7 @@
   "showMyCreatedAppsOnly": "我建立的",
   "structOutput.LLMResponse": "LLM 回應",
   "structOutput.configure": "配置",
-  "structOutput.disabledByComputerUse": "啟用電腦使用時，將停用結構化輸出。",
+  "structOutput.disabledByComputerUse": "啟用 Agent 模式時，將停用結構化輸出。",
   "structOutput.disabledByTools": "啟用工具時，將停用結構化輸出。",
   "structOutput.modelNotSupported": "模型不支持",
   "structOutput.modelNotSupportedTip": "當前模型不支持此功能，並自動降級為提示注入。",

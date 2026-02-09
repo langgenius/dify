@@ -776,6 +776,7 @@
   "nodes.llm.addContext": "Add Context",
   "nodes.llm.addMessage": "Add Message",
   "nodes.llm.advancedSettings": "Advanced Settings",
+  "nodes.llm.chatHistorry": "Chat History",
   "nodes.llm.computerUse.disabledByStructuredOutput": "Agent mode is disabled when Structured Output is enabled.",
   "nodes.llm.computerUse.referenceTools": "Reference Tools",
   "nodes.llm.computerUse.referenceToolsEmpty": "Tools referenced in the prompt will appear here",

@@ -769,6 +769,7 @@
   "nodes.listFilter.selectVariableKeyPlaceholder": "选择子变量的 Key",
   "nodes.llm.addContext": "添加上下文",
   "nodes.llm.addMessage": "添加消息",
+  "nodes.llm.chatHistorry": "对话历史",
   "nodes.llm.computerUse.disabledByStructuredOutput": "启用结构化输出时，将禁用 Agent 模式。",
   "nodes.llm.computerUse.referenceTools": "引用工具",
   "nodes.llm.computerUse.referenceToolsEmpty": "提示词中引用的工具会显示在这里",

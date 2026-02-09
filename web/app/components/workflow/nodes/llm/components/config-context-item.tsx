@@ -75,7 +75,7 @@ const ConfigContextItem: FC<Props> = ({
           )}
         >
           <div className="text-text-secondary system-xs-semibold-uppercase">
-            {t('nodes.llm.context', { ns: 'workflow' })}
+            {t('nodes.llm.chatHistorry', { ns: 'workflow' })}
           </div>
           <div className="flex items-center gap-1">
             <VariableLabelInSelect

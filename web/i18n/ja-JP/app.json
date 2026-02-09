@@ -207,7 +207,7 @@
   "showMyCreatedAppsOnly": "自分が作成したアプリ",
   "structOutput.LLMResponse": "LLM のレスポンス",
   "structOutput.configure": "設定",
-  "structOutput.disabledByComputerUse": "Computer Use を有効にすると、構造化出力は無効になります。",
+  "structOutput.disabledByComputerUse": "Agent Mode を有効にすると、構造化出力は無効になります。",
   "structOutput.disabledByTools": "ツールを有効にすると、構造化出力は無効になります。",
   "structOutput.modelNotSupported": "モデルが対応していません",
   "structOutput.modelNotSupportedTip": "現在のモデルはこの機能に対応しておらず、自動的にプロンプトインジェクションに切り替わります。",
