@@ -295,7 +295,7 @@ class TestDatasetMetadataServiceApiDelete:
                 metadata_id=metadata_id,
             )
 
-        assert response == ('', 204)
+        assert response == ("", 204)
         mock_meta_svc.delete_metadata.assert_called_once()
 
     @patch("controllers.service_api.dataset.metadata.DatasetService")

@@ -14,8 +14,10 @@ Focus on:
 """
 
 import uuid
+from unittest.mock import Mock, patch
 
 import pytest
+
 from controllers.service_api.app.error import NotWorkflowAppError
 from controllers.service_api.app.workflow import (
     WorkflowLogQuery,
@@ -24,9 +26,8 @@ from controllers.service_api.app.workflow import (
 from core.workflow.enums import WorkflowExecutionStatus
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
-from services.errors.app import WorkflowNotFoundError, IsDraftWorkflowError
+from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.workflow_app_service import WorkflowAppService
-from unittest.mock import Mock, patch
 
 
 class TestWorkflowRunPayload:

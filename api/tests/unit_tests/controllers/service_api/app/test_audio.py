@@ -8,16 +8,17 @@ Tests coverage for:
 """
 
 import uuid
+from unittest.mock import Mock, patch
 
 import pytest
-from controllers.service_api.app.audio import TextToAudioPayload, AudioService
+
+from controllers.service_api.app.audio import AudioService, TextToAudioPayload
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
     UnsupportedAudioTypeServiceError,
 )
-from unittest.mock import Mock, patch
 
 # ---------------------------------------------------------------------------
 # Pydantic Model Tests

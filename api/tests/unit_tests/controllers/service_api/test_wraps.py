@@ -3,8 +3,7 @@ Unit tests for Service API wraps (authentication decorators)
 """
 
 import uuid
-from datetime import timedelta
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
@@ -60,24 +59,20 @@ class TestValidateAndGetApiToken:
                 validate_and_get_api_token("app")
             assert "Authorization scheme must be 'Bearer'" in str(exc_info.value)
 
-    @patch("controllers.service_api.wraps.Session")
-    @patch("controllers.service_api.wraps.db")
-    @patch("controllers.service_api.wraps.naive_utc_now")
-    def test_valid_token_returns_api_token(self, mock_now, mock_db, mock_session_class, app):
+    @patch("controllers.service_api.wraps.record_token_usage")
+    @patch("controllers.service_api.wraps.ApiTokenCache")
+    @patch("controllers.service_api.wraps.fetch_token_with_single_flight")
+    def test_valid_token_returns_api_token(self, mock_fetch_token, mock_cache_cls, mock_record_usage, app):
         """Test that valid token returns the ApiToken object."""
         # Arrange
-        mock_now.return_value = MagicMock()
-        cutoff_time = mock_now.return_value - timedelta(minutes=1)
-
         mock_api_token = Mock(spec=ApiToken)
         mock_api_token.token = "valid_token_123"
         mock_api_token.type = "app"
 
-        mock_session = MagicMock()
-        mock_session.execute.return_value.rowcount = 0
-        mock_session.scalar.return_value = mock_api_token
-        mock_session_class.return_value.__enter__ = Mock(return_value=mock_session)
-        mock_session_class.return_value.__exit__ = Mock(return_value=False)
+        mock_cache_instance = Mock()
+        mock_cache_instance.get.return_value = None  # Cache miss
+        mock_cache_cls.get = mock_cache_instance.get
+        mock_fetch_token.return_value = mock_api_token
 
         # Act
         with app.test_request_context("/", method="GET", headers={"Authorization": "Bearer valid_token_123"}):
@@ -86,21 +81,18 @@ class TestValidateAndGetApiToken:
         # Assert
         assert result == mock_api_token
 
-    @patch("controllers.service_api.wraps.Session")
-    @patch("controllers.service_api.wraps.db")
-    @patch("controllers.service_api.wraps.naive_utc_now")
-    def test_invalid_token_raises_unauthorized(self, mock_now, mock_db, mock_session_class, app):
+    @patch("controllers.service_api.wraps.record_token_usage")
+    @patch("controllers.service_api.wraps.ApiTokenCache")
+    @patch("controllers.service_api.wraps.fetch_token_with_single_flight")
+    def test_invalid_token_raises_unauthorized(self, mock_fetch_token, mock_cache_cls, mock_record_usage, app):
         """Test that invalid token raises Unauthorized."""
         # Arrange
-        from datetime import datetime
+        from werkzeug.exceptions import Unauthorized
 
-        mock_now.return_value = datetime(2024, 1, 1, 12, 0, 0)
-
-        mock_session = MagicMock()
-        mock_session.execute.return_value.rowcount = 0
-        mock_session.scalar.return_value = None
-        mock_session_class.return_value.__enter__ = Mock(return_value=mock_session)
-        mock_session_class.return_value.__exit__ = Mock(return_value=False)
+        mock_cache_instance = Mock()
+        mock_cache_instance.get.return_value = None  # Cache miss
+        mock_cache_cls.get = mock_cache_instance.get
+        mock_fetch_token.side_effect = Unauthorized("Access token is invalid")
 
         # Act & Assert
         with app.test_request_context("/", method="GET", headers={"Authorization": "Bearer invalid_token"}):

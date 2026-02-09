@@ -1050,7 +1050,7 @@ class TestDatasetSegmentApiDelete:
             )
 
         # Assert
-        assert response == 204
+        assert response == ("", 204)
         mock_seg_svc.delete_segment.assert_called_once_with(mock_segment, mock_doc, mock_dataset)
 
     @patch("controllers.service_api.dataset.segment.SegmentService")
@@ -1822,7 +1822,7 @@ class TestDatasetChildChunkApiDelete:
                 child_chunk_id=child_chunk_id,
             )
 
-        assert response == 204
+        assert response == ("", 204)
         mock_seg_svc.delete_child_chunk.assert_called_once()
 
     @patch("controllers.service_api.dataset.segment.SegmentService")

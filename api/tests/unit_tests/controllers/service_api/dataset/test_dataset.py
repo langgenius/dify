@@ -426,7 +426,7 @@ class TestDatasetTagsApi:
                 response = api.delete("tenant_123")
 
             # Assert
-            assert response == 204
+            assert response == ("", 204)
             mock_tag_service.delete_tag.assert_called_once_with("tag_1")
         finally:
             dataset_module.current_user = original_current_user
@@ -471,7 +471,7 @@ class TestDatasetTagBindingApi:
                 response = api.post("tenant_123")
 
             # Assert
-            assert response == 204
+            assert response == ("", 204)
             mock_tag_service.save_tag_binding.assert_called_once_with(
                 {"tag_ids": ["tag_1", "tag_2"], "target_id": "dataset_123", "type": "knowledge"}
             )
@@ -543,7 +543,7 @@ class TestDatasetTagUnbindingApi:
                 response = api.post("tenant_123")
 
             # Assert
-            assert response == 204
+            assert response == ("", 204)
             mock_tag_service.delete_tag_binding.assert_called_once_with(
                 {"tag_id": "tag_1", "target_id": "dataset_123", "type": "knowledge"}
             )
@@ -1157,7 +1157,7 @@ class TestDatasetApiDelete:
             api = DatasetApi()
             result = _unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
 
-        assert result == 204
+        assert result == ("", 204)
 
     @patch("controllers.service_api.dataset.dataset.current_user")
     @patch("controllers.service_api.dataset.dataset.DatasetService")
@@ -1452,7 +1452,7 @@ class TestDatasetTagBindingApiPost:
             api = DatasetTagBindingApi()
             result = api.post(_=None)
 
-        assert result == 204
+        assert result == ("", 204)
 
     @patch("controllers.service_api.dataset.dataset.current_user")
     def test_bind_tags_forbidden(self, mock_current_user, app):
@@ -1500,7 +1500,7 @@ class TestDatasetTagUnbindingApiPost:
             api = DatasetTagUnbindingApi()
             result = api.post(_=None)
 
-        assert result == 204
+        assert result == ("", 204)
 
     @patch("controllers.service_api.dataset.dataset.current_user")
     def test_unbind_tag_forbidden(self, mock_current_user, app):
