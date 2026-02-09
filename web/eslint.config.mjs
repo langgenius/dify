@@ -1,5 +1,5 @@
 // @ts-check
-import antfu from '@antfu/eslint-config'
+import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import sonar from 'eslint-plugin-sonarjs'
@@ -67,7 +67,8 @@ export default antfu(
     },
   },
   {
-    files: ['**/*.{ts,tsx}'],
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: GLOB_TESTS,
     plugins: {
       tailwindcss,
     },
@@ -75,7 +76,7 @@ export default antfu(
       'tailwindcss/enforce-consistent-class-order': 'error',
       'tailwindcss/no-duplicate-classes': 'error',
       'tailwindcss/no-unnecessary-whitespace': 'error',
-      'tailwindcss/no-unknown-classes': 'warn',
+      'tailwindcss/no-unknown-classes': 'error',
     },
   },
   {
