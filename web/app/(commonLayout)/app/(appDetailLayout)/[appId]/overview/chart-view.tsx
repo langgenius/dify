@@ -3,19 +3,22 @@ import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
+import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TIME_PERIOD_MAPPING as LONG_TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
 import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, MessagesChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/app-chart'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useAppContext } from '@/context/app-context'
 import { IS_CLOUD_EDITION } from '@/config'
 import LongTimeRangePicker from './long-time-range-picker'
 import TimeRangePicker from './time-range-picker'
 
 dayjs.extend(quarterOfYear)
-
-const today = dayjs()
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
@@ -34,12 +37,13 @@ export type IChartViewProps = {
 
 export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
   const appDetail = useAppStore(state => state.appDetail)
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
   const [period, setPeriod] = useState<PeriodParams>(IS_CLOUD_EDITION
-    ? { name: t('filter.period.today', { ns: 'appLog' }), query: { start: today.startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } }
-    : { name: t('filter.period.last7days', { ns: 'appLog' }), query: { start: today.subtract(7, 'day').startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } },
+    ? { name: t('filter.period.today', { ns: 'appLog' }), query: { start: dayjs().tz(userProfile?.timezone).startOf('day').format(queryDateFormat), end: dayjs().tz(userProfile?.timezone).endOf('day').format(queryDateFormat) } }
+    : { name: t('filter.period.last7days', { ns: 'appLog' }), query: { start: dayjs().tz(userProfile?.timezone).subtract(7, 'day').startOf('day').format(queryDateFormat), end: dayjs().tz(userProfile?.timezone).endOf('day').format(queryDateFormat) } },
   )
 
   if (!appDetail)

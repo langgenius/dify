@@ -3,11 +3,14 @@ import type { FC } from 'react'
 import type { App } from '@/types/app'
 import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
+import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
 import { omit } from 'es-toolkit/object'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
 import Pagination from '@/app/components/base/pagination'
 import { APP_PAGE_LIMIT } from '@/config'
@@ -16,6 +19,9 @@ import { AppModeEnum } from '@/types/app'
 import EmptyElement from './empty-element'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 export type ILogsProps = {
   appDetail: App
@@ -42,6 +48,7 @@ const logsStateCache = new Map<string, {
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -78,8 +85,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     limit,
     ...((debouncedQueryParams.period !== '9')
       ? {
-          start: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
-          end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
+          start: dayjs().tz(userProfile?.timezone).subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+          end: dayjs().tz(userProfile?.timezone).endOf('day').format('YYYY-MM-DD HH:mm'),
         }
       : {}),
     ...(isChatMode ? { sort_by: debouncedQueryParams.sort_by } : {}),

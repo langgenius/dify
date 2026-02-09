@@ -9,10 +9,9 @@ import { useCallback, useState } from 'react'
 import { HourglassShape } from '@/app/components/base/icons/src/vender/other'
 import { useLocale } from '@/context/i18n'
 import { formatToLocalTime } from '@/utils/format'
+import { useAppContext } from '@/context/app-context'
 import DatePicker from './date-picker'
 import RangeSelector from './range-selector'
-
-const today = dayjs()
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
@@ -28,6 +27,8 @@ const TimeRangePicker: FC<Props> = ({
   queryDateFormat,
 }) => {
   const locale = useLocale()
+  const { userProfile } = useAppContext()
+  const today = dayjs().tz(userProfile?.timezone)
 
   const [isCustomRange, setIsCustomRange] = useState(false)
   const [start, setStart] = useState<Dayjs>(today)
