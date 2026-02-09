@@ -1,4 +1,5 @@
 import type {
+  Edge,
   EdgeMouseHandler,
   OnEdgesChange,
 } from 'reactflow'
@@ -189,11 +190,69 @@ export const useEdgesInteractions = () => {
     setEdges(newEdges)
   }, [collaborativeWorkflow, getNodesReadOnly])
 
+  const handleEdgeSourceHandleChange = useCallback((nodeId: string, oldHandleId: string, newHandleId: string) => {
+    if (getNodesReadOnly())
+      return
+
+    const {
+      nodes,
+      setNodes,
+      edges,
+      setEdges,
+    } = collaborativeWorkflow.getState()
+
+    // Find edges connected to the old handle
+    const affectedEdges = edges.filter(
+      (edge: Edge) => edge.source === nodeId && edge.sourceHandle === oldHandleId,
+    )
+
+    if (affectedEdges.length === 0)
+      return
+
+    // Update node metadata: remove old handle, add new handle
+    const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
+      [
+        ...affectedEdges.map((edge: Edge) => ({ type: 'remove', edge })),
+        ...affectedEdges.map((edge: Edge) => ({
+          type: 'add',
+          edge: { ...edge, sourceHandle: newHandleId },
+        })),
+      ],
+      nodes,
+    )
+
+    const newNodes = produce(nodes, (draft: Node[]) => {
+      draft.forEach((node) => {
+        if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
+          node.data = {
+            ...node.data,
+            ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
+          }
+        }
+      })
+    })
+    setNodes(newNodes)
+
+    // Update edges to use new sourceHandle and regenerate edge IDs
+    const newEdges = produce(edges, (draft: Edge[]) => {
+      draft.forEach((edge: Edge) => {
+        if (edge.source === nodeId && edge.sourceHandle === oldHandleId) {
+          edge.sourceHandle = newHandleId
+          edge.id = `${edge.source}-${newHandleId}-${edge.target}-${edge.targetHandle}`
+        }
+      })
+    })
+    setEdges(newEdges)
+    handleSyncWorkflowDraft()
+    saveStateToHistory(WorkflowHistoryEvent.EdgeSourceHandleChange)
+  }, [getNodesReadOnly, collaborativeWorkflow, handleSyncWorkflowDraft, saveStateToHistory])
+
   return {
     handleEdgeEnter,
     handleEdgeLeave,
     handleEdgeDeleteByDeleteBranch,
     handleEdgeDelete,
     handleEdgesChange,
+    handleEdgeSourceHandleChange,
   }
 }

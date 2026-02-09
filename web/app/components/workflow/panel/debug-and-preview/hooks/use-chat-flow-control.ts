@@ -18,6 +18,7 @@ export function useChatFlowControl({
   const setActiveTaskId = useStore(s => s.setActiveTaskId)
   const setHasStopResponded = useStore(s => s.setHasStopResponded)
   const setSuggestedQuestionsAbortController = useStore(s => s.setSuggestedQuestionsAbortController)
+  const setWorkflowEventsAbortController = useStore(s => s.setWorkflowEventsAbortController)
   const invalidateRun = useStore(s => s.invalidateRun)
   const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
@@ -32,6 +33,7 @@ export function useChatFlowControl({
     const {
       activeTaskId,
       suggestedQuestionsAbortController,
+      workflowEventsAbortController,
       workflowRunningData,
       setWorkflowRunningData,
     } = workflowStore.getState()
@@ -45,7 +47,10 @@ export function useChatFlowControl({
     setLoopTimes(DEFAULT_LOOP_TIMES)
     if (suggestedQuestionsAbortController)
       suggestedQuestionsAbortController.abort()
+    if (workflowEventsAbortController)
+      workflowEventsAbortController.abort()
     setSuggestedQuestionsAbortController(null)
+    setWorkflowEventsAbortController(null)
     setActiveTaskId('')
     invalidateRun()
     if (isActiveRun && workflowRunningData) {
@@ -69,6 +74,7 @@ export function useChatFlowControl({
     workflowStore,
     setHasStopResponded,
     setSuggestedQuestionsAbortController,
+    setWorkflowEventsAbortController,
     setActiveTaskId,
     invalidateRun,
     handleNodeCancelRunningStatus,

@@ -21,6 +21,7 @@ import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/no
 import useCodeSingleRunFormParams from '@/app/components/workflow/nodes/code/use-single-run-form-params'
 import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/document-extractor/use-single-run-form-params'
 import useHttpRequestSingleRunFormParams from '@/app/components/workflow/nodes/http/use-single-run-form-params'
+import useHumanInputSingleRunFormParams from '@/app/components/workflow/nodes/human-input/hooks/use-single-run-form-params'
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
 import useIterationSingleRunFormParams from '@/app/components/workflow/nodes/iteration/use-single-run-form-params'
 import useKnowledgeBaseSingleRunFormParams from '@/app/components/workflow/nodes/knowledge-base/use-single-run-form-params'
@@ -28,15 +29,16 @@ import useKnowledgeRetrievalSingleRunFormParams from '@/app/components/workflow/
 import useLLMSingleRunFormParams from '@/app/components/workflow/nodes/llm/use-single-run-form-params'
 import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use-single-run-form-params'
 import useParameterExtractorSingleRunFormParams from '@/app/components/workflow/nodes/parameter-extractor/use-single-run-form-params'
-import useQuestionClassifierSingleRunFormParams from '@/app/components/workflow/nodes/question-classifier/use-single-run-form-params'
 
+import useQuestionClassifierSingleRunFormParams from '@/app/components/workflow/nodes/question-classifier/use-single-run-form-params'
 import useStartSingleRunFormParams from '@/app/components/workflow/nodes/start/use-single-run-form-params'
 import useTemplateTransformSingleRunFormParams from '@/app/components/workflow/nodes/template-transform/use-single-run-form-params'
-import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/use-get-data-for-check-more'
 
+import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/use-get-data-for-check-more'
 import useToolSingleRunFormParams from '@/app/components/workflow/nodes/tool/use-single-run-form-params'
 import useTriggerPluginGetDataForCheckMore from '@/app/components/workflow/nodes/trigger-plugin/use-check-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
+
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, isPromptMessageContext } from '@/app/components/workflow/types'
 import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
@@ -71,6 +73,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.IterationStart]: undefined,
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
+  [BlockEnum.HumanInput]: useHumanInputSingleRunFormParams,
   [BlockEnum.DataSource]: undefined,
   [BlockEnum.DataSourceEmpty]: undefined,
   [BlockEnum.TriggerWebhook]: undefined,
@@ -109,6 +112,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.Assigner]: undefined,
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
+  [BlockEnum.HumanInput]: undefined,
   [BlockEnum.DataSource]: undefined,
   [BlockEnum.DataSourceEmpty]: undefined,
   [BlockEnum.KnowledgeBase]: undefined,
@@ -153,6 +157,7 @@ const useLastRun = <T>({
   const isLoopNode = blockType === BlockEnum.Loop
   const isAggregatorNode = blockType === BlockEnum.VariableAggregator
   const isCustomRunNode = isSupportCustomRunForm(blockType)
+  const isHumanInputNode = blockType === BlockEnum.HumanInput
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const reactFlowStore = useStoreApi()
   const {
@@ -444,7 +449,7 @@ const useLastRun = <T>({
     }
     if (blockType === BlockEnum.TriggerWebhook || blockType === BlockEnum.TriggerPlugin || blockType === BlockEnum.TriggerSchedule)
       setShowVariableInspectPanel(true)
-    if (isCustomRunNode) {
+    if (isCustomRunNode || isHumanInputNode) {
       showSingleRun()
       return
     }

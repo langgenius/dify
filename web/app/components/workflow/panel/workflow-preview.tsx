@@ -15,6 +15,7 @@ import Button from '@/app/components/base/button'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
+import { submitHumanInputForm } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
 import Toast from '../../base/toast'
 import {
@@ -28,6 +29,8 @@ import {
   WorkflowRunningStatus,
 } from '../types'
 import { formatWorkflowRunIdentifier } from '../utils'
+import HumanInputFilledFormList from './human-input-filled-form-list'
+import HumanInputFormList from './human-input-form-list'
 import InputsPanel from './inputs-panel'
 
 const WorkflowPreview = () => {
@@ -39,6 +42,8 @@ const WorkflowPreview = () => {
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const panelWidth = useStore(s => s.previewPanelWidth)
   const setPreviewPanelWidth = useStore(s => s.setPreviewPanelWidth)
+  const humanInputFormDataList = useStore(s => s.workflowRunningData?.humanInputFormDataList)
+  const humanInputFilledFormDataList = useStore(s => s.workflowRunningData?.humanInputFilledFormDataList)
   const [userSelectedTab, setUserSelectedTab] = useState<string | null>(null)
 
   const effectiveTab = (() => {
@@ -50,6 +55,9 @@ const WorkflowPreview = () => {
       const isFinishedWithoutOutput = (status === WorkflowRunningStatus.Succeeded || status === WorkflowRunningStatus.Failed)
         && !workflowRunningData.resultText
         && !workflowRunningData.result.files?.length
+
+      if (status === WorkflowRunningStatus.Paused && humanInputFormDataList?.length)
+        return 'RESULT'
 
       if (isFinishedWithoutOutput && userSelectedTab === null)
         return 'DETAIL'
@@ -102,6 +110,13 @@ const WorkflowPreview = () => {
       window.removeEventListener('mouseup', stopResizing)
     }
   }, [resize, stopResizing])
+
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: {
+    inputs: Record<string, string>
+    action: string
+  }) => {
+    await submitHumanInputForm(formToken, formData)
+  }, [])
 
   return (
     <div
@@ -198,9 +213,21 @@ const WorkflowPreview = () => {
             : null}
           {effectiveTab === 'RESULT'
             ? (
-                <>
+                <div className="p-2">
+                  {humanInputFormDataList && humanInputFormDataList.length > 0 && (
+                    <HumanInputFormList
+                      humanInputFormDataList={humanInputFormDataList}
+                      onHumanInputFormSubmit={handleSubmitHumanInputForm}
+                    />
+                  )}
+                  {humanInputFilledFormDataList && humanInputFilledFormDataList.length > 0 && (
+                    <HumanInputFilledFormList
+                      humanInputFilledFormDataList={humanInputFilledFormDataList}
+                    />
+                  )}
                   <ResultText
                     isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
+                    isPaused={workflowRunningData?.result?.status === WorkflowRunningStatus.Paused}
                     outputs={workflowRunningData?.resultText}
                     llmGenerationItems={workflowRunningData?.resultLLMGenerationItems}
                     allFiles={workflowRunningData?.result?.files}
@@ -223,7 +250,7 @@ const WorkflowPreview = () => {
                       <div>{t('operation.copy', { ns: 'common' })}</div>
                     </Button>
                   )}
-                </>
+                </div>
               )
             : null}
           {effectiveTab === 'DETAIL'

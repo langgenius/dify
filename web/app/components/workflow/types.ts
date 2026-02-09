@@ -18,7 +18,13 @@ import type { VarType as VarKindType } from '@/app/components/workflow/nodes/too
 import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { Resolution, TransferMethod } from '@/types/app'
-import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
+import type {
+  FileResponse,
+  HumanInputFilledFormData,
+  HumanInputFormData,
+  NodeTracing,
+  PanelProps,
+} from '@/types/workflow'
 
 export enum BlockEnum {
   Start = 'start',
@@ -45,6 +51,7 @@ export enum BlockEnum {
   Loop = 'loop',
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
+  HumanInput = 'human-input',
   DataSource = 'datasource',
   DataSourceEmpty = 'datasource-empty',
   KnowledgeBase = 'knowledge-index',
@@ -199,7 +206,6 @@ export enum InputVarType {
   paragraph = 'paragraph',
   select = 'select',
   number = 'number',
-  checkbox = 'checkbox',
   url = 'url',
   files = 'files',
   json = 'json', // obj, array
@@ -209,6 +215,7 @@ export enum InputVarType {
   singleFile = 'file',
   multiFiles = 'file-list',
   loop = 'loop', // loop input
+  checkbox = 'checkbox',
 }
 
 export type InputVar = {
@@ -402,6 +409,7 @@ export enum WorkflowRunningStatus {
   Succeeded = 'succeeded',
   Failed = 'failed',
   Stopped = 'stopped',
+  Paused = 'paused',
 }
 
 export enum WorkflowVersion {
@@ -419,6 +427,7 @@ export enum NodeRunningStatus {
   Exception = 'exception',
   Retry = 'retry',
   Stopped = 'stopped',
+  Paused = 'paused',
 }
 
 export type OnNodeAdd = (
@@ -482,6 +491,8 @@ export type WorkflowRunningData = {
     exceptions_count?: number
   }
   tracing?: NodeTracing[]
+  humanInputFormDataList?: HumanInputFormData[]
+  humanInputFilledFormDataList?: HumanInputFilledFormData[]
 }
 
 export type HistoryWorkflowData = {
