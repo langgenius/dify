@@ -382,8 +382,8 @@ importers:
         specifier: 1.2.3
         version: 1.2.3
       '@iconify-json/ri':
-        specifier: 1.2.7
-        version: 1.2.7
+        specifier: 1.2.9
+        version: 1.2.9
       '@mdx-js/loader':
         specifier: 3.1.1
         version: 3.1.1(webpack@5.104.1(esbuild@0.27.2)(uglify-js@3.19.3))
@@ -526,8 +526,8 @@ importers:
         specifier: https://pkg.pr.new/hyoban/eslint-plugin-better-tailwindcss@c0161c7
         version: https://pkg.pr.new/hyoban/eslint-plugin-better-tailwindcss@c0161c7(eslint@9.39.2(jiti@1.21.7))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)
       eslint-plugin-hyoban:
-        specifier: 0.10.1
-        version: 0.10.1(eslint@9.39.2(jiti@1.21.7))
+        specifier: 0.11.1
+        version: 0.11.1(eslint@9.39.2(jiti@1.21.7))
       eslint-plugin-react-hooks:
         specifier: 7.0.1
         version: 7.0.1(eslint@9.39.2(jiti@1.21.7))
@@ -1325,8 +1325,8 @@ packages:
   '@iconify-json/heroicons@1.2.3':
     resolution: {integrity: sha512-n+vmCEgTesRsOpp5AB5ILB6srsgsYK+bieoQBNlafvoEhjVXLq8nIGN4B0v/s4DUfa0dOrjwE/cKJgIKdJXOEg==}
 
-  '@iconify-json/ri@1.2.7':
-    resolution: {integrity: sha512-j/Fkb8GlWY5y/zLj1BGxWRtDzuJFrI7562zLw+iQVEykieBgew43+r8qAvtSajvb75MfUIHjsNOYQPRD8FfLfw==}
+  '@iconify-json/ri@1.2.9':
+    resolution: {integrity: sha512-r9z/Lh0f0At6O6AwO/fpmRAa8jHoL/wSqA188ognPL1whFIBXXbrp1IR4m6OcuPwa41jJdzjCNxLbg7uOt7kYg==}
 
   '@iconify/tools@4.2.0':
     resolution: {integrity: sha512-WRxPva/ipxYkqZd1+CkEAQmd86dQmrwH0vwK89gmp2Kh2WyyVw57XbPng0NehP3x4V1LzLsXUneP1uMfTMZmUA==}
@@ -4577,8 +4577,8 @@ packages:
     peerDependencies:
       eslint: '>=8'
 
-  eslint-plugin-hyoban@0.10.1:
-    resolution: {integrity: sha512-fQhK6COgm4branMemO0c52XNRYMLNW19jAhjBLS90Lup+QdzTEsFF9xDq8UA7JhID2wF+wDXBjTjEqUux6ZjfA==}
+  eslint-plugin-hyoban@0.11.1:
+    resolution: {integrity: sha512-GpLo3Ig0l6bn0Ceu3vqBbdFfWox0LKPXb1K2pha4Ov4DzJdZRQkNA8UWtulGr8ZSy9SiK3YJoKphgZfk9kWvGQ==}
     peerDependencies:
       eslint: '*'
 
@@ -8584,7 +8584,7 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
-  '@iconify-json/ri@1.2.7':
+  '@iconify-json/ri@1.2.9':
     dependencies:
       '@iconify/types': 2.0.0
 
@@ -12113,7 +12113,7 @@ snapshots:
       eslint: 9.39.2(jiti@1.21.7)
       eslint-compat-utils: 0.5.1(eslint@9.39.2(jiti@1.21.7))
 
-  eslint-plugin-hyoban@0.10.1(eslint@9.39.2(jiti@1.21.7)):
+  eslint-plugin-hyoban@0.11.1(eslint@9.39.2(jiti@1.21.7)):
     dependencies:
       eslint: 9.39.2(jiti@1.21.7)
 
