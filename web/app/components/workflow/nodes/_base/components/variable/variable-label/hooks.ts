@@ -54,8 +54,10 @@ export const useVarColor = (variables: string[], isExceptionVariable?: boolean, 
 }
 
 export const useVarName = (variables: string[], notShowFullPath?: boolean) => {
-  const showName = VAR_SHOW_NAME_MAP[variables.join('.')]
-  let variableFullPathName = variables.slice(1).join('.')
+  const fullPathKey = variables.join('.')
+  const keyWithoutNodePrefix = variables.slice(1).join('.')
+  const showName = VAR_SHOW_NAME_MAP[fullPathKey] ?? VAR_SHOW_NAME_MAP[keyWithoutNodePrefix]
+  let variableFullPathName = keyWithoutNodePrefix
 
   if (isRagVariableVar(variables))
     variableFullPathName = variables.slice(2).join('.')
