@@ -1,7 +1,7 @@
 import type { NodeRendererProps } from 'react-arborist'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import type { TreeNodeData } from '@/app/components/workflow/skill/type'
-import { RiArrowDownSLine, RiArrowRightSLine, RiFolderLine, RiFolderOpenLine, RiQuestionLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiArrowRightSLine, RiFolderLine, RiFolderOpenLine } from '@remixicon/react'
 import { useSize } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useRef } from 'react'
@@ -52,7 +52,7 @@ const FilePickerTreeNode = ({ node, style, dragHandle, onSelectNode }: FilePicke
       aria-selected={isSelected}
       aria-expanded={isFolder ? node.isOpen : undefined}
       className={cn(
-        'group relative flex h-6 cursor-pointer items-center gap-px overflow-hidden rounded-md',
+        'group relative flex h-6 cursor-pointer items-center gap-0 overflow-hidden rounded-md',
         'hover:bg-state-base-hover',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
         isSelected && 'bg-state-base-active',
@@ -83,14 +83,22 @@ const FilePickerTreeNode = ({ node, style, dragHandle, onSelectNode }: FilePicke
         </span>
       </div>
       {isFolder && (
+        <span
+          aria-hidden="true"
+          className="h-full w-px shrink-0 bg-transparent group-hover:bg-components-panel-bg"
+        />
+      )}
+      {isFolder && (
         <button
           type="button"
           tabIndex={-1}
           onClick={handleToggle}
           aria-label={t('skillSidebar.toggleFolder')}
           className={cn(
-            'flex size-6 shrink-0 items-center justify-center rounded-md',
-            'text-text-tertiary hover:bg-state-base-hover-alt',
+            'flex size-6 shrink-0 items-center justify-center rounded-r-md',
+            'bg-transparent text-text-tertiary',
+            'group-hover:bg-state-base-hover-subtle',
+            'hover:bg-state-base-hover-subtle',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
           )}
         >
@@ -162,7 +170,6 @@ const FilePickerPanel = ({
           <span className="flex-1 text-[12px] font-medium uppercase leading-4 text-text-tertiary">
             {t('skillEditor.referenceFiles')}
           </span>
-          <RiQuestionLine className="size-4 text-text-tertiary" aria-hidden="true" />
         </div>
       )}
       <div
