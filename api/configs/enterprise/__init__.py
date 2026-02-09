@@ -45,6 +45,12 @@ class EnterpriseTelemetryConfig(BaseSettings):
         default="http",
     )
 
+    ENTERPRISE_OTLP_API_KEY: str = Field(
+        description="Bearer token for enterprise OTLP export authentication. "
+        "When set, gRPC exporters automatically use TLS (insecure=False).",
+        default="",
+    )
+
     ENTERPRISE_INCLUDE_CONTENT: bool = Field(
         description="Include input/output content in traces (privacy toggle).",
         default=True,
