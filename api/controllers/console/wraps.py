@@ -362,8 +362,8 @@ def annotation_import_rate_limit(view: Callable[P, R]):
         if minute_count > dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE:
             abort(
                 429,
-                f"Too many annotation import requests. Maximum {dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE} "
-                f"requests per minute allowed. Please try again later.",
+                f"标注导入请求过多。每分钟最多允许 {dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE} "
+                f"个请求，请稍后再试。",
             )
 
         # Check per-hour rate limit
@@ -376,8 +376,8 @@ def annotation_import_rate_limit(view: Callable[P, R]):
         if hour_count > dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR:
             abort(
                 429,
-                f"Too many annotation import requests. Maximum {dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR} "
-                f"requests per hour allowed. Please try again later.",
+                f"标注导入请求过多。每小时最多允许 {dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR} "
+                f"个请求，请稍后再试。",
             )
 
         return view(*args, **kwargs)
@@ -413,8 +413,8 @@ def annotation_import_concurrency_limit(view: Callable[P, R]):
         if active_count >= dify_config.ANNOTATION_IMPORT_MAX_CONCURRENT:
             abort(
                 429,
-                f"Too many concurrent import tasks. Maximum {dify_config.ANNOTATION_IMPORT_MAX_CONCURRENT} "
-                f"concurrent imports allowed per workspace. Please wait for existing imports to complete.",
+                f"并发导入任务过多。每个工作区最多允许 {dify_config.ANNOTATION_IMPORT_MAX_CONCURRENT} "
+                f"个并发导入任务，请等待现有导入完成。",
             )
 
         # Allow the request to proceed
