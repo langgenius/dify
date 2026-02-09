@@ -1246,21 +1246,24 @@ class TenantService:
         account_email = account.email
 
         db.session.delete(ta)
-        db.session.commit()
 
         # Clean up orphaned pending accounts (invited but never activated)
+        should_delete_account = False
         if account.status == AccountStatus.PENDING:
-            remaining_joins = (
-                db.session.query(TenantAccountJoin).filter_by(account_id=account_id).count()
-            )
+            # autoflush flushes ta deletion before this query, so 0 means no remaining joins
+            remaining_joins = db.session.query(TenantAccountJoin).filter_by(account_id=account_id).count()
             if remaining_joins == 0:
                 db.session.delete(account)
-                db.session.commit()
-                logger.info(
-                    "Deleted orphaned pending account: account_id=%s, email=%s",
-                    account_id,
-                    account_email,
-                )
+                should_delete_account = True
+
+        db.session.commit()
+
+        if should_delete_account:
+            logger.info(
+                "Deleted orphaned pending account: account_id=%s, email=%s",
+                account_id,
+                account_email,
+            )
 
         if dify_config.BILLING_ENABLED:
             BillingService.clean_billing_info_cache(tenant.id)
