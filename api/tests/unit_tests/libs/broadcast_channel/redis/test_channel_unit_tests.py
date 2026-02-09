@@ -859,7 +859,7 @@ class TestRedisShardedSubscription:
         client.get_node_from_key.assert_called_once_with("test-sharded-topic")
         mock_pubsub.get_sharded_message.assert_called_once_with(
             ignore_subscribe_messages=False,
-            timeout=0.1,
+            timeout=1,
             target_node="node-1",
         )
         assert result == mock_pubsub.get_sharded_message.return_value
