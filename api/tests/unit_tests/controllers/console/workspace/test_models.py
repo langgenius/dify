@@ -80,7 +80,7 @@ class TestDefaultModelApi:
             patch("controllers.console.workspace.models.current_account_with_tenant", return_value=(MagicMock(), "t1")),
             patch("controllers.console.workspace.models.ModelProviderService") as service,
         ):
-            service.return_value.get_default_model_of_model_type.return_value = {}
+            service.return_value.get_default_model_of_model_type.return_value = None
 
             result = method(api)
 
