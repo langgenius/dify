@@ -6,6 +6,7 @@ from typing import Any, cast
 from httpx import get
 from sqlalchemy import select
 
+from core.db.session_factory import session_factory
 from core.entities.provider_entities import ProviderConfig
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -115,68 +116,67 @@ class ApiToolManageService:
         create api tool provider
         """
         provider_name = provider_name.strip()
-
-        # check if the provider exists
-        provider = (
-            db.session.query(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider_name,
+        with session_factory.create_session() as session, session.begin():
+            # check if the provider exists
+            provider = (
+                session.query(ApiToolProvider)
+                .where(
+                    ApiToolProvider.tenant_id == tenant_id,
+                    ApiToolProvider.name == provider_name,
+                )
+                .first()
             )
-            .first()
-        )
 
-        if provider is not None:
-            raise ValueError(f"provider {provider_name} already exists")
+            if provider is not None:
+                raise ValueError(f"provider {provider_name} already exists")
 
-        # parse openapi to tool bundle
-        extra_info: dict[str, str] = {}
-        # extra info like description will be set here
-        tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
+            # parse openapi to tool bundle
+            extra_info: dict[str, str] = {}
+            # extra info like description will be set here
+            tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
 
-        if len(tool_bundles) > 100:
-            raise ValueError("the number of apis should be less than 100")
+            if len(tool_bundles) > 100:
+                raise ValueError("the number of apis should be less than 100")
 
-        # create db provider
-        db_provider = ApiToolProvider(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            name=provider_name,
-            icon=json.dumps(icon),
-            schema=schema,
-            description=extra_info.get("description", ""),
-            schema_type_str=schema_type,
-            tools_str=json.dumps(jsonable_encoder(tool_bundles)),
-            credentials_str="{}",
-            privacy_policy=privacy_policy,
-            custom_disclaimer=custom_disclaimer,
-        )
+            # create db provider
+            db_provider = ApiToolProvider(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                name=provider_name,
+                icon=json.dumps(icon),
+                schema=schema,
+                description=extra_info.get("description", ""),
+                schema_type_str=schema_type,
+                tools_str=json.dumps(jsonable_encoder(tool_bundles)),
+                credentials_str="{}",
+                privacy_policy=privacy_policy,
+                custom_disclaimer=custom_disclaimer,
+            )
 
-        if "auth_type" not in credentials:
-            raise ValueError("auth_type is required")
+            if "auth_type" not in credentials:
+                raise ValueError("auth_type is required")
 
-        # get auth type, none or api key
-        auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
+            # get auth type, none or api key
+            auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
-        # create provider entity
-        provider_controller = ApiToolProviderController.from_db(db_provider, auth_type)
-        # load tools into provider entity
-        provider_controller.load_bundled_tools(tool_bundles)
+            # create provider entity
+            provider_controller = ApiToolProviderController.from_db(db_provider, auth_type)
+            # load tools into provider entity
+            provider_controller.load_bundled_tools(tool_bundles)
 
-        # encrypt credentials
-        encrypter, _ = create_tool_provider_encrypter(
-            tenant_id=tenant_id,
-            controller=provider_controller,
-        )
-        db_provider.credentials_str = json.dumps(encrypter.encrypt(credentials))
+            # encrypt credentials
+            encrypter, _ = create_tool_provider_encrypter(
+                tenant_id=tenant_id,
+                controller=provider_controller,
+            )
+            db_provider.credentials_str = json.dumps(encrypter.encrypt(credentials))
 
-        db.session.add(db_provider)
-        db.session.commit()
+            session.add(db_provider)
 
-        # update labels
-        ToolLabelManager.update_tool_labels(provider_controller, labels)
+            # update labels
+            ToolLabelManager.update_tool_labels(provider_controller, labels)
 
-        return {"result": "success"}
+            return {"result": "success"}
 
     @staticmethod
     def get_api_tool_provider_remote_schema(user_id: str, tenant_id: str, url: str):
@@ -208,14 +208,15 @@ class ApiToolManageService:
         """
         list api tool provider tools
         """
-        provider: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider_name,
+        with session_factory.create_session() as session:
+            provider: ApiToolProvider | None = (
+                session.query(ApiToolProvider)
+                .where(
+                    ApiToolProvider.tenant_id == tenant_id,
+                    ApiToolProvider.name == provider_name,
+                )
+                .first()
             )
-            .first()
-        )
 
         if provider is None:
             raise ValueError(f"you have not added provider {provider_name}")
@@ -250,93 +251,92 @@ class ApiToolManageService:
         update api tool provider
         """
         provider_name = provider_name.strip()
-
-        # check if the provider exists
-        provider = (
-            db.session.query(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == original_provider,
+        with session_factory.create_session() as session:
+            # check if the provider exists
+            provider = (
+                session.query(ApiToolProvider)
+                .where(
+                    ApiToolProvider.tenant_id == tenant_id,
+                    ApiToolProvider.name == original_provider,
+                )
+                .first()
             )
-            .first()
-        )
 
-        if provider is None:
-            raise ValueError(f"api provider {provider_name} does not exists")
-        # parse openapi to tool bundle
-        extra_info: dict[str, str] = {}
-        # extra info like description will be set here
-        tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
+            if provider is None:
+                raise ValueError(f"api provider {provider_name} does not exists")
+            # parse openapi to tool bundle
+            extra_info: dict[str, str] = {}
+            # extra info like description will be set here
+            tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
 
-        # update db provider
-        provider.name = provider_name
-        provider.icon = json.dumps(icon)
-        provider.schema = schema
-        provider.description = extra_info.get("description", "")
-        provider.schema_type_str = schema_type
-        provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
-        provider.privacy_policy = privacy_policy
-        provider.custom_disclaimer = custom_disclaimer
+            # update db provider
+            provider.name = provider_name
+            provider.icon = json.dumps(icon)
+            provider.schema = schema
+            provider.description = extra_info.get("description", "")
+            provider.schema_type_str = schema_type
+            provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
+            provider.privacy_policy = privacy_policy
+            provider.custom_disclaimer = custom_disclaimer
 
-        if "auth_type" not in credentials:
-            raise ValueError("auth_type is required")
+            if "auth_type" not in credentials:
+                raise ValueError("auth_type is required")
 
-        # get auth type, none or api key
-        auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
+            # get auth type, none or api key
+            auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
-        # create provider entity
-        provider_controller = ApiToolProviderController.from_db(provider, auth_type)
-        # load tools into provider entity
-        provider_controller.load_bundled_tools(tool_bundles)
+            # create provider entity
+            provider_controller = ApiToolProviderController.from_db(provider, auth_type)
+            # load tools into provider entity
+            provider_controller.load_bundled_tools(tool_bundles)
 
-        # get original credentials if exists
-        encrypter, cache = create_tool_provider_encrypter(
-            tenant_id=tenant_id,
-            controller=provider_controller,
-        )
+            # get original credentials if exists
+            encrypter, cache = create_tool_provider_encrypter(
+                tenant_id=tenant_id,
+                controller=provider_controller,
+            )
 
-        original_credentials = encrypter.decrypt(provider.credentials)
-        masked_credentials = encrypter.mask_plugin_credentials(original_credentials)
-        # check if the credential has changed, save the original credential
-        for name, value in credentials.items():
-            if name in masked_credentials and value == masked_credentials[name]:
-                credentials[name] = original_credentials[name]
+            original_credentials = encrypter.decrypt(provider.credentials)
+            masked_credentials = encrypter.mask_plugin_credentials(original_credentials)
+            # check if the credential has changed, save the original credential
+            for name, value in credentials.items():
+                if name in masked_credentials and value == masked_credentials[name]:
+                    credentials[name] = original_credentials[name]
 
-        credentials = dict(encrypter.encrypt(credentials))
-        provider.credentials_str = json.dumps(credentials)
+            credentials = dict(encrypter.encrypt(credentials))
+            provider.credentials_str = json.dumps(credentials)
 
-        db.session.add(provider)
-        db.session.commit()
+            session.add(provider)
 
-        # delete cache
-        cache.delete()
+            # delete cache
+            cache.delete()
 
-        # update labels
-        ToolLabelManager.update_tool_labels(provider_controller, labels)
+            # update labels
+            ToolLabelManager.update_tool_labels(provider_controller, labels)
 
-        return {"result": "success"}
+            return {"result": "success"}
 
     @staticmethod
     def delete_api_tool_provider(user_id: str, tenant_id: str, provider_name: str):
         """
         delete tool provider
         """
-        provider = (
-            db.session.query(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider_name,
+        with session_factory.create_session() as session, session.begin():
+            provider = (
+                session.query(ApiToolProvider)
+                .where(
+                    ApiToolProvider.tenant_id == tenant_id,
+                    ApiToolProvider.name == provider_name,
+                )
+                .first()
             )
-            .first()
-        )
 
-        if provider is None:
-            raise ValueError(f"you have not added provider {provider_name}")
+            if provider is None:
+                raise ValueError(f"you have not added provider {provider_name}")
 
-        db.session.delete(provider)
-        db.session.commit()
+            session.delete(provider)
 
-        return {"result": "success"}
+            return {"result": "success"}
 
     @staticmethod
     def get_api_tool_provider(user_id: str, tenant_id: str, provider: str):
@@ -370,15 +370,15 @@ class ApiToolManageService:
         tool_bundle = next(filter(lambda tb: tb.operation_id == tool_name, tool_bundles), None)
         if tool_bundle is None:
             raise ValueError(f"invalid tool name {tool_name}")
-
-        db_provider = (
-            db.session.query(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider_name,
+        with session_factory.create_session() as session:
+            db_provider = (
+                session.query(ApiToolProvider)
+                .where(
+                    ApiToolProvider.tenant_id == tenant_id,
+                    ApiToolProvider.name == provider_name,
+                )
+                .first()
             )
-            .first()
-        )
 
         if not db_provider:
             # create a fake db provider
@@ -439,8 +439,9 @@ class ApiToolManageService:
         """
         list api tools
         """
-        # get all api providers
-        db_providers = db.session.scalars(select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)).all()
+        with session_factory.create_session() as session:
+            # get all api providers
+            db_providers = session.scalars(select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)).all()
 
         result: list[ToolProviderApiEntity] = []
 
