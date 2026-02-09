@@ -65,14 +65,11 @@ def _jsonify_form_definition(form: Form, site_payload: dict | None = None) -> Re
     return Response(json.dumps(payload, ensure_ascii=False), mimetype="application/json")
 
 
-# TODO(QuantumGhost): disable authorization for web app
-# form api temporarily
-
-
 @web_ns.route("/form/human_input/<string:form_token>")
-# class HumanInputFormApi(WebApiResource):
 class HumanInputFormApi(Resource):
     """API for getting and submitting human input forms via the web app."""
+
+    # NOTE(QuantumGhost): this endpoint is unauthenticated on purpose for now.
 
     # def get(self, _app_model: App, _end_user: EndUser, form_token: str):
     def get(self, form_token: str):
