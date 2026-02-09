@@ -86,43 +86,42 @@ export default antfu(
       hyoban,
     },
   },
-  // TODO: enable this when we need migration
-  // {
-  //   files: ['**/*.tsx'],
-  //   rules: {
-  //     'hyoban/prefer-tailwind-icons': ['warn', {
-  //       prefix: 'i-',
-  //       propMappings: {
-  //         size: 'size',
-  //         width: 'w',
-  //         height: 'h',
-  //       },
-  //       libraries: [
-  //         {
-  //           prefix: 'i-custom-',
-  //           source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
-  //           name: '^(?<name>.*)$',
-  //         },
-  //         {
-  //           source: '^@remixicon/react$',
-  //           name: '^(?<set>Ri)(?<name>.+)$',
-  //         },
-  //         {
-  //           source: '^@(?<set>heroicons)/react/24/outline$',
-  //           name: '^(?<name>.*)Icon$',
-  //         },
-  //         {
-  //           source: '^@(?<set>heroicons)/react/24/(?<variant>solid)$',
-  //           name: '^(?<name>.*)Icon$',
-  //         },
-  //         {
-  //           source: '^@(?<set>heroicons)/react/(?<variant>\\d+/(?:solid|outline))$',
-  //           name: '^(?<name>.*)Icon$',
-  //         },
-  //       ],
-  //     }],
-  //   },
-  // },
+  {
+    files: ['**/*.tsx'],
+    rules: {
+      'hyoban/prefer-tailwind-icons': ['warn', {
+        prefix: 'i-',
+        propMappings: {
+          size: 'size',
+          width: 'w',
+          height: 'h',
+        },
+        libraries: [
+          {
+            prefix: 'i-custom-',
+            source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
+            name: '^(?<name>.*)$',
+          },
+          {
+            source: '^@remixicon/react$',
+            name: '^(?<set>Ri)(?<name>.+)$',
+          },
+          {
+            source: '^@(?<set>heroicons)/react/24/outline$',
+            name: '^(?<name>.*)Icon$',
+          },
+          {
+            source: '^@(?<set>heroicons)/react/24/(?<variant>solid)$',
+            name: '^(?<name>.*)Icon$',
+          },
+          {
+            source: '^@(?<set>heroicons)/react/(?<variant>\\d+/(?:solid|outline))$',
+            name: '^(?<name>.*)Icon$',
+          },
+        ],
+      }],
+    },
+  },
   {
     files: ['i18n/**/*.json'],
     rules: {
