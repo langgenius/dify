@@ -50,14 +50,12 @@ ignore_imports =
     core.workflow.nodes.agent.agent_node -> extensions.ext_database
     core.workflow.nodes.datasource.datasource_node -> extensions.ext_database
     core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_database
     core.workflow.nodes.llm.file_saver -> extensions.ext_database
     core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
     core.workflow.nodes.tool.tool_node -> extensions.ext_database
     core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
     core.workflow.graph_engine.manager -> extensions.ext_redis
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_redis
 
 [importlinter:contract:workflow-external-imports]
 name = Workflow External Imports
@@ -122,11 +120,6 @@ ignore_imports =
     core.workflow.nodes.http_request.node -> core.tools.tool_file_manager
     core.workflow.nodes.iteration.iteration_node -> core.app.workflow.node_factory
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.index_processor_factory
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.rag.datasource.retrieval_service
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.rag.retrieval.dataset_retrieval
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> models.dataset
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> services.feature_service
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.model_runtime.model_providers.__base.large_language_model
     core.workflow.nodes.llm.llm_utils -> configs
     core.workflow.nodes.llm.llm_utils -> core.app.entities.app_invoke_entities
     core.workflow.nodes.llm.llm_utils -> core.file.models
@@ -146,7 +139,6 @@ ignore_imports =
     core.workflow.nodes.base.node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.app_config.entities
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.llm.node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.advanced_prompt_transform
@@ -162,9 +154,6 @@ ignore_imports =
     core.workflow.workflow_entry -> core.app.workflow.node_factory
     core.workflow.nodes.datasource.datasource_node -> core.datasource.datasource_manager
     core.workflow.nodes.datasource.datasource_node -> core.datasource.utils.message_transformer
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.entities.agent_entities
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.entities.model_entities
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.model_manager
     core.workflow.nodes.llm.llm_utils -> core.entities.provider_entities
     core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.model_manager
     core.workflow.nodes.question_classifier.question_classifier_node -> core.model_manager
@@ -213,7 +202,6 @@ ignore_imports =
     core.workflow.nodes.llm.node -> core.llm_generator.output_parser.structured_output
     core.workflow.nodes.llm.node -> core.model_manager
     core.workflow.nodes.agent.entities -> core.prompt.entities.advanced_prompt_entities
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.prompt.simple_prompt_transform
     core.workflow.nodes.llm.entities -> core.prompt.entities.advanced_prompt_entities
     core.workflow.nodes.llm.llm_utils -> core.prompt.entities.advanced_prompt_entities
     core.workflow.nodes.llm.node -> core.prompt.entities.advanced_prompt_entities
@@ -229,7 +217,6 @@ ignore_imports =
     core.workflow.nodes.knowledge_index.knowledge_index_node -> services.summary_index_service
     core.workflow.nodes.knowledge_index.knowledge_index_node -> tasks.generate_summary_index_task
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.processor.paragraph_index_processor
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.rag.retrieval.retrieval_methods
     core.workflow.nodes.llm.node -> models.dataset
     core.workflow.nodes.agent.agent_node -> core.tools.utils.message_transformer
     core.workflow.nodes.llm.file_saver -> core.tools.signature
@@ -287,8 +274,6 @@ ignore_imports =
     core.workflow.nodes.agent.agent_node -> extensions.ext_database
     core.workflow.nodes.datasource.datasource_node -> extensions.ext_database
     core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_database
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_redis
     core.workflow.nodes.llm.file_saver -> extensions.ext_database
     core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
