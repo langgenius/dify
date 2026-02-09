@@ -459,6 +459,9 @@ importers:
       '@types/node':
         specifier: 18.15.0
         version: 18.15.0
+      '@types/postcss-js':
+        specifier: 4.1.0
+        version: 4.1.0
       '@types/qs':
         specifier: 6.14.0
         version: 6.14.0
@@ -549,6 +552,9 @@ importers:
       postcss:
         specifier: 8.5.6
         version: 8.5.6
+      postcss-js:
+        specifier: 5.0.3
+        version: 5.0.3(postcss@8.5.6)
       react-scan:
         specifier: 0.4.3
         version: 0.4.3(@types/react@19.2.9)(next@16.1.5(@babel/core@7.28.6)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.93.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(rollup@4.56.0)
@@ -3188,6 +3194,9 @@ packages:
 
   '@types/papaparse@5.5.2':
     resolution: {integrity: sha512-gFnFp/JMzLHCwRf7tQHrNnfhN4eYBVYYI897CGX4MY1tzY9l2aLkVyx2IlKZ/SAqDbB3I1AOZW5gTMGGsqWliA==}
+
+  '@types/postcss-js@4.1.0':
+    resolution: {integrity: sha512-E19kBYOk2uEhzxfbam6jALzE6J1GNdny2jdftwDHo72+oWWt7bkWSGzZYVfaRK1r/UToMhAcfbKCAauBXrxi7g==}
 
   '@types/qs@6.14.0':
     resolution: {integrity: sha512-eOunJqu0K1923aExK6y8p6fsihYEn/BYuQ4g0CxAAgFc4b/ZLN4CrsRZ55srTdqoiLzU2B2evC+apEIxprEzkQ==}
@@ -6131,6 +6140,12 @@ packages:
   postcss-js@4.1.0:
     resolution: {integrity: sha512-oIAOTqgIo7q2EOwbhb8UalYePMvYoIeRY2YKntdpFQXNosSu3vLrniGgmH9OKs/qAkfoj5oB3le/7mINW1LCfw==}
     engines: {node: ^12 || ^14 || >= 16}
+    peerDependencies:
+      postcss: ^8.4.21
+
+  postcss-js@5.0.3:
+    resolution: {integrity: sha512-yqxfMZ2NKo8MH0xcj6Yb1sos9Vk2aNzVi0i6k0nWH0LaLQQ1lke9DGWDMa80+tzHk+tLzfKa3pepOFcPSM6Yow==}
+    engines: {node: ^20 || ^22 || >= 24}
     peerDependencies:
       postcss: ^8.4.21
 
@@ -10396,6 +10411,10 @@ snapshots:
     dependencies:
       '@types/node': 18.15.0
 
+  '@types/postcss-js@4.1.0':
+    dependencies:
+      postcss: 8.5.6
+
   '@types/qs@6.14.0': {}
 
   '@types/react-dom@19.2.3(@types/react@19.2.9)':
@@ -14010,6 +14029,10 @@ snapshots:
   postcss-js@4.1.0(postcss@8.5.6):
     dependencies:
       camelcase-css: 2.0.1
+      postcss: 8.5.6
+
+  postcss-js@5.0.3(postcss@8.5.6):
+    dependencies:
       postcss: 8.5.6
 
   postcss-load-config@6.0.1(jiti@1.21.7)(postcss@8.5.6)(tsx@4.21.0)(yaml@2.8.2):
