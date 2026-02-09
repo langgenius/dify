@@ -5,6 +5,7 @@ export const PROVIDER_ICONS: Record<string, string> = {
   daytona: '/sandbox-providers/daytona.svg',
   docker: '/sandbox-providers/docker.svg',
   local: '/sandbox-providers/local.svg',
+  ssh: '/sandbox-providers/docker.svg',
 }
 
 export const PROVIDER_LABEL_KEYS = {
@@ -12,6 +13,7 @@ export const PROVIDER_LABEL_KEYS = {
   daytona: 'sandboxProvider.daytona.label',
   docker: 'sandboxProvider.docker.label',
   local: 'sandboxProvider.local.label',
+  ssh: 'sandboxProvider.ssh.label',
 } as const
 
 export const PROVIDER_DESCRIPTION_KEYS = {
@@ -19,6 +21,7 @@ export const PROVIDER_DESCRIPTION_KEYS = {
   daytona: 'sandboxProvider.daytona.description',
   docker: 'sandboxProvider.docker.description',
   local: 'sandboxProvider.local.description',
+  ssh: 'sandboxProvider.ssh.description',
 } as const
 
 export const SANDBOX_FIELD_CONFIGS = {
@@ -52,6 +55,26 @@ export const SANDBOX_FIELD_CONFIGS = {
     placeholderKey: 'sandboxProvider.configModal.baseWorkingPathPlaceholder',
     type: FormTypeEnum.textInput,
   },
+  ssh_host: {
+    labelKey: 'sandboxProvider.configModal.sshHost',
+    placeholderKey: 'sandboxProvider.configModal.sshHostPlaceholder',
+    type: FormTypeEnum.textInput,
+  },
+  ssh_port: {
+    labelKey: 'sandboxProvider.configModal.sshPort',
+    placeholderKey: 'sandboxProvider.configModal.sshPortPlaceholder',
+    type: FormTypeEnum.textInput,
+  },
+  ssh_username: {
+    labelKey: 'sandboxProvider.configModal.sshUsername',
+    placeholderKey: 'sandboxProvider.configModal.sshUsernamePlaceholder',
+    type: FormTypeEnum.textInput,
+  },
+  ssh_password: {
+    labelKey: 'sandboxProvider.configModal.sshPassword',
+    placeholderKey: 'sandboxProvider.configModal.sshPasswordPlaceholder',
+    type: FormTypeEnum.secretInput,
+  },
 } as const
 
 export const PROVIDER_DOC_LINKS: Record<string, string> = {
@@ -59,4 +82,5 @@ export const PROVIDER_DOC_LINKS: Record<string, string> = {
   daytona: 'https://www.daytona.io/docs',
   docker: 'https://docs.docker.com/',
   local: '',
+  ssh: 'https://www.openssh.com/manual.html',
 }

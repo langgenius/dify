@@ -1,3 +1,4 @@
+import { RiTerminalBoxLine } from '@remixicon/react'
 import DockerMarkWhite from '@/app/components/base/icons/src/public/common/DockerMarkWhite'
 import E2B from '@/app/components/base/icons/src/public/common/E2B'
 import SandboxLocal from '@/app/components/base/icons/src/public/common/SandboxLocal'
@@ -11,6 +12,7 @@ type ProviderIconProps = {
 }
 
 const DOCKER_BRAND_BLUE = '#1D63ED'
+const SSH_CONSOLE_BG = '#0F172A'
 
 const ProviderIcon = ({
   providerType,
@@ -81,6 +83,33 @@ const ProviderIcon = ({
       )
     }
     return <SandboxLocal className="h-full w-full" />
+  }
+
+  if (providerType === 'ssh') {
+    const inner = (
+      <div
+        className={cn(
+          'flex h-full w-full items-center justify-center',
+          withBorder ? '' : 'rounded-[10px]',
+        )}
+        style={{ backgroundColor: SSH_CONSOLE_BG }}
+      >
+        <RiTerminalBoxLine className="h-4 w-4 text-white" />
+      </div>
+    )
+    if (withBorder) {
+      return (
+        <div
+          className={cn(
+            'shrink-0 overflow-hidden rounded border-[0.5px] border-divider-subtle',
+            sizeClass,
+          )}
+        >
+          {inner}
+        </div>
+      )
+    }
+    return inner
   }
 
   const iconSrc = PROVIDER_ICONS[providerType] || PROVIDER_ICONS.e2b

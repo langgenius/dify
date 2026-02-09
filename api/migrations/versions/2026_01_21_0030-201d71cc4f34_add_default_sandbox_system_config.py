@@ -1,4 +1,4 @@
-"""add_default_docker_sandbox_system_config
+"""add_default_sandbox_system_config
 
 Revision ID: 201d71cc4f34
 Revises: 45471e916693
@@ -23,19 +23,22 @@ def upgrade():
     # Import encryption utility
     from core.tools.utils.system_encryption import encrypt_system_params
 
-    # Define the default Docker configuration
-    docker_config = {
-        "docker_image": "langgenius/dify-agentbox:latest",
-        "docker_sock": "unix:///var/run/docker.sock"
+    # Define the default SSH configuration for agentbox
+    ssh_config = {
+        "ssh_host": "agentbox",
+        "ssh_port": "22",
+        "ssh_username": "agentbox",
+        "ssh_password": "agentbox",
+        "base_working_path": "/workspace/sandboxes",
     }
 
     # Encrypt the configuration
-    encrypted_config = encrypt_system_params(docker_config)
+    encrypted_config = encrypt_system_params(ssh_config)
 
     # Generate UUID for the record
     record_id = str(uuid4())
 
-    # Insert the default Docker sandbox system config if it doesn't exist
+    # Insert the default SSH sandbox system config if it doesn't exist
     op.execute(
         sa.text(
             """
@@ -46,19 +49,19 @@ def upgrade():
             """
         ).bindparams(
             id=record_id,
-            provider_type='docker',
+            provider_type='ssh',
             encrypted_config=encrypted_config
         )
     )
 
 
 def downgrade():
-    # Delete the default Docker sandbox system config
+    # Delete the default SSH sandbox system config
     op.execute(
         sa.text(
             """
             DELETE FROM sandbox_provider_system_config
             WHERE provider_type = :provider_type
             """
-        ).bindparams(provider_type='docker')
+        ).bindparams(provider_type='ssh')
     )

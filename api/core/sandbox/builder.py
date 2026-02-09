@@ -34,6 +34,10 @@ def _get_sandbox_class(sandbox_type: SandboxType) -> type[VirtualEnvironment]:
             from core.virtual_environment.providers.local_without_isolation import LocalVirtualEnvironment
 
             return LocalVirtualEnvironment
+        case SandboxType.SSH:
+            from core.virtual_environment.providers.ssh_sandbox import SSHSandboxEnvironment
+
+            return SSHSandboxEnvironment
         case _:
             raise ValueError(f"Unsupported sandbox type: {sandbox_type}")
 

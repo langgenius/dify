@@ -7,6 +7,7 @@ class SandboxType(StrEnum):
     DOCKER = "docker"
     E2B = "e2b"
     LOCAL = "local"
+    SSH = "ssh"
 
     @classmethod
     def get_all(cls) -> list[str]:

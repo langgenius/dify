@@ -435,6 +435,8 @@ x-shared-env: &shared-api-worker-env
   EMAIL_REGISTER_TOKEN_EXPIRY_MINUTES: ${EMAIL_REGISTER_TOKEN_EXPIRY_MINUTES:-5}
   CHANGE_EMAIL_TOKEN_EXPIRY_MINUTES: ${CHANGE_EMAIL_TOKEN_EXPIRY_MINUTES:-5}
   OWNER_TRANSFER_TOKEN_EXPIRY_MINUTES: ${OWNER_TRANSFER_TOKEN_EXPIRY_MINUTES:-5}
+  SANDBOX_DIFY_CLI_ROOT: ${SANDBOX_DIFY_CLI_ROOT:-}
+  CLI_API_URL: ${CLI_API_URL:-http://api:5001}
   CODE_EXECUTION_ENDPOINT: ${CODE_EXECUTION_ENDPOINT:-http://sandbox:8194}
   CODE_EXECUTION_API_KEY: ${CODE_EXECUTION_API_KEY:-dify-sandbox}
   CODE_EXECUTION_SSL_VERIFY: ${CODE_EXECUTION_SSL_VERIFY:-True}
@@ -505,6 +507,11 @@ x-shared-env: &shared-api-worker-env
   SANDBOX_HTTP_PROXY: ${SANDBOX_HTTP_PROXY:-http://ssrf_proxy:3128}
   SANDBOX_HTTPS_PROXY: ${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
   SANDBOX_PORT: ${SANDBOX_PORT:-8194}
+  AGENTBOX_SSH_USERNAME: ${AGENTBOX_SSH_USERNAME:-agentbox}
+  AGENTBOX_SSH_PASSWORD: ${AGENTBOX_SSH_PASSWORD:-agentbox}
+  AGENTBOX_SSH_PORT: ${AGENTBOX_SSH_PORT:-22}
+  AGENTBOX_SOCAT_TARGET_HOST: ${AGENTBOX_SOCAT_TARGET_HOST:-api}
+  AGENTBOX_SOCAT_TARGET_PORT: ${AGENTBOX_SOCAT_TARGET_PORT:-5001}
   WEAVIATE_PERSISTENCE_DATA_PATH: ${WEAVIATE_PERSISTENCE_DATA_PATH:-/var/lib/weaviate}
   WEAVIATE_QUERY_DEFAULTS_LIMIT: ${WEAVIATE_QUERY_DEFAULTS_LIMIT:-25}
   WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: ${WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED:-true}
@@ -709,7 +716,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.12.1
+    image: langgenius/dify-api:deploy-agent-dev
     restart: always
     environment:
       # Use the shared environment variables.
@@ -751,7 +758,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.12.1
+    image: langgenius/dify-api:deploy-agent-dev
     restart: always
     environment:
       # Use the shared environment variables.
@@ -790,7 +797,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.12.1
+    image: langgenius/dify-api:deploy-agent-dev
     restart: always
     environment:
       # Use the shared environment variables.
@@ -820,7 +827,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.12.1
+    image: langgenius/dify-web:deploy-agent-dev
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -956,6 +963,41 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8194/health"]
     networks:
       - ssrf_proxy_network
+
+  # SSH sandbox runtime for agent execution.
+  agentbox:
+    image: langgenius/dify-agentbox:latest
+    user: "0:0"
+    restart: always
+    environment:
+      AGENTBOX_SSH_USERNAME: ${AGENTBOX_SSH_USERNAME:-agentbox}
+      AGENTBOX_SSH_PASSWORD: ${AGENTBOX_SSH_PASSWORD:-agentbox}
+      AGENTBOX_SSH_PORT: ${AGENTBOX_SSH_PORT:-22}
+      AGENTBOX_SOCAT_TARGET_HOST: ${AGENTBOX_SOCAT_TARGET_HOST:-api}
+      AGENTBOX_SOCAT_TARGET_PORT: ${AGENTBOX_SOCAT_TARGET_PORT:-5001}
+    command: >
+      sh -c "
+      set -e;
+      if ! command -v sshd >/dev/null 2>&1; then
+        apt-get update;
+        DEBIAN_FRONTEND=noninteractive apt-get install -y openssh-server;
+        rm -rf /var/lib/apt/lists/*;
+      fi;
+      mkdir -p /run/sshd;
+      ssh-keygen -A;
+      if [ \"$${AGENTBOX_SSH_USERNAME}\" = \"root\" ]; then
+        echo \"root:$${AGENTBOX_SSH_PASSWORD}\" | chpasswd;
+        grep -q '^PermitRootLogin' /etc/ssh/sshd_config && sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config || echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config;
+      else
+        id -u \"$${AGENTBOX_SSH_USERNAME}\" >/dev/null 2>&1 || useradd -m -s /bin/bash \"$${AGENTBOX_SSH_USERNAME}\";
+        echo \"$${AGENTBOX_SSH_USERNAME}:$${AGENTBOX_SSH_PASSWORD}\" | chpasswd;
+      fi;
+      grep -q '^PasswordAuthentication' /etc/ssh/sshd_config && sed -i 's/^PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config || echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config;
+      nohup socat TCP-LISTEN:$${AGENTBOX_SOCAT_TARGET_PORT},bind=127.0.0.1,fork,reuseaddr TCP:$${AGENTBOX_SOCAT_TARGET_HOST}:$${AGENTBOX_SOCAT_TARGET_PORT} >/tmp/socat.log 2>&1 &
+      exec /usr/sbin/sshd -D -p $${AGENTBOX_SSH_PORT}
+      "
+    depends_on:
+      - api
 
   # plugin daemon
   plugin_daemon:

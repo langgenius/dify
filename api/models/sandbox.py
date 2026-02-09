@@ -27,7 +27,7 @@ class SandboxProviderSystemConfig(TypeBase):
     id: Mapped[str] = mapped_column(
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
-    provider_type: Mapped[str] = mapped_column(String(50), nullable=False, comment="e2b, docker, local")
+    provider_type: Mapped[str] = mapped_column(String(50), nullable=False, comment="e2b, docker, local, ssh")
     encrypted_config: Mapped[str] = mapped_column(LongText, nullable=False, comment="Encrypted config JSON")
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -60,7 +60,7 @@ class SandboxProvider(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    provider_type: Mapped[str] = mapped_column(String(50), nullable=False, comment="e2b, docker, local")
+    provider_type: Mapped[str] = mapped_column(String(50), nullable=False, comment="e2b, docker, local, ssh")
     encrypted_config: Mapped[str] = mapped_column(LongText, nullable=False, comment="Encrypted config JSON")
     configure_type: Mapped[str] = mapped_column(String(20), nullable=False, server_default="user", default="user")
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)

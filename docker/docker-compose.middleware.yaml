@@ -121,6 +121,45 @@ services:
     networks:
       - ssrf_proxy_network
 
+  # SSH sandbox runtime for agent execution.
+  agentbox:
+    image: langgenius/dify-agentbox:latest
+    user: "0:0"
+    restart: always
+    env_file:
+      - ./middleware.env
+    environment:
+      AGENTBOX_SSH_USERNAME: ${AGENTBOX_SSH_USERNAME:-agentbox}
+      AGENTBOX_SSH_PASSWORD: ${AGENTBOX_SSH_PASSWORD:-agentbox}
+      AGENTBOX_SSH_PORT: ${AGENTBOX_SSH_PORT:-22}
+      AGENTBOX_SOCAT_TARGET_HOST: ${AGENTBOX_SOCAT_TARGET_HOST:-host.docker.internal}
+      AGENTBOX_SOCAT_TARGET_PORT: ${AGENTBOX_SOCAT_TARGET_PORT:-5001}
+    command: >
+      sh -c "
+      set -e;
+      if ! command -v sshd >/dev/null 2>&1; then
+        apt-get update;
+        DEBIAN_FRONTEND=noninteractive apt-get install -y openssh-server;
+        rm -rf /var/lib/apt/lists/*;
+      fi;
+      mkdir -p /run/sshd;
+      ssh-keygen -A;
+      if [ \"$${AGENTBOX_SSH_USERNAME}\" = \"root\" ]; then
+        echo \"root:$${AGENTBOX_SSH_PASSWORD}\" | chpasswd;
+        grep -q '^PermitRootLogin' /etc/ssh/sshd_config && sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config || echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config;
+      else
+        id -u \"$${AGENTBOX_SSH_USERNAME}\" >/dev/null 2>&1 || useradd -m -s /bin/bash \"$${AGENTBOX_SSH_USERNAME}\";
+        echo \"$${AGENTBOX_SSH_USERNAME}:$${AGENTBOX_SSH_PASSWORD}\" | chpasswd;
+      fi;
+      grep -q '^PasswordAuthentication' /etc/ssh/sshd_config && sed -i 's/^PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config || echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config;
+      nohup socat TCP-LISTEN:$${AGENTBOX_SOCAT_TARGET_PORT},bind=127.0.0.1,fork,reuseaddr TCP:$${AGENTBOX_SOCAT_TARGET_HOST}:$${AGENTBOX_SOCAT_TARGET_PORT} >/tmp/socat.log 2>&1 &
+      exec /usr/sbin/sshd -D -p $${AGENTBOX_SSH_PORT}
+      "
+    ports:
+      - "${EXPOSE_AGENTBOX_SSH_PORT:-2222}:${AGENTBOX_SSH_PORT:-22}"
+    networks:
+      - default
+
   # plugin daemon
   plugin_daemon:
     image: langgenius/dify-plugin-daemon:0.5.3-local

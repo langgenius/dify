@@ -1867,7 +1867,7 @@ def file_usage(
 
 @click.command("setup-sandbox-system-config", help="Setup system-level sandbox provider configuration.")
 @click.option(
-    "--provider-type", prompt=True, type=click.Choice(["e2b", "docker", "local"]), help="Sandbox provider type"
+    "--provider-type", prompt=True, type=click.Choice(["e2b", "docker", "local", "ssh"]), help="Sandbox provider type"
 )
 @click.option("--config", prompt=True, help='Configuration JSON (e.g., {"api_key": "xxx"} for e2b)')
 def setup_sandbox_system_config(provider_type: str, config: str):
@@ -1878,6 +1878,8 @@ def setup_sandbox_system_config(provider_type: str, config: str):
         flask setup-sandbox-system-config --provider-type e2b --config '{"api_key": "e2b_xxx"}'
         flask setup-sandbox-system-config --provider-type docker --config '{"docker_sock": "unix:///var/run/docker.sock"}'
         flask setup-sandbox-system-config --provider-type local --config '{}'
+        flask setup-sandbox-system-config --provider-type ssh --config \
+        '{"ssh_host": "agentbox", "ssh_port": "22", "ssh_username": "agentbox", "ssh_password": "agentbox", "base_working_path": "/workspace/sandboxes"}'
     """
     from models.sandbox import SandboxProviderSystemConfig
 
