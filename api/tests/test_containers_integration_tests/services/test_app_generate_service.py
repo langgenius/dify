@@ -1,5 +1,5 @@
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from faker import Faker
@@ -26,6 +26,7 @@ class TestAppGenerateService:
             patch("services.app_generate_service.AgentChatAppGenerator") as mock_agent_chat_generator,
             patch("services.app_generate_service.AdvancedChatAppGenerator") as mock_advanced_chat_generator,
             patch("services.app_generate_service.WorkflowAppGenerator") as mock_workflow_generator,
+            patch("services.app_generate_service.MessageBasedAppGenerator") as mock_message_based_generator,
             patch("services.account_service.FeatureService") as mock_account_feature_service,
             patch("services.app_generate_service.dify_config") as mock_dify_config,
             patch("configs.dify_config") as mock_global_dify_config,
@@ -38,9 +39,13 @@ class TestAppGenerateService:
 
             # Setup default mock returns for workflow service
             mock_workflow_service_instance = mock_workflow_service.return_value
-            mock_workflow_service_instance.get_published_workflow.return_value = MagicMock(spec=Workflow)
-            mock_workflow_service_instance.get_draft_workflow.return_value = MagicMock(spec=Workflow)
-            mock_workflow_service_instance.get_published_workflow_by_id.return_value = MagicMock(spec=Workflow)
+            mock_published_workflow = MagicMock(spec=Workflow)
+            mock_published_workflow.id = str(uuid.uuid4())
+            mock_workflow_service_instance.get_published_workflow.return_value = mock_published_workflow
+            mock_draft_workflow = MagicMock(spec=Workflow)
+            mock_draft_workflow.id = str(uuid.uuid4())
+            mock_workflow_service_instance.get_draft_workflow.return_value = mock_draft_workflow
+            mock_workflow_service_instance.get_published_workflow_by_id.return_value = mock_published_workflow
 
             # Setup default mock returns for rate limiting
             mock_rate_limit_instance = mock_rate_limit.return_value
@@ -66,6 +71,8 @@ class TestAppGenerateService:
             mock_advanced_chat_generator_instance.generate.return_value = ["advanced_chat_response"]
             mock_advanced_chat_generator_instance.single_iteration_generate.return_value = ["single_iteration_response"]
             mock_advanced_chat_generator_instance.single_loop_generate.return_value = ["single_loop_response"]
+            mock_advanced_chat_generator_instance.retrieve_events.return_value = ["advanced_chat_events"]
+            mock_advanced_chat_generator_instance.convert_to_event_stream.return_value = ["advanced_chat_stream"]
             mock_advanced_chat_generator.convert_to_event_stream.return_value = ["advanced_chat_stream"]
 
             mock_workflow_generator_instance = mock_workflow_generator.return_value
@@ -75,6 +82,8 @@ class TestAppGenerateService:
             ]
             mock_workflow_generator_instance.single_loop_generate.return_value = ["workflow_single_loop_response"]
             mock_workflow_generator.convert_to_event_stream.return_value = ["workflow_stream"]
+
+            mock_message_based_generator.retrieve_events.return_value = ["workflow_events"]
 
             # Setup default mock returns for account service
             mock_account_feature_service.get_system_features.return_value.is_allow_register = True
@@ -88,6 +97,7 @@ class TestAppGenerateService:
             mock_global_dify_config.BILLING_ENABLED = False
             mock_global_dify_config.APP_MAX_ACTIVE_REQUESTS = 100
             mock_global_dify_config.APP_DAILY_RATE_LIMIT = 1000
+            mock_global_dify_config.HOSTED_POOL_CREDITS = 1000
 
             yield {
                 "billing_service": mock_billing_service,
@@ -98,6 +108,7 @@ class TestAppGenerateService:
                 "agent_chat_generator": mock_agent_chat_generator,
                 "advanced_chat_generator": mock_advanced_chat_generator,
                 "workflow_generator": mock_workflow_generator,
+                "message_based_generator": mock_message_based_generator,
                 "account_feature_service": mock_account_feature_service,
                 "dify_config": mock_dify_config,
                 "global_dify_config": mock_global_dify_config,
@@ -280,8 +291,10 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify advanced chat generator was called
-        mock_external_service_dependencies["advanced_chat_generator"].return_value.generate.assert_called_once()
-        mock_external_service_dependencies["advanced_chat_generator"].convert_to_event_stream.assert_called_once()
+        mock_external_service_dependencies["advanced_chat_generator"].return_value.retrieve_events.assert_called_once()
+        mock_external_service_dependencies[
+            "advanced_chat_generator"
+        ].return_value.convert_to_event_stream.assert_called_once()
 
     def test_generate_workflow_mode_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -304,7 +317,7 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify workflow generator was called
-        mock_external_service_dependencies["workflow_generator"].return_value.generate.assert_called_once()
+        mock_external_service_dependencies["message_based_generator"].retrieve_events.assert_called_once()
         mock_external_service_dependencies["workflow_generator"].convert_to_event_stream.assert_called_once()
 
     def test_generate_with_specific_workflow_id(self, db_session_with_containers, mock_external_service_dependencies):
@@ -970,14 +983,27 @@ class TestAppGenerateService:
         }
 
         # Execute the method under test
-        result = AppGenerateService.generate(
-            app_model=app, user=account, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=True
-        )
+        with patch("services.app_generate_service.AppExecutionParams") as mock_exec_params:
+            mock_payload = MagicMock()
+            mock_payload.workflow_run_id = fake.uuid4()
+            mock_payload.model_dump_json.return_value = "{}"
+            mock_exec_params.new.return_value = mock_payload
+
+            result = AppGenerateService.generate(
+                app_model=app, user=account, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=True
+            )
 
         # Verify the result
         assert result == ["test_response"]
 
-        # Verify workflow generator was called with complex args
-        mock_external_service_dependencies["workflow_generator"].return_value.generate.assert_called_once()
-        call_args = mock_external_service_dependencies["workflow_generator"].return_value.generate.call_args
-        assert call_args[1]["args"] == args
+        # Verify payload was built with complex args
+        mock_exec_params.new.assert_called_once()
+        call_kwargs = mock_exec_params.new.call_args.kwargs
+        assert call_kwargs["args"] == args
+
+        # Verify workflow streaming event retrieval was used
+        mock_external_service_dependencies["message_based_generator"].retrieve_events.assert_called_once_with(
+            ANY,
+            mock_payload.workflow_run_id,
+            on_subscribe=ANY,
+        )

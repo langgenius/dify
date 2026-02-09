@@ -128,7 +128,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
-        return 204
+        return "", 204
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in")
@@ -168,10 +168,11 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        if action == "enable":
-            MetadataService.enable_built_in_field(dataset)
-        elif action == "disable":
-            MetadataService.disable_built_in_field(dataset)
+        match action:
+            case "enable":
+                MetadataService.enable_built_in_field(dataset)
+            case "disable":
+                MetadataService.disable_built_in_field(dataset)
         return {"result": "success"}, 200
 
 

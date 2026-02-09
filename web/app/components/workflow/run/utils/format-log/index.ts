@@ -2,6 +2,7 @@ import type { NodeTracing } from '@/types/workflow'
 import { cloneDeep } from 'es-toolkit/object'
 import { BlockEnum } from '../../../types'
 import formatAgentNode from './agent'
+import formatHumanInputNode from './human-input'
 import { addChildrenToIterationNode } from './iteration'
 import { addChildrenToLoopNode } from './loop'
 import formatParallelNode from './parallel'
@@ -83,7 +84,8 @@ const formatToTracingNodeList = (list: NodeTracing[], t: any) => {
   * Because Handle struct node will put the node in different
   */
   const formattedAgentList = formatAgentNode(allItems)
-  const formattedRetryList = formatRetryNode(formattedAgentList) // retry one node
+  const formattedHumanInputList = formatHumanInputNode(formattedAgentList) // Keep only latest status for human-input nodes
+  const formattedRetryList = formatRetryNode(formattedHumanInputList) // retry one node
   // would change the structure of the list. Iteration and parallel can include each other.
   const formattedLoopAndIterationList = formatIterationAndLoopNode(formattedRetryList, t)
   const formattedParallelList = formatParallelNode(formattedLoopAndIterationList, t)

@@ -1368,7 +1368,7 @@ wheels = [
 
 [[package]]
 name = "dify-api"
-version = "1.11.4"
+version = "1.12.1"
 source = { virtual = "." }
 dependencies = [
     { name = "aliyun-log-python-sdk" },
@@ -1653,7 +1653,7 @@ requires-dist = [
     { name = "starlette", specifier = "==0.49.1" },
     { name = "tiktoken", specifier = "~=0.9.0" },
     { name = "transformers", specifier = "~=4.56.1" },
-    { name = "unstructured", extras = ["docx", "epub", "md", "ppt", "pptx"], specifier = "~=0.16.1" },
+    { name = "unstructured", extras = ["docx", "epub", "md", "ppt", "pptx"], specifier = "~=0.18.18" },
     { name = "weave", specifier = ">=0.52.16" },
     { name = "weaviate-client", specifier = "==4.17.0" },
     { name = "webvtt-py", specifier = "~=0.5.1" },
@@ -1707,7 +1707,7 @@ dev = [
     { name = "types-openpyxl", specifier = "~=3.1.5" },
     { name = "types-pexpect", specifier = "~=4.9.0" },
     { name = "types-protobuf", specifier = "~=5.29.1" },
-    { name = "types-psutil", specifier = "~=7.0.0" },
+    { name = "types-psutil", specifier = "~=7.2.2" },
     { name = "types-psycopg2", specifier = "~=2.9.21" },
     { name = "types-pygments", specifier = "~=2.19.0" },
     { name = "types-pymysql", specifier = "~=1.1.0" },
@@ -6508,11 +6508,11 @@ wheels = [
 
 [[package]]
 name = "types-psutil"
-version = "7.0.0.20251116"
+version = "7.2.2.20260130"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/47/ec/c1e9308b91582cad1d7e7d3007fd003ef45a62c2500f8219313df5fc3bba/types_psutil-7.0.0.20251116.tar.gz", hash = "sha256:92b5c78962e55ce1ed7b0189901a4409ece36ab9fd50c3029cca7e681c606c8a", size = 22192, upload-time = "2025-11-16T03:10:32.859Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/14/fc5fb0a6ddfadf68c27e254a02ececd4d5c7fdb0efcb7e7e917a183497fb/types_psutil-7.2.2.20260130.tar.gz", hash = "sha256:15b0ab69c52841cf9ce3c383e8480c620a4d13d6a8e22b16978ebddac5590950", size = 26535, upload-time = "2026-01-30T03:58:14.116Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/0e/11ba08a5375c21039ed5f8e6bba41e9452fb69f0e2f7ee05ed5cca2a2cdf/types_psutil-7.0.0.20251116-py3-none-any.whl", hash = "sha256:74c052de077c2024b85cd435e2cba971165fe92a5eace79cbeb821e776dbc047", size = 25376, upload-time = "2025-11-16T03:10:31.813Z" },
+    { url = "https://files.pythonhosted.org/packages/17/d7/60974b7e31545d3768d1770c5fe6e093182c3bfd819429b33133ba6b3e89/types_psutil-7.2.2.20260130-py3-none-any.whl", hash = "sha256:15523a3caa7b3ff03ac7f9b78a6470a59f88f48df1d74a39e70e06d2a99107da", size = 32876, upload-time = "2026-01-30T03:58:13.172Z" },
 ]
 
 [[package]]
@@ -6814,12 +6814,12 @@ wheels = [
 
 [[package]]
 name = "unstructured"
-version = "0.16.25"
+version = "0.18.31"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "backoff" },
     { name = "beautifulsoup4" },
-    { name = "chardet" },
+    { name = "charset-normalizer" },
     { name = "dataclasses-json" },
     { name = "emoji" },
     { name = "filetype" },
@@ -6827,6 +6827,7 @@ dependencies = [
     { name = "langdetect" },
     { name = "lxml" },
     { name = "nltk" },
+    { name = "numba" },
     { name = "numpy" },
     { name = "psutil" },
     { name = "python-iso639" },
@@ -6839,9 +6840,9 @@ dependencies = [
     { name = "unstructured-client" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/64/31/98c4c78e305d1294888adf87fd5ee30577a4c393951341ca32b43f167f1e/unstructured-0.16.25.tar.gz", hash = "sha256:73b9b0f51dbb687af572ecdb849a6811710b9cac797ddeab8ee80fa07d8aa5e6", size = 1683097, upload-time = "2025-03-07T11:19:39.507Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/5f/64285bd69a538bc28753f1423fcaa9d64cd79a9e7c097171b1f0d27e9cdb/unstructured-0.18.31.tar.gz", hash = "sha256:af4bbe32d1894ae6e755f0da6fc0dd307a1d0adeebe0e7cc6278f6cf744339ca", size = 1707700, upload-time = "2026-01-27T15:33:05.378Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/12/4f/ad08585b5c8a33c82ea119494c4d3023f4796958c56e668b15cc282ec0a0/unstructured-0.16.25-py3-none-any.whl", hash = "sha256:14719ccef2830216cf1c5bf654f75e2bf07b17ca5dcee9da5ac74618130fd337", size = 1769286, upload-time = "2025-03-07T11:19:37.299Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/4a/9c43f39d9e443c9bc3f2e379b305bca27110adc653b071221b3132c18de5/unstructured-0.18.31-py3-none-any.whl", hash = "sha256:fab4641176cb9b192ed38048758aa0d9843121d03626d18f42275afb31e5b2d3", size = 1794889, upload-time = "2026-01-27T15:33:03.136Z" },
 ]
 
 [package.optional-dependencies]
