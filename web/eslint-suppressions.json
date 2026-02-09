@@ -1482,7 +1482,7 @@
   },
   "app/components/base/prompt-editor/plugins/hitl-input-block/index.tsx": {
     "react-refresh/only-export-components": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/base/prompt-editor/plugins/last-run-block/index.tsx": {
