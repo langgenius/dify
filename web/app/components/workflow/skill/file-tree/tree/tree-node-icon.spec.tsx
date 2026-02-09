@@ -29,7 +29,7 @@ describe('TreeNodeIcon', () => {
 
       // Act
       const toggleButton = screen.getByRole('button', { name: /workflow\.skillSidebar\.toggleFolder/i })
-      const icon = toggleButton.querySelector('svg')
+      const icon = toggleButton.querySelector('[aria-hidden="true"]')
 
       // Assert
       expect(toggleButton).toBeInTheDocument()
@@ -50,7 +50,7 @@ describe('TreeNodeIcon', () => {
 
       // Act
       const toggleButton = screen.getByRole('button', { name: /workflow\.skillSidebar\.toggleFolder/i })
-      const icon = toggleButton.querySelector('svg')
+      const icon = toggleButton.querySelector('[aria-hidden="true"]')
 
       // Assert
       expect(icon).toHaveClass('text-text-secondary')

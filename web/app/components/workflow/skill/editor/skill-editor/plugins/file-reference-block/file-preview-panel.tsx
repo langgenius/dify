@@ -1,6 +1,5 @@
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import type { AppAssetTreeView } from '@/types/app-asset'
-import { RiCloseLine, RiExternalLinkLine, RiFolderLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -97,7 +96,7 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {folderName && (
             <div className="flex items-center gap-1.5">
-              <RiFolderLine className="size-5 text-text-secondary" aria-hidden="true" />
+              <span className="i-ri-folder-line size-5 text-text-secondary" aria-hidden="true" />
               <span className="text-[13px] font-medium leading-4 text-text-primary">
                 {folderName}
               </span>
@@ -133,7 +132,7 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
             )}
             aria-label={t('skillEditor.openInSkillEditor', { ns: 'workflow' })}
           >
-            <RiExternalLinkLine className="size-4" />
+            <span className="i-ri-external-link-line size-4" />
           </button>
         </Tooltip>
         <button
@@ -142,7 +141,7 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
           className="inline-flex size-6 items-center justify-center rounded-md text-text-tertiary transition hover:bg-state-base-hover"
           aria-label={t('operation.close', { ns: 'common' })}
         >
-          <RiCloseLine className="size-4" />
+          <span className="i-ri-close-line size-4" />
         </button>
       </div>
       <div className="flex min-h-0 w-full flex-1 gap-2 overflow-auto pb-4 pl-4 pr-3 pt-1">

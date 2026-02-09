@@ -4,7 +4,6 @@ import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { RiAlertFill, RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -561,9 +560,9 @@ const ToolGroupBlockComponent = ({
       )
     })()
     const hoverIcon = (
-      <RiEqualizer2Line
+      <span
         className={cn(
-          'hidden size-[14px]',
+          'i-ri-equalizer-2-line hidden size-[14px]',
           needAuthorization ? 'text-text-warning' : 'text-text-accent',
           isInteractive && 'group-hover:block',
         )}
@@ -698,7 +697,7 @@ const ToolGroupBlockComponent = ({
             }}
           >
             <span className="sr-only">{t('operation.close', { ns: 'common' })}</span>
-            <RiCloseLine className="h-4 w-4" />
+            <span className="i-ri-close-line h-4 w-4" />
           </button>
         </div>
         {providerDescription && (
@@ -789,7 +788,7 @@ const ToolGroupBlockComponent = ({
                               setExpandedToolId(item.configId)
                             }}
                           >
-                            <RiEqualizer2Line className="size-3.5" />
+                            <span className="i-ri-equalizer-2-line size-3.5" />
                             <span className="system-xs-medium">{t('operation.settings', { ns: 'common' })}</span>
                           </button>
                           <div className="mx-1 h-3 w-px bg-divider-regular"></div>
@@ -849,7 +848,7 @@ const ToolGroupBlockComponent = ({
           ? (
               <span className="flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning system-2xs-medium-uppercase">
                 {authBadgeLabel}
-                <RiAlertFill className="h-3 w-3" />
+                <span className="i-ri-alert-fill h-3 w-3" />
               </span>
             )
           : (

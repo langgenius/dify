@@ -1,7 +1,6 @@
 'use client'
 
 import type { SkillTemplateSummary } from './templates/types'
-import { RiAddLine, RiCheckLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -51,7 +50,7 @@ const TemplateCard = ({ template, added, disabled, loading, onUse }: TemplateCar
                   className="w-full"
                   disabled
                 >
-                  <RiCheckLine className="mr-0.5 h-4 w-4" />
+                  <span className="i-ri-check-line mr-0.5 h-4 w-4" />
                   {t('skill.startTab.skillAdded')}
                 </Button>
               )
@@ -64,7 +63,7 @@ const TemplateCard = ({ template, added, disabled, loading, onUse }: TemplateCar
                   loading={loading}
                   onClick={() => onUse(template)}
                 >
-                  <RiAddLine className="mr-0.5 h-4 w-4" />
+                  <span className="i-ri-add-line mr-0.5 h-4 w-4" />
                   {t('skill.startTab.useThisSkill')}
                 </Button>
               )}

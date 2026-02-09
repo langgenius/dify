@@ -3,14 +3,6 @@
 import type { NodeApi, TreeApi } from 'react-arborist'
 import type { NodeMenuType } from '../../constants'
 import type { TreeNodeData } from '../../type'
-import {
-  RiClipboardLine,
-  RiDeleteBinLine,
-  RiEdit2Line,
-  RiFolderUploadLine,
-  RiScissorsLine,
-  RiUploadLine,
-} from '@remixicon/react'
 import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -146,7 +138,7 @@ const NodeMenu = ({
             disabled={isLoading}
           />
           <MenuItem
-            icon={RiFolderUploadLine}
+            icon="i-ri-folder-upload-line"
             label={t('skillSidebar.menu.uploadFolder')}
             onClick={() => folderInputRef.current?.click()}
             disabled={isLoading}
@@ -156,7 +148,7 @@ const NodeMenu = ({
             <>
               <div className="my-1 h-px bg-divider-subtle" />
               <MenuItem
-                icon={RiUploadLine}
+                icon="i-ri-upload-line"
                 label={t('skillSidebar.menu.importSkills')}
                 onClick={() => setIsImportModalOpen(true)}
                 disabled={isLoading}
@@ -184,7 +176,7 @@ const NodeMenu = ({
       {!isRoot && (
         <>
           <MenuItem
-            icon={RiScissorsLine}
+            icon="i-ri-scissors-line"
             label={t('skillSidebar.menu.cut')}
             kbd={KBD_CUT}
             onClick={handleCut}
@@ -195,7 +187,7 @@ const NodeMenu = ({
 
       {isFolder && hasClipboard && (
         <MenuItem
-          icon={RiClipboardLine}
+          icon="i-ri-clipboard-line"
           label={t('skillSidebar.menu.paste')}
           kbd={KBD_PASTE}
           onClick={handlePaste}
@@ -207,13 +199,13 @@ const NodeMenu = ({
         <>
           <div className="my-1 h-px bg-divider-subtle" />
           <MenuItem
-            icon={RiEdit2Line}
+            icon="i-ri-edit-2-line"
             label={t('skillSidebar.menu.rename')}
             onClick={handleRename}
             disabled={isLoading}
           />
           <MenuItem
-            icon={RiDeleteBinLine}
+            icon="i-ri-delete-bin-line"
             label={t('skillSidebar.menu.delete')}
             onClick={handleDeleteClick}
             disabled={isLoading}

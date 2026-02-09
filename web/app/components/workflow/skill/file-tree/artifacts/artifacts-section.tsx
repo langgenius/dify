@@ -1,7 +1,6 @@
 'use client'
 
 import type { SandboxFileTreeNode } from '@/types/sandbox-file'
-import { RiArrowDownSLine, RiArrowRightSLine, RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -74,15 +73,15 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
 
           <div className="relative flex items-center">
             {showSpinner
-              ? <RiLoader2Line className="size-3.5 animate-spin text-text-tertiary" aria-hidden="true" />
+              ? <span className="i-ri-loader-2-line size-3.5 animate-spin text-text-tertiary" aria-hidden="true" />
               : (
                   <>
                     {showBlueDot && (
                       <div className="absolute -left-2 size-[7px] rounded-full border border-white bg-state-accent-solid" />
                     )}
                     {isExpanded
-                      ? <RiArrowDownSLine className="size-4 text-text-tertiary" aria-hidden="true" />
-                      : <RiArrowRightSLine className="size-4 text-text-tertiary" aria-hidden="true" />}
+                      ? <span className="i-ri-arrow-down-s-line size-4 text-text-tertiary" aria-hidden="true" />
+                      : <span className="i-ri-arrow-right-s-line size-4 text-text-tertiary" aria-hidden="true" />}
                   </>
                 )}
           </div>

@@ -3,7 +3,6 @@ import type { FileAppearanceType } from '@/app/components/base/file-uploader/typ
 import type { TreeNodeData } from '@/app/components/workflow/skill/type'
 import type { AppAssetTreeView } from '@/types/app-asset'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { RiAlertFill, RiFolderLine } from '@remixicon/react'
 import { $getNodeByKey } from 'lexical'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -186,7 +185,7 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
           >
             <span className="flex items-center justify-center p-px">
               {isFolder
-                ? <RiFolderLine className={cn('size-[14px]', isMissing ? 'text-text-warning' : 'text-text-accent')} aria-hidden="true" />
+                ? <span className={cn('i-ri-folder-line size-[14px]', isMissing ? 'text-text-warning' : 'text-text-accent')} aria-hidden="true" />
                 : (
                     <FileTypeIcon
                       type={(iconType || 'document') as FileAppearanceType}
@@ -200,7 +199,7 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
             </span>
             {
               isMissing && (
-                <RiAlertFill className="size-3 text-text-warning" />
+                <span className="i-ri-alert-fill size-3 text-text-warning" />
               )
             }
           </span>

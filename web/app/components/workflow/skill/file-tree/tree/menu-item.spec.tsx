@@ -68,7 +68,7 @@ describe('MenuItem', () => {
       // Arrange
       const tooltipText = 'Show help'
       const { container } = renderMenuItem({ tooltip: tooltipText })
-      const tooltipIcon = container.querySelector('svg.text-text-quaternary')
+      const tooltipIcon = container.querySelector('.i-ri-question-line')
 
       // Act
       expect(tooltipIcon).toBeTruthy()
@@ -103,7 +103,7 @@ describe('MenuItem', () => {
       // Arrange
       const onClick = vi.fn()
       const { container } = renderMenuItem({ onClick, tooltip: 'Help' })
-      const tooltipIcon = container.querySelector('svg.text-text-quaternary')
+      const tooltipIcon = container.querySelector('.i-ri-question-line')
 
       // Act
       expect(tooltipIcon).toBeTruthy()

@@ -1,6 +1,5 @@
 'use client'
 
-import { RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useState } from 'react'
@@ -36,7 +35,7 @@ const PdfFilePreview = ({ downloadUrl }: PdfFilePreviewProps) => {
           className="flex size-8 cursor-pointer items-center justify-center rounded-lg bg-components-panel-bg shadow-md hover:bg-state-base-hover"
           aria-label="Zoom out"
         >
-          <RiZoomOutLine className="size-4 text-text-tertiary" />
+          <span className="i-ri-zoom-out-line size-4 text-text-tertiary" />
         </button>
         <button
           type="button"
@@ -44,7 +43,7 @@ const PdfFilePreview = ({ downloadUrl }: PdfFilePreviewProps) => {
           className="flex size-8 cursor-pointer items-center justify-center rounded-lg bg-components-panel-bg shadow-md hover:bg-state-base-hover"
           aria-label="Zoom in"
         >
-          <RiZoomInLine className="size-4 text-text-tertiary" />
+          <span className="i-ri-zoom-in-line size-4 text-text-tertiary" />
         </button>
       </div>
 

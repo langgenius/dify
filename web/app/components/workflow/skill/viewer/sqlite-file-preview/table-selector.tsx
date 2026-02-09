@@ -1,4 +1,3 @@
-import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -74,7 +73,7 @@ const TableSelector = ({
             <span className={cn('min-w-0 max-w-[220px] truncate system-sm-medium', isPlaceholder && 'text-text-tertiary')}>
               {label}
             </span>
-            <RiArrowDownSLine className="h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
+            <span className="i-ri-arrow-down-s-line h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
           </button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[1002]">

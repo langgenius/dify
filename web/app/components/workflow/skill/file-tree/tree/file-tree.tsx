@@ -4,7 +4,6 @@ import type { MoveHandler, NodeApi, NodeRendererProps, TreeApi } from 'react-arb
 import type { TreeNodeData } from '../../type'
 import type { OpensObject } from '@/app/components/workflow/store/workflow/skill-editor/file-tree-slice'
 import type { AppAssetTreeView } from '@/types/app-asset'
-import { RiDragDropLine } from '@remixicon/react'
 import { useIsMutating } from '@tanstack/react-query'
 import { useSize } from 'ahooks'
 import * as React from 'react'
@@ -82,7 +81,7 @@ const DropTip = () => {
   const { t } = useTranslation('workflow')
   return (
     <div className="flex shrink-0 items-center justify-center gap-2 py-4 text-text-quaternary">
-      <RiDragDropLine className="size-4" aria-hidden="true" />
+      <span className="i-ri-drag-drop-line size-4" aria-hidden="true" />
       <span className="system-xs-regular">
         {t('skillSidebar.dropTip')}
       </span>

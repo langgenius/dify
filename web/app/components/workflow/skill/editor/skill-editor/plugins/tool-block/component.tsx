@@ -4,7 +4,6 @@ import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppAssetTreeView } from '@/types/app-asset'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { RiAlertFill, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -381,9 +380,9 @@ const ToolBlockComponent = ({
       )
     })()
     const hoverIcon = (
-      <RiEqualizer2Line
+      <span
         className={cn(
-          'hidden size-[14px]',
+          'i-ri-equalizer-2-line hidden size-[14px]',
           needAuthorization ? 'text-text-warning' : 'text-text-accent',
           isInteractive && 'group-hover/tool:block',
         )}
@@ -590,7 +589,7 @@ const ToolBlockComponent = ({
         {needAuthorization && (
           <span className="flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning system-2xs-medium-uppercase">
             {authBadgeLabel}
-            <RiAlertFill className="h-3 w-3" />
+            <span className="i-ri-alert-fill h-3 w-3" />
           </span>
         )}
       </span>

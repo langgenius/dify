@@ -1,7 +1,6 @@
 import type { NodeRendererProps } from 'react-arborist'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import type { TreeNodeData } from '@/app/components/workflow/skill/type'
-import { RiArrowDownSLine, RiArrowRightSLine, RiFolderLine, RiFolderOpenLine } from '@remixicon/react'
 import { useSize } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useRef } from 'react'
@@ -66,8 +65,8 @@ const FilePickerTreeNode = ({ node, style, dragHandle, onSelectNode }: FilePicke
           {isFolder
             ? (
                 node.isOpen
-                  ? <RiFolderOpenLine className="size-4 text-text-accent" aria-hidden="true" />
-                  : <RiFolderLine className="size-4 text-text-secondary" aria-hidden="true" />
+                  ? <span className="i-ri-folder-open-line size-4 text-text-accent" aria-hidden="true" />
+                  : <span className="i-ri-folder-line size-4 text-text-secondary" aria-hidden="true" />
               )
             : (
                 <FileTypeIcon type={fileIconType as FileAppearanceType} size="sm" />
@@ -103,8 +102,8 @@ const FilePickerTreeNode = ({ node, style, dragHandle, onSelectNode }: FilePicke
           )}
         >
           {node.isOpen
-            ? <RiArrowDownSLine className="size-4" aria-hidden="true" />
-            : <RiArrowRightSLine className="size-4" aria-hidden="true" />}
+            ? <span className="i-ri-arrow-down-s-line size-4" aria-hidden="true" />
+            : <span className="i-ri-arrow-right-s-line size-4" aria-hidden="true" />}
         </button>
       )}
     </div>

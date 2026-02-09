@@ -1,10 +1,5 @@
 'use client'
 
-import {
-  RiAddLine,
-  RiFolderUploadLine,
-  RiUploadLine,
-} from '@remixicon/react'
 import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -81,7 +76,7 @@ const SidebarSearchAdd = () => {
             className="!size-6 shrink-0 !p-1"
             aria-label={t('operation.add', { ns: 'common' })}
           >
-            <RiAddLine className="size-4" aria-hidden="true" />
+            <span className="i-ri-add-line size-4" aria-hidden="true" />
           </Button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[30]">
@@ -124,7 +119,7 @@ const SidebarSearchAdd = () => {
               disabled={isLoading}
             />
             <MenuItem
-              icon={RiFolderUploadLine}
+              icon="i-ri-folder-upload-line"
               label={t('skillSidebar.menu.uploadFolder')}
               onClick={() => folderInputRef.current?.click()}
               disabled={isLoading}
@@ -133,7 +128,7 @@ const SidebarSearchAdd = () => {
             <div className="my-1 h-px bg-divider-subtle" />
 
             <MenuItem
-              icon={RiUploadLine}
+              icon="i-ri-upload-line"
               label={t('skillSidebar.menu.importSkills')}
               onClick={() => setIsImportModalOpen(true)}
               disabled={isLoading}

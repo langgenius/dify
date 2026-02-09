@@ -1,7 +1,6 @@
 'use client'
 
 import type { ChangeEvent, DragEvent } from 'react'
-import { RiUploadCloud2Line } from '@remixicon/react'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -181,7 +180,7 @@ const ImportSkillModal = ({ isOpen, onClose }: ImportSkillModalProps) => {
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <RiUploadCloud2Line className="mb-2 size-8 text-text-tertiary" />
+                <span className="i-ri-upload-cloud-2-line mb-2 size-8 text-text-tertiary" />
                 <p className="text-text-tertiary system-sm-regular">
                   {t(`${PREFIX}.dropHint`, { ns: NS })}
                   {' '}

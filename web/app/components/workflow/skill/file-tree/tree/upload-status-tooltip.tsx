@@ -1,12 +1,6 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import {
-  RiAlertFill,
-  RiCheckboxCircleFill,
-  RiCloseLine,
-  RiUploadCloud2Line,
-} from '@remixicon/react'
 import { memo, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
@@ -74,13 +68,13 @@ const UploadStatusTooltip = ({ fallback }: UploadStatusTooltipProps) => {
 
         <div className="relative z-10 shrink-0">
           {uploadStatus === 'uploading' && (
-            <RiUploadCloud2Line className="size-6 text-text-accent" />
+            <span className="i-ri-upload-cloud-2-line size-6 text-text-accent" />
           )}
           {uploadStatus === 'success' && (
-            <RiCheckboxCircleFill className="size-5 text-text-success" />
+            <span className="i-ri-checkbox-circle-fill size-5 text-text-success" />
           )}
           {uploadStatus === 'partial_error' && (
-            <RiAlertFill className="size-5 text-text-warning" />
+            <span className="i-ri-alert-fill size-5 text-text-warning" />
           )}
         </div>
 
@@ -118,7 +112,7 @@ const UploadStatusTooltip = ({ fallback }: UploadStatusTooltipProps) => {
           className="relative z-10 shrink-0 rounded p-0.5 text-text-tertiary hover:text-text-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-state-accent-solid"
           onClick={handleClose}
         >
-          <RiCloseLine className="size-4" />
+          <span className="i-ri-close-line size-4" />
         </button>
       </div>
     </div>
