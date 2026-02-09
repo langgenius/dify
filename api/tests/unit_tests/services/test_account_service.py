@@ -730,9 +730,7 @@ class TestTenantService:
 
             mock_db.session.query.side_effect = [query_mock_permission, query_mock_ta, query_mock_count]
 
-            with patch(
-                "services.enterprise.account_deletion_sync.sync_workspace_member_removal"
-            ) as mock_sync:
+            with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
                 mock_sync.return_value = True
 
                 # Act
@@ -781,9 +779,7 @@ class TestTenantService:
 
             mock_db.session.query.side_effect = [query_mock_permission, query_mock_ta, query_mock_count]
 
-            with patch(
-                "services.enterprise.account_deletion_sync.sync_workspace_member_removal"
-            ) as mock_sync:
+            with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
                 mock_sync.return_value = True
 
                 # Act
@@ -819,9 +815,7 @@ class TestTenantService:
 
             mock_db.session.query.side_effect = [query_mock_permission, query_mock_ta]
 
-            with patch(
-                "services.enterprise.account_deletion_sync.sync_workspace_member_removal"
-            ) as mock_sync:
+            with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
                 mock_sync.return_value = True
 
                 # Act
