@@ -9,6 +9,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { useShallow } from 'zustand/react/shallow'
 import AppIcon from '@/app/components/base/app-icon'
 import Modal from '@/app/components/base/modal'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
@@ -112,9 +113,25 @@ const ToolGroupBlockComponent = ({
   const authBadgeLabel = t('skillEditor.authorizationBadge', { ns: 'workflow' })
   const language = useGetLanguage()
   const { theme } = useTheme()
-  const toolBlockContext = useToolBlockContext()
-  const isUsingExternalMetadata = Boolean(toolBlockContext?.onMetadataChange)
-  const useModal = Boolean(toolBlockContext?.useModal)
+  const {
+    metadata,
+    onMetadataChange,
+    useModal,
+    nodeId: contextNodeId,
+    nodesOutputVars,
+    availableNodes,
+  } = useToolBlockContext(
+    useShallow(context => ({
+      metadata: context?.metadata,
+      onMetadataChange: context?.onMetadataChange,
+      useModal: context?.useModal,
+      nodeId: context?.nodeId,
+      nodesOutputVars: context?.nodesOutputVars,
+      availableNodes: context?.availableNodes,
+    })),
+  )
+  const isUsingExternalMetadata = Boolean(onMetadataChange)
+  const useModalValue = Boolean(useModal)
   const isInteractive = editor.isEditable()
   const [isSettingOpen, setIsSettingOpen] = useState(false)
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
@@ -196,22 +213,22 @@ const ToolGroupBlockComponent = ({
     if (!activeToolItem)
       return undefined
     if (isUsingExternalMetadata) {
-      const metadata = toolBlockContext?.metadata as SkillFileMetadata | undefined
-      return metadata?.tools?.[activeToolItem.configId]
+      const externalMetadata = metadata as SkillFileMetadata | undefined
+      return externalMetadata?.tools?.[activeToolItem.configId]
     }
     if (!activeTabId)
       return undefined
-    const metadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
-    return metadata?.tools?.[activeToolItem.configId]
-  }, [activeTabId, activeToolItem, fileMetadata, isUsingExternalMetadata, toolBlockContext?.metadata])
+    const resultMetadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
+    return resultMetadata?.tools?.[activeToolItem.configId]
+  }, [activeTabId, activeToolItem, fileMetadata, isUsingExternalMetadata, metadata])
 
   const metadataTools = useMemo(() => {
     if (isUsingExternalMetadata)
-      return ((toolBlockContext?.metadata as SkillFileMetadata | undefined)?.tools || {}) as Record<string, ToolConfigMetadata>
+      return ((metadata as SkillFileMetadata | undefined)?.tools || {}) as Record<string, ToolConfigMetadata>
     if (!activeTabId || activeTabId === START_TAB_ID)
       return {}
     return ((fileMetadata.get(activeTabId) as SkillFileMetadata | undefined)?.tools || {}) as Record<string, ToolConfigMetadata>
-  }, [activeTabId, fileMetadata, isUsingExternalMetadata, toolBlockContext?.metadata])
+  }, [activeTabId, fileMetadata, isUsingExternalMetadata, metadata])
 
   const getVarKindType = (type: FormTypeEnum | string) => {
     if (type === FormTypeEnum.file || type === FormTypeEnum.files)
@@ -348,7 +365,7 @@ const ToolGroupBlockComponent = ({
   }, [configuredToolValue, isSettingOpen])
 
   useEffect(() => {
-    if (useModal)
+    if (useModalValue)
       return
     const containerFromRef = ref.current?.closest('[data-skill-editor-root="true"]') as HTMLElement | null
     const fallbackContainer = document.querySelector('[data-skill-editor-root="true"]') as HTMLElement | null
@@ -356,10 +373,10 @@ const ToolGroupBlockComponent = ({
     if (container)
       // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setPortalContainer(container)
-  }, [ref, useModal])
+  }, [ref, useModalValue])
 
   useEffect(() => {
-    if (!isSettingOpen || useModal)
+    if (!isSettingOpen || useModalValue)
       return
 
     const handleClickOutside = (event: MouseEvent) => {
@@ -384,7 +401,7 @@ const ToolGroupBlockComponent = ({
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isSettingOpen, portalContainer, ref, useModal])
+  }, [isSettingOpen, portalContainer, ref, useModalValue])
 
   const resolvedEnabledByConfigId = useMemo(() => {
     const next = { ...enabledByConfigId }
@@ -413,9 +430,9 @@ const ToolGroupBlockComponent = ({
     setToolValue(nextValue)
     const credentialId = normalizeCredentialId(nextValue.credential_id)
     if (isUsingExternalMetadata) {
-      const metadata = (toolBlockContext?.metadata || {}) as SkillFileMetadata
+      const externalMetadata = (metadata || {}) as SkillFileMetadata
       const toolType = currentProvider.type === CollectionType.mcp ? 'mcp' : 'builtin'
-      const currentToolMetadata = (metadata.tools || {})[activeToolItem.configId]
+      const currentToolMetadata = (externalMetadata.tools || {})[activeToolItem.configId]
       const buildFields = (value: Record<string, unknown> | undefined) => {
         if (!value)
           return []
@@ -431,9 +448,9 @@ const ToolGroupBlockComponent = ({
         ...buildFields(nextValue.parameters),
       ]
       const nextMetadata: SkillFileMetadata = {
-        ...metadata,
+        ...externalMetadata,
         tools: {
-          ...(metadata.tools || {}),
+          ...(externalMetadata.tools || {}),
           [activeToolItem.configId]: {
             type: toolType,
             configuration: { fields },
@@ -442,14 +459,14 @@ const ToolGroupBlockComponent = ({
           },
         },
       }
-      toolBlockContext?.onMetadataChange?.(nextMetadata)
+      onMetadataChange?.(nextMetadata)
       return
     }
     if (!activeTabId || activeTabId === START_TAB_ID)
       return
-    const metadata = (fileMetadata.get(activeTabId) || {}) as SkillFileMetadata
+    const currentMetaData = (fileMetadata.get(activeTabId) || {}) as SkillFileMetadata
     const toolType = currentProvider.type === CollectionType.mcp ? 'mcp' : 'builtin'
-    const currentToolMetadata = (metadata.tools || {})[activeToolItem.configId]
+    const currentToolMetadata = (currentMetaData.tools || {})[activeToolItem.configId]
     const buildFields = (value: Record<string, unknown> | undefined) => {
       if (!value)
         return []
@@ -465,9 +482,9 @@ const ToolGroupBlockComponent = ({
       ...buildFields(nextValue.parameters),
     ]
     const nextMetadata: SkillFileMetadata = {
-      ...metadata,
+      ...currentMetaData,
       tools: {
-        ...(metadata.tools || {}),
+        ...(currentMetaData.tools || {}),
         [activeToolItem.configId]: {
           type: toolType,
           configuration: { fields },
@@ -502,16 +519,16 @@ const ToolGroupBlockComponent = ({
       return nextMetadata
     }
     if (isUsingExternalMetadata) {
-      toolBlockContext?.onMetadataChange?.(applyEnabled(toolBlockContext?.metadata as SkillFileMetadata | undefined))
+      onMetadataChange?.(applyEnabled(metadata as SkillFileMetadata | undefined))
       return
     }
     if (!activeTabId || activeTabId === START_TAB_ID)
       return
-    const metadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
-    const nextMetadata = applyEnabled(metadata)
+    const currentMetadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
+    const nextMetadata = applyEnabled(currentMetadata)
     storeApi.getState().setDraftMetadata(activeTabId, nextMetadata)
     storeApi.getState().pinTab(activeTabId)
-  }, [activeTabId, currentProvider?.type, fileMetadata, isUsingExternalMetadata, storeApi, toolBlockContext])
+  }, [activeTabId, currentProvider?.type, fileMetadata, isUsingExternalMetadata, metadata, onMetadataChange, storeApi])
 
   const renderIcon = () => {
     if (!resolvedIcon)
@@ -611,10 +628,10 @@ const ToolGroupBlockComponent = ({
         currentTool={currentTool}
         value={toolValue}
         onChange={handleToolValueChange}
-        nodeId={toolBlockContext?.nodeId}
-        nodesOutputVars={toolBlockContext?.nodesOutputVars}
-        availableNodes={toolBlockContext?.availableNodes}
-        enableVariableReference={useModal}
+        nodeId={contextNodeId}
+        nodesOutputVars={nodesOutputVars}
+        availableNodes={availableNodes}
+        enableVariableReference={useModalValue}
       />
     </div>
   )
@@ -724,13 +741,13 @@ const ToolGroupBlockComponent = ({
               return nextMetadata
             }
             if (isUsingExternalMetadata) {
-              toolBlockContext?.onMetadataChange?.(applyCredential(toolBlockContext?.metadata as SkillFileMetadata | undefined))
+              onMetadataChange?.(applyCredential(metadata as SkillFileMetadata | undefined))
               return
             }
             if (!activeTabId || activeTabId === START_TAB_ID)
               return
-            const metadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
-            const nextMetadata = applyCredential(metadata)
+            const currentMetadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
+            const nextMetadata = applyCredential(currentMetadata)
             storeApi.getState().setDraftMetadata(activeTabId, nextMetadata)
             storeApi.getState().pinTab(activeTabId)
           }}
@@ -841,7 +858,7 @@ const ToolGroupBlockComponent = ({
               </span>
             )}
       </span>
-      {useModal && (
+      {useModalValue && (
         <Modal
           isShow={isSettingOpen}
           onClose={() => {
@@ -856,7 +873,7 @@ const ToolGroupBlockComponent = ({
           </div>
         </Modal>
       )}
-      {!useModal && portalContainer && isSettingOpen && createPortal(
+      {!useModalValue && portalContainer && isSettingOpen && createPortal(
         <div
           className="absolute bottom-4 right-4 top-4 z-[99]"
           data-tool-group-setting-panel="true"

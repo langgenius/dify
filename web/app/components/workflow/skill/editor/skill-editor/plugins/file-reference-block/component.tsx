@@ -45,7 +45,7 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewStyle, setPreviewStyle] = useState<React.CSSProperties | null>(null)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const { enabled: isPreviewEnabled } = useFilePreviewContext()
+  const isPreviewEnabled = useFilePreviewContext(context => context.enabled)
   const { t } = useTranslation()
   const isInteractive = editor.isEditable()
 
