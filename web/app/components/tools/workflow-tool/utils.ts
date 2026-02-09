@@ -35,7 +35,7 @@ export const buildWorkflowOutputParameters = (
 
   return Object.entries(schemaProperties).map(([name, schema]) => ({
     name,
-    description: schema.description,
+    description: schema.description || '',
     type: normalizeVarType(schema.type),
   }))
 }

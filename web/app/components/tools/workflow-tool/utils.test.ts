@@ -127,4 +127,21 @@ describe('buildWorkflowOutputParameters', () => {
       { name: 'answer', description: 'Answer without type', type: undefined },
     ])
   })
+
+  it('falls back to empty description when schema-derived description is missing', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        answer: {
+          type: VarType.string,
+        },
+      },
+    } as unknown as WorkflowToolProviderOutputSchema
+
+    const result = buildWorkflowOutputParameters(undefined, schema)
+
+    expect(result).toEqual([
+      { name: 'answer', description: '', type: VarType.string },
+    ])
+  })
 })
