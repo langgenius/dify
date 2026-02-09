@@ -13,6 +13,7 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import ReactDOM from 'react-dom'
 import { v4 as uuid } from 'uuid'
+import { useShallow } from 'zustand/react/shallow'
 import { useBasicTypeaheadTriggerMatch } from '@/app/components/base/prompt-editor/hooks'
 import { $splitNodeContainingQuery } from '@/app/components/base/prompt-editor/utils'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -42,8 +43,13 @@ const ToolPickerBlock = ({ scope = 'all', enableAutoDefault = false }: ToolPicke
     maxLength: 75,
   })
   const storeApi = useWorkflowStore()
-  const toolBlockContext = useToolBlockContext()
-  const isUsingExternalMetadata = Boolean(toolBlockContext?.onMetadataChange)
+  const { metadata, onMetadataChange } = useToolBlockContext(
+    useShallow(context => ({
+      metadata: context?.metadata,
+      onMetadataChange: context?.onMetadataChange,
+    })),
+  )
+  const isUsingExternalMetadata = Boolean(onMetadataChange)
   const [queryString, setQueryString] = useState('')
 
   const canUseAutoByType = useCallback(
@@ -133,21 +139,21 @@ const ToolPickerBlock = ({ scope = 'all', enableAutoDefault = false }: ToolPicke
     })
 
     if (isUsingExternalMetadata) {
-      const metadata = (toolBlockContext?.metadata || {}) as Record<string, unknown>
-      const nextMetadata = buildNextMetadata(metadata, toolEntries)
-      toolBlockContext?.onMetadataChange?.(nextMetadata)
+      const externalMetadata = (metadata || {}) as Record<string, unknown>
+      const nextMetadata = buildNextMetadata(externalMetadata, toolEntries)
+      onMetadataChange?.(nextMetadata)
       return
     }
     const { activeTabId, fileMetadata, setDraftMetadata, pinTab } = storeApi.getState()
     if (!activeTabId || activeTabId === START_TAB_ID)
       return
-    const metadata = (fileMetadata.get(activeTabId) || {}) as Record<string, unknown>
-    const nextMetadata = buildNextMetadata(metadata, toolEntries)
+    const currentMetadata = (fileMetadata.get(activeTabId) || {}) as Record<string, unknown>
+    const nextMetadata = buildNextMetadata(currentMetadata, toolEntries)
     setDraftMetadata(activeTabId, {
       ...nextMetadata,
     })
     pinTab(activeTabId)
-  }, [buildNextMetadata, editor, getMatchFromSelection, isUsingExternalMetadata, storeApi, toolBlockContext])
+  }, [buildNextMetadata, editor, getMatchFromSelection, isUsingExternalMetadata, metadata, onMetadataChange, storeApi])
 
   const renderMenu = useCallback((
     anchorElementRef: React.RefObject<HTMLElement | null>,

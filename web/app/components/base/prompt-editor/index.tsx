@@ -333,6 +333,10 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
     }
   }, [availableNodes, nodeId, onToolMetadataChange, toolMetadata, workflowVariableBlock?.variables])
 
+  const filePreviewContextValue = React.useMemo(() => ({
+    enabled: Boolean(isSupportSandbox),
+  }), [isSupportSandbox])
+
   const sandboxPlaceHolder = React.useMemo(() => {
     if (!isSupportSandbox)
       return null
@@ -387,7 +391,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
       <ToolBlockContextProvider value={toolBlockContextValue}>
-        <FilePreviewContextProvider value={{ enabled: Boolean(isSupportSandbox) }}>
+        <FilePreviewContextProvider value={filePreviewContextValue}>
           <div
             className={cn('relative', wrapperClassName)}
             data-skill-editor-root={isSupportSandbox ? 'true' : undefined}

@@ -94,6 +94,8 @@ const SkillEditor = ({
   onAutoFocus,
   toolPickerScope = 'all',
 }: SkillEditorProps) => {
+  const filePreviewContextValue = React.useMemo(() => ({ enabled: false }), [])
+
   const initialConfig = {
     namespace: 'skill-editor',
     nodes: [
@@ -123,7 +125,7 @@ const SkillEditor = ({
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
-      <FilePreviewContextProvider value={{ enabled: false }}>
+      <FilePreviewContextProvider value={filePreviewContextValue}>
         <div
           className={cn('relative', showLineNumbers && styles.lineNumbersScope, wrapperClassName)}
           data-skill-editor-root="true"

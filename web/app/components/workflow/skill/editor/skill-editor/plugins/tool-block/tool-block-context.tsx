@@ -1,7 +1,10 @@
+import type { ReactNode } from 'react'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import { createContext, useContext } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef } from 'react'
+import { useStore } from 'zustand'
+import { createStore } from 'zustand/vanilla'
 
-type ToolBlockContextValue = {
+export type ToolBlockContextValue = {
   metadata?: Record<string, unknown>
   onMetadataChange?: (metadata: Record<string, unknown>) => void
   useModal?: boolean
@@ -10,8 +13,56 @@ type ToolBlockContextValue = {
   availableNodes?: Node[]
 }
 
-const ToolBlockContext = createContext<ToolBlockContextValue | null>(null)
+type ToolBlockStoreState = {
+  context: ToolBlockContextValue | null
+  setContext: (context: ToolBlockContextValue | null) => void
+}
 
-export const ToolBlockContextProvider = ToolBlockContext.Provider
+const createToolBlockStore = (initialContext: ToolBlockContextValue | null) => createStore<ToolBlockStoreState>(set => ({
+  context: initialContext,
+  setContext: context => set({ context }),
+}))
 
-export const useToolBlockContext = () => useContext(ToolBlockContext)
+type ToolBlockStore = ReturnType<typeof createToolBlockStore>
+
+const defaultToolBlockStore = createToolBlockStore(null)
+
+const ToolBlockStoreContext = createContext<ToolBlockStore | null>(null)
+
+type ToolBlockContextProviderProps = {
+  value?: ToolBlockContextValue | null
+  children: ReactNode
+}
+
+export const ToolBlockContextProvider = ({ value, children }: ToolBlockContextProviderProps) => {
+  const storeRef = useRef<ToolBlockStore>(null)
+  if (!storeRef.current)
+    storeRef.current = createToolBlockStore(value ?? null)
+
+  useEffect(() => {
+    storeRef.current?.getState().setContext(value ?? null)
+  }, [value])
+
+  return (
+    <ToolBlockStoreContext.Provider value={storeRef.current}>
+      {children}
+    </ToolBlockStoreContext.Provider>
+  )
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const useToolBlockContext = <T = ToolBlockContextValue | null,>(
+  selector?: (context: ToolBlockContextValue | null) => T,
+) => {
+  const store = useContext(ToolBlockStoreContext) ?? defaultToolBlockStore
+  const selectContext = useCallback(
+    (state: ToolBlockStoreState) => {
+      if (selector)
+        return selector(state.context)
+      return state.context as T
+    },
+    [selector],
+  )
+
+  return useStore(store, selectContext)
+}
