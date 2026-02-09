@@ -22,7 +22,6 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.tools.utils.parser import ApiBasedToolSchemaParser
-from extensions.ext_database import db
 from models.tools import ApiToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
