@@ -197,7 +197,7 @@
     "@types/js-cookie": "3.0.6",
     "@types/js-yaml": "4.0.9",
     "@types/negotiator": "0.6.4",
-    "@types/node": "18.15.0",
+    "@types/node": "24.10.12",
     "@types/qs": "6.14.0",
     "@types/react": "19.2.9",
     "@types/react-dom": "19.2.3",
