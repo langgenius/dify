@@ -36,25 +36,19 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         document.indexing_status = "parsing"
         document.processing_started_at = naive_utc_now()
 
-        # delete all document segment and index
-        try:
-            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
-            if not dataset:
-                raise Exception("Dataset not found")
+        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+        if not dataset:
+            return
 
-            index_type = document.doc_form
-            index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        index_type = document.doc_form
+        segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
+        index_node_ids = [segment.index_node_id for segment in segments]
 
-            segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
-            if segments:
-                index_node_ids = [segment.index_node_id for segment in segments]
-
-                # delete from vector index
-                index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
-                segment_ids = [segment.id for segment in segments]
-                segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
-                session.execute(segment_delete_stmt)
-
+    clean_success = False
+    try:
+        index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        if index_node_ids:
+            index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
             end_at = time.perf_counter()
             logger.info(
                 click.style(
@@ -64,15 +58,21 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
                     fg="green",
                 )
             )
-        except Exception:
-            logger.exception("Cleaned document when document update data source or process rule failed")
+            clean_success = True
+    except Exception:
+        logger.exception("Failed to clean document index during update, document_id: %s", document_id)
 
-        try:
-            indexing_runner = IndexingRunner()
-            indexing_runner.run([document])
-            end_at = time.perf_counter()
-            logger.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))
-        except DocumentIsPausedError as ex:
-            logger.info(click.style(str(ex), fg="yellow"))
-        except Exception:
-            logger.exception("document_indexing_update_task failed, document_id: %s", document_id)
+    if clean_success:
+        with session_factory.create_session() as session, session.begin():
+            segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
+            session.execute(segment_delete_stmt)
+
+    try:
+        indexing_runner = IndexingRunner()
+        indexing_runner.run([document])
+        end_at = time.perf_counter()
+        logger.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))
+    except DocumentIsPausedError as ex:
+        logger.info(click.style(str(ex), fg="yellow"))
+    except Exception:
+        logger.exception("document_indexing_update_task failed, document_id: %s", document_id)
