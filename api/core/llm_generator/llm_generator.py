@@ -32,11 +32,11 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.generator import WorkflowGenerator
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import App, Message, WorkflowNodeExecutionModel
 from models.workflow import Workflow
+from services.workflow_generator_service import WorkflowGeneratorService
 
 logger = logging.getLogger(__name__)
 
@@ -301,7 +301,7 @@ class LLMGenerator:
         preferred_language: str | None = None,
         available_models: Sequence[dict[str, object]] | None = None,
     ):
-        return WorkflowGenerator.generate_workflow_flowchart(
+        return WorkflowGeneratorService.generate_workflow_flowchart(
             tenant_id=tenant_id,
             instruction=instruction,
             model_config=model_config,

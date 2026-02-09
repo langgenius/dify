@@ -24,10 +24,10 @@ from core.helper.code_executor.python3.python3_code_provider import Python3CodeP
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.generator import WorkflowGenerator
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App
+from services.workflow_generator_service import WorkflowGeneratorService
 from services.workflow_service import WorkflowService
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
@@ -290,7 +290,7 @@ class FlowchartGenerateApi(Resource):
             # Convert PreviousWorkflow to dict if present
             previous_workflow_dict = args.previous_workflow.model_dump() if args.previous_workflow else None
 
-            result = WorkflowGenerator.generate_workflow_flowchart(
+            result = WorkflowGeneratorService.generate_workflow_flowchart(
                 tenant_id=current_tenant_id,
                 instruction=args.instruction,
                 model_config=args.model_config_data,
