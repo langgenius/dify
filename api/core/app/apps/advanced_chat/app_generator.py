@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import contexts
 from configs import dify_config
 from constants import UUID_NIL
+from core.app.layers.sandbox_layer import SandboxLayer
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
@@ -30,7 +31,6 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
-from core.app.layers.sandbox_layer import SandboxLayer
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -500,6 +500,27 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     state_owner_user_id=pause_state_config.state_owner_user_id,
                 )
             )
+        sandbox: Sandbox | None = None
+        if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
+            sandbox_provider = SandboxProviderService.get_sandbox_provider(
+                application_generate_entity.app_config.tenant_id
+            )
+            if workflow.version == Workflow.VERSION_DRAFT:
+                sandbox = SandboxService.create_draft(
+                    tenant_id=application_generate_entity.app_config.tenant_id,
+                    app_id=application_generate_entity.app_config.app_id,
+                    user_id=application_generate_entity.user_id,
+                    sandbox_provider=sandbox_provider,
+                )
+            else:
+                sandbox = SandboxService.create(
+                    tenant_id=application_generate_entity.app_config.tenant_id,
+                    app_id=application_generate_entity.app_config.app_id,
+                    user_id=application_generate_entity.user_id,
+                    sandbox_id=conversation.id,
+                    sandbox_provider=sandbox_provider,
+                )
+            graph_layers.append(SandboxLayer(sandbox))
 
         # new thread with request context and contextvars
         context = contextvars.copy_context()
@@ -518,6 +539,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 "workflow_node_execution_repository": workflow_node_execution_repository,
                 "graph_engine_layers": tuple(graph_layers),
                 "graph_runtime_state": graph_runtime_state,
+                "sandbox": sandbox,
             },
         )
 
@@ -565,6 +587,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
+        sandbox: Sandbox | None = None,
     ):
         """
         Generate worker in a new thread.
@@ -591,29 +614,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 )
                 if workflow is None:
                     raise ValueError("Workflow not found")
-
-                sandbox: Sandbox | None = None
-                graph_engine_layers: tuple = ()
-                if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
-                    sandbox_provider = SandboxProviderService.get_sandbox_provider(
-                        application_generate_entity.app_config.tenant_id
-                    )
-                    if workflow.version == Workflow.VERSION_DRAFT:
-                        sandbox = SandboxService.create_draft(
-                            tenant_id=application_generate_entity.app_config.tenant_id,
-                            app_id=application_generate_entity.app_config.app_id,
-                            user_id=application_generate_entity.user_id,
-                            sandbox_provider=sandbox_provider,
-                        )
-                    else:
-                        sandbox = SandboxService.create(
-                            tenant_id=application_generate_entity.app_config.tenant_id,
-                            app_id=application_generate_entity.app_config.app_id,
-                            user_id=application_generate_entity.user_id,
-                            sandbox_id=conversation_id,
-                            sandbox_provider=sandbox_provider,
-                        )
-                    graph_engine_layers = (SandboxLayer(sandbox=sandbox),)
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {

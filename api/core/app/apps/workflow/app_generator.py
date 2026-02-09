@@ -32,7 +32,7 @@ from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
-from core.sandbox import Sandbox
+from core.sandbox.sandbox import Sandbox
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -316,6 +316,28 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 )
             )
 
+        sandbox: Sandbox | None = None
+        if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
+            sandbox_provider = SandboxProviderService.get_sandbox_provider(
+                application_generate_entity.app_config.tenant_id
+            )
+            if workflow.version == Workflow.VERSION_DRAFT:
+                sandbox = SandboxService.create_draft(
+                    tenant_id=application_generate_entity.app_config.tenant_id,
+                    app_id=application_generate_entity.app_config.app_id,
+                    user_id=application_generate_entity.user_id,
+                    sandbox_provider=sandbox_provider,
+                )
+            else:
+                sandbox = SandboxService.create(
+                    tenant_id=application_generate_entity.app_config.tenant_id,
+                    app_id=application_generate_entity.app_config.app_id,
+                    user_id=application_generate_entity.user_id,
+                    sandbox_id=application_generate_entity.workflow_execution_id,
+                    sandbox_provider=sandbox_provider,
+                )
+            graph_layers.append(SandboxLayer(sandbox=sandbox))
+
         # new thread with request context and contextvars
         context = contextvars.copy_context()
 
@@ -335,6 +357,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 "workflow_node_execution_repository": workflow_node_execution_repository,
                 "graph_engine_layers": tuple(graph_layers),
                 "graph_runtime_state": graph_runtime_state,
+                "sandbox": sandbox,
             },
         )
 
@@ -533,6 +556,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
+        sandbox: Sandbox | None = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -553,31 +577,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 )
                 if workflow is None:
                     raise ValueError("Workflow not found")
-
-                sandbox: Sandbox | None = None
-                if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
-                    sandbox_provider = SandboxProviderService.get_sandbox_provider(
-                        application_generate_entity.app_config.tenant_id
-                    )
-                    if workflow.version == Workflow.VERSION_DRAFT:
-                        sandbox = SandboxService.create_draft(
-                            tenant_id=application_generate_entity.app_config.tenant_id,
-                            app_id=application_generate_entity.app_config.app_id,
-                            user_id=application_generate_entity.user_id,
-                            sandbox_provider=sandbox_provider,
-                        )
-                    else:
-                        sandbox = SandboxService.create(
-                            tenant_id=application_generate_entity.app_config.tenant_id,
-                            app_id=application_generate_entity.app_config.app_id,
-                            user_id=application_generate_entity.user_id,
-                            sandbox_id=application_generate_entity.workflow_execution_id,
-                            sandbox_provider=sandbox_provider,
-                        )
-                    graph_engine_layers = (
-                        *graph_engine_layers,
-                        SandboxLayer(sandbox=sandbox),
-                    )
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {
