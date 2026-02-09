@@ -7,8 +7,8 @@ import { cn } from '@/utils/classnames'
 const dividerVariants = cva('', {
   variants: {
     type: {
-      horizontal: 'w-full h-[0.5px] my-2 ',
-      vertical: 'w-[1px] h-full mx-2',
+      horizontal: 'my-2 h-[0.5px] w-full',
+      vertical: 'mx-2 h-full w-[1px]',
     },
     bgStyle: {
       gradient: 'bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent',

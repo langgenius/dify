@@ -1,7 +1,6 @@
 import type { ToolNodeType, ToolVarInputs } from './types'
 import type { InputVar } from '@/app/components/workflow/types'
 import { useBoolean } from 'ahooks'
-import { capitalize } from 'es-toolkit/string'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,12 +25,6 @@ import {
 } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
 import { useWorkflowStore } from '../../store'
-import { normalizeJsonSchemaType } from './output-schema-utils'
-
-const formatDisplayType = (output: Record<string, unknown>): string => {
-  const normalizedType = normalizeJsonSchemaType(output) || 'Unknown'
-  return capitalize(normalizedType)
-}
 
 const useConfig = (id: string, payload: ToolNodeType) => {
   const workflowStore = useWorkflowStore()
@@ -254,13 +247,20 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         })
       }
       else {
-        const normalizedType = normalizeJsonSchemaType(output)
         res.push({
           name: outputKey,
           type:
-            normalizedType === 'array'
-              ? `Array[${output.items ? formatDisplayType(output.items) : 'Unknown'}]`
-              : formatDisplayType(output),
+            output.type === 'array'
+              ? `Array[${output.items?.type
+                ? output.items.type.slice(0, 1).toLocaleUpperCase()
+                + output.items.type.slice(1)
+                : 'Unknown'
+              }]`
+              : `${output.type
+                ? output.type.slice(0, 1).toLocaleUpperCase()
+                + output.type.slice(1)
+                : 'Unknown'
+              }`,
           description: output.description,
         })
       }

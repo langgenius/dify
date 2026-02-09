@@ -99,7 +99,7 @@ const ConditionWrap: FC<Props> = ({
                 className={cn(
                   'group relative rounded-[10px] bg-components-panel-bg',
                   willDeleteCaseId === item.case_id && 'bg-state-destructive-hover',
-                  !isSubVariable && 'min-h-[40px] px-3 py-1 ',
+                  !isSubVariable && 'min-h-[40px] px-3 py-1',
                   isSubVariable && 'px-1 py-2',
                 )}
               >
@@ -161,7 +161,7 @@ const ConditionWrap: FC<Props> = ({
                   'flex items-center justify-between pr-[30px]',
                   !item.conditions.length && !isSubVariable && 'mt-1',
                   !item.conditions.length && isSubVariable && 'mt-2',
-                  !isSubVariable && ' pl-[60px]',
+                  !isSubVariable && 'pl-[60px]',
                 )}
                 >
                   {isSubVariable

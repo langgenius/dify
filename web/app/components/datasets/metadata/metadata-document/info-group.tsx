@@ -85,7 +85,7 @@ const InfoGroup: FC<Props> = ({
               onSave={data => onAdd?.(data)}
               onManage={handleMangeMetadata}
             />
-            {list.length > 0 && <Divider className="my-3 " bgStyle="gradient" />}
+            {list.length > 0 && <Divider className="my-3" bgStyle="gradient" />}
           </div>
         )}
         {list.map((item, i) => (
@@ -99,7 +99,7 @@ const InfoGroup: FC<Props> = ({
                       value={item.value}
                       onChange={value => onChange?.({ ...item, value })}
                     />
-                    <div className="shrink-0 cursor-pointer rounded-md p-1  text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive">
+                    <div className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive">
                       <RiDeleteBinLine className="size-4" onClick={() => onDelete?.(item)} />
                     </div>
                   </div>

@@ -83,7 +83,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
       }}
     >
       {!isLast && <div className="absolute left-4 top-6 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle" />}
-      <div className=" flex h-5 w-[18px] shrink-0 items-center justify-center">
+      <div className="flex h-5 w-[18px] shrink-0 items-center justify-center">
         <div className={cn(
           'h-2 w-2 rounded-lg border-[2px]',
           isSelected ? 'border-text-accent' : 'border-text-quaternary',

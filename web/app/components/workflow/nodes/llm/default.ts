@@ -95,7 +95,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
         payload.prompt_config?.jinja2_variables.forEach((i) => {
           if (!errorMessages && !i.variable)
             errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variable`, { ns: 'workflow' }) })
-          if (!errorMessages && !i.value_selector.length)
+          if (!errorMessages && (!i.value_selector || !i.value_selector.length))
             errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variableValue`, { ns: 'workflow' }) })
         })
       }

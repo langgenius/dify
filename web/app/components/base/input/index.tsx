@@ -13,8 +13,8 @@ export const inputVariants = cva(
   {
     variants: {
       size: {
-        regular: 'px-3 radius-md system-sm-regular',
-        large: 'px-4 radius-lg system-md-regular',
+        regular: 'radius-md system-sm-regular px-3',
+        large: 'radius-lg system-md-regular px-4',
       },
     },
     defaultVariants: {

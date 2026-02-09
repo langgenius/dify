@@ -143,6 +143,50 @@ Based on task description, please create a well-structured prompt template that 
 Please generate the full prompt template with at least 300 words and output only the prompt template.
 """  # noqa: E501
 
+WORKFLOW_FLOWCHART_PROMPT_TEMPLATE = """
+You are an expert workflow designer. Generate a Mermaid flowchart based on the user's request.
+
+Constraints:
+- Detect the language of the user's request. Generate all node titles in the same language as the user's input.
+- If the input language cannot be determined, use {{PREFERRED_LANGUAGE}} as the fallback language.
+- Use only node types listed in <available_nodes>.
+- Use only tools listed in <available_tools>. When using a tool node, set type=tool and tool=<tool_key>.
+- Tools may include MCP providers (provider_type=mcp). Tool selection still uses tool_key.
+- Prefer reusing node titles from <existing_nodes> when possible.
+- Output must be valid Mermaid flowchart syntax, no markdown, no extra text.
+- First line must be: flowchart LR
+- Every node must be declared on its own line using:
+  <id>["type=<type>|title=<title>|tool=<tool_key>"]
+  - type is required and must match a type in <available_nodes>.
+  - title is required for non-tool nodes.
+  - tool is required only when type=tool, otherwise omit tool.
+- Declare all node lines before any edges.
+- Edges must use:
+  <id> --> <id>
+  <id> -->|true| <id>
+  <id> -->|false| <id>
+- Keep node ids unique and simple (N1, N2, ...).
+- For complex orchestration:
+  - Break the request into stages (ingest, transform, decision, action, output).
+  - Use IfElse for branching and label edges true/false only.
+  - Fan-in branches by connecting multiple nodes into a shared downstream node.
+  - Avoid cycles unless explicitly requested.
+  - Keep each branch complete with a clear downstream target.
+
+<user_request>
+{{TASK_DESCRIPTION}}
+</user_request>
+<available_nodes>
+{{AVAILABLE_NODES}}
+</available_nodes>
+<existing_nodes>
+{{EXISTING_NODES}}
+</existing_nodes>
+<available_tools>
+{{AVAILABLE_TOOLS}}
+</available_tools>
+"""
+
 RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
 Here is a task description for which I would like you to create a high-quality prompt template for:
 <task_description>

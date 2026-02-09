@@ -246,7 +246,7 @@ const SettingBuiltInTool: FC<Props> = ({
                   {isInfoActive ? infoUI : settingUI}
                   {!readonly && !isInfoActive && (
                     <div className="flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2">
-                      <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium " onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+                      <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
                       <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium" variant="primary" disabled={!isValid} onClick={() => onSave?.(tempSetting)}>{t('operation.save', { ns: 'common' })}</Button>
                     </div>
                   )}

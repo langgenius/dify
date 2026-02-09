@@ -63,7 +63,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   }, [isEditing])
 
   const style = cn({
-    'block px-4 py-2 w-full h-full text-sm text-gray-900 outline-0 border-0 break-all': true,
+    'block h-full w-full break-all border-0 px-4 py-2 text-sm text-gray-900 outline-0': true,
     'block-input--editing': isEditing,
   })
 
@@ -121,7 +121,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   const editAreaClassName = 'focus:outline-none bg-transparent text-sm'
 
   const textAreaContent = (
-    <div className={cn(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', ' overflow-y-auto')} onClick={() => !readonly && setIsEditing(true)}>
+    <div className={cn(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', 'overflow-y-auto')} onClick={() => !readonly && setIsEditing(true)}>
       {isEditing
         ? (
             <div className="h-full px-4 py-2">

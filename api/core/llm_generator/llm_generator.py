@@ -36,6 +36,7 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import App, Message, WorkflowNodeExecutionModel
 from models.workflow import Workflow
+from services.workflow_generator_service import WorkflowGeneratorService
 
 logger = logging.getLogger(__name__)
 
@@ -284,6 +285,35 @@ class LLMGenerator:
         rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
         return rule_config
+
+    @classmethod
+    def generate_workflow_flowchart(
+        cls,
+        tenant_id: str,
+        instruction: str,
+        model_config: dict,
+        available_nodes: Sequence[dict[str, object]] | None = None,
+        existing_nodes: Sequence[dict[str, object]] | None = None,
+        available_tools: Sequence[dict[str, object]] | None = None,
+        selected_node_ids: Sequence[str] | None = None,
+        previous_workflow: dict[str, object] | None = None,
+        regenerate_mode: bool = False,
+        preferred_language: str | None = None,
+        available_models: Sequence[dict[str, object]] | None = None,
+    ):
+        return WorkflowGeneratorService.generate_workflow_flowchart(
+            tenant_id=tenant_id,
+            instruction=instruction,
+            model_config=model_config,
+            available_nodes=available_nodes,
+            existing_nodes=existing_nodes,
+            available_tools=available_tools,
+            selected_node_ids=selected_node_ids,
+            previous_workflow=previous_workflow,
+            regenerate_mode=regenerate_mode,
+            preferred_language=preferred_language,
+            available_models=available_models,
+        )
 
     @classmethod
     def generate_code(

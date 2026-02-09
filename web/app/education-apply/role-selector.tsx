@@ -38,7 +38,7 @@ const RoleSelector = ({
             <div
               className={cn(
                 'mr-2 h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
-                option.key === value && 'border-[5px] border-components-radio-border-checked ',
+                option.key === value && 'border-[5px] border-components-radio-border-checked',
               )}
             >
             </div>

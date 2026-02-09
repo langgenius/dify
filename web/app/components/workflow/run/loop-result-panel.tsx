@@ -40,7 +40,7 @@ const LoopResultPanel: FC<Props> = ({
 
   const main = (
     <>
-      <div className={cn(!noWrap && 'shrink-0 ', 'px-4 pt-3')}>
+      <div className={cn(!noWrap && 'shrink-0', 'px-4 pt-3')}>
         <div className="flex h-8 shrink-0 items-center justify-between">
           <div className="system-xl-semibold truncate text-text-primary">
             {t(`${i18nPrefix}.testRunLoop`, { ns: 'workflow' }) }

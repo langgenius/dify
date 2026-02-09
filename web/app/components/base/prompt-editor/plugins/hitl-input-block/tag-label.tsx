@@ -25,7 +25,7 @@ const TagLabel: FC<Props> = ({
       onClick={onClick}
     >
       <Icon className="size-3.5" />
-      <div className="system-xs-medium ">{children}</div>
+      <div className="system-xs-medium">{children}</div>
     </div>
   )
 }

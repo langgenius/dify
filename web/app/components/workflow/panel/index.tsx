@@ -8,6 +8,7 @@ import { cn } from '@/utils/classnames'
 import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
 import EnvPanel from './env-panel'
+import VibePanel from './vibe-panel'
 
 const VersionHistoryPanel = dynamic(() => import('@/app/components/workflow/panel/version-history-panel'), {
   ssr: false,
@@ -85,6 +86,7 @@ const Panel: FC<PanelProps> = ({
   const showEnvPanel = useStore(s => s.showEnvPanel)
   const isRestoring = useStore(s => s.isRestoring)
   const showWorkflowVersionHistoryPanel = useStore(s => s.showWorkflowVersionHistoryPanel)
+  const showVibePanel = useStore(s => s.showVibePanel)
 
   // widths used for adaptive layout
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
@@ -124,33 +126,36 @@ const Panel: FC<PanelProps> = ({
   )
 
   return (
-    <div
-      ref={rightPanelRef}
-      tabIndex={-1}
-      className={cn('absolute bottom-1 right-0 top-14 z-10 flex outline-none')}
-      key={`${isRestoring}`}
-    >
-      {components?.left}
-      {!!selectedNode && <NodePanel {...selectedNode} />}
+    <>
       <div
-        className="relative"
-        ref={otherPanelRef}
+        ref={rightPanelRef}
+        tabIndex={-1}
+        className={cn('absolute bottom-1 right-0 top-14 z-10 flex outline-none')}
+        key={`${isRestoring}`}
       >
-        {
-          components?.right
-        }
-        {
-          showWorkflowVersionHistoryPanel && (
-            <VersionHistoryPanel {...versionHistoryPanelProps} />
-          )
-        }
-        {
-          showEnvPanel && (
-            <EnvPanel />
-          )
-        }
+        {components?.left}
+        {!!selectedNode && <NodePanel {...selectedNode} />}
+        <div
+          className="relative"
+          ref={otherPanelRef}
+        >
+          {
+            components?.right
+          }
+          {
+            showWorkflowVersionHistoryPanel && (
+              <VersionHistoryPanel {...versionHistoryPanelProps} />
+            )
+          }
+          {
+            showEnvPanel && (
+              <EnvPanel />
+            )
+          }
+        </div>
       </div>
-    </div>
+      {showVibePanel && <VibePanel />}
+    </>
   )
 }
 

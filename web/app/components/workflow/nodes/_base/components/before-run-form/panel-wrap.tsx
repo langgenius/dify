@@ -35,7 +35,7 @@ const PanelWrap: FC<Props> = ({
               onHide()
             }}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary " />
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
         {children}

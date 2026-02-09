@@ -39,7 +39,7 @@ const GotoAnything: FC<Props> = ({
     cmdVal,
     setCmdVal,
     clearSelection,
-    Actions,
+    scopes,
   } = useGotoAnythingSearch()
 
   // Modal state management
@@ -76,7 +76,7 @@ const GotoAnything: FC<Props> = ({
     searchQueryDebouncedValue,
     searchMode,
     isCommandsMode,
-    Actions,
+    scopes,
     isWorkflowPage,
     isRagPipelinePage,
     cmdVal,
@@ -90,7 +90,6 @@ const GotoAnything: FC<Props> = ({
     activePlugin,
     setActivePlugin,
   } = useGotoAnythingNavigation({
-    Actions,
     setSearchQuery,
     clearSelection,
     inputRef,
@@ -179,7 +178,7 @@ const GotoAnything: FC<Props> = ({
                   {isCommandsMode
                     ? (
                         <CommandSelector
-                          actions={Actions}
+                          scopes={scopes}
                           onCommandSelect={handleCommandSelect}
                           searchFilter={searchQuery.trim().substring(1)}
                           commandValue={cmdVal}
@@ -198,7 +197,7 @@ const GotoAnything: FC<Props> = ({
                     <EmptyState
                       variant="no-results"
                       searchMode={searchMode}
-                      Actions={Actions}
+                      Actions={scopes}
                     />
                   )}
 

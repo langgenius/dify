@@ -321,7 +321,7 @@ function AppCard({
             <div className="flex flex-col items-start justify-center self-stretch">
               <div className="system-xs-medium pb-1 text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</div>
               <div
-                className="flex h-9 w-full cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2"
+                className="flex h-9 w-full cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2"
                 onClick={handleClickAccessControl}
               >
                 <div className="flex grow items-center gap-x-1.5 pr-1">

@@ -26,7 +26,7 @@ const Item: FC<ItemProps> = ({
     <div
       key={option.value}
       className={cn(
-        'relative pb-2.5 ',
+        'relative pb-2.5',
         !isActive && 'cursor-pointer',
         smallItem ? 'system-sm-semibold-uppercase' : 'system-xl-semibold',
         className,
@@ -61,7 +61,7 @@ const TabSlider: FC<Props> = ({
   smallItem,
 }) => {
   return (
-    <div className={cn(className, !noBorderBottom && 'border-b border-divider-subtle', 'flex  space-x-6')}>
+    <div className={cn(className, !noBorderBottom && 'border-b border-divider-subtle', 'flex space-x-6')}>
       {options.map(option => (
         <Item
           isActive={option.value === value}

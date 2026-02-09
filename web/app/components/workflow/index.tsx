@@ -68,6 +68,7 @@ import {
   useWorkflow,
   useWorkflowReadOnly,
   useWorkflowRefreshDraft,
+  useWorkflowVibe,
 } from './hooks'
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
@@ -329,6 +330,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   useShortcuts()
   // Initialize workflow node search functionality
   useWorkflowSearch()
+  useWorkflowVibe()
 
   // Set up scroll to node event listener using the utility function
   useEffect(() => {

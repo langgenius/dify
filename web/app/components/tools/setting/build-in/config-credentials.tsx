@@ -108,7 +108,7 @@ const ConfigCredential: FC<Props> = ({
                         )
                       : null}
                   />
-                  <div className={cn((collection.is_team_authorization && !isHideRemoveBtn) ? 'justify-between' : 'justify-end', 'mt-2 flex ')}>
+                  <div className={cn((collection.is_team_authorization && !isHideRemoveBtn) ? 'justify-between' : 'justify-end', 'mt-2 flex')}>
                     {
                       (collection.is_team_authorization && !isHideRemoveBtn) && (
                         <Button onClick={onRemove}>{t('operation.remove', { ns: 'common' })}</Button>

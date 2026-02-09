@@ -106,7 +106,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
                   onChange={changeParallelNums}
                   max={MAX_PARALLEL_LIMIT}
                   min={MIN_ITERATION_PARALLEL_NUM}
-                  className=" mt-4 flex-1 shrink-0"
+                  className="mt-4 flex-1 shrink-0"
                 />
               </div>
 

@@ -34,7 +34,7 @@ const AppCard = ({
     }
   }, [setShowTryAppPanel, app.category])
   return (
-    <div className={cn('group relative flex h-[132px] cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4  shadow-xs hover:shadow-lg')}>
+    <div className={cn('group relative flex h-[132px] cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:shadow-lg')}>
       <div className="flex shrink-0 grow-0 items-center gap-3 pb-2">
         <div className="relative shrink-0">
           <AppIcon

@@ -113,7 +113,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
             />
           </div>
           {!readOnly && (
-            <div className="flex items-center ">
+            <div className="flex items-center">
               <Button
                 variant="ghost"
                 size="small"

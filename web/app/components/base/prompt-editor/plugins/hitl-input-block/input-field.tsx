@@ -141,7 +141,7 @@ const InputField: React.FC<InputFieldProps> = ({
               >
                 <span className="mr-1">{t(`${i18nPrefix}.insert`, { ns: 'workflow' })}</span>
                 <span className="system-kbd mr-0.5 flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1">{getKeyboardKeyNameBySystem('ctrl')}</span>
-                <span className=" system-kbd flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1">↩︎</span>
+                <span className="system-kbd flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1">↩︎</span>
               </Button>
             )}
 

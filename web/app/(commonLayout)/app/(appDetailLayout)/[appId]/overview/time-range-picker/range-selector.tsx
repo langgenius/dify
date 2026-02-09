@@ -57,7 +57,7 @@ const RangeSelector: FC<Props> = ({
         {selected && (
           <span
             className={cn(
-              'absolute left-2 top-[9px] flex items-center  text-text-accent',
+              'absolute left-2 top-[9px] flex items-center text-text-accent',
             )}
           >
             <RiCheckLine className="h-4 w-4" aria-hidden="true" />

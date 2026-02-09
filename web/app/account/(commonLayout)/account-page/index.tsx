@@ -166,7 +166,7 @@ export default function AccountPage() {
       <div className="mb-8">
         <div className={titleClassName}>{t('account.name', { ns: 'common' })}</div>
         <div className="mt-2 flex w-full items-center justify-between gap-2">
-          <div className="system-sm-regular flex-1 rounded-lg bg-components-input-bg-normal p-2 text-components-input-text-filled ">
+          <div className="system-sm-regular flex-1 rounded-lg bg-components-input-bg-normal p-2 text-components-input-text-filled">
             <span className="pl-1">{userProfile.name}</span>
           </div>
           <div className="system-sm-medium cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 text-components-button-tertiary-text" onClick={handleEditName}>
@@ -177,7 +177,7 @@ export default function AccountPage() {
       <div className="mb-8">
         <div className={titleClassName}>{t('account.email', { ns: 'common' })}</div>
         <div className="mt-2 flex w-full items-center justify-between gap-2">
-          <div className="system-sm-regular flex-1 rounded-lg bg-components-input-bg-normal p-2 text-components-input-text-filled ">
+          <div className="system-sm-regular flex-1 rounded-lg bg-components-input-bg-normal p-2 text-components-input-text-filled">
             <span className="pl-1">{userProfile.email}</span>
           </div>
           {systemFeatures.enable_change_email && (

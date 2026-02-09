@@ -2,10 +2,12 @@
 
 import type { RefObject } from 'react'
 import type { Plugin } from '../../plugins/types'
-import type { ActionItem, SearchResult } from '../actions/types'
+import type { SearchResult } from '../actions/types'
 import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
+import { VIBE_COMMAND_EVENT } from '@/app/components/workflow/constants'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
+import { executeCommand } from '../actions/commands'
 import { slashCommandRegistry } from '../actions/commands/registry'
 
 export type UseGotoAnythingNavigationReturn = {
@@ -16,7 +18,6 @@ export type UseGotoAnythingNavigationReturn = {
 }
 
 export type UseGotoAnythingNavigationOptions = {
-  Actions: Record<string, ActionItem>
   setSearchQuery: (query: string) => void
   clearSelection: () => void
   inputRef: RefObject<HTMLInputElement | null>
@@ -27,7 +28,6 @@ export const useGotoAnythingNavigation = (
   options: UseGotoAnythingNavigationOptions,
 ): UseGotoAnythingNavigationReturn => {
   const {
-    Actions,
     setSearchQuery,
     clearSelection,
     inputRef,
@@ -67,9 +67,16 @@ export const useGotoAnythingNavigation = (
 
     switch (result.type) {
       case 'command': {
-        // Execute slash commands
-        const action = Actions.slash
-        action?.action?.(result)
+        if (result.data.command === 'workflow.generate') {
+          if (typeof document !== 'undefined') {
+            document.dispatchEvent(new CustomEvent(VIBE_COMMAND_EVENT, { detail: { dsl: result.data.args?.dsl } }))
+          }
+          break
+        }
+
+        // Execute slash commands using the command bus
+        const { command, args } = result.data
+        executeCommand(command, args)
         break
       }
       case 'plugin':
@@ -79,13 +86,12 @@ export const useGotoAnythingNavigation = (
         // Handle workflow node selection and navigation
         if (result.metadata?.nodeId)
           selectWorkflowNode(result.metadata.nodeId, true)
-
         break
       default:
         if (result.path)
           router.push(result.path)
     }
-  }, [router, Actions, onClose, setSearchQuery])
+  }, [router, onClose, setSearchQuery])
 
   return {
     handleCommandSelect,
