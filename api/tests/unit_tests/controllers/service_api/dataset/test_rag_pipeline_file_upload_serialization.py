@@ -3,7 +3,7 @@ Unit tests for Service API knowledge pipeline file-upload serialization.
 """
 
 import importlib.util
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -32,7 +32,7 @@ def _load_serialize_upload_file():
 def test_file_upload_created_at_is_isoformat_string():
     serialize_upload_file = _load_serialize_upload_file()
 
-    created_at = datetime(2026, 2, 8, 12, 0, 0, tzinfo=timezone.utc)
+    created_at = datetime(2026, 2, 8, 12, 0, 0, tzinfo=UTC)
     upload_file = FakeUploadFile()
     upload_file.id = "file-1"
     upload_file.name = "test.pdf"

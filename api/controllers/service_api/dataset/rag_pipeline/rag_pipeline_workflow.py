@@ -11,8 +11,8 @@ import services
 from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
 from controllers.common.schema import register_schema_model
 from controllers.service_api import service_api_ns
-from controllers.service_api.dataset.rag_pipeline.serializers import serialize_upload_file
 from controllers.service_api.dataset.error import PipelineRunError
+from controllers.service_api.dataset.rag_pipeline.serializers import serialize_upload_file
 from controllers.service_api.wraps import DatasetApiResource
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
