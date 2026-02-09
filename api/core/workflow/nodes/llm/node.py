@@ -37,6 +37,7 @@ from core.model_runtime.entities.message_entities import (
     PromptMessageContentUnionTypes,
     PromptMessageRole,
     SystemPromptMessage,
+    ToolPromptMessage,
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import (
@@ -156,7 +157,18 @@ class LLMNode(Node[LLMNodeData]):
         usage = LLMUsage.empty_usage()
         finish_reason = None
         reasoning_content = None
+        tool_calls = None
         variable_pool = self.graph_runtime_state.variable_pool
+
+        # Get external tools from system variables
+        external_tools = None
+        external_tool_choice = None
+        external_tool_results = None
+
+        if variable_pool.system_variables:
+            external_tools = variable_pool.system_variables.external_tools
+            external_tool_choice = variable_pool.system_variables.external_tool_choice
+            external_tool_results = variable_pool.system_variables.external_tool_results
 
         try:
             # init messages template
@@ -220,6 +232,9 @@ class LLMNode(Node[LLMNodeData]):
                 ):
                     query = query_variable.text
 
+            if external_tool_results:
+                query = None
+
             prompt_messages, stop = LLMNode.fetch_prompt_messages(
                 sys_query=query,
                 sys_files=files,
@@ -250,6 +265,9 @@ class LLMNode(Node[LLMNodeData]):
                 node_id=self._node_id,
                 node_type=self.node_type,
                 reasoning_format=self.node_data.reasoning_format,
+                tools=external_tools,
+                tool_choice=external_tool_choice,
+                tool_results=external_tool_results,
             )
 
             structured_output: LLMStructuredOutput | None = None
@@ -279,6 +297,8 @@ class LLMNode(Node[LLMNodeData]):
                         else None
                     )
 
+                    tool_calls = event.tool_calls
+
                     # deduct quota
                     llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
@@ -304,6 +324,8 @@ class LLMNode(Node[LLMNodeData]):
             }
             if structured_output:
                 outputs["structured_output"] = structured_output.structured_output
+            if tool_calls:
+                outputs["tool_calls"] = tool_calls
             if self._file_outputs:
                 outputs["files"] = ArrayFileSegment(value=self._file_outputs)
 
@@ -367,12 +389,49 @@ class LLMNode(Node[LLMNodeData]):
         node_id: str,
         node_type: NodeType,
         reasoning_format: Literal["separated", "tagged"] = "tagged",
+        tools: list[PromptMessageTool] | None = None,
+        tool_choice: Any | None = None,
+        tool_results: list[Any] | None = None,
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         model_schema = model_instance.model_type_instance.get_model_schema(
             node_data_model.name, model_instance.credentials
         )
         if not model_schema:
             raise ValueError(f"Model schema not found for {node_data_model.name}")
+
+        # Handle tool_results and tool_choice
+        current_prompt_messages = list(prompt_messages)
+        if tool_results:
+            # Collect the tool_call_ids we have results for
+            result_ids = {getattr(r, "tool_call_id", None) for r in tool_results if getattr(r, "tool_call_id", None)}
+
+            # Sanitize history: strip tool_calls from assistant messages whose
+            # tool_call_ids are NOT in the current result set.  This prevents
+            # the "tool_calls must be followed by tool messages" error when
+            # previous turns had unresolved tool calls (e.g. retries).
+            for i, msg in enumerate(current_prompt_messages):
+                if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
+                    has_match = any(tc.id in result_ids for tc in msg.tool_calls)
+                    if not has_match:
+                        current_prompt_messages[i] = AssistantPromptMessage(
+                            content=msg.content,
+                            tool_calls=[],
+                        )
+
+            for result in tool_results:
+                tool_call_id = getattr(result, "tool_call_id", None)
+                output = getattr(result, "output", None)
+                if tool_call_id and output is not None:
+                    current_prompt_messages.append(
+                        ToolPromptMessage(
+                            content=output,
+                            tool_call_id=tool_call_id,
+                        )
+                    )
+
+        current_model_parameters = node_data_model.completion_params.copy() if node_data_model.completion_params else {}
+        if tool_choice:
+            current_model_parameters["tool_choice"] = tool_choice
 
         if structured_output_enabled:
             output_schema = LLMNode.fetch_structured_output_schema(
@@ -384,9 +443,9 @@ class LLMNode(Node[LLMNodeData]):
                 provider=model_instance.provider,
                 model_schema=model_schema,
                 model_instance=model_instance,
-                prompt_messages=prompt_messages,
+                prompt_messages=current_prompt_messages,
                 json_schema=output_schema,
-                model_parameters=node_data_model.completion_params,
+                model_parameters=current_model_parameters,
                 stop=list(stop or []),
                 stream=True,
                 user=user_id,
@@ -395,11 +454,12 @@ class LLMNode(Node[LLMNodeData]):
             request_start_time = time.perf_counter()
 
             invoke_result = model_instance.invoke_llm(
-                prompt_messages=list(prompt_messages),
-                model_parameters=node_data_model.completion_params,
+                prompt_messages=current_prompt_messages,
+                model_parameters=current_model_parameters,
                 stop=list(stop or []),
                 stream=True,
                 user=user_id,
+                tools=tools,
             )
 
         return LLMNode.handle_invoke_result(
@@ -453,6 +513,8 @@ class LLMNode(Node[LLMNodeData]):
         has_content = False
 
         collected_structured_output = None  # Collect structured_output from streaming chunks
+        collected_tool_calls = []
+        current_tool_call = None
         # Consume the invoke result and handle generator exception
         try:
             for result in invoke_result:
@@ -462,6 +524,95 @@ class LLMNode(Node[LLMNodeData]):
                         collected_structured_output = dict(result.structured_output)
                     yield result
                 if isinstance(result, LLMResultChunk):
+                    if result.delta.message.tool_calls:
+                        # Yield tool call chunk for SSE
+                        tool_calls_dict = []
+                        # Helper to track indices within this chunk's processing context
+                        # We need to simulate the state evolution to get correct indices for multiple tool calls
+                        temp_collected_ids = [c["id"] for c in collected_tool_calls]
+
+                        for tc in result.delta.message.tool_calls:
+                            tc_args = tc.function.arguments
+                            if isinstance(tc_args, dict):
+                                try:
+                                    tc_args = json.dumps(tc_args, ensure_ascii=False)
+                                except Exception:
+                                    tc_args = str(tc_args)
+                            elif tc_args is None:
+                                tc_args = ""
+                            elif not isinstance(tc_args, str):
+                                tc_args = str(tc_args)
+
+                            # Calculate index
+                            idx = 0
+                            if tc.id:
+                                if tc.id in temp_collected_ids:
+                                    idx = temp_collected_ids.index(tc.id)
+                                else:
+                                    idx = len(temp_collected_ids)
+                                    temp_collected_ids.append(tc.id)
+                            elif current_tool_call:
+                                # No ID, implies continuation of current tool call
+                                # Find index of current_tool_call in collected_tool_calls
+                                for i, c in enumerate(collected_tool_calls):
+                                    if c is current_tool_call:
+                                        idx = i
+                                        break
+
+                            tool_calls_dict.append(
+                                {
+                                    "index": idx,
+                                    "id": tc.id,
+                                    "type": tc.type,
+                                    "function": {"name": tc.function.name, "arguments": tc_args},
+                                }
+                            )
+
+                        yield StreamChunkEvent(
+                            selector=[node_id, "tool_calls"],
+                            chunk=json.dumps(tool_calls_dict, ensure_ascii=False),
+                            is_final=False,
+                        )
+
+                        for tc in result.delta.message.tool_calls:
+                            # Try to find existing tool call by ID if available
+                            target_tool_call = None
+
+                            # Normalize arguments to string
+                            new_args = tc.function.arguments
+                            if new_args is None:
+                                new_args = ""
+                            elif isinstance(new_args, dict):
+                                try:
+                                    new_args = json.dumps(new_args, ensure_ascii=False)
+                                except Exception:
+                                    new_args = str(new_args)
+                            elif not isinstance(new_args, str):
+                                new_args = str(new_args)
+
+                            if tc.id:
+                                # Check if we already have this ID in our collected list
+                                for existing in collected_tool_calls:
+                                    if existing["id"] == tc.id:
+                                        target_tool_call = existing
+                                        break
+
+                            if target_tool_call:
+                                # Append delta arguments (standard OpenAI streaming behavior)
+                                target_tool_call["function"]["arguments"] += new_args
+                                # Update current_tool_call pointer just in case subsequent chunks drop ID
+                                current_tool_call = target_tool_call
+
+                            elif tc.id:
+                                current_tool_call = {
+                                    "id": tc.id,
+                                    "type": tc.type,
+                                    "function": {"name": tc.function.name, "arguments": new_args},
+                                }
+                                collected_tool_calls.append(current_tool_call)
+                            elif current_tool_call:
+                                current_tool_call["function"]["arguments"] += new_args
+
                     contents = result.delta.message.content
                     for text_part in LLMNode._save_multimodal_output_and_convert_result_to_markdown(
                         contents=contents,
@@ -524,6 +675,7 @@ class LLMNode(Node[LLMNodeData]):
             reasoning_content=reasoning_content,
             # Pass structured output if collected from streaming chunks
             structured_output=collected_structured_output,
+            tool_calls=collected_tool_calls,
         )
 
     @staticmethod

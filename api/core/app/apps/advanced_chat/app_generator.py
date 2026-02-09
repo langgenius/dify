@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextvars
+import json
 import logging
 import threading
 import uuid
@@ -27,9 +28,10 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, ToolResult
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
+from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
@@ -180,6 +182,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             extras=extras,
             trace_manager=trace_manager,
             workflow_run_id=workflow_run_id,
+            tools=self._resolve_tools(args),
+            tool_choice=args.get("tool_choice"),
+            tool_results=self._resolve_tool_results(args),
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -569,6 +574,64 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
                 db.session.close()
+
+    @staticmethod
+    def _resolve_tools(args: Mapping[str, Any]) -> list[PromptMessageTool] | None:
+        tools = args.get("tools")
+        if not isinstance(tools, list):
+            return None
+
+        resolved: list[PromptMessageTool] = []
+        for tool in tools:
+            if not isinstance(tool, dict):
+                continue
+            if tool.get("type") != "function":
+                continue
+            function = tool.get("function")
+            if not isinstance(function, dict):
+                continue
+            name = function.get("name")
+            if not isinstance(name, str) or not name.strip():
+                continue
+            description = function.get("description")
+            parameters = function.get("parameters")
+            resolved.append(
+                PromptMessageTool(
+                    name=name.strip(),
+                    description=description if isinstance(description, str) else "",
+                    parameters=parameters if isinstance(parameters, dict) else {},
+                )
+            )
+
+        return resolved or None
+
+    @staticmethod
+    def _resolve_tool_results(args: Mapping[str, Any]) -> list[ToolResult] | None:
+        tool_results = args.get("tool_results")
+        if not isinstance(tool_results, list):
+            return None
+
+        resolved: list[ToolResult] = []
+        for result in tool_results:
+            if not isinstance(result, dict):
+                continue
+            tool_call_id = result.get("tool_call_id")
+            output = result.get("output")
+            if not isinstance(tool_call_id, str) or not tool_call_id.strip():
+                continue
+            if output is None:
+                continue
+            output_value = output if isinstance(output, str) else json.dumps(output, ensure_ascii=False)
+            is_error = result.get("is_error")
+            resolved.append(
+                ToolResult(
+                    tool_call_id=tool_call_id.strip(),
+                    output=output_value,
+                    is_error=bool(is_error) if isinstance(is_error, bool) else None,
+                )
+            )
+
+        return resolved or None
 
     def _handle_advanced_chat_response(
         self,

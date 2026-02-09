@@ -53,6 +53,7 @@ from core.app.entities.task_entities import (
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
+    MessageToolCallChunkStreamResponse,
     PingStreamResponse,
     StreamResponse,
     WorkflowTaskState,
@@ -144,6 +145,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._workflow_run_id: str = ""
         self._draft_var_saver_factory = draft_var_saver_factory
         self._graph_runtime_state: GraphRuntimeState | None = None
+        self._tool_calls: list[dict[str, Any]] = []
         self._seed_graph_runtime_state_from_queue_manager()
 
     def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
@@ -348,6 +350,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 self._workflow_response_converter.fetch_files_from_node_outputs(event.outputs or {})
             )
 
+        if event.node_type == NodeType.LLM and event.outputs and "tool_calls" in event.outputs:
+            self._tool_calls.extend(event.outputs["tool_calls"])
+
         node_finish_resp = self._workflow_response_converter.workflow_node_finish_to_stream_response(
             event=event,
             task_id=self._application_generate_entity.task_id,
@@ -386,6 +391,14 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Handle text chunk events."""
         delta_text = event.text
         if delta_text is None:
+            return
+
+        # Check if this is a tool call chunk
+        if event.from_variable_selector and event.from_variable_selector[-1] == "tool_calls":
+            yield MessageToolCallChunkStreamResponse(
+                task_id=self._application_generate_entity.task_id,
+                data=MessageToolCallChunkStreamResponse.Data(tool_call_chunks=delta_text),
+            )
             return
 
         # Handle output moderation chunk
@@ -782,6 +795,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         message.answer = answer_text
         message.updated_at = naive_utc_now()
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline.start_at
+        if self._tool_calls:
+            message.tool_calls = self._tool_calls
 
         # Set usage first before dumping metadata
         if graph_runtime_state and graph_runtime_state.llm_usage:

@@ -97,6 +97,9 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             app_id=app_config.app_id,
             workflow_id=app_config.workflow_id,
             workflow_execution_id=self.application_generate_entity.workflow_run_id,
+            external_tools=self.application_generate_entity.tools,
+            external_tool_choice=self.application_generate_entity.tool_choice,
+            external_tool_results=self.application_generate_entity.tool_results,
         )
 
         with Session(db.engine, expire_on_commit=False) as session:

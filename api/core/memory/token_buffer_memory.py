@@ -184,9 +184,20 @@ class TokenBufferMemory:
                     app_record=app_record,
                     is_user_message=False,
                 )
+                if message.tool_calls:
+                    assistant_prompt_message.tool_calls = [
+                        AssistantPromptMessage.ToolCall(**tool_call) for tool_call in message.tool_calls
+                    ]
                 prompt_messages.append(assistant_prompt_message)
             else:
-                prompt_messages.append(AssistantPromptMessage(content=message.answer))
+                prompt_messages.append(
+                    AssistantPromptMessage(
+                        content=message.answer,
+                        tool_calls=[AssistantPromptMessage.ToolCall(**tc) for tc in message.tool_calls]
+                        if message.tool_calls
+                        else [],
+                    )
+                )
 
         if not prompt_messages:
             return []

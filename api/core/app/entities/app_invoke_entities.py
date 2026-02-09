@@ -8,6 +8,7 @@ from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
+from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.entities.model_entities import AIModelEntity
 
 if TYPE_CHECKING:
@@ -79,6 +80,18 @@ class InvokeFrom(StrEnum):
             return "api"
 
         return "dev"
+
+
+class ToolCallMode(StrEnum):
+    STRUCTURED = "structured"
+    OPENCLAW_TEXT = "openclaw_text"
+
+    @classmethod
+    def value_of(cls, value: str):
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f"invalid tool call mode value {value}")
 
 
 class ModelConfigWithCredentialsEntity(BaseModel):
@@ -179,7 +192,10 @@ class ChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerat
     Chat Application Generate Entity.
     """
 
-    pass
+    tools: list[PromptMessageTool] | None = None
+    tool_choice: Any | None = None
+    tool_results: list["ToolResult"] | None = None
+    tool_call_mode: ToolCallMode = ToolCallMode.STRUCTURED
 
 
 class CompletionAppGenerateEntity(EasyUIBasedAppGenerateEntity):
@@ -195,7 +211,13 @@ class AgentChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGe
     Agent Chat Application Generate Entity.
     """
 
-    pass
+    tool_call_mode: ToolCallMode = ToolCallMode.STRUCTURED
+
+
+class ToolResult(BaseModel):
+    tool_call_id: str
+    output: str
+    is_error: bool | None = None
 
 
 class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
@@ -208,6 +230,10 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
 
     workflow_run_id: str | None = None
     query: str
+
+    tools: list[PromptMessageTool] | None = None
+    tool_choice: Any | None = None
+    tool_results: list[ToolResult] | None = None
 
     class SingleIterationRunEntity(BaseModel):
         """
