@@ -309,9 +309,7 @@ class GraphBuilder:
         # Check for cycles
         if len(sorted_ids) != len(node_ids):
             remaining = node_ids - set(sorted_ids)
-            raise CyclicDependencyError(
-                f"Cyclic dependency detected involving nodes: {remaining}"
-            )
+            raise CyclicDependencyError(f"Cyclic dependency detected involving nodes: {remaining}")
 
         return sorted_ids
 
@@ -530,11 +528,7 @@ class GraphBuilder:
 
         # If no terminal nodes found (shouldn't happen), use all non-branching nodes
         if not terminal_nodes:
-            terminal_nodes = [
-                node["id"]
-                for node in nodes
-                if node.get("type") not in BRANCHING_NODE_TYPES
-            ]
+            terminal_nodes = [node["id"] for node in nodes if node.get("type") not in BRANCHING_NODE_TYPES]
             logger.warning("No terminal nodes found, using all non-branching nodes")
 
         return terminal_nodes
