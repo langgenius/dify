@@ -14,7 +14,7 @@ from controllers.console.wraps import account_initialization_required, edit_perm
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.raws import FilesContainedField
-from libs.datetime_utils import naive_utc_now, parse_time_range
+from libs.datetime_utils import parse_time_range
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
