@@ -537,7 +537,7 @@ const vars = {
   'workflow-workflow-progress-bg-2': 'var(--color-workflow-workflow-progress-bg-2)',
 
   'workflow-debug-run-status-bg': 'var(--color-workflow-debug-run-status-bg)',
-  'workflow-debug-bearkpoint': 'var(--color-workflow-debug-bearkpoint)',
+  'workflow-debug-breakpoint': 'var(--color-workflow-debug-breakpoint)',
   'workflow-debug-text': 'var(--color-workflow-debug-text)',
   'workflow-debug-text-disabled': 'var(--color-workflow-debug-text-disabled)',
   'workflow-debug-run-status-bg-alt': 'var(--color-workflow-debug-run-status-bg-alt)',
