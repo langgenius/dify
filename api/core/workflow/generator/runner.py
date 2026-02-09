@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 import json_repair
 
@@ -31,6 +31,7 @@ from core.workflow.generator.prompts.vibe_prompts import (
     format_available_tools,
     parse_vibe_response,
 )
+from core.workflow.generator.types import AvailableModelDict, AvailableToolDict, WorkflowNodeDict
 from core.workflow.generator.utils.graph_builder import CyclicDependencyError, GraphBuilder
 from core.workflow.generator.utils.mermaid_generator import generate_mermaid
 from core.workflow.generator.utils.workflow_validator import ValidationHint, WorkflowValidator
@@ -48,7 +49,7 @@ class WorkflowGenerator:
     def generate_workflow_flowchart(
         cls,
         model_instance,
-        model_parameters: dict,
+        model_parameters: dict[str, Any],
         instruction: str,
         available_nodes: Sequence[dict[str, object]] | None = None,
         existing_nodes: Sequence[dict[str, object]] | None = None,
@@ -193,12 +194,17 @@ class WorkflowGenerator:
             logger.info("Generation attempt %s/%s", attempt + 1, MAX_GLOBAL_RETRIES)
 
             # Prepare context
-            tool_schemas = format_available_tools(filtered_tools)
-            node_specs = format_available_nodes(list(available_nodes) if available_nodes else [])
-            existing_nodes_context = format_existing_nodes(list(existing_nodes) if existing_nodes else None)
+            tool_schemas = format_available_tools(cast(list[AvailableToolDict], filtered_tools))
+            node_specs = format_available_nodes(
+                cast(list[WorkflowNodeDict], list(available_nodes)) if available_nodes else []
+            )
+            existing_nodes_context = format_existing_nodes(
+                cast(list[dict[str, Any]], list(existing_nodes)) if existing_nodes else None
+            )
             existing_edges_context = format_existing_edges(list(existing_edges) if existing_edges else None)
             selected_nodes_context = format_selected_nodes(
-                list(selected_node_ids) if selected_node_ids else None, list(existing_nodes) if existing_nodes else None
+                list(selected_node_ids) if selected_node_ids else None,
+                cast(list[dict[str, Any]], list(existing_nodes)) if existing_nodes else None,
             )
 
             # Build retry context
@@ -224,7 +230,9 @@ class WorkflowGenerator:
                     plan_context=json.dumps(plan_data.get("steps", []), indent=2),
                     tool_schemas=tool_schemas,
                     builtin_node_specs=node_specs,
-                    available_models=format_available_models(list(available_models or [])),
+                    available_models=format_available_models(
+                        cast(list[AvailableModelDict], list(available_models or []))
+                    ),
                     preferred_language=preferred_language or "English",
                     existing_nodes_context=existing_nodes_context,
                     selected_nodes_context=selected_nodes_context,
@@ -235,7 +243,9 @@ class WorkflowGenerator:
                     plan_context=json.dumps(plan_data.get("steps", []), indent=2),
                     tool_schemas=tool_schemas,
                     builtin_node_specs=node_specs,
-                    available_models=format_available_models(list(available_models or [])),
+                    available_models=format_available_models(
+                        cast(list[AvailableModelDict], list(available_models or []))
+                    ),
                     preferred_language=preferred_language or "English",
                     existing_nodes_context=existing_nodes_context,
                     existing_edges_context=existing_edges_context,
@@ -279,14 +289,14 @@ class WorkflowGenerator:
                         "(3) Plugin communication error. Try a different model or check model settings."
                     )
 
-                workflow_data = json_repair.loads(build_content)
+                workflow_data = cast(dict[str, Any] | None, json_repair.loads(build_content))
 
                 # Handle double-encoded JSON (when json_repair.loads returns a string)
                 # Keep decoding until we get a dict
                 max_decode_attempts = 3
                 decode_attempts = 0
                 while isinstance(workflow_data, str) and decode_attempts < max_decode_attempts:
-                    workflow_data = json_repair.loads(workflow_data)
+                    workflow_data = cast(dict[str, Any] | None, json_repair.loads(workflow_data))
                     decode_attempts += 1
 
                 # If still a string, it's not valid JSON structure
@@ -298,6 +308,9 @@ class WorkflowGenerator:
                         str(workflow_data)[:200],
                     )
                     raise ValueError(f"Expected dict, got {type(workflow_data).__name__}")
+
+                # Type narrowing: workflow_data is now dict[str, Any]
+                assert isinstance(workflow_data, dict), "workflow_data must be a dict at this point"
 
                 if "nodes" not in workflow_data:
                     workflow_data["nodes"] = []
@@ -359,18 +372,25 @@ class WorkflowGenerator:
             # Validation will detect structural issues, and LLM will fix them on retry.
             # This is more accurate because LLM understands the workflow context.
 
+            # Cast workflow_data for type safety after validation
+            from core.workflow.generator.types import WorkflowDataDict
+
+            workflow_data_typed = cast(WorkflowDataDict, workflow_data)
+
             # --- STEP 4: RENDERER (Generate Mermaid early for validation) ---
-            mermaid_code = generate_mermaid(workflow_data)
+            mermaid_code = generate_mermaid(workflow_data_typed)
 
             # --- STEP 5: VALIDATOR ---
-            _, validation_hints = WorkflowValidator.validate(workflow_data, available_tools_list)
+            _, validation_hints = WorkflowValidator.validate(
+                workflow_data_typed, cast(list[AvailableToolDict], available_tools_list)
+            )
 
             # --- STEP 6: GRAPH VALIDATION (structural checks using graph algorithms) ---
             if attempt < MAX_GLOBAL_RETRIES - 1:
                 try:
                     from core.workflow.generator.utils.graph_validator import GraphValidator
 
-                    graph_result = GraphValidator.validate(workflow_data)
+                    graph_result = GraphValidator.validate(cast(dict[str, Any], workflow_data_typed))
 
                     if not graph_result.success:
                         # Convert graph errors to validation hints
@@ -425,8 +445,8 @@ class WorkflowGenerator:
         return {
             "intent": "generate",
             "flowchart": mermaid_code,
-            "nodes": workflow_data.get("nodes", []),
-            "edges": workflow_data.get("edges", []),
+            "nodes": workflow_data.get("nodes", []) if workflow_data else [],
+            "edges": workflow_data.get("edges", []) if workflow_data else [],
             "message": plan_data.get("plan_thought", "Generated workflow based on your request."),
             "warnings": all_warnings,
             "tool_recommendations": [],  # Legacy field

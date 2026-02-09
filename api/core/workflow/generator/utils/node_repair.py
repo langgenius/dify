@@ -89,6 +89,10 @@ class NodeRepair:
         for node in nodes:
             node_type = node.get("type")
 
+            # Skip nodes without type
+            if not node_type:
+                continue
+
             # 1. Rule-based repairs
             handler_name = cls._REPAIR_HANDLERS.get(node_type)
             if handler_name:
@@ -248,7 +252,6 @@ class NodeRepair:
 
         # 1. Handle Dict format (Standard) - Check for invalid types
         if isinstance(outputs, dict):
-            changed = False
             for var_name, var_config in outputs.items():
                 if isinstance(var_config, dict):
                     original_type = var_config.get("type")
@@ -256,7 +259,6 @@ class NodeRepair:
                         new_type = normalize_type(original_type)
                         if new_type != original_type:
                             var_config["type"] = new_type
-                            changed = True
                             repairs.append(
                                 f"Normalized type '{original_type}' to '{new_type}' "
                                 f"for var '{var_name}' in node '{node_id}'"

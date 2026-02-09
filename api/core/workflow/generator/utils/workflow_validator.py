@@ -14,8 +14,8 @@ class ValidationHint:
     field: str
     message: str
     severity: str  # 'error', 'warning'
-    suggestion: str = None
-    node_type: str = None  # Added for test compatibility
+    suggestion: str | None = None
+    node_type: str | None = None  # Added for test compatibility
 
     # Alias for potential old code using 'type' instead of 'severity'
     @property
