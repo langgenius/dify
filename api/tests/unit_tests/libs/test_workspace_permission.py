@@ -48,7 +48,7 @@ class TestWorkspacePermissionHelper:
         mock_permission.allow_member_invite = False
         mock_enterprise_service.WorkspacePermissionService.get_permission.return_value = mock_permission
 
-        with pytest.raises(Forbidden, match="Workspace policy prohibits member invitations"):
+        with pytest.raises(Forbidden, match="工作区策略禁止邀请成员"):
             check_workspace_member_invite_permission("test-workspace-id")
 
         mock_enterprise_service.WorkspacePermissionService.get_permission.assert_called_once_with("test-workspace-id")
@@ -78,7 +78,7 @@ class TestWorkspacePermissionHelper:
         mock_features.is_allow_transfer_workspace = False  # SANDBOX plan
         mock_feature_service.get_features.return_value = mock_features
 
-        with pytest.raises(Forbidden, match="Your current plan does not allow workspace ownership transfer"):
+        with pytest.raises(Forbidden, match="您当前的套餐不支持工作区所有权转移"):
             check_workspace_owner_transfer_permission("test-workspace-id")
 
         # Enterprise service should NOT be called since billing plan already blocks
@@ -98,7 +98,7 @@ class TestWorkspacePermissionHelper:
         mock_permission.allow_owner_transfer = False  # Workspace policy blocks
         mock_enterprise_service.WorkspacePermissionService.get_permission.return_value = mock_permission
 
-        with pytest.raises(Forbidden, match="Workspace policy prohibits ownership transfer"):
+        with pytest.raises(Forbidden, match="工作区策略禁止所有权转移"):
             check_workspace_owner_transfer_permission("test-workspace-id")
 
         mock_enterprise_service.WorkspacePermissionService.get_permission.assert_called_once_with("test-workspace-id")

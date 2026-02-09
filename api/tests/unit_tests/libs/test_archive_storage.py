@@ -58,7 +58,7 @@ def _mock_client(monkeypatch):
 
 def test_init_disabled(monkeypatch):
     _configure_storage(monkeypatch, ARCHIVE_STORAGE_ENABLED=False)
-    with pytest.raises(ArchiveStorageNotConfiguredError, match="not enabled"):
+    with pytest.raises(ArchiveStorageNotConfiguredError, match="未启用"):
         ArchiveStorage(bucket=BUCKET_NAME)
 
 

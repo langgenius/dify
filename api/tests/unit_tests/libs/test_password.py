@@ -21,7 +21,7 @@ class TestValidPassword:
         # Too short
         with pytest.raises(ValueError) as exc_info:
             valid_password("abc123")
-        assert "Password must contain letters and numbers" in str(exc_info.value)
+        assert "密码必须包含字母和数字" in str(exc_info.value)
 
         # No numbers
         with pytest.raises(ValueError):
