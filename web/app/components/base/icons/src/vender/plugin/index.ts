@@ -1,4 +1,5 @@
 export { default as BoxSparkleFill } from './BoxSparkleFill'
 export { default as LeftCorner } from './LeftCorner'
 export { default as Playground } from './Playground'
+export { default as Plugin } from './Plugin'
 export { default as Trigger } from './Trigger'
