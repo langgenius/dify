@@ -1653,7 +1653,7 @@ requires-dist = [
     { name = "starlette", specifier = "==0.49.1" },
     { name = "tiktoken", specifier = "~=0.9.0" },
     { name = "transformers", specifier = "~=4.56.1" },
-    { name = "unstructured", extras = ["docx", "epub", "md", "ppt", "pptx"], specifier = "~=0.16.1" },
+    { name = "unstructured", extras = ["docx", "epub", "md", "ppt", "pptx"], specifier = "~=0.18.18" },
     { name = "weave", specifier = ">=0.52.16" },
     { name = "weaviate-client", specifier = "==4.17.0" },
     { name = "webvtt-py", specifier = "~=0.5.1" },
@@ -6814,12 +6814,12 @@ wheels = [
 
 [[package]]
 name = "unstructured"
-version = "0.16.25"
+version = "0.18.31"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "backoff" },
     { name = "beautifulsoup4" },
-    { name = "chardet" },
+    { name = "charset-normalizer" },
     { name = "dataclasses-json" },
     { name = "emoji" },
     { name = "filetype" },
@@ -6827,6 +6827,7 @@ dependencies = [
     { name = "langdetect" },
     { name = "lxml" },
     { name = "nltk" },
+    { name = "numba" },
     { name = "numpy" },
     { name = "psutil" },
     { name = "python-iso639" },
@@ -6839,9 +6840,9 @@ dependencies = [
     { name = "unstructured-client" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/64/31/98c4c78e305d1294888adf87fd5ee30577a4c393951341ca32b43f167f1e/unstructured-0.16.25.tar.gz", hash = "sha256:73b9b0f51dbb687af572ecdb849a6811710b9cac797ddeab8ee80fa07d8aa5e6", size = 1683097, upload-time = "2025-03-07T11:19:39.507Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/5f/64285bd69a538bc28753f1423fcaa9d64cd79a9e7c097171b1f0d27e9cdb/unstructured-0.18.31.tar.gz", hash = "sha256:af4bbe32d1894ae6e755f0da6fc0dd307a1d0adeebe0e7cc6278f6cf744339ca", size = 1707700, upload-time = "2026-01-27T15:33:05.378Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/12/4f/ad08585b5c8a33c82ea119494c4d3023f4796958c56e668b15cc282ec0a0/unstructured-0.16.25-py3-none-any.whl", hash = "sha256:14719ccef2830216cf1c5bf654f75e2bf07b17ca5dcee9da5ac74618130fd337", size = 1769286, upload-time = "2025-03-07T11:19:37.299Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/4a/9c43f39d9e443c9bc3f2e379b305bca27110adc653b071221b3132c18de5/unstructured-0.18.31-py3-none-any.whl", hash = "sha256:fab4641176cb9b192ed38048758aa0d9843121d03626d18f42275afb31e5b2d3", size = 1794889, upload-time = "2026-01-27T15:33:03.136Z" },
 ]
 
 [package.optional-dependencies]
