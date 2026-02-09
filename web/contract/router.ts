@@ -1,24 +1,25 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
-import { bindPartnerStackContract, invoicesContract } from './console/billing'
-import { systemFeaturesContract } from './console/system'
 import {
-  triggerOAuthConfigContract,
-  triggerOAuthConfigureContract,
-  triggerOAuthDeleteContract,
-  triggerOAuthInitiateContract,
-  triggerProviderInfoContract,
-  triggersContract,
-  triggerSubscriptionBuildContract,
-  triggerSubscriptionBuilderCreateContract,
-  triggerSubscriptionBuilderLogsContract,
-  triggerSubscriptionBuilderUpdateContract,
-  triggerSubscriptionBuilderVerifyUpdateContract,
-  triggerSubscriptionDeleteContract,
-  triggerSubscriptionsContract,
-  triggerSubscriptionUpdateContract,
-  triggerSubscriptionVerifyContract,
-} from './console/trigger'
-import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
+  createFileContract,
+  createFolderContract,
+  deleteNodeContract,
+  getFileContentContract,
+  getFileDownloadUrlContract,
+  moveNodeContract,
+  publishContract,
+  renameNodeContract,
+  reorderNodeContract,
+  treeContract,
+  updateFileContentContract,
+} from './console/app-asset'
+import { bindPartnerStackContract, invoicesContract } from './console/billing'
+import {
+  activateSandboxProviderContract,
+  deleteSandboxProviderConfigContract,
+  getSandboxProviderListContract,
+  saveSandboxProviderConfigContract,
+} from './console/sandbox-provider'
+import { systemFeaturesContract } from './console/system'
 import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
 
 export const marketplaceRouterContract = {
@@ -31,32 +32,28 @@ export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRout
 
 export const consoleRouterContract = {
   systemFeatures: systemFeaturesContract,
-  trialApps: {
-    info: trialAppInfoContract,
-    datasets: trialAppDatasetsContract,
-    parameters: trialAppParametersContract,
-    workflows: trialAppWorkflowsContract,
-  },
   billing: {
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
   },
-  triggers: {
-    list: triggersContract,
-    providerInfo: triggerProviderInfoContract,
-    subscriptions: triggerSubscriptionsContract,
-    subscriptionBuilderCreate: triggerSubscriptionBuilderCreateContract,
-    subscriptionBuilderUpdate: triggerSubscriptionBuilderUpdateContract,
-    subscriptionBuilderVerifyUpdate: triggerSubscriptionBuilderVerifyUpdateContract,
-    subscriptionVerify: triggerSubscriptionVerifyContract,
-    subscriptionBuild: triggerSubscriptionBuildContract,
-    subscriptionDelete: triggerSubscriptionDeleteContract,
-    subscriptionUpdate: triggerSubscriptionUpdateContract,
-    subscriptionBuilderLogs: triggerSubscriptionBuilderLogsContract,
-    oauthConfig: triggerOAuthConfigContract,
-    oauthConfigure: triggerOAuthConfigureContract,
-    oauthDelete: triggerOAuthDeleteContract,
-    oauthInitiate: triggerOAuthInitiateContract,
+  sandboxProvider: {
+    getSandboxProviderList: getSandboxProviderListContract,
+    saveSandboxProviderConfig: saveSandboxProviderConfigContract,
+    deleteSandboxProviderConfig: deleteSandboxProviderConfigContract,
+    activateSandboxProvider: activateSandboxProviderContract,
+  },
+  appAsset: {
+    tree: treeContract,
+    createFolder: createFolderContract,
+    createFile: createFileContract,
+    getFileContent: getFileContentContract,
+    getFileDownloadUrl: getFileDownloadUrlContract,
+    updateFileContent: updateFileContentContract,
+    deleteNode: deleteNodeContract,
+    renameNode: renameNodeContract,
+    moveNode: moveNodeContract,
+    reorderNode: reorderNodeContract,
+    publish: publishContract,
   },
 }
 

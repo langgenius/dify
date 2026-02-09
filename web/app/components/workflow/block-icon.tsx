@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
+import { Folder as FolderLine } from '@/app/components/base/icons/src/vender/line/files'
 import {
   Agent,
   Answer,
@@ -25,6 +26,7 @@ import {
   TemplatingTransform,
   VariableX,
   WebhookLine,
+  WindowCursor,
 } from '@/app/components/base/icons/src/vender/workflow'
 import { cn } from '@/utils/classnames'
 import { BlockEnum } from './types'
@@ -45,6 +47,7 @@ const DEFAULT_ICON_MAP: Record<BlockEnum, React.ComponentType<{ className: strin
   [BlockEnum.Start]: Home,
   [BlockEnum.LLM]: Llm,
   [BlockEnum.Code]: Code,
+  [BlockEnum.Command]: WindowCursor,
   [BlockEnum.End]: End,
   [BlockEnum.IfElse]: IfElse,
   [BlockEnum.HttpRequest]: Http,
@@ -54,6 +57,7 @@ const DEFAULT_ICON_MAP: Record<BlockEnum, React.ComponentType<{ className: strin
   [BlockEnum.TemplateTransform]: TemplatingTransform,
   [BlockEnum.VariableAssigner]: VariableX,
   [BlockEnum.VariableAggregator]: VariableX,
+  [BlockEnum.Group]: FolderLine,
   [BlockEnum.Assigner]: Assigner,
   [BlockEnum.Tool]: VariableX,
   [BlockEnum.IterationStart]: VariableX,
@@ -84,6 +88,7 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.Start]: 'bg-util-colors-blue-brand-blue-brand-500',
   [BlockEnum.LLM]: 'bg-util-colors-indigo-indigo-500',
   [BlockEnum.Code]: 'bg-util-colors-blue-blue-500',
+  [BlockEnum.Command]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.End]: 'bg-util-colors-warning-warning-500',
   [BlockEnum.IfElse]: 'bg-util-colors-cyan-cyan-500',
   [BlockEnum.Iteration]: 'bg-util-colors-cyan-cyan-500',
@@ -97,6 +102,7 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.VariableAssigner]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.VariableAggregator]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.Tool]: 'bg-util-colors-blue-blue-500',
+  [BlockEnum.Group]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.Assigner]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.ParameterExtractor]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.DocExtractor]: 'bg-util-colors-green-green-500',

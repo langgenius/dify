@@ -4,6 +4,8 @@ import type { FlowType } from '@/types/common'
 import type {
   ConversationVariableResponse,
   FetchWorkflowDraftResponse,
+  NestedNodeGraphPayload,
+  NestedNodeGraphResponse,
   NodesDefaultConfigsResponse,
   VarInInspect,
 } from '@/types/workflow'
@@ -15,16 +17,25 @@ export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
 }
 
-export const syncWorkflowDraft = ({ url, params }: {
+export const syncWorkflowDraft = ({ url, params, canNotSaveEmpty }: {
   url: string
   params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'>
+  canNotSaveEmpty?: boolean
 }) => {
+  // when graph adn skill type changed, it would pass empty nodes array...Temp prevent sync in this case
+  if (params.graph.nodes.length === 0 && canNotSaveEmpty) {
+    throw new Error('Cannot sync workflow draft with zero nodes.')
+  }
   const sanitized = sanitizeWorkflowDraftPayload(params)
   return post<CommonResponse & { updated_at: number, hash: string }>(url, { body: sanitized }, { silent: true })
 }
 
 export const fetchNodesDefaultConfigs = (url: string) => {
   return get<NodesDefaultConfigsResponse>(url)
+}
+
+export const fetchNestedNodeGraph = (flowType: FlowType, flowId: string, payload: NestedNodeGraphPayload) => {
+  return post<NestedNodeGraphResponse>(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nested-node-graph`, { body: payload }, { silent: true })
 }
 
 export const singleNodeRun = (flowType: FlowType, flowId: string, nodeId: string, params: object) => {

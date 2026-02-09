@@ -360,7 +360,7 @@ describe('SettingsModal', () => {
       await user.click(screen.getByText('datasetSettings.form.embeddingModelTipLink'))
 
       // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.MODEL_PROVIDER })
     })
   })
 

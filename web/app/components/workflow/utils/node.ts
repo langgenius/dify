@@ -1,6 +1,8 @@
+import type { CodeNodeType, OutputVar } from '../nodes/code/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type {
+  CommonNodeType,
   Node,
 } from '../types'
 import {
@@ -20,7 +22,61 @@ import {
   BlockEnum,
 } from '../types'
 
-export function generateNewNode({ data, position, id, zIndex, type, ...rest }: Omit<Node, 'id'> & { id?: string }): {
+type MergeNodeDefaultDataParams<T extends CommonNodeType<Record<string, unknown>>> = {
+  nodeType: BlockEnum
+  metaDefault?: Partial<T>
+  appDefault?: Partial<T>
+  baseData?: Partial<T>
+  overrideData?: Partial<T>
+}
+
+const pickNonEmptyArray = <T>(value?: T[]) => {
+  return Array.isArray(value) && value.length > 0 ? value : undefined
+}
+
+export const mergeNodeDefaultData = <T extends CommonNodeType<Record<string, unknown>>>({
+  nodeType,
+  metaDefault,
+  appDefault,
+  baseData,
+  overrideData,
+}: MergeNodeDefaultDataParams<T>) => {
+  const merged = {
+    ...(metaDefault || {}),
+    ...(appDefault || {}),
+    ...(baseData || {}),
+    ...(overrideData || {}),
+  } as Partial<T>
+
+  if (nodeType === BlockEnum.Code) {
+    const codeMetaDefault = (metaDefault || {}) as Partial<CodeNodeType>
+    const codeAppDefault = (appDefault || {}) as Partial<CodeNodeType>
+    const codeBase = (baseData || {}) as Partial<CodeNodeType>
+    const codeOverride = (overrideData || {}) as Partial<CodeNodeType>
+    const codeDefaults = {
+      ...codeMetaDefault,
+      ...codeAppDefault,
+    }
+
+    const outputs: OutputVar = {
+      ...(codeDefaults.outputs || {}),
+      ...(codeBase.outputs || {}),
+      ...(codeOverride.outputs || {}),
+    }
+    if (Object.keys(outputs).length > 0)
+      (merged as Partial<CodeNodeType>).outputs = outputs
+
+    const resolvedVariables = pickNonEmptyArray(codeBase.variables)
+      ?? pickNonEmptyArray(codeOverride.variables)
+      ?? pickNonEmptyArray(codeDefaults.variables)
+    if (resolvedVariables)
+      (merged as Partial<CodeNodeType>).variables = resolvedVariables
+  }
+
+  return merged
+}
+
+export function generateNewNode<T = {}>({ data, position, id, zIndex, type, ...rest }: Omit<Node<T>, 'id'> & { id?: string }): {
   newNode: Node
   newIterationStartNode?: Node
   newLoopStartNode?: Node

@@ -3,7 +3,7 @@ import { cn } from '@/utils/classnames'
 import { getKeyboardKeyNameBySystem } from './utils'
 
 type ShortcutsNameProps = {
-  keys: string[]
+  keys: readonly string[]
   className?: string
   textColor?: 'default' | 'secondary'
   bgColor?: 'gray' | 'white'

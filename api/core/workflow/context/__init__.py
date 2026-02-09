@@ -17,7 +17,6 @@ from core.workflow.context.execution_context import (
     register_context_capturer,
     reset_context_provider,
 )
-from core.workflow.context.models import SandboxContext
 
 __all__ = [
     "AppContext",
@@ -25,7 +24,6 @@ __all__ = [
     "ExecutionContext",
     "IExecutionContext",
     "NullAppContext",
-    "SandboxContext",
     "capture_current_context",
     "read_context",
     "register_context",

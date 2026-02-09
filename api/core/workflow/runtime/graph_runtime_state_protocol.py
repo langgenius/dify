@@ -78,6 +78,9 @@ class ReadOnlyGraphRuntimeState(Protocol):
         """Get a single output value (returns a copy)."""
         ...
 
+    @property
+    def sandbox(self) -> Any: ...
+
     def dumps(self) -> str:
         """Serialize the runtime state into a JSON snapshot (read-only)."""
         ...

@@ -1,6 +1,8 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
 import {
+  RiBox3Fill,
+  RiBox3Line,
   RiBrain2Fill,
   RiBrain2Line,
   RiCloseLine,
@@ -36,6 +38,7 @@ import DataSourcePage from './data-source-page-new'
 import LanguagePage from './language-page'
 import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
+import SandboxProviderPage from './sandbox-provider-page'
 
 const iconClassName = `
   w-5 h-5 mr-2
@@ -74,10 +77,16 @@ export default function AccountSetting({
 
     const items: GroupItem[] = [
       {
-        key: ACCOUNT_SETTING_TAB.PROVIDER,
+        key: ACCOUNT_SETTING_TAB.MODEL_PROVIDER,
         name: t('settings.provider', { ns: 'common' }),
         icon: <RiBrain2Line className={iconClassName} />,
         activeIcon: <RiBrain2Fill className={iconClassName} />,
+      },
+      {
+        key: ACCOUNT_SETTING_TAB.SANDBOX_PROVIDER,
+        name: t('settings.sandboxProvider', { ns: 'common' }),
+        icon: <RiBox3Line className={iconClassName} />,
+        activeIcon: <RiBox3Fill className={iconClassName} />,
       },
       {
         key: ACCOUNT_SETTING_TAB.MEMBERS,
@@ -225,7 +234,7 @@ export default function AccountSetting({
                   <div className="system-sm-regular mt-1 text-text-tertiary">{activeItem?.description}</div>
                 )}
               </div>
-              {activeItem?.key === 'provider' && (
+              {activeItem?.key === ACCOUNT_SETTING_TAB.MODEL_PROVIDER && (
                 <div className="flex grow justify-end">
                   <Input
                     showLeftIcon
@@ -238,7 +247,8 @@ export default function AccountSetting({
               )}
             </div>
             <div className="px-4 pt-2 sm:px-8">
-              {activeMenu === 'provider' && <ModelProviderPage searchText={searchValue} />}
+              {activeMenu === ACCOUNT_SETTING_TAB.MODEL_PROVIDER && <ModelProviderPage searchText={searchValue} />}
+              {activeMenu === 'sandbox-provider' && <SandboxProviderPage />}
               {activeMenu === 'members' && <MembersPage />}
               {activeMenu === 'billing' && <BillingPage />}
               {activeMenu === 'data-source' && <DataSourcePage />}

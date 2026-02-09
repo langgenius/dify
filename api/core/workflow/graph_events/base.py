@@ -21,6 +21,12 @@ class GraphNodeEventBase(GraphEngineEvent):
     """iteration id if node is in iteration"""
     in_loop_id: str | None = None
     """loop id if node is in loop"""
+    in_parent_node_id: str | None = None
+    """Parent node id if this is a nested node event.
+    
+    When set, indicates this event belongs to a nested node that
+    is extracting values for the specified parent node.
+    """
 
     # The version of the node, or "1" if not specified.
     node_version: str = "1"

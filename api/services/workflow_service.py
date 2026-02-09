@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
@@ -13,8 +14,8 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
-from core.variables import VariableBase
-from core.variables.variables import Variable
+from core.sandbox.manager import SandboxManager
+from core.variables import Variable, VariableBase
 from core.workflow.entities import WorkflowNodeExecution
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -37,14 +38,19 @@ from models import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow_features import WorkflowFeatures
 from repositories.factory import DifyAPIRepositoryFactory
+from services.app_asset_service import AppAssetService
 from services.billing_service import BillingService
 from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
+from services.sandbox.sandbox_provider_service import SandboxProviderService
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowService:
@@ -149,6 +155,8 @@ class WorkflowService:
             )
             .first()
         )
+
+        AppAssetService.publish(app_model=app_model, account_id=app_model.created_by)
 
         return workflow
 
@@ -693,22 +701,37 @@ class WorkflowService:
         else:
             enclosing_node_id = None
 
-        run = WorkflowEntry.single_step_run(
-            workflow=draft_workflow,
-            node_id=node_id,
-            user_inputs=user_inputs,
-            user_id=account.id,
-            variable_pool=variable_pool,
-            variable_loader=variable_loader,
-        )
+        sandbox = None
+        if draft_workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
+            sandbox_provider = SandboxProviderService.get_sandbox_provider(draft_workflow.tenant_id)
+            sandbox = SandboxManager.create_for_single_step(
+                tenant_id=draft_workflow.tenant_id,
+                app_id=app_model.id,
+                user_id=account.id,
+                sandbox_provider=sandbox_provider,
+            )
 
-        # run draft workflow node
-        start_at = time.perf_counter()
-        node_execution = self._handle_single_step_result(
-            invoke_node_fn=lambda: run,
-            start_at=start_at,
-            node_id=node_id,
-        )
+        try:
+            node, generator = WorkflowEntry.single_step_run(
+                workflow=draft_workflow,
+                node_id=node_id,
+                user_inputs=user_inputs,
+                user_id=account.id,
+                variable_pool=variable_pool,
+                variable_loader=variable_loader,
+                sandbox=sandbox,
+            )
+
+            # Run draft workflow node
+            start_at = time.perf_counter()
+            node_execution = self._handle_single_step_result(
+                invoke_node_fn=lambda: (node, generator),
+                start_at=start_at,
+                node_id=node_id,
+            )
+        finally:
+            if sandbox is not None:
+                sandbox.release()
 
         # Set workflow_id on the NodeExecution
         node_execution.workflow_id = draft_workflow.id

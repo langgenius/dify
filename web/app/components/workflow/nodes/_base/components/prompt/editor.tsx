@@ -62,6 +62,9 @@ type Props = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   isSupportFileVar?: boolean
+  isSupportSandbox?: boolean
+  promptMetadata?: Record<string, unknown>
+  onPromptMetadataChange?: (metadata: Record<string, unknown>) => void
   isSupportPromptGenerator?: boolean
   onGenerated?: (prompt: string) => void
   modelConfig?: ModelConfig
@@ -102,6 +105,9 @@ const Editor: FC<Props> = ({
   nodesOutputVars,
   availableNodes = [],
   isSupportFileVar,
+  isSupportSandbox,
+  promptMetadata,
+  onPromptMetadataChange,
   isSupportPromptGenerator,
   isSupportJinja,
   editionType,
@@ -156,7 +162,7 @@ const Editor: FC<Props> = ({
 
   return (
     <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
-      <div ref={ref} className={cn(isFocus ? (gradientBorder && 'bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2') : 'bg-transparent', isExpand && 'h-full', '!rounded-[9px] p-0.5', containerClassName)}>
+      <div ref={ref} className={cn(isFocus ? (gradientBorder && 'bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2') : 'bg-transparent hover:bg-divider-regular', isExpand && 'h-full', '!rounded-[9px] p-0.5 transition-colors', containerClassName)}>
         <div className={cn(isFocus ? 'bg-background-default' : 'bg-components-input-bg-normal', isExpand && 'flex h-full flex-col', 'rounded-lg', containerClassName)}>
           <div className={cn('flex items-center justify-between pl-3 pr-2 pt-1', headerClassName)}>
             <div className="flex gap-2">
@@ -295,6 +301,9 @@ const Editor: FC<Props> = ({
                       onFocus={setFocus}
                       editable={!readOnly}
                       isSupportFileVar={isSupportFileVar}
+                      isSupportSandbox={isSupportSandbox}
+                      toolMetadata={promptMetadata}
+                      onToolMetadataChange={onPromptMetadataChange}
                     />
                     {/* to patch Editor not support dynamic change editable status */}
                     {readOnly && <div className="absolute inset-0 z-10"></div>}

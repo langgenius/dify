@@ -21,6 +21,7 @@ type ToolsProps = {
   className?: string
   indexBarClassName?: string
   selectedTools?: ToolValue[]
+  hideSelectedInfo?: boolean
 }
 const Tools = ({
   onSelect,
@@ -34,6 +35,7 @@ const Tools = ({
   className,
   indexBarClassName,
   selectedTools,
+  hideSelectedInfo,
 }: ToolsProps) => {
   // const tools: any = []
   const language = useGetLanguage()
@@ -107,6 +109,7 @@ const Tools = ({
                 canNotSelectMultiple={canNotSelectMultiple}
                 onSelectMultiple={onSelectMultiple}
                 selectedTools={selectedTools}
+                hideSelectedInfo={hideSelectedInfo}
                 indexBar={<IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
               />
             )
@@ -118,6 +121,7 @@ const Tools = ({
                 canNotSelectMultiple={canNotSelectMultiple}
                 onSelectMultiple={onSelectMultiple}
                 selectedTools={selectedTools}
+                hideSelectedInfo={hideSelectedInfo}
               />
             )
       )}

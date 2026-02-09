@@ -7,10 +7,11 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.sandbox import Sandbox
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
+from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.runtime import GraphRuntimeState, VariablePool
@@ -42,6 +43,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        sandbox: Sandbox | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -55,6 +57,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._root_node_id = root_node_id
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._sandbox = sandbox
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
@@ -98,6 +101,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             )
 
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+            if self._sandbox:
+                graph_runtime_state.set_sandbox(self._sandbox)
 
             # init graph
             graph = self._init_graph(

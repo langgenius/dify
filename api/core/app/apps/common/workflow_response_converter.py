@@ -70,6 +70,8 @@ class _NodeSnapshot:
     """Empty string means the node is not executing inside an iteration."""
     loop_id: str = ""
     """Empty string means the node is not executing inside a loop."""
+    parent_node_id: str = ""
+    """Empty string means the node is not an nested node (extractor node)."""
 
 
 class WorkflowResponseConverter:
@@ -131,6 +133,7 @@ class WorkflowResponseConverter:
             start_at=event.start_at,
             iteration_id=event.in_iteration_id or "",
             loop_id=event.in_loop_id or "",
+            parent_node_id=event.in_parent_node_id or "",
         )
         node_execution_id = NodeExecutionId(event.node_execution_id)
         self._node_snapshots[node_execution_id] = snapshot
@@ -287,6 +290,7 @@ class WorkflowResponseConverter:
                 created_at=int(snapshot.start_at.timestamp()),
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
+                parent_node_id=event.in_parent_node_id,
                 agent_strategy=event.agent_strategy,
             ),
         )
@@ -373,6 +377,7 @@ class WorkflowResponseConverter:
                 files=self.fetch_files_from_node_outputs(event.outputs or {}),
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
+                parent_node_id=event.in_parent_node_id,
             ),
         )
 
@@ -422,6 +427,7 @@ class WorkflowResponseConverter:
                 files=self.fetch_files_from_node_outputs(event.outputs or {}),
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
+                parent_node_id=event.in_parent_node_id,
                 retry_index=event.retry_index,
             ),
         )
@@ -671,7 +677,7 @@ class WorkflowResponseConverter:
             task_id=task_id,
             data=AgentLogStreamResponse.Data(
                 node_execution_id=event.node_execution_id,
-                id=event.id,
+                message_id=event.id,
                 parent_id=event.parent_id,
                 label=event.label,
                 error=event.error,

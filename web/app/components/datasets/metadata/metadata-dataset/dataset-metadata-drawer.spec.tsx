@@ -1,5 +1,5 @@
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DataType } from '../types'
 import DatasetMetadataDrawer from './dataset-metadata-drawer'
@@ -270,22 +270,22 @@ describe('DatasetMetadataDrawer', () => {
         fireEvent.click(svgs[0])
       }
 
-      // Change name and save
+      let renameModal: HTMLElement | undefined
       await waitFor(() => {
-        const inputs = document.querySelectorAll('input')
-        expect(inputs.length).toBeGreaterThan(0)
+        const dialogs = screen.getAllByRole('dialog')
+        renameModal = dialogs.find(dialog => dialog.querySelector('input')) as HTMLElement | undefined
+        expect(renameModal).toBeTruthy()
       })
 
-      const inputs = document.querySelectorAll('input')
-      fireEvent.change(inputs[0], { target: { value: 'renamed_field' } })
+      const modal = within(renameModal as HTMLElement)
+      const input = modal.getByRole('textbox')
+      fireEvent.change(input, { target: { value: 'renamed_field' } })
 
-      // Find and click save button
-      const saveBtns = screen.getAllByText(/save/i)
-      const primaryBtn = saveBtns.find(btn =>
-        btn.closest('button')?.classList.contains('btn-primary'),
+      const saveButton = modal.getAllByRole('button').find(button =>
+        button.classList.contains('btn-primary'),
       )
-      if (primaryBtn)
-        fireEvent.click(primaryBtn)
+      expect(saveButton).toBeTruthy()
+      fireEvent.click(saveButton as HTMLButtonElement)
 
       await waitFor(() => {
         expect(onRename).toHaveBeenCalled()

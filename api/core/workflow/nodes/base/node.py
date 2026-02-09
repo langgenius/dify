@@ -48,6 +48,9 @@ from core.workflow.node_events import (
     RunRetrieverResourceEvent,
     StreamChunkEvent,
     StreamCompletedEvent,
+    ThoughtChunkEvent,
+    ToolCallChunkEvent,
+    ToolResultChunkEvent,
 )
 from core.workflow.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
@@ -270,9 +273,72 @@ class Node(Generic[NodeDataT]):
         """Check if execution should be stopped."""
         return self.graph_runtime_state.stop_event.is_set()
 
+    def _find_extractor_node_configs(self) -> list[dict[str, Any]]:
+        """
+        Find all extractor node configurations that have parent_node_id == self._node_id.
+
+        Returns:
+            List of node configuration dicts for extractor nodes
+        """
+        nodes = self.graph_config.get("nodes", [])
+        extractor_configs = []
+        for node_config in nodes:
+            node_data = node_config.get("data", {})
+            if node_data.get("parent_node_id") == self._node_id:
+                extractor_configs.append(node_config)
+        return extractor_configs
+
+    def _execute_nested_nodes(self) -> Generator[GraphNodeEventBase, None, None]:
+        """
+        Execute all nested nodes associated with this node.
+
+        Nested nodes are nodes with parent_node_id == self._node_id.
+        They are executed before the main node to extract values from list[PromptMessage].
+        """
+        from core.workflow.nodes.node_factory import DifyNodeFactory
+
+        extractor_configs = self._find_extractor_node_configs()
+        logger.debug("[NestedNode] Found %d nested nodes for parent '%s'", len(extractor_configs), self._node_id)
+        if not extractor_configs:
+            return
+
+        # Use DifyNodeFactory to properly instantiate nodes with required dependencies
+        node_factory = DifyNodeFactory(
+            graph_init_params=self._graph_init_params,
+            graph_runtime_state=self.graph_runtime_state,
+        )
+
+        for config in extractor_configs:
+            node_id = config.get("id")
+            if not node_id:
+                continue
+
+            try:
+                nested_node = node_factory.create_node(config)
+            except ValueError:
+                # Skip nodes that cannot be created (e.g., unknown type)
+                continue
+
+            # Execute and process nested node events
+            for event in nested_node.run():
+                # Tag event with parent node id for stream ordering and history tracking
+                if isinstance(event, GraphNodeEventBase):
+                    event.in_parent_node_id = self._node_id
+
+                if isinstance(event, NodeRunSucceededEvent):
+                    # Store nested node outputs in variable pool
+                    outputs: Mapping[str, Any] = event.node_run_result.outputs
+                    for variable_name, variable_value in outputs.items():
+                        self.graph_runtime_state.variable_pool.add((node_id, variable_name), variable_value)
+                if not isinstance(event, NodeRunStreamChunkEvent):
+                    yield event
+
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         execution_id = self.ensure_execution_id()
         self._start_at = naive_utc_now()
+
+        # Step 1: Execute associated nested nodes before main node execution
+        yield from self._execute_nested_nodes()
 
         # Create and push start event with required fields
         start_event = NodeRunStartedEvent(
@@ -560,6 +626,8 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: StreamChunkEvent) -> NodeRunStreamChunkEvent:
+        from core.workflow.graph_events import ChunkType
+
         return NodeRunStreamChunkEvent(
             id=self.execution_id,
             node_id=self._node_id,
@@ -567,6 +635,60 @@ class Node(Generic[NodeDataT]):
             selector=event.selector,
             chunk=event.chunk,
             is_final=event.is_final,
+            chunk_type=ChunkType(event.chunk_type.value),
+            tool_call=event.tool_call,
+            tool_result=event.tool_result,
+        )
+
+    @_dispatch.register
+    def _(self, event: ToolCallChunkEvent) -> NodeRunStreamChunkEvent:
+        from core.workflow.graph_events import ChunkType
+
+        return NodeRunStreamChunkEvent(
+            id=self._node_execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            selector=event.selector,
+            chunk=event.chunk,
+            is_final=event.is_final,
+            chunk_type=ChunkType.TOOL_CALL,
+            tool_call=event.tool_call,
+        )
+
+    @_dispatch.register
+    def _(self, event: ToolResultChunkEvent) -> NodeRunStreamChunkEvent:
+        from core.workflow.entities import ToolResult, ToolResultStatus
+        from core.workflow.graph_events import ChunkType
+
+        tool_result = event.tool_result or ToolResult()
+        status: ToolResultStatus = tool_result.status or ToolResultStatus.SUCCESS
+        tool_result = tool_result.model_copy(
+            update={"status": status, "files": tool_result.files or []},
+        )
+
+        return NodeRunStreamChunkEvent(
+            id=self._node_execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            selector=event.selector,
+            chunk=event.chunk,
+            is_final=event.is_final,
+            chunk_type=ChunkType.TOOL_RESULT,
+            tool_result=tool_result,
+        )
+
+    @_dispatch.register
+    def _(self, event: ThoughtChunkEvent) -> NodeRunStreamChunkEvent:
+        from core.workflow.graph_events import ChunkType
+
+        return NodeRunStreamChunkEvent(
+            id=self._node_execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            selector=event.selector,
+            chunk=event.chunk,
+            is_final=event.is_final,
+            chunk_type=ChunkType.THOUGHT,
         )
 
     @_dispatch.register

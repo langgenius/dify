@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.memory.token_buffer_memory import TokenBufferMemory
+from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import LLMUsage, ModelPropertyKey, PromptMessageRole
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -96,8 +96,10 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         memory = llm_utils.fetch_memory(
             variable_pool=variable_pool,
             app_id=self.app_id,
+            tenant_id=self.tenant_id,
             node_data_memory=node_data.memory,
             model_instance=model_instance,
+            node_id=self._node_id,
         )
         # fetch instruction
         node_data.instruction = node_data.instruction or ""
@@ -197,10 +199,15 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
                 "model_provider": model_config.provider,
                 "model_name": model_config.model,
             }
+            # Build context from prompt messages and response
+            assistant_response = f"class_name: {category_name}, class_id: {category_id}"
+            context = llm_utils.build_context(prompt_messages, assistant_response)
+
             outputs = {
                 "class_name": category_name,
                 "class_id": category_id,
                 "usage": jsonable_encoder(usage),
+                "context": context,
             }
 
             return NodeRunResult(
@@ -312,7 +319,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         self,
         node_data: QuestionClassifierNodeData,
         query: str,
-        memory: TokenBufferMemory | None,
+        memory: BaseMemory | None,
         max_token_limit: int = 2000,
     ):
         model_mode = ModelMode(node_data.model.mode)

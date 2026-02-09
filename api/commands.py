@@ -22,8 +22,9 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from core.rag.models.document import ChildDocument, Document
-from core.tools.utils.system_oauth_encryption import encrypt_system_oauth_params
+from core.rag.models.document import Document
+from core.sandbox import SandboxBuilder, SandboxType
+from core.tools.utils.system_encryption import encrypt_system_params
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -418,22 +419,6 @@ def migrate_knowledge_vector_database():
                                 "dataset_id": segment.dataset_id,
                             },
                         )
-                        if dataset_document.doc_form == "hierarchical_model":
-                            child_chunks = segment.get_child_chunks()
-                            if child_chunks:
-                                child_documents = []
-                                for child_chunk in child_chunks:
-                                    child_document = ChildDocument(
-                                        page_content=child_chunk.content,
-                                        metadata={
-                                            "doc_id": child_chunk.index_node_id,
-                                            "doc_hash": child_chunk.index_node_hash,
-                                            "document_id": segment.document_id,
-                                            "dataset_id": segment.dataset_id,
-                                        },
-                                    )
-                                    child_documents.append(child_document)
-                                document.children = child_documents
 
                         documents.append(document)
                         segments_count = segments_count + 1
@@ -447,13 +432,7 @@ def migrate_knowledge_vector_database():
                                 fg="green",
                             )
                         )
-                        all_child_documents = []
-                        for doc in documents:
-                            if doc.children:
-                                all_child_documents.extend(doc.children)
                         vector.create(documents)
-                        if all_child_documents:
-                            vector.create(all_child_documents)
                         click.echo(click.style(f"Created vector index for dataset {dataset.id}.", fg="green"))
                     except Exception as e:
                         click.echo(click.style(f"Failed to created vector index for dataset {dataset.id}.", fg="red"))
@@ -972,346 +951,6 @@ def clean_workflow_runs(
     )
 
 
-@click.command(
-    "archive-workflow-runs",
-    help="Archive workflow runs for paid plan tenants to S3-compatible storage.",
-)
-@click.option("--tenant-ids", default=None, help="Optional comma-separated tenant IDs for grayscale rollout.")
-@click.option("--before-days", default=90, show_default=True, help="Archive runs older than N days.")
-@click.option(
-    "--from-days-ago",
-    default=None,
-    type=click.IntRange(min=0),
-    help="Lower bound in days ago (older). Must be paired with --to-days-ago.",
-)
-@click.option(
-    "--to-days-ago",
-    default=None,
-    type=click.IntRange(min=0),
-    help="Upper bound in days ago (newer). Must be paired with --from-days-ago.",
-)
-@click.option(
-    "--start-from",
-    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
-    default=None,
-    help="Archive runs created at or after this timestamp (UTC if no timezone).",
-)
-@click.option(
-    "--end-before",
-    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
-    default=None,
-    help="Archive runs created before this timestamp (UTC if no timezone).",
-)
-@click.option("--batch-size", default=100, show_default=True, help="Batch size for processing.")
-@click.option("--workers", default=1, show_default=True, type=int, help="Concurrent workflow runs to archive.")
-@click.option("--limit", default=None, type=int, help="Maximum number of runs to archive.")
-@click.option("--dry-run", is_flag=True, help="Preview without archiving.")
-@click.option("--delete-after-archive", is_flag=True, help="Delete runs and related data after archiving.")
-def archive_workflow_runs(
-    tenant_ids: str | None,
-    before_days: int,
-    from_days_ago: int | None,
-    to_days_ago: int | None,
-    start_from: datetime.datetime | None,
-    end_before: datetime.datetime | None,
-    batch_size: int,
-    workers: int,
-    limit: int | None,
-    dry_run: bool,
-    delete_after_archive: bool,
-):
-    """
-    Archive workflow runs for paid plan tenants older than the specified days.
-
-    This command archives the following tables to storage:
-    - workflow_node_executions
-    - workflow_node_execution_offload
-    - workflow_pauses
-    - workflow_pause_reasons
-    - workflow_trigger_logs
-
-    The workflow_runs and workflow_app_logs tables are preserved for UI listing.
-    """
-    from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
-
-    run_started_at = datetime.datetime.now(datetime.UTC)
-    click.echo(
-        click.style(
-            f"Starting workflow run archiving at {run_started_at.isoformat()}.",
-            fg="white",
-        )
-    )
-
-    if (start_from is None) ^ (end_before is None):
-        click.echo(click.style("start-from and end-before must be provided together.", fg="red"))
-        return
-
-    if (from_days_ago is None) ^ (to_days_ago is None):
-        click.echo(click.style("from-days-ago and to-days-ago must be provided together.", fg="red"))
-        return
-
-    if from_days_ago is not None and to_days_ago is not None:
-        if start_from or end_before:
-            click.echo(click.style("Choose either day offsets or explicit dates, not both.", fg="red"))
-            return
-        if from_days_ago <= to_days_ago:
-            click.echo(click.style("from-days-ago must be greater than to-days-ago.", fg="red"))
-            return
-        now = datetime.datetime.now()
-        start_from = now - datetime.timedelta(days=from_days_ago)
-        end_before = now - datetime.timedelta(days=to_days_ago)
-        before_days = 0
-
-    if start_from and end_before and start_from >= end_before:
-        click.echo(click.style("start-from must be earlier than end-before.", fg="red"))
-        return
-    if workers < 1:
-        click.echo(click.style("workers must be at least 1.", fg="red"))
-        return
-
-    archiver = WorkflowRunArchiver(
-        days=before_days,
-        batch_size=batch_size,
-        start_from=start_from,
-        end_before=end_before,
-        workers=workers,
-        tenant_ids=[tid.strip() for tid in tenant_ids.split(",")] if tenant_ids else None,
-        limit=limit,
-        dry_run=dry_run,
-        delete_after_archive=delete_after_archive,
-    )
-    summary = archiver.run()
-    click.echo(
-        click.style(
-            f"Summary: processed={summary.total_runs_processed}, archived={summary.runs_archived}, "
-            f"skipped={summary.runs_skipped}, failed={summary.runs_failed}, "
-            f"time={summary.total_elapsed_time:.2f}s",
-            fg="cyan",
-        )
-    )
-
-    run_finished_at = datetime.datetime.now(datetime.UTC)
-    elapsed = run_finished_at - run_started_at
-    click.echo(
-        click.style(
-            f"Workflow run archiving completed. start={run_started_at.isoformat()} "
-            f"end={run_finished_at.isoformat()} duration={elapsed}",
-            fg="green",
-        )
-    )
-
-
-@click.command(
-    "restore-workflow-runs",
-    help="Restore archived workflow runs from S3-compatible storage.",
-)
-@click.option(
-    "--tenant-ids",
-    required=False,
-    help="Tenant IDs (comma-separated).",
-)
-@click.option("--run-id", required=False, help="Workflow run ID to restore.")
-@click.option(
-    "--start-from",
-    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
-    default=None,
-    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
-)
-@click.option(
-    "--end-before",
-    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
-    default=None,
-    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
-)
-@click.option("--workers", default=1, show_default=True, type=int, help="Concurrent workflow runs to restore.")
-@click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of runs to restore.")
-@click.option("--dry-run", is_flag=True, help="Preview without restoring.")
-def restore_workflow_runs(
-    tenant_ids: str | None,
-    run_id: str | None,
-    start_from: datetime.datetime | None,
-    end_before: datetime.datetime | None,
-    workers: int,
-    limit: int,
-    dry_run: bool,
-):
-    """
-    Restore an archived workflow run from storage to the database.
-
-    This restores the following tables:
-    - workflow_node_executions
-    - workflow_node_execution_offload
-    - workflow_pauses
-    - workflow_pause_reasons
-    - workflow_trigger_logs
-    """
-    from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
-
-    parsed_tenant_ids = None
-    if tenant_ids:
-        parsed_tenant_ids = [tid.strip() for tid in tenant_ids.split(",") if tid.strip()]
-        if not parsed_tenant_ids:
-            raise click.BadParameter("tenant-ids must not be empty")
-
-    if (start_from is None) ^ (end_before is None):
-        raise click.UsageError("--start-from and --end-before must be provided together.")
-    if run_id is None and (start_from is None or end_before is None):
-        raise click.UsageError("--start-from and --end-before are required for batch restore.")
-    if workers < 1:
-        raise click.BadParameter("workers must be at least 1")
-
-    start_time = datetime.datetime.now(datetime.UTC)
-    click.echo(
-        click.style(
-            f"Starting restore of workflow run {run_id} at {start_time.isoformat()}.",
-            fg="white",
-        )
-    )
-
-    restorer = WorkflowRunRestore(dry_run=dry_run, workers=workers)
-    if run_id:
-        results = [restorer.restore_by_run_id(run_id)]
-    else:
-        assert start_from is not None
-        assert end_before is not None
-        results = restorer.restore_batch(
-            parsed_tenant_ids,
-            start_date=start_from,
-            end_date=end_before,
-            limit=limit,
-        )
-
-    end_time = datetime.datetime.now(datetime.UTC)
-    elapsed = end_time - start_time
-
-    successes = sum(1 for result in results if result.success)
-    failures = len(results) - successes
-
-    if failures == 0:
-        click.echo(
-            click.style(
-                f"Restore completed successfully. success={successes} duration={elapsed}",
-                fg="green",
-            )
-        )
-    else:
-        click.echo(
-            click.style(
-                f"Restore completed with failures. success={successes} failed={failures} duration={elapsed}",
-                fg="red",
-            )
-        )
-
-
-@click.command(
-    "delete-archived-workflow-runs",
-    help="Delete archived workflow runs from the database.",
-)
-@click.option(
-    "--tenant-ids",
-    required=False,
-    help="Tenant IDs (comma-separated).",
-)
-@click.option("--run-id", required=False, help="Workflow run ID to delete.")
-@click.option(
-    "--start-from",
-    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
-    default=None,
-    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
-)
-@click.option(
-    "--end-before",
-    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
-    default=None,
-    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
-)
-@click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of runs to delete.")
-@click.option("--dry-run", is_flag=True, help="Preview without deleting.")
-def delete_archived_workflow_runs(
-    tenant_ids: str | None,
-    run_id: str | None,
-    start_from: datetime.datetime | None,
-    end_before: datetime.datetime | None,
-    limit: int,
-    dry_run: bool,
-):
-    """
-    Delete archived workflow runs from the database.
-    """
-    from services.retention.workflow_run.delete_archived_workflow_run import ArchivedWorkflowRunDeletion
-
-    parsed_tenant_ids = None
-    if tenant_ids:
-        parsed_tenant_ids = [tid.strip() for tid in tenant_ids.split(",") if tid.strip()]
-        if not parsed_tenant_ids:
-            raise click.BadParameter("tenant-ids must not be empty")
-
-    if (start_from is None) ^ (end_before is None):
-        raise click.UsageError("--start-from and --end-before must be provided together.")
-    if run_id is None and (start_from is None or end_before is None):
-        raise click.UsageError("--start-from and --end-before are required for batch delete.")
-
-    start_time = datetime.datetime.now(datetime.UTC)
-    target_desc = f"workflow run {run_id}" if run_id else "workflow runs"
-    click.echo(
-        click.style(
-            f"Starting delete of {target_desc} at {start_time.isoformat()}.",
-            fg="white",
-        )
-    )
-
-    deleter = ArchivedWorkflowRunDeletion(dry_run=dry_run)
-    if run_id:
-        results = [deleter.delete_by_run_id(run_id)]
-    else:
-        assert start_from is not None
-        assert end_before is not None
-        results = deleter.delete_batch(
-            parsed_tenant_ids,
-            start_date=start_from,
-            end_date=end_before,
-            limit=limit,
-        )
-
-    for result in results:
-        if result.success:
-            click.echo(
-                click.style(
-                    f"{'[DRY RUN] Would delete' if dry_run else 'Deleted'} "
-                    f"workflow run {result.run_id} (tenant={result.tenant_id})",
-                    fg="green",
-                )
-            )
-        else:
-            click.echo(
-                click.style(
-                    f"Failed to delete workflow run {result.run_id}: {result.error}",
-                    fg="red",
-                )
-            )
-
-    end_time = datetime.datetime.now(datetime.UTC)
-    elapsed = end_time - start_time
-
-    successes = sum(1 for result in results if result.success)
-    failures = len(results) - successes
-
-    if failures == 0:
-        click.echo(
-            click.style(
-                f"Delete completed successfully. success={successes} duration={elapsed}",
-                fg="green",
-            )
-        )
-    else:
-        click.echo(
-            click.style(
-                f"Delete completed with failures. success={successes} failed={failures} duration={elapsed}",
-                fg="red",
-            )
-        )
-
-
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
 @click.command("clear-orphaned-file-records", help="Clear orphaned file records.")
 def clear_orphaned_file_records(force: bool):
@@ -1450,58 +1089,54 @@ def clear_orphaned_file_records(force: bool):
         all_ids_in_tables = []
         for ids_table in ids_tables:
             query = ""
-            match ids_table["type"]:
-                case "uuid":
-                    click.echo(
-                        click.style(
-                            f"- Listing file ids in column {ids_table['column']} in table {ids_table['table']}",
-                            fg="white",
-                        )
+            if ids_table["type"] == "uuid":
+                click.echo(
+                    click.style(
+                        f"- Listing file ids in column {ids_table['column']} in table {ids_table['table']}", fg="white"
                     )
-                    c = ids_table["column"]
-                    query = f"SELECT {c} FROM {ids_table['table']} WHERE {c} IS NOT NULL"
-                    with db.engine.begin() as conn:
-                        rs = conn.execute(sa.text(query))
-                    for i in rs:
-                        all_ids_in_tables.append({"table": ids_table["table"], "id": str(i[0])})
-                case "text":
-                    t = ids_table["table"]
-                    click.echo(
-                        click.style(
-                            f"- Listing file-id-like strings in column {ids_table['column']} in table {t}",
-                            fg="white",
-                        )
+                )
+                query = (
+                    f"SELECT {ids_table['column']} FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
+                )
+                with db.engine.begin() as conn:
+                    rs = conn.execute(sa.text(query))
+                for i in rs:
+                    all_ids_in_tables.append({"table": ids_table["table"], "id": str(i[0])})
+            elif ids_table["type"] == "text":
+                click.echo(
+                    click.style(
+                        f"- Listing file-id-like strings in column {ids_table['column']} in table {ids_table['table']}",
+                        fg="white",
                     )
-                    query = (
-                        f"SELECT regexp_matches({ids_table['column']}, '{guid_regexp}', 'g') AS extracted_id "
-                        f"FROM {ids_table['table']}"
+                )
+                query = (
+                    f"SELECT regexp_matches({ids_table['column']}, '{guid_regexp}', 'g') AS extracted_id "
+                    f"FROM {ids_table['table']}"
+                )
+                with db.engine.begin() as conn:
+                    rs = conn.execute(sa.text(query))
+                for i in rs:
+                    for j in i[0]:
+                        all_ids_in_tables.append({"table": ids_table["table"], "id": j})
+            elif ids_table["type"] == "json":
+                click.echo(
+                    click.style(
+                        (
+                            f"- Listing file-id-like JSON string in column {ids_table['column']} "
+                            f"in table {ids_table['table']}"
+                        ),
+                        fg="white",
                     )
-                    with db.engine.begin() as conn:
-                        rs = conn.execute(sa.text(query))
-                    for i in rs:
-                        for j in i[0]:
-                            all_ids_in_tables.append({"table": ids_table["table"], "id": j})
-                case "json":
-                    click.echo(
-                        click.style(
-                            (
-                                f"- Listing file-id-like JSON string in column {ids_table['column']} "
-                                f"in table {ids_table['table']}"
-                            ),
-                            fg="white",
-                        )
-                    )
-                    query = (
-                        f"SELECT regexp_matches({ids_table['column']}::text, '{guid_regexp}', 'g') AS extracted_id "
-                        f"FROM {ids_table['table']}"
-                    )
-                    with db.engine.begin() as conn:
-                        rs = conn.execute(sa.text(query))
-                    for i in rs:
-                        for j in i[0]:
-                            all_ids_in_tables.append({"table": ids_table["table"], "id": j})
-                case _:
-                    pass
+                )
+                query = (
+                    f"SELECT regexp_matches({ids_table['column']}::text, '{guid_regexp}', 'g') AS extracted_id "
+                    f"FROM {ids_table['table']}"
+                )
+                with db.engine.begin() as conn:
+                    rs = conn.execute(sa.text(query))
+                for i in rs:
+                    for j in i[0]:
+                        all_ids_in_tables.append({"table": ids_table["table"], "id": j})
         click.echo(click.style(f"Found {len(all_ids_in_tables)} file ids in tables.", fg="white"))
 
     except Exception as e:
@@ -1611,7 +1246,7 @@ def remove_orphaned_files_on_storage(force: bool):
             click.echo(click.style(f"- Scanning files on storage path {storage_path}", fg="white"))
             files = storage.scan(path=storage_path, files=True, directories=False)
             all_files_on_storage.extend(files)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             click.echo(click.style(f"  -> Skipping path {storage_path} as it does not exist.", fg="yellow"))
             continue
         except Exception as e:
@@ -1741,18 +1376,59 @@ def file_usage(
                 if src_filter != src:
                     continue
 
-        match ids_table["type"]:
-            case "uuid":
-                # Direct UUID match
-                query = (
-                    f"SELECT {ids_table['pk_column']}, {ids_table['column']} "
-                    f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
-                )
-                with db.engine.begin() as conn:
-                    rs = conn.execute(sa.text(query))
-                    for row in rs:
-                        record_id = str(row[0])
-                        ref_file_id = str(row[1])
+        if ids_table["type"] == "uuid":
+            # Direct UUID match
+            query = (
+                f"SELECT {ids_table['pk_column']}, {ids_table['column']} "
+                f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
+            )
+            with db.engine.begin() as conn:
+                rs = conn.execute(sa.text(query))
+                for row in rs:
+                    record_id = str(row[0])
+                    ref_file_id = str(row[1])
+                    if ref_file_id not in file_key_map:
+                        continue
+                    storage_key = file_key_map[ref_file_id]
+
+                    # Apply filters
+                    if file_id and ref_file_id != file_id:
+                        continue
+                    if key and not storage_key.endswith(key):
+                        continue
+
+                    # Only collect items within the requested page range
+                    if offset <= total_count < offset + limit:
+                        paginated_usages.append(
+                            {
+                                "src": f"{ids_table['table']}.{ids_table['column']}",
+                                "record_id": record_id,
+                                "file_id": ref_file_id,
+                                "key": storage_key,
+                            }
+                        )
+                    total_count += 1
+
+        elif ids_table["type"] in ("text", "json"):
+            # Extract UUIDs from text/json content
+            column_cast = f"{ids_table['column']}::text" if ids_table["type"] == "json" else ids_table["column"]
+            query = (
+                f"SELECT {ids_table['pk_column']}, {column_cast} "
+                f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
+            )
+            with db.engine.begin() as conn:
+                rs = conn.execute(sa.text(query))
+                for row in rs:
+                    record_id = str(row[0])
+                    content = str(row[1])
+
+                    # Find all UUIDs in the content
+                    import re
+
+                    uuid_pattern = re.compile(guid_regexp, re.IGNORECASE)
+                    matches = uuid_pattern.findall(content)
+
+                    for ref_file_id in matches:
                         if ref_file_id not in file_key_map:
                             continue
                         storage_key = file_key_map[ref_file_id]
@@ -1774,50 +1450,6 @@ def file_usage(
                                 }
                             )
                         total_count += 1
-
-            case "text" | "json":
-                # Extract UUIDs from text/json content
-                column_cast = f"{ids_table['column']}::text" if ids_table["type"] == "json" else ids_table["column"]
-                query = (
-                    f"SELECT {ids_table['pk_column']}, {column_cast} "
-                    f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
-                )
-                with db.engine.begin() as conn:
-                    rs = conn.execute(sa.text(query))
-                    for row in rs:
-                        record_id = str(row[0])
-                        content = str(row[1])
-
-                        # Find all UUIDs in the content
-                        import re
-
-                        uuid_pattern = re.compile(guid_regexp, re.IGNORECASE)
-                        matches = uuid_pattern.findall(content)
-
-                        for ref_file_id in matches:
-                            if ref_file_id not in file_key_map:
-                                continue
-                            storage_key = file_key_map[ref_file_id]
-
-                            # Apply filters
-                            if file_id and ref_file_id != file_id:
-                                continue
-                            if key and not storage_key.endswith(key):
-                                continue
-
-                            # Only collect items within the requested page range
-                            if offset <= total_count < offset + limit:
-                                paginated_usages.append(
-                                    {
-                                        "src": f"{ids_table['table']}.{ids_table['column']}",
-                                        "record_id": record_id,
-                                        "file_id": ref_file_id,
-                                        "key": storage_key,
-                                    }
-                                )
-                            total_count += 1
-            case _:
-                pass
 
     # Output results
     if output_json:
@@ -1862,6 +1494,57 @@ def file_usage(
             click.echo(click.style(f"Use --offset {offset + limit} to see next page", fg="white"))
 
 
+@click.command("setup-sandbox-system-config", help="Setup system-level sandbox provider configuration.")
+@click.option(
+    "--provider-type", prompt=True, type=click.Choice(["e2b", "docker", "local"]), help="Sandbox provider type"
+)
+@click.option("--config", prompt=True, help='Configuration JSON (e.g., {"api_key": "xxx"} for e2b)')
+def setup_sandbox_system_config(provider_type: str, config: str):
+    """
+    Setup system-level sandbox provider configuration.
+
+    Examples:
+        flask setup-sandbox-system-config --provider-type e2b --config '{"api_key": "e2b_xxx"}'
+        flask setup-sandbox-system-config --provider-type docker --config '{"docker_sock": "unix:///var/run/docker.sock"}'
+        flask setup-sandbox-system-config --provider-type local --config '{}'
+    """
+    from models.sandbox import SandboxProviderSystemConfig
+
+    try:
+        click.echo(click.style(f"Validating config: {config}", fg="yellow"))
+        config_dict = TypeAdapter(dict[str, Any]).validate_json(config)
+        click.echo(click.style("Config validated successfully.", fg="green"))
+
+        click.echo(click.style(f"Validating config schema for provider type: {provider_type}", fg="yellow"))
+        SandboxBuilder.validate(SandboxType(provider_type), config_dict)
+        click.echo(click.style("Config schema validated successfully.", fg="green"))
+
+        click.echo(click.style("Encrypting config...", fg="yellow"))
+        click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
+        encrypted_config = encrypt_system_params(config_dict)
+        click.echo(click.style("Config encrypted successfully.", fg="green"))
+    except Exception as e:
+        click.echo(click.style(f"Error validating/encrypting config: {str(e)}", fg="red"))
+        return
+
+    deleted_count = db.session.query(SandboxProviderSystemConfig).filter_by(provider_type=provider_type).delete()
+    if deleted_count > 0:
+        click.echo(
+            click.style(
+                f"Deleted {deleted_count} existing system config for provider type: {provider_type}", fg="yellow"
+            )
+        )
+
+    system_config = SandboxProviderSystemConfig(
+        provider_type=provider_type,
+        encrypted_config=encrypted_config,
+    )
+    db.session.add(system_config)
+    db.session.commit()
+    click.echo(click.style(f"Sandbox system config setup successfully. id: {system_config.id}", fg="green"))
+    click.echo(click.style(f"Provider type: {provider_type}", fg="green"))
+
+
 @click.command("setup-system-tool-oauth-client", help="Setup system tool oauth client.")
 @click.option("--provider", prompt=True, help="Provider name")
 @click.option("--client-params", prompt=True, help="Client Params")
@@ -1881,7 +1564,7 @@ def setup_system_tool_oauth_client(provider, client_params):
 
         click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
         click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
-        oauth_client_params = encrypt_system_oauth_params(client_params_dict)
+        oauth_client_params = encrypt_system_params(client_params_dict)
         click.echo(click.style("Client params encrypted successfully.", fg="green"))
     except Exception as e:
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
@@ -1930,7 +1613,7 @@ def setup_system_trigger_oauth_client(provider, client_params):
 
         click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
         click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
-        oauth_client_params = encrypt_system_oauth_params(client_params_dict)
+        oauth_client_params = encrypt_system_params(client_params_dict)
         click.echo(click.style("Client params encrypted successfully.", fg="green"))
     except Exception as e:
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))

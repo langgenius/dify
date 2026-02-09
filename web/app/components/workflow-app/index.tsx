@@ -1,11 +1,17 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
+import { useQueryState } from 'nuqs'
 import {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
+  useState,
 } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FeaturesProvider } from '@/app/components/base/features'
@@ -15,10 +21,12 @@ import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
+import { HeaderShell } from '@/app/components/workflow/header'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import {
   SupportUploadFileTypes,
+  ViewType,
 } from '@/app/components/workflow/types'
 import {
   initialEdges,
@@ -28,19 +36,113 @@ import { useAppContext } from '@/context/app-context'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
+import { useFeatures } from '../base/features/hooks'
+import ViewPicker from '../workflow/view-picker'
 import WorkflowAppMain from './components/workflow-main'
-
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
+import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
 import {
   useWorkflowInit,
 } from './hooks/use-workflow-init'
+import { parseAsViewType, WORKFLOW_VIEW_PARAM_KEY } from './search-params'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
+
+const SkillMain = dynamic(() => import('@/app/components/workflow/skill/main'), {
+  ssr: false,
+})
+
+type WorkflowViewContentProps = {
+  renderGraph: (headerLeftSlot: ReactNode) => ReactNode
+  reload: () => Promise<void>
+}
+
+const WorkflowViewContent = ({
+  renderGraph,
+  reload,
+}: WorkflowViewContentProps) => {
+  const features = useFeatures(s => s.features)
+  const isSupportSandbox = !!features.sandbox?.enabled
+  const [viewType, doSetViewType] = useQueryState(WORKFLOW_VIEW_PARAM_KEY, parseAsViewType)
+  const { syncWorkflowDraftImmediately } = useNodesSyncDraft()
+  const pendingSyncRef = useRef<Promise<void> | null>(null)
+  const [isGraphRefreshing, setIsGraphRefreshing] = useState(false)
+
+  const refreshGraph = useCallback(() => {
+    setIsGraphRefreshing(true)
+    return reload().finally(() => {
+      setIsGraphRefreshing(false)
+    })
+  }, [reload])
+
+  const handleViewTypeChange = useCallback((type: ViewType) => {
+    if (viewType === ViewType.graph && type !== viewType)
+      pendingSyncRef.current = syncWorkflowDraftImmediately(true).catch(() => { })
+
+    doSetViewType(type)
+    if (type === ViewType.graph) {
+      const pending = pendingSyncRef.current
+      if (pending) {
+        pending.finally(() => {
+          refreshGraph()
+        })
+        pendingSyncRef.current = null
+      }
+      else {
+        refreshGraph()
+      }
+    }
+  }, [doSetViewType, refreshGraph, syncWorkflowDraftImmediately, viewType])
+
+  if (!isSupportSandbox)
+    return renderGraph(null)
+
+  const viewPicker = (
+    <ViewPicker
+      value={viewType}
+      onChange={handleViewTypeChange}
+    />
+  )
+  const viewPickerDock = (
+    <HeaderShell>
+      <div className="flex w-full items-center justify-between">
+        <div className="flex items-center gap-2">
+          {viewPicker}
+        </div>
+      </div>
+    </HeaderShell>
+  )
+
+  return (
+    <div className="relative h-full w-full">
+      {viewType === ViewType.graph
+        ? (
+            isGraphRefreshing
+              ? (
+                  <>
+                    {viewPickerDock}
+                    <div className="relative flex h-full w-full items-center justify-center">
+                      <Loading />
+                    </div>
+                  </>
+                )
+              : renderGraph(viewPicker)
+          )
+        : (
+            <>
+              {viewPickerDock}
+              <SkillMain />
+            </>
+          )}
+    </div>
+  )
+}
 
 const WorkflowAppWithAdditionalContext = () => {
   const {
     data,
     isLoading,
     fileUploadConfigResponse,
+    reload,
   } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
@@ -159,7 +261,22 @@ const WorkflowAppWithAdditionalContext = () => {
     })
   }, [replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
 
-  if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
+  const isDataReady = !(!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id)
+  const renderGraph = useCallback((headerLeftSlot: ReactNode) => {
+    if (!isDataReady)
+      return null
+
+    return (
+      <WorkflowAppMain
+        nodes={nodesData}
+        edges={edgesData}
+        viewport={data.graph.viewport}
+        headerLeftSlot={headerLeftSlot}
+      />
+    )
+  }, [isDataReady, nodesData, edgesData, data])
+
+  if (!isDataReady) {
     return (
       <div className="relative flex h-full w-full items-center justify-center">
         <Loading />
@@ -192,6 +309,7 @@ const WorkflowAppWithAdditionalContext = () => {
     text2speech: features.text_to_speech || { enabled: false },
     citation: features.retriever_resource || { enabled: false },
     moderation: features.sensitive_word_avoidance || { enabled: false },
+    sandbox: features.sandbox || { enabled: false },
   }
 
   return (
@@ -200,10 +318,9 @@ const WorkflowAppWithAdditionalContext = () => {
       nodes={nodesData}
     >
       <FeaturesProvider features={initialFeatures}>
-        <WorkflowAppMain
-          nodes={nodesData}
-          edges={edgesData}
-          viewport={data.graph.viewport}
+        <WorkflowViewContent
+          renderGraph={renderGraph}
+          reload={reload}
         />
       </FeaturesProvider>
     </WorkflowWithDefaultContext>

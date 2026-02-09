@@ -27,6 +27,7 @@ type Props = {
   payload: PromptItem
   handleChatModeMessageRoleChange: (role: PromptRole) => void
   onPromptChange: (p: string) => void
+  onMetadataChange: (metadata: Record<string, unknown>) => void
   onEditionTypeChange: (editionType: EditionType) => void
   onRemove: () => void
   isShowContext: boolean
@@ -40,6 +41,7 @@ type Props = {
   varList: Variable[]
   handleAddVariable: (payload: any) => void
   modelConfig?: ModelConfig
+  isSupportSandbox?: boolean
 }
 
 const roleOptions = [
@@ -73,6 +75,7 @@ const ConfigPromptItem: FC<Props> = ({
   isChatApp,
   payload,
   onPromptChange,
+  onMetadataChange,
   onEditionTypeChange,
   onRemove,
   isShowContext,
@@ -82,6 +85,7 @@ const ConfigPromptItem: FC<Props> = ({
   varList,
   handleAddVariable,
   modelConfig,
+  isSupportSandbox,
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -129,6 +133,8 @@ const ConfigPromptItem: FC<Props> = ({
       )}
       value={payload.edition_type === EditionType.jinja2 ? (payload.jinja2_text || '') : payload.text}
       onChange={onPromptChange}
+      promptMetadata={payload.metadata}
+      onPromptMetadataChange={onMetadataChange}
       readOnly={readOnly}
       showRemove={canRemove}
       onRemove={onRemove}
@@ -149,6 +155,7 @@ const ConfigPromptItem: FC<Props> = ({
       varList={varList}
       handleAddVariable={handleAddVariable}
       isSupportFileVar
+      isSupportSandbox={isSupportSandbox}
     />
   )
 }

@@ -748,6 +748,7 @@ export const useWorkflowRun = () => {
       citation: publishedWorkflow.features.retriever_resource,
       moderation: publishedWorkflow.features.sensitive_word_avoidance,
       file: publishedWorkflow.features.file_upload,
+      sandbox: publishedWorkflow.features.sandbox || { enabled: false },
     }
 
     featuresStore?.setState({ features: mappedFeatures })

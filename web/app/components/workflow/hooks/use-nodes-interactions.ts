@@ -8,6 +8,7 @@ import type {
   ResizeParamsWithDirection,
 } from 'reactflow'
 import type { PluginDefaultValue } from '../block-selector/types'
+import type { GroupHandler, GroupMember, GroupNodeData } from '../nodes/group/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
@@ -52,6 +53,7 @@ import { useWorkflowHistoryStore } from '../workflow-history-store'
 import { useAutoGenerateWebhookUrl } from './use-auto-generate-webhook-url'
 import { useHelpline } from './use-helpline'
 import useInspectVarsCrud from './use-inspect-vars-crud'
+import { checkMakeGroupAvailability } from './use-make-group'
 import { useNodesMetaData } from './use-nodes-meta-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import {
@@ -72,6 +74,151 @@ const ENTRY_NODE_WRAPPER_OFFSET = {
   x: 0,
   y: 21, // Adjusted based on visual testing feedback
 } as const
+
+/**
+ * Parse group handler id to get original node id and sourceHandle
+ * Handler id format: `${nodeId}-${sourceHandle}`
+ */
+function parseGroupHandlerId(handlerId: string): { originalNodeId: string, originalSourceHandle: string } {
+  const lastDashIndex = handlerId.lastIndexOf('-')
+  return {
+    originalNodeId: handlerId.substring(0, lastDashIndex),
+    originalSourceHandle: handlerId.substring(lastDashIndex + 1),
+  }
+}
+
+/**
+ * Create a pair of edges for group node connections:
+ * - realEdge: hidden edge from original node to target (persisted to backend)
+ * - uiEdge: visible temp edge from group to target (UI-only, not persisted)
+ */
+function createGroupEdgePair(params: {
+  groupNodeId: string
+  handlerId: string
+  targetNodeId: string
+  targetHandle: string
+  nodes: Node[]
+  baseEdgeData?: Partial<Edge['data']>
+  zIndex?: number
+}): { realEdge: Edge, uiEdge: Edge } | null {
+  const { groupNodeId, handlerId, targetNodeId, targetHandle, nodes, baseEdgeData = {}, zIndex = 0 } = params
+
+  const groupNode = nodes.find(node => node.id === groupNodeId)
+  const groupData = groupNode?.data as GroupNodeData | undefined
+  const handler = groupData?.handlers?.find(h => h.id === handlerId)
+
+  let originalNodeId: string
+  let originalSourceHandle: string
+
+  if (handler?.nodeId && handler?.sourceHandle) {
+    originalNodeId = handler.nodeId
+    originalSourceHandle = handler.sourceHandle
+  }
+  else {
+    const parsed = parseGroupHandlerId(handlerId)
+    originalNodeId = parsed.originalNodeId
+    originalSourceHandle = parsed.originalSourceHandle
+  }
+
+  const originalNode = nodes.find(node => node.id === originalNodeId)
+  const targetNode = nodes.find(node => node.id === targetNodeId)
+
+  if (!originalNode || !targetNode)
+    return null
+
+  // Create the real edge (from original node to target) - hidden because original node is in group
+  const realEdge: Edge = {
+    id: `${originalNodeId}-${originalSourceHandle}-${targetNodeId}-${targetHandle}`,
+    type: CUSTOM_EDGE,
+    source: originalNodeId,
+    sourceHandle: originalSourceHandle,
+    target: targetNodeId,
+    targetHandle,
+    hidden: true,
+    data: {
+      ...baseEdgeData,
+      sourceType: originalNode.data.type,
+      targetType: targetNode.data.type,
+      _hiddenInGroupId: groupNodeId,
+    },
+    zIndex,
+  }
+
+  // Create the UI edge (from group to target) - temporary, not persisted to backend
+  const uiEdge: Edge = {
+    id: `${groupNodeId}-${handlerId}-${targetNodeId}-${targetHandle}`,
+    type: CUSTOM_EDGE,
+    source: groupNodeId,
+    sourceHandle: handlerId,
+    target: targetNodeId,
+    targetHandle,
+    data: {
+      ...baseEdgeData,
+      sourceType: BlockEnum.Group,
+      targetType: targetNode.data.type,
+      _isTemp: true,
+    },
+    zIndex,
+  }
+
+  return { realEdge, uiEdge }
+}
+
+function createGroupInboundEdges(params: {
+  sourceNodeId: string
+  sourceHandle: string
+  groupNodeId: string
+  groupData: GroupNodeData
+  nodes: Node[]
+  baseEdgeData?: Partial<Edge['data']>
+  zIndex?: number
+}): { realEdges: Edge[], uiEdge: Edge } | null {
+  const { sourceNodeId, sourceHandle, groupNodeId, groupData, nodes, baseEdgeData = {}, zIndex = 0 } = params
+
+  const sourceNode = nodes.find(node => node.id === sourceNodeId)
+  const headNodeIds = groupData.headNodeIds || []
+
+  if (!sourceNode || headNodeIds.length === 0)
+    return null
+
+  const realEdges: Edge[] = headNodeIds.map((headNodeId) => {
+    const headNode = nodes.find(node => node.id === headNodeId)
+    return {
+      id: `${sourceNodeId}-${sourceHandle}-${headNodeId}-target`,
+      type: CUSTOM_EDGE,
+      source: sourceNodeId,
+      sourceHandle,
+      target: headNodeId,
+      targetHandle: 'target',
+      hidden: true,
+      data: {
+        ...baseEdgeData,
+        sourceType: sourceNode.data.type,
+        targetType: headNode?.data.type,
+        _hiddenInGroupId: groupNodeId,
+      },
+      zIndex,
+    } as Edge
+  })
+
+  const uiEdge: Edge = {
+    id: `${sourceNodeId}-${sourceHandle}-${groupNodeId}-target`,
+    type: CUSTOM_EDGE,
+    source: sourceNodeId,
+    sourceHandle,
+    target: groupNodeId,
+    targetHandle: 'target',
+    data: {
+      ...baseEdgeData,
+      sourceType: sourceNode.data.type,
+      targetType: BlockEnum.Group,
+      _isTemp: true,
+    },
+    zIndex,
+  }
+
+  return { realEdges, uiEdge }
+}
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
@@ -445,6 +592,146 @@ export const useNodesInteractions = () => {
         sourceNode?.type === CUSTOM_NOTE_NODE
         || targetNode?.type === CUSTOM_NOTE_NODE
       ) {
+        return
+      }
+
+      // Check if source is a group node - need special handling
+      const isSourceGroup = sourceNode?.data.type === BlockEnum.Group
+
+      if (isSourceGroup && sourceHandle && target && targetHandle) {
+        const { originalNodeId, originalSourceHandle } = parseGroupHandlerId(sourceHandle)
+
+        // Check if real edge already exists
+        if (edges.find(edge =>
+          edge.source === originalNodeId
+          && edge.sourceHandle === originalSourceHandle
+          && edge.target === target
+          && edge.targetHandle === targetHandle,
+        )) {
+          return
+        }
+
+        const parentNode = nodes.find(node => node.id === targetNode?.parentId)
+        const isInIteration = parentNode && parentNode.data.type === BlockEnum.Iteration
+        const isInLoop = !!parentNode && parentNode.data.type === BlockEnum.Loop
+
+        const edgePair = createGroupEdgePair({
+          groupNodeId: source!,
+          handlerId: sourceHandle,
+          targetNodeId: target,
+          targetHandle,
+          nodes,
+          baseEdgeData: {
+            isInIteration,
+            iteration_id: isInIteration ? targetNode?.parentId : undefined,
+            isInLoop,
+            loop_id: isInLoop ? targetNode?.parentId : undefined,
+          },
+        })
+
+        if (!edgePair)
+          return
+
+        const { realEdge, uiEdge } = edgePair
+
+        // Update connected handle ids for the original node
+        const nodesConnectedSourceOrTargetHandleIdsMap
+          = getNodesConnectedSourceOrTargetHandleIdsMap(
+            [{ type: 'add', edge: realEdge }],
+            nodes,
+          )
+        const newNodes = produce(nodes, (draft: Node[]) => {
+          draft.forEach((node) => {
+            if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
+              node.data = {
+                ...node.data,
+                ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
+              }
+            }
+          })
+        })
+        const newEdges = produce(edges, (draft) => {
+          draft.push(realEdge)
+          draft.push(uiEdge)
+        })
+
+        setNodes(newNodes)
+        setEdges(newEdges)
+
+        handleSyncWorkflowDraft()
+        saveStateToHistory(WorkflowHistoryEvent.NodeConnect, {
+          nodeId: targetNode?.id,
+        })
+        return
+      }
+
+      const isTargetGroup = targetNode?.data.type === BlockEnum.Group
+
+      if (isTargetGroup && source && sourceHandle) {
+        const groupData = targetNode.data as GroupNodeData
+        const headNodeIds = groupData.headNodeIds || []
+
+        if (edges.find(edge =>
+          edge.source === source
+          && edge.sourceHandle === sourceHandle
+          && edge.target === target
+          && edge.targetHandle === targetHandle,
+        )) {
+          return
+        }
+
+        const parentNode = nodes.find(node => node.id === sourceNode?.parentId)
+        const isInIteration = parentNode && parentNode.data.type === BlockEnum.Iteration
+        const isInLoop = !!parentNode && parentNode.data.type === BlockEnum.Loop
+
+        const inboundResult = createGroupInboundEdges({
+          sourceNodeId: source,
+          sourceHandle,
+          groupNodeId: target!,
+          groupData,
+          nodes,
+          baseEdgeData: {
+            isInIteration,
+            iteration_id: isInIteration ? sourceNode?.parentId : undefined,
+            isInLoop,
+            loop_id: isInLoop ? sourceNode?.parentId : undefined,
+          },
+        })
+
+        if (!inboundResult)
+          return
+
+        const { realEdges, uiEdge } = inboundResult
+
+        const edgeChanges = realEdges.map(edge => ({ type: 'add' as const, edge }))
+        const nodesConnectedSourceOrTargetHandleIdsMap
+          = getNodesConnectedSourceOrTargetHandleIdsMap(edgeChanges, nodes)
+
+        const newNodes = produce(nodes, (draft: Node[]) => {
+          draft.forEach((node) => {
+            if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
+              node.data = {
+                ...node.data,
+                ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
+              }
+            }
+          })
+        })
+
+        const newEdges = produce(edges, (draft) => {
+          realEdges.forEach((edge) => {
+            draft.push(edge)
+          })
+          draft.push(uiEdge)
+        })
+
+        setNodes(newNodes)
+        setEdges(newEdges)
+
+        handleSyncWorkflowDraft()
+        saveStateToHistory(WorkflowHistoryEvent.NodeConnect, {
+          nodeId: headNodeIds[0],
+        })
         return
       }
 
@@ -909,8 +1196,34 @@ export const useNodesInteractions = () => {
           }
         }
 
-        let newEdge = null
-        if (nodeType !== BlockEnum.DataSource) {
+        // Check if prevNode is a group node - need special handling
+        const isPrevNodeGroup = prevNode.data.type === BlockEnum.Group
+        let newEdge: Edge | null = null
+        let newUiEdge: Edge | null = null
+
+        if (isPrevNodeGroup && prevNodeSourceHandle && nodeType !== BlockEnum.DataSource) {
+          const edgePair = createGroupEdgePair({
+            groupNodeId: prevNodeId,
+            handlerId: prevNodeSourceHandle,
+            targetNodeId: newNode.id,
+            targetHandle,
+            nodes: [...nodes, newNode],
+            baseEdgeData: {
+              isInIteration,
+              isInLoop,
+              iteration_id: isInIteration ? prevNode.parentId : undefined,
+              loop_id: isInLoop ? prevNode.parentId : undefined,
+              _connectedNodeIsSelected: true,
+            },
+          })
+
+          if (edgePair) {
+            newEdge = edgePair.realEdge
+            newUiEdge = edgePair.uiEdge
+          }
+        }
+        else if (nodeType !== BlockEnum.DataSource) {
+          // Normal case: prevNode is not a group
           newEdge = {
             id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
             type: CUSTOM_EDGE,
@@ -935,9 +1248,10 @@ export const useNodesInteractions = () => {
           }
         }
 
+        const edgesToAdd = [newEdge, newUiEdge].filter(Boolean).map(edge => ({ type: 'add' as const, edge: edge! }))
         const nodesConnectedSourceOrTargetHandleIdsMap
           = getNodesConnectedSourceOrTargetHandleIdsMap(
-            (newEdge ? [{ type: 'add', edge: newEdge }] : []),
+            edgesToAdd,
             nodes,
           )
         const newNodes = produce(nodes, (draft: Node[]) => {
@@ -1006,6 +1320,8 @@ export const useNodesInteractions = () => {
           })
           if (newEdge)
             draft.push(newEdge)
+          if (newUiEdge)
+            draft.push(newUiEdge)
         })
 
         setNodes(newNodes)
@@ -1090,7 +1406,7 @@ export const useNodesInteractions = () => {
 
         const afterNodesInSameBranch = getAfterNodesInSameBranch(nextNodeId!)
         const afterNodesInSameBranchIds = afterNodesInSameBranch.map(
-          node => node.id,
+          (node: Node) => node.id,
         )
         const newNodes = produce(nodes, (draft) => {
           draft.forEach((node) => {
@@ -1200,37 +1516,113 @@ export const useNodesInteractions = () => {
           }
         }
 
-        const currentEdgeIndex = edges.findIndex(
-          edge => edge.source === prevNodeId && edge.target === nextNodeId,
-        )
-        let newPrevEdge = null
+        // Check if prevNode is a group node - need special handling
+        const isPrevNodeGroup = prevNode.data.type === BlockEnum.Group
+        let newPrevEdge: Edge | null = null
+        let newPrevUiEdge: Edge | null = null
+        const edgesToRemove: string[] = []
 
-        if (nodeType !== BlockEnum.DataSource) {
-          newPrevEdge = {
-            id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
-            type: CUSTOM_EDGE,
-            source: prevNodeId,
-            sourceHandle: prevNodeSourceHandle,
-            target: newNode.id,
+        if (isPrevNodeGroup && prevNodeSourceHandle && nodeType !== BlockEnum.DataSource) {
+          const { originalNodeId, originalSourceHandle } = parseGroupHandlerId(prevNodeSourceHandle)
+
+          // Find edges to remove: both hidden real edge and UI temp edge from group to nextNode
+          const hiddenEdge = edges.find(
+            edge => edge.source === originalNodeId
+              && edge.sourceHandle === originalSourceHandle
+              && edge.target === nextNodeId,
+          )
+          const uiTempEdge = edges.find(
+            edge => edge.source === prevNodeId
+              && edge.sourceHandle === prevNodeSourceHandle
+              && edge.target === nextNodeId,
+          )
+          if (hiddenEdge)
+            edgesToRemove.push(hiddenEdge.id)
+          if (uiTempEdge)
+            edgesToRemove.push(uiTempEdge.id)
+
+          const edgePair = createGroupEdgePair({
+            groupNodeId: prevNodeId,
+            handlerId: prevNodeSourceHandle,
+            targetNodeId: newNode.id,
             targetHandle,
-            data: {
-              sourceType: prevNode.data.type,
-              targetType: newNode.data.type,
+            nodes: [...nodes, newNode],
+            baseEdgeData: {
               isInIteration,
               isInLoop,
               iteration_id: isInIteration ? prevNode.parentId : undefined,
               loop_id: isInLoop ? prevNode.parentId : undefined,
               _connectedNodeIsSelected: true,
             },
-            zIndex: prevNode.parentId
-              ? isInIteration
-                ? ITERATION_CHILDREN_Z_INDEX
-                : LOOP_CHILDREN_Z_INDEX
-              : 0,
+          })
+
+          if (edgePair) {
+            newPrevEdge = edgePair.realEdge
+            newPrevUiEdge = edgePair.uiEdge
+          }
+        }
+        else {
+          const isNextNodeGroupForRemoval = nextNode.data.type === BlockEnum.Group
+
+          if (isNextNodeGroupForRemoval) {
+            const groupData = nextNode.data as GroupNodeData
+            const headNodeIds = groupData.headNodeIds || []
+
+            headNodeIds.forEach((headNodeId) => {
+              const realEdge = edges.find(
+                edge => edge.source === prevNodeId
+                  && edge.sourceHandle === prevNodeSourceHandle
+                  && edge.target === headNodeId,
+              )
+              if (realEdge)
+                edgesToRemove.push(realEdge.id)
+            })
+
+            const uiEdge = edges.find(
+              edge => edge.source === prevNodeId
+                && edge.sourceHandle === prevNodeSourceHandle
+                && edge.target === nextNodeId,
+            )
+            if (uiEdge)
+              edgesToRemove.push(uiEdge.id)
+          }
+          else {
+            const currentEdge = edges.find(
+              edge => edge.source === prevNodeId && edge.target === nextNodeId,
+            )
+            if (currentEdge)
+              edgesToRemove.push(currentEdge.id)
+          }
+
+          if (nodeType !== BlockEnum.DataSource) {
+            newPrevEdge = {
+              id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
+              type: CUSTOM_EDGE,
+              source: prevNodeId,
+              sourceHandle: prevNodeSourceHandle,
+              target: newNode.id,
+              targetHandle,
+              data: {
+                sourceType: prevNode.data.type,
+                targetType: newNode.data.type,
+                isInIteration,
+                isInLoop,
+                iteration_id: isInIteration ? prevNode.parentId : undefined,
+                loop_id: isInLoop ? prevNode.parentId : undefined,
+                _connectedNodeIsSelected: true,
+              },
+              zIndex: prevNode.parentId
+                ? isInIteration
+                  ? ITERATION_CHILDREN_Z_INDEX
+                  : LOOP_CHILDREN_Z_INDEX
+                : 0,
+            }
           }
         }
 
         let newNextEdge: Edge | null = null
+        let newNextUiEdge: Edge | null = null
+        const newNextRealEdges: Edge[] = []
 
         const nextNodeParentNode
           = nodes.find(node => node.id === nextNode.parentId) || null
@@ -1241,49 +1633,113 @@ export const useNodesInteractions = () => {
           = !!nextNodeParentNode
             && nextNodeParentNode.data.type === BlockEnum.Loop
 
+        const isNextNodeGroup = nextNode.data.type === BlockEnum.Group
+
         if (
           nodeType !== BlockEnum.IfElse
           && nodeType !== BlockEnum.QuestionClassifier
           && nodeType !== BlockEnum.LoopEnd
         ) {
-          newNextEdge = {
-            id: `${newNode.id}-${sourceHandle}-${nextNodeId}-${nextNodeTargetHandle}`,
-            type: CUSTOM_EDGE,
-            source: newNode.id,
-            sourceHandle,
-            target: nextNodeId,
-            targetHandle: nextNodeTargetHandle,
-            data: {
-              sourceType: newNode.data.type,
-              targetType: nextNode.data.type,
-              isInIteration: isNextNodeInIteration,
-              isInLoop: isNextNodeInLoop,
-              iteration_id: isNextNodeInIteration
-                ? nextNode.parentId
-                : undefined,
-              loop_id: isNextNodeInLoop ? nextNode.parentId : undefined,
-              _connectedNodeIsSelected: true,
-            },
-            zIndex: nextNode.parentId
-              ? isNextNodeInIteration
-                ? ITERATION_CHILDREN_Z_INDEX
-                : LOOP_CHILDREN_Z_INDEX
-              : 0,
+          if (isNextNodeGroup) {
+            const groupData = nextNode.data as GroupNodeData
+            const headNodeIds = groupData.headNodeIds || []
+
+            headNodeIds.forEach((headNodeId) => {
+              const headNode = nodes.find(node => node.id === headNodeId)
+              newNextRealEdges.push({
+                id: `${newNode.id}-${sourceHandle}-${headNodeId}-target`,
+                type: CUSTOM_EDGE,
+                source: newNode.id,
+                sourceHandle,
+                target: headNodeId,
+                targetHandle: 'target',
+                hidden: true,
+                data: {
+                  sourceType: newNode.data.type,
+                  targetType: headNode?.data.type,
+                  isInIteration: isNextNodeInIteration,
+                  isInLoop: isNextNodeInLoop,
+                  iteration_id: isNextNodeInIteration ? nextNode.parentId : undefined,
+                  loop_id: isNextNodeInLoop ? nextNode.parentId : undefined,
+                  _hiddenInGroupId: nextNodeId,
+                  _connectedNodeIsSelected: true,
+                },
+                zIndex: nextNode.parentId
+                  ? isNextNodeInIteration
+                    ? ITERATION_CHILDREN_Z_INDEX
+                    : LOOP_CHILDREN_Z_INDEX
+                  : 0,
+              } as Edge)
+            })
+
+            newNextUiEdge = {
+              id: `${newNode.id}-${sourceHandle}-${nextNodeId}-target`,
+              type: CUSTOM_EDGE,
+              source: newNode.id,
+              sourceHandle,
+              target: nextNodeId,
+              targetHandle: 'target',
+              data: {
+                sourceType: newNode.data.type,
+                targetType: BlockEnum.Group,
+                isInIteration: isNextNodeInIteration,
+                isInLoop: isNextNodeInLoop,
+                iteration_id: isNextNodeInIteration ? nextNode.parentId : undefined,
+                loop_id: isNextNodeInLoop ? nextNode.parentId : undefined,
+                _isTemp: true,
+                _connectedNodeIsSelected: true,
+              },
+              zIndex: nextNode.parentId
+                ? isNextNodeInIteration
+                  ? ITERATION_CHILDREN_Z_INDEX
+                  : LOOP_CHILDREN_Z_INDEX
+                : 0,
+            }
+          }
+          else {
+            newNextEdge = {
+              id: `${newNode.id}-${sourceHandle}-${nextNodeId}-${nextNodeTargetHandle}`,
+              type: CUSTOM_EDGE,
+              source: newNode.id,
+              sourceHandle,
+              target: nextNodeId,
+              targetHandle: nextNodeTargetHandle,
+              data: {
+                sourceType: newNode.data.type,
+                targetType: nextNode.data.type,
+                isInIteration: isNextNodeInIteration,
+                isInLoop: isNextNodeInLoop,
+                iteration_id: isNextNodeInIteration
+                  ? nextNode.parentId
+                  : undefined,
+                loop_id: isNextNodeInLoop ? nextNode.parentId : undefined,
+                _connectedNodeIsSelected: true,
+              },
+              zIndex: nextNode.parentId
+                ? isNextNodeInIteration
+                  ? ITERATION_CHILDREN_Z_INDEX
+                  : LOOP_CHILDREN_Z_INDEX
+                : 0,
+            }
           }
         }
+        const edgeChanges = [
+          ...edgesToRemove.map(id => ({ type: 'remove' as const, edge: edges.find(e => e.id === id)! })).filter(c => c.edge),
+          ...(newPrevEdge ? [{ type: 'add' as const, edge: newPrevEdge }] : []),
+          ...(newPrevUiEdge ? [{ type: 'add' as const, edge: newPrevUiEdge }] : []),
+          ...(newNextEdge ? [{ type: 'add' as const, edge: newNextEdge }] : []),
+          ...newNextRealEdges.map(edge => ({ type: 'add' as const, edge })),
+          ...(newNextUiEdge ? [{ type: 'add' as const, edge: newNextUiEdge }] : []),
+        ]
         const nodesConnectedSourceOrTargetHandleIdsMap
           = getNodesConnectedSourceOrTargetHandleIdsMap(
-            [
-              { type: 'remove', edge: edges[currentEdgeIndex] },
-              ...(newPrevEdge ? [{ type: 'add', edge: newPrevEdge }] : []),
-              ...(newNextEdge ? [{ type: 'add', edge: newNextEdge }] : []),
-            ],
+            edgeChanges,
             [...nodes, newNode],
           )
 
         const afterNodesInSameBranch = getAfterNodesInSameBranch(nextNodeId!)
         const afterNodesInSameBranchIds = afterNodesInSameBranch.map(
-          node => node.id,
+          (node: Node) => node.id,
         )
         const newNodes = produce(nodes, (draft) => {
           draft.forEach((node) => {
@@ -1342,7 +1798,10 @@ export const useNodesInteractions = () => {
           })
         }
         const newEdges = produce(edges, (draft) => {
-          draft.splice(currentEdgeIndex, 1)
+          const filteredDraft = draft.filter(edge => !edgesToRemove.includes(edge.id))
+          draft.length = 0
+          draft.push(...filteredDraft)
+
           draft.forEach((item) => {
             item.data = {
               ...item.data,
@@ -1351,9 +1810,15 @@ export const useNodesInteractions = () => {
           })
           if (newPrevEdge)
             draft.push(newPrevEdge)
-
+          if (newPrevUiEdge)
+            draft.push(newPrevUiEdge)
           if (newNextEdge)
             draft.push(newNextEdge)
+          newNextRealEdges.forEach((edge) => {
+            draft.push(edge)
+          })
+          if (newNextUiEdge)
+            draft.push(newNextUiEdge)
         })
         setEdges(newEdges)
       }
@@ -2087,6 +2552,302 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
   }, [store])
 
+  // Check if there are any nodes selected via box selection
+  const hasBundledNodes = useCallback(() => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    return nodes.some(node => node.data._isBundled)
+  }, [store])
+
+  const getCanMakeGroup = useCallback(() => {
+    const { getNodes, edges } = store.getState()
+    const nodes = getNodes()
+    const bundledNodes = nodes.filter(node => node.data._isBundled)
+
+    if (bundledNodes.length <= 1)
+      return false
+
+    const bundledNodeIds = bundledNodes.map(node => node.id)
+    const minimalEdges = edges.map(edge => ({
+      id: edge.id,
+      source: edge.source,
+      sourceHandle: edge.sourceHandle || 'source',
+      target: edge.target,
+    }))
+    const hasGroupNode = bundledNodes.some(node => node.data.type === BlockEnum.Group)
+
+    const { canMakeGroup } = checkMakeGroupAvailability(bundledNodeIds, minimalEdges, hasGroupNode)
+    return canMakeGroup
+  }, [store])
+
+  const handleMakeGroup = useCallback(() => {
+    const { getNodes, setNodes, edges, setEdges } = store.getState()
+    const nodes = getNodes()
+    const bundledNodes = nodes.filter(node => node.data._isBundled)
+
+    if (bundledNodes.length <= 1)
+      return
+
+    const bundledNodeIds = bundledNodes.map(node => node.id)
+    const minimalEdges = edges.map(edge => ({
+      id: edge.id,
+      source: edge.source,
+      sourceHandle: edge.sourceHandle || 'source',
+      target: edge.target,
+    }))
+    const hasGroupNode = bundledNodes.some(node => node.data.type === BlockEnum.Group)
+
+    const { canMakeGroup } = checkMakeGroupAvailability(bundledNodeIds, minimalEdges, hasGroupNode)
+    if (!canMakeGroup)
+      return
+
+    const bundledNodeIdSet = new Set(bundledNodeIds)
+    const bundledNodeIdIsLeaf = new Set<string>()
+    const inboundEdges = edges.filter(edge => !bundledNodeIdSet.has(edge.source) && bundledNodeIdSet.has(edge.target))
+    const outboundEdges = edges.filter(edge => bundledNodeIdSet.has(edge.source) && !bundledNodeIdSet.has(edge.target))
+
+    // leaf node: no outbound edges to other nodes in the selection
+    const handlers: GroupHandler[] = []
+    const leafNodeIdSet = new Set<string>()
+
+    bundledNodes.forEach((node: Node) => {
+      const targetBranches = node.data._targetBranches || [{ id: 'source', name: node.data.title }]
+      targetBranches.forEach((branch) => {
+        // A branch should be a handler if it's either:
+        // 1. Connected to a node OUTSIDE the group
+        // 2. NOT connected to any node INSIDE the group
+        const isConnectedInside = edges.some(edge =>
+          edge.source === node.id
+          && (edge.sourceHandle === branch.id || (!edge.sourceHandle && branch.id === 'source'))
+          && bundledNodeIdSet.has(edge.target),
+        )
+        const isConnectedOutside = edges.some(edge =>
+          edge.source === node.id
+          && (edge.sourceHandle === branch.id || (!edge.sourceHandle && branch.id === 'source'))
+          && !bundledNodeIdSet.has(edge.target),
+        )
+
+        if (isConnectedOutside || !isConnectedInside) {
+          const handlerId = `${node.id}-${branch.id}`
+          handlers.push({
+            id: handlerId,
+            label: branch.name || node.data.title || node.id,
+            nodeId: node.id,
+            sourceHandle: branch.id,
+          })
+          leafNodeIdSet.add(node.id)
+        }
+      })
+    })
+
+    const leafNodeIds = Array.from(leafNodeIdSet)
+    leafNodeIds.forEach(id => bundledNodeIdIsLeaf.add(id))
+
+    const members: GroupMember[] = bundledNodes.map((node) => {
+      return {
+        id: node.id,
+        type: node.data.type,
+        label: node.data.title,
+      }
+    })
+
+    // head nodes: nodes that receive input from outside the group
+    const headNodeIds = [...new Set(inboundEdges.map(edge => edge.target))]
+
+    // put the group node at the top-left corner of the selection, slightly offset
+    const { x: minX, y: minY } = getTopLeftNodePosition(bundledNodes)
+
+    const groupNodeData: GroupNodeData = {
+      title: t('operator.makeGroup', { ns: 'workflow' }),
+      desc: '',
+      type: BlockEnum.Group,
+      members,
+      handlers,
+      headNodeIds,
+      leafNodeIds,
+      selected: true,
+      _targetBranches: handlers.map(handler => ({
+        id: handler.id,
+        name: handler.label || handler.id,
+      })),
+    }
+
+    const { newNode: groupNode } = generateNewNode({
+      data: groupNodeData,
+      position: {
+        x: minX - 20,
+        y: minY - 20,
+      },
+    })
+
+    const nodeTypeMap = new Map(nodes.map(node => [node.id, node.data.type]))
+
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        if (bundledNodeIdSet.has(node.id)) {
+          node.data._isBundled = false
+          node.selected = false
+          node.hidden = true
+          node.data._hiddenInGroupId = groupNode.id
+        }
+        else {
+          node.data._isBundled = false
+        }
+      })
+      draft.push(groupNode)
+    })
+
+    const newEdges = produce(edges, (draft) => {
+      draft.forEach((edge) => {
+        if (bundledNodeIdSet.has(edge.source) || bundledNodeIdSet.has(edge.target)) {
+          edge.hidden = true
+          edge.data = {
+            ...edge.data,
+            _hiddenInGroupId: groupNode.id,
+            _isBundled: false,
+          }
+        }
+        else if (edge.data?._isBundled) {
+          edge.data._isBundled = false
+        }
+      })
+
+      // re-add the external inbound edges to the group node as UI-only edges (not persisted to backend)
+      inboundEdges.forEach((edge) => {
+        draft.push({
+          id: `${edge.id}__to-${groupNode.id}`,
+          type: edge.type || CUSTOM_EDGE,
+          source: edge.source,
+          target: groupNode.id,
+          sourceHandle: edge.sourceHandle,
+          targetHandle: 'target',
+          data: {
+            ...edge.data,
+            sourceType: nodeTypeMap.get(edge.source)!,
+            targetType: BlockEnum.Group,
+            _hiddenInGroupId: undefined,
+            _isBundled: false,
+            _isTemp: true, // UI-only edge, not persisted to backend
+          },
+          zIndex: edge.zIndex,
+        })
+      })
+
+      // outbound edges of the group node as UI-only edges (not persisted to backend)
+      outboundEdges.forEach((edge) => {
+        if (!bundledNodeIdIsLeaf.has(edge.source))
+          return
+
+        // Use the same handler id format: nodeId-sourceHandle
+        const originalSourceHandle = edge.sourceHandle || 'source'
+        const handlerId = `${edge.source}-${originalSourceHandle}`
+
+        draft.push({
+          id: `${groupNode.id}-${edge.target}-${edge.targetHandle || 'target'}-${handlerId}`,
+          type: edge.type || CUSTOM_EDGE,
+          source: groupNode.id,
+          target: edge.target,
+          sourceHandle: handlerId,
+          targetHandle: edge.targetHandle,
+          data: {
+            ...edge.data,
+            sourceType: BlockEnum.Group,
+            targetType: nodeTypeMap.get(edge.target)!,
+            _hiddenInGroupId: undefined,
+            _isBundled: false,
+            _isTemp: true,
+          },
+          zIndex: edge.zIndex,
+        })
+      })
+    })
+
+    setNodes(newNodes)
+    setEdges(newEdges)
+    workflowStore.setState({
+      selectionMenu: undefined,
+    })
+    handleSyncWorkflowDraft()
+    saveStateToHistory(WorkflowHistoryEvent.NodeAdd, {
+      nodeId: groupNode.id,
+    })
+  }, [handleSyncWorkflowDraft, saveStateToHistory, store, t, workflowStore])
+
+  // check if the current selection can be ungrouped (single selected Group node)
+  const getCanUngroup = useCallback(() => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const selectedNodes = nodes.filter(node => node.selected)
+
+    if (selectedNodes.length !== 1)
+      return false
+
+    return selectedNodes[0].data.type === BlockEnum.Group
+  }, [store])
+
+  // get the selected group node id for ungroup operation
+  const getSelectedGroupId = useCallback(() => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const selectedNodes = nodes.filter(node => node.selected)
+
+    if (selectedNodes.length === 1 && selectedNodes[0].data.type === BlockEnum.Group)
+      return selectedNodes[0].id
+
+    return undefined
+  }, [store])
+
+  const handleUngroup = useCallback((groupId: string) => {
+    const { getNodes, setNodes, edges, setEdges } = store.getState()
+    const nodes = getNodes()
+    const groupNode = nodes.find(n => n.id === groupId)
+
+    if (!groupNode || groupNode.data.type !== BlockEnum.Group)
+      return
+
+    const memberIds = new Set((groupNode.data.members || []).map((m: { id: string }) => m.id))
+
+    // restore hidden member nodes
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        if (memberIds.has(node.id)) {
+          node.hidden = false
+          delete node.data._hiddenInGroupId
+        }
+      })
+      // remove group node
+      const groupIndex = draft.findIndex(n => n.id === groupId)
+      if (groupIndex !== -1)
+        draft.splice(groupIndex, 1)
+    })
+
+    // restore hidden edges and remove temp edges in single pass O(E)
+    const newEdges = produce(edges, (draft) => {
+      const indicesToRemove: number[] = []
+
+      for (let i = 0; i < draft.length; i++) {
+        const edge = draft[i]
+        // restore hidden edges that involve member nodes
+        if (edge.hidden && (memberIds.has(edge.source) || memberIds.has(edge.target)))
+          edge.hidden = false
+        // collect temp edges connected to group for removal
+        if (edge.data?._isTemp && (edge.source === groupId || edge.target === groupId))
+          indicesToRemove.push(i)
+      }
+
+      // remove collected indices in reverse order to avoid index shift
+      for (let i = indicesToRemove.length - 1; i >= 0; i--)
+        draft.splice(indicesToRemove[i], 1)
+    })
+
+    setNodes(newNodes)
+    setEdges(newEdges)
+    handleSyncWorkflowDraft()
+    saveStateToHistory(WorkflowHistoryEvent.NodeDelete, {
+      nodeId: groupId,
+    })
+  }, [handleSyncWorkflowDraft, saveStateToHistory, store])
+
   return {
     handleNodeDragStart,
     handleNodeDrag,
@@ -2107,11 +2868,17 @@ export const useNodesInteractions = () => {
     handleNodesPaste,
     handleNodesDuplicate,
     handleNodesDelete,
+    handleMakeGroup,
+    handleUngroup,
     handleNodeResize,
     handleNodeDisconnect,
     handleHistoryBack,
     handleHistoryForward,
     dimOtherNodes,
     undimAllNodes,
+    hasBundledNodes,
+    getCanMakeGroup,
+    getCanUngroup,
+    getSelectedGroupId,
   }
 }

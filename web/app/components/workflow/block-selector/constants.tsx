@@ -148,6 +148,11 @@ export const BLOCKS = [
     title: 'List Filter',
   },
   {
+    classification: BlockClassificationEnum.Utilities,
+    type: BlockEnum.Command,
+    title: 'Command',
+  },
+  {
     classification: BlockClassificationEnum.Default,
     type: BlockEnum.Agent,
     title: 'Agent',

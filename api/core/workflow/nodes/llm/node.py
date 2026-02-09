@@ -7,16 +7,21 @@ import logging
 import re
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal
+from functools import reduce
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from sqlalchemy import select
 
+from core.agent.entities import AgentEntity, AgentLog, AgentResult, AgentToolEntity, ExecutionContext
+from core.agent.patterns import StrategyFactory
+from core.app.entities.app_asset_entities import AppAssetFileTree
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.app_assets.constants import AppAssetsAttrs
 from core.file import File, FileTransferMethod, FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
-from core.memory.token_buffer_memory import TokenBufferMemory
+from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities import (
     ImagePromptMessageContent,
@@ -49,9 +54,20 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.sandbox import Sandbox
+from core.sandbox.bash.session import SandboxBashSession
+from core.sandbox.entities.config import AppAssets
+from core.skill.constants import SkillAttrs
+from core.skill.entities.skill_bundle import SkillBundle
+from core.skill.entities.skill_document import SkillDocument
+from core.skill.entities.tool_dependencies import ToolDependencies
+from core.skill.skill_compiler import SkillCompiler
+from core.tools.__base.tool import Tool
 from core.tools.signature import sign_upload_file
+from core.tools.tool_manager import ToolManager
 from core.variables import (
     ArrayFileSegment,
+    ArrayPromptMessageSegment,
     ArraySegment,
     FileSegment,
     NoneSegment,
@@ -59,7 +75,8 @@ from core.variables import (
     StringSegment,
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities import GraphInitParams
+from core.workflow.entities import GraphInitParams, ToolCall, ToolResult, ToolResultStatus
+from core.workflow.entities.tool_entities import ToolCallResult
 from core.workflow.enums import (
     NodeType,
     SystemVariableKey,
@@ -67,13 +84,18 @@ from core.workflow.enums import (
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.node_events import (
+    AgentLogEvent,
     ModelInvokeCompletedEvent,
     NodeEventBase,
     NodeRunResult,
     RunRetrieverResourceEvent,
     StreamChunkEvent,
     StreamCompletedEvent,
+    ThoughtChunkEvent,
+    ToolCallChunkEvent,
+    ToolResultChunkEvent,
 )
+from core.workflow.node_events.node import ThoughtEndChunkEvent, ThoughtStartChunkEvent
 from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
@@ -84,10 +106,22 @@ from models.model import UploadFile
 
 from . import llm_utils
 from .entities import (
+    AgentContext,
+    AggregatedResult,
+    LLMGenerationData,
     LLMNodeChatModelMessage,
     LLMNodeCompletionModelPromptTemplate,
     LLMNodeData,
+    LLMTraceSegment,
     ModelConfig,
+    ModelTraceSegment,
+    PromptMessageContext,
+    StreamBuffers,
+    ThinkTagStreamParser,
+    ToolLogPayload,
+    ToolOutputState,
+    ToolTraceSegment,
+    TraceState,
 )
 from .exc import (
     InvalidContextStructureError,
@@ -152,12 +186,12 @@ class LLMNode(Node[LLMNodeData]):
     def _run(self) -> Generator:
         node_inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
-        result_text = ""
         clean_text = ""
         usage = LLMUsage.empty_usage()
         finish_reason = None
-        reasoning_content = None
+        reasoning_content = ""  # Initialize as empty string for consistency
         tool_calls = None
+        clean_text = ""  # Initialize clean_text to avoid UnboundLocalError
         variable_pool = self.graph_runtime_state.variable_pool
 
         # Get external tools from system variables
@@ -171,8 +205,9 @@ class LLMNode(Node[LLMNodeData]):
             external_tool_results = variable_pool.system_variables.external_tool_results
 
         try:
-            # init messages template
-            self.node_data.prompt_template = self._transform_chat_messages(self.node_data.prompt_template)
+            # Parse prompt template to separate static messages and context references
+            prompt_template = self.node_data.prompt_template
+            static_messages, context_refs, template_order = self._parse_prompt_template()
 
             # fetch variables and fetch values from variable pool
             inputs = self._fetch_inputs(node_data=self.node_data)
@@ -220,8 +255,10 @@ class LLMNode(Node[LLMNodeData]):
             memory = llm_utils.fetch_memory(
                 variable_pool=variable_pool,
                 app_id=self.app_id,
+                tenant_id=self.tenant_id,
                 node_data_memory=self.node_data.memory,
                 model_instance=model_instance,
+                node_id=self._node_id,
             )
 
             query: str | None = None
@@ -235,76 +272,107 @@ class LLMNode(Node[LLMNodeData]):
             if external_tool_results:
                 query = None
 
-            prompt_messages, stop = LLMNode.fetch_prompt_messages(
-                sys_query=query,
-                sys_files=files,
-                context=context,
-                memory=memory,
-                model_config=model_config,
-                prompt_template=self.node_data.prompt_template,
-                memory_config=self.node_data.memory,
-                vision_enabled=self.node_data.vision.enabled,
-                vision_detail=self.node_data.vision.configs.detail,
-                variable_pool=variable_pool,
-                jinja2_variables=self.node_data.prompt_config.jinja2_variables,
-                tenant_id=self.tenant_id,
-                context_files=context_files,
-            )
+            # Get prompt messages
+            prompt_messages: Sequence[PromptMessage]
+            stop: Sequence[str] | None
+            if isinstance(prompt_template, list) and context_refs:
+                prompt_messages, stop = self._build_prompt_messages_with_context(
+                    context_refs=context_refs,
+                    template_order=template_order,
+                    static_messages=static_messages,
+                    query=query,
+                    files=files,
+                    context=context,
+                    memory=memory,
+                    model_config=model_config,
+                    context_files=context_files,
+                )
+            else:
+                prompt_messages, stop = LLMNode.fetch_prompt_messages(
+                    sys_query=query,
+                    sys_files=files,
+                    context=context,
+                    memory=memory,
+                    model_config=model_config,
+                    prompt_template=cast(
+                        Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
+                        self.node_data.prompt_template,
+                    ),
+                    memory_config=self.node_data.memory,
+                    vision_enabled=self.node_data.vision.enabled,
+                    vision_detail=self.node_data.vision.configs.detail,
+                    variable_pool=variable_pool,
+                    jinja2_variables=self.node_data.prompt_config.jinja2_variables,
+                    tenant_id=self.tenant_id,
+                    context_files=context_files,
+                    sandbox=self.graph_runtime_state.sandbox,
+                )
 
-            # handle invoke result
-            generator = LLMNode.invoke_llm(
-                node_data_model=self.node_data.model,
-                model_instance=model_instance,
-                prompt_messages=prompt_messages,
-                stop=stop,
-                user_id=self.user_id,
-                structured_output_enabled=self.node_data.structured_output_enabled,
-                structured_output=self.node_data.structured_output,
-                file_saver=self._llm_file_saver,
-                file_outputs=self._file_outputs,
-                node_id=self._node_id,
-                node_type=self.node_type,
-                reasoning_format=self.node_data.reasoning_format,
-                tools=external_tools,
-                tool_choice=external_tool_choice,
-                tool_results=external_tool_results,
-            )
-
+            # Variables for outputs
+            generation_data: LLMGenerationData | None = None
             structured_output: LLMStructuredOutput | None = None
 
-            for event in generator:
-                if isinstance(event, StreamChunkEvent):
-                    yield event
-                elif isinstance(event, ModelInvokeCompletedEvent):
-                    # Raw text
-                    result_text = event.text
-                    usage = event.usage
-                    finish_reason = event.finish_reason
-                    reasoning_content = event.reasoning_content or ""
+            sandbox = self.graph_runtime_state.sandbox
+            if sandbox:
+                tool_dependencies = self._extract_tool_dependencies()
+                generator = self._invoke_llm_with_sandbox(
+                    sandbox=sandbox,
+                    model_instance=model_instance,
+                    prompt_messages=prompt_messages,
+                    stop=stop,
+                    variable_pool=variable_pool,
+                    tool_dependencies=tool_dependencies,
+                )
+            elif self.tool_call_enabled:
+                generator = self._invoke_llm_with_tools(
+                    model_instance=model_instance,
+                    prompt_messages=prompt_messages,
+                    stop=stop,
+                    files=files,
+                    variable_pool=variable_pool,
+                    node_inputs=node_inputs,
+                    process_data=process_data,
+                )
+            else:
+                # Use traditional LLM invocation
+                generator = LLMNode.invoke_llm(
+                    node_data_model=self._node_data.model,
+                    model_instance=model_instance,
+                    prompt_messages=prompt_messages,
+                    stop=stop,
+                    user_id=self.user_id,
+                    structured_output_enabled=self._node_data.structured_output_enabled,
+                    structured_output=self._node_data.structured_output,
+                    file_saver=self._llm_file_saver,
+                    file_outputs=self._file_outputs,
+                    node_id=self._node_id,
+                    node_type=self.node_type,
+                    reasoning_format=self._node_data.reasoning_format,
+                    tools=external_tools,
+                    tool_choice=external_tool_choice,
+                    tool_results=external_tool_results,
+                    tenant_id=self.tenant_id,
+                )
 
-                    # For downstream nodes, determine clean text based on reasoning_format
-                    if self.node_data.reasoning_format == "tagged":
-                        # Keep <think> tags for backward compatibility
-                        clean_text = result_text
-                    else:
-                        # Extract clean text from <think> tags
-                        clean_text, _ = LLMNode._split_reasoning(result_text, self.node_data.reasoning_format)
+            (
+                clean_text,
+                reasoning_content,
+                generation_reasoning_content,
+                generation_clean_content,
+                usage,
+                finish_reason,
+                structured_output,
+                generation_data,
+            ) = yield from self._stream_llm_events(generator, model_instance=model_instance)
 
-                    # Process structured output if available from the event.
-                    structured_output = (
-                        LLMStructuredOutput(structured_output=event.structured_output)
-                        if event.structured_output
-                        else None
-                    )
+            # Extract variables from generation_data if available
+            if generation_data:
+                clean_text = generation_data.text
+                reasoning_content = ""
+                usage = generation_data.usage
+                finish_reason = generation_data.finish_reason
 
-                    tool_calls = event.tool_calls
-
-                    # deduct quota
-                    llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
-                    break
-                elif isinstance(event, LLMStructuredOutput):
-                    structured_output = event
-
+            # Unified process_data building
             process_data = {
                 "model_mode": model_config.mode,
                 "prompts": PromptMessageUtil.prompt_messages_to_prompt_for_saving(
@@ -315,26 +383,91 @@ class LLMNode(Node[LLMNodeData]):
                 "model_provider": model_config.provider,
                 "model_name": model_config.model,
             }
+            if self.tool_call_enabled and self._node_data.tools:
+                process_data["tools"] = [
+                    {
+                        "type": tool.type.value if hasattr(tool.type, "value") else tool.type,
+                        "provider_name": tool.provider_name,
+                        "tool_name": tool.tool_name,
+                    }
+                    for tool in self._node_data.tools
+                    if tool.enabled
+                ]
 
+            # Unified outputs building
             outputs = {
                 "text": clean_text,
                 "reasoning_content": reasoning_content,
                 "usage": jsonable_encoder(usage),
                 "finish_reason": finish_reason,
+                "context": llm_utils.build_context(prompt_messages, clean_text, generation_data),
             }
+
+            # Build generation field
+            if generation_data:
+                # Use generation_data from tool invocation (supports multi-turn)
+                generation = {
+                    "content": generation_data.text,
+                    "reasoning_content": generation_data.reasoning_contents,  # [thought1, thought2, ...]
+                    "tool_calls": [self._serialize_tool_call(item) for item in generation_data.tool_calls],
+                    "sequence": generation_data.sequence,
+                }
+                files_to_output = generation_data.files
+            else:
+                # Traditional LLM invocation
+                generation_reasoning = generation_reasoning_content or reasoning_content
+                generation_content = generation_clean_content or clean_text
+                sequence: list[dict[str, Any]] = []
+                if generation_reasoning:
+                    sequence = [
+                        {"type": "reasoning", "index": 0},
+                        {"type": "content", "start": 0, "end": len(generation_content)},
+                    ]
+                generation = {
+                    "content": generation_content,
+                    "reasoning_content": [generation_reasoning] if generation_reasoning else [],
+                    "tool_calls": [],
+                    "sequence": sequence,
+                }
+                files_to_output = self._file_outputs
+
+            outputs["generation"] = generation
+            if files_to_output:
+                outputs["files"] = ArrayFileSegment(value=files_to_output)
             if structured_output:
                 outputs["structured_output"] = structured_output.structured_output
             if tool_calls:
                 outputs["tool_calls"] = tool_calls
-            if self._file_outputs:
-                outputs["files"] = ArrayFileSegment(value=self._file_outputs)
 
             # Send final chunk event to indicate streaming is complete
-            yield StreamChunkEvent(
-                selector=[self._node_id, "text"],
-                chunk="",
-                is_final=True,
-            )
+            if not self.tool_call_enabled and sandbox is None:
+                # For tool calls and sandbox, final events are already sent in _process_tool_outputs
+                yield StreamChunkEvent(
+                    selector=[self._node_id, "text"],
+                    chunk="",
+                    is_final=True,
+                )
+                yield StreamChunkEvent(
+                    selector=[self._node_id, "generation", "content"],
+                    chunk="",
+                    is_final=True,
+                )
+                yield ThoughtChunkEvent(
+                    selector=[self._node_id, "generation", "thought"],
+                    chunk="",
+                    is_final=True,
+                )
+
+            metadata: dict[WorkflowNodeExecutionMetadataKey, Any] = {
+                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
+            }
+
+            if generation_data and generation_data.trace:
+                metadata[WorkflowNodeExecutionMetadataKey.LLM_TRACE] = [
+                    segment.model_dump() for segment in generation_data.trace
+                ]
 
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
@@ -342,11 +475,7 @@ class LLMNode(Node[LLMNodeData]):
                     inputs=node_inputs,
                     process_data=process_data,
                     outputs=outputs,
-                    metadata={
-                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                        WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
-                        WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
-                    },
+                    metadata=metadata,
                     llm_usage=usage,
                 )
             )
@@ -392,6 +521,7 @@ class LLMNode(Node[LLMNodeData]):
         tools: list[PromptMessageTool] | None = None,
         tool_choice: Any | None = None,
         tool_results: list[Any] | None = None,
+        tenant_id: str | None = None,
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         model_schema = model_instance.model_type_instance.get_model_schema(
             node_data_model.name, model_instance.credentials
@@ -468,6 +598,7 @@ class LLMNode(Node[LLMNodeData]):
                 stop=list(stop or []),
                 stream=True,
                 user=user_id,
+                tenant_id=tenant_id,
             )
         else:
             request_start_time = time.perf_counter()
@@ -525,6 +656,8 @@ class LLMNode(Node[LLMNodeData]):
         usage = LLMUsage.empty_usage()
         finish_reason = None
         full_text_buffer = io.StringIO()
+        think_parser = ThinkTagStreamParser()
+        reasoning_chunks: list[str] = []
 
         # Initialize streaming metrics tracking
         start_time = request_start_time if request_start_time is not None else time.perf_counter()
@@ -644,11 +777,44 @@ class LLMNode(Node[LLMNodeData]):
                             has_content = True
 
                         full_text_buffer.write(text_part)
+                        # Text output: always forward raw chunk (keep <think> tags intact)
                         yield StreamChunkEvent(
                             selector=[node_id, "text"],
                             chunk=text_part,
                             is_final=False,
                         )
+
+                        # Generation output: split out thoughts, forward only non-thought content chunks
+                        for kind, segment in think_parser.process(text_part):
+                            if not segment:
+                                if kind not in {"thought_start", "thought_end"}:
+                                    continue
+
+                            if kind == "thought_start":
+                                yield ThoughtStartChunkEvent(
+                                    selector=[node_id, "generation", "thought"],
+                                    chunk="",
+                                    is_final=False,
+                                )
+                            elif kind == "thought":
+                                reasoning_chunks.append(segment)
+                                yield ThoughtChunkEvent(
+                                    selector=[node_id, "generation", "thought"],
+                                    chunk=segment,
+                                    is_final=False,
+                                )
+                            elif kind == "thought_end":
+                                yield ThoughtEndChunkEvent(
+                                    selector=[node_id, "generation", "thought"],
+                                    chunk="",
+                                    is_final=False,
+                                )
+                            else:
+                                yield StreamChunkEvent(
+                                    selector=[node_id, "generation", "content"],
+                                    chunk=segment,
+                                    is_final=False,
+                                )
 
                     # Update the whole metadata
                     if not model and result.model:
@@ -664,16 +830,47 @@ class LLMNode(Node[LLMNodeData]):
         except OutputParserError as e:
             raise LLMNodeError(f"Failed to parse structured output: {e}")
 
+        for kind, segment in think_parser.flush():
+            if not segment and kind not in {"thought_start", "thought_end"}:
+                continue
+            if kind == "thought_start":
+                yield ThoughtStartChunkEvent(
+                    selector=[node_id, "generation", "thought"],
+                    chunk="",
+                    is_final=False,
+                )
+            elif kind == "thought":
+                reasoning_chunks.append(segment)
+                yield ThoughtChunkEvent(
+                    selector=[node_id, "generation", "thought"],
+                    chunk=segment,
+                    is_final=False,
+                )
+            elif kind == "thought_end":
+                yield ThoughtEndChunkEvent(
+                    selector=[node_id, "generation", "thought"],
+                    chunk="",
+                    is_final=False,
+                )
+            else:
+                yield StreamChunkEvent(
+                    selector=[node_id, "generation", "content"],
+                    chunk=segment,
+                    is_final=False,
+                )
+
         # Extract reasoning content from <think> tags in the main text
         full_text = full_text_buffer.getvalue()
 
         if reasoning_format == "tagged":
             # Keep <think> tags in text for backward compatibility
             clean_text = full_text
-            reasoning_content = ""
+            reasoning_content = "".join(reasoning_chunks)
         else:
             # Extract clean text and reasoning from <think> tags
             clean_text, reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
+            if reasoning_chunks and not reasoning_content:
+                reasoning_content = "".join(reasoning_chunks)
 
         # Calculate streaming metrics
         end_time = time.perf_counter()
@@ -751,6 +948,213 @@ class LLMNode(Node[LLMNodeData]):
                 message.text = message.jinja2_text
 
         return messages
+
+    def _parse_prompt_template(
+        self,
+    ) -> tuple[list[LLMNodeChatModelMessage], list[PromptMessageContext], list[tuple[int, str]]]:
+        """
+        Parse prompt_template to separate static messages and context references.
+
+        Returns:
+            Tuple of (static_messages, context_refs, template_order)
+            - static_messages: list of LLMNodeChatModelMessage
+            - context_refs: list of PromptMessageContext
+            - template_order: list of (index, type) tuples preserving original order
+        """
+        prompt_template = self.node_data.prompt_template
+        static_messages: list[LLMNodeChatModelMessage] = []
+        context_refs: list[PromptMessageContext] = []
+        template_order: list[tuple[int, str]] = []
+
+        if isinstance(prompt_template, list):
+            for idx, item in enumerate(prompt_template):
+                if isinstance(item, PromptMessageContext):
+                    context_refs.append(item)
+                    template_order.append((idx, "context"))
+                else:
+                    static_messages.append(item)
+                    template_order.append((idx, "static"))
+            # Transform static messages for jinja2
+            if static_messages:
+                self.node_data.prompt_template = self._transform_chat_messages(static_messages)
+
+        return static_messages, context_refs, template_order
+
+    def _build_prompt_messages_with_context(
+        self,
+        *,
+        context_refs: list[PromptMessageContext],
+        template_order: list[tuple[int, str]],
+        static_messages: list[LLMNodeChatModelMessage],
+        query: str | None,
+        files: Sequence[File],
+        context: str | None,
+        memory: BaseMemory | None,
+        model_config: ModelConfigWithCredentialsEntity,
+        context_files: list[File],
+    ) -> tuple[list[PromptMessage], Sequence[str] | None]:
+        """
+        Build prompt messages by combining static messages and context references in DSL order.
+
+        Returns:
+            Tuple of (prompt_messages, stop_sequences)
+        """
+        variable_pool = self.graph_runtime_state.variable_pool
+
+        # Process messages in DSL order: iterate once and handle each type directly
+        combined_messages: list[PromptMessage] = []
+        context_idx = 0
+        static_idx = 0
+
+        for _, type_ in template_order:
+            if type_ == "context":
+                # Handle context reference
+                ctx_ref = context_refs[context_idx]
+                ctx_var = variable_pool.get(ctx_ref.value_selector)
+                if ctx_var is None:
+                    raise VariableNotFoundError(f"Variable {'.'.join(ctx_ref.value_selector)} not found")
+                if not isinstance(ctx_var, ArrayPromptMessageSegment):
+                    raise InvalidVariableTypeError(f"Variable {'.'.join(ctx_ref.value_selector)} is not array[message]")
+                # Restore multimodal content (base64/url) that was truncated when saving context
+                restored_messages = llm_utils.restore_multimodal_content_in_messages(ctx_var.value)
+                combined_messages.extend(restored_messages)
+                context_idx += 1
+            else:
+                # Handle static message
+                static_msg = static_messages[static_idx]
+                processed_msgs = LLMNode.handle_list_messages(
+                    messages=[static_msg],
+                    context=context,
+                    jinja2_variables=self.node_data.prompt_config.jinja2_variables or [],
+                    variable_pool=variable_pool,
+                    vision_detail_config=self.node_data.vision.configs.detail,
+                    sandbox=self.graph_runtime_state.sandbox,
+                )
+                combined_messages.extend(processed_msgs)
+                static_idx += 1
+
+        # Append memory messages
+        memory_messages = _handle_memory_chat_mode(
+            memory=memory,
+            memory_config=self.node_data.memory,
+            model_config=model_config,
+        )
+        combined_messages.extend(memory_messages)
+
+        # Append current query if provided
+        if query:
+            query_message = LLMNodeChatModelMessage(
+                text=query,
+                role=PromptMessageRole.USER,
+                edition_type="basic",
+            )
+            query_msgs = LLMNode.handle_list_messages(
+                messages=[query_message],
+                context="",
+                jinja2_variables=[],
+                variable_pool=variable_pool,
+                vision_detail_config=self.node_data.vision.configs.detail,
+            )
+            combined_messages.extend(query_msgs)
+
+        # Handle files (sys_files and context_files)
+        combined_messages = self._append_files_to_messages(
+            messages=combined_messages,
+            sys_files=files,
+            context_files=context_files,
+            model_config=model_config,
+        )
+
+        # Filter empty messages and get stop sequences
+        combined_messages = self._filter_messages(combined_messages, model_config)
+        stop = self._get_stop_sequences(model_config)
+
+        return combined_messages, stop
+
+    def _append_files_to_messages(
+        self,
+        *,
+        messages: list[PromptMessage],
+        sys_files: Sequence[File],
+        context_files: list[File],
+        model_config: ModelConfigWithCredentialsEntity,
+    ) -> list[PromptMessage]:
+        """Append sys_files and context_files to messages."""
+        vision_enabled = self.node_data.vision.enabled
+        vision_detail = self.node_data.vision.configs.detail
+
+        # Handle sys_files (will be deprecated later)
+        if vision_enabled and sys_files:
+            file_prompts = [
+                file_manager.to_prompt_message_content(file, image_detail_config=vision_detail) for file in sys_files
+            ]
+            if messages and isinstance(messages[-1], UserPromptMessage) and isinstance(messages[-1].content, list):
+                messages[-1] = UserPromptMessage(content=file_prompts + messages[-1].content)
+            else:
+                messages.append(UserPromptMessage(content=file_prompts))
+
+        # Handle context_files
+        if vision_enabled and context_files:
+            file_prompts = [
+                file_manager.to_prompt_message_content(file, image_detail_config=vision_detail)
+                for file in context_files
+            ]
+            if messages and isinstance(messages[-1], UserPromptMessage) and isinstance(messages[-1].content, list):
+                messages[-1] = UserPromptMessage(content=file_prompts + messages[-1].content)
+            else:
+                messages.append(UserPromptMessage(content=file_prompts))
+
+        return messages
+
+    def _filter_messages(
+        self, messages: list[PromptMessage], model_config: ModelConfigWithCredentialsEntity
+    ) -> list[PromptMessage]:
+        """Filter empty messages and unsupported content types."""
+        filtered_messages: list[PromptMessage] = []
+
+        for message in messages:
+            if isinstance(message.content, list):
+                filtered_content: list[PromptMessageContentUnionTypes] = []
+                for content_item in message.content:
+                    # Skip non-text content if features are not defined
+                    if not model_config.model_schema.features:
+                        if content_item.type != PromptMessageContentType.TEXT:
+                            continue
+                        filtered_content.append(content_item)
+                        continue
+
+                    # Skip content if corresponding feature is not supported
+                    feature_map = {
+                        PromptMessageContentType.IMAGE: ModelFeature.VISION,
+                        PromptMessageContentType.DOCUMENT: ModelFeature.DOCUMENT,
+                        PromptMessageContentType.VIDEO: ModelFeature.VIDEO,
+                        PromptMessageContentType.AUDIO: ModelFeature.AUDIO,
+                    }
+                    required_feature = feature_map.get(content_item.type)
+                    if required_feature and required_feature not in model_config.model_schema.features:
+                        continue
+                    filtered_content.append(content_item)
+
+                # Simplify single text content
+                if len(filtered_content) == 1 and filtered_content[0].type == PromptMessageContentType.TEXT:
+                    message.content = filtered_content[0].data
+                else:
+                    message.content = filtered_content
+
+            if not message.is_empty():
+                filtered_messages.append(message)
+
+        if not filtered_messages:
+            raise NoPromptFoundError(
+                "No prompt found in the LLM configuration. "
+                "Please ensure a prompt is properly configured before proceeding."
+            )
+
+        return filtered_messages
+
+    def _get_stop_sequences(self, model_config: ModelConfigWithCredentialsEntity) -> Sequence[str] | None:
+        """Get stop sequences from model config."""
+        return model_config.stop
 
     def _fetch_jinja_inputs(self, node_data: LLMNodeData) -> dict[str, str]:
         variables: dict[str, Any] = {}
@@ -952,7 +1356,7 @@ class LLMNode(Node[LLMNodeData]):
         sys_query: str | None = None,
         sys_files: Sequence[File],
         context: str | None = None,
-        memory: TokenBufferMemory | None = None,
+        memory: BaseMemory | None = None,
         model_config: ModelConfigWithCredentialsEntity,
         prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
         memory_config: MemoryConfig | None = None,
@@ -962,6 +1366,7 @@ class LLMNode(Node[LLMNodeData]):
         jinja2_variables: Sequence[VariableSelector],
         tenant_id: str,
         context_files: list[File] | None = None,
+        sandbox: Sandbox | None = None,
     ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
         prompt_messages: list[PromptMessage] = []
 
@@ -974,6 +1379,7 @@ class LLMNode(Node[LLMNodeData]):
                     jinja2_variables=jinja2_variables,
                     variable_pool=variable_pool,
                     vision_detail_config=vision_detail,
+                    sandbox=sandbox,
                 )
             )
 
@@ -1251,8 +1657,16 @@ class LLMNode(Node[LLMNodeData]):
         jinja2_variables: Sequence[VariableSelector],
         variable_pool: VariablePool,
         vision_detail_config: ImagePromptMessageContent.DETAIL,
+        sandbox: Sandbox | None = None,
     ) -> Sequence[PromptMessage]:
         prompt_messages: list[PromptMessage] = []
+
+        bundle: SkillBundle | None = None
+        file_tree: AppAssetFileTree | None = None
+        if sandbox:
+            bundle = sandbox.attrs.get(SkillAttrs.BUNDLE)
+            file_tree = sandbox.attrs.get(AppAssetsAttrs.FILE_TREE)
+
         for message in messages:
             if message.edition_type == "jinja2":
                 result_text = _render_jinja2_message(
@@ -1260,19 +1674,27 @@ class LLMNode(Node[LLMNodeData]):
                     jinja2_variables=jinja2_variables,
                     variable_pool=variable_pool,
                 )
+
+                if bundle is not None and file_tree is not None:
+                    skill_entry = SkillCompiler().compile_one(
+                        bundle=bundle,
+                        document=SkillDocument(skill_id="anonymous", content=result_text, metadata={}),
+                        file_tree=file_tree,
+                        base_path=AppAssets.PATH,
+                    )
+                    result_text = skill_entry.content
+
                 prompt_message = _combine_message_content_with_role(
                     contents=[TextPromptMessageContent(data=result_text)], role=message.role
                 )
                 prompt_messages.append(prompt_message)
             else:
-                # Get segment group from basic message
                 if context:
                     template = message.text.replace("{#context#}", context)
                 else:
                     template = message.text
                 segment_group = variable_pool.convert_template(template)
 
-                # Process segments for images
                 file_contents = []
                 for segment in segment_group.value:
                     if isinstance(segment, ArrayFileSegment):
@@ -1290,8 +1712,17 @@ class LLMNode(Node[LLMNodeData]):
                             )
                             file_contents.append(file_content)
 
-                # Create message with text from all segments
                 plain_text = segment_group.text
+
+                if plain_text and bundle is not None and file_tree is not None:
+                    skill_entry = SkillCompiler().compile_one(
+                        bundle=bundle,
+                        document=SkillDocument(skill_id="anonymous", content=plain_text, metadata={}),
+                        file_tree=file_tree,
+                        base_path=AppAssets.PATH,
+                    )
+                    plain_text = skill_entry.content
+
                 if plain_text:
                     prompt_message = _combine_message_content_with_role(
                         contents=[TextPromptMessageContent(data=plain_text)], role=message.role
@@ -1439,6 +1870,795 @@ class LLMNode(Node[LLMNodeData]):
     def retry(self) -> bool:
         return self.node_data.retry_config.retry_enabled
 
+    @property
+    def tool_call_enabled(self) -> bool:
+        return (
+            self.node_data.tools is not None
+            and len(self.node_data.tools) > 0
+            and all(tool.enabled for tool in self.node_data.tools)
+        )
+
+    def _stream_llm_events(
+        self,
+        generator: Generator[NodeEventBase | LLMStructuredOutput, None, LLMGenerationData | None],
+        *,
+        model_instance: ModelInstance,
+    ) -> Generator[
+        NodeEventBase,
+        None,
+        tuple[
+            str,
+            str,
+            str,
+            str,
+            LLMUsage,
+            str | None,
+            LLMStructuredOutput | None,
+            LLMGenerationData | None,
+        ],
+    ]:
+        """
+        Stream events and capture generator return value in one place.
+        Uses generator delegation so _run stays concise while still emitting events.
+        """
+        clean_text = ""
+        reasoning_content = ""
+        generation_reasoning_content = ""
+        generation_clean_content = ""
+        usage = LLMUsage.empty_usage()
+        finish_reason: str | None = None
+        structured_output: LLMStructuredOutput | None = None
+        generation_data: LLMGenerationData | None = None
+        completed = False
+
+        while True:
+            try:
+                event = next(generator)
+            except StopIteration as exc:
+                if isinstance(exc.value, LLMGenerationData):
+                    generation_data = exc.value
+                break
+
+            if completed:
+                # After completion we still drain to reach StopIteration.value
+                continue
+
+            match event:
+                case StreamChunkEvent() | ThoughtChunkEvent():
+                    yield event
+
+                case ModelInvokeCompletedEvent(
+                    text=text,
+                    usage=usage_event,
+                    finish_reason=finish_reason_event,
+                    reasoning_content=reasoning_event,
+                    structured_output=structured_raw,
+                ):
+                    clean_text = text
+                    usage = usage_event
+                    finish_reason = finish_reason_event
+                    reasoning_content = reasoning_event or ""
+                    generation_reasoning_content = reasoning_content
+                    generation_clean_content = clean_text
+
+                    if self.node_data.reasoning_format == "tagged":
+                        # Keep tagged text for output; also extract reasoning for generation field
+                        generation_clean_content, generation_reasoning_content = LLMNode._split_reasoning(
+                            clean_text, reasoning_format="separated"
+                        )
+                    else:
+                        clean_text, generation_reasoning_content = LLMNode._split_reasoning(
+                            clean_text, self.node_data.reasoning_format
+                        )
+                        generation_clean_content = clean_text
+
+                    structured_output = (
+                        LLMStructuredOutput(structured_output=structured_raw) if structured_raw else None
+                    )
+
+                    llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
+                    completed = True
+
+                case LLMStructuredOutput():
+                    structured_output = event
+
+                case _:
+                    continue
+
+        return (
+            clean_text,
+            reasoning_content,
+            generation_reasoning_content,
+            generation_clean_content,
+            usage,
+            finish_reason,
+            structured_output,
+            generation_data,
+        )
+
+    def _extract_tool_dependencies(self) -> ToolDependencies | None:
+        """Extract tool artifact from prompt template."""
+
+        sandbox = self.graph_runtime_state.sandbox
+        if not sandbox:
+            raise LLMNodeError("Sandbox not found")
+
+        bundle = sandbox.attrs.get(SkillAttrs.BUNDLE)
+        file_tree = sandbox.attrs.get(AppAssetsAttrs.FILE_TREE)
+        tool_deps_list: list[ToolDependencies] = []
+        for prompt in self.node_data.prompt_template:
+            if isinstance(prompt, LLMNodeChatModelMessage):
+                skill_entry = SkillCompiler().compile_one(
+                    bundle=bundle,
+                    document=SkillDocument(skill_id="anonymous", content=prompt.text, metadata={}),
+                    file_tree=file_tree,
+                    base_path=AppAssets.PATH,
+                )
+                tool_deps_list.append(skill_entry.tools)
+
+        if len(tool_deps_list) == 0:
+            return None
+
+        return reduce(lambda x, y: x.merge(y), tool_deps_list)
+
+    def _invoke_llm_with_tools(
+        self,
+        model_instance: ModelInstance,
+        prompt_messages: Sequence[PromptMessage],
+        stop: Sequence[str] | None,
+        files: Sequence[File],
+        variable_pool: VariablePool,
+        node_inputs: dict[str, Any],
+        process_data: dict[str, Any],
+    ) -> Generator[NodeEventBase, None, LLMGenerationData]:
+        """Invoke LLM with tools support (from Agent V2).
+
+        Returns LLMGenerationData with text, reasoning_contents, tool_calls, usage, finish_reason, files
+        """
+        # Get model features to determine strategy
+        model_features = self._get_model_features(model_instance)
+
+        # Prepare tool instances
+        tool_instances = self._prepare_tool_instances(variable_pool)
+
+        # Prepare prompt files (files that come from prompt variables, not vision files)
+        prompt_files = self._extract_prompt_files(variable_pool)
+
+        # Use factory to create appropriate strategy
+        strategy = StrategyFactory.create_strategy(
+            model_features=model_features,
+            model_instance=model_instance,
+            tools=tool_instances,
+            files=prompt_files,
+            max_iterations=self._node_data.max_iterations or 10,
+            context=ExecutionContext(user_id=self.user_id, app_id=self.app_id, tenant_id=self.tenant_id),
+        )
+
+        # Run strategy
+        outputs = strategy.run(
+            prompt_messages=list(prompt_messages),
+            model_parameters=self._node_data.model.completion_params,
+            stop=list(stop or []),
+            stream=True,
+        )
+
+        result = yield from self._process_tool_outputs(outputs)
+        return result
+
+    def _invoke_llm_with_sandbox(
+        self,
+        sandbox: Sandbox,
+        model_instance: ModelInstance,
+        prompt_messages: Sequence[PromptMessage],
+        stop: Sequence[str] | None,
+        variable_pool: VariablePool,
+        tool_dependencies: ToolDependencies | None,
+    ) -> Generator[NodeEventBase, None, LLMGenerationData]:
+        result: LLMGenerationData | None = None
+
+        with SandboxBashSession(sandbox=sandbox, node_id=self.id, tools=tool_dependencies) as session:
+            prompt_files = self._extract_prompt_files(variable_pool)
+            model_features = self._get_model_features(model_instance)
+
+            strategy = StrategyFactory.create_strategy(
+                model_features=model_features,
+                model_instance=model_instance,
+                tools=[session.bash_tool],
+                files=prompt_files,
+                max_iterations=self._node_data.max_iterations or 100,
+                agent_strategy=AgentEntity.Strategy.FUNCTION_CALLING,
+                context=ExecutionContext(user_id=self.user_id, app_id=self.app_id, tenant_id=self.tenant_id),
+            )
+
+            outputs = strategy.run(
+                prompt_messages=list(prompt_messages),
+                model_parameters=self._node_data.model.completion_params,
+                stop=list(stop or []),
+                stream=True,
+            )
+
+            result = yield from self._process_tool_outputs(outputs)
+
+        if result is None:
+            raise LLMNodeError("SandboxSession exited unexpectedly")
+
+        return result
+
+    def _get_model_features(self, model_instance: ModelInstance) -> list[ModelFeature]:
+        """Get model schema to determine features."""
+        try:
+            model_type_instance = model_instance.model_type_instance
+            model_schema = model_type_instance.get_model_schema(
+                model_instance.model,
+                model_instance.credentials,
+            )
+            return model_schema.features if model_schema and model_schema.features else []
+        except Exception:
+            logger.warning("Failed to get model schema, assuming no special features")
+            return []
+
+    def _prepare_tool_instances(self, variable_pool: VariablePool) -> list[Tool]:
+        """Prepare tool instances from configuration."""
+        tool_instances = []
+
+        if self._node_data.tools:
+            for tool in self._node_data.tools:
+                try:
+                    # Process settings to extract the correct structure
+                    processed_settings = {}
+                    for key, value in tool.settings.items():
+                        if isinstance(value, dict) and "value" in value and isinstance(value["value"], dict):
+                            # Extract the nested value if it has the ToolInput structure
+                            if "type" in value["value"] and "value" in value["value"]:
+                                processed_settings[key] = value["value"]
+                            else:
+                                processed_settings[key] = value
+                        else:
+                            processed_settings[key] = value
+
+                    # Merge parameters with processed settings (similar to Agent Node logic)
+                    merged_parameters = {**tool.parameters, **processed_settings}
+
+                    # Create AgentToolEntity from ToolMetadata
+                    agent_tool = AgentToolEntity(
+                        provider_id=tool.provider_name,
+                        provider_type=tool.type,
+                        tool_name=tool.tool_name,
+                        tool_parameters=merged_parameters,
+                        plugin_unique_identifier=tool.plugin_unique_identifier,
+                        credential_id=tool.credential_id,
+                    )
+
+                    # Get tool runtime from ToolManager
+                    tool_runtime = ToolManager.get_agent_tool_runtime(
+                        tenant_id=self.tenant_id,
+                        app_id=self.app_id,
+                        agent_tool=agent_tool,
+                        invoke_from=self.invoke_from,
+                        variable_pool=variable_pool,
+                    )
+
+                    # Apply custom description from extra field if available
+                    if tool.extra.get("description") and tool_runtime.entity.description:
+                        tool_runtime.entity.description.llm = (
+                            tool.extra.get("description") or tool_runtime.entity.description.llm
+                        )
+
+                    tool_instances.append(tool_runtime)
+                except Exception as e:
+                    logger.warning("Failed to load tool %s: %s", tool, str(e))
+                    continue
+
+        return tool_instances
+
+    def _extract_prompt_files(self, variable_pool: VariablePool) -> list[File]:
+        """Extract files from prompt template variables."""
+        from core.variables import ArrayFileVariable, FileVariable
+
+        files: list[File] = []
+
+        # Extract variables from prompt template
+        if isinstance(self._node_data.prompt_template, list):
+            for message in self._node_data.prompt_template:
+                if message.text:
+                    parser = VariableTemplateParser(message.text)
+                    variable_selectors = parser.extract_variable_selectors()
+
+                    for variable_selector in variable_selectors:
+                        variable = variable_pool.get(variable_selector.value_selector)
+                        if isinstance(variable, FileVariable) and variable.value:
+                            files.append(variable.value)
+                        elif isinstance(variable, ArrayFileVariable) and variable.value:
+                            files.extend(variable.value)
+
+        return files
+
+    @staticmethod
+    def _serialize_tool_call(tool_call: ToolCallResult) -> dict[str, Any]:
+        """Convert ToolCallResult into JSON-friendly dict."""
+
+        def _file_to_ref(file: File) -> str | None:
+            # Align with streamed tool result events which carry file IDs
+            return file.id or file.related_id
+
+        files = []
+        for file in tool_call.files or []:
+            ref = _file_to_ref(file)
+            if ref:
+                files.append(ref)
+
+        return {
+            "id": tool_call.id,
+            "name": tool_call.name,
+            "arguments": tool_call.arguments,
+            "output": tool_call.output,
+            "files": files,
+            "status": tool_call.status.value if hasattr(tool_call.status, "value") else tool_call.status,
+            "elapsed_time": tool_call.elapsed_time,
+        }
+
+    def _generate_model_provider_icon_url(self, provider: str, dark: bool = False) -> str | None:
+        """Generate icon URL for model provider."""
+        from yarl import URL
+
+        from configs import dify_config
+
+        icon_type = "icon_small_dark" if dark else "icon_small"
+        try:
+            return str(
+                URL(dify_config.CONSOLE_API_URL or "/")
+                / "console"
+                / "api"
+                / "workspaces"
+                / "current"
+                / "model-providers"
+                / provider
+                / icon_type
+                / "en_US"
+            )
+        except Exception:
+            return None
+
+    def _flush_model_segment(
+        self,
+        buffers: StreamBuffers,
+        trace_state: TraceState,
+        error: str | None = None,
+    ) -> None:
+        """Flush pending thought/content buffers into a single model trace segment."""
+        if not buffers.pending_thought and not buffers.pending_content and not buffers.pending_tool_calls:
+            return
+
+        now = time.perf_counter()
+        duration = now - trace_state.model_segment_start_time if trace_state.model_segment_start_time else 0.0
+
+        # Use pending_usage from trace_state (captured from THOUGHT log)
+        usage = trace_state.pending_usage
+
+        # Generate model provider icon URL
+        provider = self._node_data.model.provider
+        model_name = self._node_data.model.name
+        model_icon = self._generate_model_provider_icon_url(provider)
+        model_icon_dark = self._generate_model_provider_icon_url(provider, dark=True)
+
+        trace_state.trace_segments.append(
+            LLMTraceSegment(
+                type="model",
+                duration=duration,
+                usage=usage,
+                output=ModelTraceSegment(
+                    text="".join(buffers.pending_content) if buffers.pending_content else None,
+                    reasoning="".join(buffers.pending_thought) if buffers.pending_thought else None,
+                    tool_calls=list(buffers.pending_tool_calls),
+                ),
+                provider=provider,
+                name=model_name,
+                icon=model_icon,
+                icon_dark=model_icon_dark,
+                error=error,
+                status="error" if error else "success",
+            )
+        )
+        buffers.pending_thought.clear()
+        buffers.pending_content.clear()
+        buffers.pending_tool_calls.clear()
+        trace_state.model_segment_start_time = None
+        trace_state.pending_usage = None
+
+    def _handle_agent_log_output(
+        self, output: AgentLog, buffers: StreamBuffers, trace_state: TraceState, agent_context: AgentContext
+    ) -> Generator[NodeEventBase, None, None]:
+        payload = ToolLogPayload.from_log(output)
+        agent_log_event = AgentLogEvent(
+            message_id=output.id,
+            label=output.label,
+            node_execution_id=self.id,
+            parent_id=output.parent_id,
+            error=output.error,
+            status=output.status.value,
+            data=output.data,
+            metadata={k.value: v for k, v in output.metadata.items()},
+            node_id=self._node_id,
+        )
+        for log in agent_context.agent_logs:
+            if log.message_id == agent_log_event.message_id:
+                log.data = agent_log_event.data
+                log.status = agent_log_event.status
+                log.error = agent_log_event.error
+                log.label = agent_log_event.label
+                log.metadata = agent_log_event.metadata
+                break
+        else:
+            agent_context.agent_logs.append(agent_log_event)
+
+        # Handle THOUGHT log completion - capture usage for model segment
+        if output.log_type == AgentLog.LogType.THOUGHT and output.status == AgentLog.LogStatus.SUCCESS:
+            llm_usage = output.metadata.get(AgentLog.LogMetadata.LLM_USAGE) if output.metadata else None
+            if llm_usage:
+                trace_state.pending_usage = llm_usage
+
+        if output.log_type == AgentLog.LogType.TOOL_CALL and output.status == AgentLog.LogStatus.START:
+            tool_name = payload.tool_name
+            tool_call_id = payload.tool_call_id
+            tool_arguments = json.dumps(payload.tool_args) if payload.tool_args else ""
+
+            # Get icon from metadata (available at START)
+            tool_icon = output.metadata.get(AgentLog.LogMetadata.ICON) if output.metadata else None
+            tool_icon_dark = output.metadata.get(AgentLog.LogMetadata.ICON_DARK) if output.metadata else None
+
+            if tool_call_id and tool_call_id not in trace_state.tool_call_index_map:
+                trace_state.tool_call_index_map[tool_call_id] = len(trace_state.tool_call_index_map)
+
+            # Add tool call to pending list for model segment
+            buffers.pending_tool_calls.append(ToolCall(id=tool_call_id, name=tool_name, arguments=tool_arguments))
+
+            yield ToolCallChunkEvent(
+                selector=[self._node_id, "generation", "tool_calls"],
+                chunk=tool_arguments,
+                tool_call=ToolCall(
+                    id=tool_call_id,
+                    name=tool_name,
+                    arguments=tool_arguments,
+                    icon=tool_icon,
+                    icon_dark=tool_icon_dark,
+                ),
+                is_final=False,
+            )
+
+        if output.log_type == AgentLog.LogType.TOOL_CALL and output.status != AgentLog.LogStatus.START:
+            tool_name = payload.tool_name
+            tool_output = payload.tool_output
+            tool_call_id = payload.tool_call_id
+            tool_files = payload.files if isinstance(payload.files, list) else []
+            tool_error = payload.tool_error
+            tool_arguments = json.dumps(payload.tool_args) if payload.tool_args else ""
+
+            if tool_call_id and tool_call_id not in trace_state.tool_call_index_map:
+                trace_state.tool_call_index_map[tool_call_id] = len(trace_state.tool_call_index_map)
+
+            # Flush model segment before tool result processing
+            self._flush_model_segment(buffers, trace_state)
+
+            if output.status == AgentLog.LogStatus.ERROR:
+                tool_error = output.error or payload.tool_error
+                if not tool_error and payload.meta:
+                    tool_error = payload.meta.get("error")
+            else:
+                if payload.meta:
+                    meta_error = payload.meta.get("error")
+                    if meta_error:
+                        tool_error = meta_error
+
+            elapsed_time = output.metadata.get(AgentLog.LogMetadata.ELAPSED_TIME) if output.metadata else None
+            tool_provider = output.metadata.get(AgentLog.LogMetadata.PROVIDER) if output.metadata else None
+            tool_icon = output.metadata.get(AgentLog.LogMetadata.ICON) if output.metadata else None
+            tool_icon_dark = output.metadata.get(AgentLog.LogMetadata.ICON_DARK) if output.metadata else None
+            result_str = str(tool_output) if tool_output is not None else None
+
+            tool_status: Literal["success", "error"] = "error" if tool_error else "success"
+            tool_call_segment = LLMTraceSegment(
+                type="tool",
+                duration=elapsed_time or 0.0,
+                usage=None,
+                output=ToolTraceSegment(
+                    id=tool_call_id,
+                    name=tool_name,
+                    arguments=tool_arguments,
+                    output=result_str,
+                ),
+                provider=tool_provider,
+                name=tool_name,
+                icon=tool_icon,
+                icon_dark=tool_icon_dark,
+                error=str(tool_error) if tool_error else None,
+                status=tool_status,
+            )
+            trace_state.trace_segments.append(tool_call_segment)
+            if tool_call_id:
+                trace_state.tool_trace_map[tool_call_id] = tool_call_segment
+
+            # Start new model segment tracking
+            trace_state.model_segment_start_time = time.perf_counter()
+
+            yield ToolResultChunkEvent(
+                selector=[self._node_id, "generation", "tool_results"],
+                chunk=result_str or "",
+                tool_result=ToolResult(
+                    id=tool_call_id,
+                    name=tool_name,
+                    output=result_str,
+                    files=tool_files,
+                    status=ToolResultStatus.ERROR if tool_error else ToolResultStatus.SUCCESS,
+                    elapsed_time=elapsed_time,
+                    icon=tool_icon,
+                    icon_dark=tool_icon_dark,
+                ),
+                is_final=False,
+            )
+
+            if buffers.current_turn_reasoning:
+                buffers.reasoning_per_turn.append("".join(buffers.current_turn_reasoning))
+                buffers.current_turn_reasoning.clear()
+
+    def _handle_llm_chunk_output(
+        self, output: LLMResultChunk, buffers: StreamBuffers, trace_state: TraceState, aggregate: AggregatedResult
+    ) -> Generator[NodeEventBase, None, None]:
+        message = output.delta.message
+
+        if message and message.content:
+            chunk_text = message.content
+            if isinstance(chunk_text, list):
+                chunk_text = "".join(getattr(content, "data", str(content)) for content in chunk_text)
+            else:
+                chunk_text = str(chunk_text)
+
+            for kind, segment in buffers.think_parser.process(chunk_text):
+                if not segment and kind not in {"thought_start", "thought_end"}:
+                    continue
+
+                # Start tracking model segment time on first output
+                if trace_state.model_segment_start_time is None:
+                    trace_state.model_segment_start_time = time.perf_counter()
+
+                if kind == "thought_start":
+                    yield ThoughtStartChunkEvent(
+                        selector=[self._node_id, "generation", "thought"],
+                        chunk="",
+                        is_final=False,
+                    )
+                elif kind == "thought":
+                    buffers.current_turn_reasoning.append(segment)
+                    buffers.pending_thought.append(segment)
+                    yield ThoughtChunkEvent(
+                        selector=[self._node_id, "generation", "thought"],
+                        chunk=segment,
+                        is_final=False,
+                    )
+                elif kind == "thought_end":
+                    yield ThoughtEndChunkEvent(
+                        selector=[self._node_id, "generation", "thought"],
+                        chunk="",
+                        is_final=False,
+                    )
+                else:
+                    aggregate.text += segment
+                    buffers.pending_content.append(segment)
+                    yield StreamChunkEvent(
+                        selector=[self._node_id, "text"],
+                        chunk=segment,
+                        is_final=False,
+                    )
+                    yield StreamChunkEvent(
+                        selector=[self._node_id, "generation", "content"],
+                        chunk=segment,
+                        is_final=False,
+                    )
+
+        if output.delta.usage:
+            self._accumulate_usage(aggregate.usage, output.delta.usage)
+
+        if output.delta.finish_reason:
+            aggregate.finish_reason = output.delta.finish_reason
+
+    def _flush_remaining_stream(
+        self, buffers: StreamBuffers, trace_state: TraceState, aggregate: AggregatedResult
+    ) -> Generator[NodeEventBase, None, None]:
+        for kind, segment in buffers.think_parser.flush():
+            if not segment and kind not in {"thought_start", "thought_end"}:
+                continue
+
+            # Start tracking model segment time on first output
+            if trace_state.model_segment_start_time is None:
+                trace_state.model_segment_start_time = time.perf_counter()
+
+            if kind == "thought_start":
+                yield ThoughtStartChunkEvent(
+                    selector=[self._node_id, "generation", "thought"],
+                    chunk="",
+                    is_final=False,
+                )
+            elif kind == "thought":
+                buffers.current_turn_reasoning.append(segment)
+                buffers.pending_thought.append(segment)
+                yield ThoughtChunkEvent(
+                    selector=[self._node_id, "generation", "thought"],
+                    chunk=segment,
+                    is_final=False,
+                )
+            elif kind == "thought_end":
+                yield ThoughtEndChunkEvent(
+                    selector=[self._node_id, "generation", "thought"],
+                    chunk="",
+                    is_final=False,
+                )
+            else:
+                aggregate.text += segment
+                buffers.pending_content.append(segment)
+                yield StreamChunkEvent(
+                    selector=[self._node_id, "text"],
+                    chunk=segment,
+                    is_final=False,
+                )
+                yield StreamChunkEvent(
+                    selector=[self._node_id, "generation", "content"],
+                    chunk=segment,
+                    is_final=False,
+                )
+
+        if buffers.current_turn_reasoning:
+            buffers.reasoning_per_turn.append("".join(buffers.current_turn_reasoning))
+
+        # For final flush, use aggregate.usage if pending_usage is not set
+        # (e.g., for simple LLM calls without tool invocations)
+        if trace_state.pending_usage is None:
+            trace_state.pending_usage = aggregate.usage
+
+        # Flush final model segment
+        self._flush_model_segment(buffers, trace_state)
+
+    def _close_streams(self) -> Generator[NodeEventBase, None, None]:
+        yield StreamChunkEvent(
+            selector=[self._node_id, "text"],
+            chunk="",
+            is_final=True,
+        )
+        yield StreamChunkEvent(
+            selector=[self._node_id, "generation", "content"],
+            chunk="",
+            is_final=True,
+        )
+        yield ThoughtChunkEvent(
+            selector=[self._node_id, "generation", "thought"],
+            chunk="",
+            is_final=True,
+        )
+        yield ToolCallChunkEvent(
+            selector=[self._node_id, "generation", "tool_calls"],
+            chunk="",
+            tool_call=ToolCall(
+                id="",
+                name="",
+                arguments="",
+            ),
+            is_final=True,
+        )
+        yield ToolResultChunkEvent(
+            selector=[self._node_id, "generation", "tool_results"],
+            chunk="",
+            tool_result=ToolResult(
+                id="",
+                name="",
+                output="",
+                files=[],
+                status=ToolResultStatus.SUCCESS,
+            ),
+            is_final=True,
+        )
+
+    def _build_generation_data(
+        self,
+        trace_state: TraceState,
+        agent_context: AgentContext,
+        aggregate: AggregatedResult,
+        buffers: StreamBuffers,
+    ) -> LLMGenerationData:
+        sequence: list[dict[str, Any]] = []
+        reasoning_index = 0
+        content_position = 0
+        tool_call_seen_index: dict[str, int] = {}
+        for trace_segment in trace_state.trace_segments:
+            if trace_segment.type == "thought":
+                sequence.append({"type": "reasoning", "index": reasoning_index})
+                reasoning_index += 1
+            elif trace_segment.type == "content":
+                segment_text = trace_segment.text or ""
+                start = content_position
+                end = start + len(segment_text)
+                sequence.append({"type": "content", "start": start, "end": end})
+                content_position = end
+            elif trace_segment.type == "tool_call":
+                tool_id = trace_segment.tool_call.id if trace_segment.tool_call and trace_segment.tool_call.id else ""
+                if tool_id not in tool_call_seen_index:
+                    tool_call_seen_index[tool_id] = len(tool_call_seen_index)
+                sequence.append({"type": "tool_call", "index": tool_call_seen_index[tool_id]})
+
+        tool_calls_for_generation: list[ToolCallResult] = []
+        for log in agent_context.agent_logs:
+            payload = ToolLogPayload.from_mapping(log.data or {})
+            tool_call_id = payload.tool_call_id
+            if not tool_call_id or log.status == AgentLog.LogStatus.START.value:
+                continue
+
+            tool_args = payload.tool_args
+            log_error = payload.tool_error
+            log_output = payload.tool_output
+            result_text = log_output or log_error or ""
+            status = ToolResultStatus.ERROR if log_error else ToolResultStatus.SUCCESS
+            tool_calls_for_generation.append(
+                ToolCallResult(
+                    id=tool_call_id,
+                    name=payload.tool_name,
+                    arguments=json.dumps(tool_args) if tool_args else "",
+                    output=result_text,
+                    status=status,
+                    elapsed_time=log.metadata.get(AgentLog.LogMetadata.ELAPSED_TIME) if log.metadata else None,
+                )
+            )
+
+        tool_calls_for_generation.sort(
+            key=lambda item: trace_state.tool_call_index_map.get(item.id or "", len(trace_state.tool_call_index_map))
+        )
+
+        return LLMGenerationData(
+            text=aggregate.text,
+            reasoning_contents=buffers.reasoning_per_turn,
+            tool_calls=tool_calls_for_generation,
+            sequence=sequence,
+            usage=aggregate.usage,
+            finish_reason=aggregate.finish_reason,
+            files=aggregate.files,
+            trace=trace_state.trace_segments,
+        )
+
+    def _process_tool_outputs(
+        self,
+        outputs: Generator[LLMResultChunk | AgentLog, None, AgentResult],
+    ) -> Generator[NodeEventBase, None, LLMGenerationData]:
+        """Process strategy outputs and convert to node events."""
+        state = ToolOutputState()
+
+        try:
+            for output in outputs:
+                if isinstance(output, AgentLog):
+                    yield from self._handle_agent_log_output(output, state.stream, state.trace, state.agent)
+                else:
+                    yield from self._handle_llm_chunk_output(output, state.stream, state.trace, state.aggregate)
+        except StopIteration as exception:
+            if isinstance(getattr(exception, "value", None), AgentResult):
+                state.agent.agent_result = exception.value
+
+        if state.agent.agent_result:
+            state.aggregate.text = state.agent.agent_result.text or state.aggregate.text
+            state.aggregate.files = state.agent.agent_result.files
+            if state.agent.agent_result.usage:
+                state.aggregate.usage = state.agent.agent_result.usage
+            if state.agent.agent_result.finish_reason:
+                state.aggregate.finish_reason = state.agent.agent_result.finish_reason
+
+        yield from self._flush_remaining_stream(state.stream, state.trace, state.aggregate)
+        yield from self._close_streams()
+
+        return self._build_generation_data(state.trace, state.agent, state.aggregate, state.stream)
+
+    def _accumulate_usage(self, total_usage: LLMUsage, delta_usage: LLMUsage) -> None:
+        """Accumulate LLM usage statistics."""
+        total_usage.prompt_tokens += delta_usage.prompt_tokens
+        total_usage.completion_tokens += delta_usage.completion_tokens
+        total_usage.total_tokens += delta_usage.total_tokens
+        total_usage.prompt_price += delta_usage.prompt_price
+        total_usage.completion_price += delta_usage.completion_price
+        total_usage.total_price += delta_usage.total_price
+
 
 def _combine_message_content_with_role(
     *, contents: str | list[PromptMessageContentUnionTypes] | None = None, role: PromptMessageRole
@@ -1508,7 +2728,7 @@ def _calculate_rest_token(
 
 def _handle_memory_chat_mode(
     *,
-    memory: TokenBufferMemory | None,
+    memory: BaseMemory | None,
     memory_config: MemoryConfig | None,
     model_config: ModelConfigWithCredentialsEntity,
 ) -> Sequence[PromptMessage]:
@@ -1525,7 +2745,7 @@ def _handle_memory_chat_mode(
 
 def _handle_memory_completion_mode(
     *,
-    memory: TokenBufferMemory | None,
+    memory: BaseMemory | None,
     memory_config: MemoryConfig | None,
     model_config: ModelConfigWithCredentialsEntity,
 ) -> str:

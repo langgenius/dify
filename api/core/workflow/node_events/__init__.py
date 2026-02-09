@@ -13,16 +13,21 @@ from .loop import (
     LoopSucceededEvent,
 )
 from .node import (
+    ChunkType,
     ModelInvokeCompletedEvent,
     PauseRequestedEvent,
     RunRetrieverResourceEvent,
     RunRetryEvent,
     StreamChunkEvent,
     StreamCompletedEvent,
+    ThoughtChunkEvent,
+    ToolCallChunkEvent,
+    ToolResultChunkEvent,
 )
 
 __all__ = [
     "AgentLogEvent",
+    "ChunkType",
     "IterationFailedEvent",
     "IterationNextEvent",
     "IterationStartedEvent",
@@ -39,4 +44,7 @@ __all__ = [
     "RunRetryEvent",
     "StreamChunkEvent",
     "StreamCompletedEvent",
+    "ThoughtChunkEvent",
+    "ToolCallChunkEvent",
+    "ToolResultChunkEvent",
 ]

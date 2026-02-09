@@ -1,7 +1,7 @@
 'use client'
 
 import type { AppIconSelection } from '../../base/app-icon-picker'
-import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
+import { RiArrowRightLine, RiArrowRightSLine, RiCheckLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import Image from 'next/image'
@@ -11,11 +11,13 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
+import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import Input from '@/app/components/base/input'
+import CustomSelect from '@/app/components/base/select/custom'
 import Textarea from '@/app/components/base/textarea'
 import { ToastContext } from '@/app/components/base/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
@@ -29,7 +31,6 @@ import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import AppIconPicker from '../../base/app-icon-picker'
-import ShortcutsName from '../../workflow/shortcuts-name'
 
 type CreateAppProps = {
   onSuccess: () => void
@@ -37,6 +38,17 @@ type CreateAppProps = {
   onCreateFromTemplate?: () => void
   defaultAppMode?: AppModeEnum
 }
+
+type RuntimeMode = 'sandboxed' | 'classic'
+
+type RuntimeOption = {
+  label: string
+  value: RuntimeMode
+  description: string
+  recommended?: boolean
+}
+
+const WORKFLOW_RUNTIME_STORAGE_KEY_PREFIX = 'workflow:sandbox-runtime:'
 
 function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
   const { t } = useTranslation()
@@ -49,6 +61,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(false)
+  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('sandboxed')
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
@@ -59,6 +72,9 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
   useEffect(() => {
     if (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.AGENT_CHAT || appMode === AppModeEnum.COMPLETION)
       setIsAppTypeExpanded(true)
+
+    if (appMode !== AppModeEnum.WORKFLOW && appMode !== AppModeEnum.ADVANCED_CHAT)
+      setRuntimeMode('classic')
   }, [appMode])
 
   const onCreate = useCallback(async () => {
@@ -83,6 +99,9 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         mode: appMode,
       })
 
+      if (runtimeMode === 'sandboxed' && (appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT))
+        localStorage.setItem(`${WORKFLOW_RUNTIME_STORAGE_KEY_PREFIX}${app.id}`, '1')
+
       // Track app creation success
       trackEvent('create_app', {
         app_mode: appMode,
@@ -102,7 +121,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       })
     }
     isCreatingRef.current = false
-  }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
+  }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor, runtimeMode])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
@@ -257,6 +276,60 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                   onChange={e => setDescription(e.target.value)}
                 />
               </div>
+
+              {(appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT) && (
+                <div>
+                  <div className="system-sm-semibold mb-2 text-text-secondary">
+                    {t('newApp.runtimeLabel', { ns: 'app' })}
+                  </div>
+                  <CustomSelect<RuntimeOption>
+                    options={[
+                      {
+                        label: t('newApp.runtimeOptionSandboxed', { ns: 'app' }),
+                        value: 'sandboxed',
+                        description: t('newApp.runtimeOptionSandboxedDescription', { ns: 'app' }),
+                        recommended: true,
+                      },
+                      {
+                        label: t('newApp.runtimeOptionClassic', { ns: 'app' }),
+                        value: 'classic',
+                        description: t('newApp.runtimeOptionClassicDescription', { ns: 'app' }),
+                      },
+                    ]}
+                    value={runtimeMode}
+                    onChange={value => setRuntimeMode(value as RuntimeMode)}
+                    triggerProps={{
+                      className: 'px-3',
+                    }}
+                    popupProps={{
+                      wrapperClassName: 'z-[60]',
+                      className: 'w-full',
+                      itemClassName: '!h-auto !py-2 !items-start',
+                    }}
+                    CustomOption={(option, selected) => (
+                      <>
+                        <RiCheckLine className={cn(
+                          'mr-2 h-4 w-4 shrink-0 text-text-accent',
+                          !selected && 'opacity-0',
+                        )}
+                        />
+                        <div className="flex flex-1 flex-col gap-0.5">
+                          <div className="flex items-center gap-1">
+                            <span className="system-sm-semibold text-text-secondary">{option.label}</span>
+                            {option.recommended && (
+                              <Badge className="!h-4 !px-1">
+                                {t('newApp.recommended', { ns: 'app' })}
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="system-xs-regular text-text-tertiary">{option.description}</span>
+                        </div>
+                      </>
+                    )}
+                  />
+                </div>
+              )}
+
             </div>
             {isAppsFull && <AppsFull className="mt-4" loc="app-create" />}
             <div className="flex items-center justify-between pb-10 pt-5">
@@ -270,7 +343,10 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
                 <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
                   <span>{t('newApp.Create', { ns: 'app' })}</span>
-                  <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
+                  <div className="flex gap-0.5">
+                    <RiCommandLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
+                    <RiCornerDownLeftLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
+                  </div>
                 </Button>
               </div>
             </div>

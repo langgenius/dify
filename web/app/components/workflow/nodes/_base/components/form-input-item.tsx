@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { ResourceVarInputs } from '../types'
+import type { NestedNodeConfig, ResourceVarInputs } from '../types'
 import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event, Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
@@ -9,7 +9,7 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 
 import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import CheckboxList from '@/app/components/base/checkbox-list'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
@@ -18,6 +18,8 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
@@ -47,6 +49,93 @@ type Props = {
   disableVariableInsertion?: boolean
 }
 
+type VariableReferenceFieldsProps = {
+  nodeId: string
+  isString: boolean
+  showVariableSelector: boolean
+  readOnly: boolean
+  schema: CredentialFormSchema
+  varInput: ResourceVarInputs[string]
+  targetVarType: string
+  filterVar?: (payload: Var, selector: ValueSelector) => boolean
+  onValueChange: (newValue: any) => void
+  onVariableSelectorChange: (newValue: ValueSelector | string) => void
+  showManageInputField?: boolean
+  onManageInputField?: () => void
+  disableVariableInsertion?: boolean
+  inPanel?: boolean
+  currentTool?: Tool | Event
+  currentProvider?: ToolWithProvider | TriggerWithProvider
+  isFilterFileVar?: boolean
+  toolNodeId?: string
+  paramKey?: string
+}
+
+const VariableReferenceFields: FC<VariableReferenceFieldsProps> = ({
+  nodeId,
+  isString,
+  showVariableSelector,
+  readOnly,
+  schema,
+  varInput,
+  targetVarType,
+  filterVar,
+  onValueChange,
+  onVariableSelectorChange,
+  showManageInputField,
+  onManageInputField,
+  disableVariableInsertion,
+  inPanel,
+  currentTool,
+  currentProvider,
+  isFilterFileVar,
+  toolNodeId,
+  paramKey,
+}) => {
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar: filterVar || (() => true),
+  })
+
+  return (
+    <>
+      {isString && (
+        <MixedVariableTextInput
+          readOnly={readOnly}
+          value={varInput?.value as string || ''}
+          onChange={onValueChange}
+          nodesOutputVars={availableVars}
+          availableNodes={availableNodesWithParent}
+          showManageInputField={showManageInputField}
+          onManageInputField={onManageInputField}
+          disableVariableInsertion={disableVariableInsertion}
+          toolNodeId={toolNodeId}
+          paramKey={paramKey}
+        />
+      )}
+      {showVariableSelector && (
+        <VarReferencePicker
+          zIndex={inPanel ? 1000 : undefined}
+          className="h-8 grow"
+          readonly={readOnly}
+          isShowNodeName
+          nodeId={nodeId}
+          value={varInput?.value || []}
+          onChange={onVariableSelectorChange}
+          filterVar={filterVar}
+          schema={schema}
+          valueTypePlaceHolder={targetVarType}
+          currentTool={currentTool}
+          currentProvider={currentProvider}
+          isFilterFileVar={isFilterFileVar}
+          availableVars={availableVars}
+          availableNodes={availableNodesWithParent}
+        />
+      )}
+    </>
+  )
+}
+
 const FormInputItem: FC<Props> = ({
   readOnly,
   nodeId,
@@ -63,6 +152,9 @@ const FormInputItem: FC<Props> = ({
   disableVariableInsertion = false,
 }) => {
   const language = useLanguage()
+  const hooksStore = useContext(HooksStoreContext)
+  const workflowStore = useContext(WorkflowContext)
+  const canUseWorkflowHooks = !!hooksStore && !!workflowStore
   const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
   const [isLoadingToolsOptions, setIsLoadingToolsOptions] = useState(false)
 
@@ -89,17 +181,11 @@ const FormInputItem: FC<Props> = ({
   const isDynamicSelect = type === FormTypeEnum.dynamicSelect
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
-  const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect
+  const showTypeSwitch = canUseWorkflowHooks && (isNumber || isBoolean || isObject || isArray || isSelect)
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
-  const showVariableSelector = isFile || varInput?.type === VarKindType.variable
+  const showVariableSelector = canUseWorkflowHooks && (isFile || varInput?.type === VarKindType.variable)
   const isMultipleSelect = multiple && (isSelect || isDynamicSelect)
-
-  const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
-    onlyLeafNodeVar: false,
-    filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
-    },
-  })
+  const canRenderVariableReference = canUseWorkflowHooks && !!nodeId
 
   const targetVarType = () => {
     if (isString)
@@ -233,13 +319,33 @@ const FormInputItem: FC<Props> = ({
     }
   }
 
-  const handleValueChange = (newValue: any) => {
+  const handleValueChange = (newValue: any, newType?: VarKindType, nestedNodeConfig?: NestedNodeConfig | null) => {
+    const normalizedValue = isNumber ? Number.parseFloat(newValue) : newValue
+    const assemblePlaceholder = nodeId && variable
+      ? `{{#${nodeId}_ext_${variable}.result#}}`
+      : ''
+    const isAssembleValue = typeof normalizedValue === 'string'
+      && assemblePlaceholder
+      && normalizedValue.includes(assemblePlaceholder)
+    const resolvedType = isAssembleValue
+      ? VarKindType.mixed
+      : newType ?? (varInput?.type === VarKindType.nested_node ? VarKindType.nested_node : getVarKindType())
+    const resolvedNestedNodeConfig = resolvedType === VarKindType.nested_node
+      ? (nestedNodeConfig ?? varInput?.nested_node_config ?? {
+          extractor_node_id: '',
+          output_selector: [],
+          null_strategy: 'use_default',
+          default_value: '',
+        })
+      : undefined
+
     onChange({
       ...value,
       [variable]: {
         ...varInput,
-        type: getVarKindType(),
-        value: isNumber ? Number.parseFloat(newValue) : newValue,
+        type: resolvedType,
+        value: normalizedValue,
+        nested_node_config: resolvedNestedNodeConfig,
       },
     })
   }
@@ -327,16 +433,36 @@ const FormInputItem: FC<Props> = ({
       {showTypeSwitch && (
         <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange} />
       )}
-      {isString && (
-        <MixedVariableTextInput
-          readOnly={readOnly}
+      {isString && !canRenderVariableReference && (
+        <Input
+          className="h-8 grow"
           value={varInput?.value as string || ''}
-          onChange={handleValueChange}
-          nodesOutputVars={availableVars}
-          availableNodes={availableNodesWithParent}
+          onChange={e => handleValueChange(e.target.value)}
+          placeholder={placeholder?.[language] || placeholder?.en_US}
+          disabled={readOnly}
+        />
+      )}
+      {canRenderVariableReference && (
+        <VariableReferenceFields
+          nodeId={nodeId}
+          isString={isString}
+          showVariableSelector={showVariableSelector}
+          readOnly={readOnly}
+          schema={schema}
+          varInput={varInput}
+          targetVarType={targetVarType()}
+          filterVar={getFilterVar()}
+          onValueChange={handleValueChange}
+          onVariableSelectorChange={newValue => handleVariableSelectorChange(newValue, variable)}
           showManageInputField={showManageInputField}
           onManageInputField={onManageInputField}
           disableVariableInsertion={disableVariableInsertion}
+          inPanel={inPanel}
+          currentTool={currentTool}
+          currentProvider={currentProvider}
+          isFilterFileVar={isBoolean}
+          toolNodeId={nodeId}
+          paramKey={variable}
         />
       )}
       {isNumber && isConstant && (
@@ -570,23 +696,6 @@ const FormInputItem: FC<Props> = ({
           setModel={handleAppOrModelSelect}
           readonly={readOnly}
           scope={scope}
-        />
-      )}
-      {showVariableSelector && (
-        <VarReferencePicker
-          zIndex={inPanel ? 1000 : undefined}
-          className="h-8 grow"
-          readonly={readOnly}
-          isShowNodeName
-          nodeId={nodeId}
-          value={varInput?.value || []}
-          onChange={value => handleVariableSelectorChange(value, variable)}
-          filterVar={getFilterVar()}
-          schema={schema}
-          valueTypePlaceHolder={targetVarType()}
-          currentTool={currentTool}
-          currentProvider={currentProvider}
-          isFilterFileVar={isBoolean}
         />
       )}
     </div>

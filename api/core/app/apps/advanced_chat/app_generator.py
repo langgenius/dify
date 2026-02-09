@@ -30,12 +30,14 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, ToolResult
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
+from core.app.layers.sandbox_layer import SandboxLayer
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
+from core.sandbox import Sandbox, SandboxManager
 from core.workflow.repositories.draft_variable_repository import (
     DraftVariableSaverFactory,
 )
@@ -47,7 +49,9 @@ from factories import file_factory
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
+from models.workflow_features import WorkflowFeatures
 from services.conversation_service import ConversationService
+from services.sandbox.sandbox_provider_service import SandboxProviderService
 from services.workflow_draft_variable_service import (
     DraftVarLoader,
     WorkflowDraftVariableService,
@@ -522,6 +526,31 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 if workflow is None:
                     raise ValueError("Workflow not found")
 
+                sandbox: Sandbox | None = None
+                graph_engine_layers: tuple = ()
+                if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
+                    sandbox_provider = SandboxProviderService.get_sandbox_provider(
+                        application_generate_entity.app_config.tenant_id
+                    )
+                    if workflow.version == Workflow.VERSION_DRAFT:
+                        sandbox = SandboxManager.create_draft(
+                            tenant_id=application_generate_entity.app_config.tenant_id,
+                            app_id=application_generate_entity.app_config.app_id,
+                            user_id=application_generate_entity.user_id,
+                            sandbox_provider=sandbox_provider,
+                        )
+                    else:
+                        if application_generate_entity.workflow_run_id is None:
+                            raise ValueError("workflow_run_id is required when sandbox is enabled")
+                        sandbox = SandboxManager.create(
+                            tenant_id=application_generate_entity.app_config.tenant_id,
+                            app_id=application_generate_entity.app_config.app_id,
+                            user_id=application_generate_entity.user_id,
+                            workflow_execution_id=application_generate_entity.workflow_run_id,
+                            sandbox_provider=sandbox_provider,
+                        )
+                    graph_engine_layers = (SandboxLayer(sandbox=sandbox),)
+
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {
                     InvokeFrom.WEB_APP,
@@ -552,6 +581,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 app=app,
                 workflow_execution_repository=workflow_execution_repository,
                 workflow_node_execution_repository=workflow_node_execution_repository,
+                graph_engine_layers=graph_engine_layers,
+                sandbox=sandbox,
             )
 
             try:

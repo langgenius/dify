@@ -29,6 +29,7 @@ from models import (
     Account,
     CreatorUserRole,
     EndUser,
+    LLMGenerationDetail,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
 )
@@ -456,6 +457,113 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         with self._session_factory() as session, session.begin():
             session.merge(db_model)
             session.flush()
+
+            # Save LLMGenerationDetail for LLM nodes with successful execution
+            if (
+                domain_model.node_type == NodeType.LLM
+                and domain_model.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                and domain_model.outputs is not None
+            ):
+                self._save_llm_generation_detail(session, domain_model)
+
+    def _save_llm_generation_detail(self, session, execution: WorkflowNodeExecution) -> None:
+        """
+        Save LLM generation detail for LLM nodes.
+        Extracts reasoning_content, tool_calls, and sequence from outputs and metadata.
+        """
+        outputs = execution.outputs or {}
+        metadata = execution.metadata or {}
+
+        reasoning_list = self._extract_reasoning(outputs)
+        tool_calls_list = self._extract_tool_calls(metadata.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG))
+
+        if not reasoning_list and not tool_calls_list:
+            return
+
+        sequence = self._build_generation_sequence(outputs.get("text", ""), reasoning_list, tool_calls_list)
+        self._upsert_generation_detail(session, execution, reasoning_list, tool_calls_list, sequence)
+
+    def _extract_reasoning(self, outputs: Mapping[str, Any]) -> list[str]:
+        """Extract reasoning_content as a clean list of non-empty strings."""
+        reasoning_content = outputs.get("reasoning_content")
+        if isinstance(reasoning_content, str):
+            trimmed = reasoning_content.strip()
+            return [trimmed] if trimmed else []
+        if isinstance(reasoning_content, list):
+            return [item.strip() for item in reasoning_content if isinstance(item, str) and item.strip()]
+        return []
+
+    def _extract_tool_calls(self, agent_log: Any) -> list[dict[str, str]]:
+        """Extract tool call records from agent logs."""
+        if not agent_log or not isinstance(agent_log, list):
+            return []
+
+        tool_calls: list[dict[str, str]] = []
+        for log in agent_log:
+            log_data = log.data if hasattr(log, "data") else (log.get("data", {}) if isinstance(log, dict) else {})
+            tool_name = log_data.get("tool_name")
+            if tool_name and str(tool_name).strip():
+                tool_calls.append(
+                    {
+                        "id": log_data.get("tool_call_id", ""),
+                        "name": tool_name,
+                        "arguments": json.dumps(log_data.get("tool_args", {})),
+                        "result": str(log_data.get("output", "")),
+                    }
+                )
+        return tool_calls
+
+    def _build_generation_sequence(
+        self, text: str, reasoning_list: list[str], tool_calls_list: list[dict[str, str]]
+    ) -> list[dict[str, Any]]:
+        """Build a simple content/reasoning/tool_call sequence."""
+        sequence: list[dict[str, Any]] = []
+        if text:
+            sequence.append({"type": "content", "start": 0, "end": len(text)})
+        for index in range(len(reasoning_list)):
+            sequence.append({"type": "reasoning", "index": index})
+        for index in range(len(tool_calls_list)):
+            sequence.append({"type": "tool_call", "index": index})
+        return sequence
+
+    def _upsert_generation_detail(
+        self,
+        session,
+        execution: WorkflowNodeExecution,
+        reasoning_list: list[str],
+        tool_calls_list: list[dict[str, str]],
+        sequence: list[dict[str, Any]],
+    ) -> None:
+        """Insert or update LLMGenerationDetail with serialized fields."""
+        existing = (
+            session.query(LLMGenerationDetail)
+            .filter_by(
+                workflow_run_id=execution.workflow_execution_id,
+                node_id=execution.node_id,
+            )
+            .first()
+        )
+
+        reasoning_json = json.dumps(reasoning_list) if reasoning_list else None
+        tool_calls_json = json.dumps(tool_calls_list) if tool_calls_list else None
+        sequence_json = json.dumps(sequence) if sequence else None
+
+        if existing:
+            existing.reasoning_content = reasoning_json
+            existing.tool_calls = tool_calls_json
+            existing.sequence = sequence_json
+            return
+
+        generation_detail = LLMGenerationDetail(
+            tenant_id=self._tenant_id,
+            app_id=self._app_id,
+            workflow_run_id=execution.workflow_execution_id,
+            node_id=execution.node_id,
+            reasoning_content=reasoning_json,
+            tool_calls=tool_calls_json,
+            sequence=sequence_json,
+        )
+        session.add(generation_detail)
 
     def get_db_models_by_workflow_run(
         self,

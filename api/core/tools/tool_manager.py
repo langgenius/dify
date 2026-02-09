@@ -1041,6 +1041,8 @@ class ToolManager:
                         continue
                     tool_input = ToolNodeData.ToolInput.model_validate(tool_configurations.get(parameter.name, {}))
                     if tool_input.type == "variable":
+                        if not isinstance(tool_input.value, list):
+                            raise ToolParameterError(f"Invalid variable selector for {parameter.name}")
                         variable = variable_pool.get(tool_input.value)
                         if variable is None:
                             raise ToolParameterError(f"Variable {tool_input.value} does not exist")
@@ -1050,6 +1052,11 @@ class ToolManager:
                     elif tool_input.type == "mixed":
                         segment_group = variable_pool.convert_template(str(tool_input.value))
                         parameter_value = segment_group.text
+                    elif tool_input.type == "nested_node":
+                        # Nested node type not supported in agent mode
+                        raise ToolParameterError(
+                            f"Nested node type not supported in agent for parameter '{parameter.name}'"
+                        )
                     else:
                         raise ToolParameterError(f"Unknown tool input type '{tool_input.type}'")
                     runtime_parameters[parameter.name] = parameter_value

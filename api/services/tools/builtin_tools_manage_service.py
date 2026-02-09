@@ -26,7 +26,7 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_provider_encrypter
-from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
+from core.tools.utils.system_encryption import decrypt_system_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.provider_ids import ToolProviderID
@@ -502,7 +502,7 @@ class BuiltinToolManageService:
             )
             if system_client:
                 try:
-                    oauth_params = decrypt_system_oauth_params(system_client.encrypted_oauth_params)
+                    oauth_params = decrypt_system_params(system_client.encrypted_oauth_params)
                 except Exception as e:
                     raise ValueError(f"Error decrypting system oauth params: {e}")
 

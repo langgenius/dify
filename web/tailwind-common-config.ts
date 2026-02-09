@@ -143,6 +143,13 @@ const config = {
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',
+        'drag-blink': 'drag-blink 400ms ease-in-out infinite',
+      },
+      keyframes: {
+        'drag-blink': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0' },
+        },
       },
     },
   },

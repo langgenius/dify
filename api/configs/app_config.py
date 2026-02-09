@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from pydantic import Field
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
@@ -80,6 +81,14 @@ class DifyConfig(
         env_file_encoding="utf-8",
         # ignore extra attributes
         extra="ignore",
+    )
+
+    SANDBOX_DIFY_CLI_ROOT: str | None = Field(
+        default=None,
+        description=(
+            "Filesystem directory containing dify CLI binaries named dify-cli-<os>-<arch>. "
+            "Defaults to api/bin when unset."
+        ),
     )
 
     # Before adding any config,

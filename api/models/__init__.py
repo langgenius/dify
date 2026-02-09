@@ -9,6 +9,7 @@ from .account import (
     TenantStatus,
 )
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
+from .app_asset import AppAssets
 from .dataset import (
     AppDatasetJoin,
     Dataset,
@@ -51,6 +52,7 @@ from .model import (
     ExporleBanner,
     IconType,
     InstalledApp,
+    LLMGenerationDetail,
     Message,
     MessageAgentThought,
     MessageAnnotation,
@@ -79,6 +81,7 @@ from .provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from .sandbox import SandboxProvider, SandboxProviderSystemConfig
 from .source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from .task import CeleryTask, CeleryTaskSet
 from .tools import (
@@ -103,7 +106,6 @@ from .workflow import (
     Workflow,
     WorkflowAppLog,
     WorkflowAppLogCreatedFrom,
-    WorkflowArchiveLog,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
@@ -111,6 +113,7 @@ from .workflow import (
     WorkflowRun,
     WorkflowType,
 )
+from .workflow_features import WorkflowFeature, WorkflowFeatures
 
 __all__ = [
     "APIBasedExtension",
@@ -125,6 +128,7 @@ __all__ = [
     "App",
     "AppAnnotationHitHistory",
     "AppAnnotationSetting",
+    "AppAssets",
     "AppDatasetJoin",
     "AppMCPServer",
     "AppMode",
@@ -161,6 +165,7 @@ __all__ = [
     "IconType",
     "InstalledApp",
     "InvitationCode",
+    "LLMGenerationDetail",
     "LoadBalancingModelConfig",
     "Message",
     "MessageAgentThought",
@@ -177,6 +182,8 @@ __all__ = [
     "ProviderQuotaType",
     "ProviderType",
     "RecommendedApp",
+    "SandboxProvider",
+    "SandboxProviderSystemConfig",
     "SavedMessage",
     "Site",
     "Tag",
@@ -204,7 +211,8 @@ __all__ = [
     "Workflow",
     "WorkflowAppLog",
     "WorkflowAppLogCreatedFrom",
-    "WorkflowArchiveLog",
+    "WorkflowFeature",
+    "WorkflowFeatures",
     "WorkflowNodeExecutionModel",
     "WorkflowNodeExecutionOffload",
     "WorkflowNodeExecutionTriggeredFrom",

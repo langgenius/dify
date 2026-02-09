@@ -43,7 +43,7 @@ import {
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { CONVERSATION_ID_INFO } from '../constants'
-import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams, getRawUserVariablesFromUrlParams } from '../utils'
+import { buildChatItemTree, buildToolCallsFromHistorySequence, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams, getRawUserVariablesFromUrlParams } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -59,7 +59,8 @@ function getFormattedChatList(messages: any[]) {
     const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
     newChatList.push({
       id: item.id,
-      content: item.answer,
+      content: buildToolCallsFromHistorySequence(item).message,
+      toolCalls: buildToolCallsFromHistorySequence(item).toolCalls,
       agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
       feedback: item.feedback,
       isAnswer: true,

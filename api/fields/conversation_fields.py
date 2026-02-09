@@ -169,6 +169,7 @@ class MessageDetail(ResponseModel):
     status: str
     error: str | None = None
     parent_message_id: str | None = None
+    generation_detail: JSONValue | None = Field(default=None, validation_alias="generation_detail_dict")
 
     @field_validator("inputs", mode="before")
     @classmethod

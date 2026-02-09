@@ -84,6 +84,7 @@ type Props = {
   currentTool?: Tool
   currentProvider?: ToolWithProvider | TriggerWithProvider
   preferSchemaType?: boolean
+  hideSearch?: boolean
 }
 
 const DEFAULT_VALUE_SELECTOR: Props['value'] = []
@@ -117,6 +118,7 @@ const VarReferencePicker: FC<Props> = ({
   currentTool,
   currentProvider,
   preferSchemaType,
+  hideSearch,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -636,6 +638,7 @@ const VarReferencePicker: FC<Props> = ({
               isSupportFileVar={isSupportFileVar}
               zIndex={zIndex}
               preferSchemaType={preferSchemaType}
+              hideSearch={hideSearch}
             />
           )}
         </PortalToFollowElemContent>

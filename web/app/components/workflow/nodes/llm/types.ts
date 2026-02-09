@@ -1,12 +1,26 @@
-import type { CommonNodeType, Memory, ModelConfig, PromptItem, ValueSelector, Variable, VisionSetting } from '@/app/components/workflow/types'
+import type { ToolValue } from '@/app/components/workflow/block-selector/types'
+import type { CommonNodeType, Memory, ModelConfig, PromptItem, PromptTemplateItem, ValueSelector, Variable, VisionSetting } from '@/app/components/workflow/types'
+
+export type Tool = {
+  enabled: boolean
+  type: string
+  provider_name: 'plugin' | 'builtin' | 'api' | 'workflow' | 'app' | 'dataset-retrieval'
+  tool_name: string
+  plugin_unique_identifier?: string
+  credential_id?: string
+  parameters?: Record<string, any>
+  settings?: Record<string, any>
+  extra?: Record<string, any>
+}
 
 export type LLMNodeType = CommonNodeType & {
   model: ModelConfig
-  prompt_template: PromptItem[] | PromptItem
+  prompt_template: PromptTemplateItem[] | PromptItem
   prompt_config?: {
     jinja2_variables?: Variable[]
   }
   memory?: Memory
+  computer_use?: boolean
   context: {
     enabled: boolean
     variable_selector: ValueSelector
@@ -18,6 +32,8 @@ export type LLMNodeType = CommonNodeType & {
   structured_output_enabled?: boolean
   structured_output?: StructuredOutput
   reasoning_format?: 'tagged' | 'separated'
+  tools?: ToolValue[]
+  max_iterations?: number
 }
 
 export enum Type {

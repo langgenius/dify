@@ -54,6 +54,9 @@ export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
       annotationReply: {
         enabled: false,
       },
+      sandbox: {
+        enabled: false,
+      },
     },
   }
   return createStore<FeatureStoreState>()(set => ({

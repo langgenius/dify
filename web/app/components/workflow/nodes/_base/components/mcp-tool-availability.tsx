@@ -1,38 +1,59 @@
 'use client'
 import type { ReactNode } from 'react'
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useMemo } from 'react'
 
 type MCPToolAvailabilityContextValue = {
   versionSupported?: boolean
+  sandboxEnabled?: boolean
 }
 
 const MCPToolAvailabilityContext = createContext<MCPToolAvailabilityContextValue | undefined>(undefined)
 
 export type MCPToolAvailability = {
   allowed: boolean
-  versionSupported?: boolean
+  blockedBy?: 'version' | 'sandbox'
 }
 
-export const MCPToolAvailabilityProvider = ({
-  versionSupported,
-  children,
-}: {
+type ProviderProps = {
   versionSupported?: boolean
+  sandboxEnabled?: boolean
   children: ReactNode
-}) => (
-  <MCPToolAvailabilityContext.Provider value={{ versionSupported }}>
-    {children}
-  </MCPToolAvailabilityContext.Provider>
-)
+}
 
-export const useMCPToolAvailability = (): MCPToolAvailability => {
+export function MCPToolAvailabilityProvider({
+  versionSupported,
+  sandboxEnabled,
+  children,
+}: ProviderProps): ReactNode {
+  const parent = useContext(MCPToolAvailabilityContext)
+
+  const value = useMemo<MCPToolAvailabilityContextValue>(() => ({
+    versionSupported: versionSupported ?? parent?.versionSupported,
+    sandboxEnabled: sandboxEnabled ?? parent?.sandboxEnabled,
+  }), [versionSupported, sandboxEnabled, parent])
+
+  return (
+    <MCPToolAvailabilityContext.Provider value={value}>
+      {children}
+    </MCPToolAvailabilityContext.Provider>
+  )
+}
+
+export function useMCPToolAvailability(): MCPToolAvailability {
   const context = useContext(MCPToolAvailabilityContext)
-  if (context === undefined)
+
+  if (!context)
     return { allowed: true }
 
-  const { versionSupported } = context
-  return {
-    allowed: versionSupported === true,
-    versionSupported,
-  }
+  const versionAllowed = context.versionSupported ?? true
+  const sandboxAllowed = context.sandboxEnabled ?? true
+  const allowed = versionAllowed && sandboxAllowed
+
+  let blockedBy: MCPToolAvailability['blockedBy']
+  if (!versionAllowed)
+    blockedBy = 'version'
+  else if (!sandboxAllowed)
+    blockedBy = 'sandbox'
+
+  return { allowed, blockedBy }
 }

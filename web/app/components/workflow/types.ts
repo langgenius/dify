@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import type {
   Edge as ReactFlowEdge,
   Node as ReactFlowNode,
@@ -30,6 +31,7 @@ export enum BlockEnum {
   Code = 'code',
   TemplateTransform = 'template-transform',
   HttpRequest = 'http-request',
+  Group = 'group',
   VariableAssigner = 'variable-assigner',
   VariableAggregator = 'variable-aggregator',
   Tool = 'tool',
@@ -49,6 +51,7 @@ export enum BlockEnum {
   TriggerSchedule = 'trigger-schedule',
   TriggerWebhook = 'trigger-webhook',
   TriggerPlugin = 'trigger-plugin',
+  Command = 'command',
 }
 
 export enum ControlMode {
@@ -76,9 +79,11 @@ export type CommonNodeType<T = {}> = {
   _isCandidate?: boolean
   _isBundled?: boolean
   _children?: { nodeId: string, nodeType: BlockEnum }[]
+  parent_node_id?: string
   _isEntering?: boolean
   _showAddVariablePopup?: boolean
   _holdAddVariablePopup?: boolean
+  _hiddenInGroupId?: string
   _iterationLength?: number
   _iterationIndex?: number
   _waitingRun?: boolean
@@ -113,6 +118,7 @@ export type CommonEdgeType = {
   _connectedNodeIsHovering?: boolean
   _connectedNodeIsSelected?: boolean
   _isBundled?: boolean
+  _hiddenInGroupId?: string
   _sourceRunningStatus?: NodeRunningStatus
   _targetRunningStatus?: NodeRunningStatus
   _waitingRun?: boolean
@@ -250,6 +256,21 @@ export type PromptItem = {
   text: string
   edition_type?: EditionType
   jinja2_text?: string
+  skill?: boolean
+  metadata?: Record<string, any>
+}
+
+export type PromptMessageContext = {
+  id?: string
+  $context: ValueSelector
+  skill?: boolean
+  metadata?: Record<string, any>
+}
+
+export type PromptTemplateItem = PromptItem | PromptMessageContext
+
+export const isPromptMessageContext = (item: PromptTemplateItem): item is PromptMessageContext => {
+  return '$context' in item
 }
 
 export enum MemoryRole {
@@ -516,4 +537,9 @@ export type Block = {
   type: BlockEnum
   title: string
   description?: string
+}
+
+export enum ViewType {
+  graph = 'graph',
+  skill = 'skill',
 }

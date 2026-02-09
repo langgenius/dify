@@ -71,6 +71,7 @@ export const useNodesSyncDraft = () => {
           retriever_resource: features.citation,
           sensitive_word_avoidance: features.moderation,
           file_upload: features.file,
+          sandbox: features.sandbox,
         },
         environment_variables: environmentVariables,
         conversation_variables: conversationVariables,
@@ -98,53 +99,52 @@ export const useNodesSyncDraft = () => {
   ) => {
     if (getNodesReadOnly())
       return
+    const postParams = getPostParams()
 
-    // Get base params without hash
-    const baseParams = getPostParams()
-    if (!baseParams)
-      return
-
-    const {
-      setSyncWorkflowDraftHash,
-      setDraftUpdatedAt,
-    } = workflowStore.getState()
-
-    try {
-      // IMPORTANT: Get the LATEST hash right before sending the request
-      // This ensures that even if queued, each request uses the most recent hash
-      const latestHash = workflowStore.getState().syncWorkflowDraftHash
-
-      const postParams = {
-        ...baseParams,
-        params: {
-          ...baseParams.params,
-          hash: latestHash || null, // null for first-time, otherwise use latest hash
-        },
-      }
-
-      const res = await syncWorkflowDraft(postParams)
-      setSyncWorkflowDraftHash(res.hash)
-      setDraftUpdatedAt(res.updated_at)
-      callback?.onSuccess?.()
-    }
-    catch (error: any) {
-      if (error && error.json && !error.bodyUsed) {
-        error.json().then((err: any) => {
-          if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-            handleRefreshWorkflowDraft()
+    if (postParams) {
+      const {
+        setSyncWorkflowDraftHash,
+        setDraftUpdatedAt,
+      } = workflowStore.getState()
+      try {
+        const res = await syncWorkflowDraft({
+          ...postParams,
+          canNotSaveEmpty: true,
         })
+        setSyncWorkflowDraftHash(res.hash)
+        setDraftUpdatedAt(res.updated_at)
+        callback?.onSuccess?.()
       }
-      callback?.onError?.()
-    }
-    finally {
-      callback?.onSettled?.()
+      catch (error: any) {
+        if (error && error.json && !error.bodyUsed) {
+          error.json().then((err: any) => {
+            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+              handleRefreshWorkflowDraft()
+          })
+        }
+        callback?.onError?.()
+      }
+      finally {
+        callback?.onSettled?.()
+      }
     }
   }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft])
 
   const doSyncWorkflowDraft = useSerialAsyncCallback(performSync, getNodesReadOnly)
+  const syncWorkflowDraftImmediately = useCallback((
+    notRefreshWhenSyncError?: boolean,
+    callback?: {
+      onSuccess?: () => void
+      onError?: () => void
+      onSettled?: () => void
+    },
+  ) => {
+    return performSync(notRefreshWhenSyncError, callback)
+  }, [performSync])
 
   return {
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
+    syncWorkflowDraftImmediately,
   }
 }

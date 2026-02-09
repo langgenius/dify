@@ -3,8 +3,10 @@ from typing import Any
 
 import orjson
 
+from core.model_runtime.entities import PromptMessage
+
 from .segment_group import SegmentGroup
-from .segments import ArrayFileSegment, FileSegment, Segment
+from .segments import ArrayFileSegment, ArrayPromptMessageSegment, FileSegment, Segment
 
 
 def to_selector(node_id: str, name: str, paths: Iterable[str] = ()) -> Sequence[str]:
@@ -16,7 +18,7 @@ def to_selector(node_id: str, name: str, paths: Iterable[str] = ()) -> Sequence[
 
 def segment_orjson_default(o: Any):
     """Default function for orjson serialization of Segment types"""
-    if isinstance(o, ArrayFileSegment):
+    if isinstance(o, (ArrayFileSegment, ArrayPromptMessageSegment)):
         return [v.model_dump() for v in o.value]
     elif isinstance(o, FileSegment):
         return o.value.model_dump()
@@ -24,6 +26,8 @@ def segment_orjson_default(o: Any):
         return [segment_orjson_default(seg) for seg in o.value]
     elif isinstance(o, Segment):
         return o.value
+    elif isinstance(o, PromptMessage):
+        return o.model_dump()
     raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
 
 

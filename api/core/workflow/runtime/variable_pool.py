@@ -268,6 +268,58 @@ class VariablePool(BaseModel):
                 continue
             self.add(selector, value)
 
+    def resolve_nested_node(
+        self,
+        nested_node_config: Mapping[str, Any],
+        /,
+        *,
+        parameter_name: str = "",
+    ) -> tuple[Any, bool]:
+        """
+        Resolve a nested_node parameter value from an extractor node's output.
+
+        Nested node parameters reference values extracted by an extractor LLM node
+        from list[PromptMessage] context.
+
+        Args:
+            nested_node_config: A dict containing:
+                - extractor_node_id: ID of the extractor LLM node
+                - output_selector: Selector path for the output variable (e.g., ["text"])
+                - null_strategy: "raise_error" or "use_default"
+                - default_value: Value to use when null_strategy is "use_default"
+            parameter_name: Name of the parameter being resolved (for error messages)
+
+        Returns:
+            Tuple of (resolved_value, found):
+                - resolved_value: The extracted value, or default_value if not found
+                - found: True if value was found, False if using default
+
+        Raises:
+            ValueError: If extractor_node_id is missing, or if null_strategy is
+                       "raise_error" and the value is not found
+        """
+        extractor_node_id = nested_node_config.get("extractor_node_id")
+        if not extractor_node_id:
+            raise ValueError(f"Missing extractor_node_id for nested_node parameter '{parameter_name}'")
+
+        output_selector = list(nested_node_config.get("output_selector", []))
+        null_strategy = nested_node_config.get("null_strategy", "raise_error")
+        default_value = nested_node_config.get("default_value")
+
+        # Build full selector: [extractor_node_id, ...output_selector]
+        full_selector = [extractor_node_id] + output_selector
+        variable = self.get(full_selector)
+
+        if variable is None:
+            if null_strategy == "use_default":
+                return default_value, False
+            raise ValueError(
+                f"Extractor node '{extractor_node_id}' output '{'.'.join(output_selector)}' "
+                f"not found for parameter '{parameter_name}'"
+            )
+
+        return variable.value, True
+
     @classmethod
     def empty(cls) -> VariablePool:
         """Create an empty variable pool."""

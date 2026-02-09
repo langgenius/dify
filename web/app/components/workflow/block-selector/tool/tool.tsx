@@ -40,6 +40,7 @@ type Props = {
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
   isShowLetterIndex?: boolean
+  hideSelectedInfo?: boolean
 }
 
 const Tool: FC<Props> = ({
@@ -51,6 +52,7 @@ const Tool: FC<Props> = ({
   canNotSelectMultiple,
   onSelectMultiple,
   selectedTools,
+  hideSelectedInfo,
 }) => {
   const { t } = useTranslation()
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
@@ -226,7 +228,7 @@ const Tool: FC<Props> = ({
           </div>
 
           <div className="ml-2 flex items-center">
-            {!isShowCanNotChooseMCPTip && !canNotSelectMultiple && (notShowProvider ? notShowProviderSelectInfo : selectedInfo)}
+            {!isShowCanNotChooseMCPTip && !canNotSelectMultiple && (notShowProvider ? notShowProviderSelectInfo : (!hideSelectedInfo && selectedInfo))}
             {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip />}
             {hasAction && (
               <FoldIcon className={cn('h-4 w-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary', isFold && 'text-text-quaternary')} />

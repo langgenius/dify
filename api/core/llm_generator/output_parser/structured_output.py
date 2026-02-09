@@ -2,12 +2,13 @@ import json
 from collections.abc import Generator, Mapping, Sequence
 from copy import deepcopy
 from enum import StrEnum
-from typing import Any, Literal, cast, overload
+from typing import Any, Literal, TypeVar, cast, overload
 
 import json_repair
-from pydantic import TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from core.llm_generator.output_parser.errors import OutputParserError
+from core.llm_generator.output_parser.file_ref import convert_file_refs_in_output
 from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
 from core.model_manager import ModelInstance
 from core.model_runtime.callbacks.base_callback import Callback
@@ -43,6 +44,9 @@ class SpecialModelType(StrEnum):
     OLLAMA = "ollama"
 
 
+T = TypeVar("T", bound=BaseModel)
+
+
 @overload
 def invoke_llm_with_structured_output(
     *,
@@ -57,6 +61,7 @@ def invoke_llm_with_structured_output(
     stream: Literal[True],
     user: str | None = None,
     callbacks: list[Callback] | None = None,
+    tenant_id: str | None = None,
 ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 @overload
 def invoke_llm_with_structured_output(
@@ -72,6 +77,7 @@ def invoke_llm_with_structured_output(
     stream: Literal[False],
     user: str | None = None,
     callbacks: list[Callback] | None = None,
+    tenant_id: str | None = None,
 ) -> LLMResultWithStructuredOutput: ...
 @overload
 def invoke_llm_with_structured_output(
@@ -87,6 +93,7 @@ def invoke_llm_with_structured_output(
     stream: bool = True,
     user: str | None = None,
     callbacks: list[Callback] | None = None,
+    tenant_id: str | None = None,
 ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 def invoke_llm_with_structured_output(
     *,
@@ -101,23 +108,30 @@ def invoke_llm_with_structured_output(
     stream: bool = True,
     user: str | None = None,
     callbacks: list[Callback] | None = None,
+    tenant_id: str | None = None,
 ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
     """
-    Invoke large language model with structured output
-    1. This method invokes model_instance.invoke_llm with json_schema
-    2. Try to parse the result as structured output
+    Invoke large language model with structured output.
 
+    This method invokes model_instance.invoke_llm with json_schema and parses
+    the result as structured output.
+
+    :param provider: model provider name
+    :param model_schema: model schema entity
+    :param model_instance: model instance to invoke
     :param prompt_messages: prompt messages
-    :param json_schema: json schema
+    :param json_schema: json schema for structured output
     :param model_parameters: model parameters
     :param tools: tools for tool calling
     :param stop: stop words
     :param stream: is stream response
     :param user: unique user id
     :param callbacks: callbacks
+    :param tenant_id: tenant ID for file reference conversion. When provided and
+                      json_schema contains file reference fields (format: "dify-file-ref"),
+                      file IDs in the output will be automatically converted to File objects.
     :return: full response or stream response chunk generator result
     """
-
     # handle native json schema
     model_parameters_with_json_schema: dict[str, Any] = {
         **(model_parameters or {}),
@@ -153,8 +167,18 @@ def invoke_llm_with_structured_output(
                 f"Failed to parse structured output, LLM result is not a string: {llm_result.message.content}"
             )
 
+        structured_output = _parse_structured_output(llm_result.message.content)
+
+        # Convert file references if tenant_id is provided
+        if tenant_id is not None:
+            structured_output = convert_file_refs_in_output(
+                output=structured_output,
+                json_schema=json_schema,
+                tenant_id=tenant_id,
+            )
+
         return LLMResultWithStructuredOutput(
-            structured_output=_parse_structured_output(llm_result.message.content),
+            structured_output=structured_output,
             model=llm_result.model,
             message=llm_result.message,
             usage=llm_result.usage,
@@ -186,8 +210,18 @@ def invoke_llm_with_structured_output(
                     delta=event.delta,
                 )
 
+            structured_output = _parse_structured_output(result_text)
+
+            # Convert file references if tenant_id is provided
+            if tenant_id is not None:
+                structured_output = convert_file_refs_in_output(
+                    output=structured_output,
+                    json_schema=json_schema,
+                    tenant_id=tenant_id,
+                )
+
             yield LLMResultChunkWithStructuredOutput(
-                structured_output=_parse_structured_output(result_text),
+                structured_output=structured_output,
                 model=model_schema.model,
                 prompt_messages=prompt_messages,
                 system_fingerprint=system_fingerprint,
@@ -200,6 +234,87 @@ def invoke_llm_with_structured_output(
             )
 
         return generator()
+
+
+@overload
+def invoke_llm_with_pydantic_model(
+    *,
+    provider: str,
+    model_schema: AIModelEntity,
+    model_instance: ModelInstance,
+    prompt_messages: Sequence[PromptMessage],
+    output_model: type[T],
+    model_parameters: Mapping | None = None,
+    tools: Sequence[PromptMessageTool] | None = None,
+    stop: list[str] | None = None,
+    stream: Literal[False] = False,
+    user: str | None = None,
+    callbacks: list[Callback] | None = None,
+    tenant_id: str | None = None,
+) -> LLMResultWithStructuredOutput: ...
+
+
+def invoke_llm_with_pydantic_model(
+    *,
+    provider: str,
+    model_schema: AIModelEntity,
+    model_instance: ModelInstance,
+    prompt_messages: Sequence[PromptMessage],
+    output_model: type[T],
+    model_parameters: Mapping | None = None,
+    tools: Sequence[PromptMessageTool] | None = None,
+    stop: list[str] | None = None,
+    stream: bool = False,
+    user: str | None = None,
+    callbacks: list[Callback] | None = None,
+    tenant_id: str | None = None,
+) -> LLMResultWithStructuredOutput:
+    """
+    Invoke large language model with a Pydantic output model.
+
+    This helper generates a JSON schema from the Pydantic model, invokes the
+    structured-output LLM path, and validates the result in non-streaming mode.
+    """
+    if stream:
+        raise ValueError("invoke_llm_with_pydantic_model only supports stream=False")
+
+    json_schema = _schema_from_pydantic(output_model)
+    result = invoke_llm_with_structured_output(
+        provider=provider,
+        model_schema=model_schema,
+        model_instance=model_instance,
+        prompt_messages=prompt_messages,
+        json_schema=json_schema,
+        model_parameters=model_parameters,
+        tools=tools,
+        stop=stop,
+        stream=False,
+        user=user,
+        callbacks=callbacks,
+        tenant_id=tenant_id,
+    )
+
+    structured_output = result.structured_output
+    if structured_output is None:
+        raise OutputParserError("Structured output is empty")
+
+    validated_output = _validate_structured_output(output_model, structured_output)
+    return result.model_copy(update={"structured_output": validated_output})
+
+
+def _schema_from_pydantic(output_model: type[BaseModel]) -> dict[str, Any]:
+    return output_model.model_json_schema()
+
+
+def _validate_structured_output(
+    output_model: type[T],
+    structured_output: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        validated_output = output_model.model_validate(structured_output)
+    except ValidationError as exc:
+        raise OutputParserError(f"Structured output validation failed: {exc}") from exc
+    return validated_output.model_dump(mode="python")
 
 
 def _handle_native_json_schema(

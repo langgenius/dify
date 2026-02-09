@@ -75,7 +75,6 @@ def get_user_tenant(view_func: Callable[P, R]):
     @wraps(view_func)
     def decorated_view(*args: P.args, **kwargs: P.kwargs):
         payload = TenantUserPayload.model_validate(request.get_json(silent=True) or {})
-
         user_id = payload.user_id
         tenant_id = payload.tenant_id
 

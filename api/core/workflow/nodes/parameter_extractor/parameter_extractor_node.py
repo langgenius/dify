@@ -7,7 +7,7 @@ from typing import Any, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import File
-from core.memory.token_buffer_memory import TokenBufferMemory
+from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import ImagePromptMessageContent
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -145,8 +145,10 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         memory = llm_utils.fetch_memory(
             variable_pool=variable_pool,
             app_id=self.app_id,
+            tenant_id=self.tenant_id,
             node_data_memory=node_data.memory,
             model_instance=model_instance,
+            node_id=self._node_id,
         )
 
         if (
@@ -244,6 +246,10 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         # transform result into standard format
         result = self._transform_result(data=node_data, result=result or {})
 
+        # Build context from prompt messages and response
+        assistant_response = json.dumps(result, ensure_ascii=False)
+        context = llm_utils.build_context(prompt_messages, assistant_response)
+
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
@@ -252,6 +258,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 "__is_success": 1 if not error else 0,
                 "__reason": error,
                 "__usage": jsonable_encoder(usage),
+                "context": context,
                 **result,
             },
             metadata={
@@ -299,7 +306,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         query: str,
         variable_pool: VariablePool,
         model_config: ModelConfigWithCredentialsEntity,
-        memory: TokenBufferMemory | None,
+        memory: BaseMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
     ) -> tuple[list[PromptMessage], list[PromptMessageTool]]:
@@ -381,7 +388,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         query: str,
         variable_pool: VariablePool,
         model_config: ModelConfigWithCredentialsEntity,
-        memory: TokenBufferMemory | None,
+        memory: BaseMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
@@ -419,7 +426,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         query: str,
         variable_pool: VariablePool,
         model_config: ModelConfigWithCredentialsEntity,
-        memory: TokenBufferMemory | None,
+        memory: BaseMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
@@ -453,7 +460,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         query: str,
         variable_pool: VariablePool,
         model_config: ModelConfigWithCredentialsEntity,
-        memory: TokenBufferMemory | None,
+        memory: BaseMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
@@ -681,7 +688,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        memory: TokenBufferMemory | None,
+        memory: BaseMemory | None,
         max_token_limit: int = 2000,
     ) -> list[ChatModelMessage]:
         model_mode = ModelMode(node_data.model.mode)
@@ -708,7 +715,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        memory: TokenBufferMemory | None,
+        memory: BaseMemory | None,
         max_token_limit: int = 2000,
     ):
         model_mode = ModelMode(node_data.model.mode)

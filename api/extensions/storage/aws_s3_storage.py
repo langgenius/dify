@@ -85,3 +85,19 @@ class AwsS3Storage(BaseStorage):
 
     def delete(self, filename):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)
+
+    def get_download_url(self, filename: str, expires_in: int = 3600) -> str:
+        url: str = self.client.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={"Bucket": self.bucket_name, "Key": filename},
+            ExpiresIn=expires_in,
+        )
+        return url
+
+    def get_upload_url(self, filename: str, expires_in: int = 3600) -> str:
+        url: str = self.client.generate_presigned_url(
+            ClientMethod="put_object",
+            Params={"Bucket": self.bucket_name, "Key": filename},
+            ExpiresIn=expires_in,
+        )
+        return url

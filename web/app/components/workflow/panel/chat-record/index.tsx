@@ -1,4 +1,7 @@
-import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import type {
+  ChatMessageRes,
+  IChatItem,
+} from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree } from '@/app/components/base/chat/types'
 import { RiCloseLine } from '@remixicon/react'
 import {
@@ -9,7 +12,7 @@ import {
 } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
-import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
+import { buildChatItemTree, buildToolCallsFromHistorySequence, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import Loading from '@/app/components/base/loading'
 import { fetchConversationMessages } from '@/service/debug'
@@ -21,10 +24,10 @@ import {
 import { formatWorkflowRunIdentifier } from '../../utils'
 import UserInput from './user-input'
 
-function getFormattedChatList(messages: any[]) {
+function getFormattedChatList(messages: ChatMessageRes[]) {
   const res: ChatItem[] = []
-  messages.forEach((item: any) => {
-    const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
+  messages.forEach((item: ChatMessageRes) => {
+    const questionFiles = item.message_files?.filter(file => file.belongs_to === 'user') || []
     res.push({
       id: `question-${item.id}`,
       content: item.query,
@@ -35,7 +38,8 @@ function getFormattedChatList(messages: any[]) {
     const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
     res.push({
       id: item.id,
-      content: item.answer,
+      content: buildToolCallsFromHistorySequence(item).message,
+      toolCalls: buildToolCallsFromHistorySequence(item).toolCalls,
       feedback: item.feedback,
       isAnswer: true,
       citation: item.metadata?.retriever_resources,
@@ -63,7 +67,7 @@ const ChatRecord = () => {
         setFetched(false)
         const res = await fetchConversationMessages(appDetail.id, currentConversationID)
 
-        const newAllChatItems = getFormattedChatList((res as any).data)
+        const newAllChatItems = getFormattedChatList((res as any).data as ChatMessageRes[])
 
         const tree = buildChatItemTree(newAllChatItems)
         setChatItemTree(tree)

@@ -145,7 +145,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
               {(step === 2 && (!datasetId || (datasetId && !!datasetDetail))) && (
                 <StepTwo
                   isAPIKeySet={!!embeddingsDefaultModel}
-                  onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+                  onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MODEL_PROVIDER })}
                   indexingType={datasetDetail?.indexing_technique}
                   datasetId={datasetId}
                   dataSourceType={dataSourceType}

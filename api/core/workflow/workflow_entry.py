@@ -10,6 +10,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.app.workflow.node_factory import DifyNodeFactory
 from core.file.models import File
+from core.sandbox import Sandbox
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -135,6 +136,7 @@ class WorkflowEntry:
         user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
+        sandbox: Sandbox | None = None,
     ) -> tuple[Node, Generator[GraphNodeEventBase, None, None]]:
         """
         Single step run workflow node
@@ -162,6 +164,9 @@ class WorkflowEntry:
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+        if sandbox is not None:
+            graph_runtime_state.set_sandbox(sandbox)
 
         # init workflow run state
         node_factory = DifyNodeFactory(

@@ -10,6 +10,7 @@ import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
@@ -19,9 +20,13 @@ import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import ConfigVision from '../_base/components/config-vision'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
+import ComputerUseConfig from './components/computer-use-config'
 import ConfigPrompt from './components/config-prompt'
 import ReasoningFormatConfig from './components/reasoning-format-config'
 import StructureOutput from './components/structure-output'
+import Tools from './components/tools'
+import MaxIterations from './components/tools/max-iterations'
+import { useNodeTools } from './components/tools/use-node-tools'
 import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.llm'
@@ -64,7 +69,13 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleStructureOutputChange,
     filterJinja2InputVar,
     handleReasoningFormatChange,
+    isSupportSandbox,
+    handleComputerUseChange,
   } = useConfig(id, data)
+
+  const {
+    handleMaxIterationsChange,
+  } = useNodeTools(id)
 
   const model = inputs.model
 
@@ -97,7 +108,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   }, [inputs.model.completion_params])
   return (
     <div className="mt-2">
-      <div className="space-y-4 px-4 pb-4">
+      <div className="space-y-4 px-4 pb-0">
         <Field
           title={t(`${i18nPrefix}.model`, { ns: 'workflow' })}
           required
@@ -115,26 +126,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             debugWithMultipleModel={false}
             readonly={readOnly}
           />
-        </Field>
-
-        {/* knowledge */}
-        <Field
-          title={t(`${i18nPrefix}.context`, { ns: 'workflow' })}
-          tooltip={t(`${i18nPrefix}.contextTooltip`, { ns: 'workflow' })!}
-        >
-          <>
-            <VarReferencePicker
-              readonly={readOnly}
-              nodeId={id}
-              isShowNodeName
-              value={inputs.context?.variable_selector || []}
-              onChange={handleContextVarChange}
-              filterVar={filterVar}
-            />
-            {shouldShowContextTip && (
-              <div className="text-xs font-normal leading-[18px] text-[#DC6803]">{t(`${i18nPrefix}.notSetContextInPromptTip`, { ns: 'workflow' })}</div>
-            )}
-          </>
         </Field>
 
         {/* Prompt */}
@@ -233,25 +224,74 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           </>
         )}
 
-        {/* Vision: GPT4-vision and so on */}
-        <ConfigVision
+        {/* Sandbox Config */}
+        {isSupportSandbox && (
+          <>
+            <ComputerUseConfig
+              readonly={readOnly}
+              enabled={!!inputs.computer_use}
+              onChange={handleComputerUseChange}
+            />
+          </>
+        )}
+        <Tools
           nodeId={id}
-          readOnly={readOnly}
-          isVisionModel={isVisionModel}
-          enabled={inputs.vision?.enabled}
-          onEnabledChange={handleVisionResolutionEnabledChange}
-          config={inputs.vision?.configs}
-          onConfigChange={handleVisionResolutionChange}
-        />
-
-        {/* Reasoning Format */}
-        <ReasoningFormatConfig
-          // Default to tagged for backward compatibility
-          value={inputs.reasoning_format || 'tagged'}
-          onChange={handleReasoningFormatChange}
-          readonly={readOnly}
+          tools={inputs.tools}
+          maxIterations={inputs.max_iterations}
+          hideMaxIterations
         />
       </div>
+
+      {/* Advanced Settings - 折叠区 */}
+      <FieldCollapse title={t(`${i18nPrefix}.advancedSettings`, { ns: 'workflow' })}>
+        <div className="space-y-4">
+          {/* Context */}
+          <Field
+            title={t(`${i18nPrefix}.context`, { ns: 'workflow' })}
+            tooltip={t(`${i18nPrefix}.contextTooltip`, { ns: 'workflow' })!}
+          >
+            <>
+              <VarReferencePicker
+                readonly={readOnly}
+                nodeId={id}
+                isShowNodeName
+                value={inputs.context?.variable_selector || []}
+                onChange={handleContextVarChange}
+                filterVar={filterVar}
+              />
+              {shouldShowContextTip && (
+                <div className="text-xs font-normal leading-[18px] text-[#DC6803]">{t(`${i18nPrefix}.notSetContextInPromptTip`, { ns: 'workflow' })}</div>
+              )}
+            </>
+          </Field>
+
+          {/* Vision: GPT4-vision and so on */}
+          <ConfigVision
+            nodeId={id}
+            readOnly={readOnly}
+            isVisionModel={isVisionModel}
+            enabled={inputs.vision?.enabled}
+            onEnabledChange={handleVisionResolutionEnabledChange}
+            config={inputs.vision?.configs}
+            onConfigChange={handleVisionResolutionChange}
+          />
+
+          {/* Max Iterations */}
+          <MaxIterations
+            className="flex h-10 items-center"
+            value={inputs.max_iterations}
+            onChange={handleMaxIterationsChange}
+          />
+
+          {/* Reasoning Format */}
+          <ReasoningFormatConfig
+            value={inputs.reasoning_format || 'tagged'}
+            onChange={handleReasoningFormatChange}
+            readonly={readOnly}
+          />
+        </div>
+      </FieldCollapse>
+
       <Split />
       <OutputVars
         collapsed={structuredOutputCollapsed}
@@ -293,6 +333,28 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         )}
       >
         <>
+          <VarItem
+            name="generation"
+            type="object"
+            description={t(`${i18nPrefix}.outputVars.generation`, { ns: 'workflow' })}
+            subItems={[
+              {
+                name: 'content',
+                type: 'string',
+                description: '',
+              },
+              {
+                name: 'reasoning_content',
+                type: 'array[string]',
+                description: '',
+              },
+              {
+                name: 'tool_calls',
+                type: 'array[object]',
+                description: '',
+              },
+            ]}
+          />
           <VarItem
             name="text"
             type="string"

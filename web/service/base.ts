@@ -34,12 +34,27 @@ import { getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
 
+export type IconObject = {
+  background: string
+  content: string
+}
+
 export type IOnDataMoreInfo = {
   conversationId?: string
   taskId?: string
   messageId: string
   errorMessage?: string
   errorCode?: string
+  chunk_type?: 'text' | 'tool_call' | 'tool_result' | 'thought' | 'thought_start' | 'thought_end'
+  tool_call_id?: string
+  tool_name?: string
+  tool_arguments?: string
+  tool_icon?: string | IconObject
+  tool_icon_dark?: string | IconObject
+
+  tool_files?: string[]
+  tool_error?: string
+  tool_elapsed_time?: number
 }
 
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
@@ -250,6 +265,15 @@ export const handleStream = (
                 conversationId: bufferObj.conversation_id,
                 taskId: bufferObj.task_id,
                 messageId: bufferObj.id,
+                chunk_type: bufferObj.chunk_type,
+                tool_call_id: bufferObj.tool_call_id,
+                tool_name: bufferObj.tool_name,
+                tool_arguments: bufferObj.tool_arguments,
+                tool_icon: bufferObj.tool_icon,
+                tool_icon_dark: bufferObj.tool_icon_dark,
+                tool_files: bufferObj.tool_files,
+                tool_error: bufferObj.tool_error,
+                tool_elapsed_time: bufferObj.tool_elapsed_time,
               })
               isFirstMessage = false
             }
@@ -396,7 +420,9 @@ export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?
     xhr.responseType = 'json'
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) {
-        if (xhr.status === 201)
+        // Accept any 2xx status code per HTTP semantics
+        // POST returns 201 Created, PUT returns 200 OK
+        if (xhr.status >= 200 && xhr.status < 300)
           resolve(xhr.response)
         else
           reject(xhr)

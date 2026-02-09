@@ -11,6 +11,7 @@ from typing import Any, ClassVar, Protocol
 from pydantic.json import pydantic_encoder
 
 from core.model_runtime.entities.llm_entities import LLMUsage
+from core.sandbox.sandbox import Sandbox
 from core.workflow.entities.pause_reason import PauseReason
 from core.workflow.enums import NodeExecutionType, NodeState, NodeType
 from core.workflow.runtime.variable_pool import VariablePool
@@ -191,6 +192,8 @@ class GraphRuntimeState:
         self._paused_nodes: set[str] = set()
         self.stop_event: threading.Event = threading.Event()
 
+        self._sandbox: Sandbox | None = None
+
         if graph is not None:
             self.attach_graph(graph)
 
@@ -313,6 +316,16 @@ class GraphRuntimeState:
         if tokens < 0:
             raise ValueError("tokens must be non-negative")
         self._total_tokens += tokens
+
+    # ------------------------------------------------------------------
+    # Sandbox context (workflow-scoped)
+    # ------------------------------------------------------------------
+    @property
+    def sandbox(self) -> Sandbox | None:
+        return self._sandbox
+
+    def set_sandbox(self, sandbox: Sandbox) -> None:
+        self._sandbox = sandbox
 
     # ------------------------------------------------------------------
     # Serialization

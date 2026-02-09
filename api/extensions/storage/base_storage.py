@@ -38,3 +38,31 @@ class BaseStorage(ABC):
         If a storage backend doesn't support scanning, it will raise NotImplementedError.
         """
         raise NotImplementedError("This storage backend doesn't support scanning")
+
+    def get_download_url(self, filename: str, expires_in: int = 3600) -> str:
+        """
+        Generate a pre-signed URL for downloading a file.
+
+        Storage backends that support pre-signed URLs (e.g., S3, Azure Blob, GCS)
+        should override this method to return a direct download URL.
+
+        Args:
+            filename: The file path/key in storage
+            expires_in: URL validity duration in seconds (default: 1 hour)
+
+        Returns:
+            Pre-signed URL string
+
+        Raises:
+            NotImplementedError: If this storage backend doesn't support pre-signed URLs
+        """
+        raise NotImplementedError("This storage backend doesn't support pre-signed URLs")
+
+    def get_upload_url(self, filename: str, expires_in: int = 3600) -> str:
+        """
+        Generate a pre-signed URL for uploading a file.
+
+        Storage backends that support pre-signed URLs (e.g., S3, Azure Blob, GCS)
+        should override this method to return a direct upload URL.
+        """
+        raise NotImplementedError("This storage backend doesn't support pre-signed URLs")

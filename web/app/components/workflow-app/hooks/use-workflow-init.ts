@@ -85,6 +85,11 @@ export const useWorkflowInit = () => {
             const nodesData = isAdvancedChat ? nodesTemplate : []
             const edgesData = isAdvancedChat ? edgesTemplate : []
 
+            const runtimeStorageKey = `workflow:sandbox-runtime:${appDetail.id}`
+            const enableSandboxRuntime = localStorage.getItem(runtimeStorageKey) === '1'
+            if (enableSandboxRuntime)
+              localStorage.removeItem(runtimeStorageKey)
+
             syncWorkflowDraft({
               url: `/apps/${appDetail.id}/workflows/draft`,
               params: {
@@ -94,6 +99,7 @@ export const useWorkflowInit = () => {
                 },
                 features: {
                   retriever_resource: { enabled: true },
+                  sandbox: { enabled: enableSandboxRuntime },
                 },
                 environment_variables: [],
                 conversation_variables: [],
@@ -110,6 +116,7 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     handleGetInitialWorkflowData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
@@ -150,5 +157,6 @@ export const useWorkflowInit = () => {
     data,
     isLoading: isLoading || isFileUploadConfigLoading,
     fileUploadConfigResponse,
+    reload: handleGetInitialWorkflowData,
   }
 }

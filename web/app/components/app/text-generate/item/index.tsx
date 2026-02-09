@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { FeedbackType } from '@/app/components/base/chat/chat/type'
+import type { FeedbackType, IChatItem } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
 import {
@@ -173,30 +173,32 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       appId: params.appId as string,
       messageId: messageId!,
     })
-    const logItem = Array.isArray(data.message)
-      ? {
-          ...data,
-          log: [
-            ...data.message,
-            ...(data.message[data.message.length - 1].role !== 'assistant'
-              ? [
-                  {
-                    role: 'assistant',
-                    text: data.answer,
-                    files: data.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-                  },
-                ]
-              : []),
-          ],
-        }
-      : {
-          ...data,
-          log: [typeof data.message === 'string'
-            ? {
-                text: data.message,
-              }
-            : data.message],
-        }
+    const assistantFiles = data.message_files?.filter(file => file.belongs_to === 'assistant') || []
+    const normalizedMessage = typeof data.message === 'string'
+      ? { role: 'user', text: data.message }
+      : data.message
+    const baseLog = Array.isArray(normalizedMessage) ? normalizedMessage : [normalizedMessage]
+    const log = Array.isArray(normalizedMessage)
+      ? [
+          ...normalizedMessage,
+          ...(normalizedMessage.length > 0 && normalizedMessage[normalizedMessage.length - 1].role !== 'assistant'
+            ? [
+                {
+                  role: 'assistant',
+                  text: data.answer || '',
+                  files: assistantFiles,
+                },
+              ]
+            : []),
+        ]
+      : baseLog
+    const logItem: IChatItem = {
+      id: data.id || messageId || '',
+      content: data.answer || '',
+      isAnswer: true,
+      log,
+      message_files: data.message_files,
+    }
     setCurrentLogItem(logItem)
     setShowPromptLogModal(true)
   }

@@ -175,6 +175,16 @@ class BaseNodeData(ABC, BaseModel):
     default_value: list[DefaultValue] | None = None
     retry_config: RetryConfig = RetryConfig()
 
+    # Parent node ID when this node is used as an extractor.
+    # If set, this node is an "attached" extractor node that extracts values
+    # from list[PromptMessage] for the parent node's parameters.
+    parent_node_id: str | None = None
+
+    @property
+    def is_extractor_node(self) -> bool:
+        """Check if this node is an extractor node (has parent_node_id)."""
+        return self.parent_node_id is not None
+
     @property
     def default_value_dict(self) -> dict[str, Any]:
         if self.default_value:

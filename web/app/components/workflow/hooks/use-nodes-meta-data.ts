@@ -1,8 +1,10 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store'
 import type { Node } from '@/app/components/workflow/types'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CollectionType } from '@/app/components/tools/types'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import GroupDefault from '@/app/components/workflow/nodes/group/default'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
@@ -25,6 +27,7 @@ export const useNodesMetaData = () => {
 }
 
 export const useNodeMetaData = (node: Node) => {
+  const { t } = useTranslation()
   const language = useGetLanguage()
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
@@ -34,6 +37,9 @@ export const useNodeMetaData = (node: Node) => {
   const { data } = node
   const nodeMetaData = availableNodesMetaData.nodesMap?.[data.type]
   const author = useMemo(() => {
+    if (data.type === BlockEnum.Group)
+      return GroupDefault.metaData.author
+
     if (data.type === BlockEnum.DataSource)
       return dataSourceList?.find(dataSource => dataSource.plugin_id === data.plugin_id)?.author
 
@@ -48,6 +54,9 @@ export const useNodeMetaData = (node: Node) => {
   }, [data, buildInTools, customTools, workflowTools, nodeMetaData, dataSourceList])
 
   const description = useMemo(() => {
+    if (data.type === BlockEnum.Group)
+      return t('blocksAbout.group', { ns: 'workflow' })
+
     if (data.type === BlockEnum.DataSource)
       return dataSourceList?.find(dataSource => dataSource.plugin_id === data.plugin_id)?.description[language]
     if (data.type === BlockEnum.Tool) {
@@ -58,7 +67,7 @@ export const useNodeMetaData = (node: Node) => {
       return customTools?.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
     }
     return nodeMetaData?.metaData.description
-  }, [data, buildInTools, customTools, workflowTools, nodeMetaData, dataSourceList, language])
+  }, [data, buildInTools, customTools, workflowTools, nodeMetaData, dataSourceList, language, t])
 
   return useMemo(() => {
     return {

@@ -577,7 +577,7 @@ const Configuration: FC = () => {
       // old dataset struct
       if (modelConfig.agent_mode?.tools?.find(({ dataset }: any) => dataset?.enabled))
         datasets = modelConfig.agent_mode?.tools.filter(({ dataset }: any) => dataset?.enabled)
-        // new dataset struct
+      // new dataset struct
       else if (modelConfig.dataset_configs.datasets?.datasets?.length > 0)
         datasets = modelConfig.dataset_configs?.datasets?.datasets
 
@@ -1033,7 +1033,7 @@ const Configuration: FC = () => {
                   <div className="flex grow flex-col rounded-tl-2xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg ">
                     <Debug
                       isAPIKeySet={isAPIKeySet}
-                      onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+                      onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MODEL_PROVIDER })}
                       inputs={inputs}
                       modelParameterParams={{
                         setModel: setModel as any,
@@ -1054,7 +1054,7 @@ const Configuration: FC = () => {
               content={t('trailUseGPT4Info.description', { ns: 'appDebug' })}
               isShow={showUseGPT4Confirm}
               onConfirm={() => {
-                setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+                setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MODEL_PROVIDER })
                 setShowUseGPT4Confirm(false)
               }}
               onCancel={() => setShowUseGPT4Confirm(false)}
@@ -1086,7 +1086,7 @@ const Configuration: FC = () => {
             <Drawer showClose isOpen={isShowDebugPanel} onClose={hideDebugPanel} mask footer={null}>
               <Debug
                 isAPIKeySet={isAPIKeySet}
-                onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+                onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MODEL_PROVIDER })}
                 inputs={inputs}
                 modelParameterParams={{
                   setModel: setModel as any,

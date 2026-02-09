@@ -1,6 +1,7 @@
 import type {
   AgentLogItemWithChildren,
   IterationDurationMap,
+  LLMTraceItem,
   LoopDurationMap,
   LoopVariableMap,
   NodeTracing,
@@ -79,8 +80,18 @@ export const useLogs = () => {
     }
   }, [setAgentOrToolLogItemStack, setAgentOrToolLogListMap])
 
+  const [showLLMDetail, {
+    setTrue: setShowLLMDetailTrue,
+    setFalse: setShowLLMDetailFalse,
+  }] = useBoolean(false)
+  const [llmResultList, setLLMResultList] = useState<LLMTraceItem[]>([])
+  const handleShowLLMDetail = useCallback((detail: LLMTraceItem[]) => {
+    setShowLLMDetailTrue()
+    setLLMResultList(detail)
+  }, [setShowLLMDetailTrue, setLLMResultList])
+
   return {
-    showSpecialResultPanel: showRetryDetail || showIteratingDetail || showLoopingDetail || !!agentOrToolLogItemStack.length,
+    showSpecialResultPanel: showRetryDetail || showIteratingDetail || showLoopingDetail || !!agentOrToolLogItemStack.length || showLLMDetail,
     showRetryDetail,
     setShowRetryDetailTrue,
     setShowRetryDetailFalse,
@@ -111,5 +122,12 @@ export const useLogs = () => {
     agentOrToolLogItemStack,
     agentOrToolLogListMap,
     handleShowAgentOrToolLog,
+
+    showLLMDetail,
+    setShowLLMDetailTrue,
+    setShowLLMDetailFalse,
+    llmResultList,
+    setLLMResultList,
+    handleShowLLMDetail,
   }
 }

@@ -14,7 +14,7 @@ from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.helper.provider_encryption import ProviderConfigEncrypter, create_provider_encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
-from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
+from core.tools.utils.system_encryption import decrypt_system_params
 from core.trigger.entities.api_entities import (
     TriggerProviderApiEntity,
     TriggerProviderSubscriptionApiEntity,
@@ -591,7 +591,7 @@ class TriggerProviderService:
 
             if system_client:
                 try:
-                    oauth_params = decrypt_system_oauth_params(system_client.encrypted_oauth_params)
+                    oauth_params = decrypt_system_params(system_client.encrypted_oauth_params)
                 except Exception as e:
                     raise ValueError(f"Error decrypting system oauth params: {e}")
 

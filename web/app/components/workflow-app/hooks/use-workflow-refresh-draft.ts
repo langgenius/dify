@@ -21,8 +21,9 @@ export const useWorkflowRefreshDraft = () => {
       debouncedSyncWorkflowDraft,
     } = workflowStore.getState()
 
-    if (debouncedSyncWorkflowDraft && typeof (debouncedSyncWorkflowDraft as any).cancel === 'function')
-      (debouncedSyncWorkflowDraft as any).cancel()
+    const { cancel } = debouncedSyncWorkflowDraft
+    if (typeof cancel === 'function')
+      cancel()
 
     const wasLoaded = isWorkflowDataLoaded
     if (wasLoaded)

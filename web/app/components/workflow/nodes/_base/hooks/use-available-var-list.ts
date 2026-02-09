@@ -71,14 +71,35 @@ const useAvailableVarList = (nodeId: string, {
     hideEnv,
     hideChatVar,
   }), ...dataSourceRagVars]
+  const availableNodesWithParent = [
+    ...availableNodes,
+    ...(isDataSourceNode ? [currNode] : []),
+  ]
+  const llmNodeIds = new Set(
+    availableNodesWithParent
+      .filter(node => node?.data.type === BlockEnum.LLM)
+      .map(node => node!.id),
+  )
+  const filteredAvailableVars = llmNodeIds.size
+    ? availableVars
+        .map((nodeVar) => {
+          if (!llmNodeIds.has(nodeVar.nodeId))
+            return nodeVar
+          const nextVars = nodeVar.vars.filter(item => item.variable !== 'context')
+          if (nextVars.length === nodeVar.vars.length)
+            return nodeVar
+          return {
+            ...nodeVar,
+            vars: nextVars,
+          }
+        })
+        .filter(nodeVar => nodeVar.vars.length > 0)
+    : availableVars
 
   return {
-    availableVars,
+    availableVars: filteredAvailableVars,
     availableNodes,
-    availableNodesWithParent: [
-      ...availableNodes,
-      ...(isDataSourceNode ? [currNode] : []),
-    ],
+    availableNodesWithParent,
   }
 }
 

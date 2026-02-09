@@ -25,6 +25,7 @@ from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, Workfl
 from core.db.session_factory import session_factory
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
+from core.sandbox import Sandbox
 from core.variables.variables import Variable
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
@@ -66,6 +67,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        sandbox: Sandbox | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -82,6 +84,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self._app = app
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._sandbox = sandbox
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
@@ -159,6 +162,10 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
             # init graph
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
+
+            if self._sandbox:
+                graph_runtime_state.set_sandbox(self._sandbox)
+
             graph = self._init_graph(
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,

@@ -5,7 +5,6 @@ from sqlalchemy import select
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueRetrieverResourcesEvent
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document
@@ -90,6 +89,8 @@ class DatasetIndexToolCallbackHandler:
     # TODO(-LAN-): Improve type check
     def return_retriever_resource_info(self, resource: Sequence[RetrievalSourceMetadata]):
         """Handle return_retriever_resource_info."""
+        from core.app.entities.queue_entities import QueueRetrieverResourcesEvent
+
         self._queue_manager.publish(
             QueueRetrieverResourcesEvent(retriever_resources=resource), PublishFrom.APPLICATION_MANAGER
         )

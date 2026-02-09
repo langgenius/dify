@@ -249,6 +249,17 @@ class PluginConfig(BaseSettings):
     )
 
 
+class CliApiConfig(BaseSettings):
+    """
+    Configuration for CLI API (for dify-cli to call back from external sandbox environments)
+    """
+
+    CLI_API_URL: str = Field(
+        description="CLI API URL for external sandbox (e.g., e2b) to call back.",
+        default="http://localhost:5001",
+    )
+
+
 class MarketplaceConfig(BaseSettings):
     """
     Configuration for marketplace
@@ -1328,6 +1339,7 @@ class FeatureConfig(
     TriggerConfig,
     AsyncWorkflowConfig,
     PluginConfig,
+    CliApiConfig,
     MarketplaceConfig,
     DataSetConfig,
     EndpointConfig,

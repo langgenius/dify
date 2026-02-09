@@ -41,6 +41,7 @@ type Props = {
   panelClassName?: string
   disabled: boolean
   trigger: React.ReactNode
+  triggerAsChild?: boolean
   placement?: Placement
   offset?: OffsetOptions
   isShow: boolean
@@ -50,11 +51,14 @@ type Props = {
   supportAddCustomTool?: boolean
   scope?: string
   selectedTools?: ToolValue[]
+  preventFocusLoss?: boolean
+  hideFeaturedTool?: boolean
 }
 
 const ToolPicker: FC<Props> = ({
   disabled,
   trigger,
+  triggerAsChild = false,
   placement = 'right-start',
   offset = 0,
   isShow,
@@ -65,6 +69,8 @@ const ToolPicker: FC<Props> = ({
   scope = 'all',
   selectedTools,
   panelClassName,
+  preventFocusLoss = false,
+  hideFeaturedTool = false,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -165,12 +171,23 @@ const ToolPicker: FC<Props> = ({
     >
       <PortalToFollowElemTrigger
         onClick={handleTriggerClick}
+        asChild={triggerAsChild}
       >
         {trigger}
       </PortalToFollowElemTrigger>
 
       <PortalToFollowElemContent className="z-[1000]">
-        <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm', panelClassName)}>
+        <div
+          className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm', panelClassName)}
+          onMouseDown={(e) => {
+            if (!preventFocusLoss)
+              return
+            const target = e.target as HTMLElement
+            if (target.closest('input, textarea, select'))
+              return
+            e.preventDefault()
+          }}
+        >
           <div className="p-2 pb-1">
             <SearchBox
               search={searchText}
@@ -200,6 +217,7 @@ const ToolPicker: FC<Props> = ({
             featuredPlugins={featuredPlugins}
             featuredLoading={isFeaturedLoading}
             showFeatured={scope === 'all' && enable_marketplace}
+            hideFeaturedTool={hideFeaturedTool}
             onFeaturedInstallSuccess={async () => {
               invalidateBuiltInTools()
               invalidateCustomTools()

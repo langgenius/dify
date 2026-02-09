@@ -14,6 +14,7 @@ type Props = {
   onChange: (value: ValueSelector, varDetail: Var) => void
   itemWidth?: number
   isSupportFileVar?: boolean
+  hideSearch?: boolean
   zIndex?: number
   preferSchemaType?: boolean
 }
@@ -23,6 +24,7 @@ const VarReferencePopup: FC<Props> = ({
   onChange,
   itemWidth,
   isSupportFileVar = true,
+  hideSearch,
   zIndex,
   preferSchemaType,
 }) => {
@@ -34,7 +36,7 @@ const VarReferencePopup: FC<Props> = ({
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
     <div
-      className="space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
+      className="space-y-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
       style={{
         width: itemWidth || 228,
       }}
@@ -72,6 +74,7 @@ const VarReferencePopup: FC<Props> = ({
               showManageInputField={showManageRagInputFields}
               onManageInputField={() => setShowInputFieldPanel?.(true)}
               preferSchemaType={preferSchemaType}
+              hideSearch={hideSearch}
             />
           )}
     </div>

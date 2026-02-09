@@ -1,7 +1,8 @@
-import type { Memory, PromptItem, ValueSelector, Var, Variable } from '../../types'
+import type { Memory, PromptItem, PromptTemplateItem, ValueSelector, Var, Variable } from '../../types'
 import type { LLMNodeType, StructuredOutput } from './types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useFeatures } from '@/app/components/base/features/hooks'
 import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import {
   ModelFeatureEnum,
@@ -23,6 +24,8 @@ import useAvailableVarList from '../_base/hooks/use-available-var-list'
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
+  const features = useFeatures(s => s.features)
+  const isSupportSandbox = !!features.sandbox?.enabled
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string, assistant: string }>({ user: '', assistant: '' })
@@ -35,17 +38,37 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
 
   const setInputs = useCallback((newInputs: LLMNodeType) => {
+    let newPayload = { ...newInputs }
     if (newInputs.memory && !newInputs.memory.role_prefix) {
-      const newPayload = produce(newInputs, (draft) => {
+      newPayload = produce(newInputs, (draft) => {
         draft.memory!.role_prefix = defaultRolePrefix
       })
-      doSetInputs(newPayload)
-      inputRef.current = newPayload
-      return
     }
-    doSetInputs(newInputs)
-    inputRef.current = newInputs
-  }, [doSetInputs, defaultRolePrefix])
+
+    // set skill=true for sandbox
+    if (isSupportSandbox) {
+      if (Array.isArray(newPayload.prompt_template) && newPayload.prompt_template.find(item => !item.skill)) {
+        newPayload = produce(newPayload, (draft) => {
+          draft.prompt_template = (draft.prompt_template as PromptItem[]).map((item) => {
+            return {
+              ...item,
+              skill: true,
+            }
+          })
+        })
+      }
+      else if (!Array.isArray(newPayload.prompt_template) && !newPayload.prompt_template.skill) {
+        newPayload = produce(newPayload, (draft) => {
+          draft.prompt_template = {
+            ...draft.prompt_template,
+            skill: true,
+          }
+        })
+      }
+    }
+    doSetInputs(newPayload)
+    inputRef.current = newPayload
+  }, [doSetInputs, defaultRolePrefix, isSupportSandbox])
 
   // model
   const model = inputs.model
@@ -158,6 +181,13 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
+  const handleComputerUseChange = useCallback((enabled: boolean) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.computer_use = enabled
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
   // change to vision model to set vision enabled, else disabled
   useEffect(() => {
     if (!modelChanged)
@@ -249,7 +279,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
-  const handlePromptChange = useCallback((newPrompt: PromptItem[] | PromptItem) => {
+  const handlePromptChange = useCallback((newPrompt: PromptTemplateItem[] | PromptItem) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.prompt_template = newPrompt
     })
@@ -370,6 +400,8 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleStructureOutputEnableChange,
     filterJinja2InputVar,
     handleReasoningFormatChange,
+    isSupportSandbox,
+    handleComputerUseChange,
   }
 }
 

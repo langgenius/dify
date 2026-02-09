@@ -36,12 +36,12 @@ from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
+from models.workflow_features import WorkflowFeature, WorkflowFeatures
 
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
 if TYPE_CHECKING:
     from .model import AppMode, UploadFile
-
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
@@ -56,6 +56,37 @@ from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType
 from .types import EnumText, LongText, StringUUID
 
 logger = logging.getLogger(__name__)
+
+
+def is_generation_outputs(outputs: Mapping[str, Any]) -> bool:
+    if not outputs:
+        return False
+
+    allowed_sequence_types = {"reasoning", "content", "tool_call"}
+
+    def valid_sequence_item(item: Mapping[str, Any]) -> bool:
+        return isinstance(item, Mapping) and item.get("type") in allowed_sequence_types
+
+    def valid_value(value: Any) -> bool:
+        if not isinstance(value, Mapping):
+            return False
+
+        content = value.get("content")
+        reasoning_content = value.get("reasoning_content")
+        tool_calls = value.get("tool_calls")
+        sequence = value.get("sequence")
+
+        return (
+            isinstance(content, str)
+            and isinstance(reasoning_content, list)
+            and all(isinstance(item, str) for item in reasoning_content)
+            and isinstance(tool_calls, list)
+            and all(isinstance(item, Mapping) for item in tool_calls)
+            and isinstance(sequence, list)
+            and all(valid_sequence_item(item) for item in sequence)
+        )
+
+    return all(valid_value(value) for value in outputs.values())
 
 
 class WorkflowType(StrEnum):
@@ -310,6 +341,9 @@ class Workflow(Base):  # bug
     @property
     def features_dict(self) -> dict[str, Any]:
         return json.loads(self.features) if self.features else {}
+
+    def get_feature(self, key: WorkflowFeatures) -> WorkflowFeature:
+        return WorkflowFeature.from_dict(self.features_dict.get(key.value))
 
     def walk_nodes(
         self, specific_node_type: NodeType | None = None
@@ -664,6 +698,10 @@ class WorkflowRun(Base):
     def workflow(self):
         return db.session.query(Workflow).where(Workflow.id == self.workflow_id).first()
 
+    @property
+    def outputs_as_generation(self):
+        return is_generation_outputs(self.outputs_dict)
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -677,6 +715,7 @@ class WorkflowRun(Base):
             "inputs": self.inputs_dict,
             "status": self.status,
             "outputs": self.outputs_dict,
+            "outputs_as_generation": self.outputs_as_generation,
             "error": self.error,
             "elapsed_time": self.elapsed_time,
             "total_tokens": self.total_tokens,
@@ -1347,7 +1386,7 @@ class WorkflowDraftVariable(Base):
     # which may differ from the original value's type. Typically, they are the same,
     # but in cases where the structurally truncated  value still exceeds the size limit,
     # text slicing is applied, and the `value_type` is converted to `STRING`.
-    value_type: Mapped[SegmentType] = mapped_column(EnumText(SegmentType, length=20))
+    value_type: Mapped[SegmentType] = mapped_column(EnumText(SegmentType, length=21))
 
     # The variable's value serialized as a JSON string
     #
@@ -1721,7 +1760,7 @@ class WorkflowDraftVariableFile(Base):
 
     # The `value_type` field records the type of the original value.
     value_type: Mapped[SegmentType] = mapped_column(
-        EnumText(SegmentType, length=20),
+        EnumText(SegmentType, length=21),
         nullable=False,
     )
 

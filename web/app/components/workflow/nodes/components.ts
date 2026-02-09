@@ -8,12 +8,16 @@ import AssignerNode from './assigner/node'
 import AssignerPanel from './assigner/panel'
 import CodeNode from './code/node'
 import CodePanel from './code/panel'
+import CommandNode from './command/node'
+import CommandPanel from './command/panel'
 import DataSourceNode from './data-source/node'
 import DataSourcePanel from './data-source/panel'
 import DocExtractorNode from './document-extractor/node'
 import DocExtractorPanel from './document-extractor/panel'
 import EndNode from './end/node'
 import EndPanel from './end/panel'
+import GroupNode from './group/node'
+import GroupPanel from './group/panel'
 import HttpNode from './http/node'
 import HttpPanel from './http/panel'
 import IfElseNode from './if-else/node'
@@ -75,6 +79,8 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.TriggerSchedule]: TriggerScheduleNode,
   [BlockEnum.TriggerWebhook]: TriggerWebhookNode,
   [BlockEnum.TriggerPlugin]: TriggerPluginNode,
+  [BlockEnum.Command]: CommandNode,
+  [BlockEnum.Group]: GroupNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
@@ -103,4 +109,6 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.TriggerSchedule]: TriggerSchedulePanel,
   [BlockEnum.TriggerWebhook]: TriggerWebhookPanel,
   [BlockEnum.TriggerPlugin]: TriggerPluginPanel,
+  [BlockEnum.Command]: CommandPanel,
+  [BlockEnum.Group]: GroupPanel,
 }

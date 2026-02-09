@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import {
   RiFileTextLine,
   RiFilmAiLine,
+  RiHammerLine,
   RiImageCircleAiLine,
   RiVoiceAiFill,
 } from '@remixicon/react'
@@ -38,17 +39,33 @@ const FeatureIcon: FC<FeatureIconProps> = ({
   //   )
   // }
 
-  // if (feature === ModelFeatureEnum.toolCall) {
-  //   return (
-  //     <Tooltip
-  //       popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.toolCall })}
-  //     >
-  //       <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
-  //         <MagicWand className='w-3 h-3' />
-  //       </ModelBadge>
-  //     </Tooltip>
-  //   )
-  // }
+  if (feature === ModelFeatureEnum.toolCall) {
+    if (showFeaturesLabel) {
+      return (
+        <ModelBadge className={cn('gap-x-0.5', className)}>
+          <RiHammerLine className="size-3" />
+          <span>{ModelFeatureTextEnum.toolCall}</span>
+        </ModelBadge>
+      )
+    }
+
+    return (
+      <Tooltip
+        popupContent={t('modelProvider.featureSupported', { ns: 'common', feature: ModelFeatureTextEnum.toolCall })}
+      >
+        <div className="inline-block cursor-help">
+          <ModelBadge
+            className={cn(
+              'w-[18px] justify-center !px-0',
+              className,
+            )}
+          >
+            <RiHammerLine className="size-3" />
+          </ModelBadge>
+        </div>
+      </Tooltip>
+    )
+  }
 
   // if (feature === ModelFeatureEnum.multiToolCall) {
   //   return (

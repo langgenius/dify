@@ -1,10 +1,10 @@
 import type {
   Connection,
 } from 'reactflow'
+import type { GroupNodeData } from '../nodes/group/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type {
-  BlockEnum,
   Edge,
   Node,
   ValueSelector,
@@ -28,14 +28,12 @@ import {
 } from '../constants'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
-
 import {
   useStore,
   useWorkflowStore,
 } from '../store'
-import {
-  WorkflowRunningStatus,
-} from '../types'
+
+import { BlockEnum, WorkflowRunningStatus } from '../types'
 import {
   getWorkflowEntryNode,
   isWorkflowEntryNode,
@@ -381,7 +379,7 @@ export const useWorkflow = () => {
     return startNodes
   }, [nodesMap, getRootNodesById])
 
-  const isValidConnection = useCallback(({ source, sourceHandle: _sourceHandle, target }: Connection) => {
+  const isValidConnection = useCallback(({ source, sourceHandle, target }: Connection) => {
     const {
       edges,
       getNodes,
@@ -396,15 +394,42 @@ export const useWorkflow = () => {
     if (sourceNode.parentId !== targetNode.parentId)
       return false
 
+    // For Group nodes, use the leaf node's type for validation
+    // sourceHandle format: "${leafNodeId}-${originalSourceHandle}"
+    let actualSourceType = sourceNode.data.type
+    if (sourceNode.data.type === BlockEnum.Group && sourceHandle) {
+      const lastDashIndex = sourceHandle.lastIndexOf('-')
+      if (lastDashIndex > 0) {
+        const leafNodeId = sourceHandle.substring(0, lastDashIndex)
+        const leafNode = nodes.find(node => node.id === leafNodeId)
+        if (leafNode)
+          actualSourceType = leafNode.data.type
+      }
+    }
+
     if (sourceNode && targetNode) {
-      const sourceNodeAvailableNextNodes = getAvailableBlocks(sourceNode.data.type, !!sourceNode.parentId).availableNextBlocks
+      const sourceNodeAvailableNextNodes = getAvailableBlocks(actualSourceType, !!sourceNode.parentId).availableNextBlocks
       const targetNodeAvailablePrevNodes = getAvailableBlocks(targetNode.data.type, !!targetNode.parentId).availablePrevBlocks
 
-      if (!sourceNodeAvailableNextNodes.includes(targetNode.data.type))
-        return false
+      if (targetNode.data.type === BlockEnum.Group) {
+        const groupData = targetNode.data as GroupNodeData
+        const headNodeIds = groupData.headNodeIds || []
+        if (headNodeIds.length > 0) {
+          const headNode = nodes.find(node => node.id === headNodeIds[0])
+          if (headNode) {
+            const headNodeAvailablePrevNodes = getAvailableBlocks(headNode.data.type, !!targetNode.parentId).availablePrevBlocks
+            if (!headNodeAvailablePrevNodes.includes(actualSourceType))
+              return false
+          }
+        }
+      }
+      else {
+        if (!sourceNodeAvailableNextNodes.includes(targetNode.data.type))
+          return false
 
-      if (!targetNodeAvailablePrevNodes.includes(sourceNode.data.type))
-        return false
+        if (!targetNodeAvailablePrevNodes.includes(actualSourceType))
+          return false
+      }
     }
 
     const hasCycle = (node: Node, visited = new Set()) => {
@@ -473,13 +498,9 @@ export const useNodesReadOnly = () => {
   const isRestoring = useStore(s => s.isRestoring)
 
   const getNodesReadOnly = useCallback((): boolean => {
-    const {
-      workflowRunningData,
-      historyWorkflowData,
-      isRestoring,
-    } = workflowStore.getState()
+    const state = workflowStore.getState()
 
-    return !!(workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring)
+    return !!(state.workflowRunningData?.result.status === WorkflowRunningStatus.Running || state.historyWorkflowData || state.isRestoring)
   }, [workflowStore])
 
   return {
@@ -525,6 +546,7 @@ export const useIsNodeInLoop = (loopId: string) => {
       return false
 
     if (node.parentId === loopId)
+
       return true
 
     return false

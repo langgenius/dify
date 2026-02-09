@@ -3,10 +3,8 @@ from typing import cast
 
 from sqlalchemy import select
 
-from core.agent.cot_chat_agent_runner import CotChatAgentRunner
-from core.agent.cot_completion_agent_runner import CotCompletionAgentRunner
+from core.agent.agent_app_runner import AgentAppRunner
 from core.agent.entities import AgentEntity
-from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
@@ -14,8 +12,7 @@ from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
+from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.moderation.base import ModerationError
 from extensions.ext_database import db
@@ -194,22 +191,7 @@ class AgentChatAppRunner(AppRunner):
             raise ValueError("Message not found")
         db.session.close()
 
-        runner_cls: type[FunctionCallAgentRunner] | type[CotChatAgentRunner] | type[CotCompletionAgentRunner]
-        # start agent runner
-        if agent_entity.strategy == AgentEntity.Strategy.CHAIN_OF_THOUGHT:
-            # check LLM mode
-            if model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT:
-                runner_cls = CotChatAgentRunner
-            elif model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.COMPLETION:
-                runner_cls = CotCompletionAgentRunner
-            else:
-                raise ValueError(f"Invalid LLM mode: {model_schema.model_properties.get(ModelPropertyKey.MODE)}")
-        elif agent_entity.strategy == AgentEntity.Strategy.FUNCTION_CALLING:
-            runner_cls = FunctionCallAgentRunner
-        else:
-            raise ValueError(f"Invalid agent strategy: {agent_entity.strategy}")
-
-        runner = runner_cls(
+        runner = AgentAppRunner(
             tenant_id=app_config.tenant_id,
             application_generate_entity=application_generate_entity,
             conversation=conversation_result,

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { HeaderProps } from '@/app/components/workflow/header'
 import {
   memo,
@@ -12,7 +13,11 @@ import { useIsChatMode } from '../../hooks'
 import ChatVariableTrigger from './chat-variable-trigger'
 import FeaturesTrigger from './features-trigger'
 
-const WorkflowHeader = () => {
+type WorkflowHeaderProps = {
+  leftSlot?: ReactNode
+}
+
+const WorkflowHeader = ({ leftSlot }: WorkflowHeaderProps) => {
   const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -37,6 +42,7 @@ const WorkflowHeader = () => {
     return {
       normal: {
         components: {
+          left: leftSlot,
           middle: <FeaturesTrigger />,
           chatVariableTrigger: <ChatVariableTrigger />,
         },
@@ -53,7 +59,7 @@ const WorkflowHeader = () => {
         onRestoreSettled: resetWorkflowVersionHistory,
       },
     }
-  }, [resetWorkflowVersionHistory, isChatMode, viewHistoryProps])
+  }, [leftSlot, resetWorkflowVersionHistory, isChatMode, viewHistoryProps])
   return (
     <Header {...headerProps} />
   )

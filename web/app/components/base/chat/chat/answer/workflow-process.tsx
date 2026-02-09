@@ -45,7 +45,7 @@ const WorkflowProcessItem = ({
   return (
     <div
       className={cn(
-        '-mx-1 rounded-xl px-2.5',
+        'rounded-xl px-2.5',
         collapse ? 'border-l-[0.25px] border-components-panel-border py-[7px]' : 'border-[0.5px] border-components-panel-border-subtle px-1 pb-1 pt-[7px]',
         running && !collapse && 'bg-background-section-burn',
         succeeded && !collapse && 'bg-state-success-hover',

@@ -10,11 +10,13 @@ import type { HistorySliceShape } from './history-slice'
 import type { LayoutSliceShape } from './layout-slice'
 import type { NodeSliceShape } from './node-slice'
 import type { PanelSliceShape } from './panel-slice'
+import type { SkillEditorSliceShape } from './skill-editor'
 import type { ToolSliceShape } from './tool-slice'
 import type { VersionSliceShape } from './version-slice'
 import type { WorkflowDraftSliceShape } from './workflow-draft-slice'
 import type { WorkflowSliceShape } from './workflow-slice'
 import type { RagPipelineSliceShape } from '@/app/components/rag-pipeline/store'
+import type { SubGraphSliceShape } from '@/app/components/sub-graph/types'
 import type { WorkflowSliceShape as WorkflowAppSliceShape } from '@/app/components/workflow-app/store/workflow/workflow-slice'
 import { useContext } from 'react'
 import {
@@ -30,8 +32,8 @@ import { createHelpLineSlice } from './help-line-slice'
 import { createHistorySlice } from './history-slice'
 import { createLayoutSlice } from './layout-slice'
 import { createNodeSlice } from './node-slice'
-
 import { createPanelSlice } from './panel-slice'
+import { createSkillEditorSlice } from './skill-editor'
 import { createToolSlice } from './tool-slice'
 import { createVersionSlice } from './version-slice'
 import { createWorkflowDraftSlice } from './workflow-draft-slice'
@@ -40,6 +42,7 @@ import { createWorkflowSlice } from './workflow-slice'
 export type SliceFromInjection
   = Partial<WorkflowAppSliceShape>
     & Partial<RagPipelineSliceShape>
+    & Partial<SubGraphSliceShape>
 
 export type Shape
   = ChatVariableSliceShape
@@ -55,6 +58,7 @@ export type Shape
     & WorkflowSliceShape
     & InspectVarsSliceShape
     & LayoutSliceShape
+    & SkillEditorSliceShape
     & SliceFromInjection
 
 export type InjectWorkflowStoreSliceFn = StateCreator<SliceFromInjection>
@@ -80,6 +84,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
     ...createWorkflowSlice(...args),
     ...createInspectVarsSlice(...args),
     ...createLayoutSlice(...args),
+    ...createSkillEditorSlice(...args),
     ...(injectWorkflowStoreSliceFn?.(...args) || {} as SliceFromInjection),
   }))
 }
