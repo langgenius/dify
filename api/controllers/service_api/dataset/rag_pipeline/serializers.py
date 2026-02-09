@@ -13,7 +13,7 @@ class UploadFileLike(Protocol):
     name: str
     size: int
     extension: str
-    mime_type: str
+    mime_type: str | None
     created_by: str
     created_at: datetime | None
 
@@ -28,4 +28,3 @@ def serialize_upload_file(upload_file: UploadFileLike) -> dict[str, Any]:
         "created_by": upload_file.created_by,
         "created_at": upload_file.created_at.isoformat() if upload_file.created_at else None,
     }
-
