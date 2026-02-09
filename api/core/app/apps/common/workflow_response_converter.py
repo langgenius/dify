@@ -346,7 +346,7 @@ class WorkflowResponseConverter:
                     paused_nodes=list(event.paused_nodes),
                     outputs=encoded_outputs,
                     reasons=pause_reasons,
-                    status=WorkflowExecutionStatus.PAUSED.value,
+                    status=WorkflowExecutionStatus.PAUSED,
                     created_at=int(started_at.timestamp()),
                     elapsed_time=elapsed_time,
                     total_tokens=graph_runtime_state.total_tokens,
@@ -422,7 +422,7 @@ class WorkflowResponseConverter:
             data=WorkflowFinishStreamResponse.Data(
                 id=run_id,
                 workflow_id=workflow_run.workflow_id,
-                status=workflow_run.status.value,
+                status=workflow_run.status,
                 outputs=encoded_outputs,
                 error=workflow_run.error,
                 elapsed_time=elapsed_time,

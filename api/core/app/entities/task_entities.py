@@ -262,7 +262,7 @@ class WorkflowPauseStreamResponse(StreamResponse):
         paused_nodes: Sequence[str] = Field(default_factory=list)
         outputs: Mapping[str, Any] = Field(default_factory=dict)
         reasons: Sequence[Mapping[str, Any]] = Field(default_factory=list)
-        status: str
+        status: WorkflowExecutionStatus
         created_at: int
         elapsed_time: float
         total_tokens: int
