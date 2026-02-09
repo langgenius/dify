@@ -38,7 +38,7 @@ const getOrCreateI18next = async (lng: Locale) => {
   return instance
 }
 
-export async function getTranslation(lng: Locale, ns?: NamespaceCamelCase) {
+export async function getTranslation<T extends NamespaceCamelCase>(lng: Locale, ns?: T) {
   const i18nextInstance = await getOrCreateI18next(lng)
 
   if (ns && !i18nextInstance.hasLoadedNamespace(ns))
