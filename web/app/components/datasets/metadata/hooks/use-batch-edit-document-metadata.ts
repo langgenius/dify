@@ -2,9 +2,9 @@ import type { MetadataBatchEditToServer, MetadataItemInBatchEdit, MetadataItemWi
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import Toast from '@/app/components/base/toast'
-import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
+import { useBatchUpdateDocMetadata, useDatasetMetaData } from '@/service/knowledge/use-metadata'
 import { UpdateType } from '../types'
 
 type Props = {
@@ -24,6 +24,22 @@ const useBatchEditDocumentMetadata = ({
     setTrue: showEditModal,
     setFalse: hideEditModal,
   }] = useBoolean(false)
+  const { data: datasetMetaData } = useDatasetMetaData(datasetId)
+
+  const metadataIdByName = useMemo(() => {
+    const idByName: Record<string, string> = {}
+    datasetMetaData?.doc_metadata?.forEach((metadata) => {
+      if (metadata.id && metadata.id !== 'built-in')
+        idByName[metadata.name] = metadata.id
+    })
+    return idByName
+  }, [datasetMetaData?.doc_metadata])
+
+  const resolveMetadataId = useCallback((item: { id?: string | null, name: string }) => {
+    if (item.id && item.id !== 'built-in')
+      return item.id
+    return metadataIdByName[item.name] || ''
+  }, [metadataIdByName])
 
   const metaDataList: MetadataItemWithValue[][] = (() => {
     const res: MetadataItemWithValue[][] = []
@@ -44,18 +60,22 @@ const useBatchEditDocumentMetadata = ({
     const res: MetadataItemInBatchEdit[] = []
     metaDataList.forEach((metaData) => {
       metaData.forEach((item) => {
-        if (idNameValue[item.id]?.isMultipleValue)
+        const metadataId = resolveMetadataId(item)
+        if (!metadataId)
           return
-        const itemInRes = res.find(i => i.id === item.id)
-        if (!idNameValue[item.id]) {
-          idNameValue[item.id] = {
+
+        if (idNameValue[metadataId]?.isMultipleValue)
+          return
+        const itemInRes = res.find(i => i.id === metadataId)
+        if (!idNameValue[metadataId]) {
+          idNameValue[metadataId] = {
             value: item.value,
             isMultipleValue: false,
           }
         }
 
         if (itemInRes && itemInRes.value !== item.value) {
-          idNameValue[item.id].isMultipleValue = true
+          idNameValue[metadataId].isMultipleValue = true
           itemInRes.isMultipleValue = true
           itemInRes.value = null
           return
@@ -63,24 +83,50 @@ const useBatchEditDocumentMetadata = ({
         if (!itemInRes) {
           res.push({
             ...item,
+            id: metadataId,
             isMultipleValue: false,
           })
         }
       })
     })
     return res
-  }, [metaDataList])
+  }, [metaDataList, resolveMetadataId])
+
+  const toServerMetadataItem = (item: { id?: string | null, name: string, type: string, value: string | number | null | undefined }): MetadataItemWithValue | null => {
+    const metadataId = resolveMetadataId(item)
+    if (!metadataId)
+      return null
+    return {
+      id: metadataId,
+      name: item.name,
+      type: item.type as MetadataItemWithValue['type'],
+      value: item.value ?? null,
+    }
+  }
 
   const formateToBackendList = (editedList: MetadataItemWithEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
     const updatedList = editedList.filter((editedItem) => {
       return editedItem.updateType === UpdateType.changeValue
     })
-    const removedList = originalList.filter((originalItem) => {
-      const editedItem = editedList.find(i => i.id === originalItem.id)
-      if (!editedItem) // removed item
-        return true
-      return false
-    })
+    const updatedEntries = updatedList
+      .map((editedItem) => {
+        const serverItem = toServerMetadataItem(editedItem)
+        if (!serverItem)
+          return null
+        return {
+          serverItem,
+          isMultipleValue: editedItem.isMultipleValue,
+        }
+      })
+      .filter(item => !!item)
+    const updatedMetadataMap = new Map(updatedEntries.map(item => [item.serverItem.id, item]))
+    const editedMetadataIds = new Set(editedList
+      .map(item => resolveMetadataId(item))
+      .filter(Boolean))
+    const removedList = originalList.filter(originalItem => !editedMetadataIds.has(originalItem.id))
+    const removedMetadataIds = new Set(removedList
+      .map(item => resolveMetadataId(item))
+      .filter(Boolean))
 
     // Use selectedDocumentIds if available, otherwise fall back to docList
     const documentIds = selectedDocumentIds || docList.map(doc => doc.id)
@@ -89,27 +135,21 @@ const useBatchEditDocumentMetadata = ({
       const docIndex = docList.findIndex(doc => doc.id === documentId)
       const oldMetadataList = docIndex >= 0 ? metaDataList[docIndex] : []
       let newMetadataList: MetadataItemWithValue[] = [...oldMetadataList, ...addedList]
-        .filter((item) => {
-          return !removedList.find(removedItem => removedItem.id === item.id)
-        })
-        .map(item => ({
-          id: item.id,
-          name: item.name,
-          type: item.type,
-          value: item.value,
-        }))
+        .map(item => toServerMetadataItem(item))
+        .filter(item => !!item)
+        .filter(item => !removedMetadataIds.has(item.id))
       if (isApplyToAllSelectDocument) {
         // add missing metadata item
-        updatedList.forEach((editedItem) => {
-          if (!newMetadataList.find(i => i.id === editedItem.id) && !editedItem.isMultipleValue)
-            newMetadataList.push(editedItem)
+        updatedEntries.forEach((updatedItem) => {
+          if (!newMetadataList.find(i => i.id === updatedItem.serverItem.id) && !updatedItem.isMultipleValue)
+            newMetadataList.push(updatedItem.serverItem)
         })
       }
 
       newMetadataList = newMetadataList.map((item) => {
-        const editedItem = updatedList.find(i => i.id === item.id)
-        if (editedItem)
-          return editedItem
+        const updatedItem = updatedMetadataMap.get(item.id)
+        if (updatedItem)
+          return updatedItem.serverItem
         return item
       })
 

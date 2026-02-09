@@ -25,11 +25,25 @@ type MetadataItemWithEdit = {
   updateType?: UpdateType
 }
 
+const mockDatasetMetaData = {
+  doc_metadata: [
+    { id: '1', name: 'field_one', type: DataType.string, count: 10 },
+    { id: '2', name: 'field_two', type: DataType.number, count: 8 },
+    { id: '3', name: 'field', type: DataType.string, count: 3 },
+    { id: 'built-in', name: 'created_at', type: DataType.time, count: 5 },
+    { id: '', name: 'invalid_field', type: DataType.string, count: 1 },
+  ],
+  built_in_field_enabled: false,
+}
+
 // Mock useBatchUpdateDocMetadata
 const mockMutateAsync = vi.fn().mockResolvedValue({})
 vi.mock('@/service/knowledge/use-metadata', () => ({
   useBatchUpdateDocMetadata: () => ({
     mutateAsync: mockMutateAsync,
+  }),
+  useDatasetMetaData: () => ({
+    data: mockDatasetMetaData,
   }),
 }))
 
@@ -641,6 +655,100 @@ describe('useBatchEditDocumentMetadata', () => {
       )
 
       expect(result.current.originalList).toEqual([])
+    })
+
+    it('should resolve metadata id by name when payload id is missing', async () => {
+      const docListMissingId: DocListItem[] = [
+        {
+          id: 'doc-1',
+          doc_metadata: [
+            { id: '', name: 'field_one', type: DataType.string, value: 'old value' },
+          ],
+        },
+      ]
+
+      const { result } = renderHook(() =>
+        useBatchEditDocumentMetadata({
+          ...defaultProps,
+          docList: docListMissingId as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+        }),
+      )
+
+      const editedList: MetadataItemWithEdit[] = [
+        {
+          id: '',
+          name: 'field_one',
+          type: DataType.string,
+          value: 'new value',
+          updateType: UpdateType.changeValue,
+        },
+      ]
+
+      await act(async () => {
+        await result.current.handleSave(editedList, [], false)
+      })
+
+      expect(mockMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata_list: expect.arrayContaining([
+            expect.objectContaining({
+              document_id: 'doc-1',
+              metadata_list: expect.arrayContaining([
+                expect.objectContaining({
+                  id: '1',
+                  name: 'field_one',
+                  value: 'new value',
+                }),
+              ]),
+            }),
+          ]),
+        }),
+      )
+    })
+
+    it('should ignore metadata entries when metadata id cannot be resolved', async () => {
+      const docListUnknownMetadata: DocListItem[] = [
+        {
+          id: 'doc-1',
+          doc_metadata: [
+            { id: '', name: 'unknown_field', type: DataType.string, value: 'old value' },
+          ],
+        },
+      ]
+
+      const { result } = renderHook(() =>
+        useBatchEditDocumentMetadata({
+          ...defaultProps,
+          docList: docListUnknownMetadata as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+        }),
+      )
+
+      expect(result.current.originalList).toEqual([])
+
+      const editedList: MetadataItemWithEdit[] = [
+        {
+          id: '',
+          name: 'unknown_field',
+          type: DataType.string,
+          value: 'new value',
+          updateType: UpdateType.changeValue,
+        },
+      ]
+
+      await act(async () => {
+        await result.current.handleSave(editedList, [], false)
+      })
+
+      expect(mockMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata_list: [
+            expect.objectContaining({
+              document_id: 'doc-1',
+              metadata_list: [],
+            }),
+          ],
+        }),
+      )
     })
   })
 })
