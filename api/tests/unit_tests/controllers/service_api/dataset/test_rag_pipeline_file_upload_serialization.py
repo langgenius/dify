@@ -22,7 +22,8 @@ def _load_serialize_upload_file():
     serializers_path = api_dir / "controllers" / "service_api" / "dataset" / "rag_pipeline" / "serializers.py"
 
     spec = importlib.util.spec_from_file_location("rag_pipeline_serializers", serializers_path)
-    assert spec and spec.loader
+    assert spec
+    assert spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)  # type: ignore[attr-defined]
     return module.serialize_upload_file
@@ -59,4 +60,3 @@ def test_file_upload_created_at_none_serializes_to_null():
 
     result = serialize_upload_file(upload_file)
     assert result["created_at"] is None
-

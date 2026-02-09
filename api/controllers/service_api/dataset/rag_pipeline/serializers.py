@@ -4,21 +4,13 @@ Serialization helpers for Service API knowledge pipeline endpoints.
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from models.model import UploadFile
 
 
-class UploadFileLike(Protocol):
-    id: Any
-    name: str
-    size: int
-    extension: str
-    mime_type: str | None
-    created_by: str
-    created_at: datetime | None
-
-
-def serialize_upload_file(upload_file: UploadFileLike) -> dict[str, Any]:
+def serialize_upload_file(upload_file: UploadFile) -> dict[str, Any]:
     return {
         "id": upload_file.id,
         "name": upload_file.name,
