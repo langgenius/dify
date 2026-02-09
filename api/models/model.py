@@ -26,7 +26,7 @@ from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
 
 from .account import Account, Tenant
-from .base import Base, TypeBase
+from .base import Base, TypeBase, gen_uuidv4_string
 from .engine import db
 from .enums import CreatorUserRole
 from .provider_ids import GenericProviderID
@@ -620,7 +620,7 @@ class TrialApp(Base):
         sa.UniqueConstraint("app_id", name="unique_trail_app_id"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id = mapped_column(StringUUID, default=gen_uuidv4_string)
     app_id = mapped_column(StringUUID, nullable=False)
     tenant_id = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -640,7 +640,7 @@ class AccountTrialAppRecord(Base):
         sa.Index("account_trial_app_record_app_id_idx", "app_id"),
         sa.UniqueConstraint("account_id", "app_id", name="unique_account_trial_app_record"),
     )
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id = mapped_column(StringUUID, default=gen_uuidv4_string)
     account_id = mapped_column(StringUUID, nullable=False)
     app_id = mapped_column(StringUUID, nullable=False)
     count = mapped_column(sa.Integer, nullable=False, default=0)
@@ -660,7 +660,7 @@ class AccountTrialAppRecord(Base):
 class ExporleBanner(TypeBase):
     __tablename__ = "exporle_banners"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="exporler_banner_pkey"),)
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=gen_uuidv4_string, init=False)
     content: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     link: Mapped[str] = mapped_column(String(255), nullable=False)
     sort: Mapped[int] = mapped_column(sa.Integer, nullable=False)
