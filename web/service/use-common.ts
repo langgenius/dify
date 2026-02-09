@@ -318,6 +318,10 @@ export const useInvalidDataSourceIntegrates = () => {
   return useInvalid(commonQueryKeys.dataSourceIntegrates)
 }
 
+export const useInvalidateCurrentWorkspace = () => {
+  return useInvalid(commonQueryKeys.currentWorkspace)
+}
+
 export const usePluginProviders = () => {
   return useQuery<PluginProvider[] | null>({
     queryKey: commonQueryKeys.pluginProviders,

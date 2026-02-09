@@ -25,11 +25,9 @@ export type AppContextValue = {
   isCurrentWorkspaceOwner: boolean
   isCurrentWorkspaceEditor: boolean
   isCurrentWorkspaceDatasetOperator: boolean
-  mutateCurrentWorkspace: VoidFunction
   langGeniusVersionInfo: LangGeniusVersionResponse
   useSelector: typeof useSelector
   isLoadingCurrentWorkspace: boolean
-  isValidatingCurrentWorkspace: boolean
 }
 
 const userProfilePlaceholder = {
@@ -72,11 +70,9 @@ const AppContext = createContext<AppContextValue>({
   isCurrentWorkspaceEditor: false,
   isCurrentWorkspaceDatasetOperator: false,
   mutateUserProfile: noop,
-  mutateCurrentWorkspace: noop,
   langGeniusVersionInfo: initialLangGeniusVersionInfo,
   useSelector,
   isLoadingCurrentWorkspace: false,
-  isValidatingCurrentWorkspace: false,
 })
 
 export function useSelector<T>(selector: (value: AppContextValue) => T): T {
@@ -91,7 +87,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const queryClient = useQueryClient()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { data: userProfileResp } = useUserProfile()
-  const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace, isFetching: isValidatingCurrentWorkspace } = useCurrentWorkspace()
+  const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace } = useCurrentWorkspace()
   const langGeniusVersionQuery = useLangGeniusVersion(
     userProfileResp?.meta.currentVersion,
     !systemFeatures.branding.enabled,
@@ -121,10 +117,6 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
 
   const mutateUserProfile = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['common', 'user-profile'] })
-  }, [queryClient])
-
-  const mutateCurrentWorkspace = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['common', 'current-workspace'] })
   }, [queryClient])
 
   // #region Zendesk conversation fields
@@ -198,9 +190,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceOwner,
       isCurrentWorkspaceEditor,
       isCurrentWorkspaceDatasetOperator,
-      mutateCurrentWorkspace,
       isLoadingCurrentWorkspace,
-      isValidatingCurrentWorkspace,
     }}
     >
       <div className="flex h-full flex-col overflow-y-auto">

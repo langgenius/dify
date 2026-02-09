@@ -3081,12 +3081,6 @@
     }
   },
   "app/components/custom/custom-web-app-brand/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 12
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -4531,11 +4525,6 @@
       "count": 3
     }
   },
-  "app/components/header/account-setting/model-provider-page/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    }
-  },
   "app/components/header/account-setting/model-provider-page/install-from-marketplace.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -4737,11 +4726,6 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/provider-added-card/quota-panel.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/provider-icon/index.tsx": {

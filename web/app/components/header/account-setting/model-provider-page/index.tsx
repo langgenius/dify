@@ -6,10 +6,9 @@ import {
   RiBrainLine,
 } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
@@ -34,7 +33,6 @@ const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/an
 const ModelProviderPage = ({ searchText }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
-  const { mutateCurrentWorkspace, isValidatingCurrentWorkspace } = useAppContext()
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(ModelTypeEnum.rerank)
@@ -92,14 +90,10 @@ const ModelProviderPage = ({ searchText }: Props) => {
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
 
-  useEffect(() => {
-    mutateCurrentWorkspace()
-  }, [mutateCurrentWorkspace])
-
   return (
     <div className="relative -mt-2 pt-1">
       <div className={cn('mb-2 flex items-center')}>
-        <div className="system-md-semibold grow text-text-primary">{t('modelProvider.models', { ns: 'common' })}</div>
+        <div className="grow text-text-primary system-md-semibold">{t('modelProvider.models', { ns: 'common' })}</div>
         <div className={cn(
           'relative flex shrink-0 items-center justify-end gap-2 rounded-lg border border-transparent p-px',
           defaultModelNotConfigured && 'border-components-panel-border bg-components-panel-bg-blur pl-2 shadow-xs',
@@ -107,7 +101,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
         >
           {defaultModelNotConfigured && <div className="absolute bottom-0 left-0 right-0 top-0 opacity-40" style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
           {defaultModelNotConfigured && (
-            <div className="system-xs-medium flex items-center gap-1 text-text-primary">
+            <div className="flex items-center gap-1 text-text-primary system-xs-medium">
               <RiAlertFill className="h-4 w-4 text-text-warning-secondary" />
               <span className="max-w-[460px] truncate" title={t('modelProvider.notConfigured', { ns: 'common' })}>{t('modelProvider.notConfigured', { ns: 'common' })}</span>
             </div>
@@ -123,14 +117,14 @@ const ModelProviderPage = ({ searchText }: Props) => {
           />
         </div>
       </div>
-      {IS_CLOUD_EDITION && <QuotaPanel providers={providers} isLoading={isValidatingCurrentWorkspace} />}
+      {IS_CLOUD_EDITION && <QuotaPanel providers={providers} />}
       {!filteredConfiguredProviders?.length && (
         <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur">
             <RiBrainLine className="h-5 w-5 text-text-primary" />
           </div>
-          <div className="system-sm-medium mt-2 text-text-secondary">{t('modelProvider.emptyProviderTitle', { ns: 'common' })}</div>
-          <div className="system-xs-regular mt-1 text-text-tertiary">{t('modelProvider.emptyProviderTip', { ns: 'common' })}</div>
+          <div className="mt-2 text-text-secondary system-sm-medium">{t('modelProvider.emptyProviderTitle', { ns: 'common' })}</div>
+          <div className="mt-1 text-text-tertiary system-xs-regular">{t('modelProvider.emptyProviderTip', { ns: 'common' })}</div>
         </div>
       )}
       {!!filteredConfiguredProviders?.length && (
@@ -145,7 +139,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
       )}
       {!!filteredNotConfiguredProviders?.length && (
         <>
-          <div className="system-md-semibold mb-2 flex items-center pt-2 text-text-primary">{t('modelProvider.toBeConfigured', { ns: 'common' })}</div>
+          <div className="mb-2 flex items-center pt-2 text-text-primary system-md-semibold">{t('modelProvider.toBeConfigured', { ns: 'common' })}</div>
           <div className="relative">
             {filteredNotConfiguredProviders?.map(provider => (
               <ProviderAddedCard
