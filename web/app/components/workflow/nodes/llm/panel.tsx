@@ -23,7 +23,6 @@ import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import ComputerUseConfig from './components/computer-use-config'
 import ConfigPrompt from './components/config-prompt'
-import ReasoningFormatConfig from './components/reasoning-format-config'
 import StructureOutput from './components/structure-output'
 import Tools from './components/tools'
 import MaxIterations from './components/tools/max-iterations'
@@ -72,7 +71,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleStructureOutputEnableChange,
     handleStructureOutputChange,
     filterJinja2InputVar,
-    handleReasoningFormatChange,
     isSupportSandbox,
     handleComputerUseChange,
   } = useConfig(id, data)
@@ -334,13 +332,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             className="flex h-10 items-center"
             value={inputs.max_iterations}
             onChange={handleMaxIterationsChange}
-          />
-
-          {/* Reasoning Format */}
-          <ReasoningFormatConfig
-            value={inputs.reasoning_format || 'tagged'}
-            onChange={handleReasoningFormatChange}
-            readonly={readOnly}
           />
         </div>
       </FieldCollapse>
