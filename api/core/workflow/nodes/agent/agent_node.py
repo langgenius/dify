@@ -49,6 +49,7 @@ from factories import file_factory
 from factories.agent_factory import get_plugin_agent_strategy
 from models import ToolFile
 from models.model import Conversation
+from models.tools import WorkflowToolProvider
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .exc import (
@@ -257,9 +258,12 @@ class AgentNode(Node[AgentNodeData]):
             if not for_log:
                 if parameter.type == "array[tools]":
                     value = cast(list[dict[str, Any]], value)
+                    workflow_tool_provider_ids = self._get_workflow_tool_provider_ids(value)
                     tool_value = []
                     for tool in value:
-                        provider_type = ToolProviderType(tool.get("type", ToolProviderType.BUILT_IN))
+                        provider_type = self._resolve_tool_provider_type(
+                            tool=tool, workflow_tool_provider_ids=workflow_tool_provider_ids
+                        )
                         setting_params = tool.get("settings", {})
                         parameters = tool.get("parameters", {})
                         manual_input_params = [key for key, value in parameters.items() if value is not None]
@@ -338,6 +342,36 @@ class AgentNode(Node[AgentNodeData]):
             result[parameter_name] = value
 
         return result
+
+    def _get_workflow_tool_provider_ids(self, tools: list[Mapping[str, Any]]) -> set[str]:
+        missing_type_provider_ids = {
+            provider_id
+            for tool in tools
+            if not tool.get("type") and (provider_id := tool.get("provider_name"))
+        }
+        if not missing_type_provider_ids:
+            return set()
+
+        workflow_provider_stmt = select(WorkflowToolProvider.id).where(
+            WorkflowToolProvider.tenant_id == self.tenant_id,
+            WorkflowToolProvider.id.in_(missing_type_provider_ids),
+        )
+        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+            return set(session.scalars(workflow_provider_stmt).all())
+
+    @staticmethod
+    def _resolve_tool_provider_type(
+        tool: Mapping[str, Any], workflow_tool_provider_ids: set[str]
+    ) -> ToolProviderType:
+        tool_type = tool.get("type")
+        if tool_type:
+            return ToolProviderType(tool_type)
+
+        provider_id = tool.get("provider_name")
+        if provider_id and provider_id in workflow_tool_provider_ids:
+            return ToolProviderType.WORKFLOW
+
+        return ToolProviderType.BUILT_IN
 
     def _generate_credentials(
         self,
