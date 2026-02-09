@@ -10,7 +10,6 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import ModelType
 from core.workflow.generator.prompts.builder_prompts import (
     BUILDER_SYSTEM_PROMPT,
     BUILDER_SYSTEM_PROMPT_V2,
