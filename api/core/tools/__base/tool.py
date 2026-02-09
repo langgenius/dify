@@ -171,7 +171,7 @@ class Tool(ABC):
     def create_file_message(self, file: File) -> ToolInvokeMessage:
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.FILE,
-            message=ToolInvokeMessage.FileMessage(),
+            message=ToolInvokeMessage.FileMessage(file_marker="file_marker"),
             meta={"file": file},
         )
 
