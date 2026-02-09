@@ -21,13 +21,6 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_runtime.errors.invoke import InvokeError
 
 
-@pytest.fixture
-def app() -> Flask:
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    return flask_app
-
-
 def _completion_app() -> SimpleNamespace:
     return SimpleNamespace(id="app-1", mode="completion")
 

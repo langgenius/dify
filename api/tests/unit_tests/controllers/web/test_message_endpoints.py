@@ -23,13 +23,6 @@ from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
 
 
-@pytest.fixture
-def app() -> Flask:
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    return flask_app
-
-
 def _chat_app() -> SimpleNamespace:
     return SimpleNamespace(id="app-1", mode="chat")
 

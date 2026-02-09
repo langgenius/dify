@@ -13,13 +13,6 @@ from controllers.web.workflow_events import WorkflowEventsApi
 from models.enums import CreatorUserRole
 
 
-@pytest.fixture
-def app() -> Flask:
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    return flask_app
-
-
 def _workflow_app() -> SimpleNamespace:
     return SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
 

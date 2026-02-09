@@ -12,13 +12,6 @@ from controllers.common.errors import FileTooLargeError, RemoteFileUploadError
 from controllers.web.remote_files import RemoteFileInfoApi, RemoteFileUploadApi
 
 
-@pytest.fixture
-def app() -> Flask:
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    return flask_app
-
-
 def _app_model() -> SimpleNamespace:
     return SimpleNamespace(id="app-1")
 

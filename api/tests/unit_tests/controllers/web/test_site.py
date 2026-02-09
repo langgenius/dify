@@ -12,14 +12,6 @@ from werkzeug.exceptions import Forbidden
 from controllers.web.site import AppSiteApi, AppSiteInfo
 
 
-@pytest.fixture
-def app() -> Flask:
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    flask_app.config["RESTX_MASK_HEADER"] = "X-Fields"
-    return flask_app
-
-
 def _tenant(*, status: str = "normal") -> SimpleNamespace:
     return SimpleNamespace(
         id="tenant-1",
@@ -55,6 +47,7 @@ class TestAppSiteApi:
     @patch("controllers.web.site.FeatureService.get_features")
     @patch("controllers.web.site.db")
     def test_happy_path(self, mock_db: MagicMock, mock_features: MagicMock, app: Flask) -> None:
+        app.config["RESTX_MASK_HEADER"] = "X-Fields"
         mock_features.return_value = SimpleNamespace(can_replace_logo=False)
         site_obj = _site()
         mock_db.session.query.return_value.where.return_value.first.return_value = site_obj
@@ -72,6 +65,7 @@ class TestAppSiteApi:
 
     @patch("controllers.web.site.db")
     def test_missing_site_raises_forbidden(self, mock_db: MagicMock, app: Flask) -> None:
+        app.config["RESTX_MASK_HEADER"] = "X-Fields"
         mock_db.session.query.return_value.where.return_value.first.return_value = None
         tenant = _tenant()
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant)
@@ -83,6 +77,7 @@ class TestAppSiteApi:
 
     @patch("controllers.web.site.db")
     def test_archived_tenant_raises_forbidden(self, mock_db: MagicMock, app: Flask) -> None:
+        app.config["RESTX_MASK_HEADER"] = "X-Fields"
         from models.account import TenantStatus
 
         mock_db.session.query.return_value.where.return_value.first.return_value = _site()

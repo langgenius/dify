@@ -15,13 +15,6 @@ from controllers.web.saved_message import SavedMessageApi, SavedMessageListApi
 from services.errors.message import MessageNotExistsError
 
 
-@pytest.fixture
-def app() -> Flask:
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    return flask_app
-
-
 def _completion_app() -> SimpleNamespace:
     return SimpleNamespace(id="app-1", mode="completion")
 
@@ -45,7 +38,6 @@ class TestSavedMessageListApiGet:
 
     @patch("controllers.web.saved_message.SavedMessageService.pagination_by_last_id")
     def test_happy_path(self, mock_paginate: MagicMock, app: Flask) -> None:
-        msg_id = str(uuid4())
         mock_paginate.return_value = SimpleNamespace(limit=20, has_more=False, data=[])
 
         with app.test_request_context("/saved-messages?limit=20"):

@@ -12,13 +12,6 @@ from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebA
 from controllers.web.error import AppUnavailableError
 
 
-@pytest.fixture
-def app() -> Flask:
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    return flask_app
-
-
 # ---------------------------------------------------------------------------
 # AppParameterApi
 # ---------------------------------------------------------------------------

@@ -18,13 +18,6 @@ from controllers.web.wraps import (
 )
 
 
-@pytest.fixture
-def app() -> Flask:
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    return flask_app
-
-
 # ---------------------------------------------------------------------------
 # _validate_webapp_token
 # ---------------------------------------------------------------------------

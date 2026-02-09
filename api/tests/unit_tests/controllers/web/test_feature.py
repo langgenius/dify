@@ -4,17 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from flask import Flask
 
 from controllers.web.feature import SystemFeatureApi
-
-
-@pytest.fixture
-def app() -> Flask:
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    return flask_app
 
 
 class TestSystemFeatureApi:

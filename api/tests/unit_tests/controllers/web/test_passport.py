@@ -19,13 +19,6 @@ from controllers.web.passport import (
 from services.webapp_auth_service import WebAppAuthType
 
 
-@pytest.fixture
-def app() -> Flask:
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    return flask_app
-
-
 # ---------------------------------------------------------------------------
 # decode_enterprise_webapp_user_id
 # ---------------------------------------------------------------------------

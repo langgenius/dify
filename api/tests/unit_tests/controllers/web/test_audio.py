@@ -30,14 +30,6 @@ from services.errors.audio import (
 )
 
 
-@pytest.fixture
-def app() -> Flask:
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    flask_app.config["RESTX_MASK_HEADER"] = "X-Fields"
-    return flask_app
-
-
 def _app_model() -> SimpleNamespace:
     return SimpleNamespace(id="app-1", mode="chat")
 
@@ -52,6 +44,7 @@ def _end_user() -> SimpleNamespace:
 class TestAudioApi:
     @patch("controllers.web.audio.AudioService.transcript_asr", return_value={"text": "hello"})
     def test_happy_path(self, mock_asr: MagicMock, app: Flask) -> None:
+        app.config["RESTX_MASK_HEADER"] = "X-Fields"
         data = {"file": (BytesIO(b"fake-audio"), "test.mp3")}
         with app.test_request_context("/audio-to-text", method="POST", data=data, content_type="multipart/form-data"):
             result = AudioApi().post(_app_model(), _end_user())
