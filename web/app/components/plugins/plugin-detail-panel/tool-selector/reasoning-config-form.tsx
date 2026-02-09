@@ -217,19 +217,19 @@ const ReasoningConfigForm: React.FC<Props> = ({
 
     return (
       <div key={variable} className="space-y-0.5">
-        <div className="system-sm-semibold flex items-center justify-between py-2 text-text-secondary">
+        <div className="flex items-center justify-between py-2 text-text-secondary system-sm-semibold">
           <div className="flex items-center">
-            <span className={cn('code-sm-semibold max-w-[140px] truncate text-text-secondary')} title={label[language] || label.en_US}>{label[language] || label.en_US}</span>
+            <span className={cn('max-w-[140px] truncate text-text-secondary code-sm-semibold')} title={label[language] || label.en_US}>{label[language] || label.en_US}</span>
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}
             {tooltipContent}
-            <span className="system-xs-regular mx-1 text-text-quaternary">·</span>
-            <span className="system-xs-regular text-text-tertiary">{targetVarType()}</span>
+            <span className="mx-1 text-text-quaternary system-xs-regular">·</span>
+            <span className="text-text-tertiary system-xs-regular">{targetVarType()}</span>
             {isShowJSONEditor && (
               <Tooltip
                 popupContent={(
-                  <div className="system-xs-medium text-text-secondary">
+                  <div className="text-text-secondary system-xs-medium">
                     {t('nodes.agent.clickToViewParameterSchema', { ns: 'workflow' })}
                   </div>
                 )}
@@ -247,7 +247,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
           </div>
           {canUseAuto && (
             <div className="flex cursor-pointer items-center gap-1 rounded-[6px] border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type)}>
-              <span className="system-xs-medium text-text-secondary">{t('detailPanel.toolSelector.auto', { ns: 'plugin' })}</span>
+              <span className="text-text-secondary system-xs-medium">{t('detailPanel.toolSelector.auto', { ns: 'plugin' })}</span>
               <Switch
                 size="xs"
                 defaultValue={!!auto}

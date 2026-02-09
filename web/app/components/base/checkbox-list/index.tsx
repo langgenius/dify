@@ -101,12 +101,12 @@ const CheckboxList: FC<CheckboxListProps> = ({
   return (
     <div className={cn('flex w-full flex-col gap-1', containerClassName)}>
       {label && (
-        <div className="system-sm-medium text-text-secondary">
+        <div className="text-text-secondary system-sm-medium">
           {label}
         </div>
       )}
       {description && (
-        <div className="body-xs-regular text-text-tertiary">
+        <div className="text-text-tertiary body-xs-regular">
           {description}
         </div>
       )}
@@ -126,7 +126,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
               ? (
                   <div className="flex min-w-0 flex-1 items-center gap-1">
                     {title && (
-                      <span className="system-xs-semibold-uppercase truncate leading-5 text-text-secondary">
+                      <span className="truncate leading-5 text-text-secondary system-xs-semibold-uppercase">
                         {title}
                       </span>
                     )}
@@ -138,7 +138,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                   </div>
                 )
               : (
-                  <div className="system-sm-medium-uppercase flex-1 leading-6 text-text-secondary">
+                  <div className="flex-1 leading-6 text-text-secondary system-sm-medium-uppercase">
                     {
                       filteredOptions.length > 0
                         ? t('operation.searchCount', { ns: 'common', count: filteredOptions.length, content: title })
@@ -168,7 +168,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                     ? (
                         <div className="flex flex-col items-center justify-center gap-2">
                           <Image alt="search menu" src={SearchMenu} width={32} />
-                          <span className="system-sm-regular text-text-secondary">{t('operation.noSearchResults', { ns: 'common', content: title })}</span>
+                          <span className="text-text-secondary system-sm-regular">{t('operation.noSearchResults', { ns: 'common', content: title })}</span>
                           <Button variant="secondary-accent" size="small" onClick={() => setSearchQuery('')}>{t('operation.resetKeywords', { ns: 'common' })}</Button>
                         </div>
                       )
@@ -200,7 +200,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                         disabled={option.disabled || disabled}
                       />
                       <div
-                        className="system-sm-medium flex-1 truncate text-text-secondary"
+                        className="flex-1 truncate text-text-secondary system-sm-medium"
                         title={option.label}
                       >
                         {option.label}

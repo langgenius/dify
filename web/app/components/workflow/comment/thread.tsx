@@ -130,10 +130,10 @@ const ThreadMessage: FC<{
       </div>
       <div className="min-w-0 flex-1 pb-4 text-text-primary last:pb-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="system-sm-medium text-text-primary">{authorName}</span>
-          <span className="system-2xs-regular text-text-tertiary">{formatTimeFromNow(createdAt * 1000)}</span>
+          <span className="text-text-primary system-sm-medium">{authorName}</span>
+          <span className="text-text-tertiary system-2xs-regular">{formatTimeFromNow(createdAt * 1000)}</span>
         </div>
-        <div className="system-sm-regular mt-1 whitespace-pre-wrap break-words text-text-secondary">
+        <div className="mt-1 whitespace-pre-wrap break-words text-text-secondary system-sm-regular">
           {highlightedContent}
         </div>
       </div>

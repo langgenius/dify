@@ -29,7 +29,7 @@ const Tab = <T,>({
       <Icon isActive={isActive} />
       <span
         className={cn(
-          'system-xl-semibold text-text-secondary',
+          'text-text-secondary system-xl-semibold',
           isActive && 'text-saas-dify-blue-accessible',
         )}
       >

@@ -17,7 +17,7 @@ const ObjectValueList: FC<Props> = ({
 
   return (
     <div className="w-full overflow-hidden rounded-lg border border-gray-200">
-      <div className="system-xs-medium flex h-7 items-center uppercase text-text-tertiary">
+      <div className="flex h-7 items-center uppercase text-text-tertiary system-xs-medium">
         <div className="flex h-full w-[120px] items-center border-r border-gray-200 pl-2">{t('chatVariable.modal.objectKey', { ns: 'workflow' })}</div>
         <div className="flex h-full w-[96px] items-center border-r border-gray-200 pl-2">{t('chatVariable.modal.objectType', { ns: 'workflow' })}</div>
         <div className="flex h-full w-[230px] items-center pl-2 pr-1">{t('chatVariable.modal.objectValue', { ns: 'workflow' })}</div>

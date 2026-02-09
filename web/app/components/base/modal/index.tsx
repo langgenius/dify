@@ -57,13 +57,13 @@ export default function Modal({
                 {!!title && (
                   <DialogTitle
                     as="h3"
-                    className="title-2xl-semi-bold text-text-primary"
+                    className="text-text-primary title-2xl-semi-bold"
                   >
                     {title}
                   </DialogTitle>
                 )}
                 {!!description && (
-                  <div className="body-md-regular mt-2 text-text-secondary">
+                  <div className="mt-2 text-text-secondary body-md-regular">
                     {description}
                   </div>
                 )}

@@ -108,13 +108,13 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
 
   return (
     <div className={cn('my-2 min-w-[72px] shrink-0 rounded-xl border-[0.5px] pb-2.5 pl-4 pr-2.5 pt-3 shadow-xs', credits <= 0 ? 'border-state-destructive-border hover:bg-state-destructive-hover' : 'border-components-panel-border bg-third-party-model-bg-default')}>
-      <div className="system-xs-medium-uppercase mb-2 flex h-4 items-center text-text-tertiary">
+      <div className="mb-2 flex h-4 items-center text-text-tertiary system-xs-medium-uppercase">
         {t('modelProvider.quota', { ns: 'common' })}
         <Tooltip popupContent={t('modelProvider.card.tip', { ns: 'common', modelNames: trial_models.map(key => modelNameMap[key as keyof typeof modelNameMap]).filter(Boolean).join(', ') })} />
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 text-xs text-text-tertiary">
-          <span className="system-md-semibold-uppercase mr-0.5 text-text-secondary">{formatNumber(credits)}</span>
+          <span className="mr-0.5 text-text-secondary system-md-semibold-uppercase">{formatNumber(credits)}</span>
           <span>{t('modelProvider.credits', { ns: 'common' })}</span>
           {currentWorkspace.next_credit_reset_date
             ? (

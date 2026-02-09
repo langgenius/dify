@@ -29,7 +29,7 @@ const ListEmpty = ({
         </div>
       </div>
       <div className="flex flex-col items-start gap-1 self-stretch">
-        <div className="system-sm-medium text-text-secondary">{title}</div>
+        <div className="text-text-secondary system-sm-medium">{title}</div>
         {description}
       </div>
     </div>

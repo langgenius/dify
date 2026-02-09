@@ -12,22 +12,22 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
   return (
     <div className="mb-1 space-y-0.5 px-3 py-1">
       <div className="flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1.5">
-        <div className="system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary">
+        <div className="mr-2 shrink-0 text-text-tertiary system-xs-medium-uppercase">
           {t('stepTwo.indexMode', { ns: 'datasetCreation' })}
         </div>
         <div
-          className="system-xs-medium grow truncate text-right text-text-secondary"
+          className="grow truncate text-right text-text-secondary system-xs-medium"
           title={data.indexing_technique}
         >
           {settingsDisplay[data.indexing_technique as keyof typeof settingsDisplay]}
         </div>
       </div>
       <div className="flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1.5">
-        <div className="system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary">
+        <div className="mr-2 shrink-0 text-text-tertiary system-xs-medium-uppercase">
           {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
         </div>
         <div
-          className="system-xs-medium grow truncate text-right text-text-secondary"
+          className="grow truncate text-right text-text-secondary system-xs-medium"
           title={data.retrieval_model?.search_method}
         >
           {settingsDisplay[data.retrieval_model?.search_method as keyof typeof settingsDisplay]}

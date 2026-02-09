@@ -30,7 +30,7 @@ export const SegmentIndexTag: FC<ISegmentIndexTagProps> = ({
   return (
     <div className={cn('flex items-center', className)}>
       <Chunk className={cn('mr-0.5 h-3 w-3 p-[1px] text-text-tertiary', iconClassName)} />
-      <div className={cn('system-xs-medium text-text-tertiary', labelClassName)}>
+      <div className={cn('text-text-tertiary system-xs-medium', labelClassName)}>
         {label || localPositionId}
       </div>
     </div>

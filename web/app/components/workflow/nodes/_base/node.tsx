@@ -168,7 +168,7 @@ const BaseNode: FC<BaseNodeProps> = ({
       return (
         <div
           className={cn(
-            'system-xs-medium mr-2 text-text-tertiary',
+            'mr-2 text-text-tertiary system-xs-medium',
             data._runningStatus === NodeRunningStatus.Running && 'text-text-accent',
           )}
         >
@@ -212,7 +212,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             />
             <div
               title={data.title}
-              className="system-sm-semibold-uppercase text-text-primary"
+              className="text-text-primary system-sm-semibold-uppercase"
             >
               {data.title}
             </div>
@@ -251,7 +251,7 @@ const BaseNode: FC<BaseNodeProps> = ({
       {
         data.type === BlockEnum.DataSource && (
           <div className="absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
-            <div className="system-2xs-semibold-uppercase flex h-5 items-center px-2.5 text-text-tertiary">
+            <div className="flex h-5 items-center px-2.5 text-text-tertiary system-2xs-semibold-uppercase">
               {t('blocks.datasource', { ns: 'workflow' })}
             </div>
           </div>
@@ -338,7 +338,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           />
           <div
             title={data.title}
-            className="system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary"
+            className="mr-1 flex grow items-center truncate text-text-primary system-sm-semibold-uppercase"
           >
             <div>
               {data.title}
@@ -354,7 +354,7 @@ const BaseNode: FC<BaseNodeProps> = ({
                   </div>
                 )}
                 >
-                  <div className="system-2xs-medium-uppercase ml-1 flex items-center justify-center rounded-[5px] border-[1px] border-text-warning px-[5px] py-[3px] text-text-warning">
+                  <div className="ml-1 flex items-center justify-center rounded-[5px] border-[1px] border-text-warning px-[5px] py-[3px] text-text-warning system-2xs-medium-uppercase">
                     {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
                   </div>
                 </Tooltip>
@@ -436,7 +436,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         }
         {
           !!(data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop) && (
-            <div className="system-xs-regular whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary">
+            <div className="whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary system-xs-regular">
               {data.desc}
             </div>
           )

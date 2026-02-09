@@ -134,7 +134,7 @@ const Panel = (props: PanelProps) => {
             onClick={createNewTag}
           >
             <RiAddLine className="h-4 w-4 text-text-tertiary" />
-            <div className="system-md-regular grow truncate px-1 text-text-secondary">
+            <div className="grow truncate px-1 text-text-secondary system-md-regular">
               {`${t('tag.create', { ns: 'common' })} `}
               <span className="system-md-medium">{`'${keywords}'`}</span>
             </div>
@@ -159,7 +159,7 @@ const Panel = (props: PanelProps) => {
               />
               <div
                 title={tag.name}
-                className="system-md-regular grow truncate px-1 text-text-secondary"
+                className="grow truncate px-1 text-text-secondary system-md-regular"
               >
                 {tag.name}
               </div>
@@ -178,7 +178,7 @@ const Panel = (props: PanelProps) => {
               />
               <div
                 title={tag.name}
-                className="system-md-regular grow truncate px-1 text-text-secondary"
+                className="grow truncate px-1 text-text-secondary system-md-regular"
               >
                 {tag.name}
               </div>
@@ -190,7 +190,7 @@ const Panel = (props: PanelProps) => {
         <div className="p-1">
           <div className="flex flex-col items-center gap-y-1 p-3">
             <RiPriceTag3Line className="h-6 w-6 text-text-quaternary" />
-            <div className="system-xs-regular text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
+            <div className="text-text-tertiary system-xs-regular">{t('tag.noTag', { ns: 'common' })}</div>
           </div>
         </div>
       )}
@@ -201,7 +201,7 @@ const Panel = (props: PanelProps) => {
           onClick={() => setShowTagManagementModal(true)}
         >
           <RiPriceTag3Line className="h-4 w-4 text-text-tertiary" />
-          <div className="system-md-regular grow truncate px-1 text-text-secondary">
+          <div className="grow truncate px-1 text-text-secondary system-md-regular">
             {t('tag.manageTags', { ns: 'common' })}
           </div>
         </div>

@@ -175,7 +175,7 @@ const Apps = ({
           )}
           >
             <div className="flex items-center">
-              <div className="system-xl-semibold grow truncate text-text-primary">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
+              <div className="grow truncate text-text-primary system-xl-semibold">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
               {hasFilterCondition && (
                 <>
                   <div className="mx-3 h-4 w-px bg-divider-regular"></div>

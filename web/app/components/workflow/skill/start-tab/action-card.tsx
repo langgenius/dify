@@ -35,10 +35,10 @@ const ActionCard = ({
         {icon}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-        <span className="system-md-semibold truncate text-text-secondary">
+        <span className="truncate text-text-secondary system-md-semibold">
           {title}
         </span>
-        <span className="system-xs-regular text-text-tertiary">
+        <span className="text-text-tertiary system-xs-regular">
           {description}
         </span>
       </div>

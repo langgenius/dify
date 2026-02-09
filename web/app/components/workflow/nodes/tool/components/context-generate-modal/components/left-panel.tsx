@@ -130,7 +130,7 @@ const LeftPanel = ({
       >
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <div className="title-2xl-semi-bold bg-gradient-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text text-transparent">
+            <div className="bg-gradient-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text text-transparent title-2xl-semi-bold">
               {t('nodes.tool.contextGenerate.title', { ns: 'workflow' })}
             </div>
             {isInitView && (

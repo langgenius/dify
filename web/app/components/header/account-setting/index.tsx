@@ -180,13 +180,13 @@ export default function AccountSetting({
     >
       <div className="mx-auto flex h-[100vh] max-w-[1048px]">
         <div className="flex w-[44px] flex-col border-r border-divider-burn pl-4 pr-6 sm:w-[224px]">
-          <div className="title-2xl-semi-bold mb-8 mt-6 px-3 py-2 text-text-primary">{t('userProfile.settings', { ns: 'common' })}</div>
+          <div className="mb-8 mt-6 px-3 py-2 text-text-primary title-2xl-semi-bold">{t('userProfile.settings', { ns: 'common' })}</div>
           <div className="w-full">
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className="mb-2">
                   {!isCurrentWorkspaceDatasetOperator && (
-                    <div className="system-xs-medium-uppercase mb-0.5 py-2 pb-1 pl-3 text-text-tertiary">{menuItem.name}</div>
+                    <div className="mb-0.5 py-2 pb-1 pl-3 text-text-tertiary system-xs-medium-uppercase">{menuItem.name}</div>
                   )}
                   <div>
                     {
@@ -195,7 +195,7 @@ export default function AccountSetting({
                           key={item.key}
                           className={cn(
                             'mb-0.5 flex h-[37px] cursor-pointer items-center rounded-lg p-1 pl-3 text-sm',
-                            activeMenu === item.key ? 'system-sm-semibold bg-state-base-active text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text',
+                            activeMenu === item.key ? 'bg-state-base-active text-components-menu-item-text-active system-sm-semibold' : 'text-components-menu-item-text system-sm-medium',
                           )}
                           title={item.name}
                           onClick={() => {
@@ -224,14 +224,14 @@ export default function AccountSetting({
             >
               <RiCloseLine className="h-5 w-5" />
             </Button>
-            <div className="system-2xs-medium-uppercase mt-1 text-text-tertiary">ESC</div>
+            <div className="mt-1 text-text-tertiary system-2xs-medium-uppercase">ESC</div>
           </div>
           <div ref={scrollRef} className="w-full overflow-y-auto bg-components-panel-bg pb-4">
             <div className={cn('sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pb-2 pt-[27px]', scrolled && 'border-b border-divider-regular')}>
-              <div className="title-2xl-semi-bold shrink-0 text-text-primary">
+              <div className="shrink-0 text-text-primary title-2xl-semi-bold">
                 {activeItem?.name}
                 {activeItem?.description && (
-                  <div className="system-sm-regular mt-1 text-text-tertiary">{activeItem?.description}</div>
+                  <div className="mt-1 text-text-tertiary system-sm-regular">{activeItem?.description}</div>
                 )}
               </div>
               {activeItem?.key === ACCOUNT_SETTING_TAB.MODEL_PROVIDER && (

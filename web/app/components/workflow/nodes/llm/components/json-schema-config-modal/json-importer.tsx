@@ -90,7 +90,7 @@ const JsonImporter: FC<JsonImporterProps> = ({
         <button
           type="button"
           className={cn(
-            'system-xs-medium flex shrink-0 rounded-md px-1.5 py-1 text-text-tertiary hover:bg-components-button-ghost-bg-hover',
+            'flex shrink-0 rounded-md px-1.5 py-1 text-text-tertiary system-xs-medium hover:bg-components-button-ghost-bg-hover',
             open && 'bg-components-button-ghost-bg-hover',
           )}
         >
@@ -104,7 +104,7 @@ const JsonImporter: FC<JsonImporterProps> = ({
             <div className="absolute bottom-0 right-2.5 flex h-8 w-8 items-center justify-center" onClick={onClose}>
               <RiCloseLine className="h-4 w-4 text-text-tertiary" />
             </div>
-            <div className="system-xl-semibold flex pl-1 pr-8 text-text-primary">
+            <div className="flex pl-1 pr-8 text-text-primary system-xl-semibold">
               {t('nodes.llm.jsonSchema.import', { ns: 'workflow' })}
             </div>
           </div>

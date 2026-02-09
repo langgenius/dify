@@ -17,7 +17,7 @@ const VariableName = ({
   return (
     <div
       className={cn(
-        'system-xs-medium truncate',
+        'truncate system-xs-medium',
         className,
       )}
       title={varName}

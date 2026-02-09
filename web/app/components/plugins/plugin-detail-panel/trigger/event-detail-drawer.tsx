@@ -97,7 +97,7 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
           </ActionButton>
         </div>
         <div
-          className="system-xs-semibold-uppercase mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary"
+          className="mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary system-xs-semibold-uppercase"
           onClick={onClose}
         >
           <RiArrowLeftLine className="h-4 w-4" />
@@ -111,36 +111,36 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
             packageName={providerInfo.name.split('/').pop() || ''}
           />
         </div>
-        <div className="system-md-semibold mt-1 text-text-primary">{eventInfo?.identity?.label[language]}</div>
+        <div className="mt-1 text-text-primary system-md-semibold">{eventInfo?.identity?.label[language]}</div>
         <Description className="mb-2 mt-3 h-auto" text={eventInfo.description[language]} descriptionLineRows={2}></Description>
       </div>
       <div className="flex h-full flex-col gap-2 overflow-y-auto px-4 pb-2 pt-4">
-        <div className="system-sm-semibold-uppercase text-text-secondary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
+        <div className="text-text-secondary system-sm-semibold-uppercase">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
         {parametersSchemas.length > 0
           ? (
               parametersSchemas.map((item, index) => (
                 <div key={index} className="py-1">
                   <div className="flex items-center gap-2">
-                    <div className="code-sm-semibold text-text-secondary">{item.label[language]}</div>
-                    <div className="system-xs-regular text-text-tertiary">
+                    <div className="text-text-secondary code-sm-semibold">{item.label[language]}</div>
+                    <div className="text-text-tertiary system-xs-regular">
                       {getType(item.type, t)}
                     </div>
                     {item.required && (
-                      <div className="system-xs-medium text-text-warning-secondary">{t('setBuiltInTools.required', { ns: 'tools' })}</div>
+                      <div className="text-text-warning-secondary system-xs-medium">{t('setBuiltInTools.required', { ns: 'tools' })}</div>
                     )}
                   </div>
                   {item.description && (
-                    <div className="system-xs-regular mt-0.5 text-text-tertiary">
+                    <div className="mt-0.5 text-text-tertiary system-xs-regular">
                       {item.description?.[language]}
                     </div>
                   )}
                 </div>
               ))
             )
-          : <div className="system-xs-regular text-text-tertiary">{t('events.item.noParameters', { ns: 'pluginTrigger' })}</div>}
+          : <div className="text-text-tertiary system-xs-regular">{t('events.item.noParameters', { ns: 'pluginTrigger' })}</div>}
         <Divider className="mb-2 mt-1 h-px" />
         <div className="flex flex-col gap-2">
-          <div className="system-sm-semibold-uppercase text-text-secondary">{t('events.output', { ns: 'pluginTrigger' })}</div>
+          <div className="text-text-secondary system-sm-semibold-uppercase">{t('events.output', { ns: 'pluginTrigger' })}</div>
           <div className="relative left-[-7px]">
             {outputFields.map(item => (
               <Field

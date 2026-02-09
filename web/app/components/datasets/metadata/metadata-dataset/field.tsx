@@ -15,7 +15,7 @@ const Field: FC<Props> = ({
 }) => {
   return (
     <div className={className}>
-      <div className="system-sm-semibold py-1 text-text-secondary">{label}</div>
+      <div className="py-1 text-text-secondary system-sm-semibold">{label}</div>
       <div className="mt-1">{children}</div>
     </div>
   )

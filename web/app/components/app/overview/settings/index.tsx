@@ -231,12 +231,12 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         {/* header */}
         <div className="pb-3 pl-6 pr-5 pt-5">
           <div className="flex items-center gap-1">
-            <div className="title-2xl-semi-bold grow text-text-primary">{t(`${prefixSettings}.title`, { ns: 'appOverview' })}</div>
+            <div className="grow text-text-primary title-2xl-semi-bold">{t(`${prefixSettings}.title`, { ns: 'appOverview' })}</div>
             <ActionButton className="shrink-0" onClick={onHide}>
               <RiCloseLine className="h-4 w-4" />
             </ActionButton>
           </div>
-          <div className="system-xs-regular mt-0.5 text-text-tertiary">
+          <div className="mt-0.5 text-text-tertiary system-xs-regular">
             <span>{t(`${prefixSettings}.modalTip`, { ns: 'appOverview' })}</span>
           </div>
         </div>
@@ -245,7 +245,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           {/* name & icon */}
           <div className="flex gap-4">
             <div className="grow">
-              <div className={cn('system-sm-semibold mb-1 py-1 text-text-secondary')}>{t(`${prefixSettings}.webName`, { ns: 'appOverview' })}</div>
+              <div className={cn('mb-1 py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.webName`, { ns: 'appOverview' })}</div>
               <Input
                 className="w-full"
                 value={inputInfo.title}
@@ -265,32 +265,32 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </div>
           {/* description */}
           <div className="relative">
-            <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}</div>
+            <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}</div>
             <Textarea
               className="mt-1"
               value={inputInfo.desc}
               onChange={e => onDesChange(e.target.value)}
               placeholder={t(`${prefixSettings}.webDescPlaceholder`, { ns: 'appOverview' }) as string}
             />
-            <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>{t(`${prefixSettings}.webDescTip`, { ns: 'appOverview' })}</p>
+            <p className={cn('pb-0.5 text-text-tertiary body-xs-regular')}>{t(`${prefixSettings}.webDescTip`, { ns: 'appOverview' })}</p>
           </div>
           <Divider className="my-0 h-px" />
           {/* answer icon */}
           {isChat && (
             <div className="w-full">
               <div className="flex items-center justify-between">
-                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t('answerIcon.title', { ns: 'app' })}</div>
+                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t('answerIcon.title', { ns: 'app' })}</div>
                 <Switch
                   defaultValue={inputInfo.use_icon_as_answer_icon}
                   onChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
                 />
               </div>
-              <p className="body-xs-regular pb-0.5 text-text-tertiary">{t('answerIcon.description', { ns: 'app' })}</p>
+              <p className="pb-0.5 text-text-tertiary body-xs-regular">{t('answerIcon.description', { ns: 'app' })}</p>
             </div>
           )}
           {/* language */}
           <div className="flex items-center">
-            <div className={cn('system-sm-semibold grow py-1 text-text-secondary')}>{t(`${prefixSettings}.language`, { ns: 'appOverview' })}</div>
+            <div className={cn('grow py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.language`, { ns: 'appOverview' })}</div>
             <SimpleSelect
               wrapperClassName="w-[200px]"
               items={languages.filter(item => item.supported)}
@@ -303,8 +303,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           {isChat && (
             <div className="flex items-center">
               <div className="grow">
-                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.chatColorTheme`, { ns: 'appOverview' })}</div>
-                <div className="body-xs-regular pb-0.5 text-text-tertiary">{t(`${prefixSettings}.chatColorThemeDesc`, { ns: 'appOverview' })}</div>
+                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.chatColorTheme`, { ns: 'appOverview' })}</div>
+                <div className="pb-0.5 text-text-tertiary body-xs-regular">{t(`${prefixSettings}.chatColorThemeDesc`, { ns: 'appOverview' })}</div>
               </div>
               <div className="shrink-0">
                 <Input
@@ -314,7 +314,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   placeholder="E.g #A020F0"
                 />
                 <div className="flex items-center justify-between">
-                  <p className={cn('body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.chatColorThemeInverted`, { ns: 'appOverview' })}</p>
+                  <p className={cn('text-text-tertiary body-xs-regular')}>{t(`${prefixSettings}.chatColorThemeInverted`, { ns: 'appOverview' })}</p>
                   <Switch defaultValue={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
                 </div>
               </div>
@@ -323,22 +323,22 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           {/* workflow detail */}
           <div className="w-full">
             <div className="flex items-center justify-between">
-              <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.workflow.subTitle`, { ns: 'appOverview' })}</div>
+              <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.workflow.subTitle`, { ns: 'appOverview' })}</div>
               <Switch
                 disabled={!(appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT)}
                 defaultValue={inputInfo.show_workflow_steps}
                 onChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
               />
             </div>
-            <p className="body-xs-regular pb-0.5 text-text-tertiary">{t(`${prefixSettings}.workflow.showDesc`, { ns: 'appOverview' })}</p>
+            <p className="pb-0.5 text-text-tertiary body-xs-regular">{t(`${prefixSettings}.workflow.showDesc`, { ns: 'appOverview' })}</p>
           </div>
           {/* more settings switch */}
           <Divider className="my-0 h-px" />
           {!isShowMore && (
             <div className="flex cursor-pointer items-center" onClick={() => setIsShowMore(true)}>
               <div className="grow">
-                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.more.entry`, { ns: 'appOverview' })}</div>
-                <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>
+                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.entry`, { ns: 'appOverview' })}</div>
+                <p className={cn('pb-0.5 text-text-tertiary body-xs-regular')}>
                   {t(`${prefixSettings}.more.copyRightPlaceholder`, { ns: 'appOverview' })}
                   {' '}
                   &
@@ -356,7 +356,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <div className="w-full">
                 <div className="flex items-center">
                   <div className="flex grow items-center">
-                    <div className={cn('system-sm-semibold mr-1 py-1 text-text-secondary')}>{t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}</div>
+                    <div className={cn('mr-1 py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}</div>
                     {/* upgrade button */}
                     {enableBilling && isFreePlan && (
                       <div className="h-[18px] select-none">
@@ -385,7 +385,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     />
                   </Tooltip>
                 </div>
-                <p className="body-xs-regular pb-0.5 text-text-tertiary">{t(`${prefixSettings}.more.copyrightTip`, { ns: 'appOverview' })}</p>
+                <p className="pb-0.5 text-text-tertiary body-xs-regular">{t(`${prefixSettings}.more.copyrightTip`, { ns: 'appOverview' })}</p>
                 {inputInfo.copyrightSwitchValue && (
                   <Input
                     className="mt-2 h-10"
@@ -397,8 +397,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               </div>
               {/* privacy policy */}
               <div className="w-full">
-                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.more.privacyPolicy`, { ns: 'appOverview' })}</div>
-                <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>
+                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.privacyPolicy`, { ns: 'appOverview' })}</div>
+                <p className={cn('pb-0.5 text-text-tertiary body-xs-regular')}>
                   <Trans
                     i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
                     ns="appOverview"
@@ -414,8 +414,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               </div>
               {/* custom disclaimer */}
               <div className="w-full">
-                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}</div>
-                <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>{t(`${prefixSettings}.more.customDisclaimerTip`, { ns: 'appOverview' })}</p>
+                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}</div>
+                <p className={cn('pb-0.5 text-text-tertiary body-xs-regular')}>{t(`${prefixSettings}.more.customDisclaimerTip`, { ns: 'appOverview' })}</p>
                 <Textarea
                   className="mt-1"
                   value={inputInfo.customDisclaimer}

@@ -43,7 +43,7 @@ const DragActionTooltip = ({ action }: DragActionTooltipProps) => {
   return (
     <div className="flex shrink-0 items-center justify-center py-3">
       <div className="rounded-lg bg-components-tooltip-bg p-1.5 shadow-lg backdrop-blur-[5px]">
-        <p className="system-xs-regular px-0.5 text-text-secondary">
+        <p className="px-0.5 text-text-secondary system-xs-regular">
           {actionText}
           <span className="system-xs-medium">{targetPath}</span>
         </p>

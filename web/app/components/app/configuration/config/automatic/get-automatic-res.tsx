@@ -336,7 +336,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           {/* inputs */}
           <div className="mt-4">
             <div>
-              <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('generate.instruction', { ns: 'appDebug' })}</div>
+              <div className="mb-1.5 text-text-secondary system-sm-semibold-uppercase">{t('generate.instruction', { ns: 'appDebug' })}</div>
               {isBasicMode
                 ? (
                     <InstructionEditorInBasic

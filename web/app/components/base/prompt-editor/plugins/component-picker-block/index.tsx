@@ -386,7 +386,7 @@ const ComponentPicker = ({
                 {isAgentTrigger
                   ? (
                       <div>
-                        <div className="system-xs-medium-uppercase mx-auto flex w-fit items-center py-1 text-text-tertiary">
+                        <div className="mx-auto flex w-fit items-center py-1 text-text-tertiary system-xs-medium-uppercase">
                           {t('nodes.tool.agentPopupHeader', { ns: 'workflow' })}
                         </div>
                         <AgentNodeList

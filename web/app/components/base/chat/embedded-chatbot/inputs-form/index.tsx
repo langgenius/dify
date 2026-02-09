@@ -47,7 +47,7 @@ const InputsFormNode = ({
         )}
         >
           <Message3Fill className="h-6 w-6 shrink-0" />
-          <div className="system-xl-semibold grow text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+          <div className="grow text-text-secondary system-xl-semibold">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
           {collapsed && (
             <Button className="uppercase text-text-tertiary" size="small" variant="ghost" onClick={() => setCollapsed(false)}>{t('operation.edit', { ns: 'common' })}</Button>
           )}

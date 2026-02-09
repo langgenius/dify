@@ -65,7 +65,7 @@ const PluginItem: FC<PluginItemProps> = ({
         />
       </div>
       <div className="grow">
-        <div className="system-md-regular truncate text-text-secondary">
+        <div className="truncate text-text-secondary system-md-regular">
           {plugin.labels[language]}
         </div>
         <div className={`system-xs-regular ${statusClassName || 'text-text-tertiary'}`}>
@@ -95,7 +95,7 @@ const PluginSection: FC<PluginSectionProps> = ({
 
   return (
     <>
-      <div className="system-sm-semibold-uppercase sticky top-0 flex h-7 items-center justify-between px-2 pt-1 text-text-secondary">
+      <div className="sticky top-0 flex h-7 items-center justify-between px-2 pt-1 text-text-secondary system-sm-semibold-uppercase">
         {title}
         {' '}
         (

@@ -119,11 +119,11 @@ const Group = ({
                 toolIcon={toolIcon || ''}
                 size="xs"
               />
-              <div className="system-xs-medium-uppercase truncate text-text-tertiary">{nodeData.title}</div>
+              <div className="truncate text-text-tertiary system-xs-medium-uppercase">{nodeData.title}</div>
             </>
           )}
           {!nodeData && (
-            <div className="system-xs-medium-uppercase truncate text-text-tertiary">
+            <div className="truncate text-text-tertiary system-xs-medium-uppercase">
               {isEnv && t('debug.variableInspect.envNode', { ns: 'workflow' })}
               {isChatVar && t('debug.variableInspect.chatNode', { ns: 'workflow' })}
               {isSystem && t('debug.variableInspect.systemNode', { ns: 'workflow' })}
@@ -170,8 +170,8 @@ const Group = ({
                         className="size-4"
                       />
                     )}
-                <div className="system-sm-medium grow truncate text-text-secondary">{displayName}</div>
-                <div className="system-xs-regular shrink-0 text-text-tertiary">{formatVarTypeLabel(varItem.value_type)}</div>
+                <div className="grow truncate text-text-secondary system-sm-medium">{displayName}</div>
+                <div className="shrink-0 text-text-tertiary system-xs-regular">{formatVarTypeLabel(varItem.value_type)}</div>
               </button>
             )
           })}

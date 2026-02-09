@@ -281,11 +281,11 @@ const ConditionItem = ({
                             <div className="flex cursor-pointer justify-start">
                               <div className="inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 text-text-accent shadow-xs">
                                 <Variable02 className="h-3.5 w-3.5 shrink-0 text-text-accent" />
-                                <div className="system-xs-medium ml-0.5 truncate">{item?.name}</div>
+                                <div className="ml-0.5 truncate system-xs-medium">{item?.name}</div>
                               </div>
                             </div>
                           )
-                        : <div className="system-sm-regular text-left text-components-input-text-placeholder">{t('placeholder.select', { ns: 'common' })}</div>
+                        : <div className="text-left text-components-input-text-placeholder system-sm-regular">{t('placeholder.select', { ns: 'common' })}</div>
                     )}
                     hideChecked
                   />

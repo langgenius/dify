@@ -77,19 +77,19 @@ const Operation: FC<Props> = ({
             e.stopPropagation()
           }}
         >
-          <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={togglePin}>
+          <div className={cn('flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover')} onClick={togglePin}>
             {isPinned && <RiUnpinLine className="h-4 w-4 shrink-0 text-text-tertiary" />}
             {!isPinned && <RiPushpinLine className="h-4 w-4 shrink-0 text-text-tertiary" />}
             <span className="grow">{isPinned ? t('sidebar.action.unpin', { ns: 'explore' }) : t('sidebar.action.pin', { ns: 'explore' })}</span>
           </div>
           {isShowRenameConversation && (
-            <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={onRenameConversation}>
+            <div className={cn('flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover')} onClick={onRenameConversation}>
               <RiEditLine className="h-4 w-4 shrink-0 text-text-tertiary" />
               <span className="grow">{t('sidebar.action.rename', { ns: 'explore' })}</span>
             </div>
           )}
           {isShowDelete && (
-            <div className={cn('system-md-regular group flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive')} onClick={onDelete}>
+            <div className={cn('group flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary system-md-regular hover:bg-state-destructive-hover hover:text-text-destructive')} onClick={onDelete}>
               <RiDeleteBinLine className={cn('h-4 w-4 shrink-0 text-text-tertiary group-hover:text-text-destructive')} />
               <span className="grow">{t('sidebar.action.delete', { ns: 'explore' })}</span>
             </div>

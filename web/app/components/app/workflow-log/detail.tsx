@@ -31,7 +31,7 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
         <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </span>
       <div className="flex items-center bg-components-panel-bg">
-        <h1 className="system-xl-semibold shrink-0 px-4 py-1 text-text-primary">{t('runDetail.workflowTitle', { ns: 'appLog' })}</h1>
+        <h1 className="shrink-0 px-4 py-1 text-text-primary system-xl-semibold">{t('runDetail.workflowTitle', { ns: 'appLog' })}</h1>
         {canReplay && (
           <TooltipPlus
             popupContent={t('runDetail.testWithParams', { ns: 'appLog' })}

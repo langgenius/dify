@@ -51,8 +51,8 @@ function ModeOption({ isSelected, isDisabled = false, title, description, onClic
         <RadioUI isChecked={isSelected} disabled={isDisabled} />
       </div>
       <div className="flex flex-col gap-0.5">
-        <span className="system-sm-semibold text-text-primary">{title}</span>
-        <span className="system-xs-regular text-text-tertiary">{description}</span>
+        <span className="text-text-primary system-sm-semibold">{title}</span>
+        <span className="text-text-tertiary system-xs-regular">{description}</span>
       </div>
     </div>
   )
@@ -164,19 +164,19 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
     <Modal isShow onClose={onClose} closable className="w-[480px]">
       {/* Header */}
       <div className="mb-4 flex flex-col gap-2">
-        <h3 className="title-2xl-semi-bold text-text-primary">
+        <h3 className="text-text-primary title-2xl-semi-bold">
           {t('sandboxProvider.configModal.title', { ns: 'common' })}
         </h3>
         <div className="flex items-center gap-2">
           <ProviderIcon providerType={provider.provider_type} size="sm" withBorder />
-          <span className="system-md-regular text-text-secondary">{providerLabel}</span>
+          <span className="text-text-secondary system-md-regular">{providerLabel}</span>
         </div>
       </div>
 
       {/* Mode Selection */}
       {shouldShowModeSelection && (
         <div className="mb-4 flex flex-col gap-1">
-          <label className="system-sm-medium text-text-secondary">
+          <label className="text-text-secondary system-sm-medium">
             {t('sandboxProvider.configModal.connectionMode', { ns: 'common' })}
           </label>
           <div className="flex flex-col gap-2">
@@ -215,7 +215,7 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
               href={docLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="system-xs-regular inline-flex items-center gap-1 text-text-accent hover:underline"
+              className="inline-flex items-center gap-1 text-text-accent system-xs-regular hover:underline"
             >
               {t('sandboxProvider.configModal.readDocLink', { ns: 'common', provider: providerLabel })}
               <RiExternalLinkLine className="h-3 w-3" />
@@ -240,7 +240,7 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
       {/* Security tip */}
       <div className="-mx-6 -mb-6 mt-4 flex items-start justify-center gap-1 rounded-b-2xl border-t border-divider-subtle bg-background-soft px-2 py-3">
         <RiLock2Fill className="h-3 w-3 shrink-0 text-text-primary" />
-        <p className="system-xs-regular text-text-tertiary">
+        <p className="text-text-tertiary system-xs-regular">
           {t('sandboxProvider.configModal.securityTip', { ns: 'common' })}
           {' '}
           <span className="text-text-accent">PKCS1_OAEP</span>

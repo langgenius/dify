@@ -68,7 +68,7 @@ const CommentsPanel = () => {
   return (
     <div className={cn('relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg')}>
       <div className="flex items-center justify-between p-4 pb-2">
-        <div className="system-xl-semibold font-semibold leading-6 text-text-primary">{t('comments.panelTitle', { ns: 'workflow' })}</div>
+        <div className="font-semibold leading-6 text-text-primary system-xl-semibold">{t('comments.panelTitle', { ns: 'workflow' })}</div>
         <div className="relative flex items-center gap-2">
           <button
             className={cn(
@@ -172,18 +172,18 @@ const CommentsPanel = () => {
                 {/* Header row: creator + time */}
                 <div className="flex items-start">
                   <div className="flex min-w-0 items-center gap-2">
-                    <div className="system-sm-medium truncate text-text-primary">{c.created_by_account.name}</div>
-                    <div className="system-2xs-regular shrink-0 text-text-tertiary">
+                    <div className="truncate text-text-primary system-sm-medium">{c.created_by_account.name}</div>
+                    <div className="shrink-0 text-text-tertiary system-2xs-regular">
                       {formatTimeFromNow(c.updated_at * 1000)}
                     </div>
                   </div>
                 </div>
                 {/* Content */}
-                <div className="system-sm-regular mt-1 line-clamp-3 break-words text-text-secondary">{c.content}</div>
+                <div className="mt-1 line-clamp-3 break-words text-text-secondary system-sm-regular">{c.content}</div>
                 {/* Footer */}
                 {c.reply_count > 0 && (
                   <div className="mt-2 flex items-center justify-between">
-                    <div className="system-2xs-regular text-text-tertiary">
+                    <div className="text-text-tertiary system-2xs-regular">
                       {c.reply_count}
                       {' '}
                       {t('comments.reply', { ns: 'workflow' })}
@@ -195,7 +195,7 @@ const CommentsPanel = () => {
           )
         })}
         {!loading && filteredSorted.length === 0 && (
-          <div className="system-sm-regular mt-6 text-center text-text-tertiary">{t('comments.noComments', { ns: 'workflow' })}</div>
+          <div className="mt-6 text-center text-text-tertiary system-sm-regular">{t('comments.noComments', { ns: 'workflow' })}</div>
         )}
       </div>
     </div>

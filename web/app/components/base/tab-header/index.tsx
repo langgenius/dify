@@ -33,7 +33,7 @@ const TabHeader: FC<ITabHeaderProps> = ({
     <div
       key={id}
       className={cn(
-        'system-md-semibold relative flex cursor-pointer items-center border-b-2 border-transparent pb-2 pt-2.5',
+        'relative flex cursor-pointer items-center border-b-2 border-transparent pb-2 pt-2.5 system-md-semibold',
         id === value ? cn('border-components-tab-active text-text-primary', activeItemClassName) : 'text-text-tertiary',
         disabled && 'cursor-not-allowed opacity-30',
         itemWrapClassName,

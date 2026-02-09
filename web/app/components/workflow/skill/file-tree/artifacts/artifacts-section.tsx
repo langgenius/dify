@@ -67,7 +67,7 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
             <div className="flex size-5 items-center justify-center">
               <FolderSpark className="size-4 text-text-secondary" aria-hidden="true" />
             </div>
-            <span className="system-sm-semibold uppercase text-text-secondary">
+            <span className="uppercase text-text-secondary system-sm-semibold">
               {t('skillSidebar.artifacts.title')}
             </span>
           </div>
@@ -104,7 +104,7 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
             : (
                 <div className="px-1.5 pb-0.5">
                   <div className="rounded-lg bg-background-section p-3">
-                    <p className="system-xs-regular text-text-tertiary">
+                    <p className="text-text-tertiary system-xs-regular">
                       {t('skillSidebar.artifacts.emptyState')}
                     </p>
                   </div>

@@ -77,11 +77,11 @@ const Toast = ({
         </div>
         <div className={cn('flex grow flex-col items-start gap-1 py-1', size === 'md' ? 'px-1' : 'px-0.5')}>
           <div className="flex items-center gap-1">
-            <div className="system-sm-semibold text-text-primary [word-break:break-word]">{message}</div>
+            <div className="text-text-primary system-sm-semibold [word-break:break-word]">{message}</div>
             {customComponent}
           </div>
           {!!children && (
-            <div className="system-xs-regular text-text-secondary">
+            <div className="text-text-secondary system-xs-regular">
               {children}
             </div>
           )}

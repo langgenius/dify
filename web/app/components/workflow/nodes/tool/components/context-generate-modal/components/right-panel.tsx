@@ -136,7 +136,7 @@ const RightPanel = ({
               </PortalToFollowElemTrigger>
               <PortalToFollowElemContent className="z-[1010]">
                 <div className="w-[208px] rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
-                  <div className="system-xs-medium-uppercase flex h-[22px] items-center px-3 text-text-tertiary">
+                  <div className="flex h-[22px] items-center px-3 text-text-tertiary system-xs-medium-uppercase">
                     {t('generate.versions', { ns: 'appDebug' })}
                   </div>
                   {versionOptions.map(option => (

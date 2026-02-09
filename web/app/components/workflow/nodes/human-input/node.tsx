@@ -23,7 +23,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
     <>
       {deliveryMethods.length > 0 && (
         <div className="space-y-0.5 py-1">
-          <div className="system-2xs-medium-uppercase px-2.5 py-0.5 text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
+          <div className="px-2.5 py-0.5 text-text-tertiary system-2xs-medium-uppercase">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
           <div className="space-y-0.5 px-2.5">
             {deliveryMethods.map(method => (
               <div key={method.type} className="flex items-center gap-1 rounded-[6px] bg-workflow-block-parma-bg p-1">
@@ -37,7 +37,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
                     <RiMailSendFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
                   </div>
                 )}
-                <span className="system-xs-regular capitalize text-text-secondary">{method.type}</span>
+                <span className="capitalize text-text-secondary system-xs-regular">{method.type}</span>
               </div>
             ))}
           </div>
@@ -48,7 +48,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
           <>
             {userActions.map(userAction => (
               <div key={userAction.id} className="relative flex flex-row-reverse items-center px-4 py-1">
-                <span className="system-xs-semibold-uppercase truncate text-text-secondary">{userAction.id}</span>
+                <span className="truncate text-text-secondary system-xs-semibold-uppercase">{userAction.id}</span>
                 <NodeSourceHandle
                   {...props}
                   handleId={userAction.id}
@@ -59,7 +59,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
           </>
         )}
         <div className="relative flex flex-row-reverse items-center px-4 py-1">
-          <div className="system-xs-semibold-uppercase truncate text-text-secondary">Timeout</div>
+          <div className="truncate text-text-secondary system-xs-semibold-uppercase">Timeout</div>
           <NodeSourceHandle
             {...props}
             handleId="__timeout"

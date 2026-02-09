@@ -186,12 +186,12 @@ const Right: FC<Props> = ({
                         size="xs"
                         toolIcon={toolIcon}
                       />
-                      <div className="system-sm-regular shrink-0 text-text-secondary">{currentNodeTitle}</div>
-                      <div className="system-sm-regular shrink-0 text-text-quaternary">/</div>
+                      <div className="shrink-0 text-text-secondary system-sm-regular">{currentNodeTitle}</div>
+                      <div className="shrink-0 text-text-quaternary system-sm-regular">/</div>
                     </>
                   )}
-                <div title={displayVarName} className="system-sm-semibold truncate text-text-secondary">{displayVarName}</div>
-                <div className="system-xs-medium ml-1 shrink-0 space-x-2 text-text-tertiary">
+                <div title={displayVarName} className="truncate text-text-secondary system-sm-semibold">{displayVarName}</div>
+                <div className="ml-1 shrink-0 space-x-2 text-text-tertiary system-xs-medium">
                   <span>{`${valueTypeLabel}${displaySchemaType}`}</span>
                   {isTruncated && (
                     <>

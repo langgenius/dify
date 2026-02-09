@@ -28,7 +28,7 @@ const MenuItem: FC<MenuItemProps> = ({
       }}
     >
       <div className={cn(
-        'system-md-regular flex-1 text-text-primary',
+        'flex-1 text-text-primary system-md-regular',
         isDestructive && 'hover:text-text-destructive',
       )}
       >

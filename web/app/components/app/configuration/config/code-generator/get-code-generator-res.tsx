@@ -219,7 +219,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
           <div>
             <div className="text-[0px]">
-              <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('codegen.instruction', { ns: 'appDebug' })}</div>
+              <div className="mb-1.5 text-text-secondary system-sm-semibold-uppercase">{t('codegen.instruction', { ns: 'appDebug' })}</div>
               <InstructionEditor
                 editorKey={editorKey}
                 value={instruction}

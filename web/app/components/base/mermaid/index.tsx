@@ -492,7 +492,7 @@ const Flowchart = (props: FlowchartProps) => {
   // Style classes for look options
   const getLookButtonClass = (lookType: 'classic' | 'handDrawn') => {
     return cn(
-      'system-sm-medium mb-4 flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary',
+      'mb-4 flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary system-sm-medium',
       look === lookType && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
       currentTheme === Theme.dark && 'border-slate-600 bg-slate-800 text-slate-300',
       look === lookType && currentTheme === Theme.dark && 'border-blue-500 bg-slate-700 text-white',

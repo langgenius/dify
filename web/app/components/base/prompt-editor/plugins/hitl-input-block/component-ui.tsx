@@ -125,7 +125,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             />
           )}
           {!isDefaultValueVariable && (
-            <div className="system-xs-medium max-w-full truncate text-components-input-text-filled">{formInput.default?.value}</div>
+            <div className="max-w-full truncate text-components-input-text-filled system-xs-medium">{formInput.default?.value}</div>
           )}
         </div>
 

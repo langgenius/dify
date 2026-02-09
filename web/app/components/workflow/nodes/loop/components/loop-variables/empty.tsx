@@ -4,7 +4,7 @@ const Empty = () => {
   const { t } = useTranslation()
 
   return (
-    <div className="system-xs-regular flex h-10 items-center justify-center rounded-[10px] bg-background-section text-text-tertiary">
+    <div className="flex h-10 items-center justify-center rounded-[10px] bg-background-section text-text-tertiary system-xs-regular">
       {t('nodes.loop.setLoopVariables', { ns: 'workflow' })}
     </div>
   )

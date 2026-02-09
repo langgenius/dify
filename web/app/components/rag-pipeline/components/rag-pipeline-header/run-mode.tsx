@@ -49,7 +49,7 @@ const RunMode = ({
       <button
         type="button"
         className={cn(
-          'system-xs-medium flex h-7 items-center gap-x-1 px-1.5 text-text-accent hover:bg-state-accent-hover',
+          'flex h-7 items-center gap-x-1 px-1.5 text-text-accent system-xs-medium hover:bg-state-accent-hover',
           isDisabled && 'cursor-not-allowed bg-state-accent-hover',
           isDisabled ? 'rounded-l-md' : 'rounded-md',
         )}

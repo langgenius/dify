@@ -90,13 +90,13 @@ const ChunkDetailModal = ({
               <div className="break-all">
                 <div className="flex gap-x-1">
                   <div className="w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">Q</div>
-                  <div className={cn('body-md-regular line-clamp-20 text-text-secondary')}>
+                  <div className={cn('line-clamp-20 text-text-secondary body-md-regular')}>
                     {content}
                   </div>
                 </div>
                 <div className="flex gap-x-1">
                   <div className="w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">A</div>
-                  <div className={cn('body-md-regular line-clamp-20 text-text-secondary')}>
+                  <div className={cn('line-clamp-20 text-text-secondary body-md-regular')}>
                     {answer}
                   </div>
                 </div>
@@ -129,7 +129,7 @@ const ChunkDetailModal = ({
 
         {isParentChildRetrieval && (
           <div className="flex-1 pb-6 pl-6">
-            <div className="system-xs-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}hitChunks`, { ns: 'datasetHitTesting', num: child_chunks.length })}</div>
+            <div className="text-text-secondary system-xs-semibold-uppercase">{t(`${i18nPrefix}hitChunks`, { ns: 'datasetHitTesting', num: child_chunks.length })}</div>
             <div className={cn('mt-1 space-y-2', heighClassName)}>
               {child_chunks.map(item => (
                 <ChildChunksItem key={item.id} payload={item} isShowAll />

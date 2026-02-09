@@ -105,23 +105,23 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
       )}
       {showTabSlider && currType === 'params' && (
         <div className="px-4 py-2">
-          <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}</div>
-          <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}</div>
+          <div className="text-text-tertiary system-xs-regular">{t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}</div>
+          <div className="text-text-tertiary system-xs-regular">{t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}</div>
         </div>
       )}
       {/* user settings only */}
       {userSettingsOnly && (
         <div className="p-4 pb-1">
-          <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.settings', { ns: 'plugin' })}</div>
+          <div className="text-text-primary system-sm-semibold-uppercase">{t('detailPanel.toolSelector.settings', { ns: 'plugin' })}</div>
         </div>
       )}
       {/* reasoning config only */}
       {reasoningConfigOnly && (
         <div className="mb-1 p-4 pb-1">
-          <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.params', { ns: 'plugin' })}</div>
+          <div className="text-text-primary system-sm-semibold-uppercase">{t('detailPanel.toolSelector.params', { ns: 'plugin' })}</div>
           <div className="pb-1">
-            <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}</div>
-            <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}</div>
+            <div className="text-text-tertiary system-xs-regular">{t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}</div>
+            <div className="text-text-tertiary system-xs-regular">{t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}</div>
           </div>
         </div>
       )}

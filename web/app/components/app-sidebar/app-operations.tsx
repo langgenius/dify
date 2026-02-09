@@ -134,7 +134,7 @@ const AppOperations = ({
             tabIndex={-1}
           >
             {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
-            <span className="system-xs-medium text-components-button-secondary-text">
+            <span className="text-components-button-secondary-text system-xs-medium">
               {operation.title}
             </span>
           </Button>
@@ -147,7 +147,7 @@ const AppOperations = ({
           tabIndex={-1}
         >
           <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
-          <span className="system-xs-medium text-components-button-secondary-text">
+          <span className="text-components-button-secondary-text system-xs-medium">
             {t('operation.more', { ns: 'common' })}
           </span>
         </Button>
@@ -163,7 +163,7 @@ const AppOperations = ({
             onClick={operation.onClick}
           >
             {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
-            <span className="system-xs-medium text-components-button-secondary-text">
+            <span className="text-components-button-secondary-text system-xs-medium">
               {operation.title}
             </span>
           </Button>
@@ -182,7 +182,7 @@ const AppOperations = ({
                 className="gap-[1px]"
               >
                 <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
-                <span className="system-xs-medium text-components-button-secondary-text">
+                <span className="text-components-button-secondary-text system-xs-medium">
                   {t('operation.more', { ns: 'common' })}
                 </span>
               </Button>
@@ -200,7 +200,7 @@ const AppOperations = ({
                         onClick={item.onClick}
                       >
                         {cloneElement(item.icon, { className: 'h-4 w-4 text-text-tertiary' })}
-                        <span className="system-md-regular text-text-secondary">{item.title}</span>
+                        <span className="text-text-secondary system-md-regular">{item.title}</span>
                       </div>
                     ))}
               </div>

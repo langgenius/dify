@@ -104,7 +104,7 @@ const Configure = ({
             }
             {
               !!canApiKey && !!canOAuth && (
-                <div className="system-2xs-medium-uppercase flex h-4 items-center p-2 text-text-quaternary">
+                <div className="flex h-4 items-center p-2 text-text-quaternary system-2xs-medium-uppercase">
                   <div className="mr-2 h-[1px] grow bg-gradient-to-l from-[rgba(16,24,40,0.08)]" />
                   OR
                   <div className="ml-2 h-[1px] grow bg-gradient-to-r from-[rgba(16,24,40,0.08)]" />

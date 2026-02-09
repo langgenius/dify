@@ -31,7 +31,7 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
 
       {/* Main */}
       <div className="mt-1 px-3">
-        <div className="body-md-regular line-clamp-2 break-all text-text-primary">{content}</div>
+        <div className="line-clamp-2 break-all text-text-primary body-md-regular">{content}</div>
       </div>
 
       {/* Foot */}
@@ -47,7 +47,7 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
         >
           <div className="mt-4 flex-1">
             <ResultItemMeta labelPrefix="Chunk" positionId={positionId} wordCount={content.length} score={score} />
-            <div className={cn('body-md-regular mt-2 break-all text-text-secondary', 'h-[min(539px,_80vh)] overflow-y-auto')}>
+            <div className={cn('mt-2 break-all text-text-secondary body-md-regular', 'h-[min(539px,_80vh)] overflow-y-auto')}>
               {content}
             </div>
           </div>

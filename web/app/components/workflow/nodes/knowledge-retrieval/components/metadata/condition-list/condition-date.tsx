@@ -35,7 +35,7 @@ const ConditionDate = ({
       <div className="group flex items-center" onClick={handleClickTrigger}>
         <div
           className={cn(
-            'system-sm-regular mr-0.5 flex h-6 grow cursor-pointer items-center px-1',
+            'mr-0.5 flex h-6 grow cursor-pointer items-center px-1 system-sm-regular',
             value ? 'text-text-secondary' : 'text-text-tertiary',
           )}
         >

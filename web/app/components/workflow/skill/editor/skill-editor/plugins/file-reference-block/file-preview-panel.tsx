@@ -147,7 +147,7 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
       </div>
       <div className="flex min-h-0 w-full flex-1 gap-2 overflow-auto pb-4 pl-4 pr-3 pt-1">
         {isFolder && (
-          <div className="system-sm-regular text-text-tertiary">
+          <div className="text-text-tertiary system-sm-regular">
             {t('skillEditor.previewUnavailable')}
           </div>
         )}
@@ -157,7 +157,7 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
           </div>
         )}
         {isMarkdownPreview && contentError && (
-          <div className="system-sm-regular text-text-tertiary">
+          <div className="text-text-tertiary system-sm-regular">
             {t('skillSidebar.loadError')}
           </div>
         )}
@@ -177,7 +177,7 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
           </div>
         )}
         {isReadOnlyPreview && downloadError && (
-          <div className="system-sm-regular text-text-tertiary">
+          <div className="text-text-tertiary system-sm-regular">
             {t('skillSidebar.loadError')}
           </div>
         )}
@@ -190,7 +190,7 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
           />
         )}
         {isReadOnlyPreview && !isDownloadLoading && !downloadError && !downloadUrl && (
-          <div className="system-sm-regular text-text-tertiary">
+          <div className="text-text-tertiary system-sm-regular">
             {t('skillSidebar.loadError')}
           </div>
         )}

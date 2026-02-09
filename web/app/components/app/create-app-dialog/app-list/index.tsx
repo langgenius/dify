@@ -165,7 +165,7 @@ const Apps = ({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-divider-burn py-3">
         <div className="min-w-[180px] pl-5">
-          <span className="title-xl-semi-bold text-text-primary">{t('newApp.startFromTemplate', { ns: 'app' })}</span>
+          <span className="text-text-primary title-xl-semi-bold">{t('newApp.startFromTemplate', { ns: 'app' })}</span>
         </div>
         <div className="flex max-w-[548px] flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md">
           <AppTypeSelector value={currentType} onChange={setCurrentType} />
@@ -195,10 +195,10 @@ const Apps = ({
             <>
               <div className="pb-1 pt-4">
                 {searchKeywords
-                  ? <p className="title-md-semi-bold text-text-tertiary">{searchFilteredList.length > 1 ? t('newApp.foundResults', { ns: 'app', count: searchFilteredList.length }) : t('newApp.foundResult', { ns: 'app', count: searchFilteredList.length })}</p>
+                  ? <p className="text-text-tertiary title-md-semi-bold">{searchFilteredList.length > 1 ? t('newApp.foundResults', { ns: 'app', count: searchFilteredList.length }) : t('newApp.foundResult', { ns: 'app', count: searchFilteredList.length })}</p>
                   : (
                       <div className="flex h-[22px] items-center">
-                        <AppCategoryLabel category={currCategory as AppCategories} className="title-md-semi-bold text-text-primary" />
+                        <AppCategoryLabel category={currCategory as AppCategories} className="text-text-primary title-md-semi-bold" />
                       </div>
                     )}
               </div>
@@ -250,8 +250,8 @@ function NoTemplateFound() {
       <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">
         <RiRobot2Line className="h-5 w-5 text-text-tertiary" />
       </div>
-      <p className="title-md-semi-bold text-text-primary">{t('newApp.noTemplateFound', { ns: 'app' })}</p>
-      <p className="system-sm-regular text-text-tertiary">{t('newApp.noTemplateFoundTip', { ns: 'app' })}</p>
+      <p className="text-text-primary title-md-semi-bold">{t('newApp.noTemplateFound', { ns: 'app' })}</p>
+      <p className="text-text-tertiary system-sm-regular">{t('newApp.noTemplateFoundTip', { ns: 'app' })}</p>
     </div>
   )
 }

@@ -92,20 +92,20 @@ const AnnotationReply = ({
       >
         <>
           {!annotationReply?.enabled && (
-            <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('feature.annotation.description', { ns: 'appDebug' })}</div>
+            <div className="line-clamp-2 min-h-8 text-text-tertiary system-xs-regular">{t('feature.annotation.description', { ns: 'appDebug' })}</div>
           )}
           {!!annotationReply?.enabled && (
             <>
               {!isHovering && (
                 <div className="flex items-center gap-4 pt-0.5">
                   <div className="">
-                    <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })}</div>
-                    <div className="system-xs-regular text-text-secondary">{annotationReply.score_threshold || '-'}</div>
+                    <div className="mb-0.5 text-text-tertiary system-2xs-medium-uppercase">{t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })}</div>
+                    <div className="text-text-secondary system-xs-regular">{annotationReply.score_threshold || '-'}</div>
                   </div>
                   <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                   <div className="">
-                    <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('modelProvider.embeddingModel.key', { ns: 'common' })}</div>
-                    <div className="system-xs-regular text-text-secondary">{annotationReply.embedding_model?.embedding_model_name}</div>
+                    <div className="mb-0.5 text-text-tertiary system-2xs-medium-uppercase">{t('modelProvider.embeddingModel.key', { ns: 'common' })}</div>
+                    <div className="text-text-secondary system-xs-regular">{annotationReply.embedding_model?.embedding_model_name}</div>
                   </div>
                 </div>
               )}

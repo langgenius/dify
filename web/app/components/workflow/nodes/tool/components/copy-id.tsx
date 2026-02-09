@@ -40,7 +40,7 @@ const CopyFeedbackNew = ({ content }: Props) => {
           onClick={onClickCopy}
         >
           <div
-            className="system-2xs-regular w-0 grow cursor-pointer truncate text-text-quaternary group-hover:text-text-tertiary"
+            className="w-0 grow cursor-pointer truncate text-text-quaternary system-2xs-regular group-hover:text-text-tertiary"
           >
             {content}
           </div>

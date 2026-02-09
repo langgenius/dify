@@ -405,7 +405,7 @@ const ConfigPrompt: FC<Props> = ({
                             />
                           )
                         : (
-                            <div className="system-xs-regular px-3 py-2 text-center text-text-tertiary">
+                            <div className="px-3 py-2 text-center text-text-tertiary system-xs-regular">
                               {t('common.noAgentNodes', { ns: 'workflow' })}
                             </div>
                           )}

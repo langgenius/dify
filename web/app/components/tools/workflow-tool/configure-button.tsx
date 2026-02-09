@@ -215,12 +215,12 @@ const WorkflowToolConfigureButton = ({
                   <RiHammerLine className={cn('relative h-4 w-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
                   <div
                     title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
-                    className={cn('system-sm-medium shrink grow basis-0 truncate text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')}
+                    className={cn('shrink grow basis-0 truncate text-text-secondary system-sm-medium', !disabled && !published && 'group-hover:text-text-accent')}
                   >
                     {t('common.workflowAsTool', { ns: 'workflow' })}
                   </div>
                   {!published && (
-                    <span className="system-2xs-medium-uppercase shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 text-text-tertiary">
+                    <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 text-text-tertiary system-2xs-medium-uppercase">
                       {t('common.configureRequired', { ns: 'workflow' })}
                     </span>
                   )}
@@ -233,7 +233,7 @@ const WorkflowToolConfigureButton = ({
                   <RiHammerLine className="h-4 w-4 text-text-tertiary" />
                   <div
                     title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
-                    className="system-sm-medium shrink grow basis-0 truncate text-text-tertiary"
+                    className="shrink grow basis-0 truncate text-text-tertiary system-sm-medium"
                   >
                     {t('common.workflowAsTool', { ns: 'workflow' })}
                   </div>

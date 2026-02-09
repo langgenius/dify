@@ -33,7 +33,7 @@ const PluginsNav = ({
       )}
     >
       <div
-        className={cn('system-sm-medium relative flex h-8 flex-row items-center justify-center gap-0.5 rounded-xl border border-transparent p-1.5', activated && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text shadow-md', !activated && 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', (isInstallingWithError || isFailed) && !activated && 'border-components-panel-border-subtle')}
+        className={cn('relative flex h-8 flex-row items-center justify-center gap-0.5 rounded-xl border border-transparent p-1.5 system-sm-medium', activated && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text shadow-md', !activated && 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', (isInstallingWithError || isFailed) && !activated && 'border-components-panel-border-subtle')}
       >
         {
           (isFailed || isInstallingWithError) && !activated && (

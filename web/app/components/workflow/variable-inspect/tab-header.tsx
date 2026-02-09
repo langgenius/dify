@@ -37,7 +37,7 @@ const TabHeader: FC<TabHeaderProps> = ({
           type="button"
           onClick={() => onTabChange(tab.value)}
           className={cn(
-            'system-sm-semibold rounded-md px-2 py-1 transition-colors',
+            'rounded-md px-2 py-1 transition-colors system-sm-semibold',
             activeTab === tab.value
               ? 'bg-state-base-active text-text-primary'
               : 'text-text-tertiary hover:text-text-secondary',

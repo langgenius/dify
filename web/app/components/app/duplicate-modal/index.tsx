@@ -80,8 +80,8 @@ const DuplicateAppModal = ({
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
         <div className="relative mb-9 mt-3 text-xl font-semibold leading-[30px] text-text-primary">{t('duplicateTitle', { ns: 'app' })}</div>
-        <div className="system-sm-regular mb-9 text-text-secondary">
-          <div className="system-md-medium mb-2">{t('appCustomize.subTitle', { ns: 'explore' })}</div>
+        <div className="mb-9 text-text-secondary system-sm-regular">
+          <div className="mb-2 system-md-medium">{t('appCustomize.subTitle', { ns: 'explore' })}</div>
           <div className="flex items-center justify-between space-x-2">
             <AppIcon
               size="large"

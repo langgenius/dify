@@ -34,7 +34,7 @@ export const ChunkContainer: FC<ChunkContainerProps> = (props) => {
   return (
     <div className="space-y-2">
       <ChunkLabel label={label} characterCount={characterCount} />
-      <div className="body-md-regular text-text-secondary">
+      <div className="text-text-secondary body-md-regular">
         {children}
       </div>
     </div>
@@ -51,11 +51,11 @@ export const QAPreview: FC<QAPreviewProps> = (props) => {
     <div className="flex flex-col gap-y-2">
       <div className="flex gap-x-1">
         <label className="shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">Q</label>
-        <p className="body-md-regular text-text-secondary">{qa.question}</p>
+        <p className="text-text-secondary body-md-regular">{qa.question}</p>
       </div>
       <div className="flex gap-x-1">
         <label className="shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">A</label>
-        <p className="body-md-regular text-text-secondary">{qa.answer}</p>
+        <p className="text-text-secondary body-md-regular">{qa.answer}</p>
       </div>
     </div>
   )

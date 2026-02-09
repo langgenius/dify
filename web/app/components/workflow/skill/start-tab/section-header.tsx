@@ -15,10 +15,10 @@ const SectionHeader = ({
 }: SectionHeaderProps) => {
   return (
     <header className={className}>
-      <h2 className="title-xl-semi-bold text-text-primary">
+      <h2 className="text-text-primary title-xl-semi-bold">
         {title}
       </h2>
-      <p className="system-xs-regular mt-0.5 text-text-tertiary">
+      <p className="mt-0.5 text-text-tertiary system-xs-regular">
         {description}
       </p>
     </header>

@@ -208,10 +208,10 @@ const TextGeneration: FC<Props> = ({
               background={siteInfo.icon_background || appDefaultIconBackground}
               imageUrl={siteInfo.icon_url}
             />
-            <div className="system-md-semibold grow truncate text-text-secondary">{siteInfo.title}</div>
+            <div className="grow truncate text-text-secondary system-md-semibold">{siteInfo.title}</div>
           </div>
           {siteInfo.description && (
-            <div className="system-xs-regular text-text-tertiary">{siteInfo.description}</div>
+            <div className="text-text-tertiary system-xs-regular">{siteInfo.description}</div>
           )}
         </div>
         {/* form */}

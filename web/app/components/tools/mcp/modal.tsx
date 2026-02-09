@@ -134,7 +134,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
       <div className="absolute right-5 top-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
         <RiCloseLine className="h-5 w-5 text-text-tertiary" />
       </div>
-      <div className="title-2xl-semi-bold relative pb-3 text-xl text-text-primary">
+      <div className="relative pb-3 text-xl text-text-primary title-2xl-semi-bold">
         {!isCreate ? t('mcp.modal.editTitle', { ns: 'tools' }) : t('mcp.modal.title', { ns: 'tools' })}
       </div>
 
@@ -142,7 +142,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
         {/* Server URL */}
         <div>
           <div className="mb-1 flex h-6 items-center">
-            <span className="system-sm-medium text-text-secondary">{t('mcp.modal.serverUrl', { ns: 'tools' })}</span>
+            <span className="text-text-secondary system-sm-medium">{t('mcp.modal.serverUrl', { ns: 'tools' })}</span>
           </div>
           <Input
             value={state.url}
@@ -152,7 +152,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
           />
           {originalServerUrl && originalServerUrl !== state.url && (
             <div className="mt-1 flex h-5 items-center">
-              <span className="body-xs-regular text-text-warning">{t('mcp.modal.serverUrlWarning', { ns: 'tools' })}</span>
+              <span className="text-text-warning body-xs-regular">{t('mcp.modal.serverUrlWarning', { ns: 'tools' })}</span>
             </div>
           )}
         </div>
@@ -161,7 +161,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
         <div className="flex space-x-3">
           <div className="grow pb-1">
             <div className="mb-1 flex h-6 items-center">
-              <span className="system-sm-medium text-text-secondary">{t('mcp.modal.name', { ns: 'tools' })}</span>
+              <span className="text-text-secondary system-sm-medium">{t('mcp.modal.name', { ns: 'tools' })}</span>
             </div>
             <Input
               value={state.name}
@@ -195,9 +195,9 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
         {/* Server Identifier */}
         <div>
           <div className="flex h-6 items-center">
-            <span className="system-sm-medium text-text-secondary">{t('mcp.modal.serverIdentifier', { ns: 'tools' })}</span>
+            <span className="text-text-secondary system-sm-medium">{t('mcp.modal.serverIdentifier', { ns: 'tools' })}</span>
           </div>
-          <div className="body-xs-regular mb-1 text-text-tertiary">{t('mcp.modal.serverIdentifierTip', { ns: 'tools' })}</div>
+          <div className="mb-1 text-text-tertiary body-xs-regular">{t('mcp.modal.serverIdentifierTip', { ns: 'tools' })}</div>
           <Input
             value={state.serverIdentifier}
             onChange={e => actions.setServerIdentifier(e.target.value)}
@@ -205,7 +205,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
           />
           {originalServerID && originalServerID !== state.serverIdentifier && (
             <div className="mt-1 flex h-5 items-center">
-              <span className="body-xs-regular text-text-warning">{t('mcp.modal.serverIdentifierWarning', { ns: 'tools' })}</span>
+              <span className="text-text-warning body-xs-regular">{t('mcp.modal.serverIdentifierWarning', { ns: 'tools' })}</span>
             </div>
           )}
         </div>

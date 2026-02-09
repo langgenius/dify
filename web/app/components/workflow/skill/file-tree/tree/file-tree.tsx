@@ -338,7 +338,7 @@ const FileTree = ({ className }: FileTreeProps) => {
     return (
       <div className={cn('flex min-h-[150px] flex-1 flex-col overflow-y-auto', className)}>
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
-          <span className="system-xs-regular text-text-tertiary">
+          <span className="text-text-tertiary system-xs-regular">
             {t('skillSidebar.empty')}
           </span>
         </div>
@@ -352,7 +352,7 @@ const FileTree = ({ className }: FileTreeProps) => {
       <div className={cn('flex min-h-[150px] flex-1 flex-col overflow-y-auto', className)}>
         <div className="flex flex-1 flex-col items-center justify-center gap-2 pb-20">
           <SearchMenu className="size-8 text-text-tertiary" aria-hidden="true" />
-          <span className="system-xs-regular text-text-secondary">
+          <span className="text-text-secondary system-xs-regular">
             {t('skillSidebar.searchNoResults')}
           </span>
           <Button

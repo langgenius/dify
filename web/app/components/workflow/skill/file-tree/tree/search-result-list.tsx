@@ -84,7 +84,7 @@ const SearchResultRow = ({ node, parentPath, treeChildren }: SearchResultRowProp
         </span>
       </div>
       {parentPath && (
-        <span className="system-xs-regular shrink-0 text-text-tertiary">
+        <span className="shrink-0 text-text-tertiary system-xs-regular">
           {parentPath}
         </span>
       )}

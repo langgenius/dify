@@ -98,7 +98,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
             imageUrl={appData?.site.icon_url}
           />
         </div>
-        <div className={cn('system-md-semibold grow truncate text-text-secondary')}>{appData?.site.title}</div>
+        <div className={cn('grow truncate text-text-secondary system-md-semibold')}>{appData?.site.title}</div>
         {!isMobile && isSidebarCollapsed && (
           <ActionButton size="l" onClick={() => handleSidebarCollapse(false)}>
             <RiExpandRightLine className="h-[18px] w-[18px]" />
@@ -154,7 +154,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
               'flex shrink-0 items-center gap-1.5 px-1',
             )}
             >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
               {
                 systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                   ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />

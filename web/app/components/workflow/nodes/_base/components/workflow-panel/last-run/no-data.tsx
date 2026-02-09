@@ -19,7 +19,7 @@ const NoData: FC<Props> = ({
   return (
     <div className="flex h-0 grow flex-col items-center justify-center">
       <ClockPlay className="h-8 w-8 text-text-quaternary" />
-      <div className="system-xs-regular my-2 text-text-tertiary">{t('debug.noData.description', { ns: 'workflow' })}</div>
+      <div className="my-2 text-text-tertiary system-xs-regular">{t('debug.noData.description', { ns: 'workflow' })}</div>
       {canSingleRun && (
         <Button
           className="flex"

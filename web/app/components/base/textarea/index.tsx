@@ -9,9 +9,9 @@ const textareaVariants = cva(
   {
     variants: {
       size: {
-        small: 'system-xs-regular rounded-md py-1',
-        regular: 'system-sm-regular rounded-md px-3',
-        large: 'system-md-regular rounded-lg px-4',
+        small: 'rounded-md py-1 system-xs-regular',
+        regular: 'rounded-md px-3 system-sm-regular',
+        large: 'rounded-lg px-4 system-md-regular',
       },
     },
     defaultVariants: {

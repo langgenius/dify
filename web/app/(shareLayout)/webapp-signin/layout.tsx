@@ -21,7 +21,7 @@ export default function SignInLayout({ children }: PropsWithChildren) {
             </div>
           </div>
           {systemFeatures.branding.enabled === false && (
-            <div className="system-xs-regular px-8 py-6 text-text-tertiary">
+            <div className="px-8 py-6 text-text-tertiary system-xs-regular">
               ©
               {' '}
               {new Date().getFullYear()}

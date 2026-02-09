@@ -66,7 +66,7 @@ const ShareQRCode = ({ content }: Props) => {
             onClick={handlePanelClick}
           >
             <QRCode size={160} value={content} className="mb-2" />
-            <div className="system-xs-regular flex items-center">
+            <div className="flex items-center system-xs-regular">
               <div className="text-text-tertiary">{t('overview.appInfo.qrcode.scan', { ns: 'appOverview' })}</div>
               <div className="text-text-tertiary">·</div>
               <div className="cursor-pointer text-text-accent-secondary" onClick={downloadQR}>{t('overview.appInfo.qrcode.download', { ns: 'appOverview' })}</div>

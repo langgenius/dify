@@ -77,11 +77,11 @@ const TriggerPluginActionItem: FC<Props> = ({
           })
         }}
       >
-        <div className={cn('system-sm-medium h-8 truncate border-l-2 border-divider-subtle pl-4 leading-8 text-text-secondary')}>
+        <div className={cn('h-8 truncate border-l-2 border-divider-subtle pl-4 leading-8 text-text-secondary system-sm-medium')}>
           <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
         </div>
         {isAdded && (
-          <div className="system-xs-regular mr-4 text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
+          <div className="mr-4 text-text-tertiary system-xs-regular">{t('addToolModal.added', { ns: 'tools' })}</div>
         )}
       </div>
     </Tooltip>

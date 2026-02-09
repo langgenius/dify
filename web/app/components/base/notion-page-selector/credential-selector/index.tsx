@@ -84,7 +84,7 @@ const CredentialSelector = ({
                               size={20}
                             />
                             <div
-                              className="system-sm-medium mr-2 grow truncate text-text-secondary"
+                              className="mr-2 grow truncate text-text-secondary system-sm-medium"
                               title={displayName}
                             >
                               {displayName}

@@ -203,19 +203,19 @@ const MoreActions: FC = () => {
                 {t('common.currentView', { ns: 'workflow' })}
               </div>
               <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-2 system-md-regular hover:bg-state-base-hover"
                 onClick={() => handleExportImage('png')}
               >
                 {t('common.exportPNG', { ns: 'workflow' })}
               </div>
               <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-2 system-md-regular hover:bg-state-base-hover"
                 onClick={() => handleExportImage('jpeg')}
               >
                 {t('common.exportJPEG', { ns: 'workflow' })}
               </div>
               <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-2 system-md-regular hover:bg-state-base-hover"
                 onClick={() => handleExportImage('svg')}
               >
                 {t('common.exportSVG', { ns: 'workflow' })}
@@ -227,19 +227,19 @@ const MoreActions: FC = () => {
                 {t('common.currentWorkflow', { ns: 'workflow' })}
               </div>
               <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-2 system-md-regular hover:bg-state-base-hover"
                 onClick={() => handleExportImage('png', true)}
               >
                 {t('common.exportPNG', { ns: 'workflow' })}
               </div>
               <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-2 system-md-regular hover:bg-state-base-hover"
                 onClick={() => handleExportImage('jpeg', true)}
               >
                 {t('common.exportJPEG', { ns: 'workflow' })}
               </div>
               <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-2 system-md-regular hover:bg-state-base-hover"
                 onClick={() => handleExportImage('svg', true)}
               >
                 {t('common.exportSVG', { ns: 'workflow' })}

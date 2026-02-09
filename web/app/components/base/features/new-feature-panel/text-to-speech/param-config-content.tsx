@@ -67,11 +67,11 @@ const VoiceParamConfig = ({
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <div className="system-xl-semibold text-text-primary">{t('voice.voiceSettings.title', { ns: 'appDebug' })}</div>
+        <div className="text-text-primary system-xl-semibold">{t('voice.voiceSettings.title', { ns: 'appDebug' })}</div>
         <div className="cursor-pointer p-1" onClick={onClose}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
       </div>
       <div className="mb-3">
-        <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
+        <div className="mb-1 flex items-center py-1 text-text-secondary system-sm-semibold">
           {t('voice.voiceSettings.language', { ns: 'appDebug' })}
           <Tooltip
             popupContent={(
@@ -148,7 +148,7 @@ const VoiceParamConfig = ({
         </Listbox>
       </div>
       <div className="mb-3">
-        <div className="system-sm-semibold mb-1 py-1 text-text-secondary">
+        <div className="mb-1 py-1 text-text-secondary system-sm-semibold">
           {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
         </div>
         <div className="flex items-center gap-1">
@@ -225,7 +225,7 @@ const VoiceParamConfig = ({
         </div>
       </div>
       <div>
-        <div className="system-sm-semibold mb-1 py-1 text-text-secondary">
+        <div className="mb-1 py-1 text-text-secondary system-sm-semibold">
           {t('voice.voiceSettings.autoPlay', { ns: 'appDebug' })}
         </div>
         <Switch

@@ -50,7 +50,7 @@ const SubGraphStartNode = ({ id, data }: NodeProps<SubGraphStartNodeData>) => {
         </div>
       </Tooltip>
       {showTitle && (
-        <span className="system-xs-medium max-w-[160px] truncate text-text-secondary">
+        <span className="max-w-[160px] truncate text-text-secondary system-xs-medium">
           {displayTitle}
         </span>
       )}

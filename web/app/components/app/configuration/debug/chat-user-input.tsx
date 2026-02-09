@@ -75,9 +75,9 @@ const ChatUserInput = ({
           >
             <div>
               {type !== 'checkbox' && (
-                <div className="system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary">
+                <div className="mb-1 flex h-6 items-center gap-1 text-text-secondary system-sm-semibold">
                   <div className="truncate">{name || key}</div>
-                  {!required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
+                  {!required && <span className="text-text-tertiary system-xs-regular">{t('panel.optional', { ns: 'workflow' })}</span>}
                 </div>
               )}
               <div className="grow">

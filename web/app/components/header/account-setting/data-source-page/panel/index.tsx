@@ -66,7 +66,7 @@ const Panel: FC<Props> = ({
           </div>
           {
             !isConfigured && (
-              <div className="system-xs-medium text-text-tertiary">
+              <div className="text-text-tertiary system-xs-medium">
                 {t(`dataSource.${type}.description`, { ns: 'common' })}
               </div>
             )
@@ -90,7 +90,7 @@ const Panel: FC<Props> = ({
                       {isSupportList && (
                         <div
                           className={
-                            `system-sm-medium flex min-h-7 items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-1 text-components-button-secondary-accent-text
+                            `flex min-h-7 items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-1 text-components-button-secondary-accent-text system-sm-medium
                   ${!readOnly ? 'cursor-pointer' : 'cursor-default opacity-50 grayscale'}`
                           }
                           onClick={onConfigure}
@@ -123,7 +123,7 @@ const Panel: FC<Props> = ({
         isConfigured && (
           <>
             <div className="flex h-[18px] items-center px-3">
-              <div className="system-xs-medium text-text-tertiary">
+              <div className="text-text-tertiary system-xs-medium">
                 {isNotion ? t('dataSource.notion.connectedWorkspace', { ns: 'common' }) : t('dataSource.website.configuredCrawlers', { ns: 'common' })}
               </div>
               <div className="ml-3 grow border-t border-t-divider-subtle" />

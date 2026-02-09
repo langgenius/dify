@@ -30,8 +30,8 @@ const IdeaOutput: FC<Props> = ({
         className="mb-1.5 flex cursor-pointer items-center text-sm font-medium leading-5 text-text-primary"
         onClick={toggleFoldIdeaOutput}
       >
-        <div className="system-sm-semibold-uppercase mr-1 text-text-secondary">{t(`${i18nPrefix}.idealOutput`, { ns: 'appDebug' })}</div>
-        <div className="system-xs-regular text-text-tertiary">
+        <div className="mr-1 text-text-secondary system-sm-semibold-uppercase">{t(`${i18nPrefix}.idealOutput`, { ns: 'appDebug' })}</div>
+        <div className="text-text-tertiary system-xs-regular">
           (
           {t(`${i18nPrefix}.optional`, { ns: 'appDebug' })}
           )

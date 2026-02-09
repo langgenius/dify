@@ -68,14 +68,14 @@ const FileItem = ({
           )
         }
         <div
-          className="system-xs-medium mb-1 line-clamp-2 h-8 cursor-pointer break-all text-text-tertiary"
+          className="mb-1 line-clamp-2 h-8 cursor-pointer break-all text-text-tertiary system-xs-medium"
           title={name}
           onClick={() => canPreview && setPreviewUrl(tmp_preview_url || '')}
         >
           {name}
         </div>
         <div className="relative flex items-center justify-between">
-          <div className="system-2xs-medium-uppercase flex items-center text-text-tertiary">
+          <div className="flex items-center text-text-tertiary system-2xs-medium-uppercase">
             <FileTypeIcon
               size="sm"
               type={getFileAppearanceType(name, type)}

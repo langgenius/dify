@@ -80,7 +80,7 @@ const HeaderInMobile = () => {
                 imageUrl={appData?.site.icon_url}
                 background={appData?.site.icon_background}
               />
-              <div className="system-md-semibold truncate text-text-secondary">
+              <div className="truncate text-text-secondary system-md-semibold">
                 {appData?.site.title}
               </div>
             </>
@@ -121,7 +121,7 @@ const HeaderInMobile = () => {
           <div className="flex h-full w-[calc(100vw_-_40px)] flex-col rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-sm" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-4 py-3">
               <Message3Fill className="h-6 w-6 shrink-0" />
-              <div className="system-xl-semibold grow text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+              <div className="grow text-text-secondary system-xl-semibold">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
             </div>
             <div className="p-4">
               <InputsFormContent />

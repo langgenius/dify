@@ -97,7 +97,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
         {isSearching && (
           <>
             <div key="category-search" className="flex flex-col">
-              <p className="system-xs-medium-uppercase mb-1 text-text-primary">Search</p>
+              <p className="mb-1 text-text-primary system-xs-medium-uppercase">Search</p>
               <div className="grid h-full w-full grid-cols-8 gap-1">
                 {searchedEmojis.map((emoji: string, index: number) => {
                   return (
@@ -122,7 +122,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
         {categories.map((category, index: number) => {
           return (
             <div key={`category-${index}`} className="flex flex-col">
-              <p className="system-xs-medium-uppercase mb-1 text-text-primary">{category.id}</p>
+              <p className="mb-1 text-text-primary system-xs-medium-uppercase">{category.id}</p>
               <div className="grid h-full w-full grid-cols-8 gap-1">
                 {category.emojis.map((emoji, index: number) => {
                   return (
@@ -148,7 +148,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
 
       {/* Color Select */}
       <div className={cn('flex items-center justify-between p-3 pb-0')}>
-        <p className="system-xs-medium-uppercase mb-2 text-text-primary">Choose Style</p>
+        <p className="mb-2 text-text-primary system-xs-medium-uppercase">Choose Style</p>
         {showStyleColors
           ? <ChevronDownIcon className="h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} />
           : <ChevronUpIcon className="h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} />}

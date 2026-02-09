@@ -62,7 +62,7 @@ const RetrievalSetting = ({
       fieldTitleProps={{
         title: t('form.retrievalSetting.title', { ns: 'datasetSettings' }),
         subTitle: (
-          <div className="body-xs-regular flex items-center text-text-tertiary">
+          <div className="flex items-center text-text-tertiary body-xs-regular">
             <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')} className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
             &nbsp;
             {t('nodes.knowledgeBase.aboutRetrieval', { ns: 'workflow' })}

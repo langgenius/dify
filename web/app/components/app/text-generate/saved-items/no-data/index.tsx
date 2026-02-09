@@ -23,9 +23,9 @@ const NoData: FC<INoDataProps> = ({
         <RiBookmark3Line className="h-4 w-4 text-text-accent" />
       </div>
       <div className="mt-3">
-        <span className="system-xl-semibold text-text-secondary">{t('generation.savedNoData.title', { ns: 'share' })}</span>
+        <span className="text-text-secondary system-xl-semibold">{t('generation.savedNoData.title', { ns: 'share' })}</span>
       </div>
-      <div className="system-sm-regular mt-1 text-text-tertiary">
+      <div className="mt-1 text-text-tertiary system-sm-regular">
         {t('generation.savedNoData.description', { ns: 'share' })}
       </div>
       <Button

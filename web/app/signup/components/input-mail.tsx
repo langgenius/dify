@@ -52,7 +52,7 @@ export default function Form({
     }}
     >
       <div className="mb-3">
-        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
+        <label htmlFor="email" className="my-2 text-text-secondary system-md-semibold">
           {t('email', { ns: 'login' })}
         </label>
         <div className="mt-1">
@@ -92,11 +92,11 @@ export default function Form({
 
       {!systemFeatures.branding.enabled && (
         <>
-          <div className="system-xs-regular mt-3 block w-full text-text-tertiary">
+          <div className="mt-3 block w-full text-text-tertiary system-xs-regular">
             {t('tosDesc', { ns: 'login' })}
             &nbsp;
             <Link
-              className="system-xs-medium text-text-secondary hover:underline"
+              className="text-text-secondary system-xs-medium hover:underline"
               target="_blank"
               rel="noopener noreferrer"
               href="https://dify.ai/terms"
@@ -105,7 +105,7 @@ export default function Form({
             </Link>
             &nbsp;&&nbsp;
             <Link
-              className="system-xs-medium text-text-secondary hover:underline"
+              className="text-text-secondary system-xs-medium hover:underline"
               target="_blank"
               rel="noopener noreferrer"
               href="https://dify.ai/privacy"

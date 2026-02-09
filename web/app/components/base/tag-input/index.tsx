@@ -90,7 +90,7 @@ const TagInput: FC<TagInputProps> = ({
         (items || []).map((item, index) => (
           <div
             key={item}
-            className={cn('system-xs-regular mr-1 mt-1 flex items-center rounded-md border border-divider-deep bg-components-badge-white-to-dark py-1 pl-1.5 pr-1 text-text-secondary')}
+            className={cn('mr-1 mt-1 flex items-center rounded-md border border-divider-deep bg-components-badge-white-to-dark py-1 pl-1.5 pr-1 text-text-secondary system-xs-regular')}
           >
             {item}
             {
@@ -116,7 +116,7 @@ const TagInput: FC<TagInputProps> = ({
               className={cn(
                 !isInWorkflow && 'max-w-[300px]',
                 isInWorkflow && 'max-w-[146px]',
-                'system-xs-regular overflow-hidden rounded-md py-1',
+                'overflow-hidden rounded-md py-1 system-xs-regular',
                 isSpecialMode && 'border border-transparent px-1.5',
                 focused && isSpecialMode && 'border-dashed border-divider-deep',
               )}

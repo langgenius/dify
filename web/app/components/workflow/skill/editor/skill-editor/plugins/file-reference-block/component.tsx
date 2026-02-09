@@ -81,13 +81,13 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
   const tooltipContent = isMissing
     ? (
         <div className="space-y-1">
-          <div className="system-xs-medium text-text-secondary">{missingMessage}</div>
+          <div className="text-text-secondary system-xs-medium">{missingMessage}</div>
           {pathForTooltip && (
             <div>{pathForTooltip}</div>
           )}
         </div>
       )
-    : (<div className="system-xs-medium text-text-secondary">{pathForTooltip ?? displayName}</div>)
+    : (<div className="text-text-secondary system-xs-medium">{pathForTooltip ?? displayName}</div>)
 
   const handleSelect = useCallback((node: TreeNodeData) => {
     editor.update(() => {

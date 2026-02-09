@@ -542,7 +542,7 @@ const ToolBlockComponent = ({
           <div className="flex h-9 w-9 items-center justify-center rounded-full border border-divider-subtle">
             <InfoCircle className="h-4 w-4 text-text-tertiary" />
           </div>
-          <div className="system-xs-regular mt-3 text-text-tertiary">
+          <div className="mt-3 text-text-tertiary system-xs-regular">
             {t('skillEditor.authorizationRequired', { ns: 'workflow' })}
           </div>
         </div>
@@ -584,11 +584,11 @@ const ToolBlockComponent = ({
         }}
       >
         {renderIcon()}
-        <span className={cn('system-xs-medium max-w-[180px] truncate', needAuthorization ? 'text-text-warning' : 'text-text-accent')}>
+        <span className={cn('max-w-[180px] truncate system-xs-medium', needAuthorization ? 'text-text-warning' : 'text-text-accent')}>
           {displayLabel}
         </span>
         {needAuthorization && (
-          <span className="system-2xs-medium-uppercase flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning">
+          <span className="flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning system-2xs-medium-uppercase">
             {authBadgeLabel}
             <RiAlertFill className="h-3 w-3" />
           </span>

@@ -143,7 +143,7 @@ const Loaded: React.FC<LoadedProps> = ({
 
   return (
     <>
-      <div className="system-md-regular text-text-secondary">
+      <div className="text-text-secondary system-md-regular">
         <p>{t(`${i18nPrefix}.readyToInstall`, { ns: 'plugin' })}</p>
       </div>
       <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">

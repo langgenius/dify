@@ -136,7 +136,7 @@ const AddCustomModel = ({
                     modelName={model.model}
                   />
                   <div
-                    className="system-md-regular grow truncate text-text-primary"
+                    className="grow truncate text-text-primary system-md-regular"
                     title={model.model}
                   >
                     {model.model}
@@ -148,7 +148,7 @@ const AddCustomModel = ({
           {
             !notAllowCustomCredential && (
               <div
-                className="system-xs-medium flex cursor-pointer items-center border-t border-t-divider-subtle p-3 text-text-accent-light-mode-only"
+                className="flex cursor-pointer items-center border-t border-t-divider-subtle p-3 text-text-accent-light-mode-only system-xs-medium"
                 onClick={() => {
                   handleOpenModalForAddNewCustomModel()
                   setOpen(false)

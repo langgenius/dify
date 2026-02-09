@@ -133,10 +133,10 @@ const Installed: FC<Props> = ({
   return (
     <>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
-        <div className="system-md-regular text-text-secondary">
+        <div className="text-text-secondary system-md-regular">
           <p>{t(`${i18nPrefix}.readyToInstall`, { ns: 'plugin' })}</p>
           {!isDifyVersionCompatible && (
-            <p className="system-md-regular text-text-warning">
+            <p className="text-text-warning system-md-regular">
               {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version })}
             </p>
           )}

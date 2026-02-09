@@ -157,7 +157,7 @@ const ConditionNumberInput = ({
                 onFocus={setFocus}
                 onBlur={setBlur}
               />
-              {!isFocus && unit && <div className="system-sm-regular absolute right-2 top-[50%] translate-y-[-50%] text-text-tertiary">{unit}</div>}
+              {!isFocus && unit && <div className="absolute right-2 top-[50%] translate-y-[-50%] text-text-tertiary system-sm-regular">{unit}</div>}
             </div>
           )
         }

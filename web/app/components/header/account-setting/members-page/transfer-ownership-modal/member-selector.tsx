@@ -65,13 +65,13 @@ const MemberSelector: FC<Props> = ({
       >
         <div className={cn('group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt')}>
           {!currentValue && (
-            <div className="system-sm-regular grow p-1 text-components-input-text-placeholder">{t('members.transferModal.transferPlaceholder', { ns: 'common' })}</div>
+            <div className="grow p-1 text-components-input-text-placeholder system-sm-regular">{t('members.transferModal.transferPlaceholder', { ns: 'common' })}</div>
           )}
           {currentValue && (
             <>
               <Avatar avatar={currentValue.avatar_url} size={24} name={currentValue.name} />
-              <div className="system-sm-medium grow truncate text-text-secondary">{currentValue.name}</div>
-              <div className="system-xs-regular text-text-quaternary">{currentValue.email}</div>
+              <div className="grow truncate text-text-secondary system-sm-medium">{currentValue.name}</div>
+              <div className="text-text-quaternary system-xs-regular">{currentValue.email}</div>
             </>
           )}
           <RiArrowDownSLine className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
@@ -97,8 +97,8 @@ const MemberSelector: FC<Props> = ({
                 }}
               >
                 <Avatar avatar={account.avatar_url} size={24} name={account.name} />
-                <div className="system-sm-medium grow truncate text-text-secondary">{account.name}</div>
-                <div className="system-xs-regular text-text-quaternary">{account.email}</div>
+                <div className="grow truncate text-text-secondary system-sm-medium">{account.name}</div>
+                <div className="text-text-quaternary system-xs-regular">{account.email}</div>
               </div>
             ))}
           </div>

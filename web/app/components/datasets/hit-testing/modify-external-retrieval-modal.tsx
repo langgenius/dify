@@ -46,7 +46,7 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
       border-[0.5px] border-components-panel-border bg-components-panel-bg"
     >
       <div className="flex items-center justify-between self-stretch p-4 pb-2">
-        <div className="system-xl-semibold grow text-text-primary">{t('settingTitle', { ns: 'datasetHitTesting' })}</div>
+        <div className="grow text-text-primary system-xl-semibold">{t('settingTitle', { ns: 'datasetHitTesting' })}</div>
         <ActionButton className="ml-auto" onClick={onClose}>
           <RiCloseLine className="h-4 w-4 shrink-0" />
         </ActionButton>

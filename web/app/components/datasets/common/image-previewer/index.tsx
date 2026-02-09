@@ -164,7 +164,7 @@ const ImagePreviewer = ({
         >
           <RiCloseLine className="size-5" />
         </Button>
-        <span className="system-2xs-medium-uppercase text-text-tertiary">
+        <span className="text-text-tertiary system-2xs-medium-uppercase">
           Esc
         </span>
       </div>
@@ -172,7 +172,7 @@ const ImagePreviewer = ({
         <Loading type="app" />
       )}
       {cachedImages[currentImage.url].status === 'error' && (
-        <div className="system-sm-regular flex max-w-sm flex-col items-center gap-y-2 text-text-tertiary">
+        <div className="flex max-w-sm flex-col items-center gap-y-2 text-text-tertiary system-sm-regular">
           <span>{`Failed to load image: ${currentImage.url}. Please try again.`}</span>
           <Button
             variant="secondary"
@@ -191,7 +191,7 @@ const ImagePreviewer = ({
             src={cachedImages[currentImage.url].blobUrl}
             className="max-h-[calc(100%-2.5rem)] max-w-full object-contain shadow-lg ring-8 ring-effects-image-frame backdrop-blur-[5px]"
           />
-          <div className="system-sm-regular flex shrink-0 gap-x-2 pb-1 pt-3 text-text-tertiary">
+          <div className="flex shrink-0 gap-x-2 pb-1 pt-3 text-text-tertiary system-sm-regular">
             <span>{currentImage.name}</span>
             <span>·</span>
             <span>{`${cachedImages[currentImage.url].width} ×  ${cachedImages[currentImage.url].height}`}</span>

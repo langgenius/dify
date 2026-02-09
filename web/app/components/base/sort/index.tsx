@@ -52,8 +52,8 @@ const Sort: FC<Props> = ({
             )}
             >
               <div className="flex items-center gap-0.5 px-1">
-                <div className="system-sm-regular text-text-tertiary">{t('filter.sortBy', { ns: 'appLog' })}</div>
-                <div className={cn('system-sm-regular text-text-tertiary', !!value && 'text-text-secondary')}>
+                <div className="text-text-tertiary system-sm-regular">{t('filter.sortBy', { ns: 'appLog' })}</div>
+                <div className={cn('text-text-tertiary system-sm-regular', !!value && 'text-text-secondary')}>
                   {triggerContent}
                 </div>
               </div>
@@ -72,7 +72,7 @@ const Sort: FC<Props> = ({
                       setOpen(false)
                     }}
                   >
-                    <div title={item.name} className="system-sm-medium grow truncate text-text-secondary">{item.name}</div>
+                    <div title={item.name} className="grow truncate text-text-secondary system-sm-medium">{item.name}</div>
                     {value === item.value && <RiCheckLine className="h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
                   </div>
                 ))}

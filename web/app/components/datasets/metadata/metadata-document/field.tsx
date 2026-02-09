@@ -13,7 +13,7 @@ const Field: FC<Props> = ({
 }) => {
   return (
     <div className="flex items-start space-x-2">
-      <div className="system-xs-medium w-[128px] shrink-0 items-center truncate py-1 text-text-tertiary">
+      <div className="w-[128px] shrink-0 items-center truncate py-1 text-text-tertiary system-xs-medium">
         {label}
       </div>
       <div className="w-[244px] shrink-0">

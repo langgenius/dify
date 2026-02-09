@@ -24,7 +24,7 @@ const FilterItem: FC<FilterItemProps> = ({
         onClick(item.key)
       }}
     >
-      <div className="system-md-regular flex-1 text-text-primary">{item.name}</div>
+      <div className="flex-1 text-text-primary system-md-regular">{item.name}</div>
       {isSelected && <RiCheckLine className="h-4 w-4 shrink-0 text-text-accent" />}
     </div>
   )

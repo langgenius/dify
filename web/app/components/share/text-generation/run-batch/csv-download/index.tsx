@@ -27,7 +27,7 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
 
   return (
     <div className="mt-6">
-      <div className="system-sm-medium text-text-primary">{t('generation.csvStructureTitle', { ns: 'share' })}</div>
+      <div className="text-text-primary system-sm-medium">{t('generation.csvStructureTitle', { ns: 'share' })}</div>
       <div className="mt-2 max-h-[500px] overflow-auto">
         <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-regular text-xs">
           <thead className="text-text-tertiary">
@@ -62,7 +62,7 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
           template,
         ]}
       >
-        <div className="system-xs-medium flex h-[18px] items-center space-x-1 text-text-accent">
+        <div className="flex h-[18px] items-center space-x-1 text-text-accent system-xs-medium">
           <DownloadIcon className="h-3 w-3" />
           <span>{t('generation.downloadTemplate', { ns: 'share' })}</span>
         </div>

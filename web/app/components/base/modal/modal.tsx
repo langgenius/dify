@@ -70,11 +70,11 @@ const Modal = ({
           )}
           onClick={e => e.stopPropagation()}
         >
-          <div className="title-2xl-semi-bold relative shrink-0 p-6 pb-3 pr-14 text-text-primary">
+          <div className="relative shrink-0 p-6 pb-3 pr-14 text-text-primary title-2xl-semi-bold">
             {title}
             {
               subTitle && (
-                <div className="system-xs-regular mt-1 text-text-tertiary">
+                <div className="mt-1 text-text-tertiary system-xs-regular">
                   {subTitle}
                 </div>
               )

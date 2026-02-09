@@ -366,7 +366,7 @@ const Operation: FC<OperationProps> = ({
         >
           <div className="space-y-3">
             <div>
-              <label className="system-sm-semibold mb-2 block text-text-secondary">
+              <label className="mb-2 block text-text-secondary system-sm-semibold">
                 {t('feedback.content', { ns: 'common' }) || 'Feedback Content'}
               </label>
               <Textarea

@@ -182,10 +182,10 @@ const ImportSkillModal = ({ isOpen, onClose }: ImportSkillModalProps) => {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <RiUploadCloud2Line className="mb-2 size-8 text-text-tertiary" />
-                <p className="system-sm-regular text-text-tertiary">
+                <p className="text-text-tertiary system-sm-regular">
                   {t(`${PREFIX}.dropHint`, { ns: NS })}
                   {' '}
-                  <span className="system-sm-medium text-text-accent">
+                  <span className="text-text-accent system-sm-medium">
                     {t(`${PREFIX}.browseFiles`, { ns: NS })}
                   </span>
                 </p>
@@ -194,8 +194,8 @@ const ImportSkillModal = ({ isOpen, onClose }: ImportSkillModalProps) => {
           : (
               <div className="flex items-center justify-between rounded-xl border border-divider-regular bg-components-panel-bg-blur px-4 py-3">
                 <div className="flex min-w-0 flex-col">
-                  <span className="system-sm-medium truncate text-text-secondary">{selectedFile.name}</span>
-                  <span className="system-xs-regular text-text-tertiary">{formatFileSize(selectedFile.size)}</span>
+                  <span className="truncate text-text-secondary system-sm-medium">{selectedFile.name}</span>
+                  <span className="text-text-tertiary system-xs-regular">{formatFileSize(selectedFile.size)}</span>
                 </div>
                 <Button
                   size="small"

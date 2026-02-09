@@ -29,13 +29,13 @@ const Connect = ({
       </div>
       <div className="flex flex-col gap-y-1">
         <div className="flex flex-col gap-y-1 pb-3 pt-1">
-          <div className="system-md-semibold text-text-secondary">
+          <div className="text-text-secondary system-md-semibold">
             <span className="relative">
               {t('onlineDrive.notConnected', { ns: 'datasetPipeline', name: nodeData.title })}
               <Icon3Dots className="absolute -right-2.5 -top-1.5 size-4 text-text-secondary" />
             </span>
           </div>
-          <div className="system-sm-regular text-text-tertiary">
+          <div className="text-text-tertiary system-sm-regular">
             {t('onlineDrive.notConnectedTip', { ns: 'datasetPipeline', name: nodeData.title })}
           </div>
         </div>

@@ -49,16 +49,16 @@ const SwitchModal = ({
       <div className="mt-4">
         {/* Warning Section */}
         <div>
-          <div className="system-sm-semibold text-text-destructive">
+          <div className="text-text-destructive system-sm-semibold">
             {t('sandboxProvider.switchModal.warning', { ns: 'common' })}
           </div>
-          <div className="system-xs-regular mt-0.5 text-text-destructive">
+          <div className="mt-0.5 text-text-destructive system-xs-regular">
             {t('sandboxProvider.switchModal.warningDesc', { ns: 'common' })}
           </div>
         </div>
 
         {/* Confirm Text */}
-        <div className="system-sm-regular mt-4 text-text-secondary">
+        <div className="mt-4 text-text-secondary system-sm-regular">
           <Trans
             i18nKey="sandboxProvider.switchModal.confirmText"
             ns="common"

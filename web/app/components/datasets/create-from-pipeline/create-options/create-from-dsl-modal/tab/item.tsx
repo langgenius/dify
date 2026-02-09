@@ -15,7 +15,7 @@ const Item = ({
   return (
     <div
       className={cn(
-        'system-md-semibold relative flex h-full cursor-pointer items-center text-text-tertiary',
+        'relative flex h-full cursor-pointer items-center text-text-tertiary system-md-semibold',
         isActive && 'text-text-primary',
       )}
       onClick={onClick}

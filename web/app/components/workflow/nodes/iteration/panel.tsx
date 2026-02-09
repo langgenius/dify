@@ -57,7 +57,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           title={t(`${i18nPrefix}.input`, { ns: 'workflow' })}
           required
           operations={(
-            <div className="system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary">Array</div>
+            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary system-2xs-medium-uppercase">Array</div>
           )}
         >
           <VarReferencePicker
@@ -76,7 +76,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           title={t(`${i18nPrefix}.output`, { ns: 'workflow' })}
           required
           operations={(
-            <div className="system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary">Array</div>
+            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary system-2xs-medium-uppercase">Array</div>
           )}
         >
           <VarReferencePicker

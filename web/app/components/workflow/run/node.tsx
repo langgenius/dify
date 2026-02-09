@@ -143,7 +143,7 @@ const NodePanel: FC<Props> = ({
             }
           >
             <div className={cn(
-              'system-xs-semibold-uppercase grow truncate text-text-secondary',
+              'grow truncate text-text-secondary system-xs-semibold-uppercase',
               hideInfo && '!text-xs',
             )}
             >
@@ -151,7 +151,7 @@ const NodePanel: FC<Props> = ({
             </div>
           </Tooltip>
           {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
-            <div className="system-xs-regular shrink-0 text-text-tertiary">
+            <div className="shrink-0 text-text-tertiary system-xs-regular">
               {nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}
               {`${getTime(nodeInfo.elapsed_time || 0)}`}
             </div>
@@ -246,7 +246,7 @@ const NodePanel: FC<Props> = ({
               )}
               {(nodeInfo.status === 'paused') && (
                 <StatusContainer status="paused">
-                  <div className="system-xs-regular text-text-warning">{t('nodes.humanInput.log.reasonContent', { ns: 'workflow' })}</div>
+                  <div className="text-text-warning system-xs-regular">{t('nodes.humanInput.log.reasonContent', { ns: 'workflow' })}</div>
                 </StatusContainer>
               )}
             </div>

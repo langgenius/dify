@@ -238,7 +238,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       className="!mt-14 !w-[600px] !max-w-none !p-6"
     >
       <div className="flex items-center justify-between">
-        <div className="title-2xl-semi-bold text-text-primary">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
+        <div className="text-text-primary title-2xl-semi-bold">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
         <div className="cursor-pointer p-1" onClick={onCancel}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
       </div>
       <div className="py-2">
@@ -251,9 +251,9 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
               <div
                 key={provider.key}
                 className={cn(
-                  'system-sm-regular flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-text-secondary',
+                  'flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-text-secondary system-sm-regular',
                   localeData.type !== provider.key && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
-                  localeData.type === provider.key && 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs',
+                  localeData.type === provider.key && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs system-sm-medium',
                   localeData.type === 'openai_moderation' && provider.key === 'openai_moderation' && !isOpenAIProviderConfigured && 'text-text-disabled',
                 )}
                 onClick={() => handleDataTypeChange(provider.key)}

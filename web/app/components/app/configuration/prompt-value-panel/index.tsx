@@ -112,12 +112,12 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
       <div className="relative z-[1] mx-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-md">
         <div className={cn('px-4 pt-3', userInputFieldCollapse ? 'pb-3' : 'pb-1')}>
           <div className="flex cursor-pointer items-center gap-0.5 py-0.5" onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
-            <div className="system-md-semibold-uppercase text-text-secondary">{t('inputs.userInputField', { ns: 'appDebug' })}</div>
+            <div className="text-text-secondary system-md-semibold-uppercase">{t('inputs.userInputField', { ns: 'appDebug' })}</div>
             {userInputFieldCollapse && <RiArrowRightSLine className="h-4 w-4 text-text-secondary" />}
             {!userInputFieldCollapse && <RiArrowDownSLine className="h-4 w-4 text-text-secondary" />}
           </div>
           {!userInputFieldCollapse && (
-            <div className="system-xs-regular mt-1 text-text-tertiary">{t('inputs.completionVarTip', { ns: 'appDebug' })}</div>
+            <div className="mt-1 text-text-tertiary system-xs-regular">{t('inputs.completionVarTip', { ns: 'appDebug' })}</div>
           )}
         </div>
         {!userInputFieldCollapse && promptVariables.length > 0 && (
@@ -129,9 +129,9 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
               >
                 <div>
                   {type !== 'checkbox' && (
-                    <div className="system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary">
+                    <div className="mb-1 flex h-6 items-center gap-1 text-text-secondary system-sm-semibold">
                       <div className="truncate">{name || key}</div>
-                      {!required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
+                      {!required && <span className="text-text-tertiary system-xs-regular">{t('panel.optional', { ns: 'workflow' })}</span>}
                     </div>
                   )}
                   <div className="grow">

@@ -140,7 +140,7 @@ const ZoomInOut: FC = () => {
                 <RiZoomOutLine className="h-4 w-4 text-text-tertiary hover:text-text-secondary" />
               </div>
             </TipPopup>
-            <div onClick={handleTrigger} className={cn('system-sm-medium w-[34px] text-text-tertiary hover:text-text-secondary')}>
+            <div onClick={handleTrigger} className={cn('w-[34px] text-text-tertiary system-sm-medium hover:text-text-secondary')}>
               {Number.parseFloat(`${zoom * 100}`).toFixed(0)}
               %
             </div>
@@ -179,7 +179,7 @@ const ZoomInOut: FC = () => {
                     options.map(option => (
                       <div
                         key={option.key}
-                        className="system-md-regular flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg py-1.5 pl-3 pr-2 text-text-secondary hover:bg-state-base-hover"
+                        className="flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg py-1.5 pl-3 pr-2 text-text-secondary system-md-regular hover:bg-state-base-hover"
                         onClick={() => handleZoom(option.key)}
                       >
                         <span>{option.text}</span>

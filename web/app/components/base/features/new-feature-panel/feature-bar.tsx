@@ -43,7 +43,7 @@ const FeatureBar = ({
       {noFeatureEnabled && (
         <div className="flex cursor-pointer items-end gap-1" onClick={() => onFeatureBarClick?.(true)}>
           <RiApps2AddLine className="h-3.5 w-3.5 text-text-accent" />
-          <div className="body-xs-medium text-text-accent">{t('feature.bar.empty', { ns: 'appDebug' })}</div>
+          <div className="text-text-accent body-xs-medium">{t('feature.bar.empty', { ns: 'appDebug' })}</div>
           <RiArrowRightLine className="h-3.5 w-3.5 text-text-accent" />
         </div>
       )}
@@ -134,7 +134,7 @@ const FeatureBar = ({
               </Tooltip>
             )}
           </div>
-          <div className="body-xs-regular grow text-text-tertiary">{t('feature.bar.enableText', { ns: 'appDebug' })}</div>
+          <div className="grow text-text-tertiary body-xs-regular">{t('feature.bar.enableText', { ns: 'appDebug' })}</div>
           {
             !hideEditEntrance && (
               <Button className="shrink-0" variant="ghost-accent" size="small" onClick={() => onFeatureBarClick?.(true)}>

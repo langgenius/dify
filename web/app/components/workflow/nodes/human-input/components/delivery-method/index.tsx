@@ -70,7 +70,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
     <div className="px-4 py-2">
       <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-0.5">
-          <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
+          <div className="text-text-secondary system-sm-semibold-uppercase">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
           <Tooltip
             popupContent={t(`${i18nPrefix}.deliveryMethod.tooltip`, { ns: 'workflow' })}
           />
@@ -86,7 +86,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
         )}
       </div>
       {!value.length && (
-        <div className="system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emptyTip`, { ns: 'workflow' })}</div>
+        <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary system-xs-regular">{t(`${i18nPrefix}.deliveryMethod.emptyTip`, { ns: 'workflow' })}</div>
       )}
       {value.length > 0 && (
         <div className="space-y-1">

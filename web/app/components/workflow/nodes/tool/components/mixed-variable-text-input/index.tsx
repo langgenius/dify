@@ -437,7 +437,7 @@ const MixedVariableTextInput = ({
           />
           {isOnlyAgentContext && paramKey && (
             <div className="pointer-events-none absolute left-0 top-0 flex h-full w-full items-center px-2 py-1">
-              <span className="system-sm-regular text-components-input-text-placeholder">
+              <span className="text-components-input-text-placeholder system-sm-regular">
                 {t('nodes.tool.agentPlaceholder', { ns: 'workflow', paramKey })}
               </span>
             </div>

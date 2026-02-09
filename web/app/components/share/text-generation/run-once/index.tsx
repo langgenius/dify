@@ -119,9 +119,9 @@ const RunOnce: FC<IRunOnceProps> = ({
             : promptConfig.prompt_variables.filter(item => item.hide !== true).map(item => (
                 <div className="mt-4 w-full" key={item.key}>
                   {item.type !== 'checkbox' && (
-                    <div className="system-md-semibold flex h-6 items-center gap-1 text-text-secondary">
+                    <div className="flex h-6 items-center gap-1 text-text-secondary system-md-semibold">
                       <div className="truncate">{item.name}</div>
-                      {!item.required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
+                      {!item.required && <span className="text-text-tertiary system-xs-regular">{t('panel.optional', { ns: 'workflow' })}</span>}
                     </div>
                   )}
                   <div className="mt-1">
@@ -206,7 +206,7 @@ const RunOnce: FC<IRunOnceProps> = ({
           {
             visionConfig?.enabled && (
               <div className="mt-4 w-full">
-                <div className="system-md-semibold flex h-6 items-center text-text-secondary">{t('imageUploader.imageUpload', { ns: 'common' })}</div>
+                <div className="flex h-6 items-center text-text-secondary system-md-semibold">{t('imageUploader.imageUpload', { ns: 'common' })}</div>
                 <div className="mt-1">
                   <TextGenerationImageUploader
                     settings={visionConfig}

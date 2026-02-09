@@ -138,7 +138,7 @@ function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['v
       )}
       >
         <RiFilter3Line className="h-4 w-4 text-text-tertiary" />
-        <div className="system-sm-medium min-w-[65px] grow text-center text-text-tertiary">{t('typeSelector.all', { ns: 'app' })}</div>
+        <div className="min-w-[65px] grow text-center text-text-tertiary system-sm-medium">{t('typeSelector.all', { ns: 'app' })}</div>
         <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
       </div>
     )
@@ -151,7 +151,7 @@ function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['v
       >
         <AppTypeIcon type={values[0]} />
         <div className="line-clamp-1 flex flex-1 items-center text-center">
-          <AppTypeLabel type={values[0]} className="system-sm-medium text-components-menu-item-text" />
+          <AppTypeLabel type={values[0]} className="text-components-menu-item-text system-sm-medium" />
         </div>
       </div>
     )
@@ -177,7 +177,7 @@ function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProp
       <Checkbox checked={checked} />
       <AppTypeIcon type={type} />
       <div className="grow p-1 pl-0">
-        <AppTypeLabel type={type} className="system-sm-medium text-components-menu-item-text" />
+        <AppTypeLabel type={type} className="text-components-menu-item-text system-sm-medium" />
       </div>
     </li>
   )

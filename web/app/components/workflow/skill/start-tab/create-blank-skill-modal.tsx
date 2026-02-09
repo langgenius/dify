@@ -121,7 +121,7 @@ const CreateBlankSkillModal = ({ isOpen, onClose }: CreateBlankSkillModalProps) 
       initialFocus={inputRef}
     >
       <div className="mt-6 flex flex-col gap-1">
-        <label className="system-sm-semibold text-text-secondary">
+        <label className="text-text-secondary system-sm-semibold">
           {t('skill.startTab.createModal.nameLabel', { ns: 'workflow' })}
         </label>
         <Input
@@ -137,7 +137,7 @@ const CreateBlankSkillModal = ({ isOpen, onClose }: CreateBlankSkillModalProps) 
           }}
         />
         {isDuplicate && (
-          <p className="system-xs-regular text-text-destructive">
+          <p className="text-text-destructive system-xs-regular">
             {t('skill.startTab.createModal.nameDuplicate', { ns: 'workflow' })}
           </p>
         )}

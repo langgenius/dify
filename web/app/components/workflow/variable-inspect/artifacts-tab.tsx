@@ -31,10 +31,10 @@ const ArtifactsEmpty = ({ description }: { description: string }) => {
         <SearchLinesSparkle className="h-5 w-5 text-text-accent" aria-hidden="true" />
       </div>
       <div className="flex flex-col gap-1">
-        <div className="system-sm-semibold text-text-secondary">{t('debug.variableInspect.tabArtifacts.emptyTitle')}</div>
-        <div className="system-xs-regular text-text-tertiary">{description}</div>
+        <div className="text-text-secondary system-sm-semibold">{t('debug.variableInspect.tabArtifacts.emptyTitle')}</div>
+        <div className="text-text-tertiary system-xs-regular">{description}</div>
         <a
-          className="system-xs-regular cursor-pointer text-text-accent"
+          className="cursor-pointer text-text-accent system-xs-regular"
           href={docLink('/use-dify/debug/variable-inspect')}
           target="_blank"
           rel="noopener noreferrer"
@@ -163,10 +163,10 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
                     <div className="flex items-center gap-1 truncate">
                       {pathSegments!.map(seg => (
                         <span key={seg.key} className="flex items-center gap-1">
-                          {!seg.isFirst && <span className="system-sm-regular text-text-quaternary">/</span>}
+                          {!seg.isFirst && <span className="text-text-quaternary system-sm-regular">/</span>}
                           <span
                             className={cn(
-                              'system-sm-semibold truncate',
+                              'truncate system-sm-semibold',
                               seg.isLast ? 'text-text-secondary' : 'text-text-tertiary',
                             )}
                           >
@@ -175,7 +175,7 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
                         </span>
                       ))}
                     </div>
-                    <span className="system-xs-medium shrink-0 text-text-tertiary">
+                    <span className="shrink-0 text-text-tertiary system-xs-medium">
                       {formatFileSize(file.size)}
                     </span>
                   </div>
@@ -212,7 +212,7 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
                           )
                         : (
                             <div className="flex h-full items-center justify-center rounded-xl bg-background-section">
-                              <p className="system-xs-regular text-text-tertiary">
+                              <p className="text-text-tertiary system-xs-regular">
                                 {t('debug.variableInspect.tabArtifacts.previewNotAvailable')}
                               </p>
                             </div>

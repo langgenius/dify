@@ -62,7 +62,7 @@ const AppInfo: FC<Props> = ({
         </div>
       </div>
       {appDetail.description && (
-        <div className="system-sm-regular mt-[14px] shrink-0 text-text-secondary">{appDetail.description}</div>
+        <div className="mt-[14px] shrink-0 text-text-secondary system-sm-regular">{appDetail.description}</div>
       )}
       <Button variant="primary" className="mt-3 flex w-full max-w-full" onClick={onCreate}>
         <RiAddLine className="mr-1 size-4 shrink-0" />
@@ -72,7 +72,7 @@ const AppInfo: FC<Props> = ({
       {category && (
         <div className="mt-6 shrink-0">
           <div className={headerClassName}>{t('tryApp.category', { ns: 'explore' })}</div>
-          <div className="system-md-regular text-text-secondary">{category}</div>
+          <div className="text-text-secondary system-md-regular">{category}</div>
         </div>
       )}
       {requirements.length > 0 && (
@@ -82,7 +82,7 @@ const AppInfo: FC<Props> = ({
             {requirements.map(item => (
               <div className="flex items-center space-x-2 py-1" key={item.name}>
                 <div className="size-5 rounded-md bg-cover shadow-xs" style={{ backgroundImage: `url(${item.iconUrl})` }} />
-                <div className="system-md-regular w-0 grow truncate text-text-secondary">{item.name}</div>
+                <div className="w-0 grow truncate text-text-secondary system-md-regular">{item.name}</div>
               </div>
             ))}
           </div>

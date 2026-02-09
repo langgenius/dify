@@ -65,7 +65,7 @@ const StatusStep = ({ isActive, text, onClick, clickable }: {
 }) => {
   return (
     <div
-      className={`system-2xs-semibold-uppercase flex items-center gap-1 ${isActive
+      className={`flex items-center gap-1 system-2xs-semibold-uppercase ${isActive
         ? 'text-state-accent-solid'
         : 'text-text-tertiary'} ${clickable ? 'cursor-pointer hover:text-text-secondary' : ''}`}
       onClick={clickable ? onClick : undefined}

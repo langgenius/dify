@@ -369,9 +369,9 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
             {expand && (
               <div className="flex flex-col items-start gap-1">
                 <div className="flex w-full">
-                  <div className="system-md-semibold truncate whitespace-nowrap text-text-secondary">{appDetail.name}</div>
+                  <div className="truncate whitespace-nowrap text-text-secondary system-md-semibold">{appDetail.name}</div>
                 </div>
-                <div className="system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary">
+                <div className="whitespace-nowrap text-text-tertiary system-2xs-medium-uppercase">
                   {appDetail.mode === AppModeEnum.ADVANCED_CHAT
                     ? t('types.advanced', { ns: 'app' })
                     : appDetail.mode === AppModeEnum.AGENT_CHAT
@@ -405,13 +405,13 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
               imageUrl={appDetail.icon_url}
             />
             <div className="flex flex-1 flex-col items-start justify-center overflow-hidden">
-              <div className="system-md-semibold w-full truncate text-text-secondary">{appDetail.name}</div>
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{appDetail.mode === AppModeEnum.ADVANCED_CHAT ? t('types.advanced', { ns: 'app' }) : appDetail.mode === AppModeEnum.AGENT_CHAT ? t('types.agent', { ns: 'app' }) : appDetail.mode === AppModeEnum.CHAT ? t('types.chatbot', { ns: 'app' }) : appDetail.mode === AppModeEnum.COMPLETION ? t('types.completion', { ns: 'app' }) : t('types.workflow', { ns: 'app' })}</div>
+              <div className="w-full truncate text-text-secondary system-md-semibold">{appDetail.name}</div>
+              <div className="text-text-tertiary system-2xs-medium-uppercase">{appDetail.mode === AppModeEnum.ADVANCED_CHAT ? t('types.advanced', { ns: 'app' }) : appDetail.mode === AppModeEnum.AGENT_CHAT ? t('types.agent', { ns: 'app' }) : appDetail.mode === AppModeEnum.CHAT ? t('types.chatbot', { ns: 'app' }) : appDetail.mode === AppModeEnum.COMPLETION ? t('types.completion', { ns: 'app' }) : t('types.workflow', { ns: 'app' })}</div>
             </div>
           </div>
           {/* description */}
           {appDetail.description && (
-            <div className="system-xs-regular overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto whitespace-normal break-words text-text-tertiary">{appDetail.description}</div>
+            <div className="overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto whitespace-normal break-words text-text-tertiary system-xs-regular">{appDetail.description}</div>
           )}
           {/* operations */}
           <AppOperations
@@ -435,7 +435,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
               onClick={switchOperation.onClick}
             >
               {switchOperation.icon}
-              <span className="system-sm-medium text-text-tertiary">{switchOperation.title}</span>
+              <span className="text-text-tertiary system-sm-medium">{switchOperation.title}</span>
             </Button>
           </div>
         )}

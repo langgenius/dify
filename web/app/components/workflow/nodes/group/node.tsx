@@ -55,7 +55,7 @@ const GroupNode = (props: NodeProps<GroupNodeData>) => {
               </div>
             ))}
             {members.length > MAX_MEMBER_ICONS && (
-              <div className="system-xs-medium rounded-full bg-components-input-bg-normal px-2 py-1 text-text-tertiary">
+              <div className="rounded-full bg-components-input-bg-normal px-2 py-1 text-text-tertiary system-xs-medium">
                 +
                 {members.length - MAX_MEMBER_ICONS}
               </div>
@@ -71,7 +71,7 @@ const GroupNode = (props: NodeProps<GroupNodeData>) => {
               key={handler.id}
               className={cn(
                 'relative',
-                'system-sm-semibold uppercase',
+                'uppercase system-sm-semibold',
                 'flex h-9 items-center rounded-md bg-components-panel-on-panel-item-bg px-3 text-text-primary shadow-xs',
               )}
             >

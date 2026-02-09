@@ -79,7 +79,7 @@ const List = ({
 
     return (
       <Link
-        className="system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg"
+        className="sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg system-sm-medium"
         href={getMarketplaceUrl('', { category })}
         target="_blank"
       >
@@ -95,7 +95,7 @@ const List = ({
     <>
       {hasRes && (
         <div
-          className={cn('system-sm-medium sticky z-10 flex h-8 cursor-pointer justify-between px-4 py-1 text-text-primary', stickyClassName, !disableMaxWidth && maxWidthClassName)}
+          className={cn('sticky z-10 flex h-8 cursor-pointer justify-between px-4 py-1 text-text-primary system-sm-medium', stickyClassName, !disableMaxWidth && maxWidthClassName)}
           onClick={handleHeadClick}
         >
           <span>{t('fromMarketplace', { ns: 'plugin' })}</span>
@@ -124,7 +124,7 @@ const List = ({
             <Link
               href={urlWithSearchText}
               target="_blank"
-              className="system-sm-medium flex h-4 shrink-0 items-center text-text-accent-light-mode-only"
+              className="flex h-4 shrink-0 items-center text-text-accent-light-mode-only system-sm-medium"
             >
               <RiSearchLine className="mr-0.5 h-3 w-3" />
               <span>{t('searchInMarketplace', { ns: 'plugin' })}</span>

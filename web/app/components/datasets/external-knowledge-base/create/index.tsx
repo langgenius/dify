@@ -56,12 +56,12 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
         <div className="flex w-full max-w-[960px] flex-col items-center px-14 py-0">
           <div className="flex w-full max-w-[640px] grow flex-col items-center gap-4 pb-8 pt-6">
             <div className="relative flex flex-col items-center gap-[2px] self-stretch py-2">
-              <div className="system-xl-semibold grow self-stretch text-text-primary">{t('connectDataset', { ns: 'dataset' })}</div>
-              <p className="system-sm-regular text-text-tertiary">
+              <div className="grow self-stretch text-text-primary system-xl-semibold">{t('connectDataset', { ns: 'dataset' })}</div>
+              <p className="text-text-tertiary system-sm-regular">
                 <span>{t('connectHelper.helper1', { ns: 'dataset' })}</span>
-                <span className="system-sm-medium text-text-secondary">{t('connectHelper.helper2', { ns: 'dataset' })}</span>
+                <span className="text-text-secondary system-sm-medium">{t('connectHelper.helper2', { ns: 'dataset' })}</span>
                 <span>{t('connectHelper.helper3', { ns: 'dataset' })}</span>
-                <a className="system-sm-regular self-stretch text-text-accent" href={docLink('/use-dify/knowledge/connect-external-knowledge-base')} target="_blank" rel="noopener noreferrer">
+                <a className="self-stretch text-text-accent system-sm-regular" href={docLink('/use-dify/knowledge/connect-external-knowledge-base')} target="_blank" rel="noopener noreferrer">
                   {t('connectHelper.helper4', { ns: 'dataset' })}
                 </a>
                 <span>
@@ -108,7 +108,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
             />
             <div className="flex items-center justify-end gap-2 self-stretch py-2">
               <Button variant="secondary" onClick={navBackHandle}>
-                <div className="system-sm-medium text-components-button-secondary-text">{t('externalKnowledgeForm.cancel', { ns: 'dataset' })}</div>
+                <div className="text-components-button-secondary-text system-sm-medium">{t('externalKnowledgeForm.cancel', { ns: 'dataset' })}</div>
               </Button>
               <Button
                 variant="primary"
@@ -118,7 +118,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 disabled={!isFormValid}
                 loading={loading}
               >
-                <div className="system-sm-medium text-components-button-primary-text">{t('externalKnowledgeForm.connect', { ns: 'dataset' })}</div>
+                <div className="text-components-button-primary-text system-sm-medium">{t('externalKnowledgeForm.connect', { ns: 'dataset' })}</div>
                 <RiArrowRightLine className="h-4 w-4 text-components-button-primary-text" />
               </Button>
             </div>

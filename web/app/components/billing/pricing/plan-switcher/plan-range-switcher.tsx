@@ -29,7 +29,7 @@ const PlanRangeSwitcher: FC<PlanRangeSwitcherProps> = ({
           onChange(v ? PlanRange.yearly : PlanRange.monthly)
         }}
       />
-      <span className="system-md-regular text-text-tertiary">
+      <span className="text-text-tertiary system-md-regular">
         {t('plansCommon.annualBilling', { ns: 'billing', percent: 17 })}
       </span>
     </div>

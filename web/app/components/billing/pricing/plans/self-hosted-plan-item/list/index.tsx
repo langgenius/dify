@@ -16,7 +16,7 @@ const List = ({
 
   return (
     <div className="flex flex-col gap-y-[10px] p-6">
-      <div className="system-md-semibold text-text-secondary">
+      <div className="text-text-secondary system-md-semibold">
         <Trans
           i18nKey={`${i18nPrefix}.includesTitle`}
           ns="billing"

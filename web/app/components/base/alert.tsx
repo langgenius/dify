@@ -41,7 +41,7 @@ const Alert: React.FC<Props> = ({
           <RiInformation2Fill className="text-text-accent" />
         </div>
         <div className="p-1">
-          <div className="system-xs-regular text-text-secondary">
+          <div className="text-text-secondary system-xs-regular">
             {message}
           </div>
         </div>

@@ -35,7 +35,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
             provider={currentProvider}
             modelName={modelName}
           />
-          <div className="system-sm-regular truncate text-components-input-text-filled">
+          <div className="truncate text-components-input-text-filled system-sm-regular">
             {modelName}
           </div>
         </div>

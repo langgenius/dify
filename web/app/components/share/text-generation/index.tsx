@@ -470,7 +470,7 @@ const TextGeneration: FC<IMainProps> = ({
           !isPC && 'px-4 pb-1 pt-3',
         )}
         >
-          <div className="system-md-semibold-uppercase text-text-primary">{t('generation.executions', { ns: 'share', num: allTaskList.length })}</div>
+          <div className="text-text-primary system-md-semibold-uppercase">{t('generation.executions', { ns: 'share', num: allTaskList.length })}</div>
           {allSuccessTaskList.length > 0 && (
             <ResDownload
               isMobile={!isPC}
@@ -496,9 +496,9 @@ const TextGeneration: FC<IMainProps> = ({
       {isCallBatchAPI && allFailedTaskList.length > 0 && (
         <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-sm">
           <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
-          <div className="system-sm-medium text-text-secondary">{t('generation.batchFailed.info', { ns: 'share', num: allFailedTaskList.length })}</div>
+          <div className="text-text-secondary system-sm-medium">{t('generation.batchFailed.info', { ns: 'share', num: allFailedTaskList.length })}</div>
           <div className="h-3.5 w-px bg-divider-regular"></div>
-          <div onClick={handleRetryAllFailedTask} className="system-sm-semibold-uppercase cursor-pointer text-text-accent">{t('generation.batchFailed.retry', { ns: 'share' })}</div>
+          <div onClick={handleRetryAllFailedTask} className="cursor-pointer text-text-accent system-sm-semibold-uppercase">{t('generation.batchFailed.retry', { ns: 'share' })}</div>
         </div>
       )}
     </div>
@@ -536,11 +536,11 @@ const TextGeneration: FC<IMainProps> = ({
               background={siteInfo.icon_background || appDefaultIconBackground}
               imageUrl={siteInfo.icon_url}
             />
-            <div className="system-md-semibold grow truncate text-text-secondary">{siteInfo.title}</div>
+            <div className="grow truncate text-text-secondary system-md-semibold">{siteInfo.title}</div>
             <MenuDropdown hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC} data={siteInfo} />
           </div>
           {siteInfo.description && (
-            <div className="system-xs-regular text-text-tertiary">{siteInfo.description}</div>
+            <div className="text-text-tertiary system-xs-regular">{siteInfo.description}</div>
           )}
           <TabHeader
             items={[
@@ -611,7 +611,7 @@ const TextGeneration: FC<IMainProps> = ({
             !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}
           >
-            <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+            <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
             {
               systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                 ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />

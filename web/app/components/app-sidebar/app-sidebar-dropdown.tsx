@@ -97,9 +97,9 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
                   </div>
                   <div className="flex flex-col items-start gap-1">
                     <div className="flex w-full">
-                      <div className="system-md-semibold truncate text-text-secondary">{appDetail.name}</div>
+                      <div className="truncate text-text-secondary system-md-semibold">{appDetail.name}</div>
                     </div>
-                    <div className="system-2xs-medium-uppercase text-text-tertiary">{appDetail.mode === AppModeEnum.ADVANCED_CHAT ? t('types.advanced', { ns: 'app' }) : appDetail.mode === AppModeEnum.AGENT_CHAT ? t('types.agent', { ns: 'app' }) : appDetail.mode === AppModeEnum.CHAT ? t('types.chatbot', { ns: 'app' }) : appDetail.mode === AppModeEnum.COMPLETION ? t('types.completion', { ns: 'app' }) : t('types.workflow', { ns: 'app' })}</div>
+                    <div className="text-text-tertiary system-2xs-medium-uppercase">{appDetail.mode === AppModeEnum.ADVANCED_CHAT ? t('types.advanced', { ns: 'app' }) : appDetail.mode === AppModeEnum.AGENT_CHAT ? t('types.agent', { ns: 'app' }) : appDetail.mode === AppModeEnum.CHAT ? t('types.chatbot', { ns: 'app' }) : appDetail.mode === AppModeEnum.COMPLETION ? t('types.completion', { ns: 'app' }) : t('types.workflow', { ns: 'app' })}</div>
                   </div>
                 </div>
               </div>

@@ -81,11 +81,11 @@ const Item: FC<ItemProps> = ({
       >
         <div className="flex h-full items-center space-x-1 text-text-tertiary">
           <Icon className="size-4 shrink-0" />
-          <div className="system-sm-medium max-w-[250px] truncate text-text-primary">{payload.name}</div>
-          <div className="system-xs-regular shrink-0">{payload.type}</div>
+          <div className="max-w-[250px] truncate text-text-primary system-sm-medium">{payload.name}</div>
+          <div className="shrink-0 system-xs-regular">{payload.type}</div>
         </div>
         {(!readonly || disabled) && (
-          <div className="system-xs-regular ml-2 shrink-0 text-text-tertiary group-hover/item:hidden">
+          <div className="ml-2 shrink-0 text-text-tertiary system-xs-regular group-hover/item:hidden">
             {disabled ? t(`${i18nPrefix}.disabled`, { ns: 'dataset' }) : t(`${i18nPrefix}.values`, { ns: 'dataset', num: payload.count || 0 })}
           </div>
         )}
@@ -177,7 +177,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       panelClassName="px-4 block !max-w-[420px] my-2 rounded-l-2xl"
     >
       <div className="h-full overflow-y-auto">
-        <div className="system-sm-regular text-text-tertiary">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>
+        <div className="text-text-tertiary system-sm-regular">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>
         <CreateModal
           open={open}
           setOpen={setOpen}
@@ -207,7 +207,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
             defaultValue={isBuiltInEnabled}
             onChange={onIsBuiltInEnabledChange}
           />
-          <div className="system-sm-semibold ml-2 mr-0.5 text-text-secondary">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
+          <div className="ml-2 mr-0.5 text-text-secondary system-sm-semibold">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
           <Tooltip popupContent={<div className="max-w-[100px]">{t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}</div>} />
         </div>
 

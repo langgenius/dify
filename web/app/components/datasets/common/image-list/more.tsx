@@ -27,7 +27,7 @@ const More = ({ count, onClick }: MoreProps) => {
     <div className="relative size-8 cursor-pointer p-[0.5px]" onClick={handleClick}>
       <div className="relative z-10 size-full rounded-md border-[1.5px] border-components-panel-bg bg-divider-regular">
         <div className="flex size-full items-center justify-center">
-          <span className="system-xs-regular text-text-tertiary">
+          <span className="text-text-tertiary system-xs-regular">
             {`+${formatNumber(count)}`}
           </span>
         </div>

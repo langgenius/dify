@@ -77,7 +77,7 @@ const Citation: FC<CitationProps> = ({
 
   return (
     <div className="-mb-1 mt-3">
-      <div className="system-xs-medium mb-2 flex items-center text-text-tertiary">
+      <div className="mb-2 flex items-center text-text-tertiary system-xs-medium">
         {t('chat.citation.title', { ns: 'common' })}
         <div className="ml-2 h-px grow bg-divider-regular" />
       </div>
@@ -106,7 +106,7 @@ const Citation: FC<CitationProps> = ({
         {
           limitNumberInOneLine < resourcesLength && (
             <div
-              className="system-xs-medium flex h-7 cursor-pointer items-center rounded-lg bg-components-panel-bg px-2 text-text-tertiary"
+              className="flex h-7 cursor-pointer items-center rounded-lg bg-components-panel-bg px-2 text-text-tertiary system-xs-medium"
               onClick={() => setShowMore(v => !v)}
             >
               {

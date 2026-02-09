@@ -94,7 +94,7 @@ const CustomSelect = <T extends Option>({
       >
         <div
           className={cn(
-            'system-sm-regular group flex h-8 cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-2 text-components-input-text-filled hover:bg-state-base-hover-alt',
+            'group flex h-8 cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-2 text-components-input-text-filled system-sm-regular hover:bg-state-base-hover-alt',
             mergedOpen && 'bg-state-base-hover-alt',
             triggerClassName,
           )}
@@ -137,7 +137,7 @@ const CustomSelect = <T extends Option>({
                 <div
                   key={option.value}
                   className={cn(
-                    'system-sm-medium flex h-8 cursor-pointer items-center rounded-lg px-2 text-text-secondary hover:bg-state-base-hover',
+                    'flex h-8 cursor-pointer items-center rounded-lg px-2 text-text-secondary system-sm-medium hover:bg-state-base-hover',
                     popupItemClassName,
                   )}
                   title={option.label}

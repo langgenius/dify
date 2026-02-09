@@ -32,8 +32,8 @@ const ToolItem = ({
         className={cn('bg-components-panel-item-bg cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover', disabled && '!cursor-not-allowed opacity-50')}
         onClick={() => !disabled && setShowDetail(true)}
       >
-        <div className="system-md-semibold pb-0.5 text-text-secondary">{tool.label[language]}</div>
-        <div className="system-xs-regular line-clamp-2 text-text-tertiary" title={tool.description[language]}>{tool.description[language]}</div>
+        <div className="pb-0.5 text-text-secondary system-md-semibold">{tool.label[language]}</div>
+        <div className="line-clamp-2 text-text-tertiary system-xs-regular" title={tool.description[language]}>{tool.description[language]}</div>
       </div>
       {showDetail && (
         <SettingBuiltInTool

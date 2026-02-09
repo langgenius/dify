@@ -141,11 +141,11 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
       )}
       >
         <div className="flex flex-col">
-          <div className="system-xl-semibold text-text-primary">{titleText}</div>
+          <div className="text-text-primary system-xl-semibold">{titleText}</div>
           <div className="flex items-center gap-x-2">
             <SegmentIndexTag positionId={segInfo?.position || ''} label={isFullDocMode ? labelPrefix : ''} labelPrefix={labelPrefix} />
             <Dot />
-            <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
+            <span className="text-text-tertiary system-xs-medium">{wordCountText}</span>
           </div>
         </div>
         <div className="flex items-center">

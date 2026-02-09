@@ -22,10 +22,10 @@ const Tips = ({
       <Divider className="!my-2 w-[30px]" />
       <div className="space-y-1 pt-1">
         {showEmailTip && !isEmailDebugMode && (
-          <div className="system-xs-regular text-text-secondary">{t('common.humanInputEmailTip', { ns: 'workflow' })}</div>
+          <div className="text-text-secondary system-xs-regular">{t('common.humanInputEmailTip', { ns: 'workflow' })}</div>
         )}
         {showEmailTip && isEmailDebugMode && (
-          <div className="system-xs-regular text-text-secondary">
+          <div className="text-text-secondary system-xs-regular">
             <Trans
               i18nKey="common.humanInputEmailTipInDebugMode"
               ns="workflow"
@@ -34,7 +34,7 @@ const Tips = ({
             />
           </div>
         )}
-        {showDebugModeTip && <div className="system-xs-medium text-text-warning">{t('common.humanInputWebappTip', { ns: 'workflow' })}</div>}
+        {showDebugModeTip && <div className="text-text-warning system-xs-medium">{t('common.humanInputWebappTip', { ns: 'workflow' })}</div>}
       </div>
     </>
   )

@@ -53,12 +53,12 @@ const Empty: FC<IEmptyProps> = ({
           <Line className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rotate-90" />
           <Line className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 rotate-90" />
         </div>
-        <div className="system-md-regular mt-3 text-text-tertiary">
+        <div className="mt-3 text-text-tertiary system-md-regular">
           {t('segment.empty', { ns: 'datasetDocuments' })}
         </div>
         <button
           type="button"
-          className="system-sm-medium mt-1 text-text-accent"
+          className="mt-1 text-text-accent system-sm-medium"
           onClick={onClearFilter}
         >
           {t('segment.clearFilter', { ns: 'datasetDocuments' })}

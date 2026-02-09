@@ -41,7 +41,7 @@ const AgentHeaderBar: FC<AgentHeaderBarProps> = ({
           >
             {showAtPrefix ? <Agent className="h-3 w-3 text-text-primary-on-surface" /> : <AssembleVariables className="h-3 w-3 text-text-primary-on-surface" />}
           </div>
-          <span className="system-xs-medium text-text-secondary">
+          <span className="text-text-secondary system-xs-medium">
             {showAtPrefix && '@'}
             {agentName}
           </span>

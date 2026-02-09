@@ -61,7 +61,7 @@ const DataTable = ({ columns, values, scrollRef, isTruncated = false }: DataTabl
               key={column}
               className={cn('border-b border-r border-t border-divider-subtle bg-background-section px-2 py-1.5 text-left align-middle first:rounded-tl-lg first:border-l last:rounded-tr-lg')}
             >
-              <span className="system-xs-medium block truncate">{column}</span>
+              <span className="block truncate system-xs-medium">{column}</span>
             </th>
           ))}
         </tr>
@@ -92,7 +92,7 @@ const DataTable = ({ columns, values, scrollRef, isTruncated = false }: DataTabl
                       cellIndex === 0 && 'border-l',
                     )}
                   >
-                    <div className={cn('system-xs-regular max-w-[240px] truncate', value === null && 'text-text-quaternary')} title={rawValue}>
+                    <div className={cn('max-w-[240px] truncate system-xs-regular', value === null && 'text-text-quaternary')} title={rawValue}>
                       {displayValue}
                     </div>
                   </td>
@@ -114,7 +114,7 @@ const DataTable = ({ columns, values, scrollRef, isTruncated = false }: DataTabl
               colSpan={columns.length}
               className="border-b border-l border-r border-divider-subtle bg-background-section-burn px-2 py-1.5 text-center first:rounded-bl-lg last:rounded-br-lg"
             >
-              <span className="system-xs-regular text-text-tertiary">
+              <span className="text-text-tertiary system-xs-regular">
                 {t('skillSidebar.sqlitePreview.rowsTruncated', { limit: values.length })}
               </span>
             </td>

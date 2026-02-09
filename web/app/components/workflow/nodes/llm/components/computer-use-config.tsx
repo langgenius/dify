@@ -67,7 +67,7 @@ const ComputerUseConfig: FC<Props> = ({
       >
         <div className="mt-1 flex flex-col gap-1 p-1">
           <div className="flex h-6 items-center gap-1">
-            <div className="system-xs-medium text-text-tertiary">
+            <div className="text-text-tertiary system-xs-medium">
               {t(`${i18nPrefix}.referenceTools`, { ns: 'workflow' })}
             </div>
           </div>

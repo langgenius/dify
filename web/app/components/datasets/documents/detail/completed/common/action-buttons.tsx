@@ -54,7 +54,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
         onClick={handleCancel}
       >
         <div className="flex items-center gap-x-1">
-          <span className="system-sm-medium text-components-button-secondary-text">{t('operation.cancel', { ns: 'common' })}</span>
+          <span className="text-components-button-secondary-text system-sm-medium">{t('operation.cancel', { ns: 'common' })}</span>
           <ShortcutsName keys={['ESC']} textColor="secondary" />
         </div>
       </Button>
@@ -64,7 +64,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
               onClick={handleRegeneration}
               disabled={loading}
             >
-              <span className="system-sm-medium text-components-button-secondary-text">
+              <span className="text-components-button-secondary-text system-sm-medium">
                 {t('operation.saveAndRegenerate', { ns: 'common' })}
               </span>
             </Button>

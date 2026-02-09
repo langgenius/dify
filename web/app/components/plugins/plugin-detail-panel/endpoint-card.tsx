@@ -139,7 +139,7 @@ const EndpointCard = ({
     <div className="rounded-xl bg-background-section-burn p-0.5">
       <div className="group rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-2.5 pl-3">
         <div className="flex items-center">
-          <div className="system-md-semibold mb-1 flex h-6 grow items-center gap-1 text-text-secondary">
+          <div className="mb-1 flex h-6 grow items-center gap-1 text-text-secondary system-md-semibold">
             <RiLoginCircleLine className="h-4 w-4" />
             <div>{data.name}</div>
           </div>
@@ -154,8 +154,8 @@ const EndpointCard = ({
         </div>
         {data.declaration.endpoints.filter(endpoint => !endpoint.hidden).map((endpoint, index) => (
           <div key={index} className="flex h-6 items-center">
-            <div className="system-xs-regular w-12 shrink-0 text-text-tertiary">{endpoint.method}</div>
-            <div className="group/item system-xs-regular flex grow items-center truncate text-text-secondary">
+            <div className="w-12 shrink-0 text-text-tertiary system-xs-regular">{endpoint.method}</div>
+            <div className="group/item flex grow items-center truncate text-text-secondary system-xs-regular">
               <div title={`${data.url}${endpoint.path}`} className="truncate">{`${data.url}${endpoint.path}`}</div>
               <Tooltip popupContent={t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })} position="top">
                 <ActionButton className="ml-2 hidden shrink-0 group-hover/item:flex" onClick={() => handleCopy(`${data.url}${endpoint.path}`)}>
@@ -168,13 +168,13 @@ const EndpointCard = ({
       </div>
       <div className="flex items-center justify-between p-2 pl-3">
         {active && (
-          <div className="system-xs-semibold-uppercase flex items-center gap-1 text-util-colors-green-green-600">
+          <div className="flex items-center gap-1 text-util-colors-green-green-600 system-xs-semibold-uppercase">
             <Indicator color="green" />
             {t('detailPanel.serviceOk', { ns: 'plugin' })}
           </div>
         )}
         {!active && (
-          <div className="system-xs-semibold-uppercase flex items-center gap-1 text-text-tertiary">
+          <div className="flex items-center gap-1 text-text-tertiary system-xs-semibold-uppercase">
             <Indicator color="gray" />
             {t('detailPanel.disabled', { ns: 'plugin' })}
           </div>

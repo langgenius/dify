@@ -48,7 +48,7 @@ const Item: FC<ItemProps> = ({ node, onSelect, isHighlighted, onSetHighlight, re
         size="xs"
       />
       <span
-        className="system-sm-medium truncate text-text-secondary"
+        className="truncate text-text-secondary system-sm-medium"
         title={node.title}
       >
         {node.title}

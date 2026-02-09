@@ -13,7 +13,7 @@ const Item = ({
       <div className="py-px">
         <RiCheckLine className="size-4 shrink-0 text-text-tertiary" />
       </div>
-      <span className="system-sm-regular grow text-text-secondary">{label}</span>
+      <span className="grow text-text-secondary system-sm-regular">{label}</span>
     </div>
   )
 }

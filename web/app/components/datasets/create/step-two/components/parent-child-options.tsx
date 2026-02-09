@@ -26,7 +26,7 @@ type TextLabelProps = {
 }
 
 const TextLabel: FC<TextLabelProps> = ({ children }) => {
-  return <label className="system-sm-semibold text-text-secondary">{children}</label>
+  return <label className="text-text-secondary system-sm-semibold">{children}</label>
 }
 
 type ParentChildOptionsProps = {
@@ -186,7 +186,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 onClick={() => onRuleToggle(rule.id)}
               >
                 <Checkbox checked={rule.enabled} />
-                <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">
+                <label className="ml-2 cursor-pointer text-text-secondary system-sm-regular">
                   {getRuleName(rule.id)}
                 </label>
               </div>

@@ -467,8 +467,8 @@ const VarReferencePicker: FC<Props> = ({
                               <TypeSelector
                                 noLeft
                                 trigger={(
-                                  <div className="radius-md flex h-8 items-center bg-components-input-bg-normal px-2">
-                                    <div className="system-sm-regular mr-1 text-components-input-text-filled">{varKindTypes.find(item => item.value === varKindType)?.label}</div>
+                                  <div className="flex h-8 items-center bg-components-input-bg-normal px-2 radius-md">
+                                    <div className="mr-1 text-components-input-text-filled system-sm-regular">{varKindTypes.find(item => item.value === varKindType)?.label}</div>
                                     <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
                                   </div>
                                 )}
@@ -568,7 +568,7 @@ const VarReferencePicker: FC<Props> = ({
                                               </div>
                                             </div>
                                             <div
-                                              className="system-xs-regular ml-0.5 truncate text-center capitalize text-text-tertiary"
+                                              className="ml-0.5 truncate text-center capitalize text-text-tertiary system-xs-regular"
                                               title={type}
                                               style={{
                                                 maxWidth: maxTypeWidth,
@@ -580,7 +580,7 @@ const VarReferencePicker: FC<Props> = ({
                                           </>
                                         )
                                       : (
-                                          <div className={`overflow-hidden ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'} system-sm-regular text-ellipsis`}>
+                                          <div className={`overflow-hidden ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'} text-ellipsis system-sm-regular`}>
                                             {isLoading
                                               ? (
                                                   <div className="flex items-center">

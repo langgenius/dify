@@ -79,7 +79,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
         </div>
       )}
     >
-      <div className="system-sm-medium mb-2 text-text-secondary">
+      <div className="mb-2 text-text-secondary system-sm-medium">
         {t('subscription.addType.options.oauth.clientTitle', { ns: 'pluginTrigger' })}
       </div>
 
@@ -103,10 +103,10 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
             <RiInformation2Fill className="h-5 w-5 shrink-0 text-text-accent" />
           </div>
           <div className="flex-1 text-text-secondary">
-            <div className="system-sm-regular whitespace-pre-wrap leading-4">
+            <div className="whitespace-pre-wrap leading-4 system-sm-regular">
               {t('modal.oauthRedirectInfo', { ns: 'pluginTrigger' })}
             </div>
-            <div className="system-sm-medium my-1.5 break-all leading-4">
+            <div className="my-1.5 break-all leading-4 system-sm-medium">
               {oauthConfig?.redirect_uri}
             </div>
             <Button

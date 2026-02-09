@@ -101,7 +101,7 @@ const CredentialPanel = ({
             authRemoved && 'border-state-destructive-border bg-state-destructive-hover',
           )}
           >
-            <div className="system-xs-medium mb-1 flex h-5 items-center justify-between pl-2 pr-[7px] pt-1 text-text-tertiary">
+            <div className="mb-1 flex h-5 items-center justify-between pl-2 pr-[7px] pt-1 text-text-tertiary system-xs-medium">
               <div
                 className={cn(
                   'grow truncate',

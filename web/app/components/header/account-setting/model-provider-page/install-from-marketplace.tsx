@@ -47,13 +47,13 @@ const InstallFromMarketplace = ({
     <div className="mb-2">
       <Divider className="!mt-4 h-px" />
       <div className="flex items-center justify-between">
-        <div className="system-md-semibold flex cursor-pointer items-center gap-1 text-text-primary" onClick={() => setCollapse(!collapse)}>
+        <div className="flex cursor-pointer items-center gap-1 text-text-primary system-md-semibold" onClick={() => setCollapse(!collapse)}>
           <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} />
           {t('modelProvider.installProvider', { ns: 'common' })}
         </div>
         <div className="mb-2 flex items-center pt-2">
-          <span className="system-sm-regular pr-1 text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
-          <Link target="_blank" href={getMarketplaceUrl('', { theme })} className="system-sm-medium inline-flex items-center text-text-accent">
+          <span className="pr-1 text-text-tertiary system-sm-regular">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
+          <Link target="_blank" href={getMarketplaceUrl('', { theme })} className="inline-flex items-center text-text-accent system-sm-medium">
             {t('marketplace.difyMarketplace', { ns: 'plugin' })}
             <RiArrowRightUpLine className="h-4 w-4" />
           </Link>

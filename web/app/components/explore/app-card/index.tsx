@@ -67,7 +67,7 @@ const AppCard = ({
           </div>
         </div>
       </div>
-      <div className="description-wrapper system-xs-regular h-[90px] px-[14px] text-text-tertiary">
+      <div className="description-wrapper h-[90px] px-[14px] text-text-tertiary system-xs-regular">
         <div className="line-clamp-4 group-hover:line-clamp-2">
           {app.description}
         </div>

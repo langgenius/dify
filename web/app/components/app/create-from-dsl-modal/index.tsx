@@ -253,7 +253,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         onClose={noop}
       >
         <div className="flex items-start justify-between pb-3 pl-6 pr-5 pt-6">
-          <div className="title-2xl-semi-bold text-text-primary">
+          <div className="text-text-primary title-2xl-semi-bold">
             {t('importFromDSL', { ns: 'app' })}
           </div>
           <div
@@ -264,7 +264,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           </div>
         </div>
         <div className="border-b border-divider-subtle px-6">
-          <div className="system-md-semibold flex h-9 items-center gap-6 text-text-tertiary">
+          <div className="flex h-9 items-center gap-6 text-text-tertiary system-md-semibold">
             {tabs.map(tab => (
               <div
                 key={tab.key}
@@ -294,7 +294,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           )}
           {currentTab === CreateFromDSLModalTab.FROM_URL && (
             <div>
-              <div className="system-md-semibold mb-1 text-text-secondary">
+              <div className="mb-1 text-text-secondary system-md-semibold">
                 {t('importFromDSLUrl', { ns: 'app' })}
               </div>
               <Input
@@ -312,7 +312,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         )}
         <div className="flex items-center justify-between px-6 pb-6 pt-5">
           <a
-            className="system-xs-regular flex items-center gap-1 text-text-accent"
+            className="flex items-center gap-1 text-text-accent system-xs-regular"
             href={docLink('/use-dify/workspace/app-management#app-export-and-import')}
             target="_blank"
             rel="noopener noreferrer"

@@ -23,7 +23,7 @@ const RetryResultPanel: FC<Props> = ({
   return (
     <div>
       <div
-        className="system-sm-medium flex h-8 cursor-pointer items-center bg-components-panel-bg px-4 text-text-accent-secondary"
+        className="flex h-8 cursor-pointer items-center bg-components-panel-bg px-4 text-text-accent-secondary system-sm-medium"
         onClick={(e) => {
           e.stopPropagation()
           e.nativeEvent.stopImmediatePropagation()

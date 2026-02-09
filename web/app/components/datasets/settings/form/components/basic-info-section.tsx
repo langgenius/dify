@@ -57,7 +57,7 @@ const BasicInfoSection = ({
       {/* Dataset name and icon */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.nameAndIcon', { ns: 'datasetSettings' })}</div>
+          <div className="text-text-secondary system-sm-semibold">{t('form.nameAndIcon', { ns: 'datasetSettings' })}</div>
         </div>
         <div className="flex grow items-center gap-x-2">
           <AppIcon
@@ -81,7 +81,7 @@ const BasicInfoSection = ({
       {/* Dataset description */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.desc', { ns: 'datasetSettings' })}</div>
+          <div className="text-text-secondary system-sm-semibold">{t('form.desc', { ns: 'datasetSettings' })}</div>
         </div>
         <div className="grow">
           <Textarea
@@ -97,7 +97,7 @@ const BasicInfoSection = ({
       {/* Permissions */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.permissions', { ns: 'datasetSettings' })}</div>
+          <div className="text-text-secondary system-sm-semibold">{t('form.permissions', { ns: 'datasetSettings' })}</div>
         </div>
         <div className="grow">
           <PermissionSelector

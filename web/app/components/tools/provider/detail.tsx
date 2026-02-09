@@ -275,7 +275,7 @@ const ProviderDetail = ({
               onClick={() => setIsShowEditCustomCollectionModal(true)}
             >
               <Settings01 className="mr-1 h-4 w-4 text-text-tertiary" />
-              <div className="system-sm-medium text-text-secondary">{t('createTool.editAction', { ns: 'tools' })}</div>
+              <div className="text-text-secondary system-sm-medium">{t('createTool.editAction', { ns: 'tools' })}</div>
             </Button>
           )}
           {collection.type === CollectionType.workflow && !isDetailLoading && customCollection && (
@@ -294,7 +294,7 @@ const ProviderDetail = ({
                 onClick={() => setIsShowEditWorkflowToolModal(true)}
                 disabled={!isCurrentWorkspaceManager}
               >
-                <div className="system-sm-medium text-text-secondary">{t('createTool.editAction', { ns: 'tools' })}</div>
+                <div className="text-text-secondary system-sm-medium">{t('createTool.editAction', { ns: 'tools' })}</div>
               </Button>
             </>
           )}
@@ -305,7 +305,7 @@ const ProviderDetail = ({
             <>
               <div className="shrink-0">
                 {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && isAuthed && (
-                  <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary">
+                  <div className="mb-1 flex h-6 items-center justify-between text-text-secondary system-sm-semibold-uppercase">
                     {t('detailPanel.actionNum', { ns: 'plugin', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
                     {needAuth && (
                       <Button
@@ -325,7 +325,7 @@ const ProviderDetail = ({
                 )}
                 {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && needAuth && !isAuthed && (
                   <>
-                    <div className="system-sm-semibold-uppercase text-text-secondary">
+                    <div className="text-text-secondary system-sm-semibold-uppercase">
                       <span className="">{t('includeToolNum', { ns: 'tools', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
                       <span className="px-1">·</span>
                       <span className="text-util-colors-orange-orange-600">{t('auth.setup', { ns: 'tools' }).toLocaleUpperCase()}</span>
@@ -344,12 +344,12 @@ const ProviderDetail = ({
                   </>
                 )}
                 {(collection.type === CollectionType.custom) && (
-                  <div className="system-sm-semibold-uppercase text-text-secondary">
+                  <div className="text-text-secondary system-sm-semibold-uppercase">
                     <span className="">{t('includeToolNum', { ns: 'tools', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
                   </div>
                 )}
                 {(collection.type === CollectionType.workflow) && (
-                  <div className="system-sm-semibold-uppercase text-text-secondary">
+                  <div className="text-text-secondary system-sm-semibold-uppercase">
                     <span className="">{t('createTool.toolInput.title', { ns: 'tools' }).toLocaleUpperCase()}</span>
                   </div>
                 )}
@@ -368,11 +368,11 @@ const ProviderDetail = ({
                 {collection.type === CollectionType.workflow && (customCollection as WorkflowToolProviderResponse)?.tool?.parameters.map(item => (
                   <div key={item.name} className="mb-1 py-1">
                     <div className="mb-1 flex items-center gap-2">
-                      <span className="code-sm-semibold text-text-secondary">{item.name}</span>
-                      <span className="system-xs-regular text-text-tertiary">{item.type}</span>
-                      <span className="system-xs-medium text-text-warning-secondary">{item.required ? t('createTool.toolInput.required', { ns: 'tools' }) : ''}</span>
+                      <span className="text-text-secondary code-sm-semibold">{item.name}</span>
+                      <span className="text-text-tertiary system-xs-regular">{item.type}</span>
+                      <span className="text-text-warning-secondary system-xs-medium">{item.required ? t('createTool.toolInput.required', { ns: 'tools' }) : ''}</span>
                     </div>
-                    <div className="system-xs-regular text-text-tertiary">{item.llm_description}</div>
+                    <div className="text-text-tertiary system-xs-regular">{item.llm_description}</div>
                   </div>
                 ))}
               </div>

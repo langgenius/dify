@@ -14,10 +14,10 @@ const InfoPanel: FC<Props> = ({
   return (
     <div>
       <div className="flex flex-col gap-y-0.5 rounded-md bg-workflow-block-parma-bg px-[5px] py-[3px]">
-        <div className="system-2xs-semibold-uppercase uppercase text-text-secondary">
+        <div className="uppercase text-text-secondary system-2xs-semibold-uppercase">
           {title}
         </div>
-        <div className="system-xs-regular break-words text-text-tertiary">
+        <div className="break-words text-text-tertiary system-xs-regular">
           {content}
         </div>
       </div>

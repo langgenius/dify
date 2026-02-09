@@ -120,13 +120,13 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
         <div className="fixed inset-0 flex items-center justify-center bg-black/[.25]">
           <div className="shadows-shadow-xl relative flex w-[480px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg">
             <div className="flex flex-col items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6">
-              <div className="title-2xl-semi-bold grow self-stretch text-text-primary">
+              <div className="grow self-stretch text-text-primary title-2xl-semi-bold">
                 {
                   isEditMode ? t('editExternalAPIFormTitle', { ns: 'dataset' }) : t('createExternalAPI', { ns: 'dataset' })
                 }
               </div>
               {isEditMode && (datasetBindings?.length ?? 0) > 0 && (
-                <div className="system-xs-regular flex items-center text-text-tertiary">
+                <div className="flex items-center text-text-tertiary system-xs-regular">
                   {t('editExternalAPIFormWarning.front', { ns: 'dataset' })}
                   <span className="flex cursor-pointer items-center text-text-accent">
                     &nbsp;
@@ -139,12 +139,12 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
                       popupContent={(
                         <div className="p-1">
                           <div className="flex items-start self-stretch pb-0.5 pl-2 pr-3 pt-1">
-                            <div className="system-xs-medium-uppercase text-text-tertiary">{`${datasetBindings?.length} ${t('editExternalAPITooltipTitle', { ns: 'dataset' })}`}</div>
+                            <div className="text-text-tertiary system-xs-medium-uppercase">{`${datasetBindings?.length} ${t('editExternalAPITooltipTitle', { ns: 'dataset' })}`}</div>
                           </div>
                           {datasetBindings?.map(binding => (
                             <div key={binding.id} className="flex items-center gap-1 self-stretch px-2 py-1">
                               <RiBook2Line className="h-4 w-4 text-text-secondary" />
-                              <div className="system-sm-medium text-text-secondary">{binding.name}</div>
+                              <div className="text-text-secondary system-sm-medium">{binding.name}</div>
                             </div>
                           ))}
                         </div>
@@ -188,8 +188,8 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
                 {t('externalAPIForm.save', { ns: 'dataset' })}
               </Button>
             </div>
-            <div className="system-xs-regular flex items-center justify-center gap-1 self-stretch rounded-b-2xl border-t-[0.5px]
-              border-divider-subtle bg-background-soft px-2 py-3 text-text-tertiary"
+            <div className="flex items-center justify-center gap-1 self-stretch rounded-b-2xl border-t-[0.5px] border-divider-subtle
+              bg-background-soft px-2 py-3 text-text-tertiary system-xs-regular"
             >
               <RiLock2Fill className="h-3 w-3 text-text-quaternary" />
               {t('externalAPIForm.encrypted.front', { ns: 'dataset' })}

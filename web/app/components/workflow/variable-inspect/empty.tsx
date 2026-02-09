@@ -13,10 +13,10 @@ const Empty: FC = () => {
         <Variable02 className="h-5 w-5 text-text-accent" />
       </div>
       <div className="flex flex-col gap-1">
-        <div className="system-sm-semibold text-text-secondary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
-        <div className="system-xs-regular text-text-tertiary">{t('debug.variableInspect.emptyTip', { ns: 'workflow' })}</div>
+        <div className="text-text-secondary system-sm-semibold">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
+        <div className="text-text-tertiary system-xs-regular">{t('debug.variableInspect.emptyTip', { ns: 'workflow' })}</div>
         <a
-          className="system-xs-regular cursor-pointer text-text-accent"
+          className="cursor-pointer text-text-accent system-xs-regular"
           href={docLink('/use-dify/debug/variable-inspect')}
           target="_blank"
           rel="noopener noreferrer"

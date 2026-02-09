@@ -59,7 +59,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
   const statusTdRender = (status: string) => {
     if (status === 'succeeded') {
       return (
-        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <Indicator color="green" />
           <span className="text-util-colors-green-green-600">Success</span>
         </div>
@@ -67,7 +67,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     }
     if (status === 'failed') {
       return (
-        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <Indicator color="red" />
           <span className="text-util-colors-red-red-600">Failure</span>
         </div>
@@ -75,7 +75,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     }
     if (status === 'stopped') {
       return (
-        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <Indicator color="yellow" />
           <span className="text-util-colors-warning-warning-600">Stop</span>
         </div>
@@ -83,7 +83,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     }
     if (status === 'paused') {
       return (
-        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <Indicator color="yellow" />
           <span className="text-util-colors-warning-warning-600">Pending</span>
         </div>
@@ -91,7 +91,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     }
     if (status === 'running') {
       return (
-        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <Indicator color="blue" />
           <span className="text-util-colors-blue-light-blue-light-600">Running</span>
         </div>
@@ -99,7 +99,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     }
     if (status === 'partial-succeeded') {
       return (
-        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <Indicator color="green" />
           <span className="text-util-colors-green-green-600">Partial Success</span>
         </div>
@@ -119,7 +119,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
   return (
     <div className="overflow-x-auto">
       <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
-        <thead className="system-xs-medium-uppercase text-text-tertiary">
+        <thead className="text-text-tertiary system-xs-medium-uppercase">
           <tr>
             <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1"></td>
             <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">
@@ -137,7 +137,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
             {isWorkflow && <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('table.header.triggered_from', { ns: 'appLog' })}</td>}
           </tr>
         </thead>
-        <tbody className="system-sm-regular text-text-secondary">
+        <tbody className="text-text-secondary system-sm-regular">
           {localLogs.map((log: WorkflowAppLogDetail) => {
             const endUser = log.created_by_end_user ? log.created_by_end_user.session_id : log.created_by_account ? log.created_by_account.name : defaultValue
             return (

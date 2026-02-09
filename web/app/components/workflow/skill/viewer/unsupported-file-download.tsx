@@ -29,14 +29,14 @@ const UnsupportedFileDownload = ({ name, size, downloadUrl }: UnsupportedFileDow
         <div className="flex flex-col items-center gap-1">
           <FileTypeIcon type={FileAppearanceTypeEnum.custom} size="xl" className="size-16 text-text-tertiary" />
           <div className="flex flex-col items-center gap-1 text-center">
-            <p className="system-md-medium text-text-secondary">{name}</p>
+            <p className="text-text-secondary system-md-medium">{name}</p>
             {fileSize && (
-              <p className="system-xs-regular text-text-tertiary">{fileSize}</p>
+              <p className="text-text-tertiary system-xs-regular">{fileSize}</p>
             )}
           </div>
         </div>
         <div className="h-px w-64 bg-components-panel-border-subtle" />
-        <p className="system-sm-regular text-center text-text-tertiary">
+        <p className="text-center text-text-tertiary system-sm-regular">
           {t('skillEditor.unsupportedPreview')}
         </p>
         <Button

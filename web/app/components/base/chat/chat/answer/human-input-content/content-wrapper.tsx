@@ -32,7 +32,7 @@ const ContentWrapper = ({
         <BlockIcon type={BlockEnum.HumanInput} className="shrink-0" />
         {/* node name */}
         <div
-          className="system-sm-semibold-uppercase grow truncate text-text-primary"
+          className="grow truncate text-text-primary system-sm-semibold-uppercase"
           title={nodeTitle}
         >
           {nodeTitle}

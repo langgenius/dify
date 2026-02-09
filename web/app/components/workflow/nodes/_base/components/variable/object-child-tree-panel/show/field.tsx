@@ -44,21 +44,21 @@ const Field: FC<Props> = ({
                 onClick={toggleFold}
               />
             )}
-            <div className={cn('system-sm-medium ml-[7px] h-6 truncate leading-6 text-text-secondary', isRoot && rootClassName)}>{name}</div>
-            <div className="system-xs-regular ml-3 shrink-0 leading-6 text-text-tertiary">
+            <div className={cn('ml-[7px] h-6 truncate leading-6 text-text-secondary system-sm-medium', isRoot && rootClassName)}>{name}</div>
+            <div className="ml-3 shrink-0 leading-6 text-text-tertiary system-xs-regular">
               {getFieldType(payload)}
               {(payload.schemaType && payload.schemaType !== 'file' && ` (${payload.schemaType})`)}
             </div>
-            {required && <div className="system-2xs-medium-uppercase ml-3 leading-6 text-text-warning">{t('structOutput.required', { ns: 'app' })}</div>}
+            {required && <div className="ml-3 leading-6 text-text-warning system-2xs-medium-uppercase">{t('structOutput.required', { ns: 'app' })}</div>}
           </div>
           {payload.description && (
             <div className="ml-[7px] flex">
-              <div className="system-xs-regular w-0 grow truncate text-text-tertiary">{payload.description}</div>
+              <div className="w-0 grow truncate text-text-tertiary system-xs-regular">{payload.description}</div>
             </div>
           )}
           {hasEnum && (
             <div className="ml-[7px] flex">
-              <div className="system-xs-regular w-0 grow text-text-quaternary">
+              <div className="w-0 grow text-text-quaternary system-xs-regular">
                 {payload.enum!.map((value, index) => (
                   <span key={index}>
                     {typeof value === 'string' ? `"${value}"` : value}

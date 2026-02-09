@@ -25,7 +25,7 @@ const AddAnother: FC<AddAnotherProps> = ({
         checked={isChecked}
         onCheck={onCheck}
       />
-      <span className="system-xs-medium text-text-tertiary">{t('segment.addAnother', { ns: 'datasetDocuments' })}</span>
+      <span className="text-text-tertiary system-xs-medium">{t('segment.addAnother', { ns: 'datasetDocuments' })}</span>
     </div>
   )
 }

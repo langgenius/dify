@@ -77,7 +77,7 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
     <button
       onClick={handleClick}
       className={cn(
-        'system-2xs-semibold-uppercase relative flex h-[18px] w-[20px] items-center justify-center rounded-[7px] border border-divider-subtle p-[2px] text-center transition-colors',
+        'relative flex h-[18px] w-[20px] items-center justify-center rounded-[7px] border border-divider-subtle p-[2px] text-center transition-colors system-2xs-semibold-uppercase',
         isActive
           ? 'bg-text-primary text-components-panel-on-panel-item-bg'
           : 'bg-components-panel-on-panel-item-bg text-text-tertiary hover:text-text-secondary',

@@ -95,7 +95,7 @@ export default function AppSelector() {
                     <MenuItem disabled>
                       <div className="flex flex-nowrap items-center py-2 pl-3 pr-2">
                         <div className="grow">
-                          <div className="system-md-medium break-all text-text-primary">
+                          <div className="break-all text-text-primary system-md-medium">
                             {userProfile.name}
                             {isEducationAccount && (
                               <PremiumBadge size="s" color="blue" className="ml-1 !px-2">
@@ -104,7 +104,7 @@ export default function AppSelector() {
                               </PremiumBadge>
                             )}
                           </div>
-                          <div className="system-xs-regular break-all text-text-tertiary">{userProfile.email}</div>
+                          <div className="break-all text-text-tertiary system-xs-regular">{userProfile.email}</div>
                         </div>
                         <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
                       </div>
@@ -117,7 +117,7 @@ export default function AppSelector() {
                         rel="noopener noreferrer"
                       >
                         <RiAccountCircleLine className="size-4 shrink-0 text-text-tertiary" />
-                        <div className="system-md-regular grow px-1 text-text-secondary">{t('account.account', { ns: 'common' })}</div>
+                        <div className="grow px-1 text-text-secondary system-md-regular">{t('account.account', { ns: 'common' })}</div>
                         <RiArrowRightUpLine className="size-[14px] shrink-0 text-text-tertiary" />
                       </Link>
                     </MenuItem>
@@ -127,7 +127,7 @@ export default function AppSelector() {
                         onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}
                       >
                         <RiSettings3Line className="size-4 shrink-0 text-text-tertiary" />
-                        <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.settings', { ns: 'common' })}</div>
+                        <div className="grow px-1 text-text-secondary system-md-regular">{t('userProfile.settings', { ns: 'common' })}</div>
                       </div>
                     </MenuItem>
                   </div>
@@ -142,7 +142,7 @@ export default function AppSelector() {
                             rel="noopener noreferrer"
                           >
                             <RiBookOpenLine className="size-4 shrink-0 text-text-tertiary" />
-                            <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.helpCenter', { ns: 'common' })}</div>
+                            <div className="grow px-1 text-text-secondary system-md-regular">{t('userProfile.helpCenter', { ns: 'common' })}</div>
                             <RiArrowRightUpLine className="size-[14px] shrink-0 text-text-tertiary" />
                           </Link>
                         </MenuItem>
@@ -158,7 +158,7 @@ export default function AppSelector() {
                             rel="noopener noreferrer"
                           >
                             <RiMap2Line className="size-4 shrink-0 text-text-tertiary" />
-                            <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.roadmap', { ns: 'common' })}</div>
+                            <div className="grow px-1 text-text-secondary system-md-regular">{t('userProfile.roadmap', { ns: 'common' })}</div>
                             <RiArrowRightUpLine className="size-[14px] shrink-0 text-text-tertiary" />
                           </Link>
                         </MenuItem>
@@ -170,10 +170,10 @@ export default function AppSelector() {
                             rel="noopener noreferrer"
                           >
                             <RiGithubLine className="size-4 shrink-0 text-text-tertiary" />
-                            <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.github', { ns: 'common' })}</div>
+                            <div className="grow px-1 text-text-secondary system-md-regular">{t('userProfile.github', { ns: 'common' })}</div>
                             <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
                               <RiStarLine className="size-3 shrink-0 text-text-tertiary" />
-                              <GithubStar className="system-2xs-medium-uppercase text-text-tertiary" />
+                              <GithubStar className="text-text-tertiary system-2xs-medium-uppercase" />
                             </div>
                           </Link>
                         </MenuItem>
@@ -185,9 +185,9 @@ export default function AppSelector() {
                                 onClick={() => setAboutVisible(true)}
                               >
                                 <RiInformation2Line className="size-4 shrink-0 text-text-tertiary" />
-                                <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.about', { ns: 'common' })}</div>
+                                <div className="grow px-1 text-text-secondary system-md-regular">{t('userProfile.about', { ns: 'common' })}</div>
                                 <div className="flex shrink-0 items-center">
-                                  <div className="system-xs-regular mr-2 text-text-tertiary">{langGeniusVersionInfo.current_version}</div>
+                                  <div className="mr-2 text-text-tertiary system-xs-regular">{langGeniusVersionInfo.current_version}</div>
                                   <Indicator color={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'green' : 'orange'} />
                                 </div>
                               </div>
@@ -201,7 +201,7 @@ export default function AppSelector() {
                     <div className="p-1">
                       <div className={cn(itemClassName, 'hover:bg-transparent')}>
                         <RiTShirt2Line className="size-4 shrink-0 text-text-tertiary" />
-                        <div className="system-md-regular grow px-1 text-text-secondary">{t('theme.theme', { ns: 'common' })}</div>
+                        <div className="grow px-1 text-text-secondary system-md-regular">{t('theme.theme', { ns: 'common' })}</div>
                         <ThemeSwitcher />
                       </div>
                     </div>
@@ -212,7 +212,7 @@ export default function AppSelector() {
                         className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                       >
                         <RiLogoutBoxRLine className="size-4 shrink-0 text-text-tertiary" />
-                        <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.logout', { ns: 'common' })}</div>
+                        <div className="grow px-1 text-text-secondary system-md-regular">{t('userProfile.logout', { ns: 'common' })}</div>
                       </div>
                     </div>
                   </MenuItem>

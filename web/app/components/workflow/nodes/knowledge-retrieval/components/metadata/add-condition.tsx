@@ -69,7 +69,7 @@ const AddCondition = ({
               filteredMetadataList?.map(metadata => (
                 <div
                   key={metadata.name}
-                  className="system-sm-medium flex h-6 cursor-pointer items-center rounded-md px-3 text-text-secondary hover:bg-state-base-hover"
+                  className="flex h-6 cursor-pointer items-center rounded-md px-3 text-text-secondary system-sm-medium hover:bg-state-base-hover"
                 >
                   <div className="mr-1 p-[1px]">
                     <MetadataIcon type={metadata.type} />
@@ -81,7 +81,7 @@ const AddCondition = ({
                   >
                     {metadata.name}
                   </div>
-                  <div className="system-xs-regular shrink-0 text-text-tertiary">{metadata.type}</div>
+                  <div className="shrink-0 text-text-tertiary system-xs-regular">{metadata.type}</div>
                 </div>
               ))
             }

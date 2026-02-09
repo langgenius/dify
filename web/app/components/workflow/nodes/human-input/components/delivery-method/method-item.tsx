@@ -104,7 +104,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
               <RiMailSendFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
             </div>
           )}
-          <div className="system-xs-medium capitalize text-text-secondary">{method.type}</div>
+          <div className="capitalize text-text-secondary system-xs-medium">{method.type}</div>
           {method.type === DeliveryMethodType.Email
             && (method.config as EmailConfig)?.debug_mode
             && <Badge size="s" className="!px-1 !py-0.5">DEBUG</Badge>}

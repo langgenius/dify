@@ -38,7 +38,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
       }}
     >
       <div className="absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
-        <div className="system-2xs-semibold-uppercase flex h-5 items-center px-2.5 text-text-tertiary">
+        <div className="flex h-5 items-center px-2.5 text-text-tertiary system-2xs-semibold-uppercase">
           {t('blocks.datasource', { ns: 'workflow' })}
         </div>
       </div>

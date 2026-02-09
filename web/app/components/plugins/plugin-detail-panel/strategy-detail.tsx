@@ -92,7 +92,7 @@ const StrategyDetail: FC<Props> = ({
             </ActionButton>
           </div>
           <div
-            className="system-xs-semibold-uppercase mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary"
+            className="mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary system-xs-semibold-uppercase"
             onClick={onHide}
           >
             <RiArrowLeftLine className="h-4 w-4" />
@@ -102,29 +102,29 @@ const StrategyDetail: FC<Props> = ({
             <Icon size="tiny" className="h-6 w-6" src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${provider.tenant_id}&filename=${provider.icon}`} />
             <div className="">{getValueFromI18nObject(provider.label)}</div>
           </div>
-          <div className="system-md-semibold mt-1 text-text-primary">{getValueFromI18nObject(detail.identity.label)}</div>
+          <div className="mt-1 text-text-primary system-md-semibold">{getValueFromI18nObject(detail.identity.label)}</div>
           <Description className="mt-3" text={getValueFromI18nObject(detail.description)} descriptionLineRows={2}></Description>
         </div>
         {/* form */}
         <div className="h-full">
           <div className="flex h-full flex-col overflow-y-auto">
-            <div className="system-sm-semibold-uppercase p-4 pb-1 text-text-primary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
+            <div className="p-4 pb-1 text-text-primary system-sm-semibold-uppercase">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
             <div className="px-4">
               {detail.parameters.length > 0 && (
                 <div className="space-y-1 py-2">
                   {detail.parameters.map((item: any, index) => (
                     <div key={index} className="py-1">
                       <div className="flex items-center gap-2">
-                        <div className="code-sm-semibold text-text-secondary">{getValueFromI18nObject(item.label)}</div>
-                        <div className="system-xs-regular text-text-tertiary">
+                        <div className="text-text-secondary code-sm-semibold">{getValueFromI18nObject(item.label)}</div>
+                        <div className="text-text-tertiary system-xs-regular">
                           {getType(item.type)}
                         </div>
                         {item.required && (
-                          <div className="system-xs-medium text-text-warning-secondary">{t('setBuiltInTools.required', { ns: 'tools' })}</div>
+                          <div className="text-text-warning-secondary system-xs-medium">{t('setBuiltInTools.required', { ns: 'tools' })}</div>
                         )}
                       </div>
                       {item.human_description && (
-                        <div className="system-xs-regular mt-0.5 text-text-tertiary">
+                        <div className="mt-0.5 text-text-tertiary system-xs-regular">
                           {getValueFromI18nObject(item.human_description)}
                         </div>
                       )}
@@ -138,17 +138,17 @@ const StrategyDetail: FC<Props> = ({
                 <div className="px-4">
                   <Divider className="!mt-2" />
                 </div>
-                <div className="system-sm-semibold-uppercase p-4 pb-1 text-text-primary">OUTPUT</div>
+                <div className="p-4 pb-1 text-text-primary system-sm-semibold-uppercase">OUTPUT</div>
                 {outputSchema.length > 0 && (
                   <div className="space-y-1 px-4 py-2">
                     {outputSchema.map((outputItem, index) => (
                       <div key={index} className="py-1">
                         <div className="flex items-center gap-2">
-                          <div className="code-sm-semibold text-text-secondary">{outputItem.name}</div>
-                          <div className="system-xs-regular text-text-tertiary">{outputItem.type}</div>
+                          <div className="text-text-secondary code-sm-semibold">{outputItem.name}</div>
+                          <div className="text-text-tertiary system-xs-regular">{outputItem.type}</div>
                         </div>
                         {outputItem.description && (
-                          <div className="system-xs-regular mt-0.5 text-text-tertiary">
+                          <div className="mt-0.5 text-text-tertiary system-xs-regular">
                             {outputItem.description}
                           </div>
                         )}

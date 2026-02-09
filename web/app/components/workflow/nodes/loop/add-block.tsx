@@ -50,7 +50,7 @@ const AddBlock = ({
   const renderTriggerElement = useCallback((open: boolean) => {
     return (
       <div className={cn(
-        'system-sm-medium relative inline-flex h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:bg-components-button-secondary-bg-hover',
+        'relative inline-flex h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] system-sm-medium hover:bg-components-button-secondary-bg-hover',
         `${nodesReadOnly && '!cursor-not-allowed bg-components-button-secondary-bg-disabled'}`,
         open && 'bg-components-button-secondary-bg-hover',
       )}

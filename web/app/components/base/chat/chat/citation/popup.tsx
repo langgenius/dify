@@ -84,7 +84,7 @@ const Popup: FC<PopupProps> = ({
           <div className="px-4 pb-2 pt-3">
             <div className="flex h-[18px] items-center">
               <FileIcon type={fileType} className="mr-1 h-4 w-4 shrink-0" />
-              <div className="system-xs-medium truncate text-text-tertiary">
+              <div className="truncate text-text-tertiary system-xs-medium">
                 {/* If it's an upload-file reference, the title becomes a download link. */}
                 {(data.dataSourceType === 'upload_file' || data.dataSourceType === 'file') && !!data.sources?.[0]?.dataset_id
                   ? (
@@ -129,7 +129,7 @@ const Popup: FC<PopupProps> = ({
                       <div className="break-words text-[13px] text-text-secondary">{source.content}</div>
                       {
                         showHitInfo && (
-                          <div className="system-xs-medium mt-2 flex flex-wrap items-center text-text-quaternary">
+                          <div className="mt-2 flex flex-wrap items-center text-text-quaternary system-xs-medium">
                             <Tooltip
                               text={t('chat.citation.characters', { ns: 'common' })}
                               data={source.word_count}

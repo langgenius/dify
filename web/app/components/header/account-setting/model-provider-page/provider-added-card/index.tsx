@@ -114,7 +114,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       </div>
       {
         collapsed && (
-          <div className="system-xs-medium group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pl-2 pr-[11px] text-text-tertiary">
+          <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pl-2 pr-[11px] text-text-tertiary system-xs-medium">
             {(showModelProvider || !notConfigured) && (
               <>
                 <div className="flex h-6 items-center pl-1 pr-1.5 leading-6 group-hover:hidden">
@@ -146,7 +146,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             {!showModelProvider && notConfigured && (
               <div className="flex h-6 items-center pl-1 pr-1.5">
                 <RiInformation2Fill className="mr-1 h-4 w-4 text-text-accent" />
-                <span className="system-xs-medium text-text-secondary">{t('modelProvider.configureTip', { ns: 'common' })}</span>
+                <span className="text-text-secondary system-xs-medium">{t('modelProvider.configureTip', { ns: 'common' })}</span>
               </div>
             )}
             {

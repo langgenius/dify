@@ -203,7 +203,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="relative flex p-6 pb-3 pr-14">
-        <div className="title-2xl-semi-bold grow truncate text-text-primary">
+        <div className="grow truncate text-text-primary title-2xl-semi-bold">
           {t('nodes.llm.jsonSchema.title', { ns: 'workflow' })}
         </div>
         <div className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center p-1.5" onClick={onClose}>

@@ -163,15 +163,15 @@ const MCPDetailContent: FC<Props> = ({
           </div>
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
-              <div className="system-md-semibold truncate text-text-primary" title={detail.name}>{detail.name}</div>
+              <div className="truncate text-text-primary system-md-semibold" title={detail.name}>{detail.name}</div>
             </div>
             <div className="mt-0.5 flex items-center gap-1">
               <Tooltip popupContent={t('mcp.identifier', { ns: 'tools' })}>
-                <div className="system-xs-regular shrink-0 cursor-pointer text-text-secondary" onClick={() => copy(detail.server_identifier || '')}>{detail.server_identifier}</div>
+                <div className="shrink-0 cursor-pointer text-text-secondary system-xs-regular" onClick={() => copy(detail.server_identifier || '')}>{detail.server_identifier}</div>
               </Tooltip>
-              <div className="system-xs-regular shrink-0 text-text-quaternary">·</div>
+              <div className="shrink-0 text-text-quaternary system-xs-regular">·</div>
               <Tooltip popupContent={t('mcp.modal.serverUrl', { ns: 'tools' })}>
-                <div className="system-xs-regular truncate text-text-secondary">{detail.server_url}</div>
+                <div className="truncate text-text-secondary system-xs-regular">{detail.server_url}</div>
               </Tooltip>
             </div>
           </div>
@@ -224,8 +224,8 @@ const MCPDetailContent: FC<Props> = ({
           <>
             <div className="flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2">
               <div className="flex h-6 items-center">
-                {!isUpdating && <div className="system-sm-semibold-uppercase text-text-secondary">{t('mcp.gettingTools', { ns: 'tools' })}</div>}
-                {isUpdating && <div className="system-sm-semibold-uppercase text-text-secondary">{t('mcp.updateTools', { ns: 'tools' })}</div>}
+                {!isUpdating && <div className="text-text-secondary system-sm-semibold-uppercase">{t('mcp.gettingTools', { ns: 'tools' })}</div>}
+                {isUpdating && <div className="text-text-secondary system-sm-semibold-uppercase">{t('mcp.updateTools', { ns: 'tools' })}</div>}
               </div>
               <div></div>
             </div>
@@ -236,7 +236,7 @@ const MCPDetailContent: FC<Props> = ({
         )}
         {!isUpdating && detail.is_team_authorization && !isGettingTools && !toolList.length && (
           <div className="flex h-full w-full flex-col items-center justify-center">
-            <div className="system-sm-regular mb-3 text-text-tertiary">{t('mcp.toolsEmpty', { ns: 'tools' })}</div>
+            <div className="mb-3 text-text-tertiary system-sm-regular">{t('mcp.toolsEmpty', { ns: 'tools' })}</div>
             <Button
               variant="primary"
               onClick={handleUpdateTools}
@@ -249,8 +249,8 @@ const MCPDetailContent: FC<Props> = ({
           <>
             <div className="flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2">
               <div className="flex h-6 items-center">
-                {toolList.length > 1 && <div className="system-sm-semibold-uppercase text-text-secondary">{t('mcp.toolsNum', { ns: 'tools', count: toolList.length })}</div>}
-                {toolList.length === 1 && <div className="system-sm-semibold-uppercase text-text-secondary">{t('mcp.onlyTool', { ns: 'tools' })}</div>}
+                {toolList.length > 1 && <div className="text-text-secondary system-sm-semibold-uppercase">{t('mcp.toolsNum', { ns: 'tools', count: toolList.length })}</div>}
+                {toolList.length === 1 && <div className="text-text-secondary system-sm-semibold-uppercase">{t('mcp.onlyTool', { ns: 'tools' })}</div>}
               </div>
               <div>
                 <Button size="small" onClick={showUpdateConfirm}>
@@ -272,9 +272,9 @@ const MCPDetailContent: FC<Props> = ({
 
         {!isUpdating && !detail.is_team_authorization && (
           <div className="flex h-full w-full flex-col items-center justify-center">
-            {!isAuthorizing && <div className="system-md-medium mb-1 text-text-secondary">{t('mcp.authorizingRequired', { ns: 'tools' })}</div>}
-            {isAuthorizing && <div className="system-md-medium mb-1 text-text-secondary">{t('mcp.authorizing', { ns: 'tools' })}</div>}
-            <div className="system-sm-regular text-text-tertiary">{t('mcp.authorizeTip', { ns: 'tools' })}</div>
+            {!isAuthorizing && <div className="mb-1 text-text-secondary system-md-medium">{t('mcp.authorizingRequired', { ns: 'tools' })}</div>}
+            {isAuthorizing && <div className="mb-1 text-text-secondary system-md-medium">{t('mcp.authorizing', { ns: 'tools' })}</div>}
+            <div className="text-text-tertiary system-sm-regular">{t('mcp.authorizeTip', { ns: 'tools' })}</div>
           </div>
         )}
       </div>

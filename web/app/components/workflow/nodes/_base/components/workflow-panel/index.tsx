@@ -698,10 +698,10 @@ const BasePanel: FC<BasePanelProps> = ({
             {
               allowGraphActions && !!availableNextBlocks.length && (
                 <div className="border-t-[0.5px] border-divider-regular p-4">
-                  <div className="system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary">
+                  <div className="mb-1 flex items-center text-text-secondary system-sm-semibold-uppercase">
                     {t('panel.nextStep', { ns: 'workflow' }).toLocaleUpperCase()}
                   </div>
-                  <div className="system-xs-regular mb-2 text-text-tertiary">
+                  <div className="mb-2 text-text-tertiary system-xs-regular">
                     {t('panel.addNextStep', { ns: 'workflow' })}
                   </div>
                   <NextStep selectedNode={selectedNode} />

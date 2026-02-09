@@ -22,10 +22,10 @@ const LeftHeader = ({
 
   return (
     <div className="relative flex flex-col gap-y-0.5 pb-2 pt-4">
-      <div className="system-2xs-semibold-uppercase bg-pipeline-add-documents-title-bg bg-clip-text text-transparent">
+      <div className="bg-pipeline-add-documents-title-bg bg-clip-text text-transparent system-2xs-semibold-uppercase">
         {title}
       </div>
-      <div className="system-md-semibold text-text-primary">
+      <div className="text-text-primary system-md-semibold">
         {t('addDocuments.steps.processDocuments', { ns: 'datasetPipeline' })}
       </div>
       <Button

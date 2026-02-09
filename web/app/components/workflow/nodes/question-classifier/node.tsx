@@ -31,7 +31,7 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
   const shouldShowTooltip = topic.name.length > MAX_CLASS_TEXT_LENGTH
 
   const content = (
-    <div className="system-xs-regular truncate text-text-tertiary">
+    <div className="truncate text-text-tertiary system-xs-regular">
       <ReadonlyInputWithSelectVar
         value={truncatedText}
         nodeId={nodeId}
@@ -42,7 +42,7 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
 
   return (
     <div className="flex flex-col gap-y-0.5 rounded-md bg-workflow-block-parma-bg px-[5px] py-[3px]">
-      <div className="system-2xs-semibold-uppercase uppercase text-text-secondary">
+      <div className="uppercase text-text-secondary system-2xs-semibold-uppercase">
         {`${t(`${i18nPrefix}.class`, { ns: 'workflow' })} ${index + 1}`}
       </div>
       {shouldShowTooltip

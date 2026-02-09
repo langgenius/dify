@@ -46,11 +46,11 @@ const MarkdownFileEditor = ({
           : (
               <span className="flex items-center gap-1 text-components-input-text-placeholder">
                 <span>{t('promptEditor.skillMarkdown.placeholderPrefix', { ns: 'common' })}</span>
-                <span className="system-kbd inline-flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-[1px] text-text-placeholder">/</span>
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-[1px] text-text-placeholder system-kbd">/</span>
                 <span className="text-[13px] leading-4 underline decoration-dotted">
                   {t('promptEditor.skillMarkdown.placeholderReferenceFiles', { ns: 'common' })}
                 </span>
-                <span className="system-kbd inline-flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-[1px] text-text-placeholder">@</span>
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-[1px] text-text-placeholder system-kbd">@</span>
                 <span className="text-[13px] leading-4 underline decoration-dotted">
                   {t('promptEditor.skillMarkdown.placeholderUseTools', { ns: 'common' })}
                 </span>

@@ -292,7 +292,7 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
                         ? <Agent className="h-4 w-4 text-text-primary-on-surface" />
                         : <AssembleVariablesAlt className="h-4 w-4 text-text-primary-on-surface" />}
                     </div>
-                    <span className="system-md-semibold text-text-primary">
+                    <span className="text-text-primary system-md-semibold">
                       {modalTitle}
                     </span>
                   </div>

@@ -74,7 +74,7 @@ const ConfigContextItem: FC<Props> = ({
             !readOnly && 'cursor-pointer hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
           )}
         >
-          <div className="system-xs-semibold-uppercase text-text-secondary">
+          <div className="text-text-secondary system-xs-semibold-uppercase">
             {t('nodes.llm.context', { ns: 'workflow' })}
           </div>
           <div className="flex items-center gap-1">
@@ -103,7 +103,7 @@ const ConfigContextItem: FC<Props> = ({
                 />
               )
             : (
-                <div className="system-xs-regular px-3 py-2 text-center text-text-tertiary">
+                <div className="px-3 py-2 text-center text-text-tertiary system-xs-regular">
                   {t('common.noAgentNodes', { ns: 'workflow' })}
                 </div>
               )}

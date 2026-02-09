@@ -13,18 +13,18 @@ const InfoPanel = () => {
           <RiBookOpenLine className="h-5 w-5 text-text-accent" />
         </div>
         <p className="flex flex-col items-start gap-2 self-stretch">
-          <span className="system-xl-semibold self-stretch text-text-secondary">
+          <span className="self-stretch text-text-secondary system-xl-semibold">
             {t('connectDatasetIntro.title', { ns: 'dataset' })}
           </span>
-          <span className="system-sm-regular text-text-tertiary">
+          <span className="text-text-tertiary system-sm-regular">
             {t('connectDatasetIntro.content.front', { ns: 'dataset' })}
-            <a className="system-sm-regular ml-1 text-text-accent" href={docLink('/use-dify/knowledge/external-knowledge-api')} target="_blank" rel="noopener noreferrer">
+            <a className="ml-1 text-text-accent system-sm-regular" href={docLink('/use-dify/knowledge/external-knowledge-api')} target="_blank" rel="noopener noreferrer">
               {t('connectDatasetIntro.content.link', { ns: 'dataset' })}
             </a>
             {t('connectDatasetIntro.content.end', { ns: 'dataset' })}
           </span>
           <a
-            className="system-sm-regular self-stretch text-text-accent"
+            className="self-stretch text-text-accent system-sm-regular"
             href={docLink('/use-dify/knowledge/connect-external-knowledge-base')}
             target="_blank"
             rel="noopener noreferrer"

@@ -58,7 +58,7 @@ const SettingContent = ({
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <div className="system-xl-semibold text-text-primary">{!imageUpload ? t('feature.fileUpload.modalTitle', { ns: 'appDebug' }) : t('feature.imageUpload.modalTitle', { ns: 'appDebug' })}</div>
+        <div className="text-text-primary system-xl-semibold">{!imageUpload ? t('feature.fileUpload.modalTitle', { ns: 'appDebug' }) : t('feature.imageUpload.modalTitle', { ns: 'appDebug' })}</div>
         <div className="cursor-pointer p-1" onClick={onClose}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
       </div>
       <FileUploadSetting

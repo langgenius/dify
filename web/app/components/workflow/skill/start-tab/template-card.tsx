@@ -27,16 +27,16 @@ const TemplateCard = ({ template, added, disabled, loading, onUse }: TemplateCar
           className="!bg-components-icon-bg-violet-soft"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-          <span className="system-md-semibold truncate text-text-secondary">
+          <span className="truncate text-text-secondary system-md-semibold">
             {template.name}
           </span>
-          <span className="system-xs-regular text-text-tertiary">
+          <span className="text-text-tertiary system-xs-regular">
             {t('skill.startTab.filesIncluded', { count: template.fileCount })}
           </span>
         </div>
       </div>
       <div className="flex flex-1 flex-col px-4 py-1">
-        <p className="system-xs-regular line-clamp-2 min-h-[32px] w-full text-text-tertiary">
+        <p className="line-clamp-2 min-h-[32px] w-full text-text-tertiary system-xs-regular">
           {template.description}
         </p>
       </div>

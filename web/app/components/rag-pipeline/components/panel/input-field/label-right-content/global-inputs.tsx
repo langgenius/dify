@@ -7,7 +7,7 @@ const GlobalInputs = () => {
 
   return (
     <div className="flex items-center gap-x-1">
-      <span className="system-sm-semibold-uppercase text-text-secondary">
+      <span className="text-text-secondary system-sm-semibold-uppercase">
         {t('inputFieldPanel.globalInputs.title', { ns: 'datasetPipeline' })}
       </span>
       <Tooltip

@@ -96,7 +96,7 @@ const List = () => {
             onClick={() => setShowExternalApiPanel(true)}
           >
             <ApiConnectionMod className="h-4 w-4 text-components-button-secondary-text" />
-            <div className="system-sm-medium flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
+            <div className="flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text system-sm-medium">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
           </Button>
         </div>
       </div>

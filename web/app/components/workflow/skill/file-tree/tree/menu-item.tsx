@@ -39,7 +39,7 @@ const iconVariants = cva('size-4 text-text-tertiary', {
   },
 })
 
-const labelVariants = cva('system-sm-regular text-text-secondary', {
+const labelVariants = cva('text-text-secondary system-sm-regular', {
   variants: {
     variant: {
       default: '',

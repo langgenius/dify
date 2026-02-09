@@ -96,12 +96,12 @@ const EmailConfigureModal = ({
         <RiCloseLine className="h-5 w-5 text-text-tertiary" />
       </div>
       <div className="space-y-1 p-6 pb-3">
-        <div className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.title`, { ns: 'workflow' })}</div>
-        <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.description`, { ns: 'workflow' })}</div>
+        <div className="text-text-primary title-2xl-semi-bold">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.title`, { ns: 'workflow' })}</div>
+        <div className="text-text-tertiary system-xs-regular">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.description`, { ns: 'workflow' })}</div>
       </div>
       <div className="space-y-5 px-6 py-3">
         <div>
-          <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">
+          <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">
             {t(`${i18nPrefix}.deliveryMethod.emailConfigure.subject`, { ns: 'workflow' })}
           </div>
           <Input
@@ -112,7 +112,7 @@ const EmailConfigureModal = ({
           />
         </div>
         <div>
-          <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">
+          <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">
             {t(`${i18nPrefix}.deliveryMethod.emailConfigure.body`, { ns: 'workflow' })}
           </div>
           <MailBodyInput
@@ -123,7 +123,7 @@ const EmailConfigureModal = ({
           />
         </div>
         <div>
-          <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">
+          <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">
             {t(`${i18nPrefix}.deliveryMethod.emailConfigure.recipient`, { ns: 'workflow' })}
           </div>
           <Recipient
@@ -137,12 +137,12 @@ const EmailConfigureModal = ({
             <RiBugLine className="h-3.5 w-3.5 text-text-primary-on-surface" />
           </div>
           <div className="grow space-y-1">
-            <div className="system-sm-medium text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`, { ns: 'workflow' })}</div>
-            <div className="body-xs-regular text-text-tertiary">
+            <div className="text-text-secondary system-sm-medium">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`, { ns: 'workflow' })}</div>
+            <div className="text-text-tertiary body-xs-regular">
               <Trans
                 i18nKey={`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip1`}
                 ns="workflow"
-                components={{ email: <span className="body-md-medium text-text-primary">{email}</span> }}
+                components={{ email: <span className="text-text-primary body-md-medium">{email}</span> }}
                 values={{ email }}
               />
               <div>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip2`, { ns: 'workflow' })}</div>

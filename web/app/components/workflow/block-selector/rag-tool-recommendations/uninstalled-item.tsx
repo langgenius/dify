@@ -34,15 +34,15 @@ const UninstalledItem = ({
       />
       <div className="ml-2 flex w-0 grow items-center">
         <div className="flex w-0 grow items-center gap-x-2">
-          <span className="system-sm-regular truncate text-text-primary">
+          <span className="truncate text-text-primary system-sm-regular">
             {getLocalizedText(payload.label)}
           </span>
-          <span className="system-xs-regular text-text-quaternary">
+          <span className="text-text-quaternary system-xs-regular">
             {payload.org}
           </span>
         </div>
         <div
-          className="system-xs-medium cursor-pointer pl-1.5 text-components-button-secondary-accent-text"
+          className="cursor-pointer pl-1.5 text-components-button-secondary-accent-text system-xs-medium"
           onClick={showInstallModal}
         >
           {t('installAction', { ns: 'plugin' })}

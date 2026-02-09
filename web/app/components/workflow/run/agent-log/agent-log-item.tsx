@@ -73,14 +73,14 @@ const AgentLogItem = ({
           toolIcon={toolIcon}
         />
         <div
-          className="system-sm-semibold-uppercase grow truncate text-text-secondary"
+          className="grow truncate text-text-secondary system-sm-semibold-uppercase"
           title={label}
         >
           {label}
         </div>
         {
           !!metadata?.elapsed_time && (
-            <div className="system-xs-regular mr-2 shrink-0 text-text-tertiary">
+            <div className="mr-2 shrink-0 text-text-tertiary system-xs-regular">
               {metadata?.elapsed_time?.toFixed(3)}
               s
             </div>

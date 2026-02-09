@@ -347,7 +347,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
       ? [
           <span
             key="slash"
-            className="system-kbd inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary"
+            className="inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary system-kbd"
           />,
           <span
             key="insert"
@@ -357,7 +357,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
       : [
           <span
             key="slash"
-            className="system-kbd inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary"
+            className="inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary system-kbd"
           />,
           <span
             key="insert"
@@ -365,7 +365,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
           />,
           <span
             key="at"
-            className="system-kbd inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary"
+            className="inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary system-kbd"
           />,
           <span
             key="tools"

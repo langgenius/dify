@@ -108,7 +108,7 @@ const PermissionSelector = ({
                   <div className="flex size-6 shrink-0 items-center justify-center">
                     <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={20} />
                   </div>
-                  <div className="system-sm-regular grow p-1 text-components-input-text-filled">
+                  <div className="grow p-1 text-components-input-text-filled system-sm-regular">
                     {t('form.permissionsOnlyMe', { ns: 'datasetSettings' })}
                   </div>
                 </>
@@ -120,7 +120,7 @@ const PermissionSelector = ({
                   <div className="flex size-6 shrink-0 items-center justify-center">
                     <RiGroup2Line className="size-4 text-text-secondary" />
                   </div>
-                  <div className="system-sm-regular grow p-1 text-components-input-text-filled">
+                  <div className="grow p-1 text-components-input-text-filled system-sm-regular">
                     {t('form.permissionsAllMember', { ns: 'datasetSettings' })}
                   </div>
                 </>
@@ -160,7 +160,7 @@ const PermissionSelector = ({
                   </div>
                   <div
                     title={selectedMemberNames}
-                    className="system-sm-regular grow truncate p-1 text-components-input-text-filled"
+                    className="grow truncate p-1 text-components-input-text-filled system-sm-regular"
                   >
                     {selectedMemberNames}
                   </div>
@@ -247,7 +247,7 @@ const PermissionSelector = ({
                   ))}
                   {
                     !showMe && filteredMemberList.length === 0 && (
-                      <div className="system-xs-regular flex items-center justify-center whitespace-pre-wrap px-1 py-6 text-center text-text-tertiary">
+                      <div className="flex items-center justify-center whitespace-pre-wrap px-1 py-6 text-center text-text-tertiary system-xs-regular">
                         {t('form.onSearchResults', { ns: 'datasetSettings' })}
                       </div>
                     )

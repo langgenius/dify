@@ -194,7 +194,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
                   type={item.type}
                   size="xs"
                 />
-                <span title={item.label} className="system-xs-medium truncate text-text-secondary">
+                <span title={item.label} className="truncate text-text-secondary system-xs-medium">
                   {item.label}
                 </span>
               </div>

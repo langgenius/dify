@@ -45,16 +45,16 @@ const ProviderCard = ({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
-          <span className="system-md-semibold text-text-primary">
+          <span className="text-text-primary system-md-semibold">
             {t(PROVIDER_LABEL_KEYS[provider.provider_type as keyof typeof PROVIDER_LABEL_KEYS] ?? 'sandboxProvider.e2b.label', { ns: 'common' })}
           </span>
           {IS_CLOUD_EDITION && provider.is_system_configured && !provider.is_tenant_configured && (
-            <span className="system-2xs-medium rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary">
+            <span className="rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary system-2xs-medium">
               {t('sandboxProvider.managedBySaas', { ns: 'common' })}
             </span>
           )}
         </div>
-        <div className="system-xs-regular text-text-tertiary">
+        <div className="text-text-tertiary system-xs-regular">
           {t(PROVIDER_DESCRIPTION_KEYS[provider.provider_type as keyof typeof PROVIDER_DESCRIPTION_KEYS] ?? 'sandboxProvider.e2b.description', { ns: 'common' })}
         </div>
       </div>
@@ -69,7 +69,7 @@ const ProviderCard = ({
               )}
             >
               <Indicator color="green" />
-              <span className="system-xs-semibold-uppercase text-util-colors-green-green-600">
+              <span className="text-util-colors-green-green-600 system-xs-semibold-uppercase">
                 {t('sandboxProvider.connected', { ns: 'common' })}
               </span>
             </span>

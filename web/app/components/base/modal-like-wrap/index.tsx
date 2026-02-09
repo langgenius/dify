@@ -31,7 +31,7 @@ const ModalLikeWrap: FC<Props> = ({
     <div className={cn('w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-3 pb-4 pt-3.5 shadow-xl', className)}>
       {beforeHeader || null}
       <div className="mb-1 flex h-6 items-center justify-between">
-        <div className="system-xl-semibold text-text-primary">{title}</div>
+        <div className="text-text-primary system-xl-semibold">{title}</div>
         {!hideCloseBtn && (
           <div
             className="cursor-pointer p-1.5 text-text-tertiary"

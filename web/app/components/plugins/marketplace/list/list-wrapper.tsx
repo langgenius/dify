@@ -31,7 +31,7 @@ const ListWrapper = ({
       {
         plugins && (
           <div className="mb-4 flex items-center pt-3">
-            <div className="title-xl-semi-bold text-text-primary">{t('marketplace.pluginsResult', { ns: 'plugin', num: pluginsTotal })}</div>
+            <div className="text-text-primary title-xl-semi-bold">{t('marketplace.pluginsResult', { ns: 'plugin', num: pluginsTotal })}</div>
             <div className="mx-3 h-3.5 w-[1px] bg-divider-regular"></div>
             <SortDropdown />
           </div>

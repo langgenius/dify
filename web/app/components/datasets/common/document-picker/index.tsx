@@ -87,7 +87,7 @@ const DocumentPicker: FC<Props> = ({
           <FileIcon name={name} extension={extension} size="xl" />
           <div className="ml-1 mr-0.5 flex flex-col items-start">
             <div className="flex items-center space-x-0.5">
-              <span className={cn('system-md-semibold text-text-primary')}>
+              <span className={cn('text-text-primary system-md-semibold')}>
                 {' '}
                 {name || '--'}
               </span>

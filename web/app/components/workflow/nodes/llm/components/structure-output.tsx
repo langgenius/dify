@@ -38,8 +38,8 @@ const StructureOutput: FC<Props> = ({
     <div className={cn(className)}>
       <div className="flex justify-between">
         <div className="flex items-center leading-[18px]">
-          <div className="code-sm-semibold text-text-secondary">structured_output</div>
-          <div className="system-xs-regular ml-2 text-text-tertiary">object</div>
+          <div className="text-text-secondary code-sm-semibold">structured_output</div>
+          <div className="ml-2 text-text-tertiary system-xs-regular">object</div>
         </div>
         <Button
           size="small"
@@ -48,7 +48,7 @@ const StructureOutput: FC<Props> = ({
           onClick={showConfigModal}
         >
           <RiEditLine className="mr-1 size-3.5" />
-          <div className="system-xs-medium text-components-button-secondary-text">{t('structOutput.configure', { ns: 'app' })}</div>
+          <div className="text-components-button-secondary-text system-xs-medium">{t('structOutput.configure', { ns: 'app' })}</div>
         </Button>
       </div>
       {(value?.schema && value.schema.properties && Object.keys(value.schema.properties).length > 0)
@@ -58,7 +58,7 @@ const StructureOutput: FC<Props> = ({
             />
           )
         : (
-            <div className="system-xs-regular mt-1.5 flex h-10 cursor-pointer items-center justify-center rounded-[10px] bg-background-section text-text-tertiary" onClick={showConfigModal}>{t('structOutput.notConfiguredTip', { ns: 'app' })}</div>
+            <div className="mt-1.5 flex h-10 cursor-pointer items-center justify-center rounded-[10px] bg-background-section text-text-tertiary system-xs-regular" onClick={showConfigModal}>{t('structOutput.notConfiguredTip', { ns: 'app' })}</div>
           )}
 
       {showConfig && (

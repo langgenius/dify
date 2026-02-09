@@ -44,7 +44,7 @@ const InputFieldEditorPanel = ({
         width: `${floatingRightWidth}px`,
       }}
     >
-      <div className="system-xl-semibold flex items-center pb-1 pl-4 pr-11 pt-3.5 text-text-primary">
+      <div className="flex items-center pb-1 pl-4 pr-11 pt-3.5 text-text-primary system-xl-semibold">
         {initialData ? t('inputFieldPanel.editInputField', { ns: 'datasetPipeline' }) : t('inputFieldPanel.addInputField', { ns: 'datasetPipeline' })}
       </div>
       <button

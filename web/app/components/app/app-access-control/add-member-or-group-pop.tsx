@@ -76,7 +76,7 @@ export default function AddMemberOrGroupDialog() {
                     )
                   : (
                       <div className="flex h-7 items-center justify-center px-2 py-0.5">
-                        <span className="system-xs-regular text-text-tertiary">{t('accessControlDialog.operateGroupAndMember.noResult', { ns: 'app' })}</span>
+                        <span className="text-text-tertiary system-xs-regular">{t('accessControlDialog.operateGroupAndMember.noResult', { ns: 'app' })}</span>
                       </div>
                     )
           }
@@ -115,10 +115,10 @@ function SelectedGroupsBreadCrumb() {
   }, [setSelectedGroupsForBreadcrumb])
   return (
     <div className="flex h-7 items-center gap-x-0.5 px-2 py-0.5">
-      <span className={cn('system-xs-regular text-text-tertiary', selectedGroupsForBreadcrumb.length > 0 && 'cursor-pointer text-text-accent')} onClick={handleReset}>{t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}</span>
+      <span className={cn('text-text-tertiary system-xs-regular', selectedGroupsForBreadcrumb.length > 0 && 'cursor-pointer text-text-accent')} onClick={handleReset}>{t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}</span>
       {selectedGroupsForBreadcrumb.map((group, index) => {
         return (
-          <div key={index} className="system-xs-regular flex items-center gap-x-0.5 text-text-tertiary">
+          <div key={index} className="flex items-center gap-x-0.5 text-text-tertiary system-xs-regular">
             <span>/</span>
             <span className={index === selectedGroupsForBreadcrumb.length - 1 ? '' : 'cursor-pointer text-text-accent'} onClick={() => handleBreadCrumbClick(index)}>{group.name}</span>
           </div>
@@ -161,8 +161,8 @@ function GroupItem({ group }: GroupItemProps) {
             <RiOrganizationChart className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" />
           </div>
         </div>
-        <p className="system-sm-medium mr-1 text-text-secondary">{group.name}</p>
-        <p className="system-xs-regular text-text-tertiary">{group.groupSize}</p>
+        <p className="mr-1 text-text-secondary system-sm-medium">{group.name}</p>
+        <p className="text-text-tertiary system-xs-regular">{group.groupSize}</p>
       </div>
       <Button
         size="small"
@@ -206,16 +206,16 @@ function MemberItem({ member }: MemberItemProps) {
             <Avatar className="h-[14px] w-[14px]" textClassName="text-[12px]" avatar={null} name={member.name} />
           </div>
         </div>
-        <p className="system-sm-medium mr-1 text-text-secondary">{member.name}</p>
+        <p className="mr-1 text-text-secondary system-sm-medium">{member.name}</p>
         {currentUser.email === member.email && (
-          <p className="system-xs-regular text-text-tertiary">
+          <p className="text-text-tertiary system-xs-regular">
             (
             {t('you', { ns: 'common' })}
             )
           </p>
         )}
       </div>
-      <p className="system-xs-regular text-text-quaternary">{member.email}</p>
+      <p className="text-text-quaternary system-xs-regular">{member.email}</p>
     </BaseItem>
   )
 }

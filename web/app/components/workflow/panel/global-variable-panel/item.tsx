@@ -14,20 +14,20 @@ const Item = ({
 }: Props) => {
   return (
     <div className={cn(
-      'radius-md mb-1 border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+      'mb-1 border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs radius-md hover:bg-components-panel-on-panel-item-bg-hover',
     )}
     >
       <div className="flex items-center justify-between">
         <div className="flex grow items-center gap-1">
           <GlobalVariableIcon className="h-4 w-4 text-util-colors-orange-orange-600" />
-          <div className="system-sm-medium text-text-primary">
+          <div className="text-text-primary system-sm-medium">
             <span className="text-text-tertiary">sys.</span>
             {payload.name}
           </div>
-          <div className="system-xs-medium text-text-tertiary">{capitalize(payload.value_type)}</div>
+          <div className="text-text-tertiary system-xs-medium">{capitalize(payload.value_type)}</div>
         </div>
       </div>
-      <div className="system-xs-regular mt-1.5 truncate text-text-tertiary">{payload.description}</div>
+      <div className="mt-1.5 truncate text-text-tertiary system-xs-regular">{payload.description}</div>
     </div>
   )
 }

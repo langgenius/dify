@@ -78,14 +78,14 @@ const OneMoreStep = () => {
   return (
     <>
       <div className="mx-auto w-full">
-        <h2 className="title-4xl-semi-bold text-text-secondary">{t('oneMoreStep', { ns: 'login' })}</h2>
-        <p className="body-md-regular mt-1 text-text-tertiary">{t('createSample', { ns: 'login' })}</p>
+        <h2 className="text-text-secondary title-4xl-semi-bold">{t('oneMoreStep', { ns: 'login' })}</h2>
+        <p className="mt-1 text-text-tertiary body-md-regular">{t('createSample', { ns: 'login' })}</p>
       </div>
 
       <div className="mx-auto mt-6 w-full">
         <div className="relative">
           <div className="mb-5">
-            <label className="system-md-semibold my-2 flex items-center justify-between text-text-secondary">
+            <label className="my-2 flex items-center justify-between text-text-secondary system-md-semibold">
               {t('invitationCode', { ns: 'login' })}
               <Tooltip
                 popupContent={(
@@ -113,7 +113,7 @@ const OneMoreStep = () => {
             </div>
           </div>
           <div className="mb-5">
-            <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
+            <label htmlFor="name" className="my-2 text-text-secondary system-md-semibold">
               {t('interfaceLanguage', { ns: 'login' })}
             </label>
             <div className="mt-1">
@@ -127,7 +127,7 @@ const OneMoreStep = () => {
             </div>
           </div>
           <div className="mb-4">
-            <label htmlFor="timezone" className="system-md-semibold text-text-tertiary">
+            <label htmlFor="timezone" className="text-text-tertiary system-md-semibold">
               {t('timezone', { ns: 'login' })}
             </label>
             <div className="mt-1">
@@ -150,11 +150,11 @@ const OneMoreStep = () => {
               {t('go', { ns: 'login' })}
             </Button>
           </div>
-          <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
+          <div className="mt-2 block w-full text-text-tertiary system-xs-regular">
             {t('license.tip', { ns: 'login' })}
             &nbsp;
             <Link
-              className="system-xs-medium text-text-accent-secondary"
+              className="text-text-accent-secondary system-xs-medium"
               target="_blank"
               rel="noopener noreferrer"
               href={LICENSE_LINK}

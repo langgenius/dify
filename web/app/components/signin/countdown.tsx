@@ -32,7 +32,7 @@ export default function Countdown({ onResend }: CountdownProps) {
   }, [time])
 
   return (
-    <p className="system-xs-regular text-text-tertiary">
+    <p className="text-text-tertiary system-xs-regular">
       <span>{t('checkCode.didNotReceiveCode', { ns: 'login' })}</span>
       {time > 0 && (
         <span>
@@ -41,7 +41,7 @@ export default function Countdown({ onResend }: CountdownProps) {
         </span>
       )}
       {
-        time <= 0 && <span className="system-xs-medium cursor-pointer text-text-accent-secondary" onClick={resend}>{t('checkCode.resend', { ns: 'login' })}</span>
+        time <= 0 && <span className="cursor-pointer text-text-accent-secondary system-xs-medium" onClick={resend}>{t('checkCode.resend', { ns: 'login' })}</span>
       }
     </p>
   )

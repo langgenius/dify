@@ -394,7 +394,7 @@ const Debug: FC<IDebug> = ({
     <>
       <div className="shrink-0">
         <div className="flex items-center justify-between px-4 pb-2 pt-3">
-          <div className="system-xl-semibold text-text-primary">{t('inputs.title', { ns: 'appDebug' })}</div>
+          <div className="text-text-primary system-xl-semibold">{t('inputs.title', { ns: 'appDebug' })}</div>
           <div className="flex items-center">
             {
               debugWithMultipleModel
@@ -539,7 +539,7 @@ const Debug: FC<IDebug> = ({
                 {!completionRes && !isResponding && (
                   <div className="flex grow flex-col items-center justify-center gap-2">
                     <RiSparklingFill className="h-12 w-12 text-text-empty-state-icon" />
-                    <div className="system-sm-regular text-text-quaternary">{t('noResult', { ns: 'appDebug' })}</div>
+                    <div className="text-text-quaternary system-sm-regular">{t('noResult', { ns: 'appDebug' })}</div>
                   </div>
                 )}
               </>

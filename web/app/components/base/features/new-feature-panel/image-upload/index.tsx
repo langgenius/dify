@@ -72,20 +72,20 @@ const FileUpload = ({
     >
       <>
         {!file?.enabled && (
-          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('feature.imageUpload.description', { ns: 'appDebug' })}</div>
+          <div className="line-clamp-2 min-h-8 text-text-tertiary system-xs-regular">{t('feature.imageUpload.description', { ns: 'appDebug' })}</div>
         )}
         {file?.enabled && (
           <>
             {!isHovering && !modalOpen && (
               <div className="flex items-center gap-4 pt-0.5">
                 <div className="">
-                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.imageUpload.supportedTypes', { ns: 'appDebug' })}</div>
-                  <div className="system-xs-regular text-text-secondary">{supportedTypes}</div>
+                  <div className="mb-0.5 text-text-tertiary system-2xs-medium-uppercase">{t('feature.imageUpload.supportedTypes', { ns: 'appDebug' })}</div>
+                  <div className="text-text-secondary system-xs-regular">{supportedTypes}</div>
                 </div>
                 <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
-                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.imageUpload.numberLimit', { ns: 'appDebug' })}</div>
-                  <div className="system-xs-regular text-text-secondary">{file?.number_limits}</div>
+                  <div className="mb-0.5 text-text-tertiary system-2xs-medium-uppercase">{t('feature.imageUpload.numberLimit', { ns: 'appDebug' })}</div>
+                  <div className="text-text-secondary system-xs-regular">{file?.number_limits}</div>
                 </div>
               </div>
             )}

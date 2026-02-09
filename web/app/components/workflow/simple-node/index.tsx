@@ -104,7 +104,7 @@ const SimpleNode: FC<SimpleNodeProps> = ({
           />
           <div
             title={data.title}
-            className="system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary"
+            className="mr-1 flex grow items-center truncate text-text-primary system-sm-semibold-uppercase"
           >
             <div>
               {data.title}

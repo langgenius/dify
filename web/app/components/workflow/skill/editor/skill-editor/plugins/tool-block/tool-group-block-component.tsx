@@ -665,7 +665,7 @@ const ToolGroupBlockComponent = ({
       />
       {needAuthorization && (
         <div className="flex min-h-[200px] flex-1 flex-col items-center justify-center px-4 py-6 text-text-tertiary">
-          <div className="system-xs-regular text-text-tertiary">
+          <div className="text-text-tertiary system-xs-regular">
             {t('skillEditor.authorizationRequired', { ns: 'workflow' })}
           </div>
         </div>
@@ -682,9 +682,9 @@ const ToolGroupBlockComponent = ({
           <div className="flex items-center gap-3">
             {renderProviderHeaderIcon()}
             <div className="flex flex-col">
-              <span className="system-md-semibold text-text-secondary">{providerLabel}</span>
+              <span className="text-text-secondary system-md-semibold">{providerLabel}</span>
               {providerAuthor && (
-                <span className="system-xs-regular text-text-tertiary">{t('toolGroup.byAuthor', { ns: 'workflow', author: providerAuthor })}</span>
+                <span className="text-text-tertiary system-xs-regular">{t('toolGroup.byAuthor', { ns: 'workflow', author: providerAuthor })}</span>
               )}
             </div>
           </div>
@@ -702,7 +702,7 @@ const ToolGroupBlockComponent = ({
           </button>
         </div>
         {providerDescription && (
-          <div className="system-xs-regular mt-2 text-text-tertiary">
+          <div className="mt-2 text-text-tertiary system-xs-regular">
             {providerDescription}
           </div>
         )}
@@ -755,7 +755,7 @@ const ToolGroupBlockComponent = ({
         />
         {needAuthorization && (
           <div className="flex min-h-[120px] flex-1 flex-col items-center justify-center px-4 py-6 text-text-tertiary">
-            <div className="system-xs-regular text-text-tertiary">
+            <div className="text-text-tertiary system-xs-regular">
               {t('skillEditor.authorizationRequired', { ns: 'workflow' })}
             </div>
           </div>
@@ -763,7 +763,7 @@ const ToolGroupBlockComponent = ({
       </div>
       {!needAuthorization && (
         <div className="mt-2 flex flex-col gap-2 border-t border-divider-subtle px-4 pb-4 pt-2">
-          <div className="system-sm-semibold-uppercase text-text-secondary">
+          <div className="text-text-secondary system-sm-semibold-uppercase">
             {t('toolGroup.actionsEnabled', { ns: 'workflow', num: displayEnabledCount })}
           </div>
           <div className="flex flex-col gap-2">
@@ -776,7 +776,7 @@ const ToolGroupBlockComponent = ({
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <div className="system-md-semibold flex-1 text-text-secondary">
+                  <div className="flex-1 text-text-secondary system-md-semibold">
                     {item.toolLabel}
                   </div>
                   {item.toolParams?.length
@@ -807,7 +807,7 @@ const ToolGroupBlockComponent = ({
                   </div>
                 </div>
                 {item.toolDescription && (
-                  <div className="system-xs-regular mt-1 text-text-tertiary">
+                  <div className="mt-1 text-text-tertiary system-xs-regular">
                     {item.toolDescription}
                   </div>
                 )}
@@ -842,18 +842,18 @@ const ToolGroupBlockComponent = ({
         }}
       >
         {renderIcon()}
-        <span className={cn('system-xs-medium max-w-[160px] truncate', needAuthorization ? 'text-text-warning' : 'text-text-accent')}>
+        <span className={cn('max-w-[160px] truncate system-xs-medium', needAuthorization ? 'text-text-warning' : 'text-text-accent')}>
           {providerLabel}
         </span>
         {needAuthorization
           ? (
-              <span className="system-2xs-medium-uppercase flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning">
+              <span className="flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning system-2xs-medium-uppercase">
                 {authBadgeLabel}
                 <RiAlertFill className="h-3 w-3" />
               </span>
             )
           : (
-              <span className="system-2xs-medium-uppercase flex h-4 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 text-text-accent-secondary">
+              <span className="flex h-4 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 text-text-accent-secondary system-2xs-medium-uppercase">
                 {displayEnabledCount}
               </span>
             )}

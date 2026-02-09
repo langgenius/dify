@@ -141,9 +141,9 @@ const ToolSettingsSection = ({
     <>
       <Divider className="my-1 w-full" />
       <div className="px-4 pb-1 pt-3">
-        <div className="system-sm-semibold-uppercase mb-1 text-text-primary">{t('detailPanel.toolSelector.reasoningConfig', { ns: 'plugin' })}</div>
-        <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}</div>
-        <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}</div>
+        <div className="mb-1 text-text-primary system-sm-semibold-uppercase">{t('detailPanel.toolSelector.reasoningConfig', { ns: 'plugin' })}</div>
+        <div className="text-text-tertiary system-xs-regular">{t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}</div>
+        <div className="text-text-tertiary system-xs-regular">{t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}</div>
       </div>
       {showSettingsSection && (
         <ReasoningConfigForm

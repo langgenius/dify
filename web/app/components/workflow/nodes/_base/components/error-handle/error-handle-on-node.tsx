@@ -31,11 +31,11 @@ const ErrorHandleOnNode = ({
         data._runningStatus === NodeRunningStatus.Exception && 'border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover',
       )}
       >
-        <div className="system-xs-medium-uppercase text-text-tertiary">
+        <div className="text-text-tertiary system-xs-medium-uppercase">
           {t('common.onFailure', { ns: 'workflow' })}
         </div>
         <div className={cn(
-          'system-xs-medium text-text-secondary',
+          'text-text-secondary system-xs-medium',
           data._runningStatus === NodeRunningStatus.Exception && 'text-text-warning',
         )}
         >

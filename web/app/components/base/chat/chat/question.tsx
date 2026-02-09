@@ -150,7 +150,7 @@ const Question: FC<QuestionProps> = ({
                   <div className="max-h-[158px] overflow-y-auto overflow-x-hidden">
                     <Textarea
                       className={cn(
-                        'body-lg-regular w-full p-1 leading-6 text-text-tertiary outline-none',
+                        'w-full p-1 leading-6 text-text-tertiary outline-none body-lg-regular',
                       )}
                       autoFocus
                       minRows={1}

@@ -17,11 +17,11 @@ const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
         <Notion className="size-6" />
       </div>
       <div className="mb-1 flex flex-col gap-y-1 pb-3 pt-1">
-        <span className="system-md-semibold text-text-secondary">
+        <span className="text-text-secondary system-md-semibold">
           {t('stepOne.notionSyncTitle', { ns: 'datasetCreation' })}
           <Icon3Dots className="relative -left-1.5 -top-2.5 inline h-4 w-4 text-text-secondary" />
         </span>
-        <div className="system-sm-regular text-text-tertiary">{t('stepOne.notionSyncTip', { ns: 'datasetCreation' })}</div>
+        <div className="text-text-tertiary system-sm-regular">{t('stepOne.notionSyncTip', { ns: 'datasetCreation' })}</div>
       </div>
       <Button variant="primary" onClick={onSetting}>{t('stepOne.connect', { ns: 'datasetCreation' })}</Button>
     </div>

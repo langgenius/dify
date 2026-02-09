@@ -97,7 +97,7 @@ const Operation = ({
       offset={{ mainAxis: 4 }}
     >
       <PortalToFollowElemTrigger asChild onClick={() => setOpen(prev => !prev)}>
-        <div className={cn('system-sm-regular group flex h-full w-full cursor-pointer items-center justify-between px-3 text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
+        <div className={cn('group flex h-full w-full cursor-pointer items-center justify-between px-3 text-text-secondary system-sm-regular hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
           {RoleMap[member.role] || RoleMap.normal}
           <ChevronDownIcon className={cn('h-4 w-4 shrink-0 group-hover:block', open ? 'block' : 'hidden')} />
         </div>
@@ -114,8 +114,8 @@ const Operation = ({
                       : <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
                   }
                   <div>
-                    <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(roleI18nKeyMap[role].label, { ns: 'common' })}</div>
-                    <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(roleI18nKeyMap[role].tip, { ns: 'common' })}</div>
+                    <div className="whitespace-nowrap text-text-secondary system-sm-semibold">{t(roleI18nKeyMap[role].label, { ns: 'common' })}</div>
+                    <div className="whitespace-nowrap text-text-tertiary system-xs-regular">{t(roleI18nKeyMap[role].tip, { ns: 'common' })}</div>
                   </div>
                 </div>
               ))
@@ -125,8 +125,8 @@ const Operation = ({
             <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={handleDeleteMemberOrCancelInvitation}>
               <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
               <div>
-                <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('members.removeFromTeam', { ns: 'common' })}</div>
-                <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
+                <div className="whitespace-nowrap text-text-secondary system-sm-semibold">{t('members.removeFromTeam', { ns: 'common' })}</div>
+                <div className="whitespace-nowrap text-text-tertiary system-xs-regular">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
               </div>
             </div>
           </div>

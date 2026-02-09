@@ -26,8 +26,8 @@ const DSLConfirmModal = ({
       className="w-[480px]"
     >
       <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-        <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
-        <div className="system-md-regular flex grow flex-col text-text-secondary">
+        <div className="text-text-primary title-2xl-semi-bold">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
+        <div className="flex grow flex-col text-text-secondary system-md-regular">
           <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
           <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
           <br />

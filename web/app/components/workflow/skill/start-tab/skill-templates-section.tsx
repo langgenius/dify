@@ -94,7 +94,7 @@ const SkillTemplatesSection = () => {
         ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-y-2">
               <SearchMenu className="size-12 text-text-quaternary" />
-              <span className="system-sm-regular text-text-tertiary">
+              <span className="text-text-tertiary system-sm-regular">
                 {t('skill.startTab.noTemplatesFound')}
               </span>
             </div>

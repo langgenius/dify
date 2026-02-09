@@ -42,7 +42,7 @@ const SandboxProviderPage = () => {
       {/* Current Provider Section */}
       {currentProvider && (
         <div>
-          <div className="system-sm-semibold-uppercase mb-2 text-text-secondary">
+          <div className="mb-2 text-text-secondary system-sm-semibold-uppercase">
             {t('sandboxProvider.currentProvider', { ns: 'common' })}
           </div>
           <ProviderCard
@@ -57,7 +57,7 @@ const SandboxProviderPage = () => {
       {/* Other Providers Section */}
       {otherProviders.length > 0 && (
         <div>
-          <div className="system-sm-semibold-uppercase mb-2 text-text-secondary">
+          <div className="mb-2 text-text-secondary system-sm-semibold-uppercase">
             {t('sandboxProvider.otherProvider', { ns: 'common' })}
           </div>
           <div className="space-y-2">
@@ -75,7 +75,7 @@ const SandboxProviderPage = () => {
       )}
 
       {!isLoadingCurrentWorkspace && !isCurrentWorkspaceManager && (
-        <div className="system-xs-regular text-text-tertiary">
+        <div className="text-text-tertiary system-xs-regular">
           {t('sandboxProvider.noPermission', { ns: 'common' })}
         </div>
       )}

@@ -93,7 +93,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       closable
     >
       <div className="flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6">
-        <div className="title-2xl-semi-bold self-stretch text-text-primary">
+        <div className="self-stretch text-text-primary title-2xl-semi-bold">
           {getTitle()}
         </div>
       </div>

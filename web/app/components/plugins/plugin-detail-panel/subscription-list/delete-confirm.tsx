@@ -60,7 +60,7 @@ export const DeleteConfirm = (props: Props) => {
         ? (
             <>
               {t(`${tPrefix}.contentWithApps`, { ns: 'pluginTrigger', count: workflowsInUse })}
-              <div className="system-sm-medium mb-2 mt-6 text-text-secondary">{t(`${tPrefix}.confirmInputTip`, { ns: 'pluginTrigger', name: currentName })}</div>
+              <div className="mb-2 mt-6 text-text-secondary system-sm-medium">{t(`${tPrefix}.confirmInputTip`, { ns: 'pluginTrigger', name: currentName })}</div>
               <Input
                 value={inputName}
                 onChange={e => setInputName(e.target.value)}

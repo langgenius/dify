@@ -15,11 +15,11 @@ export const SettingItem = memo(({ label, children, status, tooltip }: SettingIt
   const needTooltip = ['error', 'warning'].includes(status as any)
   return (
     <div className="relative flex items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1.5 py-1 text-xs font-normal">
-      <div className={cn('system-xs-medium-uppercase max-w-full shrink-0 truncate text-text-tertiary', !!children && 'max-w-[100px]')}>
+      <div className={cn('max-w-full shrink-0 truncate text-text-tertiary system-xs-medium-uppercase', !!children && 'max-w-[100px]')}>
         {label}
       </div>
       <Tooltip popupContent={tooltip} disabled={!needTooltip}>
-        <div className="system-xs-medium truncate text-right text-text-secondary">
+        <div className="truncate text-right text-text-secondary system-xs-medium">
           {children}
         </div>
       </Tooltip>

@@ -37,13 +37,13 @@ const AppInputsPanel = ({
     <div className={cn('flex max-h-[240px] flex-col rounded-b-2xl border-t border-divider-subtle pb-4')}>
       {isLoading && <div className="pt-3"><Loading type="app" /></div>}
       {!isLoading && (
-        <div className="system-sm-semibold mb-2 mt-3 flex h-6 shrink-0 items-center px-4 text-text-secondary">
+        <div className="mb-2 mt-3 flex h-6 shrink-0 items-center px-4 text-text-secondary system-sm-semibold">
           {t('appSelector.params', { ns: 'app' })}
         </div>
       )}
       {!isLoading && !hasInputs && (
         <div className="flex h-16 flex-col items-center justify-center">
-          <div className="system-sm-regular text-text-tertiary">
+          <div className="text-text-tertiary system-sm-regular">
             {t('appSelector.noParams', { ns: 'app' })}
           </div>
         </div>

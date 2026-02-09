@@ -155,9 +155,9 @@ const SegmentCard: FC<ISegmentCardProps> = ({
               labelPrefix={labelPrefix}
             />
             <Dot />
-            <div className={cn('system-xs-medium text-text-tertiary', contentOpacity)}>{wordCountText}</div>
+            <div className={cn('text-text-tertiary system-xs-medium', contentOpacity)}>{wordCountText}</div>
             <Dot />
-            <div className={cn('system-xs-medium text-text-tertiary', contentOpacity)}>{`${formatNumber(hit_count)} ${t('segment.hitCount', { ns: 'datasetDocuments' })}`}</div>
+            <div className={cn('text-text-tertiary system-xs-medium', contentOpacity)}>{`${formatNumber(hit_count)} ${t('segment.hitCount', { ns: 'datasetDocuments' })}`}</div>
             {chunkEdited && (
               <>
                 <Dot />
@@ -254,7 +254,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
           ? (
               <button
                 type="button"
-                className="system-xs-semibold-uppercase mb-2 mt-0.5 text-text-accent"
+                className="mb-2 mt-0.5 text-text-accent system-xs-semibold-uppercase"
                 onClick={() => onClick?.()}
               >
                 {t('operation.viewMore', { ns: 'common' })}

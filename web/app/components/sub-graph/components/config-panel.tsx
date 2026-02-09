@@ -110,7 +110,7 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
         <div className="system-lg-semibold text-text-primary">
           {t('subGraphModal.internalStructure', { ns: 'workflow' })}
         </div>
-        <div className="system-sm-regular text-text-tertiary">
+        <div className="text-text-tertiary system-sm-regular">
           {t('subGraphModal.internalStructureDesc', { ns: 'workflow', name: agentName })}
         </div>
       </div>
@@ -119,7 +119,7 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
       </div>
       {tabType === TabType.lastRun && (
         <div className="flex flex-1 items-center justify-center p-4">
-          <p className="system-sm-regular text-text-tertiary">
+          <p className="text-text-tertiary system-sm-regular">
             {t('subGraphModal.noRunHistory', { ns: 'workflow' })}
           </p>
         </div>
@@ -179,8 +179,8 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
                             )}
                           </div>
                           <div className="grow">
-                            <div className="system-sm-semibold mb-0.5 text-text-secondary">{option.label}</div>
-                            <div className="system-xs-regular text-text-tertiary">{option.description}</div>
+                            <div className="mb-0.5 text-text-secondary system-sm-semibold">{option.label}</div>
+                            <div className="text-text-tertiary system-xs-regular">{option.description}</div>
                           </div>
                         </div>
                       ))}
@@ -191,7 +191,7 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
             >
               <div className="space-y-2">
                 {selectedWhenOutputNoneOption?.description && (
-                  <div className="system-xs-regular text-text-tertiary">
+                  <div className="text-text-tertiary system-xs-regular">
                     {selectedWhenOutputNoneOption.description}
                   </div>
                 )}

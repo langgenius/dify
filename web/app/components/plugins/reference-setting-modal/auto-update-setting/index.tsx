@@ -33,7 +33,7 @@ const SettingTimeZone: FC<{
 }) => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   return (
-    <span className="body-xs-regular cursor-pointer text-text-accent" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}>{children}</span>
+    <span className="cursor-pointer text-text-accent body-xs-regular" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}>{children}</span>
   )
 }
 const AutoUpdateSetting: FC<Props> = ({
@@ -116,7 +116,7 @@ const AutoUpdateSetting: FC<Props> = ({
           />
           {inputElem}
         </div>
-        <div className="system-sm-regular text-text-tertiary">{convertTimezoneToOffsetStr(timezone)}</div>
+        <div className="text-text-tertiary system-sm-regular">{convertTimezoneToOffsetStr(timezone)}</div>
       </div>
     )
   }, [timezone])
@@ -124,7 +124,7 @@ const AutoUpdateSetting: FC<Props> = ({
   return (
     <div className="self-stretch px-6">
       <div className="my-3 flex items-center">
-        <div className="system-xs-medium-uppercase text-text-tertiary">{t(`${i18nPrefix}.updateSettings`, { ns: 'plugin' })}</div>
+        <div className="text-text-tertiary system-xs-medium-uppercase">{t(`${i18nPrefix}.updateSettings`, { ns: 'plugin' })}</div>
         <div className="ml-2 h-px grow bg-divider-subtle"></div>
       </div>
 
@@ -149,7 +149,7 @@ const AutoUpdateSetting: FC<Props> = ({
                   renderTrigger={renderTimePickerTrigger}
                   placement="bottom-end"
                 />
-                <div className="body-xs-regular mt-1 text-right text-text-tertiary">
+                <div className="mt-1 text-right text-text-tertiary body-xs-regular">
                   <Trans
                     i18nKey={`${i18nPrefix}.changeTimezone`}
                     ns="plugin"

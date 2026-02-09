@@ -56,9 +56,9 @@ const ToolFormItem: FC<Props> = ({
     <div className="space-y-0.5 py-1">
       <div>
         <div className="flex h-6 items-center">
-          <div className="system-sm-medium text-text-secondary">{label[language] || label.en_US}</div>
+          <div className="text-text-secondary system-sm-medium">{label[language] || label.en_US}</div>
           {required && (
-            <div className="system-xs-regular ml-1 text-text-destructive-secondary">*</div>
+            <div className="ml-1 text-text-destructive-secondary system-xs-regular">*</div>
           )}
           {!showDescription && tooltip && (
             <Tooltip
@@ -73,12 +73,12 @@ const ToolFormItem: FC<Props> = ({
           )}
           {showSchemaButton && (
             <>
-              <div className="system-xs-regular ml-1 mr-0.5 text-text-quaternary">·</div>
+              <div className="ml-1 mr-0.5 text-text-quaternary system-xs-regular">·</div>
               <Button
                 variant="ghost"
                 size="small"
                 onClick={showSchema}
-                className="system-xs-regular px-1 text-text-tertiary"
+                className="px-1 text-text-tertiary system-xs-regular"
               >
                 <RiBracesLine className="mr-1 size-3.5" />
                 <span>JSON Schema</span>
@@ -87,7 +87,7 @@ const ToolFormItem: FC<Props> = ({
           )}
         </div>
         {showDescription && tooltip && (
-          <div className="body-xs-regular pb-0.5 text-text-tertiary">{tooltip[language] || tooltip.en_US}</div>
+          <div className="pb-0.5 text-text-tertiary body-xs-regular">{tooltip[language] || tooltip.en_US}</div>
         )}
       </div>
       <FormInputItem

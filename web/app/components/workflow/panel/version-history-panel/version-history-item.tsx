@@ -93,15 +93,15 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
       <div className="flex grow flex-col gap-y-0.5 overflow-hidden">
         <div className="mr-6 flex h-5 items-center gap-x-1">
           <div className={cn(
-            'system-sm-semibold truncate py-[1px]',
+            'truncate py-[1px] system-sm-semibold',
             isSelected ? 'text-text-accent' : 'text-text-secondary',
           )}
           >
             {isDraft ? t('versionHistory.currentDraft', { ns: 'workflow' }) : item.marked_name || t('versionHistory.defaultName', { ns: 'workflow' })}
           </div>
           {isLatest && (
-            <div className="system-2xs-medium-uppercase flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary
-            bg-components-badge-bg-dimm px-[5px] text-text-accent-secondary"
+            <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm
+            px-[5px] text-text-accent-secondary system-2xs-medium-uppercase"
             >
               {t('versionHistory.latest', { ns: 'workflow' })}
             </div>
@@ -109,14 +109,14 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         </div>
         {
           !isDraft && (
-            <div className="system-xs-regular break-words text-text-secondary">
+            <div className="break-words text-text-secondary system-xs-regular">
               {item.marked_comment || ''}
             </div>
           )
         }
         {
           !isDraft && (
-            <div className="system-xs-regular truncate text-text-tertiary">
+            <div className="truncate text-text-tertiary system-xs-regular">
               {`${formatTime(item.created_at)} · ${item.created_by.name}`}
             </div>
           )

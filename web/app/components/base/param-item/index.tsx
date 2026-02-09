@@ -36,7 +36,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
               }}
             />
           )}
-          <span className="system-sm-semibold mr-1 text-text-secondary">{name}</span>
+          <span className="mr-1 text-text-secondary system-sm-semibold">{name}</span>
           {!noTooltip && (
             <Tooltip
               triggerClassName="w-4 h-4 shrink-0"

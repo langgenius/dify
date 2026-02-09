@@ -41,7 +41,7 @@ const TableSelector = ({
     return (
       <div className="inline-flex items-center gap-1 rounded-[6px] px-1.5 py-1 text-text-secondary">
         <TableCells className="h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
-        <span className={cn('system-sm-medium min-w-0 max-w-[220px] truncate', isPlaceholder && 'text-text-tertiary')}>
+        <span className={cn('min-w-0 max-w-[220px] truncate system-sm-medium', isPlaceholder && 'text-text-tertiary')}>
           {label}
         </span>
       </div>
@@ -71,7 +71,7 @@ const TableSelector = ({
             )}
           >
             <TableCells className="h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
-            <span className={cn('system-sm-medium min-w-0 max-w-[220px] truncate', isPlaceholder && 'text-text-tertiary')}>
+            <span className={cn('min-w-0 max-w-[220px] truncate system-sm-medium', isPlaceholder && 'text-text-tertiary')}>
               {label}
             </span>
             <RiArrowDownSLine className="h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
@@ -84,7 +84,7 @@ const TableSelector = ({
                 key={item.value}
                 type="button"
                 className={cn(
-                  'system-sm-medium flex w-full items-center gap-1 rounded-lg px-2 py-1 text-left text-text-secondary hover:bg-state-base-hover',
+                  'flex w-full items-center gap-1 rounded-lg px-2 py-1 text-left text-text-secondary system-sm-medium hover:bg-state-base-hover',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
                   item.value === selectedTable && 'bg-state-base-hover',
                 )}

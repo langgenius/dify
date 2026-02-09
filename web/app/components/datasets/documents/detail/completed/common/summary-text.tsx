@@ -17,10 +17,10 @@ const SummaryText = ({
 
   return (
     <div className="space-y-1">
-      <div className="system-xs-medium-uppercase text-text-tertiary">{t('segment.summary', { ns: 'datasetDocuments' })}</div>
+      <div className="text-text-tertiary system-xs-medium-uppercase">{t('segment.summary', { ns: 'datasetDocuments' })}</div>
       <Textarea
         className={cn(
-          'body-sm-regular w-full resize-none bg-transparent leading-6 text-text-secondary outline-none',
+          'w-full resize-none bg-transparent leading-6 text-text-secondary outline-none body-sm-regular',
         )}
         placeholder={t('segment.summaryPlaceholder', { ns: 'datasetDocuments' })}
         minRows={1}

@@ -43,7 +43,7 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
         <div className="flex items-center justify-between">
           <div className="flex h-6 items-center gap-1">
             <RiWebhookLine className="h-4 w-4 text-text-secondary" />
-            <span className="system-md-semibold text-text-secondary">
+            <span className="text-text-secondary system-md-semibold">
               {data.name}
             </span>
           </div>
@@ -74,12 +74,12 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
             )}
             position="left"
           >
-            <div className="system-xs-regular flex-1 truncate text-text-tertiary">
+            <div className="flex-1 truncate text-text-tertiary system-xs-regular">
               {data.endpoint}
             </div>
           </Tooltip>
           <div className="mx-2 text-xs text-text-tertiary opacity-30">·</div>
-          <div className="system-xs-regular shrink-0 text-text-tertiary">
+          <div className="shrink-0 text-text-tertiary system-xs-regular">
             {data.workflows_in_use > 0 ? t('subscription.list.item.usedByNum', { ns: 'pluginTrigger', num: data.workflows_in_use }) : t('subscription.list.item.noUsed', { ns: 'pluginTrigger' })}
           </div>
         </div>

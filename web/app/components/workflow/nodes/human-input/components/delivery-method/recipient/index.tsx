@@ -65,7 +65,7 @@ const Recipient = ({
         <div className="flex h-10 items-center justify-between pl-3 pr-1">
           <div className="flex grow items-center gap-2">
             <RiGroupLine className="h-4 w-4 text-text-secondary" />
-            <div className="system-sm-medium text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.title`, { ns: 'workflow' })}</div>
+            <div className="text-text-secondary system-sm-medium">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.title`, { ns: 'workflow' })}</div>
           </div>
           <div className="w-[86px]">
             <MemberSelector
@@ -89,7 +89,7 @@ const Recipient = ({
         <div className="flex h-5 w-5 items-center justify-center rounded-xl bg-components-icon-bg-blue-solid text-[14px]">
           <span className="bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold uppercase text-shadow-shadow-1 opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
         </div>
-        <div className={cn('system-sm-medium grow text-text-secondary')}>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.allMembers`, { workspaceName: currentWorkspace.name.replace(/'/g, '’'), ns: 'workflow' })}</div>
+        <div className={cn('grow text-text-secondary system-sm-medium')}>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.allMembers`, { workspaceName: currentWorkspace.name.replace(/'/g, '’'), ns: 'workflow' })}</div>
         <Switch
           defaultValue={data.whole_workspace}
           onChange={checked => onChange({ ...data, whole_workspace: checked })}

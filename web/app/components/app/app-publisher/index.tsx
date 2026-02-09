@@ -100,7 +100,7 @@ const AccessModeDisplay: React.FC<{ mode?: AccessMode }> = ({ mode }) => {
     <>
       <Icon className="h-4 w-4 shrink-0 text-text-secondary" />
       <div className="grow truncate">
-        <span className="system-sm-medium text-text-secondary">{t(`accessControlDialog.accessItems.${label}`, { ns: 'app' })}</span>
+        <span className="text-text-secondary system-sm-medium">{t(`accessControlDialog.accessItems.${label}`, { ns: 'app' })}</span>
       </div>
     </>
   )
@@ -354,13 +354,13 @@ const AppPublisher = ({
         <PortalToFollowElemContent className="z-[11]">
           <div className="w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
             <div className="p-4 pt-3">
-              <div className="system-xs-medium-uppercase flex h-6 items-center text-text-tertiary">
+              <div className="flex h-6 items-center text-text-tertiary system-xs-medium-uppercase">
                 {publishedAt ? t('common.latestPublished', { ns: 'workflow' }) : t('common.currentDraftUnpublished', { ns: 'workflow' })}
               </div>
               {publishedAt
                 ? (
                     <div className="flex items-center justify-between">
-                      <div className="system-sm-medium flex items-center text-text-secondary">
+                      <div className="flex items-center text-text-secondary system-sm-medium">
                         {t('common.publishedAt', { ns: 'workflow' })}
                         {' '}
                         {formatTimeFromNow(publishedAt)}
@@ -378,7 +378,7 @@ const AppPublisher = ({
                     </div>
                   )
                 : (
-                    <div className="system-sm-medium flex items-center text-text-secondary">
+                    <div className="flex items-center text-text-secondary system-sm-medium">
                       {t('common.autoSaved', { ns: 'workflow' })}
                       {' '}
                       ·
@@ -444,7 +444,7 @@ const AppPublisher = ({
                     {systemFeatures.webapp_auth.enabled && (
                       <div className="p-4 pt-3">
                         <div className="flex h-6 items-center">
-                          <p className="system-xs-medium text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</p>
+                          <p className="text-text-tertiary system-xs-medium">{t('publishApp.title', { ns: 'app' })}</p>
                         </div>
                         <div
                           className="flex h-8 cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2 hover:bg-primary-50 hover:text-text-accent"
@@ -455,12 +455,12 @@ const AppPublisher = ({
                           <div className="flex grow items-center gap-x-1.5 overflow-hidden pr-1">
                             <AccessModeDisplay mode={appDetail?.access_mode} />
                           </div>
-                          {!isAppAccessSet && <p className="system-xs-regular shrink-0 text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
+                          {!isAppAccessSet && <p className="shrink-0 text-text-tertiary system-xs-regular">{t('publishApp.notSet', { ns: 'app' })}</p>}
                           <div className="flex h-4 w-4 shrink-0 items-center justify-center">
                             <RiArrowRightSLine className="h-4 w-4 text-text-quaternary" />
                           </div>
                         </div>
-                        {!isAppAccessSet && <p className="system-xs-regular mt-1 text-text-warning">{t('publishApp.notSetDesc', { ns: 'app' })}</p>}
+                        {!isAppAccessSet && <p className="mt-1 text-text-warning system-xs-regular">{t('publishApp.notSetDesc', { ns: 'app' })}</p>}
                       </div>
                     )}
                     {

@@ -536,7 +536,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
           aria-hidden
           className={cn(
             'pointer-events-none absolute inset-0 z-0 overflow-hidden whitespace-pre-wrap break-words p-1 leading-6',
-            'body-lg-regular text-text-primary',
+            'text-text-primary body-lg-regular',
           )}
           style={{ paddingRight, paddingBottom }}
         >
@@ -552,7 +552,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
         <Textarea
           ref={textareaRef}
           className={cn(
-            'body-lg-regular relative z-10 w-full resize-none bg-transparent p-1 leading-6 text-transparent caret-primary-500 outline-none',
+            'relative z-10 w-full resize-none bg-transparent p-1 leading-6 text-transparent caret-primary-500 outline-none body-lg-regular',
             'placeholder:text-text-tertiary',
           )}
           style={{ paddingRight, paddingBottom }}

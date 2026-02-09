@@ -49,11 +49,11 @@ const Field: FC<Props> = ({
               ? (
                   <RiMoreFill className="h-3 w-3 text-text-tertiary" />
                 )
-              : (<div className={cn('system-sm-medium h-6 w-0 grow truncate leading-6 text-text-secondary', isHighlight && 'text-text-accent')}>{name}</div>)}
+              : (<div className={cn('h-6 w-0 grow truncate leading-6 text-text-secondary system-sm-medium', isHighlight && 'text-text-accent')}>{name}</div>)}
 
           </div>
           {depth < MAX_DEPTH + 1 && (
-            <div className="system-xs-regular ml-2 shrink-0 text-text-tertiary">{getFieldType(payload)}</div>
+            <div className="ml-2 shrink-0 text-text-tertiary system-xs-regular">{getFieldType(payload)}</div>
           )}
         </div>
       </Tooltip>

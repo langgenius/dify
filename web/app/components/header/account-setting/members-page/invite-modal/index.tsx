@@ -96,7 +96,7 @@ const InviteModal = ({
                 <div className="mr-0.5 shrink-0 p-0.5">
                   <RiErrorWarningFill className="h-5 w-5 text-text-warning" />
                 </div>
-                <div className="system-xs-medium text-text-primary">
+                <div className="text-text-primary system-xs-medium">
                   <span>{t('members.emailNotSetup', { ns: 'common' })}</span>
                 </div>
               </div>
@@ -124,7 +124,7 @@ const InviteModal = ({
               placeholder={t('members.emailPlaceholder', { ns: 'common' }) || ''}
             />
             <div className={
-              cn('system-xs-regular flex items-center justify-end text-text-tertiary', (isLimited && usedSize > licenseLimit.workspace_members.limit) ? 'text-text-destructive' : '')
+              cn('flex items-center justify-end text-text-tertiary system-xs-regular', (isLimited && usedSize > licenseLimit.workspace_members.limit) ? 'text-text-destructive' : '')
             }
             >
               <span>{usedSize}</span>

@@ -285,14 +285,14 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
     return (
       <div className="relative flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickSettings}>
-          <span className="system-sm-regular text-text-secondary">{t('editApp', { ns: 'app' })}</span>
+          <span className="text-text-secondary system-sm-regular">{t('editApp', { ns: 'app' })}</span>
         </button>
         <Divider className="my-1" />
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickDuplicate}>
-          <span className="system-sm-regular text-text-secondary">{t('duplicate', { ns: 'app' })}</span>
+          <span className="text-text-secondary system-sm-regular">{t('duplicate', { ns: 'app' })}</span>
         </button>
         <button type="button" disabled={exporting || secretEnvList.length > 0} className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50" onClick={onClickExport}>
-          <span className="system-sm-regular text-text-secondary">{t('export', { ns: 'app' })}</span>
+          <span className="text-text-secondary system-sm-regular">{t('export', { ns: 'app' })}</span>
         </button>
         {(app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT) && (
           <>
@@ -313,7 +313,7 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
                   <>
                     <Divider className="my-1" />
                     <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickInstalledApp}>
-                      <span className="system-sm-regular text-text-secondary">{t('openInExplore', { ns: 'app' })}</span>
+                      <span className="text-text-secondary system-sm-regular">{t('openInExplore', { ns: 'app' })}</span>
                     </button>
                   </>
                 )
@@ -321,7 +321,7 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
                   <>
                     <Divider className="my-1" />
                     <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickInstalledApp}>
-                      <span className="system-sm-regular text-text-secondary">{t('openInExplore', { ns: 'app' })}</span>
+                      <span className="text-text-secondary system-sm-regular">{t('openInExplore', { ns: 'app' })}</span>
                     </button>
                   </>
                 )
@@ -343,7 +343,7 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
           className="group mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover"
           onClick={onClickDelete}
         >
-          <span className="system-sm-regular text-text-secondary group-hover:text-text-destructive">
+          <span className="text-text-secondary system-sm-regular group-hover:text-text-destructive">
             {t('operation.delete', { ns: 'common' })}
           </span>
         </button>

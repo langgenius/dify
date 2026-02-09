@@ -74,7 +74,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
   return (
     <Modal className="p-0" isShow={isOpen} onClose={onClose}>
       <div className="relative w-full p-6 pb-4 pr-14">
-        <div className="title-2xl-semi-bold text-text-primary first-letter:capitalize">
+        <div className="text-text-primary title-2xl-semi-bold first-letter:capitalize">
           {versionInfo?.marked_name ? t('versionHistory.editVersionInfo', { ns: 'workflow' }) : t('versionHistory.nameThisVersion', { ns: 'workflow' })}
         </div>
         <div className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={onClose}>
@@ -83,7 +83,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
       </div>
       <div className="flex flex-col gap-y-4 px-6 py-3">
         <div className="flex flex-col gap-y-1">
-          <div className="system-sm-semibold flex h-6 items-center text-text-secondary">
+          <div className="flex h-6 items-center text-text-secondary system-sm-semibold">
             {t('versionHistory.editField.title', { ns: 'workflow' })}
           </div>
           <Input
@@ -94,7 +94,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
           />
         </div>
         <div className="flex flex-col gap-y-1">
-          <div className="system-sm-semibold flex h-6 items-center text-text-secondary">
+          <div className="flex h-6 items-center text-text-secondary system-sm-semibold">
             {t('versionHistory.editField.releaseNotes', { ns: 'workflow' })}
           </div>
           <Textarea

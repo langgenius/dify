@@ -967,10 +967,10 @@ const Configuration: FC = () => {
               <div className="bg-default-subtle absolute left-0 top-0 h-14 w-full">
                 <div className="flex h-14 items-center justify-between px-6">
                   <div className="flex items-center">
-                    <div className="system-xl-semibold text-text-primary">{t('orchestrate', { ns: 'appDebug' })}</div>
+                    <div className="text-text-primary system-xl-semibold">{t('orchestrate', { ns: 'appDebug' })}</div>
                     <div className="flex h-[14px] items-center space-x-1 text-xs">
                       {isAdvancedMode && (
-                        <div className="system-xs-medium-uppercase ml-1 flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 uppercase text-text-tertiary">{t('promptMode.advanced', { ns: 'appDebug' })}</div>
+                        <div className="ml-1 flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 uppercase text-text-tertiary system-xs-medium-uppercase">{t('promptMode.advanced', { ns: 'appDebug' })}</div>
                       )}
                     </div>
                   </div>

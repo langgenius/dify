@@ -43,9 +43,9 @@ const Placeholder = ({
         {t('nodes.tool.insertPlaceholder1', { ns: 'workflow' })}
         {(!disableVariableInsertion) && (
           <>
-            <div className="system-kbd mx-0.5 flex h-4 w-4 items-center justify-center rounded bg-components-kbd-bg-gray text-text-placeholder">/</div>
+            <div className="mx-0.5 flex h-4 w-4 items-center justify-center rounded bg-components-kbd-bg-gray text-text-placeholder system-kbd">/</div>
             <div
-              className="system-sm-regular cursor-pointer text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary"
+              className="cursor-pointer text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto system-sm-regular hover:text-text-tertiary"
               onMouseDown={((e) => {
                 e.preventDefault()
                 e.stopPropagation()
@@ -56,9 +56,9 @@ const Placeholder = ({
             </div>
             {!hasSelectedAgent && (
               <>
-                <div className="system-kbd mx-0.5 flex h-4 w-4 items-center justify-center rounded bg-components-kbd-bg-gray text-text-placeholder">@</div>
+                <div className="mx-0.5 flex h-4 w-4 items-center justify-center rounded bg-components-kbd-bg-gray text-text-placeholder system-kbd">@</div>
                 <div
-                  className="system-sm-regular cursor-pointer text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary"
+                  className="cursor-pointer text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto system-sm-regular hover:text-text-tertiary"
                   onMouseDown={((e) => {
                     e.preventDefault()
                     e.stopPropagation()

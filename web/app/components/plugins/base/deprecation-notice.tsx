@@ -66,7 +66,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
         <div className={cn('flex size-6 shrink-0 items-center justify-center', iconWrapperClassName)}>
           <RiAlertFill className="size-4 text-text-warning-secondary" />
         </div>
-        <div className={cn('system-xs-regular grow py-1 text-text-primary', textClassName)}>
+        <div className={cn('grow py-1 text-text-primary system-xs-regular', textClassName)}>
           {
             hasValidDeprecatedReason && alternativePluginId && (
               <Trans

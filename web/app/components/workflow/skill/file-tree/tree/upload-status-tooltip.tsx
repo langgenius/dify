@@ -85,7 +85,7 @@ const UploadStatusTooltip = ({ fallback }: UploadStatusTooltipProps) => {
         </div>
 
         <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-          <span className="system-xs-semibold truncate text-text-primary">
+          <span className="truncate text-text-primary system-xs-semibold">
             {uploadStatus === 'uploading' && t('skillSidebar.uploadingItems', {
               uploaded: uploadProgress.uploaded,
               total: uploadProgress.total,
@@ -93,7 +93,7 @@ const UploadStatusTooltip = ({ fallback }: UploadStatusTooltipProps) => {
             {uploadStatus === 'success' && t('skillSidebar.uploadSuccess')}
             {uploadStatus === 'partial_error' && t('skillSidebar.uploadPartialError')}
           </span>
-          <span className="system-2xs-regular truncate text-text-tertiary">
+          <span className="truncate text-text-tertiary system-2xs-regular">
             {uploadStatus === 'success' && t('skillSidebar.uploadSuccessDetail', {
               uploaded: uploadProgress.uploaded,
               total: uploadProgress.total,

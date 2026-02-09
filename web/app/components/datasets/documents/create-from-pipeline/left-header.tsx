@@ -23,13 +23,13 @@ const LeftHeader = ({
   return (
     <div className="relative flex flex-col gap-y-0.5 pb-2 pt-4">
       <div className="flex items-center gap-x-2">
-        <span className="system-2xs-semibold-uppercase bg-pipeline-add-documents-title-bg bg-clip-text text-transparent">
+        <span className="bg-pipeline-add-documents-title-bg bg-clip-text text-transparent system-2xs-semibold-uppercase">
           {title}
         </span>
-        <span className="system-2xs-regular text-divider-regular">/</span>
+        <span className="text-divider-regular system-2xs-regular">/</span>
         <StepIndicator steps={steps} currentStep={currentStep} />
       </div>
-      <div className="system-md-semibold text-text-primary">
+      <div className="text-text-primary system-md-semibold">
         {steps[currentStep - 1]?.label}
       </div>
       {currentStep !== steps.length && (

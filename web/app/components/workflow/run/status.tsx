@@ -73,10 +73,10 @@ const StatusPanel: FC<ResultProps> = ({
           status === 'partial-succeeded' && 'min-w-[140px]',
         )}
         >
-          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('resultPanel.status', { ns: 'runLog' })}</div>
+          <div className="mb-1 text-text-tertiary system-2xs-medium-uppercase">{t('resultPanel.status', { ns: 'runLog' })}</div>
           <div
             className={cn(
-              'system-xs-semibold-uppercase flex items-center gap-1',
+              'flex items-center gap-1 system-xs-semibold-uppercase',
               status === 'succeeded' && 'text-util-colors-green-green-600',
               status === 'partial-succeeded' && 'text-util-colors-green-green-600',
               status === 'failed' && 'text-util-colors-red-red-600',
@@ -129,8 +129,8 @@ const StatusPanel: FC<ResultProps> = ({
           </div>
         </div>
         <div className="max-w-[152px] flex-[33%]">
-          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('resultPanel.time', { ns: 'runLog' })}</div>
-          <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
+          <div className="mb-1 text-text-tertiary system-2xs-medium-uppercase">{t('resultPanel.time', { ns: 'runLog' })}</div>
+          <div className="flex items-center gap-1 text-text-secondary system-sm-medium">
             {(status === 'running' || status === 'paused') && (
               <div className="h-2 w-16 animate-pulse rounded-sm bg-text-quaternary" />
             )}
@@ -140,8 +140,8 @@ const StatusPanel: FC<ResultProps> = ({
           </div>
         </div>
         <div className="flex-[33%]">
-          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('resultPanel.tokens', { ns: 'runLog' })}</div>
-          <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
+          <div className="mb-1 text-text-tertiary system-2xs-medium-uppercase">{t('resultPanel.tokens', { ns: 'runLog' })}</div>
+          <div className="flex items-center gap-1 text-text-secondary system-sm-medium">
             {(status === 'running' || status === 'paused') && (
               <div className="h-2 w-20 animate-pulse rounded-sm bg-text-quaternary" />
             )}
@@ -154,12 +154,12 @@ const StatusPanel: FC<ResultProps> = ({
       {status === 'failed' && error && (
         <>
           <div className="my-2 h-[0.5px] bg-divider-subtle" />
-          <div className="system-xs-regular whitespace-pre-wrap text-text-destructive">{error}</div>
+          <div className="whitespace-pre-wrap text-text-destructive system-xs-regular">{error}</div>
           {
             !!exceptionCounts && (
               <>
                 <div className="my-2 h-[0.5px] bg-divider-subtle" />
-                <div className="system-xs-regular text-text-destructive">
+                <div className="text-text-destructive system-xs-regular">
                   {t('nodes.common.errorHandle.partialSucceeded.tip', { ns: 'workflow', num: exceptionCounts })}
                 </div>
               </>
@@ -171,7 +171,7 @@ const StatusPanel: FC<ResultProps> = ({
         status === 'partial-succeeded' && !!exceptionCounts && (
           <>
             <div className="my-2 h-[0.5px] bg-divider-deep" />
-            <div className="system-xs-medium text-text-warning">
+            <div className="text-text-warning system-xs-medium">
               {t('nodes.common.errorHandle.partialSucceeded.tip', { ns: 'workflow', num: exceptionCounts })}
             </div>
           </>
@@ -181,7 +181,7 @@ const StatusPanel: FC<ResultProps> = ({
         status === 'exception' && (
           <>
             <div className="my-2 h-[0.5px] bg-divider-deep" />
-            <div className="system-xs-medium text-text-warning">
+            <div className="text-text-warning system-xs-medium">
               {error}
               <a
                 href={docLink('/use-dify/debug/error-type')}
@@ -197,13 +197,13 @@ const StatusPanel: FC<ResultProps> = ({
       {status === 'paused' && (
         <>
           <div className="my-2 h-[0.5px] bg-divider-deep" />
-          <div className="system-xs-medium flex flex-col gap-y-2">
+          <div className="flex flex-col gap-y-2 system-xs-medium">
             <div className="flex flex-col gap-y-0.5">
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('nodes.humanInput.log.reason', { ns: 'workflow' })}</div>
+              <div className="text-text-tertiary system-2xs-medium-uppercase">{t('nodes.humanInput.log.reason', { ns: 'workflow' })}</div>
               {
                 pausedReasons.length > 0
                   ? pausedReasons.map(reason => (
-                      <div className="system-xs-medium truncate text-text-secondary" key={reason}>{reason}</div>
+                      <div className="truncate text-text-secondary system-xs-medium" key={reason}>{reason}</div>
                     ))
                   : (
                       <div className="h-2 w-20 animate-pulse rounded-sm bg-text-quaternary" />
@@ -212,13 +212,13 @@ const StatusPanel: FC<ResultProps> = ({
             </div>
             {pausedInputURLs.length > 0 && (
               <div className="flex flex-col gap-y-0.5">
-                <div className="system-2xs-medium-uppercase text-text-tertiary">{t('nodes.humanInput.log.backstageInputURL', { ns: 'workflow' })}</div>
+                <div className="text-text-tertiary system-2xs-medium-uppercase">{t('nodes.humanInput.log.backstageInputURL', { ns: 'workflow' })}</div>
                 {pausedInputURLs.map(url => (
                   <a
                     key={url}
                     href={url}
                     target="_blank"
-                    className="system-xs-medium text-text-accent"
+                    className="text-text-accent system-xs-medium"
                   >
                     {url}
                   </a>

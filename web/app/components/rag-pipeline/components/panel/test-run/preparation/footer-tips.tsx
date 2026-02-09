@@ -5,7 +5,7 @@ const FooterTips = () => {
   const { t } = useTranslation()
 
   return (
-    <div className="system-xs-regular flex grow flex-col justify-end p-4 pt-2 text-text-tertiary">
+    <div className="flex grow flex-col justify-end p-4 pt-2 text-text-tertiary system-xs-regular">
       {t('testRun.tooltip', { ns: 'datasetPipeline' })}
     </div>
   )

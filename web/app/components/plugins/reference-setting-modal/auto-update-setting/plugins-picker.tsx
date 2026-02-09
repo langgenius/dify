@@ -39,7 +39,7 @@ const PluginsPicker: FC<Props> = ({
         ? (
             <div className="flex justify-between text-text-tertiary">
               <div className="system-xs-medium">{t(`${i18nPrefix}.${isExcludeMode ? 'excludeUpdate' : 'partialUPdate'}`, { ns: 'plugin', num: value.length })}</div>
-              <div className="system-xs-medium cursor-pointer" onClick={handleClear}>{t(`${i18nPrefix}.operation.clearAll`, { ns: 'plugin' })}</div>
+              <div className="cursor-pointer system-xs-medium" onClick={handleClear}>{t(`${i18nPrefix}.operation.clearAll`, { ns: 'plugin' })}</div>
             </div>
           )
         : (

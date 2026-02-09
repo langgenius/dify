@@ -75,14 +75,14 @@ const Details = ({
           />
           <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
             <div
-              className="system-md-semibold truncate text-text-secondary"
+              className="truncate text-text-secondary system-md-semibold"
               title={pipelineTemplateInfo.name}
             >
               {pipelineTemplateInfo.name}
             </div>
             {pipelineTemplateInfo.created_by && (
               <div
-                className="system-2xs-medium-uppercase truncate text-text-tertiary"
+                className="truncate text-text-tertiary system-2xs-medium-uppercase"
                 title={pipelineTemplateInfo.created_by}
               >
                 {t('details.createdBy', {
@@ -93,7 +93,7 @@ const Details = ({
             )}
           </div>
         </div>
-        <p className="system-sm-regular px-4 pb-2 pt-1 text-text-secondary">
+        <p className="px-4 pb-2 pt-1 text-text-secondary system-sm-regular">
           {pipelineTemplateInfo.description}
         </p>
         <div className="p-3">
@@ -108,7 +108,7 @@ const Details = ({
         </div>
         <div className="flex flex-col gap-y-1 px-4 py-2">
           <div className="flex h-6 items-center gap-x-0.5">
-            <span className="system-sm-semibold-uppercase text-text-secondary">
+            <span className="text-text-secondary system-sm-semibold-uppercase">
               {t('details.structure', { ns: 'datasetPipeline' })}
             </span>
             <Tooltip

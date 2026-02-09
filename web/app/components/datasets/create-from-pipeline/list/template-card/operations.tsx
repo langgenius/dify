@@ -40,7 +40,7 @@ const Operations = ({
           className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
           onClick={onClickEdit}
         >
-          <span className="system-md-regular px-1 text-text-secondary">
+          <span className="px-1 text-text-secondary system-md-regular">
             {t('operations.editInfo', { ns: 'datasetPipeline' })}
           </span>
         </div>
@@ -48,7 +48,7 @@ const Operations = ({
           className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
           onClick={onClickExport}
         >
-          <span className="system-md-regular px-1 text-text-secondary">
+          <span className="px-1 text-text-secondary system-md-regular">
             {t('operations.exportPipeline', { ns: 'datasetPipeline' })}
           </span>
         </div>
@@ -59,7 +59,7 @@ const Operations = ({
           className="group flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-destructive-hover"
           onClick={onClickDelete}
         >
-          <span className="system-md-regular px-1 text-text-secondary group-hover:text-text-destructive">
+          <span className="px-1 text-text-secondary system-md-regular group-hover:text-text-destructive">
             {t('operation.delete', { ns: 'common' })}
           </span>
         </div>

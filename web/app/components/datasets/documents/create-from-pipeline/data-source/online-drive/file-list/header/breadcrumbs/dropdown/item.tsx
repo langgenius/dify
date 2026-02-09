@@ -18,7 +18,7 @@ const Item = ({
 
   return (
     <div
-      className="system-md-regular rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
+      className="rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover"
       onClick={handleClick}
     >
       {name}

@@ -15,10 +15,10 @@ const Label: FC<Props> = ({
   return (
     <div>
       <div className={cn('flex h-6 items-center', description && 'h-4')}>
-        <span className="system-sm-semibold text-text-secondary">{label}</span>
+        <span className="text-text-secondary system-sm-semibold">{label}</span>
       </div>
       {description && (
-        <div className="body-xs-regular mt-1 text-text-tertiary">
+        <div className="mt-1 text-text-tertiary body-xs-regular">
           {description}
         </div>
       )}

@@ -229,7 +229,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
       ))}
       {showNoData && (
         <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">
-          <span className="system-xs-regular text-center">
+          <span className="text-center system-xs-regular">
             {t('nodes.llm.computerUse.referenceToolsEmpty', { ns: 'workflow' })}
           </span>
         </div>
@@ -246,7 +246,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
                 <div className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-md">
                   {renderProviderIcon(provider.id)}
                 </div>
-                <div className="system-sm-medium truncate text-text-primary">
+                <div className="truncate text-text-primary system-sm-medium">
                   {providerLabels.get(provider.id) ?? provider.id}
                 </div>
               </div>
@@ -271,7 +271,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
                   >
                     <div className="absolute left-[15px] top-0 h-full w-[2px] bg-divider-subtle" />
                     <div className="flex min-w-0 flex-1 items-center">
-                      <span className="system-sm-regular truncate text-text-secondary">
+                      <span className="truncate text-text-secondary system-sm-regular">
                         {actionLabels.get(`${provider.id}::${action.tool_name}`) ?? action.tool_name}
                       </span>
                     </div>

@@ -317,7 +317,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
             onMouseMove={handleMouseMove}
             onMouseDown={handleCanvasInteraction}
           />
-          <div className="system-xs-medium inline-flex min-w-[50px] items-center justify-center text-text-accent-secondary">
+          <div className="inline-flex min-w-[50px] items-center justify-center text-text-accent-secondary system-xs-medium">
             <span className="rounded-[10px] px-0.5 py-1">{formatTime(duration)}</span>
           </div>
         </div>

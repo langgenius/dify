@@ -84,7 +84,7 @@ const ToolCallItemComponent = ({
         }
         {
           payload.type === 'thought' && (
-            <div className="system-xs-medium mr-1 grow truncate text-text-secondary" title={payload.thoughtOutput}>
+            <div className="mr-1 grow truncate text-text-secondary system-xs-medium" title={payload.thoughtOutput}>
               {
                 payload.thoughtCompleted && !expand && (payload.thoughtOutput || '') as string
               }
@@ -99,17 +99,17 @@ const ToolCallItemComponent = ({
         }
         {
           payload.type === 'tool' && (
-            <div className="system-xs-medium mr-1 grow truncate text-text-secondary" title={payload.toolName}>{payload.toolName}</div>
+            <div className="mr-1 grow truncate text-text-secondary system-xs-medium" title={payload.toolName}>{payload.toolName}</div>
           )
         }
         {
           payload.type === 'model' && (
-            <div className="system-xs-medium mr-1 grow truncate text-text-secondary" title={payload.modelName}>{payload.modelName}</div>
+            <div className="mr-1 grow truncate text-text-secondary system-xs-medium" title={payload.modelName}>{payload.modelName}</div>
           )
         }
         {
           !!payload.toolDuration && (
-            <div className="system-xs-regular mr-1 shrink-0 text-text-tertiary">
+            <div className="mr-1 shrink-0 text-text-tertiary system-xs-regular">
               {payload.toolDuration?.toFixed(1)}
               s
             </div>
@@ -117,7 +117,7 @@ const ToolCallItemComponent = ({
         }
         {
           !!payload.modelDuration && (
-            <div className="system-xs-regular mr-1 shrink-0 text-text-tertiary">
+            <div className="mr-1 shrink-0 text-text-tertiary system-xs-regular">
               {payload.modelDuration?.toFixed(1)}
               s
             </div>
@@ -136,7 +136,7 @@ const ToolCallItemComponent = ({
             <div className="absolute bottom-1 left-2 top-1 w-[1px] bg-divider-regular"></div>
             {
               payload.type === 'thought' && typeof payload.thoughtOutput === 'string' && (
-                <div className="body-sm-medium text-text-tertiary">{payload.thoughtOutput}</div>
+                <div className="text-text-tertiary body-sm-medium">{payload.thoughtOutput}</div>
               )
             }
             {

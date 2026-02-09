@@ -75,7 +75,7 @@ const ToolHeader = ({
               </button>
             )}
             {renderHeaderIcon()}
-            <span className="system-xs-medium text-text-tertiary">
+            <span className="text-text-tertiary system-xs-medium">
               {providerLabel}
             </span>
           </div>
@@ -94,10 +94,10 @@ const ToolHeader = ({
         </div>
       </div>
       <div className="mt-1.5 px-3 pb-2">
-        <div className="system-md-semibold text-text-primary">
+        <div className="text-text-primary system-md-semibold">
           {toolLabel}
         </div>
-        <div className="system-sm-regular mt-2.5 text-text-secondary">
+        <div className="mt-2.5 text-text-secondary system-sm-regular">
           {description}
         </div>
       </div>

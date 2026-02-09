@@ -83,7 +83,7 @@ const WorkflowProcessItem = ({
             <RiPauseCircleFill className="mr-1 h-3.5 w-3.5 shrink-0 text-text-warning-secondary" />
           )
         }
-        <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
+        <div className={cn('text-text-secondary system-xs-medium', !collapse && 'grow')}>
           {!collapse ? t('common.workflowProcess', { ns: 'workflow' }) : latestNode?.title}
         </div>
         <RiArrowRightSLine className={cn('ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')} />

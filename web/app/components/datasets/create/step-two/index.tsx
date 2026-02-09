@@ -197,7 +197,7 @@ const StepTwo: FC<StepTwoProps> = ({
   return (
     <div className="flex h-full w-full">
       <div className={cn('relative h-full w-1/2 overflow-y-auto py-6', isMobile ? 'px-4' : 'px-12')}>
-        <div className="system-md-semibold mb-1 text-text-secondary">{t('stepTwo.segmentation', { ns: 'datasetCreation' })}</div>
+        <div className="mb-1 text-text-secondary system-md-semibold">{t('stepTwo.segmentation', { ns: 'datasetCreation' })}</div>
         {showGeneralOption && (
           <GeneralChunkingOptions
             segmentIdentifier={segmentation.segmentIdentifier}

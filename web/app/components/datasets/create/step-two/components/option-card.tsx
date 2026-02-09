@@ -34,8 +34,8 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
         className={cn('absolute -bottom-1.5 left-4 text-transparent', isActive && 'text-components-panel-bg')}
       />
       <div className="flex-1 space-y-0.5 py-3 pr-4">
-        <div className="system-md-semibold text-text-secondary">{title}</div>
-        <div className="system-xs-regular text-text-tertiary">{description}</div>
+        <div className="text-text-secondary system-md-semibold">{title}</div>
+        <div className="text-text-tertiary system-xs-regular">{description}</div>
       </div>
     </div>
   )

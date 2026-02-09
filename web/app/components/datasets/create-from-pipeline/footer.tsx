@@ -43,7 +43,7 @@ const Footer = () => {
       <Divider type="horizontal" className="my-0 w-8" />
       <button
         type="button"
-        className="system-md-medium flex items-center gap-x-3 text-text-accent"
+        className="flex items-center gap-x-3 text-text-accent system-md-medium"
         onClick={openImportFromDSL}
       >
         <RiFileUploadLine className="size-5" />

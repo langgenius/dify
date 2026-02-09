@@ -62,7 +62,7 @@ const Uploading: FC<Props> = ({
       <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
         <div className="flex items-center gap-1 self-stretch">
           <RiLoader2Line className="h-4 w-4 animate-spin-slow text-text-accent" />
-          <div className="system-md-regular text-text-secondary">
+          <div className="text-text-secondary system-md-regular">
             {t(`${i18nPrefix}.uploadingPackage`, {
               ns: 'plugin',
               packageName: fileName,

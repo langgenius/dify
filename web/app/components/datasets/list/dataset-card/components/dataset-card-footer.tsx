@@ -53,7 +53,7 @@ const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
           </div>
         </Tooltip>
       )}
-      <span className="system-xs-regular text-divider-deep">/</span>
+      <span className="text-divider-deep system-xs-regular">/</span>
       <span className="system-xs-regular">{`${t('updated', { ns: 'dataset' })} ${formatTimeFromNow(dataset.updated_at * 1000)}`}</span>
     </div>
   )

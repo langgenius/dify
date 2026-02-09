@@ -105,7 +105,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   return (
     <form onSubmit={noop}>
       <div className="mb-3">
-        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
+        <label htmlFor="email" className="my-2 text-text-secondary system-md-semibold">
           {t('email', { ns: 'login' })}
         </label>
         <div className="mt-1">
@@ -124,7 +124,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
       <div className="mb-3">
         <label htmlFor="password" className="my-2 flex items-center justify-between">
-          <span className="system-md-semibold text-text-secondary">{t('password', { ns: 'login' })}</span>
+          <span className="text-text-secondary system-md-semibold">{t('password', { ns: 'login' })}</span>
           <Link
             href={`/reset-password?${searchParams.toString()}`}
             className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
