@@ -5,7 +5,6 @@ from collections.abc import Sequence
 
 import json_repair
 
-from core.model_manager import ModelManager
 from core.model_runtime.entities.message_entities import (
     SystemPromptMessage,
     TextPromptMessageContent,
@@ -48,9 +47,9 @@ class WorkflowGenerator:
     @classmethod
     def generate_workflow_flowchart(
         cls,
-        tenant_id: str,
+        model_instance,
+        model_parameters: dict,
         instruction: str,
-        model_config: dict,
         available_nodes: Sequence[dict[str, object]] | None = None,
         existing_nodes: Sequence[dict[str, object]] | None = None,
         existing_edges: Sequence[dict[str, object]] | None = None,
@@ -65,6 +64,25 @@ class WorkflowGenerator:
         """
         Generates a Dify Workflow Flowchart from natural language instruction.
 
+        Architecture note: This is pure domain logic that receives model_instance
+        as an injected dependency. Callers should use WorkflowGeneratorService
+        which handles model instance creation.
+
+        Args:
+            model_instance: ModelInstance for LLM invocation (injected)
+            model_parameters: Model completion parameters
+            instruction: Natural language workflow instruction
+            available_nodes: Available workflow node types
+            existing_nodes: Existing nodes (modification mode)
+            existing_edges: Existing edges (modification mode)
+            available_tools: Available tools for workflow
+            selected_node_ids: Selected nodes for refinement
+            previous_workflow: Previous workflow data
+            regenerate_mode: Whether in regeneration mode
+            preferred_language: Preferred output language
+            available_models: Available model configurations
+            use_graph_builder: Use graph builder algorithm
+
         Pipeline:
         1. Planner: Analyze intent & select tools.
         2. Context Filter: Filter relevant tools (reduce tokens).
@@ -72,15 +90,10 @@ class WorkflowGenerator:
         4. Repair: Fix common node/edge issues (NodeRepair, EdgeRepair).
         5. Validator: Check for errors & generate friendly hints.
         6. Renderer: Deterministic Mermaid generation.
+
+        Returns:
+            dict with generation result
         """
-        model_manager = ModelManager()
-        model_instance = model_manager.get_model_instance(
-            tenant_id=tenant_id,
-            model_type=ModelType.LLM,
-            provider=model_config.get("provider", ""),
-            model=model_config.get("name", ""),
-        )
-        model_parameters = model_config.get("completion_params", {})
         available_tools_list = list(available_tools) if available_tools else []
 
         # Check if this is modification mode (user is refining existing workflow)
