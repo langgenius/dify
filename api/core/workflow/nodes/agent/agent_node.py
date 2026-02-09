@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from packaging.version import Version
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import String, column, select, table
 from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
@@ -49,7 +49,6 @@ from factories import file_factory
 from factories.agent_factory import get_plugin_agent_strategy
 from models import ToolFile
 from models.model import Conversation
-from models.tools import WorkflowToolProvider
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .exc import (
@@ -73,6 +72,11 @@ class AgentNode(Node[AgentNodeData]):
     """
 
     node_type = NodeType.AGENT
+    _workflow_tool_provider_table = table(
+        "tool_workflow_providers",
+        column("id", String()),
+        column("tenant_id", String()),
+    )
 
     @classmethod
     def version(cls) -> str:
@@ -350,9 +354,9 @@ class AgentNode(Node[AgentNodeData]):
         if not missing_type_provider_ids:
             return set()
 
-        workflow_provider_stmt = select(WorkflowToolProvider.id).where(
-            WorkflowToolProvider.tenant_id == self.tenant_id,
-            WorkflowToolProvider.id.in_(missing_type_provider_ids),
+        workflow_provider_stmt = select(self._workflow_tool_provider_table.c.id).where(
+            self._workflow_tool_provider_table.c.tenant_id == self.tenant_id,
+            self._workflow_tool_provider_table.c.id.in_(missing_type_provider_ids),
         )
         with Session(db.engine, expire_on_commit=False) as session, session.begin():
             return set(session.scalars(workflow_provider_stmt).all())
