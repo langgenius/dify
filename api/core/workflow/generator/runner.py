@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Sequence
+from typing import Any
 
 import json_repair
 
@@ -180,8 +181,8 @@ class WorkflowGenerator:
         # --- STEP 3: BUILDER (with retry loop) ---
         MAX_GLOBAL_RETRIES = 2  # Total attempts: 1 initial + 1 retry
 
-        workflow_data = None
-        mermaid_code = None
+        workflow_data: dict[str, Any] | None = None
+        mermaid_code: str | None = None
         all_warnings = []
         all_fixes = []
         retry_count = 0
@@ -362,7 +363,7 @@ class WorkflowGenerator:
             mermaid_code = generate_mermaid(workflow_data)
 
             # --- STEP 5: VALIDATOR ---
-            is_valid, validation_hints = WorkflowValidator.validate(workflow_data, available_tools_list)
+            _, validation_hints = WorkflowValidator.validate(workflow_data, available_tools_list)
 
             # --- STEP 6: GRAPH VALIDATION (structural checks using graph algorithms) ---
             if attempt < MAX_GLOBAL_RETRIES - 1:
@@ -414,11 +415,18 @@ class WorkflowGenerator:
             stability_warning = "生成的 Workflow 可能需要调试。"
         all_warnings.append(stability_warning)
 
+        # Ensure workflow_data is not None before returning
+        if workflow_data is None:
+            return {
+                "intent": "error",
+                "error": "Failed to generate workflow",
+            }
+
         return {
             "intent": "generate",
             "flowchart": mermaid_code,
-            "nodes": workflow_data["nodes"],
-            "edges": workflow_data["edges"],
+            "nodes": workflow_data.get("nodes", []),
+            "edges": workflow_data.get("edges", []),
             "message": plan_data.get("plan_thought", "Generated workflow based on your request."),
             "warnings": all_warnings,
             "tool_recommendations": [],  # Legacy field
