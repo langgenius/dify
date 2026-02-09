@@ -1,15 +1,20 @@
 import type { DefaultValueForm } from './types'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type {
   CommonNodeType,
+  ModelConfig,
   Node,
 } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
+import { BlockEnum } from '@/app/components/workflow/types'
 import Collapse from '../collapse'
 import DefaultValue from './default-value'
 import ErrorHandleTypeSelector from './error-handle-type-selector'
 import FailBranchCard from './fail-branch-card'
+import FallbackModelSelector from './fallback-model-selector'
 import {
   useDefaultValue,
   useErrorHandle,
@@ -22,13 +27,23 @@ const ErrorHandle = ({
   data,
 }: ErrorHandleProps) => {
   const { t } = useTranslation()
-  const { error_strategy, default_value } = data
+  const { error_strategy, default_value, type } = data
   const {
     collapsed,
     setCollapsed,
     handleErrorHandleTypeChange,
   } = useErrorHandle(id, data)
   const { handleFormChange } = useDefaultValue(id)
+  const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
+
+  const handleFallbackModelsChange = useCallback((models: ModelConfig[]) => {
+    handleNodeDataUpdateWithSyncDraft({
+      id,
+      data: {
+        fallback_models: models,
+      },
+    })
+  }, [id, handleNodeDataUpdateWithSyncDraft])
 
   const getHandleErrorHandleTypeChange = useCallback((data: CommonNodeType) => {
     return (value: ErrorHandleTypeEnum) => {
@@ -63,6 +78,7 @@ const ErrorHandle = ({
                 <ErrorHandleTypeSelector
                   value={error_strategy || ErrorHandleTypeEnum.none}
                   onSelected={getHandleErrorHandleTypeChange(data)}
+                  nodeType={type}
                 />
               </div>
             )
@@ -79,6 +95,16 @@ const ErrorHandle = ({
                 <DefaultValue
                   forms={default_value}
                   onFormChange={getHandleFormChange(data)}
+                />
+              )
+            }
+            {
+              error_strategy === ErrorHandleTypeEnum.fallbackModel && !collapsed && type === BlockEnum.LLM && (
+                <FallbackModelSelector
+                  models={(data as LLMNodeType).fallback_models || []}
+                  primaryModel={(data as LLMNodeType).model}
+                  onChange={handleFallbackModelsChange}
+                  readonly={false}
                 />
               )
             }

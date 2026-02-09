@@ -404,6 +404,7 @@ const Result: FC<IResultProps> = ({
                   trace.status = NodeRunningStatus.Stopped
                 trace.details?.forEach(detailGroup => detailGroup.forEach(markTrace))
                 trace.retryDetail?.forEach(markTrace)
+                trace.fallbackDetail?.forEach(markTrace)
                 trace.parallelDetail?.children?.forEach(markTrace)
               }
               traces.forEach(markTrace)

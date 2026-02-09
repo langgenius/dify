@@ -23,6 +23,16 @@ export const useLogs = () => {
     setRetryResultList(detail)
   }, [setShowRetryDetailTrue, setRetryResultList])
 
+  const [showFallbackDetail, {
+    setTrue: setShowFallbackDetailTrue,
+    setFalse: setShowFallbackDetailFalse,
+  }] = useBoolean(false)
+  const [fallbackResultList, setFallbackResultList] = useState<NodeTracing[]>([])
+  const handleShowFallbackResultList = useCallback((detail: NodeTracing[]) => {
+    setShowFallbackDetailTrue()
+    setFallbackResultList(detail)
+  }, [setShowFallbackDetailTrue, setFallbackResultList])
+
   const [showIteratingDetail, {
     setTrue: setShowIteratingDetailTrue,
     setFalse: setShowIteratingDetailFalse,
@@ -80,13 +90,20 @@ export const useLogs = () => {
   }, [setAgentOrToolLogItemStack, setAgentOrToolLogListMap])
 
   return {
-    showSpecialResultPanel: showRetryDetail || showIteratingDetail || showLoopingDetail || !!agentOrToolLogItemStack.length,
+    showSpecialResultPanel: showRetryDetail || showFallbackDetail || showIteratingDetail || showLoopingDetail || !!agentOrToolLogItemStack.length,
     showRetryDetail,
     setShowRetryDetailTrue,
     setShowRetryDetailFalse,
     retryResultList,
     setRetryResultList,
     handleShowRetryResultList,
+
+    showFallbackDetail,
+    setShowFallbackDetailTrue,
+    setShowFallbackDetailFalse,
+    fallbackResultList,
+    setFallbackResultList,
+    handleShowFallbackResultList,
 
     showIteratingDetail,
     setShowIteratingDetailTrue,

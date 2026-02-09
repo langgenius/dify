@@ -66,6 +66,7 @@ export type NodeTracing = {
     iteration_duration_map?: IterationDurationMap
     loop_duration_map?: LoopDurationMap
     error_strategy?: ErrorHandleTypeEnum
+    fallback_model_index?: number
     agent_log?: AgentLogItem[]
     tool_info?: {
       agent_strategy?: string
@@ -92,6 +93,7 @@ export type NodeTracing = {
   expand?: boolean // for UI
   details?: NodeTracing[][] // iteration or loop detail
   retryDetail?: NodeTracing[] // retry detail
+  fallbackDetail?: NodeTracing[] // fallback model attempts detail
   retry_index?: number
   parallelDetail?: { // parallel detail. if is in parallel, this field will be set
     isParallelStartNode?: boolean

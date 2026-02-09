@@ -85,6 +85,9 @@ class LLMNodeData(BaseNodeData):
             """
         ),
     )
+    fallback_models: Sequence[ModelConfig] | None = Field(
+        default=None, description="Fallback models to try when primary model fails"
+    )
 
     @field_validator("prompt_config", mode="before")
     @classmethod
