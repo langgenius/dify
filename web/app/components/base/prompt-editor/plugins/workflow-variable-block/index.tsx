@@ -19,7 +19,13 @@ import {
 export const INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand('INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND')
 export const DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand('DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND')
 export const CLEAR_HIDE_MENU_TIMEOUT = createCommand('CLEAR_HIDE_MENU_TIMEOUT')
-export const UPDATE_WORKFLOW_NODES_MAP = createCommand('UPDATE_WORKFLOW_NODES_MAP')
+
+export type UpdateWorkflowNodesMapPayload = {
+  workflowNodesMap: NonNullable<WorkflowVariableBlockType['workflowNodesMap']>
+  nodeOutputVars: NonNullable<WorkflowVariableBlockType['variables']>
+}
+
+export const UPDATE_WORKFLOW_NODES_MAP = createCommand<UpdateWorkflowNodesMapPayload>('UPDATE_WORKFLOW_NODES_MAP')
 
 export type WorkflowVariableBlockProps = {
   getWorkflowNode: (nodeId: string) => Node
@@ -29,6 +35,7 @@ export type WorkflowVariableBlockProps = {
 }
 const WorkflowVariableBlock = memo(({
   workflowNodesMap,
+  variables,
   onInsert,
   onDelete,
   getVarType,
@@ -37,9 +44,12 @@ const WorkflowVariableBlock = memo(({
 
   useEffect(() => {
     editor.update(() => {
-      editor.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, workflowNodesMap)
+      editor.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+        workflowNodesMap: workflowNodesMap || {},
+        nodeOutputVars: variables || [],
+      })
     })
-  }, [editor, workflowNodesMap])
+  }, [editor, workflowNodesMap, variables])
 
   useEffect(() => {
     if (!editor.hasNodes([WorkflowVariableBlockNode]))
@@ -48,9 +58,9 @@ const WorkflowVariableBlock = memo(({
     return mergeRegister(
       editor.registerCommand(
         INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
-        (variables: string[]) => {
+        (insertedVariables: string[]) => {
           editor.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)
-          const workflowVariableBlockNode = $createWorkflowVariableBlockNode(variables, workflowNodesMap, getVarType)
+          const workflowVariableBlockNode = $createWorkflowVariableBlockNode(insertedVariables, workflowNodesMap, getVarType, undefined, undefined, undefined, variables)
 
           $insertNodes([workflowVariableBlockNode])
           if (onInsert)
@@ -71,7 +81,7 @@ const WorkflowVariableBlock = memo(({
         COMMAND_PRIORITY_EDITOR,
       ),
     )
-  }, [editor, onInsert, onDelete, workflowNodesMap, getVarType])
+  }, [editor, onInsert, onDelete, workflowNodesMap, getVarType, variables])
 
   return null
 })

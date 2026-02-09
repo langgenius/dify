@@ -1,5 +1,6 @@
+import type { UpdateWorkflowNodesMapPayload } from '../workflow-variable-block'
 import type { WorkflowNodesMap } from '../workflow-variable-block/node'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import {
@@ -19,6 +20,7 @@ import {
   isGlobalVar,
   isRagVariableVar,
   isSystemVar,
+  isValueSelectorInNodeOutputVars,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
 import {
@@ -32,6 +34,7 @@ import { HITLInputNode } from './node'
 type HITLInputVariableBlockComponentProps = {
   variables: string[]
   workflowNodesMap: WorkflowNodesMap
+  nodeOutputVars?: NodeOutPutVar[]
   environmentVariables?: Var[]
   conversationVariables?: Var[]
   ragVariables?: Var[]
@@ -44,6 +47,7 @@ type HITLInputVariableBlockComponentProps = {
 const HITLInputVariableBlockComponent = ({
   variables,
   workflowNodesMap = {},
+  nodeOutputVars,
   getVarType,
   environmentVariables,
   conversationVariables,
@@ -62,10 +66,14 @@ const HITLInputVariableBlockComponent = ({
     }
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
+  const [localNodeOutputVars, setLocalNodeOutputVars] = useState<NodeOutPutVar[]>(nodeOutputVars || [])
   const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
 
   const isException = isExceptionVariable(varName, node?.type)
   const variableValid = useMemo(() => {
+    if (localNodeOutputVars.length)
+      return isValueSelectorInNodeOutputVars(variables, localNodeOutputVars)
+
     let variableValid = true
     const isEnv = isENV(variables)
     const isChatVar = isConversationVar(variables)
@@ -89,7 +97,7 @@ const HITLInputVariableBlockComponent = ({
       variableValid = !!node
     }
     return variableValid
-  }, [variables, node, environmentVariables, conversationVariables, isRagVar, ragVariables])
+  }, [variables, node, environmentVariables, conversationVariables, isRagVar, ragVariables, localNodeOutputVars])
 
   useEffect(() => {
     if (!editor.hasNodes([HITLInputNode]))
@@ -98,8 +106,9 @@ const HITLInputVariableBlockComponent = ({
     return mergeRegister(
       editor.registerCommand(
         UPDATE_WORKFLOW_NODES_MAP,
-        (workflowNodesMap: WorkflowNodesMap) => {
-          setLocalWorkflowNodesMap(workflowNodesMap)
+        (payload: UpdateWorkflowNodesMapPayload) => {
+          setLocalWorkflowNodesMap(payload.workflowNodesMap)
+          setLocalNodeOutputVars(payload.nodeOutputVars)
 
           return true
         },

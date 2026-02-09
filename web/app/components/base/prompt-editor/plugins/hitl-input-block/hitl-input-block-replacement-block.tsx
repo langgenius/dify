@@ -55,6 +55,7 @@ const HITLInputReplacementBlock = ({
       onFormInputItemRemove!,
       workflowNodesMap,
       getVarType,
+      variables,
       environmentVariables,
       conversationVariables,
       ragVariables,

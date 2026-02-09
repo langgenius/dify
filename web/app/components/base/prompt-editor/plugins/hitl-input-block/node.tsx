@@ -2,7 +2,7 @@ import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
 import type { GetVarType } from '../../types'
 import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
-import type { Var } from '@/app/components/workflow/types'
+import type { NodeOutPutVar, Var } from '@/app/components/workflow/types'
 import { DecoratorNode } from 'lexical'
 import HILTInputBlockComponent from './component'
 
@@ -15,6 +15,7 @@ export type HITLNodeProps = {
   onFormInputItemRemove: (varName: string) => void
   workflowNodesMap: WorkflowNodesMap
   getVarType?: GetVarType
+  nodeOutputVars?: NodeOutPutVar[]
   environmentVariables?: Var[]
   conversationVariables?: Var[]
   ragVariables?: Var[]
@@ -32,6 +33,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   __onFormInputItemRemove: (varName: string) => void
   __workflowNodesMap: WorkflowNodesMap
   __getVarType?: GetVarType
+  __nodeOutputVars?: NodeOutPutVar[]
   __environmentVariables?: Var[]
   __conversationVariables?: Var[]
   __ragVariables?: Var[]
@@ -89,6 +91,11 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     return self.__getVarType
   }
 
+  getNodeOutputVars(): NodeOutPutVar[] {
+    const self = this.getLatest()
+    return self.__nodeOutputVars || []
+  }
+
   getEnvironmentVariables(): Var[] {
     const self = this.getLatest()
     return self.__environmentVariables || []
@@ -119,6 +126,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       node.__onFormInputItemRemove,
       node.__workflowNodesMap,
       node.__getVarType,
+      node.__nodeOutputVars,
       node.__environmentVariables,
       node.__conversationVariables,
       node.__ragVariables,
@@ -140,6 +148,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     onFormInputItemRemove: (varName: string) => void,
     workflowNodesMap: WorkflowNodesMap,
     getVarType?: GetVarType,
+    nodeOutputVars?: NodeOutPutVar[],
     environmentVariables?: Var[],
     conversationVariables?: Var[],
     ragVariables?: Var[],
@@ -156,6 +165,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     this.__onFormInputItemRemove = onFormInputItemRemove
     this.__workflowNodesMap = workflowNodesMap
     this.__getVarType = getVarType
+    this.__nodeOutputVars = nodeOutputVars
     this.__environmentVariables = environmentVariables
     this.__conversationVariables = conversationVariables
     this.__ragVariables = ragVariables
@@ -184,6 +194,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
         onRemove={this.getOnFormInputItemRemove()}
         workflowNodesMap={this.getWorkflowNodesMap()}
         getVarType={this.getGetVarType()}
+        nodeOutputVars={this.getNodeOutputVars()}
         environmentVariables={this.getEnvironmentVariables()}
         conversationVariables={this.getConversationVariables()}
         ragVariables={this.getRagVariables()}
@@ -202,6 +213,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       serializedNode.onFormInputItemRemove,
       serializedNode.workflowNodesMap,
       serializedNode.getVarType,
+      serializedNode.nodeOutputVars,
       serializedNode.environmentVariables,
       serializedNode.conversationVariables,
       serializedNode.ragVariables,
@@ -223,6 +235,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       onFormInputItemRemove: this.getOnFormInputItemRemove(),
       workflowNodesMap: this.getWorkflowNodesMap(),
       getVarType: this.getGetVarType(),
+      nodeOutputVars: this.getNodeOutputVars(),
       environmentVariables: this.getEnvironmentVariables(),
       conversationVariables: this.getConversationVariables(),
       ragVariables: this.getRagVariables(),
@@ -244,6 +257,7 @@ export function $createHITLInputNode(
   onFormInputItemRemove: (varName: string) => void,
   workflowNodesMap: WorkflowNodesMap,
   getVarType?: GetVarType,
+  nodeOutputVars?: NodeOutPutVar[],
   environmentVariables?: Var[],
   conversationVariables?: Var[],
   ragVariables?: Var[],
@@ -258,6 +272,7 @@ export function $createHITLInputNode(
     onFormInputItemRemove,
     workflowNodesMap,
     getVarType,
+    nodeOutputVars,
     environmentVariables,
     conversationVariables,
     ragVariables,

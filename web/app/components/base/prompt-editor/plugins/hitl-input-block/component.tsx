@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Type } from '@/app/components/workflow/nodes/llm/types'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useSelectOrDelete } from '../../hooks'
@@ -18,6 +18,7 @@ type HITLInputComponentProps = {
   onRename: (payload: FormInputItem, oldName: string) => void
   onRemove: (varName: string) => void
   workflowNodesMap: WorkflowNodesMap
+  nodeOutputVars?: NodeOutPutVar[]
   environmentVariables?: Var[]
   conversationVariables?: Var[]
   ragVariables?: Var[]
@@ -37,6 +38,7 @@ const HITLInputComponent: FC<HITLInputComponentProps> = ({
   onRename,
   onRemove,
   workflowNodesMap = {},
+  nodeOutputVars,
   getVarType,
   environmentVariables,
   conversationVariables,
@@ -73,6 +75,7 @@ const HITLInputComponent: FC<HITLInputComponentProps> = ({
         onRename={onRename}
         onRemove={onRemove}
         workflowNodesMap={workflowNodesMap}
+        nodeOutputVars={nodeOutputVars}
         getVarType={getVarType}
         environmentVariables={environmentVariables}
         conversationVariables={conversationVariables}

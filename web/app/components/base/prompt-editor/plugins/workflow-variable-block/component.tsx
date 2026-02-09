@@ -1,5 +1,6 @@
+import type { UpdateWorkflowNodesMapPayload } from './index'
 import type { WorkflowNodesMap } from './node'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import {
@@ -15,7 +16,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import Tooltip from '@/app/components/base/tooltip'
-import { isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar, isValueSelectorInNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
 import {
   VariableLabelInEditor,
@@ -34,6 +35,7 @@ type WorkflowVariableBlockComponentProps = {
   nodeKey: string
   variables: string[]
   workflowNodesMap: WorkflowNodesMap
+  nodeOutputVars?: NodeOutPutVar[]
   environmentVariables?: Var[]
   conversationVariables?: Var[]
   ragVariables?: Var[]
@@ -47,6 +49,7 @@ const WorkflowVariableBlockComponent = ({
   nodeKey,
   variables,
   workflowNodesMap = {},
+  nodeOutputVars,
   getVarType,
   environmentVariables,
   conversationVariables,
@@ -66,12 +69,16 @@ const WorkflowVariableBlockComponent = ({
     }
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
+  const [localNodeOutputVars, setLocalNodeOutputVars] = useState<NodeOutPutVar[]>(nodeOutputVars || [])
   const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
   const isContextVariable = (node?.type === BlockEnum.Agent || node?.type === BlockEnum.LLM)
     && variables[variablesLength - 1] === 'context'
 
   const isException = isExceptionVariable(varName, node?.type)
   const variableValid = useMemo(() => {
+    if (localNodeOutputVars.length)
+      return isValueSelectorInNodeOutputVars(variables, localNodeOutputVars)
+
     let variableValid = true
     const isEnv = isENV(variables)
     const isChatVar = isConversationVar(variables)
@@ -95,7 +102,7 @@ const WorkflowVariableBlockComponent = ({
       variableValid = !!node
     }
     return variableValid
-  }, [variables, node, environmentVariables, conversationVariables, isRagVar, ragVariables])
+  }, [variables, node, environmentVariables, conversationVariables, isRagVar, ragVariables, localNodeOutputVars])
 
   const reactflow = useReactFlow()
   const store = useStoreApi()
@@ -107,8 +114,9 @@ const WorkflowVariableBlockComponent = ({
     return mergeRegister(
       editor.registerCommand(
         UPDATE_WORKFLOW_NODES_MAP,
-        (workflowNodesMap: WorkflowNodesMap) => {
-          setLocalWorkflowNodesMap(workflowNodesMap)
+        (payload: UpdateWorkflowNodesMapPayload) => {
+          setLocalWorkflowNodesMap(payload.workflowNodesMap)
+          setLocalNodeOutputVars(payload.nodeOutputVars)
 
           return true
         },

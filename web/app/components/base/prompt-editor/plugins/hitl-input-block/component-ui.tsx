@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Type } from '@/app/components/workflow/nodes/llm/types'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -23,6 +23,7 @@ type HITLInputComponentUIProps = {
   onRename: (payload: FormInputItem, oldName: string) => void
   onRemove: (varName: string) => void
   workflowNodesMap: WorkflowNodesMap
+  nodeOutputVars?: NodeOutPutVar[]
   environmentVariables?: Var[]
   conversationVariables?: Var[]
   ragVariables?: Var[]
@@ -49,6 +50,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   onRename,
   onRemove,
   workflowNodesMap = {},
+  nodeOutputVars,
   getVarType,
   environmentVariables,
   conversationVariables,
@@ -118,6 +120,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             <VariableBlock
               variables={formInput.default?.selector}
               workflowNodesMap={workflowNodesMap}
+              nodeOutputVars={nodeOutputVars}
               getVarType={getVarType}
               environmentVariables={environmentVariables}
               conversationVariables={conversationVariables}
