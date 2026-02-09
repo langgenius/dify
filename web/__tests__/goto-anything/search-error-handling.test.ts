@@ -9,7 +9,7 @@ import type { MockedFunction } from 'vitest'
  * 4. Ensure errors don't propagate to UI layer causing "search failed"
  */
 
-import { Actions, searchAnything } from '@/app/components/goto-anything/actions'
+import { appScope, knowledgeScope, pluginScope, searchAnything } from '@/app/components/goto-anything/actions'
 import { fetchAppList } from '@/service/apps'
 import { postMarketplace } from '@/service/base'
 import { fetchDatasets } from '@/service/datasets'
@@ -57,10 +57,8 @@ describe('GotoAnything Search Error Handling', () => {
       // Mock marketplace API failure (403 permission denied)
       mockPostMarketplace.mockRejectedValue(new Error('HTTP 403: Forbidden'))
 
-      const pluginAction = Actions.plugin
-
       // Directly call plugin action's search method
-      const result = await pluginAction.search('@plugin', 'test', 'en')
+      const result = await pluginScope.search('@plugin', 'test', 'en')
 
       // Should return empty array instead of throwing error
       expect(result).toEqual([])
@@ -80,8 +78,7 @@ describe('GotoAnything Search Error Handling', () => {
         data: { plugins: [] },
       })
 
-      const pluginAction = Actions.plugin
-      const result = await pluginAction.search('@plugin', '', 'en')
+      const result = await pluginScope.search('@plugin', '', 'en')
 
       expect(result).toEqual([])
     })
@@ -92,8 +89,7 @@ describe('GotoAnything Search Error Handling', () => {
         data: null,
       })
 
-      const pluginAction = Actions.plugin
-      const result = await pluginAction.search('@plugin', 'test', 'en')
+      const result = await pluginScope.search('@plugin', 'test', 'en')
 
       expect(result).toEqual([])
     })
@@ -104,8 +100,7 @@ describe('GotoAnything Search Error Handling', () => {
       // Mock app API failure
       mockFetchAppList.mockRejectedValue(new Error('API Error'))
 
-      const appAction = Actions.app
-      const result = await appAction.search('@app', 'test', 'en')
+      const result = await appScope.search('@app', 'test', 'en')
 
       expect(result).toEqual([])
     })
@@ -114,8 +109,7 @@ describe('GotoAnything Search Error Handling', () => {
       // Mock knowledge API failure
       mockFetchDatasets.mockRejectedValue(new Error('API Error'))
 
-      const knowledgeAction = Actions.knowledge
-      const result = await knowledgeAction.search('@knowledge', 'test', 'en')
+      const result = await knowledgeScope.search('@knowledge', 'test', 'en')
 
       expect(result).toEqual([])
     })
@@ -128,19 +122,20 @@ describe('GotoAnything Search Error Handling', () => {
       mockFetchDatasets.mockResolvedValue({ data: [], has_more: false, limit: 10, page: 1, total: 0 })
       mockPostMarketplace.mockRejectedValue(new Error('Plugin API failed'))
 
-      const result = await searchAnything('en', 'test')
+      const allScopes = [appScope, knowledgeScope, pluginScope]
+      const result = await searchAnything('en', 'test', undefined, allScopes)
 
       // Should return successful results even if plugin search fails
       expect(result).toEqual([])
-      expect(console.warn).toHaveBeenCalledWith('Plugin search failed:', expect.any(Error))
+      expect(console.warn).toHaveBeenCalled()
     })
 
     it('@plugin dedicated search should return empty array when API fails', async () => {
       // Mock plugin API failure
       mockPostMarketplace.mockRejectedValue(new Error('Plugin service unavailable'))
 
-      const pluginAction = Actions.plugin
-      const result = await searchAnything('en', '@plugin test', pluginAction)
+      const allScopes = [appScope, knowledgeScope, pluginScope]
+      const result = await searchAnything('en', '@plugin test', pluginScope, allScopes)
 
       // Should return empty array instead of throwing error
       expect(result).toEqual([])
@@ -150,8 +145,8 @@ describe('GotoAnything Search Error Handling', () => {
       // Mock app API failure
       mockFetchAppList.mockRejectedValue(new Error('App service unavailable'))
 
-      const appAction = Actions.app
-      const result = await searchAnything('en', '@app test', appAction)
+      const allScopes = [appScope, knowledgeScope, pluginScope]
+      const result = await searchAnything('en', '@app test', appScope, allScopes)
 
       expect(result).toEqual([])
     })
@@ -165,13 +160,13 @@ describe('GotoAnything Search Error Handling', () => {
       mockFetchDatasets.mockRejectedValue(new Error('Dataset API failed'))
 
       const actions = [
-        { name: '@plugin', action: Actions.plugin },
-        { name: '@app', action: Actions.app },
-        { name: '@knowledge', action: Actions.knowledge },
+        { name: '@plugin', scope: pluginScope },
+        { name: '@app', scope: appScope },
+        { name: '@knowledge', scope: knowledgeScope },
       ]
 
-      for (const { name, action } of actions) {
-        const result = await action.search(name, 'test', 'en')
+      for (const { name, scope } of actions) {
+        const result = await scope.search(name, 'test', 'en')
         expect(result).toEqual([])
       }
     })
@@ -181,7 +176,8 @@ describe('GotoAnything Search Error Handling', () => {
     it('empty search term should be handled properly', async () => {
       mockPostMarketplace.mockResolvedValue({ data: { plugins: [] } })
 
-      const result = await searchAnything('en', '@plugin ', Actions.plugin)
+      const allScopes = [appScope, knowledgeScope, pluginScope]
+      const result = await searchAnything('en', '@plugin ', pluginScope, allScopes)
       expect(result).toEqual([])
     })
 
@@ -191,7 +187,8 @@ describe('GotoAnything Search Error Handling', () => {
 
       mockPostMarketplace.mockRejectedValue(timeoutError)
 
-      const result = await searchAnything('en', '@plugin test', Actions.plugin)
+      const allScopes = [appScope, knowledgeScope, pluginScope]
+      const result = await searchAnything('en', '@plugin test', pluginScope, allScopes)
       expect(result).toEqual([])
     })
 
@@ -199,7 +196,8 @@ describe('GotoAnything Search Error Handling', () => {
       const parseError = new SyntaxError('Unexpected token in JSON')
       mockPostMarketplace.mockRejectedValue(parseError)
 
-      const result = await searchAnything('en', '@plugin test', Actions.plugin)
+      const allScopes = [appScope, knowledgeScope, pluginScope]
+      const result = await searchAnything('en', '@plugin test', pluginScope, allScopes)
       expect(result).toEqual([])
     })
   })

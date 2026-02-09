@@ -25,7 +25,7 @@ const nodeDefault: NodeDefault<CodeNodeType> = {
     const { code, variables } = payload
     if (!errorMessages && variables.filter(v => !v.variable).length > 0)
       errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variable`, { ns: 'workflow' }) })
-    if (!errorMessages && variables.filter(v => !v.value_selector.length).length > 0)
+    if (!errorMessages && variables.filter(v => !v.value_selector || !v.value_selector.length).length > 0)
       errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variableValue`, { ns: 'workflow' }) })
     if (!errorMessages && !code)
       errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.code`, { ns: 'workflow' }) })

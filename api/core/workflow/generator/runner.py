@@ -6,7 +6,11 @@ from collections.abc import Sequence
 import json_repair
 
 from core.model_manager import ModelManager
-from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+from core.model_runtime.entities.message_entities import (
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 from core.model_runtime.entities.model_entities import ModelType
 from core.workflow.generator.prompts.builder_prompts import (
     BUILDER_SYSTEM_PROMPT,
@@ -105,7 +109,31 @@ class WorkflowGenerator:
                     model_parameters=model_parameters,
                     stream=False,
                 )
+                # Extract text content from response
                 plan_content = response.message.content
+                if isinstance(plan_content, list):
+                    # Extract text from content list
+                    text_parts = []
+                    for content in plan_content:
+                        if isinstance(content, TextPromptMessageContent):
+                            text_parts.append(content.data)
+                    plan_content = "".join(text_parts)
+                elif plan_content is None:
+                    plan_content = ""
+
+                # Check if LLM returned empty content
+                if not plan_content or not plan_content.strip():
+                    usage = response.usage if hasattr(response, "usage") else "N/A"
+                    logger.error("LLM returned empty content. Usage: %s", usage)
+                    return {
+                        "intent": "error",
+                        "error": (
+                            "LLM model returned empty response. This may indicate: "
+                            "(1) Model refusal/content policy, (2) Model configuration issue, "
+                            "(3) Plugin communication error. Try a different model or check model settings."
+                        ),
+                    }
+
                 # Reuse parse_vibe_response logic or simple load
                 plan_data = parse_vibe_response(plan_content)
             except Exception as e:
@@ -212,12 +240,51 @@ class WorkflowGenerator:
                     stream=False,
                 )
                 # Builder output is raw JSON nodes/edges
+                # Extract text content from response
                 build_content = build_res.message.content
+                if isinstance(build_content, list):
+                    # Extract text from content list
+                    text_parts = []
+                    for content in build_content:
+                        if isinstance(content, TextPromptMessageContent):
+                            text_parts.append(content.data)
+                    build_content = "".join(text_parts)
+                elif build_content is None:
+                    build_content = ""
+
                 match = re.search(r"```(?:json)?\s*([\s\S]+?)```", build_content)
                 if match:
                     build_content = match.group(1)
 
+                # Check if LLM returned empty content
+                if not build_content or not build_content.strip():
+                    usage = build_res.usage if hasattr(build_res, "usage") else "N/A"
+                    logger.error("Builder LLM returned empty content. Usage: %s", usage)
+                    raise ValueError(
+                        "LLM model returned empty response. This may indicate: "
+                        "(1) Model refusal/content policy, (2) Model configuration issue, "
+                        "(3) Plugin communication error. Try a different model or check model settings."
+                    )
+
                 workflow_data = json_repair.loads(build_content)
+
+                # Handle double-encoded JSON (when json_repair.loads returns a string)
+                # Keep decoding until we get a dict
+                max_decode_attempts = 3
+                decode_attempts = 0
+                while isinstance(workflow_data, str) and decode_attempts < max_decode_attempts:
+                    workflow_data = json_repair.loads(workflow_data)
+                    decode_attempts += 1
+
+                # If still a string, it's not valid JSON structure
+                if not isinstance(workflow_data, dict):
+                    logger.error(
+                        "workflow_data is not a dict after %s decode attempts. Type: %s, Value preview: %s",
+                        decode_attempts,
+                        type(workflow_data),
+                        str(workflow_data)[:200],
+                    )
+                    raise ValueError(f"Expected dict, got {type(workflow_data).__name__}")
 
                 if "nodes" not in workflow_data:
                     workflow_data["nodes"] = []

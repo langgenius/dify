@@ -1,16 +1,18 @@
 import { isInWorkflowPage, VIBE_COMMAND_EVENT } from '@/app/components/workflow/constants'
-import i18n from '@/i18n-config/i18next-config'
 import { bananaCommand } from './banana'
 import { registerCommands, unregisterCommands } from './command-bus'
 
-vi.mock('@/i18n-config/i18next-config', () => ({
-  default: {
-    t: vi.fn((key: string, options?: Record<string, unknown>) => {
-      if (!options)
-        return key
-      return `${key}:${JSON.stringify(options)}`
-    }),
-  },
+// Mock i18n for testing
+const mockI18n = {
+  t: vi.fn((key: string, options?: Record<string, unknown>) => {
+    if (!options)
+      return key
+    return `${key}:${JSON.stringify(options)}`
+  }),
+}
+
+vi.mock('react-i18next', () => ({
+  getI18n: () => mockI18n,
 }))
 
 vi.mock('@/app/components/workflow/constants', async () => {
@@ -31,7 +33,7 @@ vi.mock('./command-bus', () => ({
 const mockedIsInWorkflowPage = vi.mocked(isInWorkflowPage)
 const mockedRegisterCommands = vi.mocked(registerCommands)
 const mockedUnregisterCommands = vi.mocked(unregisterCommands)
-const mockedT = vi.mocked(i18n.t)
+const mockedT = mockI18n.t
 
 type CommandArgs = { dsl?: string }
 type CommandMap = Record<string, (args?: CommandArgs) => void | Promise<void>>

@@ -1,5 +1,5 @@
 import type { Mock } from 'vitest'
-import type { ActionItem } from '../../app/components/goto-anything/actions/types'
+import type { ScopeDescriptor } from '../../app/components/goto-anything/actions/types'
 
 // Import after mocking to get mocked version
 import { matchAction } from '../../app/components/goto-anything/actions'
@@ -13,10 +13,11 @@ vi.mock('../../app/components/goto-anything/actions', () => ({
 vi.mock('../../app/components/goto-anything/actions/commands/registry')
 
 // Implement the actual matchAction logic for testing
-const actualMatchAction = (query: string, actions: Record<string, ActionItem>) => {
-  const result = Object.values(actions).find((action) => {
+const actualMatchAction = (query: string, scopes: ScopeDescriptor[]) => {
+  const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return scopes.find((scope) => {
     // Special handling for slash commands
-    if (action.key === '/') {
+    if (scope.id === 'slash' || scope.shortcut === '/') {
       // Get all registered commands from the registry
       const allCommands = slashCommandRegistry.getAllCommands()
 
@@ -33,39 +34,41 @@ const actualMatchAction = (query: string, actions: Record<string, ActionItem>) =
       })
     }
 
-    const reg = new RegExp(`^(${action.key}|${action.shortcut})(?:\\s|$)`)
+    const shortcuts = [scope.shortcut, ...(scope.aliases || [])].map(escapeRegExp)
+    const reg = new RegExp(`^(${shortcuts.join('|')})(?:\\s|$)`)
     return reg.test(query)
   })
-  return result
 }
 
 // Replace mock with actual implementation
 ;(matchAction as Mock).mockImplementation(actualMatchAction)
 
 describe('matchAction Logic', () => {
-  const mockActions: Record<string, ActionItem> = {
-    app: {
-      key: '@app',
-      shortcut: '@a',
+  const mockScopes: ScopeDescriptor[] = [
+    {
+      id: 'app',
+      shortcut: '@app',
+      aliases: ['@a'],
       title: 'Search Applications',
       description: 'Search apps',
       search: vi.fn(),
     },
-    knowledge: {
-      key: '@knowledge',
+    {
+      id: 'knowledge',
       shortcut: '@kb',
+      aliases: ['@knowledge'],
       title: 'Search Knowledge',
       description: 'Search knowledge bases',
       search: vi.fn(),
     },
-    slash: {
-      key: '/',
+    {
+      id: 'slash',
       shortcut: '/',
       title: 'Commands',
       description: 'Execute commands',
       search: vi.fn(),
     },
-  }
+  ]
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -81,32 +84,32 @@ describe('matchAction Logic', () => {
 
   describe('@ Actions Matching', () => {
     it('should match @app with key', () => {
-      const result = matchAction('@app', mockActions)
-      expect(result).toBe(mockActions.app)
+      const result = matchAction('@app', mockScopes)
+      expect(result).toBe(mockScopes[0])
     })
 
     it('should match @app with shortcut', () => {
-      const result = matchAction('@a', mockActions)
-      expect(result).toBe(mockActions.app)
+      const result = matchAction('@a', mockScopes)
+      expect(result).toBe(mockScopes[0])
     })
 
     it('should match @knowledge with key', () => {
-      const result = matchAction('@knowledge', mockActions)
-      expect(result).toBe(mockActions.knowledge)
+      const result = matchAction('@knowledge', mockScopes)
+      expect(result).toBe(mockScopes[1])
     })
 
     it('should match @knowledge with shortcut @kb', () => {
-      const result = matchAction('@kb', mockActions)
-      expect(result).toBe(mockActions.knowledge)
+      const result = matchAction('@kb', mockScopes)
+      expect(result).toBe(mockScopes[1])
     })
 
     it('should match with text after action', () => {
-      const result = matchAction('@app search term', mockActions)
-      expect(result).toBe(mockActions.app)
+      const result = matchAction('@app search term', mockScopes)
+      expect(result).toBe(mockScopes[0])
     })
 
     it('should not match partial @ actions', () => {
-      const result = matchAction('@ap', mockActions)
+      const result = matchAction('@ap', mockScopes)
       expect(result).toBeUndefined()
     })
   })
@@ -114,47 +117,47 @@ describe('matchAction Logic', () => {
   describe('Slash Commands Matching', () => {
     describe('Direct Mode Commands', () => {
       it('should not match direct mode commands', () => {
-        const result = matchAction('/docs', mockActions)
+        const result = matchAction('/docs', mockScopes)
         expect(result).toBeUndefined()
       })
 
       it('should not match direct mode with arguments', () => {
-        const result = matchAction('/docs something', mockActions)
+        const result = matchAction('/docs something', mockScopes)
         expect(result).toBeUndefined()
       })
 
       it('should not match any direct mode command', () => {
-        expect(matchAction('/community', mockActions)).toBeUndefined()
-        expect(matchAction('/feedback', mockActions)).toBeUndefined()
-        expect(matchAction('/account', mockActions)).toBeUndefined()
+        expect(matchAction('/community', mockScopes)).toBeUndefined()
+        expect(matchAction('/feedback', mockScopes)).toBeUndefined()
+        expect(matchAction('/account', mockScopes)).toBeUndefined()
       })
     })
 
     describe('Submenu Mode Commands', () => {
       it('should match submenu mode commands exactly', () => {
-        const result = matchAction('/theme', mockActions)
-        expect(result).toBe(mockActions.slash)
+        const result = matchAction('/theme', mockScopes)
+        expect(result).toBe(mockScopes[2])
       })
 
       it('should match submenu mode with arguments', () => {
-        const result = matchAction('/theme dark', mockActions)
-        expect(result).toBe(mockActions.slash)
+        const result = matchAction('/theme dark', mockScopes)
+        expect(result).toBe(mockScopes[2])
       })
 
       it('should match all submenu commands', () => {
-        expect(matchAction('/language', mockActions)).toBe(mockActions.slash)
-        expect(matchAction('/language en', mockActions)).toBe(mockActions.slash)
+        expect(matchAction('/language', mockScopes)).toBe(mockScopes[2])
+        expect(matchAction('/language en', mockScopes)).toBe(mockScopes[2])
       })
     })
 
     describe('Slash Without Command', () => {
       it('should not match single slash', () => {
-        const result = matchAction('/', mockActions)
+        const result = matchAction('/', mockScopes)
         expect(result).toBeUndefined()
       })
 
       it('should not match unregistered commands', () => {
-        const result = matchAction('/unknown', mockActions)
+        const result = matchAction('/unknown', mockScopes)
         expect(result).toBeUndefined()
       })
     })
@@ -162,28 +165,28 @@ describe('matchAction Logic', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty query', () => {
-      const result = matchAction('', mockActions)
+      const result = matchAction('', mockScopes)
       expect(result).toBeUndefined()
     })
 
     it('should handle whitespace only', () => {
-      const result = matchAction('  ', mockActions)
+      const result = matchAction('  ', mockScopes)
       expect(result).toBeUndefined()
     })
 
     it('should handle regular text without actions', () => {
-      const result = matchAction('search something', mockActions)
+      const result = matchAction('search something', mockScopes)
       expect(result).toBeUndefined()
     })
 
     it('should handle special characters', () => {
-      const result = matchAction('#tag', mockActions)
+      const result = matchAction('#tag', mockScopes)
       expect(result).toBeUndefined()
     })
 
     it('should handle multiple @ or /', () => {
-      expect(matchAction('@@app', mockActions)).toBeUndefined()
-      expect(matchAction('//theme', mockActions)).toBeUndefined()
+      expect(matchAction('@@app', mockScopes)).toBeUndefined()
+      expect(matchAction('//theme', mockScopes)).toBeUndefined()
     })
   })
 
@@ -193,7 +196,7 @@ describe('matchAction Logic', () => {
         { name: 'test', mode: 'direct' },
       ])
 
-      const result = matchAction('/test', mockActions)
+      const result = matchAction('/test', mockScopes)
       expect(result).toBeUndefined()
     })
 
@@ -202,8 +205,8 @@ describe('matchAction Logic', () => {
         { name: 'test', mode: 'submenu' },
       ])
 
-      const result = matchAction('/test', mockActions)
-      expect(result).toBe(mockActions.slash)
+      const result = matchAction('/test', mockScopes)
+      expect(result).toBe(mockScopes[2])
     })
 
     it('should treat undefined mode as submenu', () => {
@@ -211,25 +214,25 @@ describe('matchAction Logic', () => {
         { name: 'test' }, // No mode specified
       ])
 
-      const result = matchAction('/test', mockActions)
-      expect(result).toBe(mockActions.slash)
+      const result = matchAction('/test', mockScopes)
+      expect(result).toBe(mockScopes[2])
     })
   })
 
   describe('Registry Integration', () => {
     it('should call getAllCommands when matching slash', () => {
-      matchAction('/theme', mockActions)
+      matchAction('/theme', mockScopes)
       expect(slashCommandRegistry.getAllCommands).toHaveBeenCalled()
     })
 
     it('should not call getAllCommands for @ actions', () => {
-      matchAction('@app', mockActions)
+      matchAction('@app', mockScopes)
       expect(slashCommandRegistry.getAllCommands).not.toHaveBeenCalled()
     })
 
     it('should handle empty command list', () => {
       ;(slashCommandRegistry.getAllCommands as Mock).mockReturnValue([])
-      const result = matchAction('/anything', mockActions)
+      const result = matchAction('/anything', mockScopes)
       expect(result).toBeUndefined()
     })
   })

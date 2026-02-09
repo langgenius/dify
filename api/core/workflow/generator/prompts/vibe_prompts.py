@@ -709,6 +709,17 @@ def parse_vibe_response(content: str) -> dict[str, Any]:
                 "raw_content": content[:500],  # First 500 chars for debugging
             }
 
+    # Handle double-encoded JSON (when json.loads returns a string)
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except json.JSONDecodeError:
+            return {
+                "intent": "error",
+                "error": "Failed to parse double-encoded JSON",
+                "raw_content": data[:500],
+            }
+
     # Validate and normalize
     if "intent" not in data:
         data["intent"] = "generate"  # Default assumption

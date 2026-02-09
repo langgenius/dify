@@ -1,4 +1,4 @@
-import type { ActionItem } from '../../app/components/goto-anything/actions/types'
+import type { ScopeDescriptor } from '../../app/components/goto-anything/actions/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import CommandSelector from '../../app/components/goto-anything/command-selector'
@@ -20,36 +20,37 @@ vi.mock('cmdk', () => ({
 }))
 
 describe('CommandSelector', () => {
-  const mockActions: Record<string, ActionItem> = {
-    app: {
-      key: '@app',
+  const mockScopes: ScopeDescriptor[] = [
+    {
+      id: 'app',
       shortcut: '@app',
       title: 'Search Applications',
       description: 'Search apps',
       search: vi.fn(),
     },
-    knowledge: {
-      key: '@knowledge',
+    {
+      id: 'knowledge',
       shortcut: '@kb',
+      aliases: ['@knowledge'],
       title: 'Search Knowledge',
       description: 'Search knowledge bases',
       search: vi.fn(),
     },
-    plugin: {
-      key: '@plugin',
+    {
+      id: 'plugin',
       shortcut: '@plugin',
       title: 'Search Plugins',
       description: 'Search plugins',
       search: vi.fn(),
     },
-    node: {
-      key: '@node',
+    {
+      id: 'node',
       shortcut: '@node',
       title: 'Search Nodes',
       description: 'Search workflow nodes',
       search: vi.fn(),
     },
-  }
+  ]
 
   const mockOnCommandSelect = vi.fn()
   const mockOnCommandValueChange = vi.fn()
@@ -62,7 +63,7 @@ describe('CommandSelector', () => {
     it('should render all actions when no filter is provided', () => {
       render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
         />,
       )
@@ -76,7 +77,7 @@ describe('CommandSelector', () => {
     it('should render empty filter as showing all actions', () => {
       render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter=""
         />,
@@ -93,7 +94,7 @@ describe('CommandSelector', () => {
     it('should filter actions based on searchFilter - single match', () => {
       render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter="k"
         />,
@@ -108,7 +109,7 @@ describe('CommandSelector', () => {
     it('should filter actions with multiple matches', () => {
       render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter="p"
         />,
@@ -123,7 +124,7 @@ describe('CommandSelector', () => {
     it('should be case-insensitive when filtering', () => {
       render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter="APP"
         />,
@@ -136,7 +137,7 @@ describe('CommandSelector', () => {
     it('should match partial strings', () => {
       render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter="od"
         />,
@@ -153,7 +154,7 @@ describe('CommandSelector', () => {
     it('should show empty state when no matches found', () => {
       render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter="xyz"
         />,
@@ -171,7 +172,7 @@ describe('CommandSelector', () => {
     it('should not show empty state when filter is empty', () => {
       render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter=""
         />,
@@ -185,7 +186,7 @@ describe('CommandSelector', () => {
     it('should call onCommandValueChange when filter changes and first item differs', () => {
       const { rerender } = render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter=""
           commandValue="@app"
@@ -195,7 +196,7 @@ describe('CommandSelector', () => {
 
       rerender(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter="k"
           commandValue="@app"
@@ -209,7 +210,7 @@ describe('CommandSelector', () => {
     it('should not call onCommandValueChange if current value still exists', () => {
       const { rerender } = render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter=""
           commandValue="@app"
@@ -219,7 +220,7 @@ describe('CommandSelector', () => {
 
       rerender(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter="a"
           commandValue="@app"
@@ -233,7 +234,7 @@ describe('CommandSelector', () => {
     it('should handle onCommandSelect callback correctly', () => {
       render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter="k"
         />,
@@ -250,7 +251,7 @@ describe('CommandSelector', () => {
     it('should handle empty actions object', () => {
       render(
         <CommandSelector
-          actions={{}}
+          scopes={[]}
           onCommandSelect={mockOnCommandSelect}
           searchFilter=""
         />,
@@ -262,7 +263,7 @@ describe('CommandSelector', () => {
     it('should handle special characters in filter', () => {
       render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter="@"
         />,
@@ -277,7 +278,7 @@ describe('CommandSelector', () => {
     it('should handle undefined onCommandValueChange gracefully', () => {
       const { rerender } = render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter=""
         />,
@@ -286,7 +287,7 @@ describe('CommandSelector', () => {
       expect(() => {
         rerender(
           <CommandSelector
-            actions={mockActions}
+            scopes={mockScopes}
             onCommandSelect={mockOnCommandSelect}
             searchFilter="k"
           />,
@@ -299,7 +300,7 @@ describe('CommandSelector', () => {
     it('should work without searchFilter prop (backward compatible)', () => {
       render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
         />,
       )
@@ -313,7 +314,7 @@ describe('CommandSelector', () => {
     it('should work without commandValue and onCommandValueChange props', () => {
       render(
         <CommandSelector
-          actions={mockActions}
+          scopes={mockScopes}
           onCommandSelect={mockOnCommandSelect}
           searchFilter="k"
         />,
