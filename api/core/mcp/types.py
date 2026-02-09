@@ -855,6 +855,7 @@ class CallToolRequestParams(RequestParams):
 
     name: str
     arguments: dict[str, Any] | None = None
+    _meta: dict[str, Any] | None = None
     model_config = ConfigDict(extra="allow")
 
 
