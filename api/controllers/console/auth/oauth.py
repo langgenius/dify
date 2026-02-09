@@ -68,7 +68,7 @@ class OAuthLogin(Resource):
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
         if not oauth_provider:
-            return {"error": "Invalid provider"}, 400
+            return {"error": "无效的提供商"}, 400
 
         auth_url = oauth_provider.get_authorization_url(invite_token=invite_token)
         return redirect(auth_url)
@@ -92,7 +92,7 @@ class OAuthCallback(Resource):
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
         if not oauth_provider:
-            return {"error": "Invalid provider"}, 400
+            return {"error": "无效的提供商"}, 400
 
         code = request.args.get("code")
         state = request.args.get("state")
@@ -101,7 +101,7 @@ class OAuthCallback(Resource):
             invite_token = state
 
         if not code:
-            return {"error": "Authorization code is required"}, 400
+            return {"error": "授权码不能为空"}, 400
 
         try:
             token = oauth_provider.get_access_token(code)
@@ -111,7 +111,7 @@ class OAuthCallback(Resource):
             if isinstance(e, httpx.HTTPStatusError):
                 error_text = e.response.text
             logger.exception("An error occurred during the OAuth process with %s: %s", provider, error_text)
-            return {"error": "OAuth process failed"}, 400
+            return {"error": "OAuth 过程失败"}, 400
 
         if invite_token and RegisterService.is_valid_invite_token(invite_token):
             invitation = RegisterService.get_invitation_by_token(token=invite_token)
@@ -121,25 +121,22 @@ class OAuthCallback(Resource):
                     invitation_email.lower() if isinstance(invitation_email, str) else invitation_email
                 )
                 if invitation_email_normalized != user_info.email.lower():
-                    return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Invalid invitation token.")
+                    return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?code=invalid_invitation_token")
 
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?invite_token={invite_token}")
 
         try:
             account, oauth_new_user = _generate_account(provider, user_info)
         except AccountNotFoundError:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account not found.")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?code=account_not_found")
         except (WorkSpaceNotFoundError, WorkSpaceNotAllowedCreateError):
-            return redirect(
-                f"{dify_config.CONSOLE_WEB_URL}/signin"
-                "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
-            )
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?code=workspace_not_found")
         except AccountRegisterError as e:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?code=account_register_error")
 
         # Check account status
         if account.status == AccountStatus.BANNED:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account is banned.")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?code=account_banned")
 
         if account.status == AccountStatus.PENDING:
             account.status = AccountStatus.ACTIVE
@@ -149,12 +146,9 @@ class OAuthCallback(Resource):
         try:
             TenantService.create_owner_tenant_if_not_exist(account)
         except Unauthorized:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found.")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?code=workspace_not_found")
         except WorkSpaceNotAllowedCreateError:
-            return redirect(
-                f"{dify_config.CONSOLE_WEB_URL}/signin"
-                "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
-            )
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?code=workspace_not_found")
 
         token_pair = AccountService.login(
             account=account,

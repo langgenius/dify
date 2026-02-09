@@ -627,5 +627,22 @@
   "voiceInput.converting": "Converting to text...",
   "voiceInput.notAllow": "microphone not authorized",
   "voiceInput.speaking": "Speak now...",
-  "you": "You"
+  "you": "You",
+  "error.billing_upgrade_required": "To unlock this feature, please upgrade to a paid plan.",
+  "error.knowledge_rate_limited": "You have reached the knowledge base request rate limit of your subscription.",
+  "error.account_not_found": "Account not found.",
+  "error.workspace_not_found": "Workspace not found, please contact system admin to invite you to join.",
+  "error.invalid_invitation_token": "Invalid invitation token.",
+  "error.account_banned": "Account is banned.",
+  "error.account_register_error": "Account registration failed, please contact the administrator.",
+  "error.invalid_provider": "Invalid OAuth provider.",
+  "error.authorization_code_required": "Authorization code is required.",
+  "error.oauth_failed": "OAuth process failed, please retry.",
+  "error.billing_members_limit_exceeded": "The number of members has reached the limit of your subscription.",
+  "error.billing_apps_limit_exceeded": "The number of apps has reached the limit of your subscription.",
+  "error.billing_vector_space_limit_exceeded": "The capacity of knowledge storage space has reached the limit of your subscription.",
+  "error.billing_documents_limit_exceeded": "The number of documents has reached the limit of your subscription.",
+  "error.billing_workspace_custom_limit_exceeded": "The workspace custom feature has reached the limit of your subscription.",
+  "error.billing_annotation_quota_exceeded": "The annotation quota has reached the limit of your subscription.",
+  "error.billing_not_enabled": "Billing feature is not enabled."
 }

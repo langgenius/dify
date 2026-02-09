@@ -67,11 +67,11 @@ class OAuthDataSource(Resource):
         with current_app.app_context():
             oauth_provider = OAUTH_DATASOURCE_PROVIDERS.get(provider)
         if not oauth_provider:
-            return {"error": "Invalid provider"}, 400
+            return {"error": "无效的提供商"}, 400
         if dify_config.NOTION_INTEGRATION_TYPE == "internal":
             internal_secret = dify_config.NOTION_INTERNAL_SECRET
             if not internal_secret:
-                return ({"error": "Internal secret is not set"},)
+                return ({"error": "内部密钥未设置"},)
             oauth_provider.save_internal_access_token(internal_secret)
             return {"data": "internal"}
         else:
@@ -97,7 +97,7 @@ class OAuthDataSourceCallback(Resource):
         with current_app.app_context():
             oauth_provider = OAUTH_DATASOURCE_PROVIDERS.get(provider)
         if not oauth_provider:
-            return {"error": "Invalid provider"}, 400
+            return {"error": "无效的提供商"}, 400
         if "code" in request.args:
             code = request.args.get("code")
 
@@ -107,7 +107,7 @@ class OAuthDataSourceCallback(Resource):
 
             return redirect(f"{dify_config.CONSOLE_WEB_URL}?type=notion&error={error}")
         else:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}?type=notion&error=Access denied")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}?type=notion&error=访问被拒绝")
 
 
 @console_ns.route("/oauth/data-source/binding/<string:provider>")
@@ -128,18 +128,18 @@ class OAuthDataSourceBinding(Resource):
         with current_app.app_context():
             oauth_provider = OAUTH_DATASOURCE_PROVIDERS.get(provider)
         if not oauth_provider:
-            return {"error": "Invalid provider"}, 400
+            return {"error": "无效的提供商"}, 400
         if "code" in request.args:
             code = request.args.get("code", "")
             if not code:
-                return {"error": "Invalid code"}, 400
+                return {"error": "无效的授权码"}, 400
             try:
                 oauth_provider.get_access_token(code)
             except httpx.HTTPStatusError as e:
                 logger.exception(
                     "An error occurred during the OAuthCallback process with %s: %s", provider, e.response.text
                 )
-                return {"error": "OAuth data source process failed"}, 400
+                return {"error": "OAuth 数据源处理失败"}, 400
 
             return {"result": "success"}, 200
 
@@ -165,13 +165,13 @@ class OAuthDataSourceSync(Resource):
         with current_app.app_context():
             oauth_provider = OAUTH_DATASOURCE_PROVIDERS.get(provider)
         if not oauth_provider:
-            return {"error": "Invalid provider"}, 400
+            return {"error": "无效的提供商"}, 400
         try:
             oauth_provider.sync_data_source(binding_id)
         except httpx.HTTPStatusError as e:
             logger.exception(
                 "An error occurred during the OAuthCallback process with %s: %s", provider, e.response.text
             )
-            return {"error": "OAuth data source process failed"}, 400
+            return {"error": "OAuth 数据源处理失败"}, 400
 
         return {"result": "success"}, 200

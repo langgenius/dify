@@ -627,5 +627,22 @@
   "voiceInput.converting": "正在转换为文本...",
   "voiceInput.notAllow": "麦克风未授权",
   "voiceInput.speaking": "现在讲...",
-  "you": "你"
+  "you": "你",
+  "error.billing_upgrade_required": "需要升级到付费套餐才能使用该功能。",
+  "error.knowledge_rate_limited": "已达到当前订阅的知识库请求速率限制。",
+  "error.account_not_found": "账号不存在。",
+  "error.workspace_not_found": "未找到工作区，请联系管理员邀请加入。",
+  "error.invalid_invitation_token": "邀请链接无效或已过期。",
+  "error.account_banned": "账号已被禁用。",
+  "error.account_register_error": "账号注册失败，请联系管理员。",
+  "error.invalid_provider": "无效的登录方式。",
+  "error.authorization_code_required": "缺少授权码。",
+  "error.oauth_failed": "第三方登录失败，请重试。",
+  "error.billing_members_limit_exceeded": "成员数量已达订阅上限。",
+  "error.billing_apps_limit_exceeded": "应用数量已达订阅上限。",
+  "error.billing_vector_space_limit_exceeded": "知识库存储空间已达订阅上限。",
+  "error.billing_documents_limit_exceeded": "文档数量已达订阅上限。",
+  "error.billing_workspace_custom_limit_exceeded": "工作区自定义功能已达订阅上限。",
+  "error.billing_annotation_quota_exceeded": "标注配额已达订阅上限。",
+  "error.billing_not_enabled": "计费功能未启用。"
 }
