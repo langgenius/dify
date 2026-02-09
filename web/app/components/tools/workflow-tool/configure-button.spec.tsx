@@ -309,7 +309,7 @@ describe('WorkflowToolConfigureButton', () => {
 
     it('should render loading state when published and fetching details', async () => {
       // Arrange
-      mockFetchWorkflowToolDetailByAppID.mockImplementation(() => new Promise(() => {})) // Never resolves
+      mockFetchWorkflowToolDetailByAppID.mockImplementation(() => new Promise(() => { })) // Never resolves
       const props = createDefaultConfigureButtonProps({ published: true })
 
       // Act
