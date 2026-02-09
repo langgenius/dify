@@ -10,6 +10,7 @@ tenant_id, app_id, triggered_from, etc., which are not part of the core domain m
 """
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
@@ -17,6 +18,27 @@ from sqlalchemy.orm import Session
 
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
+
+
+@dataclass(frozen=True)
+class WorkflowNodeExecutionSnapshot:
+    """
+    Minimal snapshot of workflow node execution for stream recovery.
+
+    Only includes fields required by snapshot events.
+    """
+
+    execution_id: str  # Unique execution identifier (node_execution_id or row id).
+    node_id: str  # Workflow graph node id.
+    node_type: str  # Workflow graph node type (e.g. "human-input").
+    title: str  # Human-friendly node title.
+    index: int  # Execution order index within the workflow run.
+    status: str  # Execution status (running/succeeded/failed/paused).
+    elapsed_time: float  # Execution elapsed time in seconds.
+    created_at: datetime  # Execution created timestamp.
+    finished_at: datetime | None  # Execution finished timestamp.
+    iteration_id: str | None = None  # Iteration id from execution metadata, if any.
+    loop_id: str | None = None  # Loop id from execution metadata, if any.
 
 
 class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Protocol):
@@ -79,10 +101,33 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         Args:
             tenant_id: The tenant identifier
             app_id: The application identifier
+            workflow_id: The workflow identifier
+            triggered_from: The workflow trigger source
             workflow_run_id: The workflow run identifier
 
         Returns:
             A sequence of WorkflowNodeExecutionModel instances ordered by index (desc)
+        """
+        ...
+
+    def get_execution_snapshots_by_workflow_run(
+        self,
+        tenant_id: str,
+        app_id: str,
+        workflow_id: str,
+        triggered_from: str,
+        workflow_run_id: str,
+    ) -> Sequence[WorkflowNodeExecutionSnapshot]:
+        """
+        Get minimal snapshots for node executions in a workflow run.
+
+        Args:
+            tenant_id: The tenant identifier
+            app_id: The application identifier
+            workflow_run_id: The workflow run identifier
+
+        Returns:
+            A sequence of WorkflowNodeExecutionSnapshot ordered by creation time
         """
         ...
 
