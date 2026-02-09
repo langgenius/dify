@@ -4,6 +4,8 @@ import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
 import tailwindTypography from '@tailwindcss/typography'
 import { importSvgCollections } from 'iconify-import-svg'
 // @ts-expect-error workaround for turbopack issue
+import { cssAsPlugin } from './tailwind-css-plugin.ts'
+// @ts-expect-error workaround for turbopack issue
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define.ts'
 import typography from './typography.js'
 
@@ -178,6 +180,9 @@ const config = {
         display: 'block',
       },
     }),
+    cssAsPlugin([
+      path.resolve(_dirname, './app/styles/globals.css'),
+    ]),
   ],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
   corePlugins: {
