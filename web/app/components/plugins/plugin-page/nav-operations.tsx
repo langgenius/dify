@@ -1,11 +1,12 @@
 'use client'
-import { RiAddLine, RiBookOpenLine, RiGithubLine, RiLayoutGridLine, RiPuzzle2Line } from '@remixicon/react'
+import { RiAddLine, RiBookOpenLine, RiGithubLine, RiPuzzle2Line } from '@remixicon/react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Button, { buttonVariants } from '@/app/components/base/button'
+import { Playground } from '@/app/components/base/icons/src/vender/plugin'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -111,7 +112,7 @@ export const CreationTypeTabs = ({ creationType: creationTypeProp }: CreationTyp
           creationType === 'templates' && 'bg-state-base-hover text-text-secondary',
         )}
       >
-        <RiLayoutGridLine className="h-4 w-4 shrink-0" />
+        <Playground className="h-4 w-4 shrink-0" />
         <span className="system-sm-medium hidden md:inline">
           {t('templates', { ns: 'plugin' })}
         </span>

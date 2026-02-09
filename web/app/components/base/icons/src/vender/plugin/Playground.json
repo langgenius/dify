@@ -1,0 +1,50 @@
+{
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M11.6301 11.3333C11.6301 12.4379 10.7347 13.3333 9.63013 13.3333C8.52559 13.3333 7.63013 12.4379 7.63013 11.3333C7.63013 10.2287 8.52559 9.33325 9.63013 9.33325C10.7347 9.33325 11.6301 10.2287 11.6301 11.3333Z",
+          "stroke": "currentColor",
+          "stroke-width": "1.5",
+          "stroke-linejoin": "round"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M3.1353 4.75464L6.67352 7.72353L2.33325 9.30327L3.1353 4.75464Z",
+          "stroke": "currentColor",
+          "stroke-width": "1.5",
+          "stroke-linejoin": "round"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M9.79576 2.5L13.6595 3.53527L12.6242 7.399L8.7605 6.36371L9.79576 2.5Z",
+          "stroke": "currentColor",
+          "stroke-width": "1.5",
+          "stroke-linejoin": "round"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "Playground"
+}
