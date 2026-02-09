@@ -71,6 +71,8 @@ type Props = {
   availableNodes?: Node[]
   availableVars?: NodeOutPutVar[]
   isAddBtnTrigger?: boolean
+  trigger?: React.ReactNode
+  isJustShowValue?: boolean
   schema?: Partial<CredentialFormSchema>
   valueTypePlaceHolder?: string
   isInTable?: boolean
@@ -103,6 +105,8 @@ const VarReferencePicker: FC<Props> = ({
   isFilterFileVar,
   availableNodes: passedInAvailableNodes,
   availableVars: passedInAvailableVars,
+  trigger,
+  isJustShowValue,
   isAddBtnTrigger,
   schema,
   valueTypePlaceHolder,
@@ -423,204 +427,207 @@ const VarReferencePicker: FC<Props> = ({
         onOpenChange={setOpen}
         placement={isAddBtnTrigger ? 'bottom-end' : 'bottom-start'}
       >
-        <WrapElem
-          onClick={() => {
-            if (readonly)
-              return
-            if (!isConstant)
-              setOpen(!open)
-            else
-              setControlFocus(Date.now())
-          }}
-          className="group/picker-trigger-wrap relative !flex"
-        >
-          <>
-            {isAddBtnTrigger
-              ? (
-                  <div>
-                    <AddButton onClick={noop}></AddButton>
-                  </div>
-                )
-              : (
-                  <div ref={!isSupportConstantValue ? triggerRef : null} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'group/wrap relative flex h-8 w-full items-center', !isSupportConstantValue && 'rounded-lg bg-components-input-bg-normal p-1', isInTable && 'border-none bg-transparent', readonly && 'bg-components-input-bg-disabled')}>
-                    {isSupportConstantValue
-                      ? (
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setOpen(false)
-                              setControlFocus(Date.now())
-                            }}
-                            className="mr-1 flex h-full items-center space-x-1"
-                          >
-                            <TypeSelector
-                              noLeft
-                              trigger={(
-                                <div className="radius-md flex h-8 items-center bg-components-input-bg-normal px-2">
-                                  <div className="system-sm-regular mr-1 text-components-input-text-filled">{varKindTypes.find(item => item.value === varKindType)?.label}</div>
-                                  <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
-                                </div>
-                              )}
-                              popupClassName="top-8"
-                              readonly={readonly}
-                              value={varKindType}
-                              options={varKindTypes}
-                              onChange={handleVarKindTypeChange}
-                              showChecked
-                            />
-                          </div>
-                        )
-                      : (!hasValue && (
-                          <div className="ml-1.5 mr-1">
-                            <Variable02 className={`h-4 w-4 ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'}`} />
-                          </div>
-                        ))}
-                    {isConstant
-                      ? (
-                          <ConstantField
-                            value={value as string}
-                            onChange={onChange as ((value: string | number, varKindType: VarKindType, varInfo?: Var) => void)}
-                            schema={schemaWithDynamicSelect as CredentialFormSchema}
-                            readonly={readonly}
-                            isLoading={isLoading}
-                          />
-                        )
-                      : (
-                          <VarPickerWrap
-                            onClick={() => {
-                              if (readonly)
-                                return
-                              if (!isConstant)
-                                setOpen(!open)
-                              else
+        {!!trigger && <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>{trigger}</PortalToFollowElemTrigger>}
+        {!trigger && (
+          <WrapElem
+            onClick={() => {
+              if (readonly)
+                return
+              if (!isConstant)
+                setOpen(!open)
+              else
+                setControlFocus(Date.now())
+            }}
+            className="group/picker-trigger-wrap relative !flex"
+          >
+            <>
+              {isAddBtnTrigger
+                ? (
+                    <div>
+                      <AddButton onClick={noop}></AddButton>
+                    </div>
+                  )
+                : (
+                    <div ref={!isSupportConstantValue ? triggerRef : null} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'group/wrap relative flex h-8 w-full items-center', !isSupportConstantValue && 'rounded-lg bg-components-input-bg-normal p-1', isInTable && 'border-none bg-transparent', readonly && 'bg-components-input-bg-disabled', isJustShowValue && 'h-6 bg-transparent p-0')}>
+                      {isSupportConstantValue
+                        ? (
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setOpen(false)
                                 setControlFocus(Date.now())
-                            }}
-                            className="h-full grow"
-                          >
-                            <div ref={isSupportConstantValue ? triggerRef : null} className={cn('h-full', isSupportConstantValue && 'flex items-center rounded-lg bg-components-panel-bg py-1 pl-1')}>
-                              <Tooltip noDecoration={isShowAPart} popupContent={tooltipPopup}>
-                                <div className={cn('h-full items-center rounded-[5px] px-1.5', hasValue ? 'inline-flex bg-components-badge-white-to-dark' : 'flex')}>
-                                  {hasValue
-                                    ? (
-                                        <>
-                                          {isShowNodeName && !isEnv && !isChatVar && !isGlobal && !isRagVar && (
-                                            <div
-                                              className="flex items-center"
-                                              onClick={(e) => {
-                                                if (e.metaKey || e.ctrlKey) {
-                                                  e.stopPropagation()
-                                                  handleVariableJump(outputVarNode?.id)
-                                                }
-                                              }}
-                                            >
-                                              <div className="h-3 px-[1px]">
-                                                {outputVarNode?.type && (
-                                                  <VarBlockIcon
-                                                    className="!text-text-primary"
-                                                    type={outputVarNode.type}
-                                                  />
-                                                )}
-                                              </div>
+                              }}
+                              className="mr-1 flex h-full items-center space-x-1"
+                            >
+                              <TypeSelector
+                                noLeft
+                                trigger={(
+                                  <div className="radius-md flex h-8 items-center bg-components-input-bg-normal px-2">
+                                    <div className="system-sm-regular mr-1 text-components-input-text-filled">{varKindTypes.find(item => item.value === varKindType)?.label}</div>
+                                    <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
+                                  </div>
+                                )}
+                                popupClassName="top-8"
+                                readonly={readonly}
+                                value={varKindType}
+                                options={varKindTypes}
+                                onChange={handleVarKindTypeChange}
+                                showChecked
+                              />
+                            </div>
+                          )
+                        : (!hasValue && (
+                            <div className="ml-1.5 mr-1">
+                              <Variable02 className={`h-4 w-4 ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'}`} />
+                            </div>
+                          ))}
+                      {isConstant
+                        ? (
+                            <ConstantField
+                              value={value as string}
+                              onChange={onChange as ((value: string | number, varKindType: VarKindType, varInfo?: Var) => void)}
+                              schema={schemaWithDynamicSelect as CredentialFormSchema}
+                              readonly={readonly}
+                              isLoading={isLoading}
+                            />
+                          )
+                        : (
+                            <VarPickerWrap
+                              onClick={() => {
+                                if (readonly)
+                                  return
+                                if (!isConstant)
+                                  setOpen(!open)
+                                else
+                                  setControlFocus(Date.now())
+                              }}
+                              className="h-full grow"
+                            >
+                              <div ref={isSupportConstantValue ? triggerRef : null} className={cn('h-full', isSupportConstantValue && 'flex items-center rounded-lg bg-components-panel-bg py-1 pl-1')}>
+                                <Tooltip noDecoration={isShowAPart} popupContent={tooltipPopup}>
+                                  <div className={cn('h-full items-center rounded-[5px] px-1.5', hasValue ? 'inline-flex bg-components-badge-white-to-dark' : 'flex')}>
+                                    {hasValue
+                                      ? (
+                                          <>
+                                            {isShowNodeName && !isEnv && !isChatVar && !isGlobal && !isRagVar && (
                                               <div
-                                                className="mx-0.5 truncate text-xs font-medium text-text-secondary"
-                                                title={outputVarNode?.title}
-                                                style={{
-                                                  maxWidth: maxNodeNameWidth,
+                                                className="flex items-center"
+                                                onClick={(e) => {
+                                                  if (e.metaKey || e.ctrlKey) {
+                                                    e.stopPropagation()
+                                                    handleVariableJump(outputVarNode?.id)
+                                                  }
                                                 }}
                                               >
-                                                {outputVarNode?.title}
+                                                <div className="h-3 px-[1px]">
+                                                  {outputVarNode?.type && (
+                                                    <VarBlockIcon
+                                                      className="!text-text-primary"
+                                                      type={outputVarNode.type}
+                                                    />
+                                                  )}
+                                                </div>
+                                                <div
+                                                  className="mx-0.5 truncate text-xs font-medium text-text-secondary"
+                                                  title={outputVarNode?.title}
+                                                  style={{
+                                                    maxWidth: maxNodeNameWidth,
+                                                  }}
+                                                >
+                                                  {outputVarNode?.title}
+                                                </div>
+                                                <Line3 className="mr-0.5"></Line3>
                                               </div>
-                                              <Line3 className="mr-0.5"></Line3>
+                                            )}
+                                            {isShowAPart && (
+                                              <div className="flex items-center">
+                                                <RiMoreLine className="h-3 w-3 text-text-secondary" />
+                                                <Line3 className="mr-0.5 text-divider-deep"></Line3>
+                                              </div>
+                                            )}
+                                            <div className="flex items-center text-text-accent">
+                                              {isLoading && <RiLoader4Line className="h-3.5 w-3.5 animate-spin text-text-secondary" />}
+                                              <VariableIconWithColor
+                                                variables={value as ValueSelector}
+                                                variableCategory={variableCategory}
+                                                isExceptionVariable={isException}
+                                              />
+                                              <div
+                                                className={cn('ml-0.5 truncate text-xs font-medium', isEnv && '!text-text-secondary', isChatVar && 'text-util-colors-teal-teal-700', isException && 'text-text-warning', isGlobal && 'text-util-colors-orange-orange-600')}
+                                                title={varName}
+                                                style={{
+                                                  maxWidth: maxVarNameWidth,
+                                                }}
+                                              >
+                                                {varName}
+                                              </div>
                                             </div>
-                                          )}
-                                          {isShowAPart && (
-                                            <div className="flex items-center">
-                                              <RiMoreLine className="h-3 w-3 text-text-secondary" />
-                                              <Line3 className="mr-0.5 text-divider-deep"></Line3>
-                                            </div>
-                                          )}
-                                          <div className="flex items-center text-text-accent">
-                                            {isLoading && <RiLoader4Line className="h-3.5 w-3.5 animate-spin text-text-secondary" />}
-                                            <VariableIconWithColor
-                                              variables={value as ValueSelector}
-                                              variableCategory={variableCategory}
-                                              isExceptionVariable={isException}
-                                            />
                                             <div
-                                              className={cn('ml-0.5 truncate text-xs font-medium', isEnv && '!text-text-secondary', isChatVar && 'text-util-colors-teal-teal-700', isException && 'text-text-warning', isGlobal && 'text-util-colors-orange-orange-600')}
-                                              title={varName}
+                                              className="system-xs-regular ml-0.5 truncate text-center capitalize text-text-tertiary"
+                                              title={type}
                                               style={{
-                                                maxWidth: maxVarNameWidth,
+                                                maxWidth: maxTypeWidth,
                                               }}
                                             >
-                                              {varName}
+                                              {type}
                                             </div>
+                                            {!isValidVar && <RiErrorWarningFill className="ml-0.5 h-3 w-3 text-text-destructive" />}
+                                          </>
+                                        )
+                                      : (
+                                          <div className={`overflow-hidden ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'} system-sm-regular text-ellipsis`}>
+                                            {isLoading
+                                              ? (
+                                                  <div className="flex items-center">
+                                                    <RiLoader4Line className="mr-1 h-3.5 w-3.5 animate-spin text-text-secondary" />
+                                                    <span>{placeholder ?? t('common.setVarValuePlaceholder', { ns: 'workflow' })}</span>
+                                                  </div>
+                                                )
+                                              : (
+                                                  placeholder ?? t('common.setVarValuePlaceholder', { ns: 'workflow' })
+                                                )}
                                           </div>
-                                          <div
-                                            className="system-xs-regular ml-0.5 truncate text-center capitalize text-text-tertiary"
-                                            title={type}
-                                            style={{
-                                              maxWidth: maxTypeWidth,
-                                            }}
-                                          >
-                                            {type}
-                                          </div>
-                                          {!isValidVar && <RiErrorWarningFill className="ml-0.5 h-3 w-3 text-text-destructive" />}
-                                        </>
-                                      )
-                                    : (
-                                        <div className={`overflow-hidden ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'} system-sm-regular text-ellipsis`}>
-                                          {isLoading
-                                            ? (
-                                                <div className="flex items-center">
-                                                  <RiLoader4Line className="mr-1 h-3.5 w-3.5 animate-spin text-text-secondary" />
-                                                  <span>{placeholder ?? t('common.setVarValuePlaceholder', { ns: 'workflow' })}</span>
-                                                </div>
-                                              )
-                                            : (
-                                                placeholder ?? t('common.setVarValuePlaceholder', { ns: 'workflow' })
-                                              )}
-                                        </div>
-                                      )}
-                                </div>
-                              </Tooltip>
-                            </div>
+                                        )}
+                                  </div>
+                                </Tooltip>
+                              </div>
 
-                          </VarPickerWrap>
-                        )}
-                    {(hasValue && !readonly && !isInTable) && (
-                      <div
-                        className="group invisible absolute right-1 top-[50%] h-5 translate-y-[-50%] cursor-pointer rounded-md p-1 hover:bg-state-base-hover group-hover/wrap:visible"
-                        onClick={handleClearVar}
-                      >
-                        <RiCloseLine className="h-3.5 w-3.5 text-text-tertiary group-hover:text-text-secondary" />
-                      </div>
-                    )}
-                    {!hasValue && valueTypePlaceHolder && (
-                      <Badge
-                        className=" absolute right-1 top-[50%] translate-y-[-50%] capitalize"
-                        text={valueTypePlaceHolder}
-                        uppercase={false}
-                      />
-                    )}
-                  </div>
-                )}
-            {!readonly && isInTable && (
-              <RemoveButton
-                className="absolute right-1 top-0.5 hidden group-hover/picker-trigger-wrap:block"
-                onClick={() => onRemove?.()}
-              />
-            )}
+                            </VarPickerWrap>
+                          )}
+                      {(hasValue && !readonly && !isInTable && !isJustShowValue) && (
+                        <div
+                          className="group invisible absolute right-1 top-[50%] h-5 translate-y-[-50%] cursor-pointer rounded-md p-1 hover:bg-state-base-hover group-hover/wrap:visible"
+                          onClick={handleClearVar}
+                        >
+                          <RiCloseLine className="h-3.5 w-3.5 text-text-tertiary group-hover:text-text-secondary" />
+                        </div>
+                      )}
+                      {!hasValue && valueTypePlaceHolder && (
+                        <Badge
+                          className=" absolute right-1 top-[50%] translate-y-[-50%] capitalize"
+                          text={valueTypePlaceHolder}
+                          uppercase={false}
+                        />
+                      )}
+                    </div>
+                  )}
+              {!readonly && isInTable && (
+                <RemoveButton
+                  className="absolute right-1 top-0.5 hidden group-hover/picker-trigger-wrap:block"
+                  onClick={() => onRemove?.()}
+                />
+              )}
 
-            {!hasValue && typePlaceHolder && (
-              <Badge
-                className="absolute right-2 top-1.5"
-                text={typePlaceHolder}
-                uppercase={false}
-              />
-            )}
-          </>
-        </WrapElem>
+              {!hasValue && typePlaceHolder && (
+                <Badge
+                  className="absolute right-2 top-1.5"
+                  text={typePlaceHolder}
+                  uppercase={false}
+                />
+              )}
+            </>
+          </WrapElem>
+        )}
         <PortalToFollowElemContent
           style={{
             zIndex: zIndex || 100,
