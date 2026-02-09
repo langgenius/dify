@@ -1,7 +1,7 @@
 import type { NodeRendererProps } from 'react-arborist'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import type { TreeNodeData } from '@/app/components/workflow/skill/type'
-import { RiArrowDownSLine, RiArrowRightSLine, RiFolderLine, RiFolderOpenLine, RiQuestionLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiArrowRightSLine, RiFolderLine, RiFolderOpenLine } from '@remixicon/react'
 import { useSize } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useRef } from 'react'
@@ -162,7 +162,6 @@ const FilePickerPanel = ({
           <span className="flex-1 text-[12px] font-medium uppercase leading-4 text-text-tertiary">
             {t('skillEditor.referenceFiles')}
           </span>
-          <RiQuestionLine className="size-4 text-text-tertiary" aria-hidden="true" />
         </div>
       )}
       <div
