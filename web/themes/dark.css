@@ -549,7 +549,7 @@ html[data-theme="dark"] {
   --color-workflow-workflow-progress-bg-2: rgb(24 24 27 / 0.04);
 
   --color-workflow-debug-run-status-bg: rgb(230 46 5 / 0.4);
-  --color-workflow-debug-bearkpoint: #ff692e;
+  --color-workflow-debug-breakpoint: #ff692e;
   --color-workflow-debug-text: #ff9c66;
   --color-workflow-debug-text-disabled: rgb(255 68 5 / 0.2);
   --color-workflow-debug-run-status-bg-alt: rgb(255 46 0 / 0.5);
