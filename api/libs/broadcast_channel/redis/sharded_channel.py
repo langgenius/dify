@@ -33,7 +33,7 @@ class ShardedTopic:
         return self
 
     def publish(self, payload: bytes) -> None:
-        self._client.spublish(self._topic, payload)  # type: ignore[attr-defined]
+        self._client.spublish(self._topic, payload)  # type: ignore[attr-defined,union-attr]
 
     def as_subscriber(self) -> Subscriber:
         return self
@@ -75,7 +75,7 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
             #
             # Here we specify the `target_node` to mitigate this problem.
             node = self._client.get_node_from_key(self._topic)
-            return self._pubsub.get_sharded_message(
+            return self._pubsub.get_sharded_message(  # type: ignore[attr-defined]
                 ignore_subscribe_messages=False,
                 timeout=1,
                 target_node=node,
