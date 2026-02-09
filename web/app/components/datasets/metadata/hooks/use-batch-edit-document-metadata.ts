@@ -124,9 +124,7 @@ const useBatchEditDocumentMetadata = ({
       .map(item => resolveMetadataId(item))
       .filter(Boolean))
     const removedList = originalList.filter(originalItem => !editedMetadataIds.has(originalItem.id))
-    const removedMetadataIds = new Set(removedList
-      .map(item => resolveMetadataId(item))
-      .filter(Boolean))
+    const removedMetadataIds = new Set(removedList.map(item => item.id))
 
     // Use selectedDocumentIds if available, otherwise fall back to docList
     const documentIds = selectedDocumentIds || docList.map(doc => doc.id)
@@ -140,9 +138,12 @@ const useBatchEditDocumentMetadata = ({
         .filter(item => !removedMetadataIds.has(item.id))
       if (isApplyToAllSelectDocument) {
         // add missing metadata item
+        const existingMetadataIds = new Set(newMetadataList.map(item => item.id))
         updatedEntries.forEach((updatedItem) => {
-          if (!newMetadataList.find(i => i.id === updatedItem.serverItem.id) && !updatedItem.isMultipleValue)
+          if (!existingMetadataIds.has(updatedItem.serverItem.id) && !updatedItem.isMultipleValue) {
             newMetadataList.push(updatedItem.serverItem)
+            existingMetadataIds.add(updatedItem.serverItem.id)
+          }
         })
       }
 
