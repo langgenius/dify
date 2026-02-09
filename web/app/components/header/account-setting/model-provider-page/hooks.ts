@@ -308,7 +308,7 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
   }, [plugins, collectionPlugins, exclude])
 
   return {
-    plugins: allPlugins,
+    plugins: searchText ? plugins : allPlugins,
     isLoading: isCollectionLoading || isPluginsLoading,
   }
 }
