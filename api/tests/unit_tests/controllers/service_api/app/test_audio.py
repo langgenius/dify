@@ -99,9 +99,9 @@ class TestAudioServiceExceptions:
     @pytest.fixture
     def app(self):
         """Create Flask test application."""
-        flask_app = Flask(__name__)
-        flask_app.config["TESTING"] = True
-        return flask_app
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        return app
 
     @pytest.fixture
     def mock_app_model(self):
@@ -205,9 +205,9 @@ class TestAudioControllerLogic:
     @pytest.fixture
     def app(self):
         """Create Flask test application."""
-        flask_app = Flask(__name__)
-        flask_app.config["TESTING"] = True
-        return flask_app
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        return app
 
     @patch("controllers.service_api.app.audio.AudioService")
     def test_audio_api_post_success(self, mock_audio_service, app):

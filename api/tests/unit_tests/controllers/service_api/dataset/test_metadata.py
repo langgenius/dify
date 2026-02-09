@@ -83,7 +83,7 @@ class TestDatasetMetadataCreatePost:
         mock_dataset_svc,
         mock_meta_svc,
         mock_marshal,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -94,7 +94,7 @@ class TestDatasetMetadataCreatePost:
         mock_meta_svc.create_metadata.return_value = mock_metadata
         mock_marshal.return_value = {"id": "meta-1", "name": "Author"}
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata",
             method="POST",
             json={"type": "string", "name": "Author"},
@@ -113,14 +113,14 @@ class TestDatasetMetadataCreatePost:
     def test_create_metadata_dataset_not_found(
         self,
         mock_dataset_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
         """Test 404 when dataset not found."""
         mock_dataset_svc.get_dataset.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata",
             method="POST",
             json={"type": "string", "name": "Author"},
@@ -143,7 +143,7 @@ class TestDatasetMetadataCreateGet:
         self,
         mock_dataset_svc,
         mock_meta_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -151,7 +151,7 @@ class TestDatasetMetadataCreateGet:
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_meta_svc.get_dataset_metadatas.return_value = [{"id": "m1"}]
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata",
             method="GET",
         ):
@@ -167,14 +167,14 @@ class TestDatasetMetadataCreateGet:
     def test_get_metadata_dataset_not_found(
         self,
         mock_dataset_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
         """Test 404 when dataset not found."""
         mock_dataset_svc.get_dataset.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata",
             method="GET",
         ):
@@ -208,7 +208,7 @@ class TestDatasetMetadataServiceApiPatch:
         mock_dataset_svc,
         mock_meta_svc,
         mock_marshal,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -219,7 +219,7 @@ class TestDatasetMetadataServiceApiPatch:
         mock_meta_svc.update_metadata_name.return_value = Mock()
         mock_marshal.return_value = {"id": metadata_id, "name": "New Name"}
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata/{metadata_id}",
             method="PATCH",
             json={"name": "New Name"},
@@ -239,7 +239,7 @@ class TestDatasetMetadataServiceApiPatch:
     def test_update_metadata_dataset_not_found(
         self,
         mock_dataset_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -247,7 +247,7 @@ class TestDatasetMetadataServiceApiPatch:
         metadata_id = str(uuid.uuid4())
         mock_dataset_svc.get_dataset.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata/{metadata_id}",
             method="PATCH",
             json={"name": "x"},
@@ -280,7 +280,7 @@ class TestDatasetMetadataServiceApiDelete:
         mock_current_user,
         mock_dataset_svc,
         mock_meta_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -290,7 +290,7 @@ class TestDatasetMetadataServiceApiDelete:
         mock_dataset_svc.check_dataset_permission.return_value = None
         mock_meta_svc.delete_metadata.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata/{metadata_id}",
             method="DELETE",
         ):
@@ -309,7 +309,7 @@ class TestDatasetMetadataServiceApiDelete:
     def test_delete_metadata_dataset_not_found(
         self,
         mock_dataset_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -317,7 +317,7 @@ class TestDatasetMetadataServiceApiDelete:
         metadata_id = str(uuid.uuid4())
         mock_dataset_svc.get_dataset.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata/{metadata_id}",
             method="DELETE",
         ):
@@ -343,7 +343,7 @@ class TestDatasetMetadataBuiltInFieldGet:
     def test_get_built_in_fields_success(
         self,
         mock_meta_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -352,7 +352,7 @@ class TestDatasetMetadataBuiltInFieldGet:
             {"name": "source", "type": "string"},
         ]
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata/built-in",
             method="GET",
         ):
@@ -389,7 +389,7 @@ class TestDatasetMetadataBuiltInFieldAction:
         mock_current_user,
         mock_dataset_svc,
         mock_meta_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -397,7 +397,7 @@ class TestDatasetMetadataBuiltInFieldAction:
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata/built-in/enable",
             method="POST",
         ):
@@ -421,7 +421,7 @@ class TestDatasetMetadataBuiltInFieldAction:
         mock_current_user,
         mock_dataset_svc,
         mock_meta_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -429,7 +429,7 @@ class TestDatasetMetadataBuiltInFieldAction:
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata/built-in/disable",
             method="POST",
         ):
@@ -448,14 +448,14 @@ class TestDatasetMetadataBuiltInFieldAction:
     def test_action_dataset_not_found(
         self,
         mock_dataset_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
         """Test 404 when dataset not found."""
         mock_dataset_svc.get_dataset.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/metadata/built-in/enable",
             method="POST",
         ):
@@ -492,7 +492,7 @@ class TestDocumentMetadataEditPost:
         mock_current_user,
         mock_dataset_svc,
         mock_meta_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -501,7 +501,7 @@ class TestDocumentMetadataEditPost:
         mock_dataset_svc.check_dataset_permission.return_value = None
         mock_meta_svc.update_documents_metadata.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/metadata",
             method="POST",
             json={"operation_data": []},
@@ -520,14 +520,14 @@ class TestDocumentMetadataEditPost:
     def test_update_documents_metadata_dataset_not_found(
         self,
         mock_dataset_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
         """Test 404 when dataset not found."""
         mock_dataset_svc.get_dataset.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/metadata",
             method="POST",
             json={"operation_data": []},

@@ -446,7 +446,7 @@ class TestWorkflowRunDetailApiGet:
         self,
         mock_db,
         mock_repo_factory,
-        flask_app,
+        app,
         mock_workflow_app,
     ):
         """Test successful workflow run detail retrieval."""
@@ -459,7 +459,7 @@ class TestWorkflowRunDetailApiGet:
 
         from controllers.service_api.app.workflow import WorkflowRunDetailApi
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/workflows/run/{mock_run.id}",
             method="GET",
         ):
@@ -469,14 +469,14 @@ class TestWorkflowRunDetailApiGet:
         assert result == mock_run
 
     @patch("controllers.service_api.app.workflow.db")
-    def test_get_workflow_run_wrong_app_mode(self, mock_db, flask_app):
+    def test_get_workflow_run_wrong_app_mode(self, mock_db, app):
         """Test NotWorkflowAppError when app mode is not workflow or advanced_chat."""
         from controllers.service_api.app.workflow import WorkflowRunDetailApi
 
         mock_app = Mock(spec=App)
         mock_app.mode = AppMode.CHAT.value
 
-        with flask_app.test_request_context("/workflows/run/run-1", method="GET"):
+        with app.test_request_context("/workflows/run/run-1", method="GET"):
             api = WorkflowRunDetailApi()
             with pytest.raises(NotWorkflowAppError):
                 _unwrap(api.get)(api, app_model=mock_app, workflow_run_id="run-1")
@@ -494,13 +494,13 @@ class TestWorkflowTaskStopApiPost:
         self,
         mock_queue_mgr,
         mock_graph_mgr,
-        flask_app,
+        app,
         mock_workflow_app,
     ):
         """Test successful workflow task stop."""
         from controllers.service_api.app.workflow import WorkflowTaskStopApi
 
-        with flask_app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
+        with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
             api = WorkflowTaskStopApi()
             result = _unwrap(api.post)(
                 api,
@@ -513,14 +513,14 @@ class TestWorkflowTaskStopApiPost:
         mock_queue_mgr.set_stop_flag_no_user_check.assert_called_once_with("task-1")
         mock_graph_mgr.send_stop_command.assert_called_once_with("task-1")
 
-    def test_stop_workflow_task_wrong_app_mode(self, flask_app):
+    def test_stop_workflow_task_wrong_app_mode(self, app):
         """Test NotWorkflowAppError when app mode is not workflow."""
         from controllers.service_api.app.workflow import WorkflowTaskStopApi
 
         mock_app = Mock(spec=App)
         mock_app.mode = AppMode.COMPLETION.value
 
-        with flask_app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
+        with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
             api = WorkflowTaskStopApi()
             with pytest.raises(NotWorkflowAppError):
                 _unwrap(api.post)(api, app_model=mock_app, end_user=Mock(), task_id="task-1")
@@ -539,7 +539,7 @@ class TestWorkflowAppLogApiGet:
         self,
         mock_db,
         mock_wf_svc_cls,
-        flask_app,
+        app,
         mock_workflow_app,
     ):
         """Test successful workflow log retrieval."""
@@ -557,7 +557,7 @@ class TestWorkflowAppLogApiGet:
 
         from controllers.service_api.app.workflow import WorkflowAppLogApi
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/workflows/logs?page=1&limit=20",
             method="GET",
         ):

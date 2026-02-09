@@ -954,7 +954,7 @@ class TestDatasetListApiGet:
         mock_current_user,
         mock_provider_mgr,
         mock_marshal,
-        flask_app,
+        app,
         mock_tenant,
     ):
         """Test successful dataset list retrieval."""
@@ -970,7 +970,7 @@ class TestDatasetListApiGet:
 
         mock_marshal.return_value = [{"indexing_technique": "economy", "embedding_model_provider": None}]
 
-        with flask_app.test_request_context("/datasets?page=1&limit=20", method="GET"):
+        with app.test_request_context("/datasets?page=1&limit=20", method="GET"):
             api = DatasetListApi()
             response, status = api.get(tenant_id=mock_tenant.id)
 
@@ -993,7 +993,7 @@ class TestDatasetListApiPost:
         mock_dataset_svc,
         mock_current_user,
         mock_marshal,
-        flask_app,
+        app,
         mock_tenant,
     ):
         """Test successful dataset creation."""
@@ -1003,7 +1003,7 @@ class TestDatasetListApiPost:
         mock_dataset_svc.create_empty_dataset.return_value = Mock()
         mock_marshal.return_value = {"id": "ds-1", "name": "New Dataset"}
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/datasets",
             method="POST",
             json={"name": "New Dataset"},
@@ -1020,7 +1020,7 @@ class TestDatasetListApiPost:
         self,
         mock_dataset_svc,
         mock_current_user,
-        flask_app,
+        app,
         mock_tenant,
     ):
         """Test DatasetNameDuplicateError when name already exists."""
@@ -1029,7 +1029,7 @@ class TestDatasetListApiPost:
         mock_current_user.__class__ = Account
         mock_dataset_svc.create_empty_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/datasets",
             method="POST",
             json={"name": "Existing Dataset"},
@@ -1058,7 +1058,7 @@ class TestDatasetApiGet:
         mock_provider_mgr,
         mock_marshal,
         mock_perm_svc,
-        flask_app,
+        app,
         mock_dataset,
     ):
         """Test successful dataset retrieval."""
@@ -1079,7 +1079,7 @@ class TestDatasetApiGet:
             "permission": "only_me",
         }
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}",
             method="GET",
         ):
@@ -1090,13 +1090,13 @@ class TestDatasetApiGet:
         assert response["embedding_available"] is True
 
     @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_get_dataset_not_found(self, mock_dataset_svc, flask_app, mock_dataset):
+    def test_get_dataset_not_found(self, mock_dataset_svc, app, mock_dataset):
         """Test 404 when dataset not found."""
         from controllers.service_api.dataset.dataset import DatasetApi
 
         mock_dataset_svc.get_dataset.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}",
             method="GET",
         ):
@@ -1110,7 +1110,7 @@ class TestDatasetApiGet:
         self,
         mock_dataset_svc,
         mock_current_user,
-        flask_app,
+        app,
         mock_dataset,
     ):
         """Test 403 when user has no permission."""
@@ -1119,7 +1119,7 @@ class TestDatasetApiGet:
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.side_effect = services.errors.account.NoPermissionError()
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}",
             method="GET",
         ):
@@ -1142,7 +1142,7 @@ class TestDatasetApiDelete:
         mock_dataset_svc,
         mock_current_user,
         mock_perm_svc,
-        flask_app,
+        app,
         mock_dataset,
     ):
         """Test successful dataset deletion."""
@@ -1150,7 +1150,7 @@ class TestDatasetApiDelete:
 
         mock_dataset_svc.delete_dataset.return_value = True
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}",
             method="DELETE",
         ):
@@ -1165,7 +1165,7 @@ class TestDatasetApiDelete:
         self,
         mock_dataset_svc,
         mock_current_user,
-        flask_app,
+        app,
         mock_dataset,
     ):
         """Test 404 when dataset not found for deletion."""
@@ -1173,7 +1173,7 @@ class TestDatasetApiDelete:
 
         mock_dataset_svc.delete_dataset.return_value = False
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}",
             method="DELETE",
         ):
@@ -1187,7 +1187,7 @@ class TestDatasetApiDelete:
         self,
         mock_dataset_svc,
         mock_current_user,
-        flask_app,
+        app,
         mock_dataset,
     ):
         """Test DatasetInUseError when dataset is in use."""
@@ -1195,7 +1195,7 @@ class TestDatasetApiDelete:
 
         mock_dataset_svc.delete_dataset.side_effect = services.errors.dataset.DatasetInUseError()
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}",
             method="DELETE",
         ):
@@ -1219,7 +1219,7 @@ class TestDocumentStatusApiPatch:
         mock_dataset_svc,
         mock_current_user,
         mock_doc_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1232,7 +1232,7 @@ class TestDocumentStatusApiPatch:
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.batch_update_document_status.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/status/enable",
             method="PATCH",
             json={"document_ids": ["doc-1", "doc-2"]},
@@ -1251,7 +1251,7 @@ class TestDocumentStatusApiPatch:
     def test_batch_update_status_dataset_not_found(
         self,
         mock_dataset_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1260,7 +1260,7 @@ class TestDocumentStatusApiPatch:
 
         mock_dataset_svc.get_dataset.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/status/enable",
             method="PATCH",
             json={"document_ids": ["doc-1"]},
@@ -1281,7 +1281,7 @@ class TestDocumentStatusApiPatch:
         mock_dataset_svc,
         mock_current_user,
         mock_doc_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1294,7 +1294,7 @@ class TestDocumentStatusApiPatch:
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.batch_update_document_status.side_effect = services.errors.document.DocumentIndexingError()
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/status/enable",
             method="PATCH",
             json={"document_ids": ["doc-1"]},
@@ -1315,7 +1315,7 @@ class TestDocumentStatusApiPatch:
         mock_dataset_svc,
         mock_current_user,
         mock_doc_svc,
-        flask_app,
+        app,
         mock_tenant,
         mock_dataset,
     ):
@@ -1328,7 +1328,7 @@ class TestDocumentStatusApiPatch:
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.batch_update_document_status.side_effect = ValueError("Invalid action")
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/status/enable",
             method="PATCH",
             json={"document_ids": ["doc-1"]},
@@ -1351,7 +1351,7 @@ class TestDatasetTagsApiGet:
         self,
         mock_current_user,
         mock_tag_svc,
-        flask_app,
+        app,
     ):
         """Test successful tag list retrieval."""
         from controllers.service_api.dataset.dataset import DatasetTagsApi
@@ -1361,7 +1361,7 @@ class TestDatasetTagsApiGet:
         mock_tag = SimpleNamespace(id="tag-1", name="Test Tag", type="knowledge", binding_count="0")
         mock_tag_svc.get_tags.return_value = [mock_tag]
 
-        with flask_app.test_request_context("/datasets/tags", method="GET"):
+        with app.test_request_context("/datasets/tags", method="GET"):
             api = DatasetTagsApi()
             response, status = api.get(_=None)
 
@@ -1383,7 +1383,7 @@ class TestDatasetTagsApiPost:
         self,
         mock_current_user,
         mock_tag_svc,
-        flask_app,
+        app,
     ):
         """Test successful tag creation."""
         from controllers.service_api.dataset.dataset import DatasetTagsApi
@@ -1394,7 +1394,7 @@ class TestDatasetTagsApiPost:
         mock_tag = SimpleNamespace(id="tag-new", name="New Tag", type="knowledge")
         mock_tag_svc.save_tags.return_value = mock_tag
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/datasets/tags",
             method="POST",
             json={"name": "New Tag"},
@@ -1407,7 +1407,7 @@ class TestDatasetTagsApiPost:
         mock_tag_svc.save_tags.assert_called_once()
 
     @patch("controllers.service_api.dataset.dataset.current_user")
-    def test_create_tag_forbidden(self, mock_current_user, flask_app):
+    def test_create_tag_forbidden(self, mock_current_user, app):
         """Test 403 when user lacks edit permission."""
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
@@ -1415,7 +1415,7 @@ class TestDatasetTagsApiPost:
         mock_current_user.has_edit_permission = False
         mock_current_user.is_dataset_editor = False
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/datasets/tags",
             method="POST",
             json={"name": "New Tag"},
@@ -1434,7 +1434,7 @@ class TestDatasetTagBindingApiPost:
         self,
         mock_current_user,
         mock_tag_svc,
-        flask_app,
+        app,
     ):
         """Test successful tag binding."""
         from controllers.service_api.dataset.dataset import DatasetTagBindingApi
@@ -1444,7 +1444,7 @@ class TestDatasetTagBindingApiPost:
         mock_current_user.is_dataset_editor = True
         mock_tag_svc.save_tag_binding.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/datasets/tags/binding",
             method="POST",
             json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
@@ -1455,7 +1455,7 @@ class TestDatasetTagBindingApiPost:
         assert result == 204
 
     @patch("controllers.service_api.dataset.dataset.current_user")
-    def test_bind_tags_forbidden(self, mock_current_user, flask_app):
+    def test_bind_tags_forbidden(self, mock_current_user, app):
         """Test 403 when user lacks edit permission."""
         from controllers.service_api.dataset.dataset import DatasetTagBindingApi
 
@@ -1463,7 +1463,7 @@ class TestDatasetTagBindingApiPost:
         mock_current_user.has_edit_permission = False
         mock_current_user.is_dataset_editor = False
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/datasets/tags/binding",
             method="POST",
             json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
@@ -1482,7 +1482,7 @@ class TestDatasetTagUnbindingApiPost:
         self,
         mock_current_user,
         mock_tag_svc,
-        flask_app,
+        app,
     ):
         """Test successful tag unbinding."""
         from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
@@ -1492,7 +1492,7 @@ class TestDatasetTagUnbindingApiPost:
         mock_current_user.is_dataset_editor = True
         mock_tag_svc.delete_tag_binding.return_value = None
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/datasets/tags/unbinding",
             method="POST",
             json={"tag_id": "tag-1", "target_id": "ds-1"},
@@ -1503,7 +1503,7 @@ class TestDatasetTagUnbindingApiPost:
         assert result == 204
 
     @patch("controllers.service_api.dataset.dataset.current_user")
-    def test_unbind_tag_forbidden(self, mock_current_user, flask_app):
+    def test_unbind_tag_forbidden(self, mock_current_user, app):
         """Test 403 when user lacks edit permission."""
         from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
 
@@ -1511,7 +1511,7 @@ class TestDatasetTagUnbindingApiPost:
         mock_current_user.has_edit_permission = False
         mock_current_user.is_dataset_editor = False
 
-        with flask_app.test_request_context(
+        with app.test_request_context(
             "/datasets/tags/unbinding",
             method="POST",
             json={"tag_id": "tag-1", "target_id": "ds-1"},

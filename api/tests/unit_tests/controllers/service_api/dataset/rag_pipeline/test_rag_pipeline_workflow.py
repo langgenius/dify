@@ -3,25 +3,42 @@ Unit tests for Service API RAG Pipeline Workflow controllers.
 
 Tests coverage for:
 - DatasourceNodeRunPayload Pydantic model
-- PipelineRunApiEntity model
+- PipelineRunApiEntity / DatasourceNodeRunApiEntity model validation
 - RAG pipeline service interfaces
 - File upload validation for pipelines
+- Endpoint tests for DatasourcePluginsApi, DatasourceNodeRunApi,
+  PipelineRunApi, and KnowledgebasePipelineFileUploadApi
 
-Focus on:
-- Pydantic model validation
-- Error type mappings
-- Service method interfaces
+Strategy:
+- Endpoint methods on these resources have no billing decorators on the method
+  itself.  ``method_decorators = [validate_dataset_token]`` is only invoked by
+  Flask-RESTx dispatch, not by direct calls, so we call methods directly and
+  patch ``db`` for inline dataset queries.
 """
 
+import io
 import uuid
+from unittest.mock import Mock, patch
 
 import pytest
+from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
 from controllers.service_api.dataset.error import PipelineRunError
-from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import DatasourceNodeRunPayload
+from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
+    DatasourceNodeRunPayload,
+    DatasourcePluginsApi,
+    KnowledgebasePipelineFileUploadApi,
+    PipelineRunApi,
+)
 from core.app.entities.app_invoke_entities import InvokeFrom
+from models.account import Account
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
+from services.rag_pipeline.entity.pipeline_service_api_entities import (
+    DatasourceNodeRunApiEntity,
+    PipelineRunApiEntity,
+)
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
@@ -264,3 +281,238 @@ class TestPipelineInputVariables:
         payload = DatasourceNodeRunPayload(inputs=inputs, datasource_type="online_document", is_published=True)
         assert len(payload.inputs["urls"]) == 2
         assert len(payload.inputs["tags"]) == 3
+
+
+# ---------------------------------------------------------------------------
+# PipelineRunApiEntity / DatasourceNodeRunApiEntity Model Tests
+# ---------------------------------------------------------------------------
+
+
+class TestPipelineRunApiEntity:
+    """Test PipelineRunApiEntity Pydantic model."""
+
+    def test_entity_with_all_fields(self):
+        """Test entity with all required fields."""
+        entity = PipelineRunApiEntity(
+            inputs={"key": "value"},
+            datasource_type="online_document",
+            datasource_info_list=[{"url": "https://example.com"}],
+            start_node_id="node_1",
+            is_published=True,
+            response_mode="streaming",
+        )
+        assert entity.datasource_type == "online_document"
+        assert entity.response_mode == "streaming"
+        assert entity.is_published is True
+
+    def test_entity_blocking_response_mode(self):
+        """Test entity with blocking response mode."""
+        entity = PipelineRunApiEntity(
+            inputs={},
+            datasource_type="local_file",
+            datasource_info_list=[],
+            start_node_id="node_start",
+            is_published=False,
+            response_mode="blocking",
+        )
+        assert entity.response_mode == "blocking"
+        assert entity.is_published is False
+
+    def test_entity_missing_required_field(self):
+        """Test entity raises on missing required field."""
+        with pytest.raises(ValueError):
+            PipelineRunApiEntity(
+                inputs={},
+                datasource_type="online_document",
+                # missing datasource_info_list, start_node_id, etc.
+            )
+
+
+class TestDatasourceNodeRunApiEntity:
+    """Test DatasourceNodeRunApiEntity Pydantic model."""
+
+    def test_entity_with_all_fields(self):
+        """Test entity with all fields."""
+        entity = DatasourceNodeRunApiEntity(
+            pipeline_id=str(uuid.uuid4()),
+            node_id="node_abc",
+            inputs={"url": "https://example.com"},
+            datasource_type="website",
+            is_published=True,
+        )
+        assert entity.node_id == "node_abc"
+        assert entity.credential_id is None
+
+    def test_entity_with_credential(self):
+        """Test entity with credential_id."""
+        entity = DatasourceNodeRunApiEntity(
+            pipeline_id=str(uuid.uuid4()),
+            node_id="node_xyz",
+            inputs={},
+            datasource_type="api",
+            credential_id="cred_123",
+            is_published=False,
+        )
+        assert entity.credential_id == "cred_123"
+
+
+# ---------------------------------------------------------------------------
+# Endpoint Tests
+# ---------------------------------------------------------------------------
+
+
+class TestDatasourcePluginsApiGet:
+    """Tests for DatasourcePluginsApi.get().
+
+    The original source delegates directly to ``RagPipelineService`` without
+    an inline dataset query, so no ``db`` patching is needed.
+    """
+
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
+    def test_get_plugins_success(self, mock_svc_cls, app):
+        """Test successful retrieval of datasource plugins."""
+        tenant_id = str(uuid.uuid4())
+        dataset_id = str(uuid.uuid4())
+
+        mock_svc_instance = Mock()
+        mock_svc_instance.get_datasource_plugins.return_value = [{"name": "plugin_a"}]
+        mock_svc_cls.return_value = mock_svc_instance
+
+        with app.test_request_context("/datasets/test/pipeline/datasource-plugins?is_published=true"):
+            api = DatasourcePluginsApi()
+            response, status = api.get(tenant_id=tenant_id, dataset_id=dataset_id)
+
+        assert status == 200
+        assert response == [{"name": "plugin_a"}]
+        mock_svc_instance.get_datasource_plugins.assert_called_once_with(
+            tenant_id=tenant_id, dataset_id=dataset_id, is_published=True
+        )
+
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
+    def test_get_plugins_empty_list(self, mock_svc_cls, app):
+        """Test empty plugin list."""
+        mock_svc_instance = Mock()
+        mock_svc_instance.get_datasource_plugins.return_value = []
+        mock_svc_cls.return_value = mock_svc_instance
+
+        with app.test_request_context("/datasets/test/pipeline/datasource-plugins"):
+            api = DatasourcePluginsApi()
+            response, status = api.get(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()))
+
+        assert status == 200
+        assert response == []
+
+
+class TestPipelineRunApiPost:
+    """Tests for PipelineRunApi.post()."""
+
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.helper")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService")
+    @patch(
+        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
+        new_callable=lambda: Mock(spec=Account),
+    )
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
+    def test_post_success_streaming(
+        self, mock_ns, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app
+    ):
+        """Test successful pipeline run with streaming response."""
+        tenant_id = str(uuid.uuid4())
+        dataset_id = str(uuid.uuid4())
+
+        mock_ns.payload = {
+            "inputs": {"key": "val"},
+            "datasource_type": "online_document",
+            "datasource_info_list": [],
+            "start_node_id": "node_1",
+            "is_published": True,
+            "response_mode": "streaming",
+        }
+
+        mock_pipeline = Mock()
+        mock_svc_instance = Mock()
+        mock_svc_instance.get_pipeline.return_value = mock_pipeline
+        mock_svc_cls.return_value = mock_svc_instance
+
+        mock_gen_svc.generate.return_value = {"result": "ok"}
+        mock_helper.compact_generate_response.return_value = {"result": "ok"}
+
+        with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
+            api = PipelineRunApi()
+            response = api.post(tenant_id=tenant_id, dataset_id=dataset_id)
+
+        assert response == {"result": "ok"}
+        mock_gen_svc.generate.assert_called_once()
+
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user", new="not_account")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
+    def test_post_forbidden_non_account_user(self, mock_ns, app):
+        """Test Forbidden when current_user is not an Account."""
+        mock_ns.payload = {
+            "inputs": {},
+            "datasource_type": "online_document",
+            "datasource_info_list": [],
+            "start_node_id": "node_1",
+            "is_published": True,
+            "response_mode": "blocking",
+        }
+
+        with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
+            api = PipelineRunApi()
+            with pytest.raises(Forbidden):
+                api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()))
+
+
+class TestFileUploadApiPost:
+    """Tests for KnowledgebasePipelineFileUploadApi.post()."""
+
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FileService")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
+    def test_upload_success(self, mock_db, mock_current_user, mock_file_svc_cls, app):
+        """Test successful file upload."""
+        mock_current_user.__bool__ = Mock(return_value=True)
+
+        mock_upload = Mock()
+        mock_upload.id = str(uuid.uuid4())
+        mock_upload.name = "doc.pdf"
+        mock_upload.size = 1024
+        mock_upload.extension = "pdf"
+        mock_upload.mime_type = "application/pdf"
+        mock_upload.created_by = str(uuid.uuid4())
+        mock_upload.created_at = "2024-01-01T00:00:00Z"
+
+        mock_file_svc_instance = Mock()
+        mock_file_svc_instance.upload_file.return_value = mock_upload
+        mock_file_svc_cls.return_value = mock_file_svc_instance
+
+        file_data = FileStorage(
+            stream=io.BytesIO(b"fake pdf content"),
+            filename="doc.pdf",
+            content_type="application/pdf",
+        )
+
+        with app.test_request_context(
+            "/datasets/pipeline/file-upload",
+            method="POST",
+            content_type="multipart/form-data",
+            data={"file": file_data},
+        ):
+            api = KnowledgebasePipelineFileUploadApi()
+            response, status = api.post(tenant_id=str(uuid.uuid4()))
+
+        assert status == 201
+        assert response["name"] == "doc.pdf"
+        assert response["extension"] == "pdf"
+
+    def test_upload_no_file(self, app):
+        """Test error when no file is uploaded."""
+        with app.test_request_context(
+            "/datasets/pipeline/file-upload",
+            method="POST",
+            content_type="multipart/form-data",
+        ):
+            api = KnowledgebasePipelineFileUploadApi()
+            with pytest.raises(NoFileUploadedError):
+                api.post(tenant_id=str(uuid.uuid4()))
