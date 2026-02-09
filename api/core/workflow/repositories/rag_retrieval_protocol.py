@@ -58,11 +58,13 @@ class KnowledgeRetrievalRequest(BaseModel):
     retrieval_mode: str = Field(description="Retrieval strategy: 'single' or 'multiple'")
     model_provider: str | None = Field(default=None, description="Model provider name (e.g., 'openai', 'anthropic')")
     completion_params: dict[str, Any] | None = Field(
-        default=None, description="Model completion parameters (e.g., temperature, max_tokens)")
+        default=None, description="Model completion parameters (e.g., temperature, max_tokens)"
+    )
     model_mode: str | None = Field(default=None, description="Model mode (e.g., 'chat', 'completion')")
     model_name: str | None = Field(default=None, description="Model name (e.g., 'gpt-4', 'claude-3-opus')")
     metadata_model_config: ModelConfig | None = Field(
-        default=None, description="Model config for metadata-based filtering")
+        default=None, description="Model config for metadata-based filtering"
+    )
     metadata_filtering_conditions: MetadataFilteringCondition | None = Field(
         default=None, description="Conditions for filtering by metadata"
     )
