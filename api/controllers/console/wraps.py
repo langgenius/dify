@@ -15,6 +15,7 @@ from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.encryption import FieldEncryption
+from libs.external_api import abort_with_code
 from libs.login import current_account_with_tenant
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
@@ -88,11 +89,7 @@ def cloud_edition_billing_enabled(view: Callable[P, R]):
         _, current_tenant_id = current_account_with_tenant()
         features = FeatureService.get_features(current_tenant_id)
         if not features.billing.enabled:
-            abort(
-                403,
-                code="billing_not_enabled",
-                message="计费功能未启用。",
-            )
+            abort_with_code(403, "计费功能未启用。", "billing_not_enabled")
         return view(*args, **kwargs)
 
     return decorated
@@ -111,47 +108,23 @@ def cloud_edition_billing_resource_check(resource: str):
                 documents_upload_quota = features.documents_upload_quota
                 annotation_quota_limit = features.annotation_quota_limit
                 if resource == "members" and 0 < members.limit <= members.size:
-                    abort(
-                        403,
-                        code="billing_members_limit_exceeded",
-                        message="成员数量已达订阅上限。",
-                    )
+                    abort_with_code(403, "成员数量已达订阅上限。", "billing_members_limit_exceeded")
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
-                    abort(
-                        403,
-                        code="billing_apps_limit_exceeded",
-                        message="应用数量已达订阅上限。",
-                    )
+                    abort_with_code(403, "应用数量已达订阅上限。", "billing_apps_limit_exceeded")
                 elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
-                    abort(
-                        403,
-                        code="billing_vector_space_limit_exceeded",
-                        message="知识库存储空间已达订阅上限。",
-                    )
+                    abort_with_code(403, "知识库存储空间已达订阅上限。", "billing_vector_space_limit_exceeded")
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     # The api of file upload is used in the multiple places,
                     # so we need to check the source of the request from datasets
                     source = request.args.get("source")
                     if source == "datasets":
-                        abort(
-                            403,
-                            code="billing_documents_limit_exceeded",
-                            message="文档数量已达订阅上限。",
-                        )
+                        abort_with_code(403, "文档数量已达订阅上限。", "billing_documents_limit_exceeded")
                     else:
                         return view(*args, **kwargs)
                 elif resource == "workspace_custom" and not features.can_replace_logo:
-                    abort(
-                        403,
-                        code="billing_workspace_custom_limit_exceeded",
-                        message="工作区自定义功能已达订阅上限。",
-                    )
+                    abort_with_code(403, "工作区自定义功能已达订阅上限。", "billing_workspace_custom_limit_exceeded")
                 elif resource == "annotation" and 0 < annotation_quota_limit.limit < annotation_quota_limit.size:
-                    abort(
-                        403,
-                        code="billing_annotation_quota_exceeded",
-                        message="标注配额已达订阅上限。",
-                    )
+                    abort_with_code(403, "标注配额已达订阅上限。", "billing_annotation_quota_exceeded")
                 else:
                     return view(*args, **kwargs)
 
@@ -171,11 +144,7 @@ def cloud_edition_billing_knowledge_limit_check(resource: str):
             if features.billing.enabled:
                 if resource == "add_segment":
                     if features.billing.subscription.plan == CloudPlan.SANDBOX:
-                        abort(
-                            403,
-                            code="billing_upgrade_required",
-                            message="需要升级到付费套餐才能使用该功能。",
-                        )
+                        abort_with_code(403, "需要升级到付费套餐才能使用该功能。", "billing_upgrade_required")
                 else:
                     return view(*args, **kwargs)
 
@@ -212,11 +181,7 @@ def cloud_edition_billing_rate_limit_check(resource: str):
                         )
                         db.session.add(rate_limit_log)
                         db.session.commit()
-                        abort(
-                            403,
-                            code="knowledge_rate_limited",
-                            message="已达到当前订阅的知识库请求速率限制。",
-                        )
+                        abort_with_code(403, "已达到当前订阅的知识库请求速率限制。", "knowledge_rate_limited")
             return view(*args, **kwargs)
 
         return decorated
