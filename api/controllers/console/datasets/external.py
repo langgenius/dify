@@ -176,7 +176,7 @@ class ExternalApiTemplateApi(Resource):
         external_knowledge_api_id = str(external_knowledge_api_id)
         external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
         if external_knowledge_api is None:
-            raise NotFound("API template not found.")
+            raise NotFound("API 模板未找到。")
 
         return external_knowledge_api.to_dict(), 200
 
@@ -283,7 +283,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user)

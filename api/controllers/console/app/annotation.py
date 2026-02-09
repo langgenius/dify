@@ -182,7 +182,7 @@ class AnnotationReplyActionStatusApi(Resource):
         app_annotation_job_key = f"{action}_app_annotation_job_{str(job_id)}"
         cache_result = redis_client.get(app_annotation_job_key)
         if cache_result is None:
-            raise ValueError("The job does not exist.")
+            raise ValueError("任务不存在。")
 
         job_status = cache_result.decode()
         error_msg = ""
@@ -365,7 +365,7 @@ class AnnotationBatchImportApi(Resource):
 
         # check file type
         if not file.filename or not file.filename.lower().endswith(".csv"):
-            raise ValueError("Invalid file type. Only CSV files are allowed")
+            raise ValueError("文件类型无效，仅支持CSV文件。")
 
         # Check file size before processing
         file.seek(0, 2)  # Seek to end of file
@@ -376,12 +376,11 @@ class AnnotationBatchImportApi(Resource):
         if file_size > max_size_bytes:
             abort(
                 413,
-                f"File size exceeds maximum limit of {dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT}MB. "
-                f"Please reduce the file size and try again.",
+                f"文件大小超过上限 {dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT}MB，请缩小文件后重试。",
             )
 
         if file_size == 0:
-            raise ValueError("The uploaded file is empty")
+            raise ValueError("上传的文件为空。")
 
         return AppAnnotationService.batch_import_app_annotations(app_id, file)
 
@@ -403,7 +402,7 @@ class AnnotationBatchImportStatusApi(Resource):
         indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is None:
-            raise ValueError("The job does not exist.")
+            raise ValueError("任务不存在。")
         job_status = cache_result.decode()
         error_msg = ""
         if job_status == "error":

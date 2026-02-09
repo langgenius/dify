@@ -29,7 +29,7 @@ class Segment(BaseModel):
         If the value is different, a ValueError is raised.
         """
         if value != cls.model_fields["value_type"].default:
-            raise ValueError("Cannot modify 'value_type'")
+            raise ValueError("无法修改 value_type")
         return value
 
     @property

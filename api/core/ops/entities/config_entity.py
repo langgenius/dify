@@ -188,7 +188,7 @@ class AliyunConfig(BaseTracingConfig):
     @classmethod
     def license_key_validator(cls, v, info: ValidationInfo):
         if not v or v.strip() == "":
-            raise ValueError("License key cannot be empty")
+            raise ValueError("许可证密钥不能为空")
         return v
 
     @field_validator("endpoint")
@@ -211,7 +211,7 @@ class TencentConfig(BaseTracingConfig):
     @classmethod
     def token_validator(cls, v, info: ValidationInfo):
         if not v or v.strip() == "":
-            raise ValueError("Token cannot be empty")
+            raise ValueError("令牌不能为空")
         return v
 
     @field_validator("endpoint")

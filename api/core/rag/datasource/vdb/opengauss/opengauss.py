@@ -31,21 +31,21 @@ class OpenGaussConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["host"]:
-            raise ValueError("config OPENGAUSS_HOST is required")
+            raise ValueError("配置 OPENGAUSS_HOST 为必填项")
         if not values["port"]:
-            raise ValueError("config OPENGAUSS_PORT is required")
+            raise ValueError("配置 OPENGAUSS_PORT 为必填项")
         if not values["user"]:
-            raise ValueError("config OPENGAUSS_USER is required")
+            raise ValueError("配置 OPENGAUSS_USER 为必填项")
         if not values["password"]:
-            raise ValueError("config OPENGAUSS_PASSWORD is required")
+            raise ValueError("配置 OPENGAUSS_PASSWORD 为必填项")
         if not values["database"]:
-            raise ValueError("config OPENGAUSS_DATABASE is required")
+            raise ValueError("配置 OPENGAUSS_DATABASE 为必填项")
         if not values["min_connection"]:
-            raise ValueError("config OPENGAUSS_MIN_CONNECTION is required")
+            raise ValueError("配置 OPENGAUSS_MIN_CONNECTION 为必填项")
         if not values["max_connection"]:
-            raise ValueError("config OPENGAUSS_MAX_CONNECTION is required")
+            raise ValueError("配置 OPENGAUSS_MAX_CONNECTION 为必填项")
         if values["min_connection"] > values["max_connection"]:
-            raise ValueError("config OPENGAUSS_MIN_CONNECTION should less than OPENGAUSS_MAX_CONNECTION")
+            raise ValueError("配置 OPENGAUSS_MIN_CONNECTION 应小于 OPENGAUSS_MAX_CONNECTION")
         return values
 
 
@@ -181,7 +181,7 @@ class OpenGauss(BaseVector):
         """
         top_k = kwargs.get("top_k", 4)
         if not isinstance(top_k, int) or top_k <= 0:
-            raise ValueError("top_k must be a positive integer")
+            raise ValueError("top_k 必须为正整数")
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
@@ -201,7 +201,7 @@ class OpenGauss(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
         if not isinstance(top_k, int) or top_k <= 0:
-            raise ValueError("top_k must be a positive integer")
+            raise ValueError("top_k 必须为正整数")
         with self._get_cursor() as cur:
             cur.execute(
                 f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score

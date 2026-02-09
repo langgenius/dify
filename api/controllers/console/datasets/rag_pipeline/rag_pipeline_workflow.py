@@ -184,10 +184,10 @@ class DraftRagPipelineApi(Resource):
             try:
                 data = json.loads(request.data.decode("utf-8"))
                 if "graph" not in data or "features" not in data:
-                    raise ValueError("graph or features not found in data")
+                    raise ValueError("数据中未找到 graph 或 features")
 
                 if not isinstance(data.get("graph"), dict):
-                    raise ValueError("graph is not a dict")
+                    raise ValueError("graph 不是字典")
 
                 payload_dict = {
                     "graph": data.get("graph"),
@@ -198,7 +198,7 @@ class DraftRagPipelineApi(Resource):
                     "rag_pipeline_variables": data.get("rag_pipeline_variables"),
                 }
             except json.JSONDecodeError:
-                return {"message": "Invalid JSON data"}, 400
+                return {"message": "无效的 JSON 数据"}, 400
         else:
             abort(415)
 
@@ -258,7 +258,7 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("会话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except ValueError as e:
@@ -293,7 +293,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("会话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except ValueError as e:
@@ -542,7 +542,7 @@ class RagPipelineDraftNodeRunApi(Resource):
         )
 
         if workflow_node_execution is None:
-            raise ValueError("Workflow node execution not found")
+            raise ValueError("工作流节点执行未找到")
 
         return workflow_node_execution
 
@@ -654,7 +654,7 @@ class DefaultRagPipelineBlockConfigApi(Resource):
             try:
                 filters = json.loads(query.q)
             except json.JSONDecodeError:
-                raise ValueError("Invalid filters")
+                raise ValueError("无效的过滤条件")
 
         # Get default block configs
         rag_pipeline_service = RagPipelineService()
@@ -724,7 +724,7 @@ class RagPipelineByIdApi(Resource):
         update_data = payload.model_dump(exclude_unset=True)
 
         if not update_data:
-            return {"message": "No valid fields to update"}, 400
+            return {"message": "没有有效的字段可更新"}, 400
 
         rag_pipeline_service = RagPipelineService()
 
@@ -739,7 +739,7 @@ class RagPipelineByIdApi(Resource):
             )
 
             if not workflow:
-                raise NotFound("Workflow not found")
+                raise NotFound("工作流未找到")
 
             # Commit the transaction in the controller
             session.commit()
@@ -920,14 +920,14 @@ class RagPipelineWorkflowLastRunApi(Resource):
         rag_pipeline_service = RagPipelineService()
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
         if not workflow:
-            raise NotFound("Workflow not found")
+            raise NotFound("工作流未找到")
         node_exec = rag_pipeline_service.get_node_last_run(
             pipeline=pipeline,
             workflow=workflow,
             node_id=node_id,
         )
         if node_exec is None:
-            raise NotFound("last run not found")
+            raise NotFound("上次运行未找到")
         return node_exec
 
 

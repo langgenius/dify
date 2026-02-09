@@ -153,5 +153,5 @@ def _validate_extension_override(extension_override: str | None) -> str | None:
     if extension_override == "":
         return ""
     if not extension_override.startswith("."):
-        raise ValueError("extension_override should start with '.' if not None or empty.", extension_override)
+        raise ValueError("extension_override 如果非 None 或空值，应以 '.' 开头。", extension_override)
     return extension_override

@@ -15,7 +15,7 @@ def get_rag_pipeline(view_func: Callable[P, R]):
     @wraps(view_func)
     def decorated_view(*args: P.args, **kwargs: P.kwargs):
         if not kwargs.get("pipeline_id"):
-            raise ValueError("missing pipeline_id in path parameters")
+            raise ValueError("路径参数中缺少 pipeline_id")
 
         _, current_tenant_id = current_account_with_tenant()
 

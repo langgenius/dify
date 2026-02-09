@@ -172,7 +172,7 @@ class SegmentType(StrEnum):
 
             return False
         else:
-            raise AssertionError("this statement should be unreachable.")
+            raise AssertionError("此语句不应被执行。")
 
     @staticmethod
     def cast_value(value: Any, type_: SegmentType):

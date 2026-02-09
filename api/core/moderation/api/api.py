@@ -35,17 +35,17 @@ class ApiModeration(Moderation):
 
         api_based_extension_id = config.get("api_based_extension_id")
         if not api_based_extension_id:
-            raise ValueError("api_based_extension_id is required")
+            raise ValueError("api_based_extension_id 为必填项")
 
         extension = cls._get_api_based_extension(tenant_id, api_based_extension_id)
         if not extension:
-            raise ValueError("API-based Extension not found. Please check it again.")
+            raise ValueError("基于 API 的扩展未找到，请重新检查。")
 
     def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
         flagged = False
         preset_response = ""
         if self.config is None:
-            raise ValueError("The config is not set.")
+            raise ValueError("配置未设置。")
 
         if self.config["inputs_config"]["enabled"]:
             params = ModerationInputParams(app_id=self.app_id, inputs=inputs, query=query)
@@ -61,7 +61,7 @@ class ApiModeration(Moderation):
         flagged = False
         preset_response = ""
         if self.config is None:
-            raise ValueError("The config is not set.")
+            raise ValueError("配置未设置。")
 
         if self.config["outputs_config"]["enabled"]:
             params = ModerationOutputParams(app_id=self.app_id, text=text)
@@ -75,10 +75,10 @@ class ApiModeration(Moderation):
 
     def _get_config_by_requestor(self, extension_point: APIBasedExtensionPoint, params: dict):
         if self.config is None:
-            raise ValueError("The config is not set.")
+            raise ValueError("配置未设置。")
         extension = self._get_api_based_extension(self.tenant_id, self.config.get("api_based_extension_id", ""))
         if not extension:
-            raise ValueError("API-based Extension not found. Please check it again.")
+            raise ValueError("基于 API 的扩展未找到，请重新检查。")
         requestor = APIBasedExtensionRequestor(extension.api_endpoint, decrypt_token(self.tenant_id, extension.api_key))
 
         result = requestor.request(extension_point, params)

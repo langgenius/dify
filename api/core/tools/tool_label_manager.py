@@ -28,7 +28,7 @@ class ToolLabelManager:
         if isinstance(controller, ApiToolProviderController | WorkflowToolProviderController):
             provider_id = controller.provider_id
         else:
-            raise ValueError("Unsupported tool type")
+            raise ValueError("不支持的工具类型")
 
         # delete old labels
         db.session.query(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id).delete()
@@ -55,7 +55,7 @@ class ToolLabelManager:
         elif isinstance(controller, BuiltinToolProviderController):
             return controller.tool_labels
         else:
-            raise ValueError("Unsupported tool type")
+            raise ValueError("不支持的工具类型")
         stmt = select(ToolLabelBinding.label_name).where(
             ToolLabelBinding.tool_id == provider_id,
             ToolLabelBinding.tool_type == controller.provider_type.value,
@@ -80,7 +80,7 @@ class ToolLabelManager:
 
         for controller in tool_providers:
             if not isinstance(controller, ApiToolProviderController | WorkflowToolProviderController):
-                raise ValueError("Unsupported tool type")
+                raise ValueError("不支持的工具类型")
 
         provider_ids = []
         for controller in tool_providers:

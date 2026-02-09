@@ -200,7 +200,7 @@ class ModelProviderModelApi(Resource):
 
         if args.config_from == "custom-model":
             if not args.credential_id:
-                raise ValueError("credential_id is required when configuring a custom-model")
+                raise ValueError("配置自定义模型时 credential_id 为必填项")
             service = ModelProviderService()
             service.switch_active_custom_model_credential(
                 tenant_id=tenant_id,

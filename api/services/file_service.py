@@ -43,7 +43,7 @@ class FileService:
         elif isinstance(session_factory, sessionmaker):
             self._session_maker = session_factory
         else:
-            raise AssertionError("must be a sessionmaker or an Engine.")
+            raise AssertionError("必须为 sessionmaker 或 Engine。")
 
     def upload_file(
         self,
@@ -60,7 +60,7 @@ class FileService:
 
         # check if filename contains invalid characters
         if any(c in filename for c in ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]):
-            raise ValueError("Filename contains invalid characters")
+            raise ValueError("文件名包含无效字符")
 
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
@@ -134,7 +134,7 @@ class FileService:
             self._session_maker(expire_on_commit=False).query(UploadFile).where(UploadFile.id == file_id).first()
         )
         if not upload_file:
-            raise NotFound("File not found")
+            raise NotFound("文件未找到")
         blob = storage.load_once(upload_file.key)
         return base64.b64encode(blob).decode()
 
@@ -179,7 +179,7 @@ class FileService:
             upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
-            raise NotFound("File not found")
+            raise NotFound("文件未找到")
 
         # extract text from file
         extension = upload_file.extension
@@ -196,12 +196,12 @@ class FileService:
             upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign
         )
         if not result:
-            raise NotFound("File not found or signature is invalid")
+            raise NotFound("文件未找到或签名无效")
         with self._session_maker(expire_on_commit=False) as session:
             upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
-            raise NotFound("File not found or signature is invalid")
+            raise NotFound("文件未找到或签名无效")
 
         # extract text from file
         extension = upload_file.extension
@@ -215,13 +215,13 @@ class FileService:
     def get_file_generator_by_file_id(self, file_id: str, timestamp: str, nonce: str, sign: str):
         result = file_helpers.verify_file_signature(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
         if not result:
-            raise NotFound("File not found or signature is invalid")
+            raise NotFound("文件未找到或签名无效")
 
         with self._session_maker(expire_on_commit=False) as session:
             upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
-            raise NotFound("File not found or signature is invalid")
+            raise NotFound("文件未找到或签名无效")
 
         generator = storage.load(upload_file.key, stream=True)
 
@@ -232,7 +232,7 @@ class FileService:
             upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
-            raise NotFound("File not found or signature is invalid")
+            raise NotFound("文件未找到或签名无效")
 
         # extract text from file
         extension = upload_file.extension
@@ -248,7 +248,7 @@ class FileService:
             upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
-            raise NotFound("File not found")
+            raise NotFound("文件未找到")
         content = storage.load(upload_file.key)
 
         return content.decode("utf-8")

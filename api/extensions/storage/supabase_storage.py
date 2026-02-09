@@ -14,11 +14,11 @@ class SupabaseStorage(BaseStorage):
     def __init__(self):
         super().__init__()
         if dify_config.SUPABASE_URL is None:
-            raise ValueError("SUPABASE_URL is not set")
+            raise ValueError("SUPABASE_URL 未设置")
         if dify_config.SUPABASE_API_KEY is None:
-            raise ValueError("SUPABASE_API_KEY is not set")
+            raise ValueError("SUPABASE_API_KEY 未设置")
         if dify_config.SUPABASE_BUCKET_NAME is None:
-            raise ValueError("SUPABASE_BUCKET_NAME is not set")
+            raise ValueError("SUPABASE_BUCKET_NAME 未设置")
 
         self.bucket_name = dify_config.SUPABASE_BUCKET_NAME
         self.client = Client(supabase_url=dify_config.SUPABASE_URL, supabase_key=dify_config.SUPABASE_API_KEY)

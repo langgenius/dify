@@ -52,22 +52,22 @@ def batch_create_segment_to_index_task(
         try:
             dataset = session.get(Dataset, dataset_id)
             if not dataset:
-                raise ValueError("Dataset not exist.")
+                raise ValueError("知识库不存在。")
 
             dataset_document = session.get(Document, document_id)
             if not dataset_document:
-                raise ValueError("Document not exist.")
+                raise ValueError("文档不存在。")
 
             if (
                 not dataset_document.enabled
                 or dataset_document.archived
                 or dataset_document.indexing_status != "completed"
             ):
-                raise ValueError("Document is not available.")
+                raise ValueError("文档不可用。")
 
             upload_file = session.get(UploadFile, upload_file_id)
             if not upload_file:
-                raise ValueError("UploadFile not found.")
+                raise ValueError("上传文件未找到。")
 
             with tempfile.TemporaryDirectory() as temp_dir:
                 suffix = Path(upload_file.key).suffix
@@ -83,7 +83,7 @@ def batch_create_segment_to_index_task(
                         data = {"content": row.iloc[0]}
                     content.append(data)
                 if len(content) == 0:
-                    raise ValueError("The CSV file is empty.")
+                    raise ValueError("CSV 文件为空。")
 
             document_segments = []
             embedding_model = None

@@ -264,9 +264,9 @@ class DatasetService:
         if provider == "external" and external_knowledge_api_id:
             external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
             if not external_knowledge_api:
-                raise ValueError("External API template not found.")
+                raise ValueError("未找到外部 API 模板。")
             if external_knowledge_id is None:
-                raise ValueError("external_knowledge_id is required")
+                raise ValueError("external_knowledge_id 为必填项")
             external_knowledge_binding = ExternalKnowledgeBindings(
                 tenant_id=tenant_id,
                 dataset_id=dataset.id,
@@ -303,7 +303,7 @@ class DatasetService:
                 "Untitled",
             )
         if not current_user or not current_user.id:
-            raise ValueError("Current user or current user id not found")
+            raise ValueError("未找到当前用户或用户 ID")
         pipeline = Pipeline(
             tenant_id=tenant_id,
             name=rag_pipeline_dataset_create_entity.name,
@@ -336,7 +336,7 @@ class DatasetService:
     @staticmethod
     def check_doc_form(dataset: Dataset, doc_form: str):
         if dataset.doc_form and doc_form != dataset.doc_form:
-            raise ValueError("doc_form is different from the dataset doc_form.")
+            raise ValueError("doc_form 与知识库的 doc_form 不一致。")
 
     @staticmethod
     def check_dataset_model_setting(dataset):
@@ -386,13 +386,13 @@ class DatasetService:
             text_embedding_model = cast(TextEmbeddingModel, model_instance.model_type_instance)
             model_schema = text_embedding_model.get_model_schema(model_instance.model, model_instance.credentials)
             if not model_schema:
-                raise ValueError("Model schema not found")
+                raise ValueError("模型模式未找到")
             if model_schema.features and ModelFeature.VISION in model_schema.features:
                 return True
             else:
                 return False
         except LLMBadRequestError:
-            raise ValueError("No Model available. Please configure a valid provider in the Settings -> Model Provider.")
+            raise ValueError("无可用模型。请在设置 -> 模型提供方中配置有效的提供方。")
 
     @staticmethod
     def check_reranking_model_setting(tenant_id: str, reranking_model_provider: str, reranking_model: str):
@@ -431,7 +431,7 @@ class DatasetService:
         # Retrieve and validate dataset existence
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise ValueError("Dataset not found")
+            raise ValueError("知识库未找到")
             #  check if dataset name is exists
         if data.get("name") and data.get("name") != dataset.name:
             if DatasetService._has_dataset_same_name(
@@ -439,7 +439,7 @@ class DatasetService:
                 dataset_id=dataset_id,
                 name=data.get("name", dataset.name),
             ):
-                raise ValueError("Dataset name already exists")
+                raise ValueError("知识库名称已存在")
 
         # Verify user has permission to update this dataset
         DatasetService.check_dataset_permission(dataset, user)
@@ -500,9 +500,9 @@ class DatasetService:
         external_knowledge_api_id = data.get("external_knowledge_api_id", None)
 
         if not external_knowledge_id:
-            raise ValueError("External knowledge id is required.")
+            raise ValueError("外部知识 ID 为必填项。")
         if not external_knowledge_api_id:
-            raise ValueError("External knowledge api id is required.")
+            raise ValueError("外部知识 API ID 为必填项。")
         # Update metadata fields
         dataset.updated_by = user.id if user else None
         dataset.updated_at = naive_utc_now()
@@ -532,7 +532,7 @@ class DatasetService:
             )
 
             if not external_knowledge_binding:
-                raise ValueError("External knowledge binding not found.")
+                raise ValueError("未找到外部知识绑定。")
 
         # Update binding if values have changed
         if (
@@ -936,7 +936,7 @@ class DatasetService:
         session: Session, dataset: Dataset, knowledge_configuration: KnowledgeConfiguration, has_published: bool = False
     ):
         if not current_user or not current_user.current_tenant_id:
-            raise ValueError("Current user or current tenant not found")
+            raise ValueError("未找到当前用户或当前租户")
         dataset = session.merge(dataset)
         if not has_published:
             dataset.chunk_structure = knowledge_configuration.chunk_structure
@@ -964,7 +964,7 @@ class DatasetService:
             elif knowledge_configuration.indexing_technique == "economy":
                 dataset.keyword_number = knowledge_configuration.keyword_number
             else:
-                raise ValueError("Invalid index method")
+                raise ValueError("无效的索引方法")
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
             # Update summary_index_setting if provided
             if knowledge_configuration.summary_index_setting is not None:
@@ -972,12 +972,12 @@ class DatasetService:
             session.add(dataset)
         else:
             if dataset.chunk_structure and dataset.chunk_structure != knowledge_configuration.chunk_structure:
-                raise ValueError("Chunk structure is not allowed to be updated.")
+                raise ValueError("不允许更新分块结构。")
             action = None
             if dataset.indexing_technique != knowledge_configuration.indexing_technique:
                 # if update indexing_technique
                 if knowledge_configuration.indexing_technique == "economy":
-                    raise ValueError("Knowledge base indexing technique is not allowed to be updated to economy.")
+                    raise ValueError("知识库索引技术不允许更新为经济模式。")
                 elif knowledge_configuration.indexing_technique == "high_quality":
                     action = "add"
                     # get embedding model setting
@@ -1106,11 +1106,11 @@ class DatasetService:
     def check_dataset_permission(dataset, user):
         if dataset.tenant_id != user.current_tenant_id:
             logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
-            raise NoPermissionError("You do not have permission to access this dataset.")
+            raise NoPermissionError("您没有权限访问此知识库。")
         if user.current_role != TenantAccountRole.OWNER:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
                 logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
-                raise NoPermissionError("You do not have permission to access this dataset.")
+                raise NoPermissionError("您没有权限访问此知识库。")
             if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
                 # For partial team permission, user needs explicit permission or be the creator
                 if dataset.created_by != user.id:
@@ -1119,27 +1119,27 @@ class DatasetService:
                     )
                     if not user_permission:
                         logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
-                        raise NoPermissionError("You do not have permission to access this dataset.")
+                        raise NoPermissionError("您没有权限访问此知识库。")
 
     @staticmethod
     def check_dataset_operator_permission(user: Account | None = None, dataset: Dataset | None = None):
         if not dataset:
-            raise ValueError("Dataset not found")
+            raise ValueError("知识库未找到")
 
         if not user:
-            raise ValueError("User not found")
+            raise ValueError("用户未找到")
 
         if user.current_role != TenantAccountRole.OWNER:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME:
                 if dataset.created_by != user.id:
-                    raise NoPermissionError("You do not have permission to access this dataset.")
+                    raise NoPermissionError("您没有权限访问此知识库。")
 
             elif dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
                 if not any(
                     dp.dataset_id == dataset.id
                     for dp in db.session.query(DatasetPermission).filter_by(account_id=user.id).all()
                 ):
-                    raise NoPermissionError("You do not have permission to access this dataset.")
+                    raise NoPermissionError("您没有权限访问此知识库。")
 
     @staticmethod
     def get_dataset_queries(dataset_id: str, page: int, per_page: int):
@@ -1162,10 +1162,10 @@ class DatasetService:
     def update_dataset_api_status(dataset_id: str, status: bool):
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         dataset.enable_api = status
         if not current_user or not current_user.id:
-            raise ValueError("Current user or current user id not found")
+            raise ValueError("未找到当前用户或用户 ID")
         dataset.updated_by = current_user.id
         dataset.updated_at = naive_utc_now()
         db.session.commit()
@@ -1494,7 +1494,7 @@ class DocumentService:
         """
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except NoPermissionError as e:
@@ -1544,12 +1544,12 @@ class DocumentService:
         upload_file_id = DocumentService._get_upload_file_id_for_upload_file_document(
             document,
             invalid_source_message="Document does not have an uploaded file to download.",
-            missing_file_message="Uploaded file not found.",
+            missing_file_message="未找到上传的文件。",
         )
         upload_files_by_id = FileService.get_upload_files_by_ids(document.tenant_id, [upload_file_id])
         upload_file = upload_files_by_id.get(upload_file_id)
         if not upload_file:
-            raise NotFound("Uploaded file not found.")
+            raise NotFound("未找到上传的文件。")
         return upload_file
 
     @staticmethod
@@ -1569,18 +1569,18 @@ class DocumentService:
 
         missing_document_ids: set[str] = set(document_id_list) - set(documents_by_id.keys())
         if missing_document_ids:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
 
         upload_file_ids: list[str] = []
         upload_file_ids_by_document_id: dict[str, str] = {}
         for document_id, document in documents_by_id.items():
             if document.tenant_id != tenant_id:
-                raise Forbidden("No permission.")
+                raise Forbidden("无权限。")
 
             upload_file_id = DocumentService._get_upload_file_id_for_upload_file_document(
                 document,
-                invalid_source_message="Only uploaded-file documents can be downloaded as ZIP.",
-                missing_file_message="Only uploaded-file documents can be downloaded as ZIP.",
+                invalid_source_message="仅上传文件类型的文档可下载为 ZIP。",
+                missing_file_message="仅上传文件类型的文档可下载为 ZIP。",
             )
             upload_file_ids.append(upload_file_id)
             upload_file_ids_by_document_id[document_id] = upload_file_id
@@ -1588,7 +1588,7 @@ class DocumentService:
         upload_files_by_id = FileService.get_upload_files_by_ids(tenant_id, upload_file_ids)
         missing_upload_file_ids: set[str] = set(upload_file_ids) - set(upload_files_by_id.keys())
         if missing_upload_file_ids:
-            raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
+            raise NotFound("仅上传文件类型的文档可下载为 ZIP。")
 
         return {
             document_id: upload_files_by_id[upload_file_id]
@@ -1714,15 +1714,15 @@ class DocumentService:
 
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise ValueError("Dataset not found.")
+            raise ValueError("知识库未找到。")
 
         document = DocumentService.get_document(dataset_id, document_id)
 
         if not document:
-            raise ValueError("Document not found.")
+            raise ValueError("文档未找到。")
 
         if document.tenant_id != current_user.current_tenant_id:
-            raise ValueError("No permission.")
+            raise ValueError("无权限。")
 
         if dataset.built_in_field_enabled:
             if document.doc_metadata:
@@ -1781,7 +1781,7 @@ class DocumentService:
             retry_indexing_cache_key = f"document_{document.id}_is_retried"
             cache_result = redis_client.get(retry_indexing_cache_key)
             if cache_result is not None:
-                raise ValueError("Document is being retried, please try again later")
+                raise ValueError("文档正在重试中，请稍后再试")
             # retry document indexing
             document.indexing_status = "waiting"
             db.session.add(document)
@@ -1791,7 +1791,7 @@ class DocumentService:
         # trigger async task
         document_ids = [document.id for document in documents]
         if not current_user or not current_user.id:
-            raise ValueError("Current user or current user id not found")
+            raise ValueError("未找到当前用户或用户 ID")
         retry_document_indexing_task.delay(dataset_id, document_ids, current_user.id)
 
     @staticmethod
@@ -1800,7 +1800,7 @@ class DocumentService:
         sync_indexing_cache_key = f"document_{document.id}_is_sync"
         cache_result = redis_client.get(sync_indexing_cache_key)
         if cache_result is not None:
-            raise ValueError("Document is being synced, please try again later")
+            raise ValueError("文档正在同步中，请稍后再试")
         # sync document indexing
         document.indexing_status = "waiting"
         data_source_info = document.data_source_info_dict
@@ -1846,7 +1846,7 @@ class DocumentService:
                 if knowledge_config.data_source:
                     if knowledge_config.data_source.info_list.data_source_type == "upload_file":
                         if not knowledge_config.data_source.info_list.file_info_list:
-                            raise ValueError("File source info is required")
+                            raise ValueError("文件来源信息为必填项")
                         upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
                         count = len(upload_file_list)
                     elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
@@ -1860,7 +1860,7 @@ class DocumentService:
                     batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
 
                     if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
-                        raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
+                        raise ValueError("当前套餐不支持批量上传，请升级套餐。")
                     if count > batch_upload_limit:
                         raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 
@@ -1872,7 +1872,7 @@ class DocumentService:
 
         if not dataset.indexing_technique:
             if knowledge_config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
-                raise ValueError("Indexing technique is invalid")
+                raise ValueError("索引技术无效")
 
             dataset.indexing_technique = knowledge_config.indexing_technique
             if knowledge_config.indexing_technique == "high_quality":
@@ -1915,7 +1915,7 @@ class DocumentService:
         else:
             # When creating new documents, data_source must be provided
             if not knowledge_config.data_source:
-                raise ValueError("Data source is required when creating new documents")
+                raise ValueError("创建新文档时数据源为必填项")
 
             batch = time.strftime("%Y%m%d%H%M%S") + str(100000 + secrets.randbelow(exclusive_upper_bound=900000))
             # save process rule
@@ -1933,7 +1933,7 @@ class DocumentService:
                         else:
                             dataset_process_rule = dataset.latest_process_rule
                             if not dataset_process_rule:
-                                raise ValueError("No process rule found.")
+                                raise ValueError("未找到分段规则。")
                     elif process_rule.mode == "automatic":
                         dataset_process_rule = DatasetProcessRule(
                             dataset_id=dataset.id,
@@ -1972,7 +1972,7 @@ class DocumentService:
                     duplicate_document_ids = []
                     if knowledge_config.data_source.info_list.data_source_type == "upload_file":
                         if not knowledge_config.data_source.info_list.file_info_list:
-                            raise ValueError("File source info is required")
+                            raise ValueError("文件来源信息为必填项")
                         upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
                         files = (
                             db.session.query(UploadFile)
@@ -1983,7 +1983,7 @@ class DocumentService:
                             .all()
                         )
                         if len(files) != len(set(upload_file_list)):
-                            raise FileNotExistsError("One or more files not found.")
+                            raise FileNotExistsError("一个或多个文件未找到。")
 
                         file_names = [file.name for file in files]
                         db_documents = (
@@ -2038,7 +2038,7 @@ class DocumentService:
                     elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
                         notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
                         if not notion_info_list:
-                            raise ValueError("No notion info list found.")
+                            raise ValueError("未找到 Notion 信息列表。")
                         exist_page_ids = []
                         exist_document = {}
                         documents = (
@@ -2095,7 +2095,7 @@ class DocumentService:
                     elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
                         website_info = knowledge_config.data_source.info_list.website_info_list
                         if not website_info:
-                            raise ValueError("No website info list found.")
+                            raise ValueError("未找到网站信息列表。")
                         urls = website_info.urls
                         for url in urls:
                             data_source_info = {
@@ -2172,7 +2172,7 @@ class DocumentService:
     #                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
 
     #                 if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
-    #                     raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
+    #                     raise ValueError("当前套餐不支持批量上传，请升级套餐。")
     #                 if count > batch_upload_limit:
     #                     raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 
@@ -2184,7 +2184,7 @@ class DocumentService:
 
     #     if not dataset.indexing_technique:
     #         if knowledge_config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
-    #             raise ValueError("Indexing technique is invalid")
+    #             raise ValueError("索引技术无效")
 
     #         dataset.indexing_technique = knowledge_config.indexing_technique
     #         if knowledge_config.indexing_technique == "high_quality":
@@ -2316,7 +2316,7 @@ class DocumentService:
     #             elif knowledge_config.data_source.info_list.data_source_type == "notion_import":  # type: ignore
     #                 notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
     #                 if not notion_info_list:
-    #                     raise ValueError("No notion info list found.")
+    #                     raise ValueError("未找到 Notion 信息列表。")
     #                 exist_page_ids = []
     #                 exist_document = {}
     #                 documents = Document.query.filter_by(
@@ -2341,7 +2341,7 @@ class DocumentService:
     #                         )
     #                     ).first()
     #                     if not data_source_binding:
-    #                         raise ValueError("Data source binding not found.")
+    #                         raise ValueError("未找到数据源绑定。")
     #                     for page in notion_info.pages:
     #                         if page.page_id not in exist_page_ids:
     #                             data_source_info = {
@@ -2378,7 +2378,7 @@ class DocumentService:
     #             elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":  # type: ignore
     #                 website_info = knowledge_config.data_source.info_list.website_info_list  # type: ignore
     #                 if not website_info:
-    #                     raise ValueError("No website info list found.")
+    #                     raise ValueError("未找到网站信息列表。")
     #                 urls = website_info.urls
     #                 for url in urls:
     #                     data_source_info = {
@@ -2504,9 +2504,9 @@ class DocumentService:
         DatasetService.check_dataset_model_setting(dataset)
         document = DocumentService.get_document(dataset.id, document_data.original_document_id)
         if document is None:
-            raise NotFound("Document not found")
+            raise NotFound("文档未找到")
         if document.display_status != "available":
-            raise ValueError("Document is not available")
+            raise ValueError("文档不可用")
         # save process rule
         if document_data.process_rule:
             process_rule = document_data.process_rule
@@ -2534,7 +2534,7 @@ class DocumentService:
             data_source_info: dict[str, str | bool] = {}
             if document_data.data_source.info_list.data_source_type == "upload_file":
                 if not document_data.data_source.info_list.file_info_list:
-                    raise ValueError("No file info list found.")
+                    raise ValueError("未找到文件信息列表。")
                 upload_file_list = document_data.data_source.info_list.file_info_list.file_ids
                 for file_id in upload_file_list:
                     file = (
@@ -2553,7 +2553,7 @@ class DocumentService:
                     }
             elif document_data.data_source.info_list.data_source_type == "notion_import":
                 if not document_data.data_source.info_list.notion_info_list:
-                    raise ValueError("No notion info list found.")
+                    raise ValueError("未找到 Notion 信息列表。")
                 notion_info_list = document_data.data_source.info_list.notion_info_list
                 for notion_info in notion_info_list:
                     workspace_id = notion_info.workspace_id
@@ -2570,7 +2570,7 @@ class DocumentService:
                         .first()
                     )
                     if not data_source_binding:
-                        raise ValueError("Data source binding not found.")
+                        raise ValueError("未找到数据源绑定。")
                     for page in notion_info.pages:
                         data_source_info = {
                             "credential_id": notion_info.credential_id,
@@ -2647,7 +2647,7 @@ class DocumentService:
                 if website_info:
                     count = len(website_info.urls)
             if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
-                raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
+                raise ValueError("当前套餐不支持批量上传，请升级套餐。")
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
@@ -2705,7 +2705,7 @@ class DocumentService:
     @classmethod
     def document_create_args_validate(cls, knowledge_config: KnowledgeConfig):
         if not knowledge_config.data_source and not knowledge_config.process_rule:
-            raise ValueError("Data source or Process rule is required")
+            raise ValueError("数据源或分段规则为必填项")
         else:
             if knowledge_config.data_source:
                 DocumentService.data_source_args_validate(knowledge_config)
@@ -2715,126 +2715,126 @@ class DocumentService:
     @classmethod
     def data_source_args_validate(cls, knowledge_config: KnowledgeConfig):
         if not knowledge_config.data_source:
-            raise ValueError("Data source is required")
+            raise ValueError("数据源为必填项")
 
         if knowledge_config.data_source.info_list.data_source_type not in Document.DATA_SOURCES:
-            raise ValueError("Data source type is invalid")
+            raise ValueError("数据源类型无效")
 
         if not knowledge_config.data_source.info_list:
-            raise ValueError("Data source info is required")
+            raise ValueError("数据源信息为必填项")
 
         if knowledge_config.data_source.info_list.data_source_type == "upload_file":
             if not knowledge_config.data_source.info_list.file_info_list:
-                raise ValueError("File source info is required")
+                raise ValueError("文件来源信息为必填项")
         if knowledge_config.data_source.info_list.data_source_type == "notion_import":
             if not knowledge_config.data_source.info_list.notion_info_list:
-                raise ValueError("Notion source info is required")
+                raise ValueError("Notion 来源信息为必填项")
         if knowledge_config.data_source.info_list.data_source_type == "website_crawl":
             if not knowledge_config.data_source.info_list.website_info_list:
-                raise ValueError("Website source info is required")
+                raise ValueError("网站来源信息为必填项")
 
     @classmethod
     def process_rule_args_validate(cls, knowledge_config: KnowledgeConfig):
         if not knowledge_config.process_rule:
-            raise ValueError("Process rule is required")
+            raise ValueError("分段规则为必填项")
 
         if not knowledge_config.process_rule.mode:
-            raise ValueError("Process rule mode is required")
+            raise ValueError("分段规则 mode 为必填项")
 
         if knowledge_config.process_rule.mode not in DatasetProcessRule.MODES:
-            raise ValueError("Process rule mode is invalid")
+            raise ValueError("分段规则 mode 无效")
 
         if knowledge_config.process_rule.mode == "automatic":
             knowledge_config.process_rule.rules = None
         else:
             if not knowledge_config.process_rule.rules:
-                raise ValueError("Process rule rules is required")
+                raise ValueError("分段规则 rules 为必填项")
 
             if knowledge_config.process_rule.rules.pre_processing_rules is None:
-                raise ValueError("Process rule pre_processing_rules is required")
+                raise ValueError("预处理规则为必填项")
 
             unique_pre_processing_rule_dicts = {}
             for pre_processing_rule in knowledge_config.process_rule.rules.pre_processing_rules:
                 if not pre_processing_rule.id:
-                    raise ValueError("Process rule pre_processing_rules id is required")
+                    raise ValueError("预处理规则 id 为必填项")
 
                 if not isinstance(pre_processing_rule.enabled, bool):
-                    raise ValueError("Process rule pre_processing_rules enabled is invalid")
+                    raise ValueError("预处理规则 enabled 字段无效")
 
                 unique_pre_processing_rule_dicts[pre_processing_rule.id] = pre_processing_rule
 
             knowledge_config.process_rule.rules.pre_processing_rules = list(unique_pre_processing_rule_dicts.values())
 
             if not knowledge_config.process_rule.rules.segmentation:
-                raise ValueError("Process rule segmentation is required")
+                raise ValueError("分段规则为必填项")
 
             if not knowledge_config.process_rule.rules.segmentation.separator:
-                raise ValueError("Process rule segmentation separator is required")
+                raise ValueError("分段规则的分隔符为必填项")
 
             if not isinstance(knowledge_config.process_rule.rules.segmentation.separator, str):
-                raise ValueError("Process rule segmentation separator is invalid")
+                raise ValueError("分段规则的分隔符无效")
 
             if not (
                 knowledge_config.process_rule.mode == "hierarchical"
                 and knowledge_config.process_rule.rules.parent_mode == "full-doc"
             ):
                 if not knowledge_config.process_rule.rules.segmentation.max_tokens:
-                    raise ValueError("Process rule segmentation max_tokens is required")
+                    raise ValueError("分段规则的 max_tokens 为必填项")
 
                 if not isinstance(knowledge_config.process_rule.rules.segmentation.max_tokens, int):
-                    raise ValueError("Process rule segmentation max_tokens is invalid")
+                    raise ValueError("分段规则的 max_tokens 无效")
 
     @classmethod
     def estimate_args_validate(cls, args: dict):
         if "info_list" not in args or not args["info_list"]:
-            raise ValueError("Data source info is required")
+            raise ValueError("数据源信息为必填项")
 
         if not isinstance(args["info_list"], dict):
-            raise ValueError("Data info is invalid")
+            raise ValueError("数据信息无效")
 
         if "process_rule" not in args or not args["process_rule"]:
-            raise ValueError("Process rule is required")
+            raise ValueError("分段规则为必填项")
 
         if not isinstance(args["process_rule"], dict):
-            raise ValueError("Process rule is invalid")
+            raise ValueError("分段规则无效")
 
         if "mode" not in args["process_rule"] or not args["process_rule"]["mode"]:
-            raise ValueError("Process rule mode is required")
+            raise ValueError("分段规则 mode 为必填项")
 
         if args["process_rule"]["mode"] not in DatasetProcessRule.MODES:
-            raise ValueError("Process rule mode is invalid")
+            raise ValueError("分段规则 mode 无效")
 
         if args["process_rule"]["mode"] == "automatic":
             args["process_rule"]["rules"] = {}
         else:
             if "rules" not in args["process_rule"] or not args["process_rule"]["rules"]:
-                raise ValueError("Process rule rules is required")
+                raise ValueError("分段规则 rules 为必填项")
 
             if not isinstance(args["process_rule"]["rules"], dict):
-                raise ValueError("Process rule rules is invalid")
+                raise ValueError("分段规则 rules 无效")
 
             if (
                 "pre_processing_rules" not in args["process_rule"]["rules"]
                 or args["process_rule"]["rules"]["pre_processing_rules"] is None
             ):
-                raise ValueError("Process rule pre_processing_rules is required")
+                raise ValueError("预处理规则为必填项")
 
             if not isinstance(args["process_rule"]["rules"]["pre_processing_rules"], list):
-                raise ValueError("Process rule pre_processing_rules is invalid")
+                raise ValueError("预处理规则无效")
 
             unique_pre_processing_rule_dicts = {}
             for pre_processing_rule in args["process_rule"]["rules"]["pre_processing_rules"]:
                 if "id" not in pre_processing_rule or not pre_processing_rule["id"]:
-                    raise ValueError("Process rule pre_processing_rules id is required")
+                    raise ValueError("预处理规则 id 为必填项")
 
                 if pre_processing_rule["id"] not in DatasetProcessRule.PRE_PROCESSING_RULES:
-                    raise ValueError("Process rule pre_processing_rules id is invalid")
+                    raise ValueError("预处理规则 id 无效")
 
                 if "enabled" not in pre_processing_rule or pre_processing_rule["enabled"] is None:
-                    raise ValueError("Process rule pre_processing_rules enabled is required")
+                    raise ValueError("预处理规则 enabled 为必填项")
 
                 if not isinstance(pre_processing_rule["enabled"], bool):
-                    raise ValueError("Process rule pre_processing_rules enabled is invalid")
+                    raise ValueError("预处理规则 enabled 字段无效")
 
                 unique_pre_processing_rule_dicts[pre_processing_rule["id"]] = pre_processing_rule
 
@@ -2844,36 +2844,36 @@ class DocumentService:
                 "segmentation" not in args["process_rule"]["rules"]
                 or args["process_rule"]["rules"]["segmentation"] is None
             ):
-                raise ValueError("Process rule segmentation is required")
+                raise ValueError("分段规则为必填项")
 
             if not isinstance(args["process_rule"]["rules"]["segmentation"], dict):
-                raise ValueError("Process rule segmentation is invalid")
+                raise ValueError("分段规则无效")
 
             if (
                 "separator" not in args["process_rule"]["rules"]["segmentation"]
                 or not args["process_rule"]["rules"]["segmentation"]["separator"]
             ):
-                raise ValueError("Process rule segmentation separator is required")
+                raise ValueError("分段规则的分隔符为必填项")
 
             if not isinstance(args["process_rule"]["rules"]["segmentation"]["separator"], str):
-                raise ValueError("Process rule segmentation separator is invalid")
+                raise ValueError("分段规则的分隔符无效")
 
             if (
                 "max_tokens" not in args["process_rule"]["rules"]["segmentation"]
                 or not args["process_rule"]["rules"]["segmentation"]["max_tokens"]
             ):
-                raise ValueError("Process rule segmentation max_tokens is required")
+                raise ValueError("分段规则的 max_tokens 为必填项")
 
             if not isinstance(args["process_rule"]["rules"]["segmentation"]["max_tokens"], int):
-                raise ValueError("Process rule segmentation max_tokens is invalid")
+                raise ValueError("分段规则的 max_tokens 无效")
 
         # valid summary index setting
         summary_index_setting = args["process_rule"].get("summary_index_setting")
         if summary_index_setting and summary_index_setting.get("enable"):
             if "model_name" not in summary_index_setting or not summary_index_setting["model_name"]:
-                raise ValueError("Summary index model name is required")
+                raise ValueError("摘要索引模型名称为必填项")
             if "model_provider_name" not in summary_index_setting or not summary_index_setting["model_provider_name"]:
-                raise ValueError("Summary index model provider name is required")
+                raise ValueError("摘要索引模型提供方名称为必填项")
 
     @staticmethod
     def batch_update_document_status(
@@ -3070,15 +3070,15 @@ class SegmentService:
     def segment_create_args_validate(cls, args: dict, document: Document):
         if document.doc_form == "qa_model":
             if "answer" not in args or not args["answer"]:
-                raise ValueError("Answer is required")
+                raise ValueError("回答为必填项")
             if not args["answer"].strip():
-                raise ValueError("Answer is empty")
+                raise ValueError("回答为空")
         if "content" not in args or not args["content"] or not args["content"].strip():
-            raise ValueError("Content is empty")
+            raise ValueError("内容为空")
 
         if args.get("attachment_ids"):
             if not isinstance(args["attachment_ids"], list):
-                raise ValueError("Attachment IDs is invalid")
+                raise ValueError("附件 ID 无效")
             single_chunk_attachment_limit = dify_config.SINGLE_CHUNK_ATTACHMENT_LIMIT
             if len(args["attachment_ids"]) > single_chunk_attachment_limit:
                 raise ValueError(f"Exceeded maximum attachment limit of {single_chunk_attachment_limit}")
@@ -3264,7 +3264,7 @@ class SegmentService:
         indexing_cache_key = f"segment_{segment.id}_indexing"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
-            raise ValueError("Segment is indexing, please try again later")
+            raise ValueError("分段正在索引中，请稍后重试")
         if args.enabled is not None:
             action = args.enabled
             if segment.enabled != action:
@@ -3281,9 +3281,9 @@ class SegmentService:
         if not segment.enabled:
             if args.enabled is not None:
                 if not args.enabled:
-                    raise ValueError("Can't update disabled segment")
+                    raise ValueError("无法更新已禁用的分段")
             else:
-                raise ValueError("Can't update disabled segment")
+                raise ValueError("无法更新已禁用的分段")
         try:
             word_count_change = segment.word_count
             content = args.content or segment.content
@@ -3329,7 +3329,7 @@ class SegmentService:
                                 model_type=ModelType.TEXT_EMBEDDING,
                             )
                     else:
-                        raise ValueError("The knowledge base index technique is not high quality!")
+                        raise ValueError("知识库索引技术非高质量模式！")
                     # get the process rule
                     processing_rule = (
                         db.session.query(DatasetProcessRule)
@@ -3433,7 +3433,7 @@ class SegmentService:
                                 model_type=ModelType.TEXT_EMBEDDING,
                             )
                     else:
-                        raise ValueError("The knowledge base index technique is not high quality!")
+                        raise ValueError("知识库索引技术非高质量模式！")
                     # get the process rule
                     processing_rule = (
                         db.session.query(DatasetProcessRule)
@@ -3525,7 +3525,7 @@ class SegmentService:
             db.session.commit()
         new_segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment.id).first()
         if not new_segment:
-            raise ValueError("new_segment is not found")
+            raise ValueError("new_segment 未找到")
         return new_segment
 
     @classmethod
@@ -3533,7 +3533,7 @@ class SegmentService:
         indexing_cache_key = f"segment_{segment.id}_delete_indexing"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
-            raise ValueError("Segment is deleting.")
+            raise ValueError("分段正在删除中。")
 
         # enabled segment need to delete index
         if segment.enabled:
@@ -3977,7 +3977,7 @@ class DatasetCollectionBindingService:
             .first()
         )
         if not dataset_collection_binding:
-            raise ValueError("Dataset collection binding not found")
+            raise ValueError("未找到知识库集合绑定")
 
         return dataset_collection_binding
 
@@ -4015,19 +4015,19 @@ class DatasetPermissionService:
     @classmethod
     def check_permission(cls, user, dataset, requested_permission, requested_partial_member_list):
         if not user.is_dataset_editor:
-            raise NoPermissionError("User does not have permission to edit this dataset.")
+            raise NoPermissionError("用户无权编辑此知识库。")
 
         if user.is_dataset_operator and dataset.permission != requested_permission:
-            raise NoPermissionError("Dataset operators cannot change the dataset permissions.")
+            raise NoPermissionError("知识库操作员无法更改知识库权限。")
 
         if user.is_dataset_operator and requested_permission == "partial_members":
             if not requested_partial_member_list:
-                raise ValueError("Partial member list is required when setting to partial members.")
+                raise ValueError("设置为部分成员时，必须提供成员列表。")
 
             local_member_list = cls.get_dataset_partial_member_list(dataset.id)
             request_member_list = [user["user_id"] for user in requested_partial_member_list]
             if set(local_member_list) != set(request_member_list):
-                raise ValueError("Dataset operators cannot change the dataset permissions.")
+                raise ValueError("知识库操作员无法更改知识库权限。")
 
     @classmethod
     def clear_partial_member_list(cls, dataset_id):

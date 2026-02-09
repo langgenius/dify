@@ -35,18 +35,18 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise NotFound("应用未找到")
 
         answer = args.get("answer") or args.get("content")
         if answer is None:
-            raise ValueError("Either 'answer' or 'content' must be provided")
+            raise ValueError("必须提供 'answer' 或 'content'")
 
         if args.get("message_id"):
             message_id = str(args["message_id"])
             message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app.id).first()
 
             if not message:
-                raise NotFound("Message Not Exists.")
+                raise NotFound("消息不存在。")
 
             question = args.get("question") or message.query or ""
 
@@ -135,7 +135,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise NotFound("应用未找到")
         if keyword:
             from libs.helper import escape_like_pattern
 
@@ -177,7 +177,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise NotFound("应用未找到")
         annotations = (
             db.session.query(MessageAnnotation)
             .where(MessageAnnotation.app_id == app_id)
@@ -207,7 +207,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise NotFound("应用未找到")
 
         question = args.get("question")
         if question is None:
@@ -241,12 +241,12 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise NotFound("应用未找到")
 
         annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
 
         if not annotation:
-            raise NotFound("Annotation not found")
+            raise NotFound("标注未找到")
 
         question = args.get("question")
         if question is None:
@@ -283,12 +283,12 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise NotFound("应用未找到")
 
         annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
 
         if not annotation:
-            raise NotFound("Annotation not found")
+            raise NotFound("标注未找到")
 
         db.session.delete(annotation)
 
@@ -321,7 +321,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise NotFound("应用未找到")
 
         # Fetch annotations and their settings in a single query
         annotations_to_delete = (
@@ -382,7 +382,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise NotFound("应用未找到")
 
         job_id: str | None = None  # Initialize to avoid unbound variable error
         try:
@@ -395,7 +395,7 @@ class AppAnnotationService:
             # Estimate row count from first chunk
             newline_count = first_chunk.count(b"\n")
             if newline_count == 0:
-                raise ValueError("The CSV file appears to be empty or invalid.")
+                raise ValueError("CSV 文件为空或格式无效。")
 
             # Parse CSV with row limit to prevent memory exhaustion
             # Use chunksize for memory-efficient processing
@@ -413,7 +413,7 @@ class AppAnnotationService:
 
             # Validate column count
             if len(df.columns) < 2:
-                raise ValueError("Invalid CSV format. The file must contain at least 2 columns (question and answer).")
+                raise ValueError("CSV 格式无效，文件必须包含至少 2 列（问题和回答）。")
 
             # Build result list with validation
             result: list[dict] = []
@@ -462,7 +462,7 @@ class AppAnnotationService:
             if features.billing.enabled:
                 annotation_quota_limit = features.annotation_quota_limit
                 if annotation_quota_limit.limit < len(result) + annotation_quota_limit.size:
-                    raise ValueError("The number of annotations exceeds the limit of your subscription.")
+                    raise ValueError("标注数量已超出订阅限制。")
             # async job
             job_id = str(uuid.uuid4())
             indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
@@ -506,12 +506,12 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise NotFound("应用未找到")
 
         annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
 
         if not annotation:
-            raise NotFound("Annotation not found")
+            raise NotFound("标注未找到")
 
         stmt = (
             select(AppAnnotationHitHistory)
@@ -577,7 +577,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise NotFound("应用未找到")
 
         annotation_setting = db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         if annotation_setting:
@@ -612,7 +612,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise NotFound("应用未找到")
 
         annotation_setting = (
             db.session.query(AppAnnotationSetting)
@@ -623,7 +623,7 @@ class AppAnnotationService:
             .first()
         )
         if not annotation_setting:
-            raise NotFound("App annotation not found")
+            raise NotFound("未找到应用标注")
         annotation_setting.score_threshold = args["score_threshold"]
         annotation_setting.updated_user_id = current_user.id
         annotation_setting.updated_at = naive_utc_now()
@@ -660,7 +660,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise NotFound("应用未找到")
 
         # if annotation reply is enabled, delete annotation index
         app_annotation_setting = (

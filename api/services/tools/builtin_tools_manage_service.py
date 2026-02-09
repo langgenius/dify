@@ -414,7 +414,7 @@ class BuiltinToolManageService:
             # get provider
             target_provider = session.query(BuiltinToolProvider).filter_by(id=id).first()
             if target_provider is None:
-                raise ValueError("provider not found")
+                raise ValueError("提供商未找到")
 
             # clear default provider
             session.query(BuiltinToolProvider).filter_by(

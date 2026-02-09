@@ -55,9 +55,9 @@ class VolumePermissionManager:
             self._volume_name = volume_name
 
         if not self._connection:
-            raise ValueError("Valid connection or config is required")
+            raise ValueError("需要有效的连接或配置")
         if not self._volume_type:
-            raise ValueError("volume_type is required")
+            raise ValueError("volume_type 为必填项")
 
         self._permission_cache: dict[str, set[str]] = {}
         self._current_username = None  # Will get current username from connection

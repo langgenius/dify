@@ -51,7 +51,7 @@ class ConditionProcessor:
             }:
                 # check sub conditions
                 if not condition.sub_variable_condition:
-                    raise ValueError("Sub variable is required")
+                    raise ValueError("子变量为必填项")
                 result = _process_sub_conditions(
                     variable=variable,
                     sub_conditions=condition.sub_variable_condition.conditions,
@@ -154,7 +154,7 @@ def _evaluate_condition(
                 bool_list: list[bool] = [item for item in expected if isinstance(item, bool)]
                 return _assert_all_of_bool(value=value, expected=bool_list)
             else:
-                raise ValueError("all of operator expects homogeneous list of strings or booleans")
+                raise ValueError("all of 运算符期望字符串或布尔值的同构列表")
         case "exists":
             return _assert_exists(value=value)
         case "not exists":
@@ -168,7 +168,7 @@ def _assert_contains(*, value: object, expected: object) -> bool:
         return False
 
     if not isinstance(value, (str, list)):
-        raise ValueError("Invalid actual value type: string or array")
+        raise ValueError("无效的实际值类型：字符串或数组")
 
     # Type checking ensures value is str or list at this point
     if isinstance(value, str):
@@ -187,7 +187,7 @@ def _assert_not_contains(*, value: object, expected: object) -> bool:
         return True
 
     if not isinstance(value, (str, list)):
-        raise ValueError("Invalid actual value type: string or array")
+        raise ValueError("无效的实际值类型：字符串或数组")
 
     # Type checking ensures value is str or list at this point
     if isinstance(value, str):
@@ -206,10 +206,10 @@ def _assert_start_with(*, value: object, expected: object) -> bool:
         return False
 
     if not isinstance(value, str):
-        raise ValueError("Invalid actual value type: string")
+        raise ValueError("无效的实际值类型：字符串")
 
     if not isinstance(expected, str):
-        raise ValueError("Expected value must be a string for startswith")
+        raise ValueError("startswith 的期望值必须为字符串")
     if not value.startswith(expected):
         return False
     return True
@@ -220,10 +220,10 @@ def _assert_end_with(*, value: object, expected: object) -> bool:
         return False
 
     if not isinstance(value, str):
-        raise ValueError("Invalid actual value type: string")
+        raise ValueError("无效的实际值类型：字符串")
 
     if not isinstance(expected, str):
-        raise ValueError("Expected value must be a string for endswith")
+        raise ValueError("endswith 的期望值必须为字符串")
     if not value.endswith(expected):
         return False
     return True
@@ -234,7 +234,7 @@ def _assert_is(*, value: object, expected: object) -> bool:
         return False
 
     if not isinstance(value, (str, bool)):
-        raise ValueError("Invalid actual value type: string or boolean")
+        raise ValueError("无效的实际值类型：字符串或布尔值")
 
     if value != expected:
         return False
@@ -246,7 +246,7 @@ def _assert_is_not(*, value: object, expected: object) -> bool:
         return False
 
     if not isinstance(value, (str, bool)):
-        raise ValueError("Invalid actual value type: string or boolean")
+        raise ValueError("无效的实际值类型：字符串或布尔值")
 
     if value == expected:
         return False
@@ -309,7 +309,7 @@ def _assert_equal(*, value: object, expected: object) -> bool:
         return False
 
     if not isinstance(value, (int, float, bool)):
-        raise ValueError("Invalid actual value type: number or boolean")
+        raise ValueError("无效的实际值类型：数字或布尔值")
 
     # Handle boolean comparison
     if isinstance(value, bool):
@@ -335,7 +335,7 @@ def _assert_not_equal(*, value: object, expected: object) -> bool:
         return False
 
     if not isinstance(value, (int, float, bool)):
-        raise ValueError("Invalid actual value type: number or boolean")
+        raise ValueError("无效的实际值类型：数字或布尔值")
 
     # Handle boolean comparison
     if isinstance(value, bool):
@@ -361,7 +361,7 @@ def _assert_greater_than(*, value: object, expected: object) -> bool:
         return False
 
     if not isinstance(value, (int, float)):
-        raise ValueError("Invalid actual value type: number")
+        raise ValueError("无效的实际值类型：数字")
 
     value, expected = _normalize_numeric_values(value, expected)
     return value > expected
@@ -372,7 +372,7 @@ def _assert_less_than(*, value: object, expected: object) -> bool:
         return False
 
     if not isinstance(value, (int, float)):
-        raise ValueError("Invalid actual value type: number")
+        raise ValueError("无效的实际值类型：数字")
 
     value, expected = _normalize_numeric_values(value, expected)
     return value < expected
@@ -383,7 +383,7 @@ def _assert_greater_than_or_equal(*, value: object, expected: object) -> bool:
         return False
 
     if not isinstance(value, (int, float)):
-        raise ValueError("Invalid actual value type: number")
+        raise ValueError("无效的实际值类型：数字")
 
     value, expected = _normalize_numeric_values(value, expected)
     return value >= expected
@@ -394,7 +394,7 @@ def _assert_less_than_or_equal(*, value: object, expected: object) -> bool:
         return False
 
     if not isinstance(value, (int, float)):
-        raise ValueError("Invalid actual value type: number")
+        raise ValueError("无效的实际值类型：数字")
 
     value, expected = _normalize_numeric_values(value, expected)
     return value <= expected
@@ -417,7 +417,7 @@ def _assert_in(*, value: object, expected: object) -> bool:
         return False
 
     if not isinstance(expected, list):
-        raise ValueError("Invalid expected value type: array")
+        raise ValueError("无效的期望值类型：数组")
 
     if value not in expected:
         return False
@@ -429,7 +429,7 @@ def _assert_not_in(*, value: object, expected: object) -> bool:
         return True
 
     if not isinstance(expected, list):
-        raise ValueError("Invalid expected value type: array")
+        raise ValueError("无效的期望值类型：数组")
 
     if value in expected:
         return False
@@ -479,7 +479,7 @@ def _process_sub_conditions(
         expected_value = condition.value
         if key == FileAttribute.EXTENSION:
             if not isinstance(expected_value, str):
-                raise TypeError("Expected value must be a string when key is FileAttribute.EXTENSION")
+                raise TypeError("当键为 FileAttribute.EXTENSION 时，期望值必须为字符串")
             if expected_value and not expected_value.startswith("."):
                 expected_value = "." + expected_value
 

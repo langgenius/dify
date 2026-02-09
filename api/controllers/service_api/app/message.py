@@ -83,9 +83,9 @@ class MessageListApi(Resource):
                 data=items,
             ).model_dump(mode="json")
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except FirstMessageNotExistsError:
-            raise NotFound("First Message Not Exists.")
+            raise NotFound("首条消息不存在。")
 
 
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
@@ -98,7 +98,7 @@ class MessageFeedbackApi(Resource):
         responses={
             200: "Feedback submitted successfully",
             401: "Unauthorized - invalid API token",
-            404: "Message not found",
+            404: "消息未找到",
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
@@ -120,7 +120,7 @@ class MessageFeedbackApi(Resource):
                 content=payload.content,
             )
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("消息不存在。")
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -157,7 +157,7 @@ class MessageSuggestedApi(Resource):
             200: "Suggested questions retrieved successfully",
             400: "Suggested questions feature is disabled",
             401: "Unauthorized - invalid API token",
-            404: "Message not found",
+            404: "消息未找到",
             500: "Internal server error",
         }
     )
@@ -177,9 +177,9 @@ class MessageSuggestedApi(Resource):
                 app_model=app_model, user=end_user, message_id=message_id, invoke_from=InvokeFrom.SERVICE_API
             )
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("消息不存在。")
         except SuggestedQuestionsAfterAnswerDisabledError:
-            raise BadRequest("Suggested Questions Is Disabled.")
+            raise BadRequest("建议问题已禁用。")
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()

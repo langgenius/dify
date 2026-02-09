@@ -76,14 +76,14 @@ class IndexingRunner:
                 dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
 
                 if not dataset:
-                    raise ValueError("no dataset found")
+                    raise ValueError("未找到知识库")
                 # get the process rule
                 stmt = select(DatasetProcessRule).where(
                     DatasetProcessRule.id == requeried_document.dataset_process_rule_id
                 )
                 processing_rule = db.session.scalar(stmt)
                 if not processing_rule:
-                    raise ValueError("no process rule found")
+                    raise ValueError("未找到处理规则")
                 index_type = requeried_document.doc_form
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
                 # extract
@@ -92,7 +92,7 @@ class IndexingRunner:
                 # transform
                 current_user = db.session.query(Account).filter_by(id=requeried_document.created_by).first()
                 if not current_user:
-                    raise ValueError("no current user found")
+                    raise ValueError("未找到当前用户")
                 current_user.set_tenant_id(dataset.tenant_id)
                 documents = self._transform(
                     index_processor,
@@ -135,7 +135,7 @@ class IndexingRunner:
             dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
 
             if not dataset:
-                raise ValueError("no dataset found")
+                raise ValueError("未找到知识库")
 
             # get exist document_segment list and delete
             document_segments = (
@@ -154,7 +154,7 @@ class IndexingRunner:
             stmt = select(DatasetProcessRule).where(DatasetProcessRule.id == requeried_document.dataset_process_rule_id)
             processing_rule = db.session.scalar(stmt)
             if not processing_rule:
-                raise ValueError("no process rule found")
+                raise ValueError("未找到处理规则")
 
             index_type = requeried_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
@@ -164,7 +164,7 @@ class IndexingRunner:
             # transform
             current_user = db.session.query(Account).filter_by(id=requeried_document.created_by).first()
             if not current_user:
-                raise ValueError("no current user found")
+                raise ValueError("未找到当前用户")
             current_user.set_tenant_id(dataset.tenant_id)
             documents = self._transform(
                 index_processor,
@@ -205,7 +205,7 @@ class IndexingRunner:
             dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
 
             if not dataset:
-                raise ValueError("no dataset found")
+                raise ValueError("未找到知识库")
 
             # get exist document_segment list and delete
             document_segments = (
@@ -286,7 +286,7 @@ class IndexingRunner:
         if dataset_id:
             dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
             if not dataset:
-                raise ValueError("Dataset not found.")
+                raise ValueError("知识库未找到。")
             if dataset.indexing_technique == "high_quality" or indexing_technique == "high_quality":
                 if dataset.embedding_model_provider:
                     embedding_model_instance = self.model_manager.get_model_instance(
@@ -383,7 +383,7 @@ class IndexingRunner:
         match dataset_document.data_source_type:
             case "upload_file":
                 if not data_source_info or "upload_file_id" not in data_source_info:
-                    raise ValueError("no upload file found")
+                    raise ValueError("未找到上传文件")
                 stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
                 file_detail = db.session.scalars(stmt).one_or_none()
 
@@ -400,7 +400,7 @@ class IndexingRunner:
                     or "notion_workspace_id" not in data_source_info
                     or "notion_page_id" not in data_source_info
                 ):
-                    raise ValueError("no notion import info found")
+                    raise ValueError("未找到 Notion 导入信息")
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.NOTION,
                     notion_info=NotionInfo.model_validate(
@@ -423,7 +423,7 @@ class IndexingRunner:
                     or "url" not in data_source_info
                     or "job_id" not in data_source_info
                 ):
-                    raise ValueError("no website import info found")
+                    raise ValueError("未找到网站导入信息")
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.WEBSITE,
                     website_info=WebsiteInfo.model_validate(
@@ -648,7 +648,7 @@ class IndexingRunner:
         with flask_app.app_context():
             dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
             if not dataset:
-                raise ValueError("no dataset found")
+                raise ValueError("未找到知识库")
             keyword = Keyword(dataset)
             keyword.create(documents)
             if dataset.indexing_technique != "high_quality":

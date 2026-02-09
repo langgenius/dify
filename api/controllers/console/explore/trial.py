@@ -252,7 +252,7 @@ class TrialChatApi(TrialAppResource):
 
         try:
             if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
+                raise ValueError("current_user 必须是 Account 实例")
 
             # Get IDs before they might be detached from session
             app_id = app_model.id
@@ -264,7 +264,7 @@ class TrialChatApi(TrialAppResource):
             RecommendedAppService.add_trial_app_record(app_id, user_id)
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -299,14 +299,14 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
 
         try:
             if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
+                raise ValueError("current_user 必须是 Account 实例")
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
             )
         except MessageNotExistsError:
-            raise NotFound("Message not found")
+            raise NotFound("消息未找到。")
         except ConversationNotExistsError:
-            raise NotFound("Conversation not found")
+            raise NotFound("对话未找到。")
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except ProviderTokenNotInitError as ex:
@@ -333,7 +333,7 @@ class TrialChatAudioApi(TrialAppResource):
 
         try:
             if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
+                raise ValueError("current_user 必须是 Account 实例")
 
             # Get IDs before they might be detached from session
             app_id = app_model.id
@@ -380,7 +380,7 @@ class TrialChatTextApi(TrialAppResource):
             text = request_data.text
             voice = request_data.voice
             if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
+                raise ValueError("current_user 必须是 Account 实例")
 
             # Get IDs before they might be detached from session
             app_id = app_model.id
@@ -431,7 +431,7 @@ class TrialCompletionApi(TrialAppResource):
 
         try:
             if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
+                raise ValueError("current_user 必须是 Account 实例")
 
             # Get IDs before they might be detached from session
             app_id = app_model.id
@@ -444,7 +444,7 @@ class TrialCompletionApi(TrialAppResource):
             RecommendedAppService.add_trial_app_record(app_id, user_id)
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:

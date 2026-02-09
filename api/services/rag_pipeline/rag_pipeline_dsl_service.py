@@ -232,7 +232,7 @@ class RagPipelineDslService:
                     return RagPipelineImportInfo(
                         id=import_id,
                         status=ImportStatus.FAILED,
-                        error="Pipeline not found",
+                        error="流水线未找到",
                     )
                 dataset = pipeline.retrieve_dataset(session=self._session)
 
@@ -294,7 +294,7 @@ class RagPipelineDslService:
                         and pipeline.is_published
                         and dataset.chunk_structure != knowledge_configuration.chunk_structure
                     ):
-                        raise ValueError("Chunk structure is not compatible with the published pipeline")
+                        raise ValueError("分块结构与已发布的流水线不兼容")
                     if not dataset:
                         datasets = self._session.query(Dataset).filter_by(tenant_id=account.current_tenant_id).all()
                         names = [dataset.name for dataset in datasets]
@@ -351,7 +351,7 @@ class RagPipelineDslService:
                     self._session.commit()
                     dataset_id = dataset.id
             if not dataset_id:
-                raise ValueError("DSL is not valid, please check the Knowledge Index node.")
+                raise ValueError("DSL 无效，请检查知识库索引节点。")
 
             return RagPipelineImportInfo(
                 id=import_id,
@@ -488,7 +488,7 @@ class RagPipelineDslService:
                     self._session.commit()
                     dataset_id = dataset.id
             if not dataset_id:
-                raise ValueError("DSL is not valid, please check the Knowledge Index node.")
+                raise ValueError("DSL 无效，请检查知识库索引节点。")
 
             # Delete import info from Redis
             redis_client.delete(redis_key)
@@ -543,12 +543,12 @@ class RagPipelineDslService:
     ) -> Pipeline:
         """Create a new app or update an existing one."""
         if not account.current_tenant_id:
-            raise ValueError("Tenant id is required")
+            raise ValueError("租户 ID 为必填项")
         pipeline_data = data.get("rag_pipeline", {})
         # Initialize pipeline based on mode
         workflow_data = data.get("workflow")
         if not workflow_data or not isinstance(workflow_data, dict):
-            raise ValueError("Missing workflow data for rag pipeline")
+            raise ValueError("RAG 流水线缺少工作流数据")
 
         environment_variables_list = workflow_data.get("environment_variables", [])
         environment_variables = [
@@ -583,7 +583,7 @@ class RagPipelineDslService:
 
         else:
             if account.current_tenant_id is None:
-                raise ValueError("Current tenant is not set")
+                raise ValueError("当前租户未设置")
 
             # Create new app
             pipeline = Pipeline(
@@ -652,7 +652,7 @@ class RagPipelineDslService:
         """
         dataset = pipeline.retrieve_dataset(session=self._session)
         if not dataset:
-            raise ValueError("Missing dataset for rag pipeline")
+            raise ValueError("RAG 流水线缺少知识库")
         icon_info = dataset.icon_info
         export_data = {
             "version": CURRENT_DSL_VERSION,
@@ -688,7 +688,7 @@ class RagPipelineDslService:
             .first()
         )
         if not workflow:
-            raise ValueError("Missing draft workflow configuration, please check.")
+            raise ValueError("缺少草稿工作流配置，请检查。")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)
         for node in workflow_dict.get("graph", {}).get("nodes", []):

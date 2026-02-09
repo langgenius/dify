@@ -27,7 +27,7 @@ class WebConversationService:
         sort_by="-updated_at",
     ) -> InfiniteScrollPagination:
         if not user:
-            raise ValueError("User is required")
+            raise ValueError("用户为必填项")
         include_ids = None
         exclude_ids = None
         if pinned is not None and user:

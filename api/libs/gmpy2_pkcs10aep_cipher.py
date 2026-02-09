@@ -114,7 +114,7 @@ class PKCS1OAepCipher:
         # Step 1b
         ps_len = k - mLen - 2 * hLen - 2
         if ps_len < 0:
-            raise ValueError("Plaintext is too long.")
+            raise ValueError("明文过长。")
         # Step 2a
         lHash = sha1(self._label).digest()
         # Step 2b
@@ -164,7 +164,7 @@ class PKCS1OAepCipher:
         hLen = self._hashObj.digest_size
         # Step 1b and 1c
         if len(ciphertext) != k or k < hLen + 2:
-            raise ValueError("Ciphertext with incorrect length.")
+            raise ValueError("密文长度不正确。")
         # Step 2a (O2SIP)
         ct_int = bytes_to_long(ciphertext)
         # Step 2b (RSADP)
@@ -198,7 +198,7 @@ class PKCS1OAepCipher:
         for x in db[hLen:one_pos]:
             invalid |= bord(x)  # type: ignore[arg-type]
         if invalid != 0:
-            raise ValueError("Incorrect decryption.")
+            raise ValueError("解密错误。")
         # Step 4
         return db[one_pos + 1 :]
 

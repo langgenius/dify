@@ -106,7 +106,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
             AssertionError: If request was already responded to
         """
         if not self._entered:
-            raise RuntimeError("RequestResponder must be used as a context manager")
+            raise RuntimeError("RequestResponder 必须作为上下文管理器使用")
         assert not self.completed, "Request already responded to"
 
         self.completed = True
@@ -116,7 +116,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
     def cancel(self):
         """Cancel this request and mark it as completed."""
         if not self._entered:
-            raise RuntimeError("RequestResponder must be used as a context manager")
+            raise RuntimeError("RequestResponder 必须作为上下文管理器使用")
 
         self.completed = True  # Mark as completed so it's removed from in_flight
         # Send an error response to indicate cancellation

@@ -31,13 +31,13 @@ def installed_app_required(view: Callable[Concatenate[InstalledApp, P], R] | Non
             )
 
             if installed_app is None:
-                raise NotFound("Installed app not found")
+                raise NotFound("已安装的应用未找到")
 
             if not installed_app.app:
                 db.session.delete(installed_app)
                 db.session.commit()
 
-                raise NotFound("Installed app not found")
+                raise NotFound("已安装的应用未找到")
 
             return view(installed_app, *args, **kwargs)
 
@@ -110,7 +110,7 @@ def trial_feature_enable(view: Callable[..., R]) -> Callable[..., R]:
     def decorated(*args, **kwargs):
         features = FeatureService.get_system_features()
         if not features.enable_trial_app:
-            abort(403, "Trial app feature is not enabled.")
+            abort(403, "试用应用功能未启用。")
         return view(*args, **kwargs)
 
     return decorated
@@ -121,7 +121,7 @@ def explore_banner_enabled(view: Callable[..., R]) -> Callable[..., R]:
     def decorated(*args, **kwargs):
         features = FeatureService.get_system_features()
         if not features.enable_explore_banner:
-            abort(403, "Explore banner feature is not enabled.")
+            abort(403, "探索横幅功能未启用。")
         return view(*args, **kwargs)
 
     return decorated

@@ -116,9 +116,9 @@ class MessageListApi(WebApiResource):
                 data=items,
             ).model_dump(mode="json")
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("会话不存在。")
         except FirstMessageNotExistsError:
-            raise NotFound("First Message Not Exists.")
+            raise NotFound("第一条消息不存在。")
 
 
 @web_ns.route("/messages/<uuid:message_id>/feedbacks")
@@ -161,7 +161,7 @@ class MessageFeedbackApi(WebApiResource):
                 content=payload.content,
             )
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("消息不存在。")
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -203,7 +203,7 @@ class MessageMoreLikeThisApi(WebApiResource):
 
             return helper.compact_generate_response(response)
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("消息不存在。")
         except MoreLikeThisDisabledError:
             raise AppMoreLikeThisDisabledError()
         except ProviderTokenNotInitError as ex:
@@ -249,9 +249,9 @@ class MessageSuggestedQuestionApi(WebApiResource):
             )
             # questions is a list of strings, not a list of Message objects
         except MessageNotExistsError:
-            raise NotFound("Message not found")
+            raise NotFound("消息未找到")
         except ConversationNotExistsError:
-            raise NotFound("Conversation not found")
+            raise NotFound("会话未找到")
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except ProviderTokenNotInitError as ex:

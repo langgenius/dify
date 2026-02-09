@@ -85,7 +85,7 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
     @classmethod
     def convert_prompt_messages(cls, v):
         if not isinstance(v, list):
-            raise ValueError("prompt_messages must be a list")
+            raise ValueError("prompt_messages 必须为列表")
 
         for i in range(len(v)):
             if v[i]["role"] == PromptMessageRole.USER:
@@ -158,7 +158,7 @@ class RequestInvokeSpeech2Text(BaseRequestInvokeModel):
         if isinstance(v, str):
             return bytes.fromhex(v)
         else:
-            raise ValueError("file must be a hex string")
+            raise ValueError("文件必须为十六进制字符串")
 
 
 class RequestInvokeModeration(BaseRequestInvokeModel):
@@ -281,4 +281,4 @@ class TriggerDispatchResponse(BaseModel):
         try:
             return deserialize_response(binascii.unhexlify(v.encode()))
         except Exception as e:
-            raise ValueError("Failed to deserialize response from hex string") from e
+            raise ValueError("从十六进制字符串反序列化响应失败") from e

@@ -80,7 +80,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         """
         query = args["query"]
         if not isinstance(query, str):
-            raise ValueError("query must be a string")
+            raise ValueError("查询必须为字符串")
 
         query = query.replace("\x00", "")
         inputs = args["inputs"]
@@ -95,7 +95,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         override_model_config_dict = None
         if args.get("model_config"):
             if invoke_from != InvokeFrom.DEBUGGER:
-                raise ValueError("Only in App debug mode can override model config")
+                raise ValueError("仅在应用调试模式下可覆盖模型配置")
 
             # validate config
             override_model_config_dict = CompletionAppConfigManager.config_validate(
@@ -272,7 +272,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
         app_model_config = message.app_model_config
         if not app_model_config:
-            raise ValueError("Message app_model_config is None")
+            raise ValueError("消息的 app_model_config 为 None")
         override_model_config_dict = app_model_config.to_dict()
         model_dict = override_model_config_dict["model"]
         completion_params = model_dict.get("completion_params")

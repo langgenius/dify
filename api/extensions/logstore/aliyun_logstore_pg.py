@@ -116,7 +116,7 @@ class AliyunLogStorePG:
     def _get_connection(self):
         """Get connection from SQLAlchemy pool. Pool handles recycle, invalidation, and keepalive automatically."""
         if not self._engine:
-            raise RuntimeError("SQLAlchemy engine is not initialized")
+            raise RuntimeError("SQLAlchemy 引擎未初始化")
 
         connection = self._engine.raw_connection()
         try:

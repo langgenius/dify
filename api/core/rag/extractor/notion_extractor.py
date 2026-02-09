@@ -83,7 +83,7 @@ class NotionExtractor(BaseExtractor):
             page_text_list = self._get_notion_block_data(notion_obj_id)
             docs.append(Document(page_content="\n".join(page_text_list)))
         else:
-            raise ValueError("notion page type not supported")
+            raise ValueError("不支持的 Notion 页面类型")
 
         return docs
 
@@ -182,9 +182,9 @@ class NotionExtractor(BaseExtractor):
                     raise ValueError(f"Error fetching Notion block data: {res.text}")
                 data = res.json()
             except httpx.HTTPError as e:
-                raise ValueError("Error fetching Notion block data") from e
+                raise ValueError("获取 Notion 块数据失败") from e
             if "results" not in data or not isinstance(data["results"], list):
-                raise ValueError("Error fetching Notion block data")
+                raise ValueError("获取 Notion 块数据失败")
             for result in data["results"]:
                 result_type = result["type"]
                 result_obj = result[result_type]

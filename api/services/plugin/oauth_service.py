@@ -55,11 +55,11 @@ class OAuthProxyService(BasePluginClient):
         This checks if the context_id is valid and not expired.
         """
         if not context_id:
-            raise ValueError("context_id is required")
+            raise ValueError("context_id 为必填项")
         # get data from redis
         key = f"{OAuthProxyService.__KEY_PREFIX__}{context_id}"
         data = redis_client.get(key)
         if not data:
-            raise ValueError("context_id is invalid")
+            raise ValueError("context_id 无效")
         redis_client.delete(key)
         return json.loads(data)

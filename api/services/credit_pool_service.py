@@ -58,10 +58,10 @@ class CreditPoolService:
 
         pool = cls.get_pool(tenant_id, pool_type)
         if not pool:
-            raise QuotaExceededError("Credit pool not found")
+            raise QuotaExceededError("未找到额度池")
 
         if pool.remaining_credits <= 0:
-            raise QuotaExceededError("No credits remaining")
+            raise QuotaExceededError("无剩余额度")
 
         # deduct all remaining credits if less than required
         actual_credits = min(credits_required, pool.remaining_credits)
@@ -80,6 +80,6 @@ class CreditPoolService:
                 session.commit()
         except Exception:
             logger.exception("Failed to deduct credits for tenant %s", tenant_id)
-            raise QuotaExceededError("Failed to deduct credits")
+            raise QuotaExceededError("扣减额度失败")
 
         return actual_credits

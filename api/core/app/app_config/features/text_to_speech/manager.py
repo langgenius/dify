@@ -32,7 +32,7 @@ class TextToSpeechConfigManager:
             config["text_to_speech"] = {"enabled": False, "voice": "", "language": ""}
 
         if not isinstance(config["text_to_speech"], dict):
-            raise ValueError("text_to_speech must be of dict type")
+            raise ValueError("text_to_speech 必须为字典类型")
 
         if "enabled" not in config["text_to_speech"] or not config["text_to_speech"]["enabled"]:
             config["text_to_speech"]["enabled"] = False
@@ -40,6 +40,6 @@ class TextToSpeechConfigManager:
             config["text_to_speech"]["language"] = ""
 
         if not isinstance(config["text_to_speech"]["enabled"], bool):
-            raise ValueError("enabled in text_to_speech must be of boolean type")
+            raise ValueError("text_to_speech 中的 enabled 必须为布尔类型")
 
         return config, ["text_to_speech"]

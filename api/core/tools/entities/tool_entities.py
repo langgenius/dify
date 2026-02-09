@@ -150,7 +150,7 @@ class ToolInvokeMessage(BaseModel):
         @classmethod
         def validate_file_message(cls, values):
             if isinstance(values, dict) and "file_marker" not in values:
-                raise ValueError("Invalid FileMessage: missing file_marker")
+                raise ValueError("无效的 FileMessage：缺少 file_marker")
             return values
 
     class VariableMessage(BaseModel):
@@ -166,12 +166,12 @@ class ToolInvokeMessage(BaseModel):
             """
             value = values.get("variable_value")
             if value is not None and not isinstance(value, dict | list | str | int | float | bool):
-                raise ValueError("Only basic types, lists, and None are allowed.")
+                raise ValueError("仅允许基本类型、列表和 None。")
 
             # if stream is true, the value must be a string
             if values.get("stream"):
                 if not isinstance(value, str):
-                    raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
+                    raise ValueError("当 stream 为 True 时，variable_value 必须为字符串。")
 
             return values
 

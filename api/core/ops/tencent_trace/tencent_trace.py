@@ -226,7 +226,7 @@ class TencentDataTrace(BaseTraceInstance):
             with Session(db.engine, expire_on_commit=False) as session:
                 app_id = trace_info.metadata.get("app_id")
                 if not app_id:
-                    raise ValueError("No app_id found in trace_info metadata")
+                    raise ValueError("trace_info 元数据中未找到 app_id")
 
                 app_stmt = select(App).where(App.id == app_id)
                 app = session.scalar(app_stmt)

@@ -12,7 +12,7 @@ def configure_session_factory(engine: Engine, expire_on_commit: bool = False):
 
 def get_session_maker() -> sessionmaker[Session]:
     if _session_maker is None:
-        raise RuntimeError("Session factory not configured. Call configure_session_factory() first.")
+        raise RuntimeError("会话工厂未配置，请先调用 configure_session_factory()。")
     return _session_maker
 
 

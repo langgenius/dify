@@ -27,7 +27,7 @@ class ApiExternalDataTool(ExternalDataTool):
         # own validation logic
         api_based_extension_id = config.get("api_based_extension_id")
         if not api_based_extension_id:
-            raise ValueError("api_based_extension_id is required")
+            raise ValueError("api_based_extension_id 为必填项")
         # get api_based_extension
         stmt = select(APIBasedExtension).where(
             APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id
@@ -35,7 +35,7 @@ class ApiExternalDataTool(ExternalDataTool):
         api_based_extension = db.session.scalar(stmt)
 
         if not api_based_extension:
-            raise ValueError("api_based_extension_id is invalid")
+            raise ValueError("api_based_extension_id 无效")
 
     def query(self, inputs: dict, query: str | None = None) -> str:
         """
@@ -49,7 +49,7 @@ class ApiExternalDataTool(ExternalDataTool):
         if not self.config:
             raise ValueError(f"config is required, config: {self.config}")
         api_based_extension_id = self.config.get("api_based_extension_id")
-        assert api_based_extension_id is not None, "api_based_extension_id is required"
+        assert api_based_extension_id is not None, "api_based_extension_id 为必填项"
         # get api_based_extension
         stmt = select(APIBasedExtension).where(
             APIBasedExtension.tenant_id == self.tenant_id, APIBasedExtension.id == api_based_extension_id

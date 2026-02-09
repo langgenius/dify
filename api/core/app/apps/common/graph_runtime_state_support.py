@@ -32,7 +32,7 @@ class GraphRuntimeStateSupport:
     def _extract_workflow_run_id(self, graph_runtime_state: GraphRuntimeState) -> str:
         system_variables = graph_runtime_state.variable_pool.system_variables
         if not system_variables or not system_variables.workflow_execution_id:
-            raise ValueError("workflow_execution_id missing from runtime state")
+            raise ValueError("运行时状态中缺少 workflow_execution_id")
         return str(system_variables.workflow_execution_id)
 
     def _resolve_graph_runtime_state(
@@ -50,6 +50,6 @@ class GraphRuntimeStateSupport:
                 self._graph_runtime_state = candidate
 
         if self._graph_runtime_state is None:
-            raise ValueError("graph runtime state not initialized.")
+            raise ValueError("图运行时状态未初始化。")
 
         return self._graph_runtime_state

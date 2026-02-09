@@ -287,7 +287,7 @@ class PluginUploadFromPkgApi(Resource):
 
         # check file size
         if file.content_length > dify_config.PLUGIN_MAX_PACKAGE_SIZE:
-            raise ValueError("File size exceeds the maximum allowed size")
+            raise ValueError("文件大小超过允许的最大限制")
 
         content = file.read()
         try:
@@ -331,7 +331,7 @@ class PluginUploadFromBundleApi(Resource):
 
         # check file size
         if file.content_length > dify_config.PLUGIN_MAX_BUNDLE_SIZE:
-            raise ValueError("File size exceeds the maximum allowed size")
+            raise ValueError("文件大小超过允许的最大限制")
 
         content = file.read()
         try:
@@ -738,7 +738,7 @@ class PluginChangePreferencesApi(Resource):
             debug_permission,
         )
         if not set_permission_result:
-            return jsonable_encoder({"success": False, "message": "Failed to set permission"})
+            return jsonable_encoder({"success": False, "message": "设置权限失败"})
 
         # set auto upgrade strategy
         set_auto_upgrade_strategy_result = PluginAutoUpgradeService.change_strategy(
@@ -750,7 +750,7 @@ class PluginChangePreferencesApi(Resource):
             include_plugins,
         )
         if not set_auto_upgrade_strategy_result:
-            return jsonable_encoder({"success": False, "message": "Failed to set auto upgrade strategy"})
+            return jsonable_encoder({"success": False, "message": "设置自动升级策略失败"})
 
         return jsonable_encoder({"success": True})
 

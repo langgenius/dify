@@ -208,7 +208,7 @@ class AccountInitApi(Resource):
 
         if dify_config.EDITION == "CLOUD":
             if not args.invitation_code:
-                raise ValueError("invitation_code is required")
+                raise ValueError("邀请码为必填项")
 
             # check invitation code
             invitation_code = (

@@ -19,13 +19,13 @@ class AttachmentService:
         elif isinstance(session_factory, sessionmaker):
             self._session_maker = session_factory
         else:
-            raise AssertionError("must be a sessionmaker or an Engine.")
+            raise AssertionError("必须为 sessionmaker 或 Engine。")
 
     def get_file_base64(self, file_id: str) -> str:
         upload_file = (
             self._session_maker(expire_on_commit=False).query(UploadFile).where(UploadFile.id == file_id).first()
         )
         if not upload_file:
-            raise NotFound("File not found")
+            raise NotFound("文件未找到")
         blob = storage.load_once(upload_file.key)
         return base64.b64encode(blob).decode()

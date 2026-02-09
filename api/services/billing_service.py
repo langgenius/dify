@@ -133,14 +133,14 @@ class BillingService:
         url = f"{cls.base_url}{endpoint}"
         response = httpx.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
         if method == "GET" and response.status_code != httpx.codes.OK:
-            raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
+            raise ValueError("无法获取计费信息，请稍后重试或联系支持。")
         if method == "PUT":
             if response.status_code == httpx.codes.INTERNAL_SERVER_ERROR:
                 raise InternalServerError(
                     "Unable to process billing request. Please try again later or contact support."
                 )
             if response.status_code != httpx.codes.OK:
-                raise ValueError("Invalid arguments.")
+                raise ValueError("无效的参数。")
         if method == "POST" and response.status_code != httpx.codes.OK:
             raise ValueError(f"Unable to send request to {url}. Please try again later or contact support.")
         if method == "DELETE" and response.status_code != httpx.codes.OK:
@@ -159,10 +159,10 @@ class BillingService:
         )
 
         if not join:
-            raise ValueError("Tenant account join not found")
+            raise ValueError("未找到租户账户关联")
 
         if not TenantAccountRole.is_privileged_role(TenantAccountRole(join.role)):
-            raise ValueError("Only team owner or team admin can perform this action")
+            raise ValueError("仅团队所有者或管理员可执行此操作")
 
     @classmethod
     def delete_account(cls, account_id: str):

@@ -52,7 +52,7 @@ class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
     @model_validator(mode="after")
     def check_at_least_one_field(self):
         if all(v is None for v in self.model_dump().values()):
-            raise ValueError("At least one of name, credentials, parameters, or properties must be provided")
+            raise ValueError("至少需要提供 name、credentials、parameters 或 properties 中的一个")
         return self
 
 
@@ -323,7 +323,7 @@ class TriggerSubscriptionUpdateApi(Resource):
             subscription_id=subscription_id,
         )
         if not subscription:
-            raise NotFoundError(f"Subscription {subscription_id} not found")
+            raise NotFoundError(f"订阅 {subscription_id} 未找到")
 
         provider_id = TriggerProviderID(subscription.provider_id)
 
@@ -421,7 +421,7 @@ class TriggerOAuthAuthorizeApi(Resource):
             )
 
             if oauth_client_params is None:
-                raise NotFoundError("No OAuth client configuration found for this trigger provider")
+                raise NotFoundError("未找到此触发器提供方的 OAuth 客户端配置")
 
             # Create subscription builder
             subscription_builder = TriggerSubscriptionBuilderService.create_trigger_subscription_builder(
@@ -488,12 +488,12 @@ class TriggerOAuthCallbackApi(Resource):
         """Handle OAuth callback for trigger provider"""
         context_id = request.cookies.get("context_id")
         if not context_id:
-            raise Forbidden("context_id not found")
+            raise Forbidden("未找到 context_id")
 
         # Use and validate proxy context
         context = OAuthProxyService.use_proxy_context(context_id)
         if context is None:
-            raise Forbidden("Invalid context_id")
+            raise Forbidden("无效的 context_id")
 
         # Parse provider ID
         provider_id = TriggerProviderID(provider)
@@ -510,7 +510,7 @@ class TriggerOAuthCallbackApi(Resource):
         )
 
         if oauth_client_params is None:
-            raise Forbidden("No OAuth client configuration found for this trigger provider")
+            raise Forbidden("未找到此触发器提供方的 OAuth 客户端配置")
 
         # Get OAuth credentials from callback
         oauth_handler = OAuthHandler()
@@ -530,7 +530,7 @@ class TriggerOAuthCallbackApi(Resource):
         expires_at = credentials_response.expires_at
 
         if not credentials:
-            raise ValueError("Failed to get OAuth credentials from the provider.")
+            raise ValueError("从提供方获取 OAuth 凭据失败。")
 
         # Update subscription builder
         TriggerSubscriptionBuilderService.update_trigger_subscription_builder(

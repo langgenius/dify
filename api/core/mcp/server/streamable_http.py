@@ -135,7 +135,7 @@ def handle_call_tool(
     args = prepare_tool_arguments(app, request_obj.params.arguments or {})
 
     if not end_user:
-        raise ValueError("End user not found")
+        raise ValueError("终端用户未找到")
 
     response = AppGenerateService.generate(
         app,
@@ -227,7 +227,7 @@ def process_mapping_response(app: App, response: Mapping) -> str:
     elif app.mode == AppMode.WORKFLOW:
         return json.dumps(response["data"]["outputs"], ensure_ascii=False)
     else:
-        raise ValueError("Invalid app mode: " + str(app.mode))
+        raise ValueError("无效的应用模式：" + str(app.mode))
 
 
 def convert_input_form_to_parameters(

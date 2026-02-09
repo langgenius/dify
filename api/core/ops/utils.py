@@ -123,7 +123,7 @@ def validate_url_with_path(url: str, default_url: str, required_suffix: str | No
 
     # Check if scheme is allowed
     if parsed.scheme not in ("https", "http"):
-        raise ValueError("URL must start with https:// or http://")
+        raise ValueError("URL 必须以 https:// 或 http:// 开头")
 
     # Check required suffix if specified
     if required_suffix and not url.endswith(required_suffix):
@@ -155,6 +155,6 @@ def validate_integer_id(id_str: str) -> str:
     """
     id_str = id_str.strip()
     if not id_str.isdigit():
-        raise ValueError("ID must be a valid integer")
+        raise ValueError("ID 必须为有效整数")
 
     return id_str

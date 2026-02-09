@@ -24,7 +24,7 @@ _T = TypeVar("_T", bound=MutableMapping[str, Any])
 
 def variable_to_processed_data(selector: Sequence[str], seg: Segment) -> UpdatedVariable:
     if len(selector) < SELECTORS_LENGTH:
-        raise Exception("selector too short")
+        raise Exception("选择器过短")
     _, var_name = selector[:2]
     return UpdatedVariable(
         name=var_name,

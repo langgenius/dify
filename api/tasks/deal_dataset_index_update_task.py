@@ -29,7 +29,7 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
             dataset = session.query(Dataset).filter_by(id=dataset_id).first()
 
             if not dataset:
-                raise Exception("Dataset not found")
+                raise Exception("知识库未找到")
             index_type = dataset.doc_form or IndexStructureType.PARAGRAPH_INDEX
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
             if action == "upgrade":

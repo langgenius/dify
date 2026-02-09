@@ -65,7 +65,7 @@ class BuiltinTool(Tool):
         :return: the max tokens
         """
         if self.runtime is None:
-            raise ValueError("runtime is required")
+            raise ValueError("运行时为必填项")
 
         return ModelInvocationUtils.get_max_llm_context_tokens(
             tenant_id=self.runtime.tenant_id or "",
@@ -79,7 +79,7 @@ class BuiltinTool(Tool):
         :return: the tokens
         """
         if self.runtime is None:
-            raise ValueError("runtime is required")
+            raise ValueError("运行时为必填项")
 
         return ModelInvocationUtils.calculate_tokens(
             tenant_id=self.runtime.tenant_id or "", prompt_messages=prompt_messages

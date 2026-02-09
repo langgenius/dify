@@ -117,7 +117,7 @@ class PipelineGenerator(BaseAppGenerator):
         with Session(db.engine, expire_on_commit=False) as session:
             dataset = pipeline.retrieve_dataset(session)
             if not dataset:
-                raise ValueError("Pipeline dataset is required")
+                raise ValueError("流水线知识库为必填项")
         inputs: Mapping[str, Any] = args["inputs"]
         start_node_id: str = args["start_node_id"]
         datasource_type = DatasourceProviderType(args["datasource_type"])
@@ -364,10 +364,10 @@ class PipelineGenerator(BaseAppGenerator):
         :param streaming: is streamed
         """
         if not node_id:
-            raise ValueError("node_id is required")
+            raise ValueError("node_id 为必填项")
 
         if args.get("inputs") is None:
-            raise ValueError("inputs is required")
+            raise ValueError("inputs 为必填项")
 
         # convert to app config
         pipeline_config = PipelineConfigManager.get_pipeline_config(
@@ -377,7 +377,7 @@ class PipelineGenerator(BaseAppGenerator):
         with Session(db.engine) as session:
             dataset = pipeline.retrieve_dataset(session)
             if not dataset:
-                raise ValueError("Pipeline dataset is required")
+                raise ValueError("流水线知识库为必填项")
 
         # init application generate entity - use RagPipelineGenerateEntity instead
         application_generate_entity = RagPipelineGenerateEntity(
@@ -460,15 +460,15 @@ class PipelineGenerator(BaseAppGenerator):
         :param streaming: is streamed
         """
         if not node_id:
-            raise ValueError("node_id is required")
+            raise ValueError("node_id 为必填项")
 
         if args.get("inputs") is None:
-            raise ValueError("inputs is required")
+            raise ValueError("inputs 为必填项")
 
         with Session(db.engine) as session:
             dataset = pipeline.retrieve_dataset(session)
             if not dataset:
-                raise ValueError("Pipeline dataset is required")
+                raise ValueError("流水线知识库为必填项")
 
         # convert to app config
         pipeline_config = PipelineConfigManager.get_pipeline_config(
@@ -566,7 +566,7 @@ class PipelineGenerator(BaseAppGenerator):
                         )
                     )
                     if workflow is None:
-                        raise ValueError("Workflow not found")
+                        raise ValueError("工作流未找到")
 
                     # Determine system_user_id based on invocation source
                     is_external_api_call = application_generate_entity.invoke_from in {
@@ -725,7 +725,7 @@ class PipelineGenerator(BaseAppGenerator):
                     datasource_node_data = datasource_node.get("data", {})
                     break
             if not datasource_node_data:
-                raise ValueError("Datasource node data not found")
+                raise ValueError("数据源节点数据未找到")
 
             from core.datasource.datasource_manager import DatasourceManager
 

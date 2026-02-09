@@ -209,14 +209,14 @@ class SSETransport:
         try:
             status = status_queue.get(timeout=1)
         except queue.Empty:
-            raise ValueError("failed to get endpoint URL")
+            raise ValueError("获取端点 URL 失败")
 
         if isinstance(status, _StatusReady):
             return status.endpoint_url
         elif isinstance(status, _StatusError):
             raise status.exc
         else:
-            raise ValueError("failed to get endpoint URL")
+            raise ValueError("获取端点 URL 失败")
 
     def connect(
         self,

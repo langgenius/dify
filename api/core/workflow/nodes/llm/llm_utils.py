@@ -31,7 +31,7 @@ def fetch_model_config(
     tenant_id: str, node_data_model: ModelConfig
 ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
     if not node_data_model.mode:
-        raise LLMModeRequiredError("LLM mode is required.")
+        raise LLMModeRequiredError("LLM 模式为必填项。")
 
     model = ModelManager().get_model_instance(
         tenant_id=tenant_id,

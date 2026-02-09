@@ -66,12 +66,12 @@ class ApiKeyAuthService:
     @classmethod
     def validate_api_key_auth_args(cls, args):
         if "category" not in args or not args["category"]:
-            raise ValueError("category is required")
+            raise ValueError("类别为必填项")
         if "provider" not in args or not args["provider"]:
-            raise ValueError("provider is required")
+            raise ValueError("提供商为必填项")
         if "credentials" not in args or not args["credentials"]:
-            raise ValueError("credentials is required")
+            raise ValueError("凭据为必填项")
         if not isinstance(args["credentials"], dict):
-            raise ValueError("credentials must be a dictionary")
+            raise ValueError("凭据必须为字典类型")
         if "auth_type" not in args["credentials"] or not args["credentials"]["auth_type"]:
-            raise ValueError("auth_type is required")
+            raise ValueError("auth_type 为必填项")

@@ -128,7 +128,7 @@ class WorkflowRunApi(Resource):
             200: "Workflow executed successfully",
             400: "Bad request - invalid parameters or workflow issues",
             401: "Unauthorized - invalid API token",
-            404: "Workflow not found",
+            404: "工作流未找到",
             429: "Rate limit exceeded",
             500: "Internal server error",
         }
@@ -185,7 +185,7 @@ class WorkflowRunByIdApi(Resource):
             200: "Workflow executed successfully",
             400: "Bad request - invalid parameters or workflow issues",
             401: "Unauthorized - invalid API token",
-            404: "Workflow not found",
+            404: "工作流未找到",
             429: "Rate limit exceeded",
             500: "Internal server error",
         }

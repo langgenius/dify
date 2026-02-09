@@ -92,9 +92,9 @@ class MessageListApi(InstalledAppResource):
                 data=items,
             ).model_dump(mode="json")
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except FirstMessageNotExistsError:
-            raise NotFound("First Message Not Exists.")
+            raise NotFound("首条消息不存在。")
 
 
 @console_ns.route(
@@ -120,7 +120,7 @@ class MessageFeedbackApi(InstalledAppResource):
                 content=payload.content,
             )
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("消息不存在。")
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -153,7 +153,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
             )
             return helper.compact_generate_response(response)
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("消息不存在。")
         except MoreLikeThisDisabledError:
             raise AppMoreLikeThisDisabledError()
         except ProviderTokenNotInitError as ex:
@@ -190,9 +190,9 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
                 app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
             )
         except MessageNotExistsError:
-            raise NotFound("Message not found")
+            raise NotFound("消息未找到。")
         except ConversationNotExistsError:
-            raise NotFound("Conversation not found")
+            raise NotFound("对话未找到。")
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except ProviderTokenNotInitError as ex:

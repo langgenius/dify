@@ -92,7 +92,7 @@ class SavedMessageListApi(WebApiResource):
         try:
             SavedMessageService.save(app_model, end_user, payload.message_id)
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("消息不存在。")
 
         return ResultResponse(result="success").model_dump(mode="json")
 

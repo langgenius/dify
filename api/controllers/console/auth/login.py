@@ -305,7 +305,7 @@ class RefreshTokenApi(Resource):
         refresh_token = extract_refresh_token(request)
 
         if not refresh_token:
-            return {"result": "fail", "message": "No refresh token provided"}, 401
+            return {"result": "fail", "message": "未提供刷新令牌"}, 401
 
         try:
             new_token_pair = AccountService.refresh_token(refresh_token)

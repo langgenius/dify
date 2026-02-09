@@ -73,7 +73,7 @@ def _build_ssrf_client(verify: bool) -> httpx.Client:
 
 def _get_ssrf_client(ssl_verify_enabled: bool) -> httpx.Client:
     if not isinstance(ssl_verify_enabled, bool):
-        raise ValueError("SSRF client verify flag must be a boolean")
+        raise ValueError("SSRF 客户端验证标志必须为布尔值")
 
     return get_pooled_http_client(
         _SSL_VERIFIED_POOL_KEY if ssl_verify_enabled else _SSL_UNVERIFIED_POOL_KEY,
@@ -148,14 +148,14 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
     # prioritize per-call option, which can be switched on and off inside the HTTP node on the web UI
     verify_option = kwargs.pop("ssl_verify", dify_config.HTTP_REQUEST_NODE_SSL_VERIFY)
     if not isinstance(verify_option, bool):
-        raise ValueError("ssl_verify must be a boolean")
+        raise ValueError("ssl_verify 必须为布尔值")
     client = _get_ssrf_client(verify_option)
 
     # Inject traceparent header for distributed tracing (when OTEL is not enabled)
     try:
         headers: Headers = _HEADERS_ADAPTER.validate_python(kwargs.get("headers") or {})
     except ValidationError as e:
-        raise ValueError("headers must be a mapping of string keys to string values") from e
+        raise ValueError("headers 必须为字符串键到字符串值的映射") from e
     headers = _inject_trace_headers(headers)
     kwargs["headers"] = headers
 

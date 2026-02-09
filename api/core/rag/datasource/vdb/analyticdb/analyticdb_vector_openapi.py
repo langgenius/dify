@@ -28,19 +28,19 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["access_key_id"]:
-            raise ValueError("config ANALYTICDB_KEY_ID is required")
+            raise ValueError("配置 ANALYTICDB_KEY_ID 为必填项")
         if not values["access_key_secret"]:
-            raise ValueError("config ANALYTICDB_KEY_SECRET is required")
+            raise ValueError("配置 ANALYTICDB_KEY_SECRET 为必填项")
         if not values["region_id"]:
-            raise ValueError("config ANALYTICDB_REGION_ID is required")
+            raise ValueError("配置 ANALYTICDB_REGION_ID 为必填项")
         if not values["instance_id"]:
-            raise ValueError("config ANALYTICDB_INSTANCE_ID is required")
+            raise ValueError("配置 ANALYTICDB_INSTANCE_ID 为必填项")
         if not values["account"]:
-            raise ValueError("config ANALYTICDB_ACCOUNT is required")
+            raise ValueError("配置 ANALYTICDB_ACCOUNT 为必填项")
         if not values["account_password"]:
-            raise ValueError("config ANALYTICDB_PASSWORD is required")
+            raise ValueError("配置 ANALYTICDB_PASSWORD 为必填项")
         if not values["namespace_password"]:
-            raise ValueError("config ANALYTICDB_NAMESPACE_PASSWORD is required")
+            raise ValueError("配置 ANALYTICDB_NAMESPACE_PASSWORD 为必填项")
         return values
 
     def to_analyticdb_client_params(self):

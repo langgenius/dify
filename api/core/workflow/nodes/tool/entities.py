@@ -21,7 +21,7 @@ class ToolEntity(BaseModel):
     @classmethod
     def validate_tool_configurations(cls, value, values: ValidationInfo):
         if not isinstance(value, dict):
-            raise ValueError("tool_configurations must be a dictionary")
+            raise ValueError("tool_configurations 必须为字典")
 
         for key in values.data.get("tool_configurations", {}):
             value = values.data.get("tool_configurations", {}).get(key)
@@ -47,13 +47,13 @@ class ToolNodeData(BaseNodeData, ToolEntity):
                 return typ
 
             if typ == "mixed" and not isinstance(value, str):
-                raise ValueError("value must be a string")
+                raise ValueError("值必须为字符串")
             elif typ == "variable":
                 if not isinstance(value, list):
-                    raise ValueError("value must be a list")
+                    raise ValueError("值必须为列表")
                 for val in value:
                     if not isinstance(val, str):
-                        raise ValueError("value must be a list of strings")
+                        raise ValueError("值必须为字符串列表")
             elif typ == "constant" and not isinstance(value, (allowed_types := (str, int, float, bool, dict, list))):
                 raise ValueError(f"value must be one of: {', '.join(t.__name__ for t in allowed_types)}")
             return typ

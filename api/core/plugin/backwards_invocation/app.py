@@ -30,14 +30,14 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app.workflow
             if workflow is None:
-                raise ValueError("unexpected app type")
+                raise ValueError("未预期的应用类型")
 
             features_dict = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
             app_model_config = app.app_model_config
             if app_model_config is None:
-                raise ValueError("unexpected app type")
+                raise ValueError("未预期的应用类型")
 
             features_dict = app_model_config.to_dict()
 
@@ -72,7 +72,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
 
         if app.mode in {AppMode.ADVANCED_CHAT, AppMode.AGENT_CHAT, AppMode.CHAT}:
             if not query:
-                raise ValueError("missing query")
+                raise ValueError("缺少查询")
 
             return cls.invoke_chat_app(app, user, conversation_id, query, stream, inputs, files)
         elif app.mode == AppMode.WORKFLOW:
@@ -80,7 +80,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         elif app.mode == AppMode.COMPLETION:
             return cls.invoke_completion_app(app, user, stream, inputs, files)
 
-        raise ValueError("unexpected app type")
+        raise ValueError("未预期的应用类型")
 
     @classmethod
     def invoke_chat_app(
@@ -99,7 +99,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         if app.mode == AppMode.ADVANCED_CHAT:
             workflow = app.workflow
             if not workflow:
-                raise ValueError("unexpected app type")
+                raise ValueError("未预期的应用类型")
 
             return AdvancedChatAppGenerator().generate(
                 app_model=app,
@@ -141,7 +141,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 streaming=stream,
             )
         else:
-            raise ValueError("unexpected app type")
+            raise ValueError("未预期的应用类型")
 
     @classmethod
     def invoke_workflow_app(
@@ -157,7 +157,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         workflow = app.workflow
         if not workflow:
-            raise ValueError("unexpected app type")
+            raise ValueError("未预期的应用类型")
 
         return WorkflowAppGenerator().generate(
             app_model=app,
@@ -202,7 +202,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 user = session.scalar(stmt)
 
         if not user:
-            raise ValueError("user not found")
+            raise ValueError("用户未找到")
 
         return user
 
@@ -214,9 +214,9 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         try:
             app = db.session.query(App).where(App.id == app_id).where(App.tenant_id == tenant_id).first()
         except Exception:
-            raise ValueError("app not found")
+            raise ValueError("应用未找到")
 
         if not app:
-            raise ValueError("app not found")
+            raise ValueError("应用未找到")
 
         return app

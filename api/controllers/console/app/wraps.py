@@ -33,7 +33,7 @@ def get_app_model(view: Callable[P, R] | None = None, *, mode: Union[AppMode, li
         @wraps(view_func)
         def decorated_view(*args: P1.args, **kwargs: P1.kwargs):
             if not kwargs.get("app_id"):
-                raise ValueError("missing app_id in path parameters")
+                raise ValueError("路径参数中缺少 app_id")
 
             app_id = kwargs.get("app_id")
             app_id = str(app_id)
@@ -55,7 +55,7 @@ def get_app_model(view: Callable[P, R] | None = None, *, mode: Union[AppMode, li
 
                 if app_mode not in modes:
                     mode_values = {m.value for m in modes}
-                    raise AppNotFoundError(f"App mode is not in the supported list: {mode_values}")
+                    raise AppNotFoundError(f"应用模式不在支持列表中: {mode_values}")
 
             kwargs["app_model"] = app_model
 
@@ -74,7 +74,7 @@ def get_app_model_with_trial(view: Callable[P, R] | None = None, *, mode: Union[
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs):
             if not kwargs.get("app_id"):
-                raise ValueError("missing app_id in path parameters")
+                raise ValueError("路径参数中缺少 app_id")
 
             app_id = kwargs.get("app_id")
             app_id = str(app_id)
@@ -96,7 +96,7 @@ def get_app_model_with_trial(view: Callable[P, R] | None = None, *, mode: Union[
 
                 if app_mode not in modes:
                     mode_values = {m.value for m in modes}
-                    raise AppNotFoundError(f"App mode is not in the supported list: {mode_values}")
+                    raise AppNotFoundError(f"应用模式不在支持列表中: {mode_values}")
 
             kwargs["app_model"] = app_model
 

@@ -73,7 +73,7 @@ class PluginUploadFileApi(Resource):
 
         file = request.files.get("file")
         if file is None:
-            raise Forbidden("File is required.")
+            raise Forbidden("文件为必填项。")
 
         timestamp = args.timestamp
         nonce = args.nonce
@@ -86,7 +86,7 @@ class PluginUploadFileApi(Resource):
         mimetype = file.mimetype
 
         if not filename or not mimetype:
-            raise Forbidden("Invalid request.")
+            raise Forbidden("无效的请求。")
 
         if not verify_plugin_file_signature(
             filename=filename,
@@ -97,7 +97,7 @@ class PluginUploadFileApi(Resource):
             nonce=nonce,
             sign=sign,
         ):
-            raise Forbidden("Invalid request.")
+            raise Forbidden("无效的请求。")
 
         try:
             tool_file = ToolFileManager().create_file_by_raw(

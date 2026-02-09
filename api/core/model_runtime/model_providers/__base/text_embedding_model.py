@@ -62,7 +62,7 @@ class TextEmbeddingModel(AIModel):
                     documents=multimodel_documents,
                     input_type=input_type,
                 )
-            raise ValueError("No texts or files provided")
+            raise ValueError("未提供文本或文件")
         except Exception as e:
             raise self._transform_invoke_error(e)
 

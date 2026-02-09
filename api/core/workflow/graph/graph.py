@@ -125,7 +125,7 @@ class Graph:
         root_node_id = start_node_id or (root_candidates[0] if root_candidates else None)
 
         if not root_node_id:
-            raise ValueError("Unable to determine root node ID")
+            raise ValueError("无法确定根节点 ID")
 
         return root_node_id
 
@@ -305,7 +305,7 @@ class Graph:
         node_configs = _ListNodeConfigDict.validate_python(node_configs)
 
         if not node_configs:
-            raise ValueError("Graph must have at least one node")
+            raise ValueError("图必须至少有一个节点")
 
         node_configs = [node_config for node_config in node_configs if node_config.get("type", "") != "custom-note"]
 
@@ -390,7 +390,7 @@ class GraphBuilder:
         """Register the root node. Must be called exactly once."""
 
         if self._nodes:
-            raise ValueError("Root node has already been added")
+            raise ValueError("根节点已被添加")
         self._register_node(node)
         self._nodes.append(node)
         return self
@@ -405,7 +405,7 @@ class GraphBuilder:
         """Append a node and connect it from the specified predecessor."""
 
         if not self._nodes:
-            raise ValueError("Root node must be added before adding other nodes")
+            raise ValueError("添加其他节点前必须先添加根节点")
 
         predecessor_id = from_node_id or self._nodes[-1].id
         if predecessor_id not in self._nodes_by_id:
@@ -441,7 +441,7 @@ class GraphBuilder:
         """Materialize the graph instance from the accumulated nodes and edges."""
 
         if not self._nodes:
-            raise ValueError("Cannot build an empty graph")
+            raise ValueError("无法构建空图")
 
         nodes = {node.id: node for node in self._nodes}
         edges = {edge.id: edge for edge in self._edges}
@@ -462,7 +462,7 @@ class GraphBuilder:
 
     def _register_node(self, node: Node) -> None:
         if not node.id:
-            raise ValueError("Node must have a non-empty id")
+            raise ValueError("节点必须有非空的 ID")
         if node.id in self._nodes_by_id:
             raise ValueError(f"Duplicate node id detected: {node.id}")
         self._nodes_by_id[node.id] = node

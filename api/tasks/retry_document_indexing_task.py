@@ -41,7 +41,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                 return
             tenant = session.query(Tenant).where(Tenant.id == dataset.tenant_id).first()
             if not tenant:
-                raise ValueError("Tenant not found")
+                raise ValueError("工作区未找到")
             user.current_tenant = tenant
 
             for document_id in document_ids:

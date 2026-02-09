@@ -47,15 +47,15 @@ class MatrixoneConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["host"]:
-            raise ValueError("config host is required")
+            raise ValueError("配置 host 为必填项")
         if not values["port"]:
-            raise ValueError("config port is required")
+            raise ValueError("配置 port 为必填项")
         if not values["user"]:
-            raise ValueError("config user is required")
+            raise ValueError("配置 user 为必填项")
         if not values["password"]:
-            raise ValueError("config password is required")
+            raise ValueError("配置 password 为必填项")
         if not values["database"]:
-            raise ValueError("config database is required")
+            raise ValueError("配置 database 为必填项")
         return values
 
 

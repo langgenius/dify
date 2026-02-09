@@ -54,7 +54,7 @@ class WeaviateConfig(BaseModel):
     def validate_config(cls, values: dict) -> dict:
         """Validates that required configuration values are present."""
         if not values["endpoint"]:
-            raise ValueError("config WEAVIATE_ENDPOINT is required")
+            raise ValueError("配置 WEAVIATE_ENDPOINT 为必填项")
         return values
 
 
@@ -133,7 +133,7 @@ class WeaviateVector(BaseVector):
         )
 
         if not client.is_ready():
-            raise ConnectionError("Vector database is not ready")
+            raise ConnectionError("向量数据库未就绪")
 
         return client
 

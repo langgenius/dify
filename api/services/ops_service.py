@@ -30,7 +30,7 @@ class OpsService:
             return None
         tenant_id = app.tenant_id
         if trace_config_data.tracing_config is None:
-            raise ValueError("Tracing config cannot be None.")
+            raise ValueError("追踪配置不能为空。")
         decrypt_tracing_config = OpsTraceManager.decrypt_tracing_config(
             tenant_id, tracing_provider, trace_config_data.tracing_config
         )
@@ -159,7 +159,7 @@ class OpsService:
 
         # api check
         if not OpsTraceManager.check_trace_config_is_effective(tracing_config, tracing_provider):
-            return {"error": "Invalid Credentials"}
+            return {"error": "无效的凭据"}
 
         # get project url
         if tracing_provider in ("arize", "phoenix"):
@@ -246,7 +246,7 @@ class OpsService:
         # decrypt_token
         decrypt_tracing_config = OpsTraceManager.decrypt_tracing_config(tenant_id, tracing_provider, tracing_config)
         if not OpsTraceManager.check_trace_config_is_effective(decrypt_tracing_config, tracing_provider):
-            raise ValueError("Invalid Credentials")
+            raise ValueError("无效的凭据")
 
         current_trace_config.tracing_config = tracing_config
         db.session.commit()

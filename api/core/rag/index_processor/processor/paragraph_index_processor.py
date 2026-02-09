@@ -62,17 +62,17 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
     def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         if not process_rule:
-            raise ValueError("No process rule found.")
+            raise ValueError("未找到处理规则。")
         if process_rule.get("mode") == "automatic":
             automatic_rule = DatasetProcessRule.AUTOMATIC_RULES
             rules = Rule.model_validate(automatic_rule)
         else:
             if not process_rule.get("rules"):
-                raise ValueError("No rules found in process rule.")
+                raise ValueError("处理规则中未找到规则。")
             rules = Rule.model_validate(process_rule.get("rules"))
         # Split the text documents into nodes.
         if not rules.segmentation:
-            raise ValueError("No segmentation found in rules.")
+            raise ValueError("规则中未找到分段配置。")
         splitter = self._get_splitter(
             processing_rule_mode=process_rule.get("mode"),
             max_tokens=rules.segmentation.max_tokens,
@@ -242,7 +242,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 else:
                     account = AccountService.load_user(document.created_by)
                     if not account:
-                        raise ValueError("Invalid account")
+                        raise ValueError("无效的账户")
                     doc.attachments = self._get_content_files(doc, current_user=account)
                     if doc.attachments:
                         all_multimodal_documents.extend(doc.attachments)
@@ -272,7 +272,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 "total_segments": len(chunks),
             }
         else:
-            raise ValueError("Chunks is not a list")
+            raise ValueError("分块不是列表")
 
     def generate_summary_preview(
         self,
@@ -382,14 +382,14 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             Tuple of (summary_content, llm_usage) where llm_usage is LLMUsage object
         """
         if not summary_index_setting or not summary_index_setting.get("enable"):
-            raise ValueError("summary_index_setting is required and must be enabled to generate summary.")
+            raise ValueError("summary_index_setting 为必填项且必须启用才能生成摘要。")
 
         model_name = summary_index_setting.get("model_name")
         model_provider_name = summary_index_setting.get("model_provider_name")
         summary_prompt = summary_index_setting.get("summary_prompt")
 
         if not model_name or not model_provider_name:
-            raise ValueError("model_name and model_provider_name are required in summary_index_setting")
+            raise ValueError("summary_index_setting 中需要 model_name 和 model_provider_name")
 
         # Import default summary prompt
         is_default_prompt = False
@@ -467,7 +467,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         # Type assertion: when stream=False, invoke_llm returns LLMResult, not Generator
         if not isinstance(result, LLMResult):
-            raise ValueError("Expected LLMResult when stream=False")
+            raise ValueError("stream=False 时应返回 LLMResult")
 
         summary_content = getattr(result.message, "content", "")
         usage = result.usage

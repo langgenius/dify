@@ -49,17 +49,17 @@ class ExternalDatasetService:
     @classmethod
     def validate_api_list(cls, api_settings: dict):
         if not api_settings:
-            raise ValueError("api list is empty")
+            raise ValueError("API 列表为空")
         if not api_settings.get("endpoint"):
-            raise ValueError("endpoint is required")
+            raise ValueError("端点为必填项")
         if not api_settings.get("api_key"):
-            raise ValueError("api_key is required")
+            raise ValueError("api_key 为必填项")
 
     @staticmethod
     def create_external_knowledge_api(tenant_id: str, user_id: str, args: dict) -> ExternalKnowledgeApis:
         settings = args.get("settings")
         if settings is None:
-            raise ValueError("settings is required")
+            raise ValueError("设置为必填项")
         ExternalDatasetService.check_endpoint_and_api_key(settings)
         external_knowledge_api = ExternalKnowledgeApis(
             tenant_id=tenant_id,
@@ -77,9 +77,9 @@ class ExternalDatasetService:
     @staticmethod
     def check_endpoint_and_api_key(settings: dict):
         if "endpoint" not in settings or not settings["endpoint"]:
-            raise ValueError("endpoint is required")
+            raise ValueError("端点为必填项")
         if "api_key" not in settings or not settings["api_key"]:
-            raise ValueError("api_key is required")
+            raise ValueError("api_key 为必填项")
 
         endpoint = f"{settings['endpoint']}/retrieval"
         api_key = settings["api_key"]
@@ -107,7 +107,7 @@ class ExternalDatasetService:
             db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id).first()
         )
         if external_knowledge_api is None:
-            raise ValueError("api template not found")
+            raise ValueError("API 模板未找到")
         return external_knowledge_api
 
     @staticmethod
@@ -116,7 +116,7 @@ class ExternalDatasetService:
             db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
         )
         if external_knowledge_api is None:
-            raise ValueError("api template not found")
+            raise ValueError("API 模板未找到")
         settings = args.get("settings")
         if settings and settings.get("api_key") == HIDDEN_VALUE and external_knowledge_api.settings_dict:
             settings["api_key"] = external_knowledge_api.settings_dict.get("api_key")
@@ -136,7 +136,7 @@ class ExternalDatasetService:
             db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
         )
         if external_knowledge_api is None:
-            raise ValueError("api template not found")
+            raise ValueError("API 模板未找到")
 
         db.session.delete(external_knowledge_api)
         db.session.commit()
@@ -158,7 +158,7 @@ class ExternalDatasetService:
             db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
         )
         if not external_knowledge_binding:
-            raise ValueError("external knowledge binding not found")
+            raise ValueError("外部知识绑定未找到")
         return external_knowledge_binding
 
     @staticmethod
@@ -167,7 +167,7 @@ class ExternalDatasetService:
             db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
         )
         if external_knowledge_api is None or external_knowledge_api.settings is None:
-            raise ValueError("api template not found")
+            raise ValueError("API 模板未找到")
         settings = json.loads(external_knowledge_api.settings)
         for setting in settings:
             custom_parameters = setting.get("document_process_setting")
@@ -214,10 +214,10 @@ class ExternalDatasetService:
             headers = {}
         if authorization.type == "api-key":
             if authorization.config is None:
-                raise ValueError("authorization config is required")
+                raise ValueError("授权配置为必填项")
 
             if authorization.config.api_key is None:
-                raise ValueError("api_key is required")
+                raise ValueError("api_key 为必填项")
 
             if not authorization.config.header:
                 authorization.config.header = "Authorization"
@@ -247,7 +247,7 @@ class ExternalDatasetService:
         )
 
         if external_knowledge_api is None:
-            raise ValueError("api template not found")
+            raise ValueError("API 模板未找到")
 
         dataset = Dataset(
             tenant_id=tenant_id,
@@ -261,9 +261,9 @@ class ExternalDatasetService:
         db.session.add(dataset)
         db.session.flush()
         if args.get("external_knowledge_id") is None:
-            raise ValueError("external_knowledge_id is required")
+            raise ValueError("external_knowledge_id 为必填项")
         if args.get("external_knowledge_api_id") is None:
-            raise ValueError("external_knowledge_api_id is required")
+            raise ValueError("external_knowledge_api_id 为必填项")
 
         external_knowledge_binding = ExternalKnowledgeBindings(
             tenant_id=tenant_id,
@@ -290,7 +290,7 @@ class ExternalDatasetService:
             db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
         )
         if not external_knowledge_binding:
-            raise ValueError("external knowledge binding not found")
+            raise ValueError("外部知识绑定未找到")
 
         external_knowledge_api = (
             db.session.query(ExternalKnowledgeApis)
@@ -298,7 +298,7 @@ class ExternalDatasetService:
             .first()
         )
         if external_knowledge_api is None or external_knowledge_api.settings is None:
-            raise ValueError("external api template not found")
+            raise ValueError("外部 API 模板未找到")
 
         settings = json.loads(external_knowledge_api.settings)
         headers = {"Content-Type": "application/json"}

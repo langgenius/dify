@@ -32,13 +32,13 @@ class TableStoreConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["access_key_id"]:
-            raise ValueError("config ACCESS_KEY_ID is required")
+            raise ValueError("配置 ACCESS_KEY_ID 为必填项")
         if not values["access_key_secret"]:
-            raise ValueError("config ACCESS_KEY_SECRET is required")
+            raise ValueError("配置 ACCESS_KEY_SECRET 为必填项")
         if not values["instance_name"]:
-            raise ValueError("config INSTANCE_NAME is required")
+            raise ValueError("配置 INSTANCE_NAME 为必填项")
         if not values["endpoint"]:
-            raise ValueError("config ENDPOINT is required")
+            raise ValueError("配置 ENDPOINT 为必填项")
         return values
 
 

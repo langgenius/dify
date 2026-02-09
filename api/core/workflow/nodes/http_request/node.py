@@ -176,12 +176,12 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
                     pass
                 case "binary":
                     if len(data) != 1:
-                        raise RequestBodyError("invalid body data, should have only one item")
+                        raise RequestBodyError("无效的请求体数据，应只有一个条目")
                     selector = data[0].file
                     selectors.append(VariableSelector(variable="#" + ".".join(selector) + "#", value_selector=selector))
                 case "json" | "raw-text":
                     if len(data) != 1:
-                        raise RequestBodyError("invalid body data, should have only one item")
+                        raise RequestBodyError("无效的请求体数据，应只有一个条目")
                     selectors += variable_template_parser.extract_selectors_from_template(data[0].key)
                     selectors += variable_template_parser.extract_selectors_from_template(data[0].value)
                 case "x-www-form-urlencoded":

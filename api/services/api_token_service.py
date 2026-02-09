@@ -290,7 +290,7 @@ def query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
 
         if not api_token:
             ApiTokenCache.set(auth_token, scope, None)
-            raise Unauthorized("Access token is invalid")
+            raise Unauthorized("访问令牌无效")
 
         ApiTokenCache.set(auth_token, scope, api_token)
         record_token_usage(auth_token, scope)

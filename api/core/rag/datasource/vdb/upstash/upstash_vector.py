@@ -22,9 +22,9 @@ class UpstashVectorConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["url"]:
-            raise ValueError("Upstash URL is required")
+            raise ValueError("Upstash URL 为必填项")
         if not values["token"]:
-            raise ValueError("Upstash Token is required")
+            raise ValueError("Upstash Token 为必填项")
         return values
 
 

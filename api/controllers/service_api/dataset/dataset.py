@@ -87,7 +87,7 @@ class TagBindingPayload(BaseModel):
     @classmethod
     def validate_tag_ids(cls, value: list[str]) -> list[str]:
         if not value:
-            raise ValueError("Tag IDs is required.")
+            raise ValueError("Tag IDs 为必填项。")
         return value
 
 
@@ -246,7 +246,7 @@ class DatasetApi(DatasetApiResource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
@@ -302,7 +302,7 @@ class DatasetApi(DatasetApiResource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         payload_dict = service_api_ns.payload or {}
         payload = DatasetUpdatePayload.model_validate(payload_dict)
@@ -345,7 +345,7 @@ class DatasetApi(DatasetApiResource):
         dataset = DatasetService.update_dataset(dataset_id_str, update_data, current_user)
 
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         result_data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
         assert isinstance(current_user, Account)
@@ -398,7 +398,7 @@ class DatasetApi(DatasetApiResource):
                 DatasetPermissionService.clear_partial_member_list(dataset_id_str)
                 return "", 204
             else:
-                raise NotFound("Dataset not found.")
+                raise NotFound("知识库未找到。")
         except services.errors.dataset.DatasetInUseError:
             raise DatasetInUseError()
 
@@ -446,7 +446,7 @@ class DocumentStatusApi(DatasetApiResource):
         dataset = DatasetService.get_dataset(dataset_id_str)
 
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         # Check user's permission
         try:

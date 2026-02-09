@@ -38,10 +38,10 @@ class WebAppAuthService:
             raise AccountNotFoundError()
 
         if account.status == AccountStatus.BANNED:
-            raise AccountLoginError("Account is banned.")
+            raise AccountLoginError("账号已被禁用。")
 
         if account.password is None or not compare_password(password, account.password, account.password_salt):
-            raise AccountPasswordError("Invalid email or password.")
+            raise AccountPasswordError("邮箱或密码无效。")
 
         return account
 
@@ -58,7 +58,7 @@ class WebAppAuthService:
             return None
 
         if account.status == AccountStatus.BANNED:
-            raise Unauthorized("Account is banned.")
+            raise Unauthorized("账号已被禁用。")
 
         return account
 
@@ -68,7 +68,7 @@ class WebAppAuthService:
     ):
         email = account.email if account else email
         if email is None:
-            raise ValueError("Email must be provided.")
+            raise ValueError("邮箱为必填项。")
 
         code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         token = TokenManager.generate_token(
@@ -94,10 +94,10 @@ class WebAppAuthService:
     def create_end_user(cls, app_code, email) -> EndUser:
         site = db.session.query(Site).where(Site.code == app_code).first()
         if not site:
-            raise NotFound("Site not found.")
+            raise NotFound("站点未找到。")
         app_model = db.session.query(App).where(App.id == site.app_id).first()
         if not app_model:
-            raise NotFound("App not found.")
+            raise NotFound("应用未找到。")
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
@@ -144,12 +144,12 @@ class WebAppAuthService:
             return access_mode in modes_requiring_permission_check
 
         if not app_code and not app_id:
-            raise ValueError("Either app_code or app_id must be provided.")
+            raise ValueError("必须提供 app_code 或 app_id。")
 
         if app_code:
             app_id = AppService.get_app_id_by_code(app_code)
         if not app_id:
-            raise ValueError("App ID could not be determined from the provided app_code.")
+            raise ValueError("无法从提供的 app_code 确定应用 ID。")
 
         webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
         if webapp_settings and webapp_settings.access_mode in modes_requiring_permission_check:
@@ -162,7 +162,7 @@ class WebAppAuthService:
         Get the authentication type for the app based on its access mode.
         """
         if not app_code and not access_mode:
-            raise ValueError("Either app_code or access_mode must be provided.")
+            raise ValueError("必须提供 app_code 或 access_mode。")
 
         if access_mode:
             if access_mode == "public":
@@ -177,4 +177,4 @@ class WebAppAuthService:
             webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id)
             return cls.get_app_auth_type(access_mode=webapp_settings.access_mode)
 
-        raise ValueError("Could not determine app authentication type.")
+        raise ValueError("无法确定应用认证类型。")

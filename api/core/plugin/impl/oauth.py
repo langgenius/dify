@@ -38,7 +38,7 @@ class OAuthHandler(BasePluginClient):
             )
             for resp in response:
                 return resp
-            raise ValueError("No response received from plugin daemon for authorization URL request.")
+            raise ValueError("未从插件守护进程收到授权 URL 请求的响应。")
         except Exception as e:
             raise ValueError(f"Error getting authorization URL: {e}")
 
@@ -80,7 +80,7 @@ class OAuthHandler(BasePluginClient):
             )
             for resp in response:
                 return resp
-            raise ValueError("No response received from plugin daemon for authorization URL request.")
+            raise ValueError("未从插件守护进程收到授权 URL 请求的响应。")
         except Exception as e:
             raise ValueError(f"Error getting credentials: {e}")
 
@@ -115,7 +115,7 @@ class OAuthHandler(BasePluginClient):
             )
             for resp in response:
                 return resp
-            raise ValueError("No response received from plugin daemon for refresh credentials request.")
+            raise ValueError("未从插件守护进程收到刷新凭据请求的响应。")
         except Exception as e:
             raise ValueError(f"Error refreshing credentials: {e}")
 

@@ -31,7 +31,7 @@ class Mail:
 
                 api_key = dify_config.RESEND_API_KEY
                 if not api_key:
-                    raise ValueError("RESEND_API_KEY is not set")
+                    raise ValueError("RESEND_API_KEY 未设置")
 
                 api_url = dify_config.RESEND_API_URL
                 if api_url:
@@ -43,9 +43,9 @@ class Mail:
                 from libs.smtp import SMTPClient
 
                 if not dify_config.SMTP_SERVER or not dify_config.SMTP_PORT:
-                    raise ValueError("SMTP_SERVER and SMTP_PORT are required for smtp mail type")
+                    raise ValueError("SMTP 邮件类型需要 SMTP_SERVER 和 SMTP_PORT")
                 if not dify_config.SMTP_USE_TLS and dify_config.SMTP_OPPORTUNISTIC_TLS:
-                    raise ValueError("SMTP_OPPORTUNISTIC_TLS is not supported without enabling SMTP_USE_TLS")
+                    raise ValueError("未启用 SMTP_USE_TLS 时不支持 SMTP_OPPORTUNISTIC_TLS")
                 self._client = SMTPClient(
                     server=dify_config.SMTP_SERVER,
                     port=dify_config.SMTP_PORT,
@@ -59,7 +59,7 @@ class Mail:
                 from libs.sendgrid import SendGridClient
 
                 if not dify_config.SENDGRID_API_KEY:
-                    raise ValueError("SENDGRID_API_KEY is required for SendGrid mail type")
+                    raise ValueError("SendGrid 邮件类型需要 SENDGRID_API_KEY")
 
                 self._client = SendGridClient(
                     sendgrid_api_key=dify_config.SENDGRID_API_KEY, _from=dify_config.MAIL_DEFAULT_SEND_FROM or ""
@@ -69,22 +69,22 @@ class Mail:
 
     def send(self, to: str, subject: str, html: str, from_: str | None = None):
         if not self._client:
-            raise ValueError("Mail client is not initialized")
+            raise ValueError("邮件客户端未初始化")
 
         if not from_ and self._default_send_from:
             from_ = self._default_send_from
 
         if not from_:
-            raise ValueError("mail from is not set")
+            raise ValueError("邮件发件人未设置")
 
         if not to:
-            raise ValueError("mail to is not set")
+            raise ValueError("邮件收件人未设置")
 
         if not subject:
-            raise ValueError("mail subject is not set")
+            raise ValueError("邮件主题未设置")
 
         if not html:
-            raise ValueError("mail html is not set")
+            raise ValueError("邮件 HTML 未设置")
 
         self._client.send(
             {

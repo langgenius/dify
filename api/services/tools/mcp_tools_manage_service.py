@@ -109,7 +109,7 @@ class MCPToolManageService:
 
         provider = self._session.scalar(stmt)
         if not provider:
-            raise ValueError("MCP tool not found")
+            raise ValueError("MCP 工具未找到")
         return provider
 
     def get_provider_entity(self, provider_id: str, tenant_id: str, by_server_id: bool = False) -> MCPProviderEntity:
@@ -138,7 +138,7 @@ class MCPToolManageService:
         """Create a new MCP provider."""
         # Validate URL format
         if not self._is_valid_url(server_url):
-            raise ValueError("Server URL is not valid.")
+            raise ValueError("服务器 URL 无效。")
 
         server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
 
@@ -307,7 +307,7 @@ class MCPToolManageService:
 
         # Verify authentication
         if not provider_entity.authed:
-            raise ValueError("Please auth the tool first")
+            raise ValueError("请先对工具进行授权")
 
         # Prepare headers with auth token
         headers = self._prepare_auth_headers(provider_entity)
@@ -428,7 +428,7 @@ class MCPToolManageService:
             if existing_provider.name == name:
                 raise ValueError(f"MCP tool {name} already exists")
             if existing_provider.server_url_hash == server_url_hash:
-                raise ValueError("MCP tool with this server URL already exists")
+                raise ValueError("此服务器 URL 的 MCP 工具已存在")
             if existing_provider.server_identifier == server_identifier:
                 raise ValueError(f"MCP tool {server_identifier} already exists")
 
@@ -596,7 +596,7 @@ class MCPToolManageService:
         # Validate URL format
         parsed = urlparse(new_server_url)
         if not all([parsed.scheme, parsed.netloc]) or parsed.scheme not in ["http", "https"]:
-            raise ValueError("Server URL is not valid.")
+            raise ValueError("服务器 URL 无效。")
 
         # Always encrypt and hash the URL
         encrypted_server_url = encrypter.encrypt_token(tenant_id, new_server_url)

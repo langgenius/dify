@@ -43,7 +43,7 @@ class ConversationRenamePayload(BaseModel):
     def validate_name_requirement(self):
         if not self.auto_generate:
             if self.name is None or not self.name.strip():
-                raise ValueError("name is required when auto_generate is false")
+                raise ValueError("auto_generate 为 false 时 name 为必填项")
         return self
 
 
@@ -73,7 +73,7 @@ class ConversationVariablesQuery(BaseModel):
         dangerous_patterns = ["'", '"', ";", "--", "/*", "*/", "xp_", "sp_"]
         for pattern in dangerous_patterns:
             if pattern in v.lower():
-                raise ValueError(f"Variable name contains invalid characters: {pattern}")
+                raise ValueError(f"变量名包含无效字符: {pattern}")
 
         return v
 
@@ -135,7 +135,7 @@ class ConversationApi(Resource):
                     data=conversations,
                 ).model_dump(mode="json")
         except services.errors.conversation.LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+            raise NotFound("上一条对话不存在。")
 
 
 @service_api_ns.route("/conversations/<uuid:c_id>")
@@ -147,7 +147,7 @@ class ConversationDetailApi(Resource):
         responses={
             204: "Conversation deleted successfully",
             401: "Unauthorized - invalid API token",
-            404: "Conversation not found",
+            404: "会话未找到",
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
@@ -162,7 +162,7 @@ class ConversationDetailApi(Resource):
         try:
             ConversationService.delete(app_model, conversation_id, end_user)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         return ConversationDelete(result="success").model_dump(mode="json"), 204
 
 
@@ -176,7 +176,7 @@ class ConversationRenameApi(Resource):
         responses={
             200: "Conversation renamed successfully",
             401: "Unauthorized - invalid API token",
-            404: "Conversation not found",
+            404: "会话未找到",
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
@@ -200,7 +200,7 @@ class ConversationRenameApi(Resource):
                 .model_dump(mode="json")
             )
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
 
 
 @service_api_ns.route("/conversations/<uuid:c_id>/variables")
@@ -213,7 +213,7 @@ class ConversationVariablesApi(Resource):
         responses={
             200: "Variables retrieved successfully",
             401: "Unauthorized - invalid API token",
-            404: "Conversation not found",
+            404: "会话未找到",
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
@@ -238,7 +238,7 @@ class ConversationVariablesApi(Resource):
                 app_model, conversation_id, end_user, query_args.limit, last_id, query_args.variable_name
             )
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
 
 
 @service_api_ns.route("/conversations/<uuid:c_id>/variables/<uuid:variable_id>")
@@ -277,8 +277,8 @@ class ConversationVariableDetailApi(Resource):
                 app_model, conversation_id, variable_id, end_user, payload.value
             )
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationVariableNotExistsError:
-            raise NotFound("Conversation Variable Not Exists.")
+            raise NotFound("对话变量不存在。")
         except services.errors.conversation.ConversationVariableTypeMismatchError as e:
             raise BadRequest(str(e))

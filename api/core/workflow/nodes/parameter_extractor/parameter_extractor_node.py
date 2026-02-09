@@ -131,7 +131,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
         model_instance, model_config = self._fetch_model_config(node_data.model)
         if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
-            raise InvalidModelTypeError("Model is not a Large Language Model")
+            raise InvalidModelTypeError("模型不是大语言模型")
 
         llm_model = model_instance.model_type_instance
         model_schema = llm_model.get_model_schema(
@@ -139,7 +139,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             credentials=model_config.credentials,
         )
         if not model_schema:
-            raise ModelSchemaNotFoundError("Model schema not found")
+            raise ModelSchemaNotFoundError("模型架构未找到")
 
         # fetch memory
         memory = llm_utils.fetch_memory(
@@ -517,7 +517,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
     def _validate_result(self, data: ParameterExtractorNodeData, result: dict):
         if len(data.parameters) != len(result):
-            raise InvalidNumberOfParametersError("Invalid number of parameters")
+            raise InvalidNumberOfParametersError("无效的参数数量")
 
         for parameter in data.parameters:
             if parameter.required and parameter.name not in result:
@@ -623,7 +623,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 elif parameter.type == SegmentType.BOOLEAN:
                     transformed_result[parameter.name] = False
                 else:
-                    raise AssertionError("this statement should be unreachable.")
+                    raise AssertionError("此语句不应被执行。")
 
         return transformed_result
 
@@ -750,12 +750,12 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
         model_instance, model_config = self._fetch_model_config(node_data.model)
         if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
-            raise InvalidModelTypeError("Model is not a Large Language Model")
+            raise InvalidModelTypeError("模型不是大语言模型")
 
         llm_model = model_instance.model_type_instance
         model_schema = llm_model.get_model_schema(model_config.model, model_config.credentials)
         if not model_schema:
-            raise ModelSchemaNotFoundError("Model schema not found")
+            raise ModelSchemaNotFoundError("模型架构未找到")
 
         if set(model_schema.features or []) & {ModelFeature.MULTI_TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}:
             prompt_template = self._get_function_calling_prompt_template(node_data, query, variable_pool, None, 2000)

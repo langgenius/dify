@@ -68,7 +68,7 @@ class QdrantConfig(BaseModel):
             path = self.endpoint.replace("path:", "")
             if not os.path.isabs(path):
                 if not self.root_path:
-                    raise ValueError("Root path is not set")
+                    raise ValueError("根路径未设置")
                 path = os.path.join(self.root_path, path)
 
             return PathQdrantParams(path=path)
@@ -492,7 +492,7 @@ class QdrantVectorFactory(AbstractVectorFactory):
             if dataset_collection_binding:
                 collection_name = dataset_collection_binding.collection_name
             else:
-                raise ValueError("Dataset Collection Bindings does not exist!")
+                raise ValueError("知识库集合绑定不存在！")
         else:
             if dataset.index_struct_dict:
                 class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

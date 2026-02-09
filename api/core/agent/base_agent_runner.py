@@ -342,7 +342,7 @@ class BaseAgentRunner(AppRunner):
         stmt = select(MessageAgentThought).where(MessageAgentThought.id == agent_thought_id)
         agent_thought = db.session.scalar(stmt)
         if not agent_thought:
-            raise ValueError("agent thought not found")
+            raise ValueError("智能体思考未找到")
 
         if thought:
             existing_thought = agent_thought.thought or ""

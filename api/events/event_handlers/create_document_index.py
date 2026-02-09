@@ -33,7 +33,7 @@ def handle(sender, **kwargs):
         )
 
         if not document:
-            raise NotFound("Document not found")
+            raise NotFound("文档未找到")
 
         document.indexing_status = "parsing"
         document.processing_started_at = naive_utc_now()

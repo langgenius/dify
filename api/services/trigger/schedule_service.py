@@ -190,15 +190,15 @@ class ScheduleService:
         if mode == "cron":
             cron_expression = node_data.get("cron_expression")
             if not cron_expression:
-                raise ScheduleConfigError("Cron expression is required for cron mode")
+                raise ScheduleConfigError("定时模式需要 cron 表达式")
         elif mode == "visual":
             frequency = str(node_data.get("frequency"))
             if not frequency:
-                raise ScheduleConfigError("Frequency is required for visual mode")
+                raise ScheduleConfigError("可视化模式需要频率设置")
             visual_config = VisualConfig(**node_data.get("visual_config", {}))
             cron_expression = ScheduleService.visual_to_cron(frequency=frequency, visual_config=visual_config)
             if not cron_expression:
-                raise ScheduleConfigError("Cron expression is required for visual mode")
+                raise ScheduleConfigError("可视化模式需要 cron 表达式")
         else:
             raise ScheduleConfigError(f"Invalid schedule mode: {mode}")
         return ScheduleConfig(node_id=node_id, cron_expression=cron_expression, timezone=timezone)
@@ -230,7 +230,7 @@ class ScheduleService:
             raise ScheduleConfigError(f"Failed to parse workflow graph: {e}")
 
         if not graph_data:
-            raise ScheduleConfigError("Workflow graph is empty")
+            raise ScheduleConfigError("工作流图为空")
 
         nodes = graph_data.get("nodes", [])
         for node in nodes:
@@ -247,7 +247,7 @@ class ScheduleService:
             if mode == "cron":
                 cron_expression = node_data.get("cron_expression")
                 if not cron_expression:
-                    raise ScheduleConfigError("Cron expression is required for cron mode")
+                    raise ScheduleConfigError("定时模式需要 cron 表达式")
             elif mode == "visual":
                 frequency = node_data.get("frequency")
                 visual_config_dict = node_data.get("visual_config", {})
@@ -268,20 +268,20 @@ class ScheduleService:
         """
         if frequency == "hourly":
             if visual_config.on_minute is None:
-                raise ScheduleConfigError("on_minute is required for hourly schedules")
+                raise ScheduleConfigError("小时计划需要 on_minute")
             return f"{visual_config.on_minute} * * * *"
 
         elif frequency == "daily":
             if not visual_config.time:
-                raise ScheduleConfigError("time is required for daily schedules")
+                raise ScheduleConfigError("每日计划需要 time")
             hour, minute = convert_12h_to_24h(visual_config.time)
             return f"{minute} {hour} * * *"
 
         elif frequency == "weekly":
             if not visual_config.time:
-                raise ScheduleConfigError("time is required for weekly schedules")
+                raise ScheduleConfigError("每周计划需要 time")
             if not visual_config.weekdays:
-                raise ScheduleConfigError("Weekdays are required for weekly schedules")
+                raise ScheduleConfigError("周计划需要指定工作日")
             hour, minute = convert_12h_to_24h(visual_config.time)
             weekday_map = {"sun": "0", "mon": "1", "tue": "2", "wed": "3", "thu": "4", "fri": "5", "sat": "6"}
             cron_weekdays = [weekday_map[day] for day in visual_config.weekdays]
@@ -289,9 +289,9 @@ class ScheduleService:
 
         elif frequency == "monthly":
             if not visual_config.time:
-                raise ScheduleConfigError("time is required for monthly schedules")
+                raise ScheduleConfigError("每月计划需要 time")
             if not visual_config.monthly_days:
-                raise ScheduleConfigError("Monthly days are required for monthly schedules")
+                raise ScheduleConfigError("月度计划需要指定日期")
             hour, minute = convert_12h_to_24h(visual_config.time)
 
             numeric_days: list[int] = []

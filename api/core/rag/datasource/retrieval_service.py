@@ -215,7 +215,7 @@ class RetrievalService:
             try:
                 dataset = cls._get_dataset(dataset_id)
                 if not dataset:
-                    raise ValueError("dataset not found")
+                    raise ValueError("知识库未找到")
 
                 keyword = Keyword(dataset=dataset)
 
@@ -246,7 +246,7 @@ class RetrievalService:
             try:
                 dataset = cls._get_dataset(dataset_id)
                 if not dataset:
-                    raise ValueError("dataset not found")
+                    raise ValueError("知识库未找到")
 
                 vector = Vector(dataset=dataset)
                 documents = []
@@ -339,7 +339,7 @@ class RetrievalService:
             try:
                 dataset = cls._get_dataset(dataset_id)
                 if not dataset:
-                    raise ValueError("dataset not found")
+                    raise ValueError("知识库未找到")
 
                 vector_processor = Vector(dataset=dataset)
 

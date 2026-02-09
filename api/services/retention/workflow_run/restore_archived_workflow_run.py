@@ -93,7 +93,7 @@ class WorkflowRunRestore:
         """
         self.dry_run = dry_run
         if workers < 1:
-            raise ValueError("workers must be at least 1")
+            raise ValueError("workers 至少为 1")
         self.workers = workers
         self.workflow_run_repo: APIWorkflowRunRepository | None = None
 
@@ -243,7 +243,7 @@ class WorkflowRunRestore:
         try:
             data = archive.read("manifest.json")
         except KeyError as e:
-            raise ValueError("manifest.json missing from archive bundle") from e
+            raise ValueError("归档包中缺少 manifest.json") from e
         return json.loads(data.decode("utf-8"))
 
     def _restore_table_records(

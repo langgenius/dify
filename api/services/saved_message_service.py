@@ -14,7 +14,7 @@ class SavedMessageService:
         cls, app_model: App, user: Union[Account, EndUser] | None, last_id: str | None, limit: int
     ) -> InfiniteScrollPagination:
         if not user:
-            raise ValueError("User is required")
+            raise ValueError("用户为必填项")
         saved_messages = (
             db.session.query(SavedMessage)
             .where(

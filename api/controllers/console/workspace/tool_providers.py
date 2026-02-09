@@ -176,7 +176,7 @@ class WorkflowToolGetQuery(BaseModel):
     @model_validator(mode="after")
     def ensure_one(self) -> "WorkflowToolGetQuery":
         if not self.workflow_tool_id and not self.workflow_app_id:
-            raise ValueError("workflow_tool_id or workflow_app_id is required")
+            raise ValueError("workflow_tool_id 或 workflow_app_id 为必填项")
         return self
 
 
@@ -679,7 +679,7 @@ class ToolWorkflowProviderGetApi(Resource):
                 query.workflow_app_id,
             )
         else:
-            raise ValueError("incorrect workflow_tool_id or workflow_app_id")
+            raise ValueError("workflow_tool_id 或 workflow_app_id 不正确")
 
         return jsonable_encoder(tool)
 
@@ -791,7 +791,7 @@ class ToolPluginOAuthApi(Resource):
 
         oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id=tenant_id, provider=provider)
         if oauth_client_params is None:
-            raise Forbidden("no oauth available client config found for this tool provider")
+            raise Forbidden("未找到此工具提供方的 OAuth 客户端配置")
 
         oauth_handler = OAuthHandler()
         context_id = OAuthProxyService.create_proxy_context(
@@ -823,11 +823,11 @@ class ToolOAuthCallback(Resource):
     def get(self, provider):
         context_id = request.cookies.get("context_id")
         if not context_id:
-            raise Forbidden("context_id not found")
+            raise Forbidden("未找到 context_id")
 
         context = OAuthProxyService.use_proxy_context(context_id)
         if context is None:
-            raise Forbidden("Invalid context_id")
+            raise Forbidden("无效的 context_id")
 
         tool_provider = ToolProviderID(provider)
         plugin_id = tool_provider.plugin_id
@@ -837,7 +837,7 @@ class ToolOAuthCallback(Resource):
         oauth_handler = OAuthHandler()
         oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id, provider)
         if oauth_client_params is None:
-            raise Forbidden("no oauth available client config found for this tool provider")
+            raise Forbidden("未找到此工具提供方的 OAuth 客户端配置")
 
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
         credentials_response = oauth_handler.get_credentials(
@@ -854,7 +854,7 @@ class ToolOAuthCallback(Resource):
         expires_at = credentials_response.expires_at
 
         if not credentials:
-            raise Exception("the plugin credentials failed")
+            raise Exception("插件凭据验证失败")
 
         # add credentials to database
         BuiltinToolManageService.add_builtin_tool_provider(
@@ -1082,7 +1082,7 @@ class ToolMCPAuthApi(Resource):
             service = MCPToolManageService(session=session)
             db_provider = service.get_provider(provider_id=provider_id, tenant_id=tenant_id)
             if not db_provider:
-                raise ValueError("provider not found")
+                raise ValueError("提供方未找到")
 
             # Convert to entity
             provider_entity = db_provider.to_entity()
@@ -1125,12 +1125,12 @@ class ToolMCPAuthApi(Resource):
                 with Session(db.engine) as session, session.begin():
                     service = MCPToolManageService(session=session)
                     service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
-                raise ValueError(f"Failed to refresh token, please try to authorize again: {e}") from e
+                raise ValueError(f"刷新令牌失败，请重新授权: {e}") from e
         except (MCPError, ValueError) as e:
             with Session(db.engine) as session, session.begin():
                 service = MCPToolManageService(session=session)
                 service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
-            raise ValueError(f"Failed to connect to MCP server: {e}") from e
+            raise ValueError(f"连接 MCP 服务器失败: {e}") from e
 
 
 @console_ns.route("/workspaces/current/tool-provider/mcp/tools/<path:provider_id>")

@@ -220,15 +220,15 @@ class VikingDBVectorFactory(AbstractVectorFactory):
             dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.VIKINGDB, collection_name))
 
         if dify_config.VIKINGDB_ACCESS_KEY is None:
-            raise ValueError("VIKINGDB_ACCESS_KEY should not be None")
+            raise ValueError("VIKINGDB_ACCESS_KEY 不能为 None")
         if dify_config.VIKINGDB_SECRET_KEY is None:
-            raise ValueError("VIKINGDB_SECRET_KEY should not be None")
+            raise ValueError("VIKINGDB_SECRET_KEY 不能为 None")
         if dify_config.VIKINGDB_HOST is None:
-            raise ValueError("VIKINGDB_HOST should not be None")
+            raise ValueError("VIKINGDB_HOST 不能为 None")
         if dify_config.VIKINGDB_REGION is None:
-            raise ValueError("VIKINGDB_REGION should not be None")
+            raise ValueError("VIKINGDB_REGION 不能为 None")
         if dify_config.VIKINGDB_SCHEME is None:
-            raise ValueError("VIKINGDB_SCHEME should not be None")
+            raise ValueError("VIKINGDB_SCHEME 不能为 None")
         return VikingDBVector(
             collection_name=collection_name,
             group_id=dataset.id,

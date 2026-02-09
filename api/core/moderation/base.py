@@ -79,17 +79,17 @@ class Moderation(Extensible, ABC):
         # inputs_config
         inputs_config = config.get("inputs_config")
         if not isinstance(inputs_config, dict):
-            raise ValueError("inputs_config must be a dict")
+            raise ValueError("inputs_config 必须为字典")
 
         # outputs_config
         outputs_config = config.get("outputs_config")
         if not isinstance(outputs_config, dict):
-            raise ValueError("outputs_config must be a dict")
+            raise ValueError("outputs_config 必须为字典")
 
         inputs_config_enabled = inputs_config.get("enabled")
         outputs_config_enabled = outputs_config.get("enabled")
         if not inputs_config_enabled and not outputs_config_enabled:
-            raise ValueError("At least one of inputs_config or outputs_config must be enabled")
+            raise ValueError("inputs_config 和 outputs_config 至少需要启用一个")
 
         # preset_response
         if not is_preset_response_required:
@@ -97,17 +97,17 @@ class Moderation(Extensible, ABC):
 
         if inputs_config_enabled:
             if not inputs_config.get("preset_response"):
-                raise ValueError("inputs_config.preset_response is required")
+                raise ValueError("inputs_config.preset_response 为必填项")
 
             if len(inputs_config.get("preset_response", "0")) > 100:
-                raise ValueError("inputs_config.preset_response must be less than 100 characters")
+                raise ValueError("inputs_config.preset_response 不能超过 100 个字符")
 
         if outputs_config_enabled:
             if not outputs_config.get("preset_response"):
-                raise ValueError("outputs_config.preset_response is required")
+                raise ValueError("outputs_config.preset_response 为必填项")
 
             if len(outputs_config.get("preset_response", "0")) > 100:
-                raise ValueError("outputs_config.preset_response must be less than 100 characters")
+                raise ValueError("outputs_config.preset_response 不能超过 100 个字符")
 
 
 class ModerationError(Exception):

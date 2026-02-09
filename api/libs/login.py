@@ -27,7 +27,7 @@ def current_account_with_tenant():
     user = get_current_object() if callable(get_current_object) else user_proxy  # type: ignore
 
     if not isinstance(user, Account):
-        raise ValueError("current_user must be an Account instance")
+        raise ValueError("current_user 必须为 Account 实例")
     assert user.current_tenant_id is not None, "The tenant information should be loaded."
     return user, user.current_tenant_id
 

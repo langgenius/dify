@@ -182,7 +182,7 @@ class TextModesApi(Resource):
 
             return response
         except services.errors.audio.ProviderNotSupportTextToSpeechLanageServiceError:
-            raise AppUnavailableError("Text to audio voices language parameter loss.")
+            raise AppUnavailableError("文本转语音缺少语言参数。")
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
         except AudioTooLargeServiceError as e:

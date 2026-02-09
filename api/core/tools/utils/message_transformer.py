@@ -48,7 +48,7 @@ def safe_json_value(v):
 
 def safe_json_dict(d: dict):
     if not isinstance(d, dict):
-        raise TypeError("safe_json_dict() expects a dictionary (dict) as input")
+        raise TypeError("safe_json_dict() 期望字典 (dict) 作为输入")
     return {k: safe_json_value(v) for k, v in d.items()}
 
 
@@ -108,7 +108,7 @@ class ToolFileMessageTransformer:
                 # if message is str, encode it to bytes
 
                 if not isinstance(message.message, ToolInvokeMessage.BlobMessage):
-                    raise ValueError("unexpected message type")
+                    raise ValueError("未预期的消息类型")
 
                 assert isinstance(message.message.blob, bytes)
                 tool_file_manager = ToolFileManager()

@@ -78,7 +78,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
             datasource_provider_id=datasource_provider_id,
         )
         if not oauth_config:
-            raise ValueError(f"No OAuth Client Config for {provider_id}")
+            raise ValueError(f"没有找到 {provider_id} 的 OAuth 客户端配置")
 
         context_id = OAuthProxyService.create_proxy_context(
             user_id=current_user.id,
@@ -114,11 +114,11 @@ class DatasourceOAuthCallback(Resource):
     def get(self, provider_id: str):
         context_id = request.cookies.get("context_id") or request.args.get("context_id")
         if not context_id:
-            raise Forbidden("context_id not found")
+            raise Forbidden("context_id 未找到")
 
         context = OAuthProxyService.use_proxy_context(context_id)
         if context is None:
-            raise Forbidden("Invalid context_id")
+            raise Forbidden("无效的 context_id")
 
         user_id, tenant_id = context.get("user_id"), context.get("tenant_id")
         datasource_provider_id = DatasourceProviderID(provider_id)

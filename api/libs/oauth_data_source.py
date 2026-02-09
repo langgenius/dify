@@ -147,7 +147,7 @@ class NotionOAuth(OAuthDataSource):
             data_source_binding.updated_at = naive_utc_now()
             db.session.commit()
         else:
-            raise ValueError("Data source binding not found")
+            raise ValueError("数据源绑定未找到")
 
     def get_authorized_pages(self, access_token: str):
         pages = []

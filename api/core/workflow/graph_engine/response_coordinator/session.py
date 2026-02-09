@@ -48,7 +48,7 @@ class ResponseSession:
             TypeError: If node is not a supported response node type.
         """
         if not isinstance(node, AnswerNode | EndNode | KnowledgeIndexNode):
-            raise TypeError("ResponseSession.from_node only supports AnswerNode, EndNode, or KnowledgeIndexNode")
+            raise TypeError("ResponseSession.from_node 仅支持 AnswerNode、EndNode 或 KnowledgeIndexNode")
         return cls(
             node_id=node.id,
             template=node.get_streaming_template(),

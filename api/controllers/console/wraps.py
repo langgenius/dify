@@ -88,7 +88,11 @@ def cloud_edition_billing_enabled(view: Callable[P, R]):
         _, current_tenant_id = current_account_with_tenant()
         features = FeatureService.get_features(current_tenant_id)
         if not features.billing.enabled:
-            abort(403, "Billing feature is not enabled.")
+            abort(
+                403,
+                code="billing_not_enabled",
+                message="计费功能未启用。",
+            )
         return view(*args, **kwargs)
 
     return decorated
@@ -107,25 +111,47 @@ def cloud_edition_billing_resource_check(resource: str):
                 documents_upload_quota = features.documents_upload_quota
                 annotation_quota_limit = features.annotation_quota_limit
                 if resource == "members" and 0 < members.limit <= members.size:
-                    abort(403, "The number of members has reached the limit of your subscription.")
+                    abort(
+                        403,
+                        code="billing_members_limit_exceeded",
+                        message="成员数量已达订阅上限。",
+                    )
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
-                    abort(403, "The number of apps has reached the limit of your subscription.")
+                    abort(
+                        403,
+                        code="billing_apps_limit_exceeded",
+                        message="应用数量已达订阅上限。",
+                    )
                 elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
                     abort(
-                        403, "The capacity of the knowledge storage space has reached the limit of your subscription."
+                        403,
+                        code="billing_vector_space_limit_exceeded",
+                        message="知识库存储空间已达订阅上限。",
                     )
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     # The api of file upload is used in the multiple places,
                     # so we need to check the source of the request from datasets
                     source = request.args.get("source")
                     if source == "datasets":
-                        abort(403, "The number of documents has reached the limit of your subscription.")
+                        abort(
+                            403,
+                            code="billing_documents_limit_exceeded",
+                            message="文档数量已达订阅上限。",
+                        )
                     else:
                         return view(*args, **kwargs)
                 elif resource == "workspace_custom" and not features.can_replace_logo:
-                    abort(403, "The workspace custom feature has reached the limit of your subscription.")
+                    abort(
+                        403,
+                        code="billing_workspace_custom_limit_exceeded",
+                        message="工作区自定义功能已达订阅上限。",
+                    )
                 elif resource == "annotation" and 0 < annotation_quota_limit.limit < annotation_quota_limit.size:
-                    abort(403, "The annotation quota has reached the limit of your subscription.")
+                    abort(
+                        403,
+                        code="billing_annotation_quota_exceeded",
+                        message="标注配额已达订阅上限。",
+                    )
                 else:
                     return view(*args, **kwargs)
 
@@ -147,7 +173,8 @@ def cloud_edition_billing_knowledge_limit_check(resource: str):
                     if features.billing.subscription.plan == CloudPlan.SANDBOX:
                         abort(
                             403,
-                            "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.",
+                            code="billing_upgrade_required",
+                            message="需要升级到付费套餐才能使用该功能。",
                         )
                 else:
                     return view(*args, **kwargs)
@@ -186,7 +213,9 @@ def cloud_edition_billing_rate_limit_check(resource: str):
                         db.session.add(rate_limit_log)
                         db.session.commit()
                         abort(
-                            403, "Sorry, you have reached the knowledge base request rate limit of your subscription."
+                            403,
+                            code="knowledge_rate_limited",
+                            message="已达到当前订阅的知识库请求速率限制。",
                         )
             return view(*args, **kwargs)
 
@@ -237,7 +266,7 @@ def enterprise_license_required(view: Callable[P, R]):
     def decorated(*args: P.args, **kwargs: P.kwargs):
         settings = FeatureService.get_system_features()
         if settings.license.status in [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST]:
-            raise UnauthorizedAndForceLogout("Your license is invalid. Please contact your administrator.")
+            raise UnauthorizedAndForceLogout("您的许可证无效，请联系管理员。")
 
         return view(*args, **kwargs)
 

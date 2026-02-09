@@ -80,7 +80,7 @@ class TagService:
     @staticmethod
     def save_tags(args: dict) -> Tag:
         if TagService.get_tag_by_tag_name(args["type"], current_user.current_tenant_id, args["name"]):
-            raise ValueError("Tag name already exists")
+            raise ValueError("标签名称已存在")
         tag = Tag(
             name=args["name"],
             type=args["type"],
@@ -95,10 +95,10 @@ class TagService:
     @staticmethod
     def update_tags(args: dict, tag_id: str) -> Tag:
         if TagService.get_tag_by_tag_name(args.get("type", ""), current_user.current_tenant_id, args.get("name", "")):
-            raise ValueError("Tag name already exists")
+            raise ValueError("标签名称已存在")
         tag = db.session.query(Tag).where(Tag.id == tag_id).first()
         if not tag:
-            raise NotFound("Tag not found")
+            raise NotFound("标签未找到")
         tag.name = args["name"]
         db.session.commit()
         return tag
@@ -112,7 +112,7 @@ class TagService:
     def delete_tag(tag_id: str):
         tag = db.session.query(Tag).where(Tag.id == tag_id).first()
         if not tag:
-            raise NotFound("Tag not found")
+            raise NotFound("标签未找到")
         db.session.delete(tag)
         # delete tag binding
         tag_bindings = db.session.scalars(select(TagBinding).where(TagBinding.tag_id == tag_id)).all()
@@ -166,7 +166,7 @@ class TagService:
                 .first()
             )
             if not dataset:
-                raise NotFound("Dataset not found")
+                raise NotFound("知识库未找到")
         elif type == "app":
             app = (
                 db.session.query(App)
@@ -174,6 +174,6 @@ class TagService:
                 .first()
             )
             if not app:
-                raise NotFound("App not found")
+                raise NotFound("应用未找到")
         else:
-            raise NotFound("Invalid binding type")
+            raise NotFound("无效的绑定类型")

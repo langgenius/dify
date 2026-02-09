@@ -55,7 +55,7 @@ class WorkflowAppLogQuery(BaseModel):
             return True
         if lowered in {"0", "false", "no", "off"}:
             return False
-        raise ValueError("Invalid boolean value for detail")
+        raise ValueError("detail 参数的布尔值无效。")
 
 
 console_ns.schema_model(

@@ -135,7 +135,7 @@ class ApiToolManageService:
         tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
 
         if len(tool_bundles) > 100:
-            raise ValueError("the number of apis should be less than 100")
+            raise ValueError("API 数量不能超过 100")
 
         # create db provider
         db_provider = ApiToolProvider(
@@ -153,7 +153,7 @@ class ApiToolManageService:
         )
 
         if "auth_type" not in credentials:
-            raise ValueError("auth_type is required")
+            raise ValueError("auth_type 为必填项")
 
         # get auth type, none or api key
         auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
@@ -199,7 +199,7 @@ class ApiToolManageService:
             ApiToolManageService.parser_api_schema(schema)
         except Exception:
             logger.exception("parse api schema error")
-            raise ValueError("invalid schema, please check the url you provided")
+            raise ValueError("无效的模式，请检查您提供的 URL")
 
         return {"schema": schema}
 
@@ -279,7 +279,7 @@ class ApiToolManageService:
         provider.custom_disclaimer = custom_disclaimer
 
         if "auth_type" not in credentials:
-            raise ValueError("auth_type is required")
+            raise ValueError("auth_type 为必填项")
 
         # get auth type, none or api key
         auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
@@ -364,7 +364,7 @@ class ApiToolManageService:
         try:
             tool_bundles, _ = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema)
         except Exception:
-            raise ValueError("invalid schema")
+            raise ValueError("无效的模式")
 
         # get tool bundle
         tool_bundle = next(filter(lambda tb: tb.operation_id == tool_name, tool_bundles), None)
@@ -395,7 +395,7 @@ class ApiToolManageService:
             )
 
         if "auth_type" not in credentials:
-            raise ValueError("auth_type is required")
+            raise ValueError("auth_type 为必填项")
 
         # get auth type, none or api key
         auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])

@@ -174,7 +174,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
 
         agent_mode = config["agent_mode"]
         if not isinstance(agent_mode, dict):
-            raise ValueError("agent_mode must be of object type")
+            raise ValueError("agent_mode 必须为对象类型")
 
         # FIXME(-LAN-): Cast needed due to basedpyright limitation with dict type narrowing
         agent_mode = cast(dict[str, Any], agent_mode)
@@ -183,19 +183,19 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
             agent_mode["enabled"] = False
 
         if not isinstance(agent_mode["enabled"], bool):
-            raise ValueError("enabled in agent_mode must be of boolean type")
+            raise ValueError("agent_mode 中的 enabled 必须为布尔类型")
 
         if not agent_mode.get("strategy"):
             agent_mode["strategy"] = PlanningStrategy.ROUTER
 
         if agent_mode["strategy"] not in [member.value for member in list(PlanningStrategy.__members__.values())]:
-            raise ValueError("strategy in agent_mode must be in the specified strategy list")
+            raise ValueError("agent_mode 中的 strategy 必须在指定的策略列表中")
 
         if not agent_mode.get("tools"):
             agent_mode["tools"] = []
 
         if not isinstance(agent_mode["tools"], list):
-            raise ValueError("tools in agent_mode must be a list of objects")
+            raise ValueError("agent_mode 中的 tools 必须为对象列表")
 
         for tool in agent_mode["tools"]:
             key = list(tool.keys())[0]
@@ -207,30 +207,30 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
                     tool_item["enabled"] = False
 
                 if not isinstance(tool_item["enabled"], bool):
-                    raise ValueError("enabled in agent_mode.tools must be of boolean type")
+                    raise ValueError("agent_mode.tools 中的 enabled 必须为布尔类型")
 
                 if key == "dataset":
                     if "id" not in tool_item:
-                        raise ValueError("id is required in dataset")
+                        raise ValueError("知识库中 id 为必填项")
 
                     try:
                         uuid.UUID(tool_item["id"])
                     except ValueError:
-                        raise ValueError("id in dataset must be of UUID type")
+                        raise ValueError("知识库中的 id 必须为 UUID 类型")
 
                     if not DatasetConfigManager.is_dataset_exists(tenant_id, tool_item["id"]):
-                        raise ValueError("Dataset ID does not exist, please check your permission.")
+                        raise ValueError("知识库 ID 不存在，请检查您的权限。")
             else:
                 # latest style, use key-value pair
                 if "enabled" not in tool or not tool["enabled"]:
                     tool["enabled"] = False
                 if "provider_type" not in tool:
-                    raise ValueError("provider_type is required in agent_mode.tools")
+                    raise ValueError("agent_mode.tools 中 provider_type 为必填项")
                 if "provider_id" not in tool:
-                    raise ValueError("provider_id is required in agent_mode.tools")
+                    raise ValueError("agent_mode.tools 中 provider_id 为必填项")
                 if "tool_name" not in tool:
-                    raise ValueError("tool_name is required in agent_mode.tools")
+                    raise ValueError("agent_mode.tools 中 tool_name 为必填项")
                 if "tool_parameters" not in tool:
-                    raise ValueError("tool_parameters is required in agent_mode.tools")
+                    raise ValueError("agent_mode.tools 中 tool_parameters 为必填项")
 
         return config, ["agent_mode"]

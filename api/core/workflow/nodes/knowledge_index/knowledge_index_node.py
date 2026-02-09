@@ -47,7 +47,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         variable_pool = self.graph_runtime_state.variable_pool
         dataset_id = variable_pool.get(["sys", SystemVariableKey.DATASET_ID])
         if not dataset_id:
-            raise KnowledgeIndexNodeError("Dataset ID is required.")
+            raise KnowledgeIndexNodeError("知识库 ID 为必填项。")
         dataset = db.session.query(Dataset).filter_by(id=dataset_id.value).first()
         if not dataset:
             raise KnowledgeIndexNodeError(f"Dataset {dataset_id.value} not found.")
@@ -55,7 +55,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         # extract variables
         variable = variable_pool.get(node_data.index_chunk_variable_selector)
         if not variable:
-            raise KnowledgeIndexNodeError("Index chunk variable is required.")
+            raise KnowledgeIndexNodeError("索引分块变量为必填项。")
         invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
         if invoke_from:
             is_preview = invoke_from.value == InvokeFrom.DEBUGGER
@@ -130,12 +130,12 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
     ) -> Any:
         document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
         if not document_id:
-            raise KnowledgeIndexNodeError("Document ID is required.")
+            raise KnowledgeIndexNodeError("文档 ID 为必填项。")
         original_document_id = variable_pool.get(["sys", SystemVariableKey.ORIGINAL_DOCUMENT_ID])
 
         batch = variable_pool.get(["sys", SystemVariableKey.BATCH])
         if not batch:
-            raise KnowledgeIndexNodeError("Batch is required.")
+            raise KnowledgeIndexNodeError("批次为必填项。")
         document = db.session.query(Document).filter_by(id=document_id.value).first()
         if not document:
             raise KnowledgeIndexNodeError(f"Document {document_id.value} not found.")

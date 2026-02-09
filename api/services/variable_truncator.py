@@ -96,15 +96,15 @@ class VariableTruncator(BaseTruncator):
         max_size_bytes: int = 1024_000,  # 1000 KiB
     ):
         if string_length_limit <= 3:
-            raise ValueError("string_length_limit should be greater than 3.")
+            raise ValueError("string_length_limit 应大于 3。")
         self._string_length_limit = string_length_limit
 
         if array_element_limit <= 0:
-            raise ValueError("array_element_limit should be greater than 0.")
+            raise ValueError("array_element_limit 应大于 0。")
         self._array_element_limit = array_element_limit
 
         if max_size_bytes <= 0:
-            raise ValueError("max_size_bytes should be greater than 0.")
+            raise ValueError("max_size_bytes 应大于 0。")
         self._max_size_bytes = max_size_bytes
 
     @classmethod
@@ -203,7 +203,7 @@ class VariableTruncator(BaseTruncator):
         elif isinstance(segment, ObjectSegment):
             result = self._truncate_object(segment.value, target_size)
         else:
-            raise AssertionError("this should be unreachable.")
+            raise AssertionError("此处不应被执行。")
 
         return _PartResult(
             value=segment.model_copy(update={"value": result.value}),
@@ -436,7 +436,7 @@ class VariableTruncator(BaseTruncator):
         elif val is None or isinstance(val, (bool, int, float)):
             return _PartResult(val, self.calculate_json_size(val), False)
         else:
-            raise AssertionError("this statement should be unreachable.")
+            raise AssertionError("此语句不应被执行。")
 
 
 class DummyVariableTruncator(BaseTruncator):

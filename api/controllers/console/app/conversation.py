@@ -399,7 +399,7 @@ class CompletionConversationDetailApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
     @console_ns.response(200, "Success", conversation_message_detail_model)
     @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Conversation not found")
+    @console_ns.response(404, "对话未找到。")
     @setup_required
     @login_required
     @account_initialization_required
@@ -416,7 +416,7 @@ class CompletionConversationDetailApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
     @console_ns.response(204, "Conversation deleted successfully")
     @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Conversation not found")
+    @console_ns.response(404, "对话未找到。")
     @setup_required
     @login_required
     @account_initialization_required
@@ -429,7 +429,7 @@ class CompletionConversationDetailApi(Resource):
         try:
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
 
         return {"result": "success"}, 204
 
@@ -549,7 +549,7 @@ class ChatConversationDetailApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
     @console_ns.response(200, "Success", conversation_detail_model)
     @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Conversation not found")
+    @console_ns.response(404, "对话未找到。")
     @setup_required
     @login_required
     @account_initialization_required
@@ -566,7 +566,7 @@ class ChatConversationDetailApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
     @console_ns.response(204, "Conversation deleted successfully")
     @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Conversation not found")
+    @console_ns.response(404, "对话未找到。")
     @setup_required
     @login_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
@@ -579,7 +579,7 @@ class ChatConversationDetailApi(Resource):
         try:
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
 
         return {"result": "success"}, 204
 
@@ -593,7 +593,7 @@ def _get_conversation(app_model, conversation_id):
     )
 
     if not conversation:
-        raise NotFound("Conversation Not Exists.")
+        raise NotFound("对话不存在。")
 
     db.session.execute(
         sa.update(Conversation)

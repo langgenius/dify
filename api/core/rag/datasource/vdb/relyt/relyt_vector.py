@@ -40,15 +40,15 @@ class RelytConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["host"]:
-            raise ValueError("config RELYT_HOST is required")
+            raise ValueError("配置 RELYT_HOST 为必填项")
         if not values["port"]:
-            raise ValueError("config RELYT_PORT is required")
+            raise ValueError("配置 RELYT_PORT 为必填项")
         if not values["user"]:
-            raise ValueError("config RELYT_USER is required")
+            raise ValueError("配置 RELYT_USER 为必填项")
         if not values["password"]:
-            raise ValueError("config RELYT_PASSWORD is required")
+            raise ValueError("配置 RELYT_PASSWORD 为必填项")
         if not values["database"]:
-            raise ValueError("config RELYT_DATABASE is required")
+            raise ValueError("配置 RELYT_DATABASE 为必填项")
         return values
 
 
@@ -172,7 +172,7 @@ class RelytVector(BaseVector):
         from pgvecto_rs.sqlalchemy import VECTOR
 
         if ids is None:
-            raise ValueError("No ids provided to delete.")
+            raise ValueError("未提供要删除的 ID。")
 
         # Define the table schema
         chunks_table = Table(

@@ -108,13 +108,13 @@ class TencentVector(BaseVector):
                 if k == self._client_config.index_type:
                     index_type = v
             if index_type is None:
-                raise ValueError("unsupported index_type")
+                raise ValueError("不支持的 index_type")
             metric_type = None
             for k, v in enum.MetricType.__members__.items():
                 if k == self._client_config.metric_type:
                     metric_type = v
             if metric_type is None:
-                raise ValueError("unsupported metric_type")
+                raise ValueError("不支持的 metric_type")
             params = vdb_index.HNSWParams(m=16, efconstruction=200)
             index_id = vdb_index.FilterIndex(self.field_id, enum.FieldType.String, enum.IndexType.PRIMARY_KEY)
             index_vector = vdb_index.VectorIndex(

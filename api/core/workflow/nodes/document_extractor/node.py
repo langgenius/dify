@@ -319,7 +319,7 @@ def _extract_text_from_doc(file_content: bytes) -> str:
     from unstructured.partition.api import partition_via_api
 
     if not dify_config.UNSTRUCTURED_API_URL:
-        raise TextExtractionError("UNSTRUCTURED_API_URL must be set")
+        raise TextExtractionError("必须设置 UNSTRUCTURED_API_URL")
 
     try:
         with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as temp_file:
@@ -410,7 +410,7 @@ def _download_file_content(file: File) -> bytes:
     try:
         if file.transfer_method == FileTransferMethod.REMOTE_URL:
             if file.remote_url is None:
-                raise FileDownloadError("Missing URL for remote file")
+                raise FileDownloadError("远程文件缺少 URL")
             response = ssrf_proxy.get(file.remote_url)
             response.raise_for_status()
             return response.content
@@ -427,7 +427,7 @@ def _extract_text_from_file(file: File):
     elif file.mime_type:
         extracted_text = _extract_text_by_mime_type(file_content=file_content, mime_type=file.mime_type)
     else:
-        raise UnsupportedFileTypeError("Unable to determine file type: MIME type or file extension is missing")
+        raise UnsupportedFileTypeError("无法确定文件类型：缺少 MIME 类型或文件扩展名")
     return extracted_text
 
 

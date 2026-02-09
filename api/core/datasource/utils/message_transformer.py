@@ -67,7 +67,7 @@ class DatasourceFileMessageTransformer:
                 # if message is str, encode it to bytes
 
                 if not isinstance(message.message, DatasourceMessage.BlobMessage):
-                    raise ValueError("unexpected message type")
+                    raise ValueError("未预期的消息类型")
 
                 # FIXME: should do a type check here.
                 assert isinstance(message.message.blob, bytes)

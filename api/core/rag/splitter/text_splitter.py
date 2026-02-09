@@ -143,7 +143,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             from transformers import PreTrainedTokenizerBase
 
             if not isinstance(tokenizer, PreTrainedTokenizerBase):
-                raise ValueError("Tokenizer received was not an instance of PreTrainedTokenizerBase")
+                raise ValueError("收到的分词器不是 PreTrainedTokenizerBase 的实例")
 
             def _huggingface_tokenizer_length(text: str) -> int:
                 return len(tokenizer.encode(text))

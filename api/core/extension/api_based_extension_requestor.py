@@ -42,9 +42,9 @@ class APIBasedExtensionRequestor:
                     headers=headers,
                 )
         except httpx.TimeoutException:
-            raise ValueError("request timeout")
+            raise ValueError("请求超时")
         except httpx.RequestError:
-            raise ValueError("request connection error")
+            raise ValueError("请求连接错误")
 
         if response.status_code != 200:
             raise ValueError(f"request error, status_code: {response.status_code}, content: {response.text[:100]}")

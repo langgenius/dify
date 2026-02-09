@@ -632,7 +632,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         )
 
         if not iteration_graph:
-            raise IterationGraphNotFoundError("iteration graph not found")
+            raise IterationGraphNotFoundError("迭代图未找到")
 
         # Create a new GraphEngine for this iteration
         graph_engine = GraphEngine(

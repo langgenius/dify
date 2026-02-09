@@ -42,7 +42,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                 or "notion_page_id" not in data_source_info
                 or "notion_workspace_id" not in data_source_info
             ):
-                raise ValueError("no notion page found")
+                raise ValueError("未找到 Notion 页面")
             workspace_id = data_source_info["notion_workspace_id"]
             page_id = data_source_info["notion_page_id"]
             page_type = data_source_info["type"]
@@ -89,7 +89,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                 try:
                     dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
                     if not dataset:
-                        raise Exception("Dataset not found")
+                        raise Exception("知识库未找到")
                     index_type = document.doc_form
                     index_processor = IndexProcessorFactory(index_type).init_index_processor()
 

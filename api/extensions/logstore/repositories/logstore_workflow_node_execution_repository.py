@@ -131,7 +131,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Extract tenant_id from user
         tenant_id = extract_tenant_id(user)
         if not tenant_id:
-            raise ValueError("User must have a tenant_id or current_tenant_id")
+            raise ValueError("用户必须有 tenant_id 或 current_tenant_id")
         self._tenant_id = tenant_id
 
         # Store app context
@@ -159,11 +159,11 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             domain_model.status.value,
         )
         if not self._triggered_from:
-            raise ValueError("triggered_from is required in repository constructor")
+            raise ValueError("仓库构造函数中 triggered_from 为必填项")
         if not self._creator_user_id:
-            raise ValueError("created_by is required in repository constructor")
+            raise ValueError("仓库构造函数中 created_by 为必填项")
         if not self._creator_user_role:
-            raise ValueError("created_by_role is required in repository constructor")
+            raise ValueError("仓库构造函数中 created_by_role 为必填项")
 
         # Generate log_version as nanosecond timestamp for record versioning
         log_version = str(time.time_ns())

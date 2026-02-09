@@ -421,7 +421,7 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
         Total number of records deleted
     """
     if batch_size <= 0:
-        raise ValueError("batch_size must be positive")
+        raise ValueError("batch_size 必须为正数")
 
     total_deleted = 0
     total_files_deleted = 0

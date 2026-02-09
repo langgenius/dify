@@ -30,21 +30,21 @@ class VastbaseVectorConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["host"]:
-            raise ValueError("config VASTBASE_HOST is required")
+            raise ValueError("配置 VASTBASE_HOST 为必填项")
         if not values["port"]:
-            raise ValueError("config VASTBASE_PORT is required")
+            raise ValueError("配置 VASTBASE_PORT 为必填项")
         if not values["user"]:
-            raise ValueError("config VASTBASE_USER is required")
+            raise ValueError("配置 VASTBASE_USER 为必填项")
         if not values["password"]:
-            raise ValueError("config VASTBASE_PASSWORD is required")
+            raise ValueError("配置 VASTBASE_PASSWORD 为必填项")
         if not values["database"]:
-            raise ValueError("config VASTBASE_DATABASE is required")
+            raise ValueError("配置 VASTBASE_DATABASE 为必填项")
         if not values["min_connection"]:
-            raise ValueError("config VASTBASE_MIN_CONNECTION is required")
+            raise ValueError("配置 VASTBASE_MIN_CONNECTION 为必填项")
         if not values["max_connection"]:
-            raise ValueError("config VASTBASE_MAX_CONNECTION is required")
+            raise ValueError("配置 VASTBASE_MAX_CONNECTION 为必填项")
         if values["min_connection"] > values["max_connection"]:
-            raise ValueError("config VASTBASE_MIN_CONNECTION should less than VASTBASE_MAX_CONNECTION")
+            raise ValueError("配置 VASTBASE_MIN_CONNECTION 应小于 VASTBASE_MAX_CONNECTION")
         return values
 
 
@@ -157,7 +157,7 @@ class VastbaseVector(BaseVector):
         top_k = kwargs.get("top_k", 4)
 
         if not isinstance(top_k, int) or top_k <= 0:
-            raise ValueError("top_k must be a positive integer")
+            raise ValueError("top_k 必须为正整数")
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
@@ -178,7 +178,7 @@ class VastbaseVector(BaseVector):
         top_k = kwargs.get("top_k", 5)
 
         if not isinstance(top_k, int) or top_k <= 0:
-            raise ValueError("top_k must be a positive integer")
+            raise ValueError("top_k 必须为正整数")
         with self._get_cursor() as cur:
             cur.execute(
                 f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score

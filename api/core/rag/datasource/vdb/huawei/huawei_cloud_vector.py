@@ -35,7 +35,7 @@ class HuaweiCloudVectorConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["hosts"]:
-            raise ValueError("config HOSTS is required")
+            raise ValueError("配置 HOSTS 为必填项")
         return values
 
     def to_elasticsearch_params(self) -> dict[str, Any]:

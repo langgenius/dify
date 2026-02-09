@@ -30,7 +30,7 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
     with session_factory.create_session() as session:
         dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
         if dataset is None:
-            raise ValueError("Dataset not found")
+            raise ValueError("知识库未找到")
 
         sync_indexing_cache_key = f"document_{document_id}_is_sync"
         # check document limit

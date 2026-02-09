@@ -41,7 +41,7 @@ def remove_document_from_index_task(document_id: str):
             dataset = document.dataset
 
             if not dataset:
-                raise Exception("Document has no dataset")
+                raise Exception("文档没有关联的知识库")
 
             index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 

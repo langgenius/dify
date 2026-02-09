@@ -37,7 +37,7 @@ def check_workspace_member_invite_permission(workspace_id: str) -> None:
         try:
             permission = EnterpriseService.WorkspacePermissionService.get_permission(workspace_id)
             if not permission.allow_member_invite:
-                raise Forbidden("Workspace policy prohibits member invitations")
+                raise Forbidden("工作区策略禁止邀请成员")
         except Forbidden:
             raise
         except Exception:
@@ -60,14 +60,14 @@ def check_workspace_owner_transfer_permission(workspace_id: str) -> None:
     """
     features = FeatureService.get_features(workspace_id)
     if not features.is_allow_transfer_workspace:
-        raise Forbidden("Your current plan does not allow workspace ownership transfer")
+        raise Forbidden("您当前的套餐不支持工作区所有权转移")
 
     # Check enterprise workspace policy level (only if enterprise enabled)
     if dify_config.ENTERPRISE_ENABLED:
         try:
             permission = EnterpriseService.WorkspacePermissionService.get_permission(workspace_id)
             if not permission.allow_owner_transfer:
-                raise Forbidden("Workspace policy prohibits ownership transfer")
+                raise Forbidden("工作区策略禁止所有权转移")
         except Forbidden:
             raise
         except Exception:

@@ -54,7 +54,7 @@ def _get_or_create_tool_call(
     """
     if not tool_call_id:
         if not existing_tools_calls:
-            raise ValueError("tool_call_id is empty but no existing tool call is available to apply the delta")
+            raise ValueError("tool_call_id 为空，但没有可用的工具调用来应用增量")
         return existing_tools_calls[-1]
 
     tool_call = next((tool_call for tool_call in existing_tools_calls if tool_call.id == tool_call_id), None)
@@ -325,7 +325,7 @@ class LargeLanguageModel(AIModel):
             # To ensure compatibility, we add the prompt_messages back here.
             result.prompt_messages = prompt_messages
             return result
-        raise NotImplementedError("unsupported invoke result type", type(result))
+        raise NotImplementedError("不支持的调用结果类型", type(result))
 
     def _invoke_result_generator(
         self,

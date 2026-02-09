@@ -56,7 +56,7 @@ class AwsS3Storage(BaseStorage):
             data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
         except ClientError as ex:
             if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
-                raise FileNotFoundError("File not found")
+                raise FileNotFoundError("文件未找到")
             else:
                 raise
         return data
@@ -67,9 +67,9 @@ class AwsS3Storage(BaseStorage):
             yield from response["Body"].iter_chunks()
         except ClientError as ex:
             if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
-                raise FileNotFoundError("file not found")
+                raise FileNotFoundError("文件未找到")
             elif "reached max retries" in str(ex):
-                raise ValueError("please do not request the same file too frequently")
+                raise ValueError("请勿过于频繁地请求同一文件")
             else:
                 raise
 

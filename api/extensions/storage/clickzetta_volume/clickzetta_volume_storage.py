@@ -90,19 +90,19 @@ class ClickZettaVolumeConfig(BaseModel):
 
         # Validate required fields
         if not values.get("username"):
-            raise ValueError("CLICKZETTA_VOLUME_USERNAME or CLICKZETTA_USERNAME is required")
+            raise ValueError("需要 CLICKZETTA_VOLUME_USERNAME 或 CLICKZETTA_USERNAME")
         if not values.get("password"):
-            raise ValueError("CLICKZETTA_VOLUME_PASSWORD or CLICKZETTA_PASSWORD is required")
+            raise ValueError("需要 CLICKZETTA_VOLUME_PASSWORD 或 CLICKZETTA_PASSWORD")
         if not values.get("instance"):
-            raise ValueError("CLICKZETTA_VOLUME_INSTANCE or CLICKZETTA_INSTANCE is required")
+            raise ValueError("需要 CLICKZETTA_VOLUME_INSTANCE 或 CLICKZETTA_INSTANCE")
 
         # Validate volume type
         volume_type = values["volume_type"]
         if volume_type not in ["table", "user", "external"]:
-            raise ValueError("CLICKZETTA_VOLUME_TYPE must be one of: table, user, external")
+            raise ValueError("CLICKZETTA_VOLUME_TYPE 必须是以下之一：table、user、external")
 
         if volume_type == "external" and not values.get("volume_name"):
-            raise ValueError("CLICKZETTA_VOLUME_NAME is required for external volume type")
+            raise ValueError("外部卷类型需要 CLICKZETTA_VOLUME_NAME")
 
         return values
 
@@ -171,7 +171,7 @@ class ClickZettaVolumeStorage(BaseStorage):
                 if "/" in filename:
                     return filename
                 else:
-                    raise ValueError("dataset_id is required for table volume or filename must include dataset_id/")
+                    raise ValueError("表存储需要 dataset_id，或文件名必须包含 dataset_id/")
         elif self._config.volume_type == "external":
             return filename
         else:
@@ -205,7 +205,7 @@ class ClickZettaVolumeStorage(BaseStorage):
         """Execute SQL command."""
         try:
             if self._connection is None:
-                raise RuntimeError("Connection not initialized")
+                raise RuntimeError("连接未初始化")
             with self._connection.cursor() as cursor:
                 cursor.execute(sql)
                 if fetch:

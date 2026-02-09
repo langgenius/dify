@@ -42,7 +42,7 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
         self._template_renderer = template_renderer or CodeExecutorJinja2TemplateRenderer()
 
         if max_output_length is not None and max_output_length <= 0:
-            raise ValueError("max_output_length must be a positive integer")
+            raise ValueError("max_output_length 必须为正整数")
         self._max_output_length = max_output_length or DEFAULT_TEMPLATE_TRANSFORM_MAX_OUTPUT_LENGTH
 
     @classmethod

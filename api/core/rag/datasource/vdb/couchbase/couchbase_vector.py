@@ -38,15 +38,15 @@ class CouchbaseConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values.get("connection_string"):
-            raise ValueError("config COUCHBASE_CONNECTION_STRING is required")
+            raise ValueError("配置 COUCHBASE_CONNECTION_STRING 为必填项")
         if not values.get("user"):
-            raise ValueError("config COUCHBASE_USER is required")
+            raise ValueError("配置 COUCHBASE_USER 为必填项")
         if not values.get("password"):
-            raise ValueError("config COUCHBASE_PASSWORD is required")
+            raise ValueError("配置 COUCHBASE_PASSWORD 为必填项")
         if not values.get("bucket_name"):
-            raise ValueError("config COUCHBASE_PASSWORD is required")
+            raise ValueError("配置 COUCHBASE_PASSWORD 为必填项")
         if not values.get("scope_name"):
-            raise ValueError("config COUCHBASE_SCOPE_NAME is required")
+            raise ValueError("配置 COUCHBASE_SCOPE_NAME 为必填项")
         return values
 
 

@@ -10,12 +10,12 @@ class FirecrawlAuth(ApiKeyAuthBase):
         super().__init__(credentials)
         auth_type = credentials.get("auth_type")
         if auth_type != "bearer":
-            raise ValueError("Invalid auth type, Firecrawl auth type must be Bearer")
+            raise ValueError("无效的认证类型，Firecrawl 认证类型必须是 Bearer")
         self.api_key = credentials.get("config", {}).get("api_key", None)
         self.base_url = credentials.get("config", {}).get("base_url", "https://api.firecrawl.dev")
 
         if not self.api_key:
-            raise ValueError("No API key provided")
+            raise ValueError("未提供 API 密钥")
 
     def validate_credentials(self):
         headers = self._prepare_headers()

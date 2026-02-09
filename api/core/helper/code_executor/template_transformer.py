@@ -64,7 +64,7 @@ class TemplateTransformer(ABC):
         if not isinstance(result, dict):
             raise ValueError(f"Result must be a dict, got {type(result).__name__}")
         if not all(isinstance(k, str) for k in result):
-            raise ValueError("Result keys must be strings")
+            raise ValueError("结果键必须为字符串")
 
         # Post-process the result to convert scientific notation strings back to numbers
         result = cls._post_process_result(result)

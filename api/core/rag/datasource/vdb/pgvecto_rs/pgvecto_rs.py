@@ -35,15 +35,15 @@ class PgvectoRSConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["host"]:
-            raise ValueError("config PGVECTO_RS_HOST is required")
+            raise ValueError("配置 PGVECTO_RS_HOST 为必填项")
         if not values["port"]:
-            raise ValueError("config PGVECTO_RS_PORT is required")
+            raise ValueError("配置 PGVECTO_RS_PORT 为必填项")
         if not values["user"]:
-            raise ValueError("config PGVECTO_RS_USER is required")
+            raise ValueError("配置 PGVECTO_RS_USER 为必填项")
         if not values["password"]:
-            raise ValueError("config PGVECTO_RS_PASSWORD is required")
+            raise ValueError("配置 PGVECTO_RS_PASSWORD 为必填项")
         if not values["database"]:
-            raise ValueError("config PGVECTO_RS_DATABASE is required")
+            raise ValueError("配置 PGVECTO_RS_DATABASE 为必填项")
         return values
 
 

@@ -64,7 +64,7 @@ class SummaryIndexService:
         )
 
         if not summary_content:
-            raise ValueError("Generated summary is empty")
+            raise ValueError("生成的摘要为空")
 
         return summary_content, usage
 
@@ -262,7 +262,7 @@ class SummaryIndexService:
                 # At this point, session is guaranteed to be not None
                 # Type narrowing: session is definitely not None after the if/else above
                 if session is None:
-                    raise RuntimeError("Session should not be None at this point")
+                    raise RuntimeError("此时会话不应为空")
 
                 try:
                     # Declare summary_record_in_session variable
@@ -354,7 +354,7 @@ class SummaryIndexService:
 
                         # At this point, summary_record_in_session is guaranteed to be not None
                         if summary_record_in_session is None:
-                            raise RuntimeError("summary_record_in_session should not be None at this point")
+                            raise RuntimeError("此时 summary_record_in_session 不应为 None")
 
                     # Update all fields including summary_content
                     # Always use the summary_content from the parameter (which is the latest from outer session)

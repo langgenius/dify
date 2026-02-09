@@ -11,12 +11,12 @@ class WatercrawlAuth(ApiKeyAuthBase):
         super().__init__(credentials)
         auth_type = credentials.get("auth_type")
         if auth_type != "x-api-key":
-            raise ValueError("Invalid auth type, WaterCrawl auth type must be x-api-key")
+            raise ValueError("无效的认证类型，WaterCrawl 认证类型必须是 x-api-key")
         self.api_key = credentials.get("config", {}).get("api_key", None)
         self.base_url = credentials.get("config", {}).get("base_url", "https://app.watercrawl.dev")
 
         if not self.api_key:
-            raise ValueError("No API key provided")
+            raise ValueError("未提供 API 密钥")
 
     def validate_credentials(self):
         headers = self._prepare_headers()

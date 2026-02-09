@@ -71,7 +71,7 @@ def convert_12h_to_24h(time_str: str) -> tuple[int, int]:
         - "11:59 PM" -> (23, 59)
     """
     if not time_str or not time_str.strip():
-        raise ValueError("Time string cannot be empty")
+        raise ValueError("时间字符串不能为空")
 
     parts = time_str.strip().split()
     if len(parts) != 2:

@@ -47,15 +47,15 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
     def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         if not process_rule:
-            raise ValueError("No process rule found.")
+            raise ValueError("未找到处理规则。")
         if not process_rule.get("rules"):
-            raise ValueError("No rules found in process rule.")
+            raise ValueError("处理规则中未找到规则。")
         rules = Rule.model_validate(process_rule.get("rules"))
         all_documents: list[Document] = []
         if rules.parent_mode == ParentMode.PARAGRAPH:
             # Split the text documents into nodes.
             if not rules.segmentation:
-                raise ValueError("No segmentation found in rules.")
+                raise ValueError("规则中未找到分段配置。")
             splitter = self._get_splitter(
                 processing_rule_mode=process_rule.get("mode"),
                 max_tokens=rules.segmentation.max_tokens,
@@ -244,7 +244,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         embedding_model_instance: ModelInstance | None,
     ) -> list[ChildDocument]:
         if not rules.subchunk_segmentation:
-            raise ValueError("No subchunk segmentation found in rules.")
+            raise ValueError("规则中未找到子分块分段配置。")
         child_splitter = self._get_splitter(
             processing_rule_mode=process_rule_mode,
             max_tokens=rules.subchunk_segmentation.max_tokens,
@@ -308,7 +308,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             else:
                 account = AccountService.load_user(document.created_by)
                 if not account:
-                    raise ValueError("Invalid account")
+                    raise ValueError("无效的账户")
                 doc.attachments = self._get_content_files(doc, current_user=account)
             documents.append(doc)
         if documents:

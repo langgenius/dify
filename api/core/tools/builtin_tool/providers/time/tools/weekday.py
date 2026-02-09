@@ -22,7 +22,7 @@ class WeekdayTool(BuiltinTool):
         year = tool_parameters.get("year")
         month = tool_parameters.get("month")
         if month is None:
-            raise ValueError("Month is required")
+            raise ValueError("月份为必填项")
         day = tool_parameters.get("day")
 
         date_obj = self.convert_datetime(year, month, day)

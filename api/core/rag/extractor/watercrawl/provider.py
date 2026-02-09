@@ -88,7 +88,7 @@ class WaterCrawlProvider:
 
     def _structure_data(self, result_object: dict):
         if isinstance(result_object.get("result", {}), str):
-            raise ValueError("Invalid result object. Expected a dictionary.")
+            raise ValueError("无效的结果对象，期望为字典。")
 
         metadata = result_object.get("result", {}).get("metadata", {})
         return {

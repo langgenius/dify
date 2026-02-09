@@ -17,7 +17,7 @@ class IndexProcessorFactory:
         """Init index processor."""
 
         if not self._index_type:
-            raise ValueError("Index type must be specified.")
+            raise ValueError("必须指定索引类型。")
 
         if self._index_type == IndexStructureType.PARAGRAPH_INDEX:
             return ParagraphIndexProcessor()

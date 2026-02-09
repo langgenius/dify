@@ -49,7 +49,7 @@ class TriggerService:
             subscription_id=event.subscription_id,
         )
         if not subscription:
-            raise ValueError("Subscription not found")
+            raise ValueError("订阅未找到")
         node_data: TriggerEventNodeData = TriggerEventNodeData.model_validate(node_config.get("data", {}))
         request = TriggerHttpRequestCachingService.get_request(event.request_id)
         payload = TriggerHttpRequestCachingService.get_payload(event.request_id)

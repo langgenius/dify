@@ -88,10 +88,10 @@ class DatasetDocumentStore:
 
         for doc, tokens in zip(docs, tokens_list):
             if not isinstance(doc, Document):
-                raise ValueError("doc must be a Document")
+                raise ValueError("doc 必须为 Document 类型")
 
             if doc.metadata is None:
-                raise ValueError("doc.metadata must be a dict")
+                raise ValueError("doc.metadata 必须为字典")
 
             segment_document = self.get_document_segment(doc_id=doc.metadata["doc_id"])
 

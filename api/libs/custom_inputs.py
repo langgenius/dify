@@ -20,7 +20,7 @@ def time_duration(value: str) -> str:
         ValueError: If the format is invalid
     """
     if not value:
-        raise ValueError("Time duration cannot be empty")
+        raise ValueError("时间间隔不能为空")
 
     pattern = r"^(\d+)([dhms])$"
     if not re.match(pattern, value.lower()):

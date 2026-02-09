@@ -54,20 +54,20 @@ class DatasourceNode(Node[DatasourceNodeData]):
         variable_pool = self.graph_runtime_state.variable_pool
         datasource_type_segement = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE])
         if not datasource_type_segement:
-            raise DatasourceNodeError("Datasource type is not set")
+            raise DatasourceNodeError("数据源类型未设置")
         datasource_type = str(datasource_type_segement.value) if datasource_type_segement.value else None
         datasource_info_segement = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_INFO])
         if not datasource_info_segement:
-            raise DatasourceNodeError("Datasource info is not set")
+            raise DatasourceNodeError("数据源信息未设置")
         datasource_info_value = datasource_info_segement.value
         if not isinstance(datasource_info_value, dict):
-            raise DatasourceNodeError("Invalid datasource info format")
+            raise DatasourceNodeError("无效的数据源信息格式")
         datasource_info: dict[str, Any] = datasource_info_value
         # get datasource runtime
         from core.datasource.datasource_manager import DatasourceManager
 
         if datasource_type is None:
-            raise DatasourceNodeError("Datasource type is not set")
+            raise DatasourceNodeError("数据源类型未设置")
 
         datasource_type = DatasourceProviderType.value_of(datasource_type)
 
@@ -146,10 +146,10 @@ class DatasourceNode(Node[DatasourceNodeData]):
                 case DatasourceProviderType.LOCAL_FILE:
                     related_id = datasource_info.get("related_id")
                     if not related_id:
-                        raise DatasourceNodeError("File is not exist")
+                        raise DatasourceNodeError("文件不存在")
                     upload_file = db.session.query(UploadFile).where(UploadFile.id == related_id).first()
                     if not upload_file:
-                        raise ValueError("Invalid upload file Info")
+                        raise ValueError("无效的上传文件信息")
 
                     file_info = File(
                         id=upload_file.id,
@@ -390,7 +390,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
                     variable_value = message.message.variable_value
                     if message.message.stream:
                         if not isinstance(variable_value, str):
-                            raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
+                            raise ValueError("当 stream 为 True 时，variable_value 必须为字符串。")
                         if variable_name not in variables:
                             variables[variable_name] = ""
                         variables[variable_name] += variable_value

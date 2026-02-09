@@ -40,7 +40,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         try:
             dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
             if not dataset:
-                raise Exception("Dataset not found")
+                raise Exception("知识库未找到")
 
             index_type = document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()

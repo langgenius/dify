@@ -271,7 +271,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         if str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE and query:
             # fetch model config
             if node_data.single_retrieval_config is None:
-                raise ValueError("single_retrieval_config is required")
+                raise ValueError("single_retrieval_config 为必填项")
             model_instance, model_config = self.get_model_config(node_data.single_retrieval_config.model)
             # check model is support tool calling
             model_type_instance = model_config.provider_model_bundle.model_type_instance
@@ -302,7 +302,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 )
         elif str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             if node_data.multiple_retrieval_config is None:
-                raise ValueError("multiple_retrieval_config is required")
+                raise ValueError("multiple_retrieval_config 为必填项")
             match node_data.multiple_retrieval_config.reranking_mode:
                 case "reranking_model":
                     if node_data.multiple_retrieval_config.reranking_model:
@@ -315,7 +315,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     weights = None
                 case "weighted_score":
                     if node_data.multiple_retrieval_config.weights is None:
-                        raise ValueError("weights is required")
+                        raise ValueError("weights 为必填项")
                     reranking_model = None
                     vector_setting = node_data.multiple_retrieval_config.weights.vector_setting
                     weights = {
@@ -501,7 +501,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                                 elif expected_value.value_type == "string":
                                     expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()
                                 else:
-                                    raise ValueError("Invalid expected metadata value type")
+                                    raise ValueError("无效的期望元数据值类型")
                         conditions.append(
                             Condition(
                                 name=metadata_name,
@@ -521,7 +521,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                         conditions=conditions,
                     )
             case _:
-                raise ValueError("Invalid metadata filtering mode")
+                raise ValueError("无效的元数据过滤模式")
         if filters:
             if (
                 node_data.metadata_filtering_conditions
@@ -546,7 +546,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         metadata_fields = db.session.scalars(stmt).all()
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
         if node_data.metadata_model_config is None:
-            raise ValueError("metadata_model_config is required")
+            raise ValueError("metadata_model_config 为必填项")
         # get metadata model instance and fetch model config
         model_instance, model_config = self.get_model_config(node_data.metadata_model_config)
         # fetch prompt messages
@@ -667,7 +667,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         # get model mode
         model_mode = model.mode
         if not model_mode:
-            raise ModelNotExistError("LLM mode is required.")
+            raise ModelNotExistError("LLM 模式为必填项。")
 
         model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
 

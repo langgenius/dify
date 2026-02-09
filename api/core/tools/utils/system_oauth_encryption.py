@@ -93,10 +93,10 @@ class SystemOAuthEncrypter:
             ValueError: If encrypted_data is invalid
         """
         if not isinstance(encrypted_data, str):
-            raise ValueError("encrypted_data must be a string")
+            raise ValueError("encrypted_data 必须为字符串")
 
         if not encrypted_data:
-            raise ValueError("encrypted_data cannot be empty")
+            raise ValueError("encrypted_data 不能为空")
 
         try:
             # Base64 decode
@@ -104,7 +104,7 @@ class SystemOAuthEncrypter:
 
             # Check minimum length (IV + at least one AES block)
             if len(combined) < 32:  # 16 bytes IV + 16 bytes minimum encrypted data
-                raise ValueError("Invalid encrypted data format")
+                raise ValueError("无效的加密数据格式")
 
             # Separate IV and encrypted data
             iv = combined[:16]
@@ -121,7 +121,7 @@ class SystemOAuthEncrypter:
             oauth_params: Mapping[str, Any] = TypeAdapter(Mapping[str, Any]).validate_json(unpadded_data)
 
             if not isinstance(oauth_params, dict):
-                raise ValueError("Decrypted data is not a valid dictionary")
+                raise ValueError("解密数据不是有效的字典")
 
             return oauth_params
 

@@ -36,5 +36,5 @@ class CodeExecutorJinja2TemplateRenderer(Jinja2TemplateRenderer):
 
         rendered = result.get("result")
         if not isinstance(rendered, str):
-            raise TemplateRenderError("Template render result must be a string.")
+            raise TemplateRenderError("模板渲染结果必须为字符串。")
         return rendered

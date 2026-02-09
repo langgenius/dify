@@ -21,7 +21,7 @@ class OpenAIModeration(Moderation):
         flagged = False
         preset_response = ""
         if self.config is None:
-            raise ValueError("The config is not set.")
+            raise ValueError("配置未设置。")
 
         if self.config["inputs_config"]["enabled"]:
             preset_response = self.config["inputs_config"]["preset_response"]
@@ -38,7 +38,7 @@ class OpenAIModeration(Moderation):
         flagged = False
         preset_response = ""
         if self.config is None:
-            raise ValueError("The config is not set.")
+            raise ValueError("配置未设置。")
 
         if self.config["outputs_config"]["enabled"]:
             flagged = self._is_violated({"text": text})

@@ -340,7 +340,7 @@ class ToolNode(Node[ToolNodeData]):
                 variable_value = message.message.variable_value
                 if message.message.stream:
                     if not isinstance(variable_value, str):
-                        raise ToolNodeError("When 'stream' is True, 'variable_value' must be a string.")
+                        raise ToolNodeError("当 stream 为 True 时，variable_value 必须为字符串。")
                     if variable_name not in variables:
                         variables[variable_name] = ""
                     variables[variable_name] += variable_value
@@ -357,7 +357,7 @@ class ToolNode(Node[ToolNodeData]):
                 assert isinstance(message.meta, dict)
                 # Validate that meta contains a 'file' key
                 if "file" not in message.meta:
-                    raise ToolNodeError("File message is missing 'file' key in meta")
+                    raise ToolNodeError("文件消息的 meta 中缺少 file 键")
 
                 # Validate that the file is an instance of File
                 if not isinstance(message.meta["file"], File):

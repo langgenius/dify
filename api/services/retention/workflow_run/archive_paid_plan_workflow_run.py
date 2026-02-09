@@ -147,16 +147,16 @@ class WorkflowRunArchiver:
         self.batch_size = batch_size
         if start_from or end_before:
             if start_from is None or end_before is None:
-                raise ValueError("start_from and end_before must be provided together")
+                raise ValueError("start_from 和 end_before 必须同时提供")
             if start_from >= end_before:
-                raise ValueError("start_from must be earlier than end_before")
+                raise ValueError("start_from 必须早于 end_before")
             self.start_from = start_from.replace(tzinfo=datetime.UTC)
             self.end_before = end_before.replace(tzinfo=datetime.UTC)
         else:
             self.start_from = None
             self.end_before = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=days)
         if workers < 1:
-            raise ValueError("workers must be at least 1")
+            raise ValueError("workers 至少为 1")
         self.workers = workers
         self.tenant_ids = sorted(set(tenant_ids)) if tenant_ids else []
         self.limit = limit
@@ -361,7 +361,7 @@ class WorkflowRunArchiver:
                 result.success = True
             else:
                 if storage is None:
-                    raise ArchiveStorageNotConfiguredError("Archive storage not configured")
+                    raise ArchiveStorageNotConfiguredError("归档存储未配置")
                 archive_key = self._get_archive_key(run)
 
                 # Serialize tables for the archive bundle

@@ -134,7 +134,7 @@ class AppRunner:
             if model_mode == ModelMode.COMPLETION:
                 advanced_completion_prompt_template = prompt_template_entity.advanced_completion_prompt_template
                 if not advanced_completion_prompt_template:
-                    raise InvokeBadRequestError("Advanced completion prompt template is required.")
+                    raise InvokeBadRequestError("高级补全提示模板为必填项。")
                 prompt_template = CompletionModelPromptTemplate(text=advanced_completion_prompt_template.prompt)
 
                 if advanced_completion_prompt_template.role_prefix:
@@ -144,7 +144,7 @@ class AppRunner:
                     )
             else:
                 if not prompt_template_entity.advanced_chat_prompt_template:
-                    raise InvokeBadRequestError("Advanced chat prompt template is required.")
+                    raise InvokeBadRequestError("高级聊天提示模板为必填项。")
                 prompt_template = []
                 for message in prompt_template_entity.advanced_chat_prompt_template.messages:
                     prompt_template.append(ChatModelMessage(text=message.text, role=message.role))

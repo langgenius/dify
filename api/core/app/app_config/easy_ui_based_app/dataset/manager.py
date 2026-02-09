@@ -149,7 +149,7 @@ class DatasetConfigManager:
         config["dataset_configs"]["retrieval_model"] = config["dataset_configs"].get("retrieval_model", "single")
 
         if not isinstance(config["dataset_configs"], dict):
-            raise ValueError("dataset_configs must be of object type")
+            raise ValueError("dataset_configs 必须为对象类型")
 
         if "datasets" not in config["dataset_configs"] or not config["dataset_configs"].get("datasets"):
             config["dataset_configs"]["datasets"] = {"strategy": "router", "datasets": []}
@@ -161,7 +161,7 @@ class DatasetConfigManager:
             dataset_query_variable = config.get("dataset_query_variable")
 
             if not dataset_query_variable:
-                raise ValueError("Dataset query variable is required when dataset is exist")
+                raise ValueError("当知识库存在时，知识库查询变量为必填项")
 
         return config, ["agent_mode", "dataset_configs", "dataset_query_variable"]
 
@@ -179,21 +179,21 @@ class DatasetConfigManager:
             config["agent_mode"] = {}
 
         if not isinstance(config["agent_mode"], dict):
-            raise ValueError("agent_mode must be of object type")
+            raise ValueError("agent_mode 必须为对象类型")
 
         # enabled
         if "enabled" not in config["agent_mode"] or not config["agent_mode"]["enabled"]:
             config["agent_mode"]["enabled"] = False
 
         if not isinstance(config["agent_mode"]["enabled"], bool):
-            raise ValueError("enabled in agent_mode must be of boolean type")
+            raise ValueError("agent_mode 中的 enabled 必须为布尔类型")
 
         # tools
         if "tools" not in config["agent_mode"] or not config["agent_mode"].get("tools"):
             config["agent_mode"]["tools"] = []
 
         if not isinstance(config["agent_mode"]["tools"], list):
-            raise ValueError("tools in agent_mode must be a list of objects")
+            raise ValueError("agent_mode 中的 tools 必须为对象列表")
 
         # strategy
         if "strategy" not in config["agent_mode"] or not config["agent_mode"].get("strategy"):
@@ -214,18 +214,18 @@ class DatasetConfigManager:
                         tool_item["enabled"] = False
 
                     if not isinstance(tool_item["enabled"], bool):
-                        raise ValueError("enabled in agent_mode.tools must be of boolean type")
+                        raise ValueError("agent_mode.tools 中的 enabled 必须为布尔类型")
 
                     if "id" not in tool_item:
-                        raise ValueError("id is required in dataset")
+                        raise ValueError("知识库中 id 为必填项")
 
                     try:
                         uuid.UUID(tool_item["id"])
                     except ValueError:
-                        raise ValueError("id in dataset must be of UUID type")
+                        raise ValueError("知识库中的 id 必须为 UUID 类型")
 
                     if not cls.is_dataset_exists(tenant_id, tool_item["id"]):
-                        raise ValueError("Dataset ID does not exist, please check your permission.")
+                        raise ValueError("知识库 ID 不存在，请检查您的权限。")
 
                     has_datasets = True
 
@@ -236,7 +236,7 @@ class DatasetConfigManager:
             dataset_query_variable = config.get("dataset_query_variable")
 
             if not dataset_query_variable:
-                raise ValueError("Dataset query variable is required when dataset is exist")
+                raise ValueError("当知识库存在时，知识库查询变量为必填项")
 
         return config
 

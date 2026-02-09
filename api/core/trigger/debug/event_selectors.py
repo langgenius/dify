@@ -203,7 +203,7 @@ def create_event_poller(
 ) -> TriggerDebugEventPoller:
     node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
     if not node_config:
-        raise ValueError("Node data not found for node %s", node_id)
+        raise ValueError("节点 %s 的节点数据未找到", node_id)
     node_type = draft_workflow.get_node_type_from_node_config(node_config)
     match node_type:
         case NodeType.TRIGGER_PLUGIN:
@@ -219,7 +219,7 @@ def create_event_poller(
                 tenant_id=tenant_id, user_id=user_id, app_id=app_id, node_config=node_config, node_id=node_id
             )
         case _:
-            raise ValueError("unable to create event poller for node type %s", node_type)
+            raise ValueError("无法为节点类型 %s 创建事件轮询器", node_type)
 
 
 def select_trigger_debug_events(
@@ -229,7 +229,7 @@ def select_trigger_debug_events(
     for node_id in node_ids:
         node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
         if not node_config:
-            raise ValueError("Node data not found for node %s", node_id)
+            raise ValueError("节点 %s 的节点数据未找到", node_id)
         poller: TriggerDebugEventPoller = create_event_poller(
             draft_workflow=draft_workflow,
             tenant_id=app_model.tenant_id,

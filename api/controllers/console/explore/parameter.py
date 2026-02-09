@@ -44,5 +44,5 @@ class ExploreAppMetaApi(InstalledAppResource):
         """Get app meta"""
         app_model = installed_app.app
         if not app_model:
-            raise ValueError("App not found")
+            raise ValueError("应用未找到")
         return AppService().get_app_meta(app_model)

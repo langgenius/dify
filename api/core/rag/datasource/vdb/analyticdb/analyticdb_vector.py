@@ -29,7 +29,7 @@ class AnalyticdbVector(BaseVector):
             )
         else:
             if sql_config is None:
-                raise ValueError("Either api_config or sql_config must be provided")
+                raise ValueError("必须提供 api_config 或 sql_config")
             self.analyticdb_vector = AnalyticdbVectorBySql(collection_name, sql_config)
 
     def get_type(self) -> str:

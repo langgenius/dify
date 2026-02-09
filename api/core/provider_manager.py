@@ -945,9 +945,9 @@ class ProviderManager:
                 provider_record = quota_type_to_provider_records_dict[provider_quota.quota_type]
 
                 if provider_record.quota_used is None:
-                    raise ValueError("quota_used is None")
+                    raise ValueError("quota_used 为 None")
                 if provider_record.quota_limit is None:
-                    raise ValueError("quota_limit is None")
+                    raise ValueError("quota_limit 为 None")
                 if provider_quota.quota_type == ProviderQuotaType.TRIAL and trail_pool is not None:
                     quota_configuration = QuotaConfiguration(
                         quota_type=provider_quota.quota_type,
@@ -1070,7 +1070,7 @@ class ProviderManager:
         if last_quota_configuration:
             return last_quota_configuration.quota_type
 
-        raise ValueError("No quota type available")
+        raise ValueError("无可用的配额类型")
 
     @staticmethod
     def _extract_secret_variables(credential_form_schemas: list[CredentialFormSchema]) -> list[str]:

@@ -16,10 +16,10 @@ class CotCompletionAgentRunner(CotAgentRunner):
         Organize instruction prompt
         """
         if self.app_config.agent is None:
-            raise ValueError("Agent configuration is not set")
+            raise ValueError("智能体配置未设置")
         prompt_entity = self.app_config.agent.prompt
         if prompt_entity is None:
-            raise ValueError("prompt entity is not set")
+            raise ValueError("提示实体未设置")
         first_prompt = prompt_entity.first_prompt
 
         system_prompt = (

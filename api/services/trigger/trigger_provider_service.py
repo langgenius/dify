@@ -411,7 +411,7 @@ class TriggerProviderService:
                 raise ValueError(f"Trigger provider subscription {subscription_id} not found")
 
             if subscription.credential_type != CredentialType.OAUTH2.value:
-                raise ValueError("Only OAuth credentials can be refreshed")
+                raise ValueError("仅 OAuth 凭据可刷新")
 
             provider_id = TriggerProviderID(subscription.provider_id)
             provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
