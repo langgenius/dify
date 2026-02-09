@@ -111,6 +111,10 @@ const FeaturesTrigger = () => {
     return isFetchedPlan && plan.type === Plan.sandbox && entryCount > 2
   }, [nodes, plan.type, isFetchedPlan])
 
+  const hasHumanInputNode = useMemo(() => {
+    return nodes.some(node => node.data.type === BlockEnum.HumanInput)
+  }, [nodes])
+
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const invalidateAppTriggers = useInvalidateAppTriggers()
 
@@ -171,7 +175,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, notify, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers])
+  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, notify, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers, hasUserInputNode])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)
@@ -214,6 +218,7 @@ const FeaturesTrigger = () => {
           hasTriggerNode,
           startNodeLimitExceeded,
           publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded,
+          hasHumanInputNode,
         }}
       />
     </>
