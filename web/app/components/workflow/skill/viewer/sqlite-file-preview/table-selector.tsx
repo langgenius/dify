@@ -77,7 +77,7 @@ const TableSelector = ({
             <RiArrowDownSLine className="h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
           </button>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-20">
+        <PortalToFollowElemContent className="z-[1002]">
           <div className="min-w-[220px] rounded-lg border border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm">
             {items.map(item => (
               <button
