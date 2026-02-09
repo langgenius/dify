@@ -188,7 +188,7 @@ class TestTagUpdateDeleteApi:
             ),
             patch("controllers.console.tag.tags.TagService.delete_tag") as delete_mock,
         ):
-            status = method(api, "tag-1")
+            result, status = method(api, "tag-1")
 
         delete_mock.assert_called_once_with("tag-1")
         assert status == 204
