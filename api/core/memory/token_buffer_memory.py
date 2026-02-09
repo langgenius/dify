@@ -12,6 +12,7 @@ from core.model_runtime.entities import (
     PromptMessage,
     PromptMessageRole,
     TextPromptMessageContent,
+    ToolPromptMessage,
     UserPromptMessage,
 )
 from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
@@ -150,26 +151,63 @@ class TokenBufferMemory:
 
         curr_message_tokens = 0
         prompt_messages: list[PromptMessage] = []
+        prev_had_tool_calls = False
+        prev_tool_calls: list[dict] = []
         for message in messages:
-            # Process user message with files
-            user_files = db.session.scalars(
-                select(MessageFile).where(
-                    MessageFile.message_id == message.id,
-                    (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),
-                )
-            ).all()
+            # When the previous message had tool_calls, this message is a tool
+            # callback round.  Convert its query into ToolPromptMessages instead
+            # of a UserPromptMessage so the history matches the expected format:
+            #   AssistantMessage(tool_calls) → ToolMessage(result) → AssistantMessage(answer)
+            is_tool_round = prev_had_tool_calls and bool(prev_tool_calls)
 
-            if user_files:
-                user_prompt_message = self._build_prompt_message_with_files(
-                    message_files=user_files,
-                    text_content=message.query,
-                    message=message,
-                    app_record=app_record,
-                    is_user_message=True,
-                )
-                prompt_messages.append(user_prompt_message)
+            if is_tool_round:
+                # Try to parse "[call_id] output" lines from query
+                query_text = message.query or ""
+                tool_msgs_added = False
+                for tc in prev_tool_calls:
+                    tc_id = tc.get("id", "")
+                    # Find the output for this tool_call_id in the query
+                    prefix = f"[{tc_id}] "
+                    if prefix in query_text:
+                        start = query_text.index(prefix) + len(prefix)
+                        # Find end: next "[call_" or end of string
+                        next_bracket = query_text.find("\n[call_", start)
+                        output = query_text[start:next_bracket] if next_bracket != -1 else query_text[start:]
+                        prompt_messages.append(ToolPromptMessage(
+                            content=output.strip(),
+                            tool_call_id=tc_id,
+                        ))
+                        tool_msgs_added = True
+                    else:
+                        # Fallback: use entire query as output for this tool call
+                        prompt_messages.append(ToolPromptMessage(
+                            content=query_text,
+                            tool_call_id=tc_id,
+                        ))
+                        tool_msgs_added = True
+                if not tool_msgs_added:
+                    # Fallback: emit as regular user message
+                    prompt_messages.append(UserPromptMessage(content=message.query))
             else:
-                prompt_messages.append(UserPromptMessage(content=message.query))
+                # Process user message with files
+                user_files = db.session.scalars(
+                    select(MessageFile).where(
+                        MessageFile.message_id == message.id,
+                        (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),
+                    )
+                ).all()
+
+                if user_files:
+                    user_prompt_message = self._build_prompt_message_with_files(
+                        message_files=user_files,
+                        text_content=message.query,
+                        message=message,
+                        app_record=app_record,
+                        is_user_message=True,
+                    )
+                    prompt_messages.append(user_prompt_message)
+                else:
+                    prompt_messages.append(UserPromptMessage(content=message.query))
 
             # Process assistant message with files
             assistant_files = db.session.scalars(
@@ -198,6 +236,10 @@ class TokenBufferMemory:
                         else [],
                     )
                 )
+
+            # Track whether this message had tool_calls for the next iteration
+            prev_had_tool_calls = bool(message.tool_calls)
+            prev_tool_calls = message.tool_calls or []
 
         if not prompt_messages:
             return []

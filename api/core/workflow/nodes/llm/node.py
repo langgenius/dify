@@ -428,6 +428,25 @@ class LLMNode(Node[LLMNodeData]):
                             tool_call_id=tool_call_id,
                         )
                     )
+        else:
+            # Even without tool_results, strip any orphaned tool_calls from
+            # history that don't have matching ToolPromptMessages following them.
+            # This prevents "tool_calls must be followed by tool messages" errors
+            # when a new user query arrives after a previous turn ended with
+            # unresolved tool_calls (e.g. openclaw compaction or user interruption).
+            existing_tool_msg_ids = {
+                msg.tool_call_id
+                for msg in current_prompt_messages
+                if isinstance(msg, ToolPromptMessage) and msg.tool_call_id
+            }
+            for i, msg in enumerate(current_prompt_messages):
+                if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
+                    has_response = any(tc.id in existing_tool_msg_ids for tc in msg.tool_calls)
+                    if not has_response:
+                        current_prompt_messages[i] = AssistantPromptMessage(
+                            content=msg.content,
+                            tool_calls=[],
+                        )
 
         current_model_parameters = node_data_model.completion_params.copy() if node_data_model.completion_params else {}
         if tool_choice:
