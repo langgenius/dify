@@ -3,8 +3,7 @@ import type { MockedFunction } from 'vitest'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -137,6 +136,12 @@ const renderItem = (config: DataSet, props?: Partial<React.ComponentProps<typeof
   return { onSave, onRemove }
 }
 
+const getActionButtons = (card: HTMLElement) => {
+  const actionButtons = Array.from(card.querySelectorAll<HTMLButtonElement>('button.action-btn'))
+  expect(actionButtons).toHaveLength(2)
+  return actionButtons
+}
+
 describe('dataset-config/card-item', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -155,7 +160,7 @@ describe('dataset-config/card-item', () => {
     renderItem(dataset)
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const actionButtons = within(card).getAllByRole('button', { hidden: true })
+    const actionButtons = getActionButtons(card)
 
     expect(screen.getByText(dataset.name)).toBeInTheDocument()
     expect(screen.getByText('dataset.indexingTechnique.high_quality · dataset.indexingMethod.semantic_search')).toBeInTheDocument()
@@ -164,20 +169,19 @@ describe('dataset-config/card-item', () => {
   })
 
   it('should open settings drawer from edit action and close after saving', async () => {
-    const user = userEvent.setup()
     const dataset = createDataset()
     const { onSave } = renderItem(dataset)
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const [editButton] = within(card).getAllByRole('button', { hidden: true })
-    await user.click(editButton)
+    const [editButton] = getActionButtons(card)
+    fireEvent.click(editButton)
 
     expect(screen.getByText('Mock settings modal')).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeVisible()
     })
 
-    await user.click(screen.getByText('Save changes'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated dataset' }))
@@ -188,13 +192,11 @@ describe('dataset-config/card-item', () => {
   })
 
   it('should call onRemove and toggle destructive state on hover', async () => {
-    const user = userEvent.setup()
     const dataset = createDataset()
     const { onRemove } = renderItem(dataset)
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const buttons = within(card).getAllByRole('button', { hidden: true })
-    const deleteButton = buttons[buttons.length - 1]
+    const [, deleteButton] = getActionButtons(card)
 
     expect(deleteButton.className).not.toContain('action-btn-destructive')
 
@@ -205,7 +207,7 @@ describe('dataset-config/card-item', () => {
     fireEvent.mouseLeave(deleteButton)
     expect(deleteButton.className).not.toContain('action-btn-destructive')
 
-    await user.click(deleteButton)
+    fireEvent.click(deleteButton)
     expect(onRemove).toHaveBeenCalledWith(dataset.id)
   })
 
@@ -223,14 +225,13 @@ describe('dataset-config/card-item', () => {
 
   it('should apply mask overlay on mobile when drawer is open', async () => {
     mockedUseBreakpoints.mockReturnValue(MediaType.mobile)
-    const user = userEvent.setup()
     const dataset = createDataset()
 
     renderItem(dataset)
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const [editButton] = within(card).getAllByRole('button', { hidden: true })
-    await user.click(editButton)
+    const [editButton] = getActionButtons(card)
+    fireEvent.click(editButton)
     expect(screen.getByText('Mock settings modal')).toBeInTheDocument()
 
     const overlay = Array.from(document.querySelectorAll('[class]'))
