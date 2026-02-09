@@ -14,20 +14,19 @@ Focus on:
 """
 
 import uuid
-from unittest.mock import Mock, patch
 
 import pytest
-
 from controllers.service_api.app.error import NotWorkflowAppError
-from controllers.service_api.app.workflow import WorkflowLogQuery, WorkflowRunPayload
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
+from controllers.service_api.app.workflow import (
+    WorkflowLogQuery,
+    WorkflowRunPayload,
+)
 from core.workflow.enums import WorkflowExecutionStatus
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
-from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
-from services.errors.llm import InvokeRateLimitError
+from services.errors.app import WorkflowNotFoundError, IsDraftWorkflowError
 from services.workflow_app_service import WorkflowAppService
+from unittest.mock import Mock, patch
 
 
 class TestWorkflowRunPayload:
@@ -165,76 +164,6 @@ class TestWorkflowLogQuery:
         query = WorkflowLogQuery(created_at__before="2024-12-31T23:59:59Z", created_at__after="2024-01-01T00:00:00Z")
         assert query.created_at__before == "2024-12-31T23:59:59Z"
         assert query.created_at__after == "2024-01-01T00:00:00Z"
-
-
-class TestWorkflowAppModeValidation:
-    """Test app mode validation for workflow endpoints."""
-
-    def test_workflow_mode_is_valid_for_workflow_endpoints(self):
-        """Test that WORKFLOW mode is valid."""
-        assert AppMode.WORKFLOW == AppMode.WORKFLOW
-
-    def test_advanced_chat_mode_is_valid_for_workflow_run_detail(self):
-        """Test that ADVANCED_CHAT mode is valid for workflow run detail."""
-        valid_modes = {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}
-        assert AppMode.ADVANCED_CHAT in valid_modes
-
-    def test_chat_mode_is_invalid_for_workflow_run(self):
-        """Test that CHAT mode is invalid for workflow run endpoints."""
-        assert AppMode.CHAT != AppMode.WORKFLOW
-
-    def test_completion_mode_is_invalid_for_workflow_run(self):
-        """Test that COMPLETION mode is invalid for workflow run endpoints."""
-        assert AppMode.COMPLETION != AppMode.WORKFLOW
-
-    def test_not_workflow_app_error_can_be_raised(self):
-        """Test NotWorkflowAppError can be raised."""
-        error = NotWorkflowAppError()
-        assert error is not None
-
-
-class TestWorkflowErrorMappings:
-    """Test error type mappings for workflow endpoints."""
-
-    def test_workflow_not_found_error_exists(self):
-        """Test WorkflowNotFoundError can be raised."""
-        error = WorkflowNotFoundError("Workflow not found")
-        assert isinstance(error, WorkflowNotFoundError)
-
-    def test_is_draft_workflow_error_exists(self):
-        """Test IsDraftWorkflowError can be raised."""
-        error = IsDraftWorkflowError("Workflow is in draft state")
-        assert isinstance(error, IsDraftWorkflowError)
-
-    def test_workflow_id_format_error_exists(self):
-        """Test WorkflowIdFormatError can be raised."""
-        error = WorkflowIdFormatError("Invalid workflow ID format")
-        assert isinstance(error, WorkflowIdFormatError)
-
-    def test_provider_token_not_init_error_exists(self):
-        """Test ProviderTokenNotInitError exists."""
-        error = ProviderTokenNotInitError()
-        assert isinstance(error, ProviderTokenNotInitError)
-
-    def test_quota_exceeded_error_exists(self):
-        """Test QuotaExceededError exists."""
-        error = QuotaExceededError()
-        assert isinstance(error, QuotaExceededError)
-
-    def test_model_currently_not_support_error_exists(self):
-        """Test ModelCurrentlyNotSupportError exists."""
-        error = ModelCurrentlyNotSupportError()
-        assert isinstance(error, ModelCurrentlyNotSupportError)
-
-    def test_invoke_rate_limit_error_exists(self):
-        """Test InvokeRateLimitError exists."""
-        error = InvokeRateLimitError("Rate limit exceeded")
-        assert isinstance(error, InvokeRateLimitError)
-
-    def test_invoke_error_exists(self):
-        """Test InvokeError exists."""
-        error = InvokeError("Invocation failed")
-        assert isinstance(error, InvokeError)
 
 
 class TestWorkflowAppService:
@@ -414,13 +343,7 @@ class TestWorkflowRunRepository:
 # directly to bypass the decorator.
 # =============================================================================
 
-
-def _unwrap(method):
-    """Walk ``__wrapped__`` chain to get the original function."""
-    fn = method
-    while hasattr(fn, "__wrapped__"):
-        fn = fn.__wrapped__
-    return fn
+from tests.unit_tests.controllers.service_api.conftest import _unwrap
 
 
 @pytest.fixture

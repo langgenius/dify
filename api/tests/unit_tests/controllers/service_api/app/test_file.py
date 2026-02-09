@@ -190,64 +190,8 @@ class TestFileUploadResponse:
         assert hasattr(mock_file, "size")
         assert hasattr(mock_file, "extension")
         assert hasattr(mock_file, "mime_type")
-
-
-class TestFileRequestValidation:
-    """Test request validation patterns for file upload."""
-
-    def test_single_file_in_request_is_valid(self):
-        """Test that single file upload is valid."""
-        files_count = 1
-        assert files_count == 1
-
-    def test_multiple_files_in_request_is_invalid(self):
-        """Test that multiple files should be rejected."""
-        files_count = 2
-        assert files_count > 1  # Should raise TooManyFilesError
-
-    def test_no_files_in_request_is_invalid(self):
-        """Test that no files should be rejected."""
-        files_count = 0
-        assert files_count == 0  # Should raise NoFileUploadedError
-
-    def test_file_without_mimetype_is_invalid(self):
-        """Test that file without mimetype should be rejected."""
-        mimetype = None
-        assert mimetype is None  # Should raise UnsupportedFileTypeError
-
-    def test_file_without_filename_is_invalid(self):
-        """Test that file without filename should be rejected."""
-        filename = None
-        assert filename is None  # Should raise FilenameNotExistsError
-
-
-class TestCommonFileTypes:
-    """Test common file type support patterns."""
-
-    def test_image_file_types_are_supported(self):
-        """Test common image file extensions."""
-        supported_extensions = ["jpg", "jpeg", "png", "gif", "webp", "svg"]
-        for ext in supported_extensions:
-            assert len(ext) > 0
-            assert ext.isalnum()
-
-    def test_document_file_types_are_supported(self):
-        """Test common document file extensions."""
-        supported_extensions = ["pdf", "doc", "docx", "txt", "csv", "xlsx"]
-        for ext in supported_extensions:
-            assert len(ext) > 0
-
-    def test_audio_file_types_are_supported(self):
-        """Test common audio file extensions."""
-        supported_extensions = ["mp3", "wav", "m4a", "ogg"]
-        for ext in supported_extensions:
-            assert len(ext) > 0
-
-    def test_video_file_types_are_supported(self):
-        """Test common video file extensions."""
-        supported_extensions = ["mp4", "mov", "avi", "webm"]
-        for ext in supported_extensions:
-            assert len(ext) > 0
+        assert hasattr(mock_file, "created_by")
+        assert hasattr(mock_file, "created_at")
 
 
 # =============================================================================
@@ -258,13 +202,7 @@ class TestCommonFileTypes:
 # unwrapped method directly to bypass the decorator.
 # =============================================================================
 
-
-def _unwrap(method):
-    """Walk ``__wrapped__`` chain to get the original function."""
-    fn = method
-    while hasattr(fn, "__wrapped__"):
-        fn = fn.__wrapped__
-    return fn
+from tests.unit_tests.controllers.service_api.conftest import _unwrap
 
 
 @pytest.fixture

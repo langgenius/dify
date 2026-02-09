@@ -12,8 +12,9 @@ Tests coverage for:
 Strategy:
 - Endpoint methods on these resources have no billing decorators on the method
   itself.  ``method_decorators = [validate_dataset_token]`` is only invoked by
-  Flask-RESTx dispatch, not by direct calls, so we call methods directly and
-  patch ``db`` for inline dataset queries.
+  Flask-RESTx dispatch, not by direct calls, so we call methods directly.
+- Only ``KnowledgebasePipelineFileUploadApi.post`` touches ``db`` inline
+  (via ``FileService(db.engine)``); the other endpoints delegate to services.
 """
 
 import io
@@ -27,6 +28,7 @@ from werkzeug.exceptions import Forbidden
 from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
+    DatasourceNodeRunApi,
     DatasourceNodeRunPayload,
     DatasourcePluginsApi,
     KnowledgebasePipelineFileUploadApi,
@@ -403,6 +405,71 @@ class TestDatasourcePluginsApiGet:
         assert response == []
 
 
+class TestDatasourceNodeRunApiPost:
+    """Tests for DatasourceNodeRunApi.post().
+
+    The source asserts ``isinstance(current_user, Account)`` and delegates to
+    ``RagPipelineService`` and ``PipelineGenerator``, so we patch those plus
+    ``current_user`` and ``service_api_ns``.
+    """
+
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.helper")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.PipelineGenerator")
+    @patch(
+        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
+        new_callable=lambda: Mock(spec=Account),
+    )
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
+    def test_post_success(self, mock_ns, mock_svc_cls, mock_current_user, mock_gen, mock_helper, app):
+        """Test successful datasource node run."""
+        tenant_id = str(uuid.uuid4())
+        dataset_id = str(uuid.uuid4())
+        node_id = "node_abc"
+
+        mock_ns.payload = {
+            "inputs": {"url": "https://example.com"},
+            "datasource_type": "online_document",
+            "is_published": True,
+        }
+
+        mock_pipeline = Mock()
+        mock_pipeline.id = str(uuid.uuid4())
+        mock_svc_instance = Mock()
+        mock_svc_instance.get_pipeline.return_value = mock_pipeline
+        mock_svc_instance.run_datasource_workflow_node.return_value = iter(["event1"])
+        mock_svc_cls.return_value = mock_svc_instance
+
+        mock_gen.convert_to_event_stream.return_value = iter(["stream_event"])
+        mock_helper.compact_generate_response.return_value = {"result": "ok"}
+
+        with app.test_request_context("/datasets/test/pipeline/datasource/nodes/node_abc/run", method="POST"):
+            api = DatasourceNodeRunApi()
+            response = api.post(tenant_id=tenant_id, dataset_id=dataset_id, node_id=node_id)
+
+        assert response == {"result": "ok"}
+        mock_svc_instance.get_pipeline.assert_called_once_with(tenant_id=tenant_id, dataset_id=dataset_id)
+        mock_svc_instance.run_datasource_workflow_node.assert_called_once()
+
+    @patch(
+        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
+        new="not_account",
+    )
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
+    def test_post_fails_when_current_user_not_account(self, mock_ns, app):
+        """Test AssertionError when current_user is not an Account instance."""
+        mock_ns.payload = {
+            "inputs": {},
+            "datasource_type": "local_file",
+            "is_published": True,
+        }
+
+        with app.test_request_context("/datasets/test/pipeline/datasource/nodes/n1/run", method="POST"):
+            api = DatasourceNodeRunApi()
+            with pytest.raises(AssertionError):
+                api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()), node_id="n1")
+
+
 class TestPipelineRunApiPost:
     """Tests for PipelineRunApi.post()."""
 
@@ -414,9 +481,7 @@ class TestPipelineRunApiPost:
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_success_streaming(
-        self, mock_ns, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app
-    ):
+    def test_post_success_streaming(self, mock_ns, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app):
         """Test successful pipeline run with streaming response."""
         tenant_id = str(uuid.uuid4())
         dataset_id = str(uuid.uuid4())

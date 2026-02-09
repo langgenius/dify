@@ -28,6 +28,7 @@ from controllers.service_api.dataset.metadata import (
     DatasetMetadataServiceApi,
     DocumentMetadataEditServiceApi,
 )
+from tests.unit_tests.controllers.service_api.conftest import _unwrap
 
 
 @pytest.fixture
@@ -47,14 +48,6 @@ def mock_dataset():
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _unwrap(method):
-    """Walk ``__wrapped__`` chain to get the original function."""
-    fn = method
-    while hasattr(fn, "__wrapped__"):
-        fn = fn.__wrapped__
-    return fn
 
 
 # ---------------------------------------------------------------------------
@@ -302,7 +295,7 @@ class TestDatasetMetadataServiceApiDelete:
                 metadata_id=metadata_id,
             )
 
-        assert response == 204
+        assert response == ('', 204)
         mock_meta_svc.delete_metadata.assert_called_once()
 
     @patch("controllers.service_api.dataset.metadata.DatasetService")

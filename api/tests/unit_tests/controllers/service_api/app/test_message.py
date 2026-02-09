@@ -359,24 +359,3 @@ class TestMessageService:
             MessageService.get_suggested_questions_after_answer(
                 app_model=Mock(spec=App), user=Mock(spec=EndUser), message_id="invalid_message_id", invoke_from=Mock()
             )
-
-
-class TestUUIDStrOrEmpty:
-    """Test UUIDStrOrEmpty type validation."""
-
-    def test_valid_uuid_string(self):
-        """Test valid UUID string."""
-        valid_uuid = str(uuid.uuid4())
-        # UUIDStrOrEmpty should accept valid UUID
-        assert len(valid_uuid) == 36
-        assert "-" in valid_uuid
-
-    def test_empty_string(self):
-        """Test empty string is valid for UUIDStrOrEmpty."""
-        empty = ""
-        assert empty == ""
-
-    def test_none_value(self):
-        """Test None value handling."""
-        value = None
-        assert value is None

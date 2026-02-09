@@ -5,28 +5,23 @@ Unit tests for Service API Index endpoint
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
 
 from controllers.service_api.index import IndexApi
 
 
 class TestIndexApi:
-    """Test suite for IndexApi"""
+    """Test suite for IndexApi resource."""
 
-    @pytest.fixture
-    def app(self):
-        """Create Flask test application."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
-
-    def test_get_returns_api_metadata(self, app):
+    @patch("controllers.service_api.index.dify_config")
+    def test_get_returns_api_info(self, mock_config, app):
         """Test that GET returns API metadata with correct structure."""
         # Arrange
-        mock_config = MagicMock()
         mock_config.project.version = "1.0.0-test"
 
         # Act
+        with app.test_request_context("/", method="GET"):
+            index_api = IndexApi()
+            response = index_api.get()
         with patch("controllers.service_api.index.dify_config", mock_config):
             with app.test_request_context("/", method="GET"):
                 index_api = IndexApi()

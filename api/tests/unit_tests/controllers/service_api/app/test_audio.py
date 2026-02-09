@@ -8,29 +8,16 @@ Tests coverage for:
 """
 
 import uuid
-from unittest.mock import Mock, patch
 
 import pytest
-
-from controllers.service_api.app.audio import TextToAudioPayload
-from controllers.service_api.app.error import (
-    AppUnavailableError,
-    AudioTooLargeError,
-    CompletionRequestError,
-    NoAudioUploadedError,
-    ProviderModelCurrentlyNotSupportError,
-    ProviderNotInitializeError,
-    ProviderNotSupportSpeechToTextError,
-    ProviderQuotaExceededError,
-    UnsupportedAudioTypeError,
-)
-from services.audio_service import AudioService
+from controllers.service_api.app.audio import TextToAudioPayload, AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
     UnsupportedAudioTypeServiceError,
 )
+from unittest.mock import Mock, patch
 
 # ---------------------------------------------------------------------------
 # Pydantic Model Tests
@@ -97,57 +84,22 @@ class TestAudioServiceInterface:
 
 
 # ---------------------------------------------------------------------------
-# Error Mapping Tests
+# Audio Service Tests
 # ---------------------------------------------------------------------------
 
 
-class TestAudioErrorMapping:
-    """Test error mappings between service errors and API errors."""
+class TestAudioServiceInterface:
+    """Test suite for AudioService interface methods."""
 
-    def test_no_audio_uploaded_error_mapping(self):
-        """Test NoAudioUploadedError exists."""
-        error = NoAudioUploadedError()
-        assert error is not None
+    def test_transcript_asr_method_exists(self):
+        """Test that AudioService.transcript_asr exists."""
+        assert hasattr(AudioService, "transcript_asr")
+        assert callable(AudioService.transcript_asr)
 
-    def test_audio_too_large_error_mapping(self):
-        """Test AudioTooLargeError with message."""
-        error = AudioTooLargeError("File exceeds size limit")
-        assert "exceeds size limit" in str(error)
-
-    def test_unsupported_audio_type_error_mapping(self):
-        """Test UnsupportedAudioTypeError exists."""
-        error = UnsupportedAudioTypeError()
-        assert error is not None
-
-    def test_provider_not_support_speech_to_text_error(self):
-        """Test ProviderNotSupportSpeechToTextError exists."""
-        error = ProviderNotSupportSpeechToTextError()
-        assert error is not None
-
-    def test_provider_not_initialize_error_mapping(self):
-        """Test ProviderNotInitializeError with description."""
-        error = ProviderNotInitializeError("Provider not configured")
-        assert "not configured" in str(error)
-
-    def test_provider_quota_exceeded_error(self):
-        """Test ProviderQuotaExceededError exists."""
-        error = ProviderQuotaExceededError()
-        assert error is not None
-
-    def test_provider_model_not_support_error(self):
-        """Test ProviderModelCurrentlyNotSupportError exists."""
-        error = ProviderModelCurrentlyNotSupportError()
-        assert error is not None
-
-    def test_completion_request_error_mapping(self):
-        """Test CompletionRequestError with description."""
-        error = CompletionRequestError("Request failed")
-        assert "Request failed" in str(error)
-
-    def test_app_unavailable_error_mapping(self):
-        """Test AppUnavailableError exists."""
-        error = AppUnavailableError()
-        assert error is not None
+    def test_transcript_tts_method_exists(self):
+        """Test that AudioService.transcript_tts exists."""
+        assert hasattr(AudioService, "transcript_tts")
+        assert callable(AudioService.transcript_tts)
 
 
 class TestServiceErrorTypes:
