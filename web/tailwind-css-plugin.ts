@@ -1,3 +1,6 @@
+// Credits:
+// https://github.com/tailwindlabs/tailwindcss-intellisense/issues/227
+
 import type { PluginCreator } from 'tailwindcss/types/config'
 import { readFileSync } from 'node:fs'
 import { parse } from 'postcss'
