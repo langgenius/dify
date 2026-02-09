@@ -10,6 +10,7 @@ from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
 from models.model import ApiToken, App
+from services.api_token_service import ApiTokenCache
 
 from . import console_ns
 from .wraps import account_initialization_required, edit_permission_required, setup_required
@@ -130,6 +131,11 @@ class BaseApiKeyResource(Resource):
 
         if key is None:
             flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
+
+        # Invalidate cache before deleting from database
+        # Type assertion: key is guaranteed to be non-None here because abort() raises
+        assert key is not None  # nosec - for type checker only
+        ApiTokenCache.delete(key.token, key.type)
 
         db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
         db.session.commit()

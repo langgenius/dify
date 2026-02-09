@@ -87,6 +87,7 @@ export type ToolValue = {
   enabled?: boolean
   extra?: { description?: string } & Record<string, unknown>
   credential_id?: string
+  type?: string
 }
 
 export type DataSourceItem = {
