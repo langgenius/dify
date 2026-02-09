@@ -272,9 +272,6 @@
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -2529,27 +2526,9 @@
       "count": 2
     }
   },
-  "app/components/goto-anything/actions/commands/registry.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/goto-anything/actions/commands/slash.tsx": {
     "react-refresh/only-export-components": {
       "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/goto-anything/actions/commands/types.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/goto-anything/actions/types.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/goto-anything/context.tsx": {
@@ -3207,11 +3186,6 @@
       "count": 1
     }
   },
-  "app/components/share/text-generation/result/header.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 3
-    }
-  },
   "app/components/share/text-generation/result/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
@@ -3644,11 +3618,6 @@
   "app/components/workflow/nodes/_base/components/before-run-form/index.tsx": {
     "ts/no-explicit-any": {
       "count": 11
-    }
-  },
-  "app/components/workflow/nodes/_base/components/before-run-form/panel-wrap.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/components/before-run-form/panel-wrap.tsx": {
