@@ -132,7 +132,7 @@ def mock_db_session():
         # Create custom first mock that auto-cycles side_effect
         class CyclicMock(MagicMock):
             def __setattr__(self, name, value):
-                if name == 'side_effect' and value is not None:
+                if name == "side_effect" and value is not None:
                     # Convert list/tuple to infinite cycle
                     if isinstance(value, (list, tuple)):
                         value = cycle(value)
@@ -436,6 +436,7 @@ class TestDocumentIndexingSyncTask:
         """Test that indexing continues even if cleaning fails."""
         # Arrange
         from itertools import cycle
+
         mock_db_session.query.return_value.where.return_value.first.side_effect = cycle([mock_document, mock_dataset])
         mock_db_session.query.return_value.filter_by.return_value.first.return_value = mock_document
         # Make the cleaning step fail but not the segment fetch
@@ -468,6 +469,7 @@ class TestDocumentIndexingSyncTask:
         """Test that DocumentIsPausedError is handled gracefully."""
         # Arrange
         from itertools import cycle
+
         mock_db_session.query.return_value.where.return_value.first.side_effect = cycle([mock_document, mock_dataset])
         mock_db_session.query.return_value.filter_by.return_value.first.return_value = mock_document
         mock_db_session.scalars.return_value.all.return_value = mock_document_segments
@@ -497,6 +499,7 @@ class TestDocumentIndexingSyncTask:
         """Test that general exceptions during indexing are handled."""
         # Arrange
         from itertools import cycle
+
         mock_db_session.query.return_value.where.return_value.first.side_effect = cycle([mock_document, mock_dataset])
         mock_db_session.query.return_value.filter_by.return_value.first.return_value = mock_document
         mock_db_session.scalars.return_value.all.return_value = mock_document_segments

@@ -64,9 +64,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         tenant_id = document.tenant_id
         index_type = document.doc_form
 
-        segments = session.scalars(
-            select(DocumentSegment).where(DocumentSegment.document_id == document_id)
-        ).all()
+        segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
         index_node_ids = [segment.index_node_id for segment in segments]
 
     # Get credentials from datasource provider
@@ -80,8 +78,8 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
 
     if not credential:
         logger.error(
-        "Datasource credential not found for document %s, tenant_id: %s, credential_id: %s",
-        document_id,
+            "Datasource credential not found for document %s, tenant_id: %s, credential_id: %s",
+            document_id,
             tenant_id,
             credential_id,
         )
@@ -114,12 +112,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         with session_factory.create_session() as session:
             dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
             if dataset:
-                index_processor.clean(
-                    dataset,
-                    index_node_ids,
-                    with_keywords=True,
-                    delete_child_chunks=True
-                )
+                index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
         logger.info(click.style(f"Cleaned vector index for document {document_id}", fg="green"))
     except Exception:
         logger.exception("Failed to clean vector index for document %s", document_id)
@@ -137,9 +130,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         document.indexing_status = "parsing"
         document.processing_started_at = naive_utc_now()
 
-        segment_delete_stmt = delete(DocumentSegment).where(
-            DocumentSegment.document_id == document_id
-        )
+        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
         session.execute(segment_delete_stmt)
 
         logger.info(click.style(f"Deleted segments for document {document_id}", fg="green"))
@@ -151,8 +142,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
             if document:
                 indexing_runner.run([document])
         end_at = time.perf_counter()
-        logger.info(click.style(
-            f"Sync completed for document {document_id} latency: {end_at - start_at}", fg="green"))
+        logger.info(click.style(f"Sync completed for document {document_id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:
         logger.info(click.style(str(ex), fg="yellow"))
     except Exception as e:

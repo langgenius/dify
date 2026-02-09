@@ -37,9 +37,7 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
         session.execute(document_delete_stmt)
 
         for document_id in document_ids:
-            segments = session.scalars(
-                select(DocumentSegment).where(DocumentSegment.document_id == document_id)
-            ).all()
+            segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
             total_index_node_ids.extend([segment.index_node_id for segment in segments])
 
     with session_factory.create_session() as session:
@@ -57,7 +55,7 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     logger.info(
         click.style(
             "Clean document when import form notion document deleted end :: {} latency: {}".format(
-        dataset_id, end_at - start_at
+                dataset_id, end_at - start_at
             ),
             fg="green",
         )
