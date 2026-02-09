@@ -36,6 +36,19 @@ def register_external_error_handlers(api: Api):
         if default_data["message"] == "Failed to decode JSON object: Expecting value: line 1 column 1 (char 0)":
             default_data["message"] = "Invalid JSON payload received or JSON payload is empty."
 
+        # Merge e.data if it contains code/message from abort() or custom exceptions
+        extra = getattr(e, "data", None)
+        if isinstance(extra, dict):
+            # message from abort(..., message="...") takes priority
+            if "message" in extra and extra["message"]:
+                default_data["message"] = extra["message"]
+            # code from abort(..., code="...") takes priority
+            if "code" in extra and extra["code"]:
+                default_data["code"] = extra["code"]
+            # optionally pass through params field
+            if "params" in extra:
+                default_data["params"] = extra["params"]
+
         # Use headers on the exception if present; otherwise none.
         headers = {}
         exc_headers = getattr(e, "headers", None)
@@ -48,8 +61,9 @@ def register_external_error_handlers(api: Api):
             return data, status_code, headers
         elif status_code == 400:
             msg = default_data["message"]
-            if isinstance(msg, Mapping) and msg:
+            if isinstance(msg, Mapping) and msg and "code" not in default_data:
                 # Convert param errors like {"field": "reason"} into a friendly shape
+                # Only apply this when no explicit code was provided via abort()
                 param_key, param_value = next(iter(msg.items()))
                 data = {
                     "code": "invalid_param",

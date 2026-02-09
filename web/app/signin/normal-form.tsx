@@ -25,7 +25,12 @@ const NormalForm = () => {
   const searchParams = useSearchParams()
   const { isLoading: isCheckLoading, data: loginData } = useIsLogin()
   const isLoggedIn = loginData?.logged_in
-  const message = decodeURIComponent(searchParams.get('message') || '')
+  const code = searchParams.get('code') || ''
+  const rawMessage = decodeURIComponent(searchParams.get('message') || '')
+  // Prefer code-based i18n translation, fallback to raw message
+  const message = code
+    ? t(`error.${code}`, { ns: 'common', defaultValue: rawMessage || code })
+    : rawMessage
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [isInitCheckLoading, setInitCheckLoading] = useState(true)
   const [isRedirecting, setIsRedirecting] = useState(false)
