@@ -87,7 +87,7 @@ def test_extract_images_formats(mock_dependencies, monkeypatch, image_bytes, exp
         mock_raw.FPDF_PAGEOBJ_IMAGE = 1
         result = extractor._extract_images(mock_page)
 
-    assert f"![image](http://files.local/files/{file_id}/file-preview)" in result
+    assert f"![image](/files/{file_id}/file-preview)" in result
     assert len(saves) == 1
     assert saves[0][1] == image_bytes
     assert len(db_stub.session.added) == 1
@@ -180,7 +180,7 @@ def test_extract_images_failures(mock_dependencies):
         result = extractor._extract_images(mock_page)
 
     # Should have one success
-    assert "![image](http://files.local/files/test_file_id/file-preview)" in result
+    assert "![image](/files/test_file_id/file-preview)" in result
     assert len(saves) == 1
     assert saves[0][1] == jpeg_bytes
     assert db_stub.session.committed is True
