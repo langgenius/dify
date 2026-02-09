@@ -8,10 +8,9 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
-import SkillEditor from '@/app/components/workflow/skill/editor/skill-editor'
-import { useFileTypeInfo } from '@/app/components/workflow/skill/hooks/use-file-type-info'
 import { getFileIconType } from '@/app/components/workflow/skill/utils/file-utils'
-import { useGetAppAssetFileContent } from '@/service/use-app-asset'
+import ReadOnlyFilePreview from '@/app/components/workflow/skill/viewer/read-only-file-preview'
+import { useGetAppAssetFileDownloadUrl } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
 
 type FilePreviewPanelProps = {
@@ -27,20 +26,10 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
   const appId = useAppStore(s => s.appDetail?.id || '')
 
   const isFolder = currentNode?.node_type === 'folder'
-  const fileTypeInfo = useFileTypeInfo(isFolder ? undefined : currentNode)
-  const canPreviewText = !isFolder && fileTypeInfo.isEditable
-
-  const { data: fileContent, isLoading, error } = useGetAppAssetFileContent(appId, resourceId, {
-    enabled: canPreviewText,
+  const isPreviewEnabled = !isFolder && Boolean(appId && resourceId)
+  const { data: downloadUrlData, isLoading, error } = useGetAppAssetFileDownloadUrl(appId, resourceId, {
+    enabled: isPreviewEnabled,
   })
-
-  const content = useMemo(() => {
-    if (!canPreviewText || !fileContent)
-      return ''
-    if (typeof fileContent?.content === 'string')
-      return fileContent.content
-    return JSON.stringify(fileContent, null, 2)
-  }, [canPreviewText, fileContent])
 
   const pathSegments = useMemo(
     () => (currentNode?.path ?? '').split('/').filter(Boolean),
@@ -57,6 +46,8 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
     ? getFileIconType(currentNode.name, currentNode.extension)
     : null
 
+  const downloadUrl = downloadUrlData?.download_url || ''
+  const displayFileName = fileName ?? currentNode?.name ?? resourceId
   const canOpenInEditor = Boolean(resourceId && !isFolder && typeof window !== 'undefined')
 
   const handleOpenInEditor = useCallback(() => {
@@ -134,30 +125,28 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
             {t('skillEditor.previewUnavailable')}
           </div>
         )}
-        {!isFolder && !fileTypeInfo.isEditable && (
-          <div className="system-sm-regular text-text-tertiary">
-            {t('skillEditor.unsupportedPreview')}
-          </div>
-        )}
-        {canPreviewText && isLoading && (
+        {isPreviewEnabled && isLoading && (
           <div className="flex w-full items-center justify-center py-6">
             <Loading type="area" />
           </div>
         )}
-        {canPreviewText && error && (
+        {isPreviewEnabled && error && (
           <div className="system-sm-regular text-text-tertiary">
             {t('skillSidebar.loadError')}
           </div>
         )}
-        {canPreviewText && !isLoading && !error && (
-          <SkillEditor
-            value={content}
-            editable={false}
-            compact
-            showLineNumbers
-            className="text-[14px] leading-[22px] text-text-primary"
-            placeholderClassName="hidden"
+        {isPreviewEnabled && !isLoading && !error && downloadUrl && (
+          <ReadOnlyFilePreview
+            downloadUrl={downloadUrl}
+            fileName={displayFileName}
+            extension={currentNode?.extension}
+            fileSize={currentNode?.size ?? undefined}
           />
+        )}
+        {isPreviewEnabled && !isLoading && !error && !downloadUrl && (
+          <div className="system-sm-regular text-text-tertiary">
+            {t('skillSidebar.loadError')}
+          </div>
         )}
       </div>
     </div>
