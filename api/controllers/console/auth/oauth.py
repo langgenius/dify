@@ -198,13 +198,10 @@ def _generate_account(provider: str, user_info: OAuthUserInfo) -> tuple[Account,
         if not FeatureService.get_system_features().is_allow_register:
             if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
                 raise AccountRegisterError(
-                    description=(
-                        "This email account has been deleted within the past "
-                        "30 days and is temporarily unavailable for new account registration"
-                    )
+                    description="该邮箱账号已在30天内被删除，暂时无法用于新账号注册"
                 )
             else:
-                raise AccountRegisterError(description=("Invalid email or password"))
+                raise AccountRegisterError(description="邮箱或密码无效")
         account_name = user_info.name or "Dify"
         account = RegisterService.register(
             email=normalized_email,
