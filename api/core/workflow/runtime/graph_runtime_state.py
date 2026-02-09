@@ -64,7 +64,7 @@ class GraphExecutionProtocol(Protocol):
     aborted: bool
     error: Exception | None
     exceptions_count: int
-    pause_reasons: Sequence[PauseReason]
+    pause_reasons: list[PauseReason]
 
     def start(self) -> None:
         """Transition execution into the running state."""
@@ -446,7 +446,7 @@ class GraphRuntimeState:
         graph_execution_cls = module.GraphExecution
         workflow_id = self._pending_graph_execution_workflow_id or ""
         self._pending_graph_execution_workflow_id = None
-        return graph_execution_cls(workflow_id=workflow_id)
+        return graph_execution_cls(workflow_id=workflow_id)  # type: ignore[invalid-return-type]
 
     def _build_response_coordinator(self, graph: GraphProtocol) -> ResponseStreamCoordinatorProtocol:
         # Lazily import to keep the runtime domain decoupled from graph_engine modules.
