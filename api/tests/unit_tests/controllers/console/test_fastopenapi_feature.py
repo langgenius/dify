@@ -81,6 +81,8 @@ def test_console_features_fastopenapi_returns_tenant_features(app: Flask):
             "controllers.console.wraps.current_account_with_tenant",
             return_value=(mock_account, mock_tenant_id),
         ),
+        # Mock FeatureService.get_features in wraps module (used by cloud_utm_record)
+        patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features),
         # Mock the actual endpoint call
         patch(
             "controllers.console.feature.current_account_with_tenant",
