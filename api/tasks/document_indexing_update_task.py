@@ -53,7 +53,8 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
             logger.info(
                 click.style(
                     "Cleaned document when document update data source or process rule: {} latency: {}".format(
-                        document_id, end_at - start_at),
+                        document_id, end_at - start_at
+                    ),
                     fg="green",
                 )
             )
