@@ -13,6 +13,7 @@ from controllers.common.errors import (
     FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
+    TooManyFilesError,
 )
 from controllers.web.files import FileApi
 
@@ -33,13 +34,12 @@ class TestFileApi:
 
     def test_too_many_files(self, app: Flask) -> None:
         data = {
-            "file1": (BytesIO(b"a"), "a.txt"),
+            "file": (BytesIO(b"a"), "a.txt"),
             "file2": (BytesIO(b"b"), "b.txt"),
         }
         with app.test_request_context("/files/upload", method="POST", data=data, content_type="multipart/form-data"):
-            # The check is `if "file" not in request.files` — two files with different keys
-            # won't have "file" key, so this raises NoFileUploadedError
-            with pytest.raises(NoFileUploadedError):
+            # Now has "file" key but len(request.files) > 1
+            with pytest.raises(TooManyFilesError):
                 FileApi().post(_app_model(), _end_user())
 
     def test_filename_missing(self, app: Flask) -> None:
