@@ -30,7 +30,7 @@ from models.dataset import (
 from services.summary_index_service import SummaryIndexService
 from tasks.generate_summary_index_task import generate_summary_index_task
 
-from .entities import KnowledgeIndexNodeData
+from .entities import DocMetadata, KnowledgeIndexNodeData
 from .exc import (
     KnowledgeIndexNodeError,
 )
@@ -155,6 +155,17 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         dataset_name_value = dataset.name
         document_name_value = document.name
         created_at_value = document.created_at
+
+        # Resolve metadata selectors before any indexing side effects.
+        resolved_doc_metadata: dict[str, Any] = {}
+        metadata_binding_ids: list[str] = []
+        if node_data.doc_metadata:
+            resolved_doc_metadata, metadata_binding_ids = self._resolve_doc_metadata_values(
+                dataset=dataset,
+                doc_metadata_items=node_data.doc_metadata,
+                variable_pool=variable_pool,
+            )
+
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
         index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
@@ -202,86 +213,13 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                 DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
             }
         )
-
-        # Process doc_metadata before commit to ensure it's saved with the same document object
-        if node_data.doc_metadata:
-            try:
-                # Fetch metadata definitions for name mapping
-                metadata_name_map: dict[str, str] = {}
-                dataset_metadatas = db.session.scalars(
-                    select(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset.id)
-                ).all()
-                for md in dataset_metadatas:
-                    metadata_name_map[md.id] = md.name
-
-                # Collect valid metadata IDs (excluding built-in)
-                valid_metadata_ids = [
-                    item.metadata_id
-                    for item in node_data.doc_metadata
-                    if item.metadata_id != BUILT_IN_METADATA_ID and item.metadata_id in metadata_name_map
-                ]
-
-                # Batch fetch existing bindings to avoid N+1 query
-                existing_binding_ids: set[str] = set()
-                if valid_metadata_ids:
-                    existing_bindings = db.session.scalars(
-                        select(DatasetMetadataBinding.metadata_id).where(
-                            DatasetMetadataBinding.dataset_id == dataset.id,
-                            DatasetMetadataBinding.document_id == doc_id_value,
-                            DatasetMetadataBinding.metadata_id.in_(valid_metadata_ids),
-                        )
-                    ).all()
-                    existing_binding_ids = set(existing_bindings)
-
-                doc_metadata_dict = document.doc_metadata or {}
-
-                for item in node_data.doc_metadata:
-                    # Skip built-in fields
-                    if item.metadata_id == BUILT_IN_METADATA_ID:
-                        continue
-
-                    # Resolve Name
-                    md_name = metadata_name_map.get(item.metadata_id)
-                    if not md_name:
-                        logger.warning("[KnowledgeIndexNode] metadata_id %s not found, skipping", item.metadata_id)
-                        continue
-
-                    # Resolve Value
-                    value = item.value
-                    if isinstance(value, list):
-                        var_obj = variable_pool.get(value)
-                        if var_obj:
-                            value = var_obj.to_object()
-                        else:
-                            # Variable not found - raise error to notify user of configuration issue
-                            variable_path = ".".join(value)
-                            raise KnowledgeIndexNodeError(
-                                f"Variable '{variable_path}' not found for metadata '{md_name}'. "
-                                f"Please check your variable configuration."
-                            )
-
-                    if value is not None:
-                        doc_metadata_dict[md_name] = value
-
-                    # Create DatasetMetadataBinding if not exists
-                    if item.metadata_id not in existing_binding_ids:
-                        binding = DatasetMetadataBinding(
-                            tenant_id=dataset.tenant_id,
-                            dataset_id=dataset.id,
-                            metadata_id=item.metadata_id,
-                            document_id=doc_id_value,
-                            created_by=self.user_id,
-                        )
-                        db.session.add(binding)
-                        existing_binding_ids.add(item.metadata_id)  # Prevent duplicate in same batch
-
-                document.doc_metadata = doc_metadata_dict
-                # Force SQLAlchemy to recognize the change to the JSON field
-                attributes.flag_modified(document, "doc_metadata")
-
-            except Exception as e:
-                logger.exception("[KnowledgeIndexNode] Failed to process doc_metadata")
-                raise KnowledgeIndexNodeError(f"Failed to process document metadata: {e}") from e
+        if resolved_doc_metadata or metadata_binding_ids:
+            self._save_doc_metadata_and_bindings(
+                dataset=dataset,
+                document=document,
+                doc_metadata=resolved_doc_metadata,
+                metadata_binding_ids=metadata_binding_ids,
+            )
 
         db.session.commit()
 
@@ -297,6 +235,96 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             "created_at": created_at_value.timestamp(),
             "display_status": "completed",
         }
+
+    def _resolve_doc_metadata_values(
+        self,
+        *,
+        dataset: Dataset,
+        doc_metadata_items: Sequence[DocMetadata],
+        variable_pool: VariablePool,
+    ) -> tuple[dict[str, Any], list[str]]:
+        """
+        Resolve node-level metadata values before indexing starts.
+
+        This pre-validation prevents partial index writes when metadata variable selectors are invalid.
+        """
+        metadata_name_map: dict[str, str] = {}
+        dataset_metadatas = db.session.scalars(
+            select(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset.id)
+        ).all()
+        for metadata in dataset_metadatas:
+            metadata_name_map[metadata.id] = metadata.name
+
+        resolved_metadata: dict[str, Any] = {}
+        metadata_binding_ids: list[str] = []
+        for item in doc_metadata_items:
+            if item.metadata_id == BUILT_IN_METADATA_ID:
+                continue
+
+            metadata_name = metadata_name_map.get(item.metadata_id)
+            if not metadata_name:
+                logger.warning("[KnowledgeIndexNode] metadata_id %s not found, skipping", item.metadata_id)
+                continue
+
+            value = item.value
+            if isinstance(value, list):
+                variable = variable_pool.get(value)
+                if not variable:
+                    variable_path = ".".join(value)
+                    raise KnowledgeIndexNodeError(
+                        f"Variable '{variable_path}' not found for metadata '{metadata_name}'. "
+                        f"Please check your variable configuration."
+                    )
+                value = variable.to_object()
+
+            if value is not None:
+                resolved_metadata[metadata_name] = value
+
+            metadata_binding_ids.append(item.metadata_id)
+
+        return resolved_metadata, metadata_binding_ids
+
+    def _save_doc_metadata_and_bindings(
+        self,
+        *,
+        dataset: Dataset,
+        document: Document,
+        doc_metadata: Mapping[str, Any],
+        metadata_binding_ids: Sequence[str],
+    ) -> None:
+        """
+        Persist resolved metadata values and ensure metadata bindings exist for the document.
+        """
+        unique_metadata_ids = list(dict.fromkeys(metadata_binding_ids))
+        existing_binding_ids: set[str] = set()
+        if unique_metadata_ids:
+            existing_bindings = db.session.scalars(
+                select(DatasetMetadataBinding.metadata_id).where(
+                    DatasetMetadataBinding.dataset_id == dataset.id,
+                    DatasetMetadataBinding.document_id == document.id,
+                    DatasetMetadataBinding.metadata_id.in_(unique_metadata_ids),
+                )
+            ).all()
+            existing_binding_ids = set(existing_bindings)
+
+        if doc_metadata:
+            document_doc_metadata = document.doc_metadata or {}
+            document_doc_metadata.update(doc_metadata)
+            document.doc_metadata = document_doc_metadata
+            attributes.flag_modified(document, "doc_metadata")
+
+        for metadata_id in unique_metadata_ids:
+            if metadata_id in existing_binding_ids:
+                continue
+
+            binding = DatasetMetadataBinding(
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset.id,
+                metadata_id=metadata_id,
+                document_id=document.id,
+                created_by=self.user_id,
+            )
+            db.session.add(binding)
 
     def _handle_summary_index_generation(
         self,

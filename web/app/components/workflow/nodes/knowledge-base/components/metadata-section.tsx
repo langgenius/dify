@@ -112,7 +112,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
     }
   }, [docMetadata, onDocMetadataChange])
 
-  const handleDocMetadataValueChange = useCallback((index: number, value: string | number | ValueSelector) => {
+  const handleDocMetadataValueChange = useCallback((index: number, value: string | number | ValueSelector | null) => {
     if (onDocMetadataChange) {
       const newMetadata = [...docMetadata]
       newMetadata[index] = { ...newMetadata[index], value }
@@ -265,11 +265,12 @@ const MetadataSection: FC<MetadataSectionProps> = ({
 
                                         // Time type - use Datepicker
                                         if (metadataType === DataType.time) {
+                                          const timeValue = typeof item.value === 'number' ? item.value : undefined
                                           return (
                                             <Datepicker
                                               className="h-full w-full"
-                                              value={item.value as number}
-                                              onChange={value => handleDocMetadataValueChange(index, value || 0)}
+                                              value={timeValue}
+                                              onChange={value => handleDocMetadataValueChange(index, value)}
                                             />
                                           )
                                         }
@@ -279,7 +280,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                                           return (
                                             <InputNumber
                                               className="h-full w-full border-none bg-transparent p-0"
-                                              value={item.value as number}
+                                              value={typeof item.value === 'number' ? item.value : undefined}
                                               onChange={value => handleDocMetadataValueChange(index, value)}
                                               readOnly={readonly}
                                               size="regular"
@@ -291,7 +292,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                                         return (
                                           <input
                                             type="text"
-                                            value={item.value as string || ''}
+                                            value={typeof item.value === 'string' ? item.value : ''}
                                             onChange={e => handleDocMetadataValueChange(index, e.target.value)}
                                             placeholder={t('placeholder.input', { ns: 'common' }) || ''}
                                             disabled={readonly}

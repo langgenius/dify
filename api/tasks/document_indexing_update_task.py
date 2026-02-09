@@ -26,15 +26,18 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
     logger.info(click.style(f"Start update document: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
-    with session_factory.create_session() as session, session.begin():
+    with session_factory.create_session() as session:
         document = session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
 
         if not document:
             logger.info(click.style(f"Document not found: {document_id}", fg="red"))
             return
 
+        # Commit status update before invoking IndexingRunner, which uses another session.
+        # This prevents cross-session row lock contention on the same document record.
         document.indexing_status = "parsing"
         document.processing_started_at = naive_utc_now()
+        session.commit()
 
         dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:

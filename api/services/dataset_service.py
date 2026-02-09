@@ -1917,7 +1917,7 @@ class DocumentService:
 
         # 2. Process custom metadata - validate and build dict
         custom_metadata: dict = {}
-        metadata_bindings_to_create: list[tuple[str, str]] = []  # (metadata_id, metadata_name)
+        metadata_bindings_to_create: list[str] = []
         if knowledge_config.doc_metadata:
             # Batch fetch all metadata definitions to avoid N+1 query
             metadata_ids = [item.metadata_id for item in knowledge_config.doc_metadata]
@@ -1937,7 +1937,7 @@ class DocumentService:
                 if not metadata_def:
                     raise ValueError(f"Metadata with id '{item.metadata_id}' not found in this dataset")
                 custom_metadata[metadata_def.name] = item.value
-                metadata_bindings_to_create.append((item.metadata_id, metadata_def.name))
+                metadata_bindings_to_create.append(item.metadata_id)
 
         documents = []
         if knowledge_config.original_document_id:
@@ -2044,6 +2044,14 @@ class DocumentService:
                                 document.data_source_info = json.dumps(data_source_info)
                                 document.batch = batch
                                 document.indexing_status = "waiting"
+                                if custom_metadata:
+                                    doc_metadata = (
+                                        copy.deepcopy(document.doc_metadata)
+                                        if document.doc_metadata
+                                        else {}
+                                    )
+                                    doc_metadata.update(custom_metadata)
+                                    document.doc_metadata = doc_metadata
                                 db.session.add(document)
                                 documents.append(document)
                                 duplicate_document_ids.append(document.id)
@@ -2164,19 +2172,39 @@ class DocumentService:
                             position += 1
                     db.session.commit()
 
-                    # Create DatasetMetadataBinding records for custom metadata
-                    if metadata_bindings_to_create and document_ids:
-                        for doc_id in document_ids:
-                            for metadata_id, _ in metadata_bindings_to_create:
-                                binding = DatasetMetadataBinding(
-                                    tenant_id=dataset.tenant_id,
-                                    dataset_id=dataset.id,
-                                    document_id=doc_id,
-                                    metadata_id=metadata_id,
-                                    created_by=account.id,
+                    # Create DatasetMetadataBinding records for custom metadata.
+                    # Bindings should exist for both newly created and duplicate-reused documents.
+                    if metadata_bindings_to_create:
+                        target_document_ids = list(set(document_ids + duplicate_document_ids))
+                        metadata_ids = list(dict.fromkeys(metadata_bindings_to_create))
+                        if target_document_ids and metadata_ids:
+                            existing_binding_pairs = {
+                                (document_id, metadata_id)
+                                for document_id, metadata_id in db.session.query(
+                                    DatasetMetadataBinding.document_id,
+                                    DatasetMetadataBinding.metadata_id,
                                 )
-                                db.session.add(binding)
-                        db.session.commit()
+                                .filter(
+                                    DatasetMetadataBinding.dataset_id == dataset.id,
+                                    DatasetMetadataBinding.document_id.in_(target_document_ids),
+                                    DatasetMetadataBinding.metadata_id.in_(metadata_ids),
+                                )
+                                .all()
+                            }
+
+                            for doc_id in target_document_ids:
+                                for metadata_id in metadata_ids:
+                                    if (doc_id, metadata_id) in existing_binding_pairs:
+                                        continue
+                                    binding = DatasetMetadataBinding(
+                                        tenant_id=dataset.tenant_id,
+                                        dataset_id=dataset.id,
+                                        document_id=doc_id,
+                                        metadata_id=metadata_id,
+                                        created_by=account.id,
+                                    )
+                                    db.session.add(binding)
+                            db.session.commit()
 
                     # trigger async task
                     if document_ids:

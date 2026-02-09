@@ -45,7 +45,7 @@ export type RetrievalSetting = {
 
 export type DocMetadataItem = {
   metadata_id: string
-  value: string | number | string[] // string[] for ValueSelector
+  value: string | number | string[] | null // string[] for ValueSelector
 }
 
 export type SummaryIndexSetting = {

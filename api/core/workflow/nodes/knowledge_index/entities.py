@@ -156,7 +156,7 @@ class DocMetadata(BaseModel):
     """
 
     metadata_id: str
-    value: str | int | float | list[str]
+    value: str | int | float | list[str] | None
 
 
 class KnowledgeIndexNodeData(BaseNodeData):

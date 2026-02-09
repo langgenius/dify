@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 
 from models.account import Account
-from models.dataset import Dataset, DatasetMetadata, Document
+from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from models.model import UploadFile
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -26,6 +26,7 @@ class TestDocumentServiceMetadata:
             patch("services.dataset_service.DocumentService.build_document") as mock_build_document,
             patch("services.dataset_service.current_user") as mock_current_user,
             patch("services.dataset_service.DocumentIndexingTaskProxy") as mock_indexing_task,
+            patch("services.dataset_service.DuplicateDocumentIndexingTaskProxy") as mock_duplicate_indexing_task,
             # We don't patch DocumentService.save_document_with_dataset_id as that's what we are testing
         ):
             # Hack to pass isinstance check
@@ -81,15 +82,15 @@ class TestDocumentServiceMetadata:
             mock_metadata_def.field_type = "text"
 
             # Create a side effect for query(Model)
-            def query_side_effect(model):
+            def query_side_effect(*models):
                 m = Mock()
-                if model == DatasetMetadata:
+                if len(models) == 1 and models[0] == DatasetMetadata:
                     m.filter.return_value.filter.return_value.first.return_value = mock_metadata_def
                     # handle the specific chain in code
                     m.filter_by.return_value.first.return_value = mock_metadata_def
                     m.filter.return_value.all.return_value = [mock_metadata_def]
                     return m
-                if model == Document:
+                if len(models) == 1 and models[0] == Document:
                     doc_mock = Mock()
                     doc_mock.position = 1
                     # For get_documents_position
@@ -97,8 +98,11 @@ class TestDocumentServiceMetadata:
                     # For duplicate check
                     m.where.return_value.all.return_value = []
                     return m
-                if model == UploadFile:
+                if len(models) == 1 and models[0] == UploadFile:
                     m.where.return_value.all.return_value = [Mock(id="file-1", tenant_id=tenant_id)]
+                    return m
+                if len(models) == 2:
+                    m.filter.return_value.all.return_value = []
                     return m
 
                 return m
@@ -128,4 +132,93 @@ class TestDocumentServiceMetadata:
             assert kwargs["custom_metadata"] == {"custom_field": "custom_value"}
 
             # 3. Check DatasetMetadataBinding creation
-            assert mock_dependencies["db"].add.call_count >= 1
+            binding_instances = [
+                call.args[0]
+                for call in mock_dependencies["db"].add.call_args_list
+                if isinstance(call.args[0], DatasetMetadataBinding)
+            ]
+            assert len(binding_instances) == 1
+            assert binding_instances[0].document_id == "doc-123"
+            assert binding_instances[0].metadata_id == metadata_id
+
+    def test_save_duplicate_document_with_metadata_creates_binding(self, mock_dependencies):
+        # Arrange
+        dataset_id = str(uuid4())
+        tenant_id = str(uuid4())
+        account = Mock(spec=Account)
+        account.id = "account-1"
+        account.current_tenant_id = tenant_id
+
+        dataset = Mock(spec=Dataset)
+        dataset.id = dataset_id
+        dataset.tenant_id = tenant_id
+        dataset.built_in_field_enabled = False
+        dataset.doc_form = "text_model"
+        mock_dependencies["get_dataset"].return_value = dataset
+
+        metadata_id = str(uuid4())
+        knowledge_config = KnowledgeConfig(
+            data_source_type="upload_file",
+            data_source=DataSource(
+                info_list=InfoList(data_source_type="upload_file", file_info_list=FileInfo(file_ids=["file-1"]))
+            ),
+            doc_form="text_model",
+            doc_language="en",
+            indexing_technique="high_quality",
+            duplicate=True,
+            doc_metadata=[DocumentMetadataInput(metadata_id=metadata_id, value="custom_value")],
+        )
+
+        existing_document = Mock(spec=Document)
+        existing_document.id = "dup-doc-1"
+        existing_document.name = "dup.txt"
+        existing_document.doc_metadata = {"existing_field": "existing_value"}
+
+        with patch("services.dataset_service.db.session.query") as mock_query:
+            mock_metadata_def = Mock(spec=DatasetMetadata)
+            mock_metadata_def.id = metadata_id
+            mock_metadata_def.name = "custom_field"
+            mock_metadata_def.field_type = "text"
+
+            def query_side_effect(*models):
+                m = Mock()
+                if len(models) == 1 and models[0] == DatasetMetadata:
+                    m.filter.return_value.all.return_value = [mock_metadata_def]
+                    return m
+                if len(models) == 1 and models[0] == Document:
+                    doc_mock = Mock()
+                    doc_mock.position = 1
+                    m.filter_by.return_value.order_by.return_value.first.return_value = doc_mock
+                    m.where.return_value.all.return_value = [existing_document]
+                    return m
+                if len(models) == 1 and models[0] == UploadFile:
+                    file_mock = Mock(id="file-1", tenant_id=tenant_id)
+                    file_mock.name = "dup.txt"
+                    m.where.return_value.all.return_value = [file_mock]
+                    return m
+                if len(models) == 2:
+                    m.filter.return_value.all.return_value = []
+                    return m
+
+                return m
+
+            mock_query.side_effect = query_side_effect
+
+            # Act
+            DocumentService.save_document_with_dataset_id(
+                dataset=dataset, knowledge_config=knowledge_config, account=account
+            )
+
+            # Assert
+            mock_dependencies["build_document"].assert_not_called()
+            assert existing_document.doc_metadata["custom_field"] == "custom_value"
+
+            binding_instances = [
+                call.args[0]
+                for call in mock_dependencies["db"].add.call_args_list
+                if isinstance(call.args[0], DatasetMetadataBinding)
+            ]
+            assert any(
+                binding.document_id == existing_document.id and binding.metadata_id == metadata_id
+                for binding in binding_instances
+            )
