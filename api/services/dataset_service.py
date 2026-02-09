@@ -1916,7 +1916,7 @@ class DocumentService:
             db.session.add(dataset)
 
         # 2. Process custom metadata - validate and build dict
-        custom_metadata: dict = {}
+        custom_metadata: dict[str, str | int | float | None] = {}
         metadata_bindings_to_create: list[str] = []
         if knowledge_config.doc_metadata:
             # Batch fetch all metadata definitions to avoid N+1 query
@@ -2170,10 +2170,8 @@ class DocumentService:
                             document_ids.append(document.id)
                             documents.append(document)
                             position += 1
-                    db.session.commit()
-
-                    # Create DatasetMetadataBinding records for custom metadata.
-                    # Bindings should exist for both newly created and duplicate-reused documents.
+                    # Create DatasetMetadataBinding records for custom metadata
+                    # before commit so documents and bindings are in a single transaction.
                     if metadata_bindings_to_create:
                         target_document_ids = list(set(document_ids + duplicate_document_ids))
                         metadata_ids = list(dict.fromkeys(metadata_bindings_to_create))
@@ -2204,7 +2202,8 @@ class DocumentService:
                                         created_by=account.id,
                                     )
                                     db.session.add(binding)
-                            db.session.commit()
+
+                    db.session.commit()
 
                     # trigger async task
                     if document_ids:

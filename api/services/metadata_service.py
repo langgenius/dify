@@ -156,8 +156,10 @@ class MetadataService:
                                 if item.get("metadata_id") == metadata_id:
                                     return True, pipeline.name
             except Exception:
+                # Fail closed: if we can't parse the workflow, assume metadata is in use
+                # to prevent accidental deletion of actively used metadata.
                 logger.exception("Error checking metadata usage in pipeline workflow %s", workflow.id)
-                continue
+                return True, pipeline.name
 
         return False, None
 

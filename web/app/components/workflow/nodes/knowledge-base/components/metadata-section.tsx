@@ -25,6 +25,56 @@ import {
 } from '@/service/knowledge/use-metadata'
 import { cn } from '@/utils/classnames'
 
+type ConstantValueInputProps = {
+  metadataType: DataType | undefined
+  value: string | number | string[] | null
+  onChange: (value: string | number | null) => void
+  readonly?: boolean
+  placeholder: string
+}
+
+const ConstantValueInput: FC<ConstantValueInputProps> = ({
+  metadataType,
+  value,
+  onChange,
+  readonly,
+  placeholder,
+}) => {
+  if (metadataType === DataType.time) {
+    const timeValue = typeof value === 'number' ? value : undefined
+    return (
+      <Datepicker
+        className="h-full w-full"
+        value={timeValue}
+        onChange={v => onChange(v)}
+      />
+    )
+  }
+
+  if (metadataType === DataType.number) {
+    return (
+      <InputNumber
+        className="h-full w-full border-none bg-transparent p-0"
+        value={typeof value === 'number' ? value : undefined}
+        onChange={v => onChange(v)}
+        readOnly={readonly}
+        size="regular"
+      />
+    )
+  }
+
+  return (
+    <input
+      type="text"
+      value={typeof value === 'string' ? value : ''}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      disabled={readonly}
+      className="h-full w-full bg-transparent text-[13px] text-text-primary outline-none placeholder:text-text-placeholder disabled:opacity-50"
+    />
+  )
+}
+
 type MetadataSectionProps = {
   nodeId: string
   datasetId?: string
@@ -150,7 +200,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
             = varName === 'timestamp' // sys.timestamp
               || varName.includes('time') // current_time, expiry_time
               || varName.includes('date') // created_date, updated_date
-              || varName.includes('at') // created_at, updated_at
+              || varName.endsWith('_at') // created_at, updated_at
 
           return (variable.type === VarType.number || variable.type === VarType.integer)
             && isTimeRelated
@@ -260,46 +310,13 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                                   )
                                 : (
                                     <div className="flex h-full w-full items-center px-2">
-                                      {(() => {
-                                        const metadataType = getMetadataType(item.metadata_id)
-
-                                        // Time type - use Datepicker
-                                        if (metadataType === DataType.time) {
-                                          const timeValue = typeof item.value === 'number' ? item.value : undefined
-                                          return (
-                                            <Datepicker
-                                              className="h-full w-full"
-                                              value={timeValue}
-                                              onChange={value => handleDocMetadataValueChange(index, value)}
-                                            />
-                                          )
-                                        }
-
-                                        // Number type - use InputNumber
-                                        if (metadataType === DataType.number) {
-                                          return (
-                                            <InputNumber
-                                              className="h-full w-full border-none bg-transparent p-0"
-                                              value={typeof item.value === 'number' ? item.value : undefined}
-                                              onChange={value => handleDocMetadataValueChange(index, value)}
-                                              readOnly={readonly}
-                                              size="regular"
-                                            />
-                                          )
-                                        }
-
-                                        // String type (default) - use text input
-                                        return (
-                                          <input
-                                            type="text"
-                                            value={typeof item.value === 'string' ? item.value : ''}
-                                            onChange={e => handleDocMetadataValueChange(index, e.target.value)}
-                                            placeholder={t('placeholder.input', { ns: 'common' }) || ''}
-                                            disabled={readonly}
-                                            className="h-full w-full bg-transparent text-[13px] text-text-primary outline-none placeholder:text-text-placeholder disabled:opacity-50"
-                                          />
-                                        )
-                                      })()}
+                                      <ConstantValueInput
+                                        metadataType={getMetadataType(item.metadata_id)}
+                                        value={item.value}
+                                        onChange={value => handleDocMetadataValueChange(index, value)}
+                                        readonly={readonly}
+                                        placeholder={t('placeholder.input', { ns: 'common' }) || ''}
+                                      />
                                     </div>
                                   )}
                             </div>
