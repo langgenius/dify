@@ -1,6 +1,6 @@
 'use client'
 
-import type { ActionItem, SearchResult } from '../actions/types'
+import type { ScopeDescriptor, SearchResult } from '../actions/types'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useGetLanguage } from '@/context/i18n'
@@ -19,7 +19,7 @@ export type UseGotoAnythingResultsOptions = {
   searchQueryDebouncedValue: string
   searchMode: string
   isCommandsMode: boolean
-  Actions: Record<string, ActionItem>
+  scopes: ScopeDescriptor[]
   isWorkflowPage: boolean
   isRagPipelinePage: boolean
   cmdVal: string
@@ -33,7 +33,7 @@ export const useGotoAnythingResults = (
     searchQueryDebouncedValue,
     searchMode,
     isCommandsMode,
-    Actions,
+    scopes,
     isWorkflowPage,
     isRagPipelinePage,
     cmdVal,
@@ -42,13 +42,9 @@ export const useGotoAnythingResults = (
 
   const defaultLocale = useGetLanguage()
 
-  // Use action keys as stable cache key instead of the full Actions object
-  // (Actions contains functions which are not serializable)
-  const actionKeys = useMemo(() => Object.keys(Actions).sort(), [Actions])
-
   const { data: searchResults = [], isLoading, isError, error } = useQuery(
     {
-      // eslint-disable-next-line @tanstack/query/exhaustive-deps -- Actions intentionally excluded: contains non-serializable functions; actionKeys provides stable representation
+      // eslint-disable-next-line @tanstack/query/exhaustive-deps -- scopes intentionally excluded: contains non-serializable functions; scope IDs provide stable representation
       queryKey: [
         'goto-anything',
         'search-result',
@@ -57,12 +53,12 @@ export const useGotoAnythingResults = (
         isWorkflowPage,
         isRagPipelinePage,
         defaultLocale,
-        actionKeys,
+        scopes.map(s => s.id).sort().join(','),
       ],
       queryFn: async () => {
         const query = searchQueryDebouncedValue.toLowerCase()
-        const action = matchAction(query, Actions)
-        return await searchAnything(defaultLocale, query, action, Actions)
+        const scope = matchAction(query, scopes)
+        return await searchAnything(defaultLocale, query, scope, scopes)
       },
       enabled: !!searchQueryDebouncedValue && !isCommandsMode,
       staleTime: 30000,

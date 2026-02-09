@@ -32,23 +32,17 @@ vi.mock('../actions/commands/registry', () => ({
   },
 }))
 
-const createMockActionItem = (
-  key: '@app' | '@knowledge' | '@plugin' | '@node' | '/',
-  extra: Record<string, unknown> = {},
-) => ({
-  key,
-  shortcut: key,
-  title: `${key} title`,
-  description: `${key} description`,
-  search: vi.fn().mockResolvedValue([]),
-  ...extra,
-})
+const mockExecuteCommand = vi.fn()
+
+vi.mock('../actions/commands', () => ({
+  executeCommand: (...args: unknown[]) => mockExecuteCommand(...args),
+}))
+
+vi.mock('@/app/components/workflow/constants', () => ({
+  VIBE_COMMAND_EVENT: 'vibe-command',
+}))
 
 const createMockOptions = (overrides = {}) => ({
-  Actions: {
-    slash: createMockActionItem('/', { action: vi.fn() }),
-    app: createMockActionItem('@app'),
-  },
   setSearchQuery: vi.fn(),
   clearSelection: vi.fn(),
   inputRef: { current: { focus: vi.fn() } } as unknown as React.RefObject<HTMLInputElement>,
@@ -60,6 +54,7 @@ describe('useGotoAnythingNavigation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFindCommandResult = null
+    mockExecuteCommand.mockReset()
     vi.useFakeTimers()
   })
 
@@ -221,13 +216,8 @@ describe('useGotoAnythingNavigation', () => {
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
-    it('should execute slash command action for command type', () => {
-      const actionMock = vi.fn()
-      const options = createMockOptions({
-        Actions: {
-          slash: { key: '/', shortcut: '/', action: actionMock },
-        },
-      })
+    it('should execute command via executeCommand for command type', () => {
+      const options = createMockOptions()
 
       const { result } = renderHook(() => useGotoAnythingNavigation(options))
 
@@ -242,7 +232,7 @@ describe('useGotoAnythingNavigation', () => {
         result.current.handleNavigate(commandResult)
       })
 
-      expect(actionMock).toHaveBeenCalledWith(commandResult)
+      expect(mockExecuteCommand).toHaveBeenCalledWith('theme.set', { theme: 'dark' })
     })
 
     it('should set activePlugin for plugin type', () => {
@@ -368,10 +358,8 @@ describe('useGotoAnythingNavigation', () => {
       // No error should occur
     })
 
-    it('should handle missing slash action', () => {
-      const options = createMockOptions({
-        Actions: {},
-      })
+    it('should handle command execution without error', () => {
+      const options = createMockOptions()
 
       const { result } = renderHook(() => useGotoAnythingNavigation(options))
 
@@ -385,7 +373,7 @@ describe('useGotoAnythingNavigation', () => {
         })
       })
 
-      // No error should occur
+      expect(mockExecuteCommand).toHaveBeenCalledWith('test-command', undefined)
     })
   })
 })

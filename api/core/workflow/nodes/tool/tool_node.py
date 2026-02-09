@@ -50,6 +50,19 @@ class ToolNode(Node[ToolNodeData]):
     def version(cls) -> str:
         return "1"
 
+    @classmethod
+    def get_default_config_schema(cls) -> dict[str, Any] | None:
+        return {
+            "description": "Execute an external tool",
+            "required": ["provider_id", "tool_id", "tool_parameters"],
+            "parameters": {
+                "provider_id": {"type": "string"},
+                "provider_type": {"type": "string"},
+                "tool_id": {"type": "string"},
+                "tool_parameters": {"type": "object"},
+            },
+        }
+
     def _run(self) -> Generator[NodeEventBase, None, None]:
         """
         Run the tool node

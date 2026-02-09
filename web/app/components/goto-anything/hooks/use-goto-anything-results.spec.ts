@@ -35,11 +35,11 @@ vi.mock('../actions', () => ({
   searchAnything: (...args: unknown[]) => mockSearchAnything(...args),
 }))
 
-const createMockActionItem = (key: '@app' | '@knowledge' | '@plugin' | '@node' | '/') => ({
-  key,
-  shortcut: key,
-  title: `${key} title`,
-  description: `${key} description`,
+const createMockScopeDescriptor = (id: string, shortcut: string) => ({
+  id,
+  shortcut,
+  title: `${shortcut} title`,
+  description: `${shortcut} description`,
   search: vi.fn().mockResolvedValue([]),
 })
 
@@ -47,7 +47,7 @@ const createMockOptions = (overrides = {}) => ({
   searchQueryDebouncedValue: '',
   searchMode: 'general',
   isCommandsMode: false,
-  Actions: { app: createMockActionItem('@app') },
+  scopes: [createMockScopeDescriptor('app', '@app')],
   isWorkflowPage: false,
   isRagPipelinePage: false,
   cmdVal: '_',
@@ -300,36 +300,36 @@ describe('useGotoAnythingResults', () => {
 
   describe('queryFn execution', () => {
     it('should call matchAction with lowercased query', async () => {
-      const mockActions = { app: createMockActionItem('@app') }
-      mockMatchAction.mockReturnValue({ key: '@app' })
+      const mockScopes = [createMockScopeDescriptor('app', '@app')]
+      mockMatchAction.mockReturnValue(mockScopes[0])
       mockSearchAnything.mockResolvedValue([])
 
       renderHook(() => useGotoAnythingResults(createMockOptions({
         searchQueryDebouncedValue: 'TEST QUERY',
-        Actions: mockActions,
+        scopes: mockScopes,
       })))
 
       expect(capturedQueryFn).toBeDefined()
       await capturedQueryFn!()
 
-      expect(mockMatchAction).toHaveBeenCalledWith('test query', mockActions)
+      expect(mockMatchAction).toHaveBeenCalledWith('test query', mockScopes)
     })
 
     it('should call searchAnything with correct parameters', async () => {
-      const mockActions = { app: createMockActionItem('@app') }
-      const mockAction = { key: '@app' }
+      const mockScopes = [createMockScopeDescriptor('app', '@app')]
+      const mockAction = mockScopes[0]
       mockMatchAction.mockReturnValue(mockAction)
       mockSearchAnything.mockResolvedValue([{ id: '1', type: 'app', title: 'Result' }])
 
       renderHook(() => useGotoAnythingResults(createMockOptions({
         searchQueryDebouncedValue: 'My Query',
-        Actions: mockActions,
+        scopes: mockScopes,
       })))
 
       expect(capturedQueryFn).toBeDefined()
       const result = await capturedQueryFn!()
 
-      expect(mockSearchAnything).toHaveBeenCalledWith('en_US', 'my query', mockAction, mockActions)
+      expect(mockSearchAnything).toHaveBeenCalledWith('en_US', 'my query', mockAction, mockScopes)
       expect(result).toEqual([{ id: '1', type: 'app', title: 'Result' }])
     })
 

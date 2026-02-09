@@ -9,7 +9,7 @@ export {
 export { slashCommandRegistry, SlashCommandRegistry } from './registry'
 
 // Command system exports
-export { slashAction } from './slash'
+export { slashScope } from './slash'
 export { registerSlashCommands, SlashCommandProvider, unregisterSlashCommands } from './slash'
 
 export type { SlashCommandHandler } from './types'

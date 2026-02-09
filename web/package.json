@@ -236,7 +236,8 @@
     "vite": "7.3.1",
     "vite-tsconfig-paths": "6.0.4",
     "vitest": "4.0.17",
-    "vitest-canvas-mock": "1.1.3"
+    "vitest-canvas-mock": "1.1.3",
+    "vitest-tiny-reporter": "1.3.1"
   },
   "pnpm": {
     "overrides": {

@@ -83,10 +83,10 @@ describe('EmptyState', () => {
       })
 
       it('should show specific search hint with shortcuts', () => {
-        const Actions = {
-          app: { key: '@app', shortcut: '@app' },
-          plugin: { key: '@plugin', shortcut: '@plugin' },
-        } as unknown as Record<string, import('../actions/types').ActionItem>
+        const Actions = [
+          { id: 'app', shortcut: '@app', title: 'App', description: '', search: vi.fn() },
+          { id: 'plugin', shortcut: '@plugin', title: 'Plugin', description: '', search: vi.fn() },
+        ] as import('../actions/types').ScopeDescriptor[]
         render(<EmptyState variant="no-results" searchMode="general" Actions={Actions} />)
 
         expect(screen.getByText('gotoAnything.emptyState.trySpecificSearch:@app, @plugin')).toBeInTheDocument()
