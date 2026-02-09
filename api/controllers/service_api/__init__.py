@@ -34,6 +34,7 @@ from .dataset import (
     metadata,
     segment,
 )
+from .dataset.rag_pipeline import rag_pipeline_workflow
 from .workspace import models
 
 __all__ = [
@@ -51,6 +52,7 @@ __all__ = [
     "message",
     "metadata",
     "models",
+    "rag_pipeline_workflow",
     "segment",
     "site",
     "workflow",
