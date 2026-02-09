@@ -2045,11 +2045,7 @@ class DocumentService:
                                 document.batch = batch
                                 document.indexing_status = "waiting"
                                 if custom_metadata:
-                                    doc_metadata = (
-                                        copy.deepcopy(document.doc_metadata)
-                                        if document.doc_metadata
-                                        else {}
-                                    )
+                                    doc_metadata = copy.deepcopy(document.doc_metadata) if document.doc_metadata else {}
                                     doc_metadata.update(custom_metadata)
                                     document.doc_metadata = doc_metadata
                                 db.session.add(document)
