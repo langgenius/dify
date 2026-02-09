@@ -355,7 +355,7 @@ class GraphRuntimeState:
     def sandbox(self) -> Sandbox | None:
         return self._sandbox
 
-    def set_sandbox(self, sandbox: Sandbox) -> None:
+    def set_sandbox(self, sandbox: Sandbox | None) -> None:
         self._sandbox = sandbox
 
     # ------------------------------------------------------------------

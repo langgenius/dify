@@ -119,6 +119,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         if resume_state is not None:
             graph_runtime_state = resume_state
+            graph_runtime_state.set_sandbox(self._sandbox)
             variable_pool = graph_runtime_state.variable_pool
             graph = self._init_graph(
                 graph_config=self._workflow.graph_dict,
@@ -175,9 +176,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
             # init graph
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
-
-            if self._sandbox:
-                graph_runtime_state.set_sandbox(self._sandbox)
+            graph_runtime_state.set_sandbox(self._sandbox)
 
             graph = self._init_graph(
                 graph_config=self._workflow.graph_dict,
