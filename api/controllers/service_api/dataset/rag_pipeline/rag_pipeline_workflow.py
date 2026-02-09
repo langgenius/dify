@@ -1,5 +1,3 @@
-import string
-import uuid
 from collections.abc import Generator
 from typing import Any
 
@@ -41,7 +39,7 @@ register_schema_model(service_api_ns, DatasourceNodeRunPayload)
 register_schema_model(service_api_ns, PipelineRunApiEntity)
 
 
-@service_api_ns.route(f"/datasets/{uuid:dataset_id}/pipeline/datasource-plugins")
+@service_api_ns.route("/datasets/<uuid:dataset_id>/pipeline/datasource-plugins")
 class DatasourcePluginsApi(DatasetApiResource):
     """Resource for datasource plugins."""
 
@@ -76,7 +74,7 @@ class DatasourcePluginsApi(DatasetApiResource):
         return datasource_plugins, 200
 
 
-@service_api_ns.route(f"/datasets/{uuid:dataset_id}/pipeline/datasource/nodes/{string:node_id}/run")
+@service_api_ns.route("/datasets/<uuid:dataset_id>/pipeline/datasource/nodes/<string:node_id>/run")
 class DatasourceNodeRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
@@ -131,7 +129,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
         )
 
 
-@service_api_ns.route(f"/datasets/{uuid:dataset_id}/pipeline/run")
+@service_api_ns.route("/datasets/<uuid:dataset_id>/pipeline/run")
 class PipelineRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
