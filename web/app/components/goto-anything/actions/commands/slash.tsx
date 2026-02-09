@@ -7,10 +7,10 @@ import { getI18n } from 'react-i18next'
 import { setLocaleOnClient } from '@/i18n-config'
 import { ACTION_KEYS } from '../../constants'
 import { accountCommand } from './account'
-import { bananaCommand } from './banana'
 import { communityCommand } from './community'
 import { docsCommand } from './docs'
 import { forumCommand } from './forum'
+import { generateCommand } from './generate'
 import { languageCommand } from './language'
 import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
@@ -39,7 +39,7 @@ export const registerSlashCommands = (deps: SlashCommandDependencies) => {
   slashCommandRegistry.register(communityCommand, {})
   slashCommandRegistry.register(accountCommand, {})
   slashCommandRegistry.register(zenCommand, {})
-  slashCommandRegistry.register(bananaCommand, {})
+  slashCommandRegistry.register(generateCommand, {})
 }
 
 export const unregisterSlashCommands = () => {
@@ -51,7 +51,7 @@ export const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('community')
   slashCommandRegistry.unregister('account')
   slashCommandRegistry.unregister('zen')
-  slashCommandRegistry.unregister('banana')
+  slashCommandRegistry.unregister('generate')
 }
 
 export const SlashCommandProvider = () => {

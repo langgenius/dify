@@ -67,7 +67,7 @@ export const useGotoAnythingNavigation = (
 
     switch (result.type) {
       case 'command': {
-        if (result.data.command === 'workflow.vibe') {
+        if (result.data.command === 'workflow.generate') {
           if (typeof document !== 'undefined') {
             document.dispatchEvent(new CustomEvent(VIBE_COMMAND_EVENT, { detail: { dsl: result.data.args?.dsl } }))
           }
