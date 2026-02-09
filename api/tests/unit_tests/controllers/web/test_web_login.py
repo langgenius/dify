@@ -5,7 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi
+import services.errors.account
+from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi, LoginApi, LoginStatusApi, LogoutApi
 
 
 def encode_code(code: str) -> str:
@@ -89,3 +90,114 @@ class TestEmailCodeLoginApi:
         mock_revoke_token.assert_called_once_with("token-123")
         mock_login.assert_called_once()
         mock_reset_login_rate.assert_called_once_with("user@example.com")
+
+
+class TestLoginApi:
+    @patch("controllers.web.login.WebAppAuthService.login", return_value="access-tok")
+    @patch("controllers.web.login.WebAppAuthService.authenticate")
+    def test_login_success(self, mock_auth: MagicMock, mock_login: MagicMock, app: Flask) -> None:
+        mock_auth.return_value = MagicMock()
+
+        with app.test_request_context(
+            "/web/login",
+            method="POST",
+            json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
+        ):
+            response = LoginApi().post()
+
+        assert response.get_json()["data"]["access_token"] == "access-tok"
+        mock_auth.assert_called_once()
+
+    @patch(
+        "controllers.web.login.WebAppAuthService.authenticate",
+        side_effect=services.errors.account.AccountLoginError(),
+    )
+    def test_login_banned_account(self, mock_auth: MagicMock, app: Flask) -> None:
+        from controllers.console.error import AccountBannedError
+
+        with app.test_request_context(
+            "/web/login",
+            method="POST",
+            json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
+        ):
+            with pytest.raises(AccountBannedError):
+                LoginApi().post()
+
+    @patch(
+        "controllers.web.login.WebAppAuthService.authenticate",
+        side_effect=services.errors.account.AccountPasswordError(),
+    )
+    def test_login_wrong_password(self, mock_auth: MagicMock, app: Flask) -> None:
+        from controllers.console.auth.error import AuthenticationFailedError
+
+        with app.test_request_context(
+            "/web/login",
+            method="POST",
+            json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
+        ):
+            with pytest.raises(AuthenticationFailedError):
+                LoginApi().post()
+
+
+class TestLoginStatusApi:
+    @patch("controllers.web.login.extract_webapp_access_token", return_value=None)
+    def test_no_app_code_returns_logged_in_false(self, mock_extract: MagicMock, app: Flask) -> None:
+        with app.test_request_context("/web/login/status"):
+            result = LoginStatusApi().get()
+
+        assert result["logged_in"] is False
+        assert result["app_logged_in"] is False
+
+    @patch("controllers.web.login.decode_jwt_token")
+    @patch("controllers.web.login.PassportService")
+    @patch("controllers.web.login.WebAppAuthService.is_app_require_permission_check", return_value=False)
+    @patch("controllers.web.login.AppService.get_app_id_by_code", return_value="app-1")
+    @patch("controllers.web.login.extract_webapp_access_token", return_value="tok")
+    def test_public_app_user_logged_in(
+        self,
+        mock_extract: MagicMock,
+        mock_app_id: MagicMock,
+        mock_perm: MagicMock,
+        mock_passport: MagicMock,
+        mock_decode: MagicMock,
+        app: Flask,
+    ) -> None:
+        mock_decode.return_value = (MagicMock(), MagicMock())
+
+        with app.test_request_context("/web/login/status?app_code=code1"):
+            result = LoginStatusApi().get()
+
+        assert result["logged_in"] is True
+        assert result["app_logged_in"] is True
+
+    @patch("controllers.web.login.decode_jwt_token", side_effect=Exception("bad"))
+    @patch("controllers.web.login.PassportService")
+    @patch("controllers.web.login.WebAppAuthService.is_app_require_permission_check", return_value=True)
+    @patch("controllers.web.login.AppService.get_app_id_by_code", return_value="app-1")
+    @patch("controllers.web.login.extract_webapp_access_token", return_value="tok")
+    def test_private_app_passport_fails(
+        self,
+        mock_extract: MagicMock,
+        mock_app_id: MagicMock,
+        mock_perm: MagicMock,
+        mock_passport_cls: MagicMock,
+        mock_decode: MagicMock,
+        app: Flask,
+    ) -> None:
+        mock_passport_cls.return_value.verify.side_effect = Exception("bad")
+
+        with app.test_request_context("/web/login/status?app_code=code1"):
+            result = LoginStatusApi().get()
+
+        assert result["logged_in"] is False
+        assert result["app_logged_in"] is False
+
+
+class TestLogoutApi:
+    @patch("controllers.web.login.clear_webapp_access_token_from_cookie")
+    def test_logout_success(self, mock_clear: MagicMock, app: Flask) -> None:
+        with app.test_request_context("/web/logout", method="POST"):
+            response = LogoutApi().post()
+
+        assert response.get_json() == {"result": "success"}
+        mock_clear.assert_called_once()
