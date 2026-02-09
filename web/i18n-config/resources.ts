@@ -1,3 +1,5 @@
+import type { FlatNamespace } from 'i18next'
+import type { KebabCase } from 'string-ts'
 import { kebabCase } from 'es-toolkit/string'
 import appAnnotation from '../i18n/en-US/app-annotation.json'
 import appApi from '../i18n/en-US/app-api.json'
@@ -64,18 +66,8 @@ const resources = {
   workflow,
 }
 
-export type KebabCase<S extends string> = S extends `${infer T}${infer U}`
-  ? T extends Lowercase<T>
-    ? `${T}${KebabCase<U>}`
-    : `-${Lowercase<T>}${KebabCase<U>}`
-  : S
-
-export type CamelCase<S extends string> = S extends `${infer T}-${infer U}`
-  ? `${T}${Capitalize<CamelCase<U>>}`
-  : S
-
 export type Resources = typeof resources
-export type NamespaceCamelCase = keyof Resources
+export type NamespaceCamelCase = FlatNamespace
 export type NamespaceKebabCase = KebabCase<NamespaceCamelCase>
 
 export const namespacesCamelCase = Object.keys(resources) as NamespaceCamelCase[]
